@@ -18,14 +18,12 @@ namespace WorkerHarness.Core.Actions
     public class RpcActionProvider : IActionProvider
     {
         private readonly IValidatorFactory _validatorFactory;
-
         private readonly IMatcher _matchService;
-
         private readonly IStreamingMessageProvider _rpcMessageProvider;
-
         private readonly Channel<StreamingMessage> _inboundChannel;
-
         private readonly Channel<StreamingMessage> _outboundChannel;
+
+        internal static string ArgumentMissingMessagesProperty = "Missing the \"messages\" array in an Rpc action";
 
         public string Type => ActionTypes.Rpc;
 
@@ -70,9 +68,7 @@ namespace WorkerHarness.Core.Actions
             ValidateRpcActionNode(actionNode);
 
             JsonSerializerOptions serializerOptions = new() { PropertyNameCaseInsensitive = true };
-
-            RpcActionData actionData = JsonSerializer.Deserialize<RpcActionData>(actionNode, serializerOptions) ??
-                 throw new InvalidOperationException($"Unable to deserialize a {typeof(JsonNode)} object to a {typeof(RpcActionData)} object");
+            RpcActionData actionData = JsonSerializer.Deserialize<RpcActionData>(actionNode, serializerOptions)!;
 
             return actionData;
         }
@@ -81,7 +77,7 @@ namespace WorkerHarness.Core.Actions
         {
             if (actionNode["messages"] == null || actionNode["messages"] is not JsonArray)
             {
-                throw new InvalidDataException($"Missing the \"messages\" array in an Rpc action");
+                throw new ArgumentException(ArgumentMissingMessagesProperty);
             }
         }
 
