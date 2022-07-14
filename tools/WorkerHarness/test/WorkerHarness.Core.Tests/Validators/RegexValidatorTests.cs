@@ -84,5 +84,28 @@ namespace WorkerHarness.Core.Tests.Validators
             // Assert
             Assert.IsTrue(actual);
         }
+
+        [TestMethod]
+        public void Validate_QueryResultIsAnObjectThatMatchesRegexExpression_ReturnTrue()
+        {
+            // Arrange
+            object stubObject = WeatherForecast.CreateWeatherForecastObject();
+
+            string expected = ".+";
+            ValidationContext context = new()
+            {
+                Query = "$.Location",
+                Expected = expected
+            };
+            context.ConstructExpression();
+
+            RegexValidator regexValidator = new();
+
+            // Act
+            bool actual = regexValidator.Validate(context, stubObject);
+
+            // Assert
+            Assert.IsTrue(actual);
+        }
     }
 }

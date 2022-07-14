@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Text.Json;
 using WorkerHarness.Core.Tests.Helpers;
 using WorkerHarness.Core.Validators;
 
@@ -75,6 +76,29 @@ namespace WorkerHarness.Core.Tests.Validators
             context.ConstructExpression();
 
             object stubObject = WeatherForecast.CreateWeatherForecastObject();
+
+            StringValidator stringValidator = new();
+
+            // Act
+            bool actual = stringValidator.Validate(context, stubObject);
+
+            // Assert
+            Assert.IsTrue(actual);
+        }
+
+        [TestMethod]
+        public void Validate_QueryResultIsAnObjectThatMatchesExpected_ReturnTrue()
+        {
+            // Arrange
+            object stubObject = WeatherForecast.CreateWeatherForecastObject();
+
+            string expected = JsonSerializer.Serialize(((WeatherForecast)stubObject).Location);
+            ValidationContext context = new()
+            {
+                Query = "$.Location",
+                Expected = expected
+            };
+            context.ConstructExpression();
 
             StringValidator stringValidator = new();
 

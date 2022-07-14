@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Text.Json;
 using WorkerHarness.Core.Commons;
 
 namespace WorkerHarness.Core.Validators
@@ -14,7 +15,17 @@ namespace WorkerHarness.Core.Validators
             try
             {
                 string query = context.Query;
-                string queryResult = message.Query(query);
+                object rawQueryResult = message.Query(query);
+
+                string queryResult;
+                if (rawQueryResult is string)
+                {
+                    queryResult = rawQueryResult.ToString() ?? string.Empty;
+                }
+                else
+                {
+                    queryResult = JsonSerializer.Serialize(rawQueryResult);
+                }
 
                 context.TryEvaluate(out string? expected);
 
