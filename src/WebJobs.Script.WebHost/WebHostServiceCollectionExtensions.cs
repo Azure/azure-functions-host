@@ -81,8 +81,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             .AddNewtonsoftJson()
             .AddXmlDataContractSerializerFormatters();
 
-            JsonConvert.DefaultSettings = () => new JsonSerializerSettings { MaxDepth = 128 };
-
             // Standby services
             services.AddStandbyServices();
 
