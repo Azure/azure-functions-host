@@ -75,7 +75,7 @@ namespace WorkerHarness.Core.Variables
 
                 _objectVariable = _resolved ? null : _objectVariable;
 
-                _dependencies.Remove(variableName);
+                _dependencies = VariableHelper.ExtractVariableNames(_expression);
             }
 
             return _resolved;
