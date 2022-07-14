@@ -7,11 +7,15 @@ namespace WorkerHarness.Core.Actions
     {
         private readonly int _milisecondsDelay;
 
+        internal static string InvalidArgumentMessage = "Cannot except delay time less than -1";
+
+        internal int MilisecondsDelay => _milisecondsDelay;
+
         internal DelayAction(int milisecondsDelay)
         {
-            if (_milisecondsDelay < -1)
+            if (milisecondsDelay < -1)
             {
-                throw new ArgumentOutOfRangeException($"Cannot except delay time less than -1");
+                throw new ArgumentException(InvalidArgumentMessage);
             }
             _milisecondsDelay = milisecondsDelay;
         }
