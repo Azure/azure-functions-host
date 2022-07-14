@@ -17,7 +17,7 @@ namespace WorkerHarness.Core.Actions
         private readonly IValidatorFactory _validatorFactory;
 
         // _matchService decides if an incoming grpc message matches our criteria.
-        private readonly IMatcher _matchService;
+        private readonly IMessageMatcher _messageMatcher;
 
         // _grpcMessageProvider create the right StreamingMessage object.
         private readonly IStreamingMessageProvider _grpcMessageProvider;
@@ -32,14 +32,14 @@ namespace WorkerHarness.Core.Actions
         private readonly Channel<StreamingMessage> _outboundChannel;
 
         internal RpcAction(IValidatorFactory validatorFactory, 
-            IMatcher matchService,
+            IMessageMatcher matchService,
             IStreamingMessageProvider grpcMessageProvider, 
             RpcActionData actionData,
             Channel<StreamingMessage> inboundChannel,
             Channel<StreamingMessage> outboundChannel)
         {
             _validatorFactory = validatorFactory;
-            _matchService = matchService;
+            _messageMatcher = matchService;
             _grpcMessageProvider = grpcMessageProvider;
             _actionData = actionData;
             _inboundChannel = inboundChannel;
@@ -76,32 +76,17 @@ namespace WorkerHarness.Core.Actions
             Task<bool> sendTask = SendToGrpcAsync(outgoingRpcMessages, statusMap, tokenSource.Token, executionContext);
             Task<bool> receiveTask = ReceiveFromGrpcAsync(incomingRpcMessages, statusMap, tokenSource.Token, executionContext);
 
-            //tokenSource.CancelAfter(Timeout);
+            tokenSource.CancelAfter(Timeout);
 
-            //bool[] results = await Task.WhenAll(sendTask, receiveTask);
+            bool[] results = await Task.WhenAll(sendTask, receiveTask);
 
-            //if (results[0] && results[1])
-            //{
-            //    executionStatus = StatusCode.Success;
-            //} 
-            //else
-            //{
-            //    executionStatus = StatusCode.Failure;
-            //}
-
-            Task timeoutTask = Task.Delay(Timeout);
-
-            Task finishedTask = await Task.WhenAny(timeoutTask, Task.WhenAll(sendTask, receiveTask));
-
-            if (finishedTask.Id == timeoutTask.Id) // timeout occur
+            if (results[0] && results[1])
             {
-                executionStatus = StatusCode.Failure;
-                tokenSource.Cancel();
-                await Task.WhenAll(sendTask, receiveTask);
+                executionStatus = StatusCode.Success;
             }
             else
             {
-                executionStatus = await sendTask && await receiveTask ? StatusCode.Success : StatusCode.Failure;
+                executionStatus = StatusCode.Failure;
             }
 
             ActionResult actionResult = CreateActionResult(executionStatus, statusMap);
@@ -149,8 +134,7 @@ namespace WorkerHarness.Core.Actions
 
                     // filter through the unprocessedRpcMessages to see if there is any match
                     var matchedRpcMesseages = unprocessedRpcMessages
-                        .Where(msg => string.Equals(streamingMessage.ContentCase.ToString(), msg.MessageType, StringComparison.OrdinalIgnoreCase))
-                        .Where(msg => msg.DependenciesResolved() && _matchService.MatchAll(msg.MatchingCriteria, streamingMessage));
+                        .Where(msg => _messageMatcher.Match(msg, streamingMessage));
 
                     if (matchedRpcMesseages.Any())
                     {
@@ -186,10 +170,6 @@ namespace WorkerHarness.Core.Actions
 
                         // setVariables
                         SetVariables(rpcActionMessage, streamingMessage, execuationContext);
-
-                        // register grpcMsg as a variable in _variableManager
-                        execuationContext.GlobalVariables.AddVariable(rpcActionMessage.Id, streamingMessage);
-
                     }
 
                 }
@@ -233,7 +213,6 @@ namespace WorkerHarness.Core.Actions
                 executionContext.GlobalVariables.Subscribe(matchingCriteria);
             }
 
-            // in message.Validators, update any default variable '$.' to '$.{messageId}'
             foreach (var validator in rpcActionMessage.Validators)
             {
                 validator.ConstructExpression();
@@ -280,7 +259,8 @@ namespace WorkerHarness.Core.Actions
             try
             {
                 // create the appropriate Grpc message
-                bool created = _grpcMessageProvider.TryCreate(out StreamingMessage streamingMessage, rpcActionMessage.MessageType, rpcActionMessage.Payload, executionContext.GlobalVariables);
+                bool created = _grpcMessageProvider.TryCreate(out StreamingMessage streamingMessage, 
+                    rpcActionMessage.MessageType, rpcActionMessage.Payload, executionContext.GlobalVariables);
 
                 if (created)
                 {
@@ -289,8 +269,6 @@ namespace WorkerHarness.Core.Actions
 
                     // set variables
                     SetVariables(rpcActionMessage, streamingMessage, executionContext);
-
-                    executionContext.GlobalVariables.AddVariable(rpcActionMessage.Id, streamingMessage);
 
                     succeeded = true;
                 }

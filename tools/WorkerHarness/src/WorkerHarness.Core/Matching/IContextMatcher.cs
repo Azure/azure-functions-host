@@ -3,10 +3,7 @@
 
 namespace WorkerHarness.Core.Matching
 {
-    /// <summary>
-    /// an abstraction for a matcher
-    /// </summary>
-    public interface IMatcher
+    public interface IContextMatcher
     {
         /// <summary>
         /// Determine if the source object matches the criteria specified in match.
