@@ -36,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             {
                 string baseTestPath = baseTestDir.Path;
 
-                var metadata = new List<FunctionMetadata>() { CodelessEndToEndTests_Data.GetSampleMetadata("testFn") };
+                var metadata = new List<FunctionMetadata>() { CodelessEndToEndTests_Data.GetCSharpSampleMetadata("testFn") };
                 var provider = new TestCodelessFunctionProvider(metadata, null);
 
                 var functions = allowedList != null ? new[] { allowedList, "testFn" } : null;
@@ -84,7 +84,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             {
                 string baseTestPath = baseTestDir.Path;
 
-                var metadata = new List<FunctionMetadata>() { CodelessEndToEndTests_Data.GetSampleMetadata("testFn1"), CodelessEndToEndTests_Data.GetSampleMetadata("testFn2") };
+                var metadata = new List<FunctionMetadata>() { CodelessEndToEndTests_Data.GetCSharpSampleMetadata("testFn1"), CodelessEndToEndTests_Data.GetCSharpSampleMetadata("testFn2") };
                 var provider = new TestCodelessFunctionProvider(metadata, null);
 
                 var functions = allowedList != null ? new[] { "testFn2", allowedList } : new[] { "testFn2" };
@@ -131,8 +131,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             {
                 string baseTestPath = baseTestDir.Path;
 
-                var metadataList1 = new List<FunctionMetadata>() { CodelessEndToEndTests_Data.GetSampleMetadata("testFn1") };
-                var metadataList2 = new List<FunctionMetadata>() { CodelessEndToEndTests_Data.GetSampleMetadata("testFn2") };
+                var metadataList1 = new List<FunctionMetadata>() { CodelessEndToEndTests_Data.GetCSharpSampleMetadata("testFn1") };
+                var metadataList2 = new List<FunctionMetadata>() { CodelessEndToEndTests_Data.GetCSharpSampleMetadata("testFn2") };
 
                 var providerOne = new TestCodelessFunctionProvider(metadataList1, null);
                 var providerTwo = new TestCodelessFunctionProvider(metadataList2, null);
@@ -179,8 +179,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             {
                 string baseTestPath = baseTestDir.Path;
 
-                var metadataList1 = new List<FunctionMetadata>() { CodelessEndToEndTests_Data.GetSampleMetadata("testFn1") };
-                var metadataList2 = new List<FunctionMetadata>() { CodelessEndToEndTests_Data.GetSampleMetadata("testFn2") };
+                var metadataList1 = new List<FunctionMetadata>() { CodelessEndToEndTests_Data.GetCSharpSampleMetadata("testFn1") };
+                var metadataList2 = new List<FunctionMetadata>() { CodelessEndToEndTests_Data.GetCSharpSampleMetadata("testFn2") };
 
                 var providerOne = new TestCodelessFunctionProvider(metadataList1, null);
                 var providerTwo = new TestCodelessFunctionProvider(metadataList2, null);
@@ -219,8 +219,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             {
                 string baseTestPath = baseTestDir.Path;
 
-                var metadataList1 = new List<FunctionMetadata>() { CodelessEndToEndTests_Data.GetSampleMetadata("testFn1") };
-                var metadataList2 = new List<FunctionMetadata>() { CodelessEndToEndTests_Data.GetSampleMetadata("testFn2") };
+                var metadataList1 = new List<FunctionMetadata>() { CodelessEndToEndTests_Data.GetCSharpSampleMetadata("testFn1") };
+                var metadataList2 = new List<FunctionMetadata>() { CodelessEndToEndTests_Data.GetCSharpSampleMetadata("testFn2") };
 
                 var providerOne = new TestCodelessFunctionProvider(metadataList1, null);
                 var providerTwo = new TestCodelessFunctionProvider(metadataList2, null);
