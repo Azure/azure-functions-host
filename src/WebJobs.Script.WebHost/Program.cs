@@ -14,6 +14,7 @@ using Microsoft.Extensions.Configuration.EnvironmentVariables;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 using DataProtectionConstants = Microsoft.Azure.Web.DataProtection.Constants;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
@@ -101,6 +102,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 SystemEnvironment.Instance.SetEnvironmentVariable(DataProtectionConstants.AzureWebsiteEnvironmentMachineKey, authEncryptionKey);
             }
+
+            JsonConvert.DefaultSettings = () => new JsonSerializerSettings { MaxDepth = 128 };
 
             ConfigureMinimumThreads(SystemEnvironment.Instance);
         }
