@@ -1,4 +1,4 @@
-﻿namespace WorkerHarness.Core
+﻿namespace WorkerHarness.Core.Actions
 {
     /// <summary>
     /// An abtraction for an action in a scenario file

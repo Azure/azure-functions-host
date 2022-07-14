@@ -4,6 +4,7 @@
 using Moq;
 using System.Data;
 using System.Text.Json.Nodes;
+using WorkerHarness.Core.Actions;
 using WorkerHarness.Core.Parsing;
 
 namespace WorkerHarness.Core.Tests.Parsing

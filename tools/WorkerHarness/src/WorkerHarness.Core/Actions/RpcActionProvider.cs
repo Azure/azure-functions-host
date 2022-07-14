@@ -10,7 +10,7 @@ using WorkerHarness.Core.Matching;
 using WorkerHarness.Core.StreamingMessageService;
 using WorkerHarness.Core.Validators;
 
-namespace WorkerHarness.Core
+namespace WorkerHarness.Core.Actions
 {
     /// <summary>
     /// Default implemenation of IActionProvider

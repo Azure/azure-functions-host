@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Nodes;
 
-namespace WorkerHarness.Core
+namespace WorkerHarness.Core.Actions
 {
     /// <summary>
     /// Provide an abtraction to create an action

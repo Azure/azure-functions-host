@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace WorkerHarness.Core
+namespace WorkerHarness.Core.Actions
 {
     internal class ActionTypes
     {
