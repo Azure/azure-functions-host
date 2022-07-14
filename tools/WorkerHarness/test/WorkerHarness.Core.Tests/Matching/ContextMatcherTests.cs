@@ -8,7 +8,7 @@ using WorkerHarness.Core.Tests.Helpers;
 namespace WorkerHarness.Core.Tests.Matching
 {
     [TestClass]
-    public class StringMatcherTests
+    public class ContextMatcherTests
     {
         [TestMethod]
         [DataRow("A.B")]
@@ -23,12 +23,12 @@ namespace WorkerHarness.Core.Tests.Matching
 
             object stubObject = new();
 
-            IMatcher stringMatcher = new StringMatcher();
+            ContextMatcher contextMatcher = new();
 
             // Act
             try
             {
-                stringMatcher.Match(context, stubObject);
+                contextMatcher.Match(context, stubObject);
             }
             // Assert
             catch (ArgumentException ex)
@@ -51,12 +51,12 @@ namespace WorkerHarness.Core.Tests.Matching
 
             object stubObject = WeatherForecast.CreateWeatherForecastObject();
 
-            IMatcher stringMatcher = new StringMatcher();
+            ContextMatcher contextMatcher = new();
 
             // Act
             try
             {
-                stringMatcher.Match(context, stubObject);
+                contextMatcher.Match(context, stubObject);
             }
             // Assert
             catch (ArgumentException ex)
@@ -81,10 +81,10 @@ namespace WorkerHarness.Core.Tests.Matching
 
             object source = WeatherForecast.CreateWeatherForecastObject();
 
-            IMatcher stringMatcher = new StringMatcher();
+            ContextMatcher contextMatcher = new();
 
             // Act
-            bool actual = stringMatcher.Match(context, source);
+            bool actual = contextMatcher.Match(context, source);
 
             // Assert
             Assert.IsTrue(actual);
@@ -105,10 +105,10 @@ namespace WorkerHarness.Core.Tests.Matching
             };
             context.ConstructExpression();
 
-            IMatcher stringMatcher = new StringMatcher();
+            ContextMatcher contextMatcher = new();
 
             // Act
-            bool actual = stringMatcher.Match(context, source);
+            bool actual = contextMatcher.Match(context, source);
 
             // Assert
             Assert.IsTrue(actual);
@@ -127,10 +127,10 @@ namespace WorkerHarness.Core.Tests.Matching
 
             object source = WeatherForecast.CreateWeatherForecastObject();
 
-            IMatcher stringMatcher = new StringMatcher();
+            ContextMatcher contextMatcher = new();
 
             // Act
-            bool actual = stringMatcher.Match(context, source);
+            bool actual = contextMatcher.Match(context, source);
 
             // Assert
             Assert.IsFalse(actual);
@@ -148,12 +148,13 @@ namespace WorkerHarness.Core.Tests.Matching
                 context2
             };
             object stubObject = new();
-            IMatcher stringMatcher = new StringMatcher();
+
+            ContextMatcher contextMatcher = new();
 
             // Act
             try
             {
-                stringMatcher.MatchAll(contexts, stubObject);
+                contextMatcher.MatchAll(contexts, stubObject);
             }
             // Assert
             catch (ArgumentException ex)
@@ -191,10 +192,10 @@ namespace WorkerHarness.Core.Tests.Matching
 
             object stubbObject = WeatherForecast.CreateWeatherForecastObject();
 
-            IMatcher stringMatcher = new StringMatcher();
+            ContextMatcher contextMatcher = new();
 
             // Act
-            bool actual = stringMatcher.MatchAll(contexts, stubbObject);
+            bool actual = contextMatcher.MatchAll(contexts, stubbObject);
 
             // Assert
             Assert.IsTrue(actual);
@@ -226,10 +227,10 @@ namespace WorkerHarness.Core.Tests.Matching
 
             object stubbObject = WeatherForecast.CreateWeatherForecastObject();
 
-            IMatcher stringMatcher = new StringMatcher();
+            ContextMatcher contextMatcher = new();
 
             // Act
-            bool actual = stringMatcher.MatchAll(contexts, stubbObject);
+            bool actual = contextMatcher.MatchAll(contexts, stubbObject);
 
             // Assert
             Assert.IsFalse(actual);

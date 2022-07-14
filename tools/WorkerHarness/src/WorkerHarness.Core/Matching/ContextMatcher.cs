@@ -6,7 +6,7 @@ using WorkerHarness.Core.Commons;
 
 namespace WorkerHarness.Core.Matching
 {
-    public class StringMatcher : IMatcher
+    public class ContextMatcher : IContextMatcher
     {
         internal static string MatchingException = "Matching exception occurs: {0}";
 

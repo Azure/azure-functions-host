@@ -18,7 +18,7 @@ namespace WorkerHarness.Core.Actions
     public class RpcActionProvider : IActionProvider
     {
         private readonly IValidatorFactory _validatorFactory;
-        private readonly IMatcher _matchService;
+        private readonly IMessageMatcher _messageMatcher;
         private readonly IStreamingMessageProvider _rpcMessageProvider;
         private readonly Channel<StreamingMessage> _inboundChannel;
         private readonly Channel<StreamingMessage> _outboundChannel;
@@ -28,12 +28,12 @@ namespace WorkerHarness.Core.Actions
         public string Type => ActionTypes.Rpc;
 
         public RpcActionProvider(IValidatorFactory validatorFactory, 
-            IMatcher matchService,
+            IMessageMatcher messageMatcher,
             IStreamingMessageProvider rpcMessageProvider,
             GrpcServiceChannel channel)
         {
             _validatorFactory = validatorFactory;
-            _matchService = matchService;
+            _messageMatcher = messageMatcher;
             _rpcMessageProvider = rpcMessageProvider;
             _inboundChannel = channel.InboundChannel;
             _outboundChannel = channel.OutboundChannel;
@@ -51,7 +51,7 @@ namespace WorkerHarness.Core.Actions
             RpcActionData actionData = CreateRpcActionData(actionNode);
             // 2. create a DefaultAction object
             return new RpcAction(_validatorFactory,
-                                _matchService,
+                                _messageMatcher,
                                 _rpcMessageProvider,
                                 actionData,
                                 _inboundChannel,

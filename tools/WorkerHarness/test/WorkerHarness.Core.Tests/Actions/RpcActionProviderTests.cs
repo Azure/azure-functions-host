@@ -28,7 +28,7 @@ namespace WorkerHarness.Core.Tests.Actions
 
             RpcActionProvider provider = new(
                 new Mock<IValidatorFactory>().Object,
-                new Mock<IMatcher>().Object,
+                new Mock<IMessageMatcher>().Object,
                 new Mock<IStreamingMessageProvider>().Object,
                 new GrpcServiceChannel(InboundChannel, OutboundChannel)
             );
@@ -59,7 +59,7 @@ namespace WorkerHarness.Core.Tests.Actions
 
             RpcActionProvider provider = new(
                 new Mock<IValidatorFactory>().Object,
-                new Mock<IMatcher>().Object,
+                new Mock<IMessageMatcher>().Object,
                 new Mock<IStreamingMessageProvider>().Object,
                 new GrpcServiceChannel(InboundChannel, OutboundChannel)
             );
@@ -93,7 +93,7 @@ namespace WorkerHarness.Core.Tests.Actions
 
             RpcActionProvider provider = new(
                 new Mock<IValidatorFactory>().Object,
-                new Mock<IMatcher>().Object,
+                new Mock<IMessageMatcher>().Object,
                 new Mock<IStreamingMessageProvider>().Object,
                 new GrpcServiceChannel(InboundChannel, OutboundChannel)
             );
