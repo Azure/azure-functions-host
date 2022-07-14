@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Text.Json;
 using WorkerHarness.Core.Commons;
 
 namespace WorkerHarness.Core.Matching
@@ -13,7 +14,17 @@ namespace WorkerHarness.Core.Matching
         {
             try
             {
-                string queryResult = source.Query(match.Query);
+                object rawQueryResult = source.Query(match.Query);
+
+                string queryResult;
+                if (rawQueryResult is string)
+                {
+                    queryResult = rawQueryResult.ToString() ?? string.Empty;
+                }
+                else
+                {
+                    queryResult = JsonSerializer.Serialize(rawQueryResult);
+                }
 
                 match.TryEvaluate(out string? expected);
 

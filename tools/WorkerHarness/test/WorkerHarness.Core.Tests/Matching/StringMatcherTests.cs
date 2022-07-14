@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Text.Json;
 using WorkerHarness.Core.Matching;
 using WorkerHarness.Core.Tests.Helpers;
 
@@ -90,7 +91,31 @@ namespace WorkerHarness.Core.Tests.Matching
         }
 
         [TestMethod]
-        public void Match_QueryResultFailsToMatchExpectedValue_ReturnTrue()
+        public void Match_QueryResultIsAnObjectThatMatchesExpectedValue_ReturnTrue()
+        {
+            // Arrange
+            object source = WeatherForecast.CreateWeatherForecastObject();
+
+            string expected = JsonSerializer.Serialize(((WeatherForecast)source).Location);
+
+            MatchingContext context = new()
+            {
+                Query = "$.Location",
+                Expected = expected
+            };
+            context.ConstructExpression();
+
+            IMatcher stringMatcher = new StringMatcher();
+
+            // Act
+            bool actual = stringMatcher.Match(context, source);
+
+            // Assert
+            Assert.IsTrue(actual);
+        }
+
+        [TestMethod]
+        public void Match_QueryResultFailsToMatchExpectedValue_ReturnFalse()
         {
             // Arrange
             MatchingContext context = new()

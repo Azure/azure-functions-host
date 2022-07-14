@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
 namespace WorkerHarness.Core.Commons
@@ -77,7 +78,17 @@ namespace WorkerHarness.Core.Commons
             if (Regex.IsMatch(expression, objectNamePattern))
             {
                 string query = Regex.Replace(expression, objectNamePattern, "$.");
-                string queryResult = variableValue.Query(query);
+                object rawQueryResult = variableValue.Query(query);
+
+                string queryResult;
+                if (rawQueryResult is string)
+                {
+                    queryResult = rawQueryResult.ToString() ?? string.Empty;
+                }
+                else
+                {
+                    queryResult = JsonSerializer.Serialize(rawQueryResult);
+                }
 
                 return queryResult;
             }
