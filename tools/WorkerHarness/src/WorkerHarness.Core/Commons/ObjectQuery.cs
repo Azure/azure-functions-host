@@ -28,29 +28,47 @@ namespace WorkerHarness.Core.Commons
         /// <param name="query" cref="string"></param>
         /// <returns></returns>
         /// <exception cref="ArgumentException"></exception>
-        internal static string Query(this object obj, string query)
+        internal static object Query(this object obj, string query)
         {
             if (!IsQueryValid(query))
             {
                 throw new ArgumentException(string.Format(InvalidQueryMessage, query));
             }
 
-            // convert the obj to a JsonNode object to query
-            JsonSerializerOptions options = new () { WriteIndented = true };
-            options.Converters.Add(new JsonStringEnumConverter());
-            byte[] jsonStream = JsonSerializer.SerializeToUtf8Bytes(obj, options);
-            JsonNode jsonNode = JsonNode.Parse(jsonStream)!;
+            JsonNode jsonNode;
+            if (obj is JsonNode node)
+            {
+                jsonNode = node;
+            }
+            else
+            {
+                // convert the obj to a JsonNode object to query
+                JsonSerializerOptions options = new();
+                options.Converters.Add(new JsonStringEnumConverter());
+                byte[] jsonStream = JsonSerializer.SerializeToUtf8Bytes(obj, options);
+                jsonNode = JsonNode.Parse(jsonStream)!;
+            }
 
             // find all properties to index into
-            string[] properties = Regex.Replace(query, QueryPattern, string.Empty).Split(".");
+            string trimmedQuery = Regex.Replace(query, QueryPattern, string.Empty);
+            string[] properties = string.IsNullOrEmpty(trimmedQuery) ? Array.Empty<string>() : trimmedQuery.Split(".");
 
             // recursively index into jsonNode until all properties have been traversed
             try
             {
-                JsonNode queryResult = RecursiveIndex(jsonNode, properties);
-                string value = queryResult is JsonValue ? queryResult.ToString() : JsonSerializer.Serialize(queryResult);
+                JsonNode rawQueryResult = RecursiveIndex(jsonNode, properties);
 
-                return value;
+                object queryResult;
+                if (rawQueryResult is JsonValue)
+                {
+                    queryResult = rawQueryResult.ToString();
+                }
+                else
+                {
+                    queryResult = rawQueryResult;
+                }
+
+                return queryResult;
             }
             catch (ArgumentException ex)
             {
