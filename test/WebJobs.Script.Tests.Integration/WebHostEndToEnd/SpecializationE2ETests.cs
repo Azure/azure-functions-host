@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Runtime;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.ApplicationInsights.Channel;
@@ -237,6 +238,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var specializedContext = FunctionAssemblyLoadContext.Shared;
 
                 Assert.NotSame(placeholderContext, specializedContext);
+            }
+        }
+
+        [Fact]
+        public async Task Specialization_GCMode()
+        {
+            var builder = CreateStandbyHostBuilder("FunctionExecutionContext");
+
+            using (var testServer = new TestServer(builder))
+            {
+                var client = testServer.CreateClient();
+
+                // GC's LatencyMode should be Interactive as default, switch to NoGCRegion in placeholder mode and back to Interactive when specialization is complete.
+                Assert.True(GCSettings.LatencyMode != GCLatencyMode.NoGCRegion, "GCLatencyMode should *not* be NoGCRegion at the beginning");
+
+                var response = await client.GetAsync("api/warmup");
+                response.EnsureSuccessStatusCode();
+
+                _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
+                _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+
+                response = await client.GetAsync("api/functionexecutioncontext");
+                response.EnsureSuccessStatusCode();
+
+                Assert.True(GCSettings.LatencyMode != GCLatencyMode.NoGCRegion, "GCLatencyMode should *not* be NoGCRegion at the end of specialization");
             }
         }
 

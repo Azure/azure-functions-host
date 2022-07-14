@@ -27,6 +27,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             IOptionsMonitor<HttpBodyControlOptions> httpBodyControlOptions = builder.ApplicationServices.GetService<IOptionsMonitor<HttpBodyControlOptions>>();
             IServiceProvider serviceProvider = builder.ApplicationServices;
 
+            // Ensure the ClrOptimizationMiddleware is registered before all middleware
+            builder.UseMiddleware<ClrOptimizationMiddleware>();
             builder.UseMiddleware<HttpRequestBodySizeMiddleware>();
             builder.UseMiddleware<SystemTraceMiddleware>();
             builder.UseMiddleware<HostnameFixupMiddleware>();
