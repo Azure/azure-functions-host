@@ -100,6 +100,8 @@ namespace WorkerHarness.Core.Tests.Actions
 
             JsonNode actionNode = new JsonObject
             {
+                ["actionName"] = "test",
+                ["timeout"] = 5000,
                 ["messages"] = new JsonArray(
                     new JsonObject(),
                     new JsonObject()
@@ -111,6 +113,10 @@ namespace WorkerHarness.Core.Tests.Actions
 
             // Assert
             Assert.IsTrue(action is RpcAction);
+            RpcAction rpcAction = (RpcAction)action;
+            Assert.AreEqual("test", rpcAction.Name);
+            Assert.AreEqual(5000, rpcAction.Timeout);
+            Assert.AreEqual(ActionTypes.Rpc, rpcAction.Type);
         }
     }
 }
