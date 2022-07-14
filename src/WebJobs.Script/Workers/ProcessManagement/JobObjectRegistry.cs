@@ -8,9 +8,11 @@ using System.Runtime.InteropServices;
 namespace Microsoft.Azure.WebJobs.Script.Workers
 {
     // Registers processes on windows with a job object to ensure disposal after parent exit
-    internal class JobObjectRegistry : IProcessRegistry
+    internal class JobObjectRegistry : IProcessRegistry, IDisposable
     {
         private IntPtr _handle;
+        private bool _disposed = false;
+        private WorkerProcess _workerProcess = null;
 
         public JobObjectRegistry()
         {
@@ -36,14 +38,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             }
         }
 
-        ~JobObjectRegistry()
+        public bool Register(WorkerProcess workerProcess)
         {
-            Close();
-        }
-
-        public bool Register(Process proc)
-        {
-            return AssignProcessToJobObject(_handle, proc.Handle);
+            _workerProcess = workerProcess;
+            return AssignProcessToJobObject(_handle, _workerProcess.Process.Handle);
         }
 
         [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
@@ -58,8 +56,32 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         [DllImport("kernel32.dll", SetLastError = true)]
         private static extern bool CloseHandle(IntPtr job);
 
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        private void Dispose(bool disposing)
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            if (disposing)
+            {
+                // Dispose of managed resources.
+            }
+
+            Close();
+            _disposed = true;
+        }
+
         public void Close()
         {
+            _workerProcess?.GetProcessTerminationStatus().GetAwaiter().GetResult();
+
             if (_handle != IntPtr.Zero)
             {
                 CloseHandle(_handle);

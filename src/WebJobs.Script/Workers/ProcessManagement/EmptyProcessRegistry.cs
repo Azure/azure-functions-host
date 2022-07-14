@@ -7,7 +7,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 {
     internal class EmptyProcessRegistry : IProcessRegistry
     {
-        public bool Register(Process process) => true;
+        public bool Register(WorkerProcess process) => true;
 
         public void Close()
         {

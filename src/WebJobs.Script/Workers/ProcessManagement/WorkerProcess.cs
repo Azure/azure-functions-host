@@ -54,8 +54,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         internal Queue<string> ProcessStdErrDataQueue => _processStdErrDataQueue;
 
-        // for testing
-        internal Process Process { get; set; }
+        public Process Process { get; set; }
+
+        public TaskCompletionSource<bool> ProcessTerminationStatus { get; set; } = new TaskCompletionSource<bool>();
 
         internal abstract Process CreateWorkerProcess();
 
@@ -79,7 +80,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                     Process.BeginOutputReadLine();
 
                     // Register process only after it starts
-                    _processRegistry?.Register(Process);
+                    _processRegistry?.Register(this);
 
                     RegisterWithProcessMonitor();
 
@@ -205,13 +206,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         internal abstract void HandleWorkerProcessRestart();
 
+        public async Task GetProcessTerminationStatus()
+        {
+            await ProcessTerminationStatus.Task;
+        }
+
         public void WaitForProcessTermination()
         {
-            if (Process != null)
+            if (!Process.WaitForExit(WorkerConstants.WorkerTerminateGracePeriodInSeconds * 1000))
             {
-                if (!Process.WaitForExit(WorkerConstants.WorkerTerminateGracePeriodInSeconds * 1000))
-                {
-                }
             }
         }
 
@@ -219,6 +222,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         {
             Disposing = true;
             // best effort process disposal
+
+            ProcessTerminationStatus.SetResult(true);
+
             try
             {
                 _eventSubscription?.Dispose();
