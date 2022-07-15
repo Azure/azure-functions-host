@@ -18,20 +18,20 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
     /// <summary>
     /// Service responsible for logging versions
     /// </summary>
-    public class FunctionsVersionLogger : IHostedService, IDisposable
+    public class FunctionsVersionLoggerService : IHostedService, IDisposable
     {
-        private readonly ILogger _logger;
+        private readonly ILogger<FunctionsVersionLoggerService> _logger;
         private readonly Timer _timer;
         private readonly TimeSpan _interval;
         private readonly IEnvironment _environment;
         private bool _disposed;
 
-        public FunctionsVersionLogger(ILoggerFactory loggerFactory, IEnvironment environment)
+        public FunctionsVersionLoggerService(ILogger<FunctionsVersionLoggerService> logger, IEnvironment environment)
         {
-            _logger = loggerFactory.CreateLogger<FunctionsVersionLogger>();
-            _interval = TimeSpan.FromMinutes(10);
             _timer = new Timer(OnTimer, null, Timeout.Infinite, Timeout.Infinite);
-            _environment = environment;
+            _interval = TimeSpan.FromMinutes(60);
+            _environment = environment ?? throw new ArgumentNullException(nameof(environment));
+            _logger = logger;
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
@@ -45,19 +45,14 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         public Task StopAsync(CancellationToken cancellationToken)
         {
             // stop the timer if it has been started
-            _timer.Change(Timeout.Infinite, Timeout.Infinite);
+            _timer?.Change(Timeout.Infinite, Timeout.Infinite);
 
             return Task.CompletedTask;
         }
 
         private async void OnTimer(object state)
         {
-            if (true)
-            {
-                await PublishLogsSamplesAsync();
-            }
-
-            SetTimerInterval((int)_interval.TotalMilliseconds);
+            await PublishLogsSamplesAsync();
         }
 
         private Task PublishLogs()
@@ -66,10 +61,10 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
             {
                 if (_environment.IsKubernetesManagedHosting())
                 {
-                    _logger.LogInformation($"FUNCTIONS_EXTENSION_VERSION  : '{Environment.GetEnvironmentVariable("FUNCTIONS_EXTENSION_VERSION")}'");
-                    _logger.LogInformation($"Framework : '{Environment.GetEnvironmentVariable("FRAMEWORK")}'");
-                    _logger.LogInformation($"Framework version : '{Environment.GetEnvironmentVariable("FRAMEWORK_VERSION")}'");
-                    _logger.LogInformation($"Slot : '{Environment.GetEnvironmentVariable("WEBSITE_SLOT_NAME")}'");
+                    _logger.LogInformation($"{EnvironmentSettingNames.FunctionsExtensionVersion}  : {_environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsExtensionVersion)}");
+                    _logger.LogInformation($"{EnvironmentSettingNames.Framework} : {_environment.GetEnvironmentVariable(EnvironmentSettingNames.Framework)}");
+                    _logger.LogInformation($"{EnvironmentSettingNames.FrameworkVersion}: {_environment.GetEnvironmentVariable(EnvironmentSettingNames.FrameworkVersion)}");
+                    _logger.LogInformation($"{EnvironmentSettingNames.AzureWebsiteSlotName} : {_environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSlotName)}");
                 }
                 return Task.CompletedTask;
             }
@@ -87,45 +82,39 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to publis logs");
+                _logger.LogWarning(ex, "Failed to publish function version logs");
             }
         }
 
         private void SetTimerInterval(int dueTime)
         {
-            if (!_disposed)
+            if (_disposed)
             {
-                var timer = _timer;
-                if (timer != null)
-                {
-                    try
-                    {
-                        _timer.Change(dueTime, Timeout.Infinite);
-                    }
-                    catch (ObjectDisposedException)
-                    {
-                        // might race with dispose
-                    }
-                }
+                return;
             }
-        }
-
-        private void Dispose(bool disposing)
-        {
-            if (!_disposed)
+            var timer = _timer;
+            if (timer != null)
             {
-                if (disposing)
+                try
                 {
-                    _timer.Dispose();
+                    _timer.Change(dueTime, Timeout.Infinite);
                 }
-
-                _disposed = true;
+                catch (ObjectDisposedException)
+                {
+                    // might race with dispose
+                    _logger.LogWarning("Exception in SetTimerInterval");
+                }
             }
         }
 
         public void Dispose()
         {
-            Dispose(true);
+            if (_disposed)
+            {
+                return;
+            }
+            _timer?.Dispose();
+            _disposed = true;
         }
     }
 }
