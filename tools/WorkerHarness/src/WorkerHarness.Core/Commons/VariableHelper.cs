@@ -73,7 +73,7 @@ namespace WorkerHarness.Core.Commons
                 return expression;
             }
 
-            string objectNamePattern = @"\$\{" + variableName + @"\}\.";
+            string objectNamePattern = @"\$\{" + variableName + @"\}\.?";
 
             if (Regex.IsMatch(expression, objectNamePattern))
             {

@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using WorkerHarness.Core.Variables;
 
@@ -59,7 +60,7 @@ namespace WorkerHarness.Core.StreamingMessageService
                 bool solved = expression.TryEvaluate(out string? newValue);
                 if (solved)
                 {
-                    return JsonValue.Create(newValue)!;
+                    return CreateJsonNode(newValue!);
                 }
                 else
                 {
@@ -72,5 +73,20 @@ namespace WorkerHarness.Core.StreamingMessageService
                 return node;
             }
         }
+
+        private static JsonNode CreateJsonNode(string value)
+        {
+            try
+            {
+                JsonNode node = JsonNode.Parse(value)!;
+
+                return node;
+            }
+            catch (JsonException)
+            {
+                return JsonValue.Create(value)!;
+            }
+        }
+
     }
 }
