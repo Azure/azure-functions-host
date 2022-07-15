@@ -8,7 +8,7 @@ namespace WorkerHarness.Core.WorkerProcess
 {
     public class WorkerProcessBuilder : IWorkerProcessBuilder
     {
-        public Process Build(string languageExecutable, string workerExecutable, string workerDirectory)
+        public IWorkerProcess Build(string languageExecutable, string workerExecutable, string workerDirectory)
         {
             string workerId = WorkerConstants.WorkerId;
             string requestId = Guid.NewGuid().ToString();
@@ -27,7 +27,7 @@ namespace WorkerHarness.Core.WorkerProcess
 
             Process process = new() { StartInfo = startInfo};
 
-            return process;
+            return new SystemProcess(process);
         }
 
     }

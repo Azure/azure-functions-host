@@ -53,7 +53,7 @@ namespace WorkerHarness
             };
             server.Start();
 
-            await harnessExecutor.Start();
+            await harnessExecutor.StartAsync();
 
             serviceProvider.Dispose();
 
@@ -77,7 +77,7 @@ namespace WorkerHarness
                 .AddSingleton<IContextMatcher, ContextMatcher>()
                 .AddSingleton<IActionProvider, RpcActionProvider>()
                 .AddSingleton<IActionProvider, DelayActionProvider>()
-                .AddSingleton<IWorkerHarnessExecutor, DefaultWorkerHarnessExecutor>()
+                .AddSingleton<IWorkerHarnessExecutor, WorkerHarnessExecutor>()
                 .AddSingleton<GrpcServiceChannel>(s =>
                 {
                     Channels.UnboundedChannelOptions outputOptions = new()

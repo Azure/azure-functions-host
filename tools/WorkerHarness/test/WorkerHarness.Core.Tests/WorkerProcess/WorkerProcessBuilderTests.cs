@@ -20,14 +20,17 @@ namespace WorkerHarness.Core.Tests.WorkerProcess
 
             // Act
             WorkerProcessBuilder workerProcessBuilder = new();
-            Process process = workerProcessBuilder.Build(languageExecutable, workerExecutable, workerDirectory);
+            IWorkerProcess process = workerProcessBuilder.Build(languageExecutable, workerExecutable, workerDirectory);
 
             // Assert
-            Assert.IsNotNull(process.StartInfo);
-            Assert.AreEqual(process.StartInfo.FileName, languageExecutable);
-            Assert.AreEqual(process.StartInfo.WorkingDirectory, workerDirectory);
-            Assert.IsTrue(!string.IsNullOrEmpty(process.StartInfo.Arguments));
-            StringAssert.Contains(process.StartInfo.Arguments, workerExecutable);
+            Assert.IsTrue(process is SystemProcess);
+            SystemProcess systemProcess = (SystemProcess)process;
+
+            Assert.IsNotNull(systemProcess.Process.StartInfo);
+            Assert.AreEqual(systemProcess.Process.StartInfo.FileName, languageExecutable);
+            Assert.AreEqual(systemProcess.Process.StartInfo.WorkingDirectory, workerDirectory);
+            Assert.IsTrue(!string.IsNullOrEmpty(systemProcess.Process.StartInfo.Arguments));
+            StringAssert.Contains(systemProcess.Process.StartInfo.Arguments, workerExecutable);
         }
 
         [TestMethod]
@@ -40,14 +43,17 @@ namespace WorkerHarness.Core.Tests.WorkerProcess
 
             // Act
             WorkerProcessBuilder workerProcessBuilder = new();
-            Process process = workerProcessBuilder.Build(string.Empty, string.Empty, string.Empty);
+            IWorkerProcess process = workerProcessBuilder.Build(string.Empty, string.Empty, string.Empty);
 
             // Assert
-            Assert.IsNotNull(process.StartInfo);
-            Assert.IsTrue(!string.IsNullOrEmpty(process.StartInfo.Arguments));
-            StringAssert.Contains(process.StartInfo.Arguments, hostUri);
-            StringAssert.Contains(process.StartInfo.Arguments, port);
-            StringAssert.Contains(process.StartInfo.Arguments, grpcMaxMessageLength);
+            Assert.IsTrue(process is SystemProcess);
+            SystemProcess systemProcess = (SystemProcess)process;
+
+            Assert.IsNotNull(systemProcess.Process.StartInfo);
+            Assert.IsTrue(!string.IsNullOrEmpty(systemProcess.Process.StartInfo.Arguments));
+            StringAssert.Contains(systemProcess.Process.StartInfo.Arguments, hostUri);
+            StringAssert.Contains(systemProcess.Process.StartInfo.Arguments, port);
+            StringAssert.Contains(systemProcess.Process.StartInfo.Arguments, grpcMaxMessageLength);
         }
 
         [TestMethod]
@@ -58,12 +64,15 @@ namespace WorkerHarness.Core.Tests.WorkerProcess
 
             // Act
             WorkerProcessBuilder workerProcessBuilder = new();
-            Process process = workerProcessBuilder.Build(string.Empty, string.Empty, string.Empty);
+            IWorkerProcess process = workerProcessBuilder.Build(string.Empty, string.Empty, string.Empty);
 
             // Assert
-            Assert.IsNotNull(process.StartInfo);
-            Assert.IsTrue(!string.IsNullOrEmpty(process.StartInfo.Arguments));
-            StringAssert.Contains(process.StartInfo.Arguments, workerId);
+            Assert.IsTrue(process is SystemProcess);
+            SystemProcess systemProcess = (SystemProcess)process;
+
+            Assert.IsNotNull(systemProcess.Process.StartInfo);
+            Assert.IsTrue(!string.IsNullOrEmpty(systemProcess.Process.StartInfo.Arguments));
+            StringAssert.Contains(systemProcess.Process.StartInfo.Arguments, workerId);
         }
     }
 }
