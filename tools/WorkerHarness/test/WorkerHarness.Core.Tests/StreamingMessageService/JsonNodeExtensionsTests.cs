@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using WorkerHarness.Core.StreamingMessageService;
 using WorkerHarness.Core.Tests.Helpers;
@@ -43,6 +44,50 @@ namespace WorkerHarness.Core.Tests.StreamingMessageService
             // Assert
             Assert.IsTrue(newNode is JsonValue);
             Assert.AreEqual("WA", newNode.GetValue<string>());
+        }
+
+        [TestMethod]
+        public void SolveVariables_NodeIsJsonValueThatContainsObjectVariable_ReturnJsonObject()
+        {
+            // Arrange
+            JsonNode stubNode = JsonValue.Create<string>("${weatherForecast}")!;
+
+            object variableValue = WeatherForecast.CreateWeatherForecastObject();
+            string variableName = "weatherForecast";
+            IVariableObservable globalVariables = new VariableManager();
+            globalVariables.AddVariable(variableName, variableValue);
+
+            string expected = JsonSerializer.Serialize(variableValue);
+
+            // Act
+            JsonNode newNode = stubNode.SolveVariables(globalVariables);
+            string actual = JsonSerializer.Serialize(newNode);
+
+            // Assert
+            Assert.IsTrue(newNode is JsonObject);
+            Assert.AreEqual(expected, actual);
+        }
+
+        [TestMethod]
+        public void SolveVariables_NodeIsJsonValueThatContainsObjectVariable_ReturnJsonArray()
+        {
+            // Arrange
+            JsonNode stubNode = JsonValue.Create<string>("${weatherSummary}")!;
+
+            object variableValue = new WeatherForecast().Summary;
+            string variableName = "weatherSummary";
+            IVariableObservable globalVariables = new VariableManager();
+            globalVariables.AddVariable(variableName, variableValue);
+
+            string expected = JsonSerializer.Serialize(variableValue);
+
+            // Act
+            JsonNode newNode = stubNode.SolveVariables(globalVariables);
+            string actual = JsonSerializer.Serialize(newNode);
+
+            // Assert
+            Assert.IsTrue(newNode is JsonArray);
+            Assert.AreEqual(expected, actual);
         }
 
         [TestMethod]
@@ -244,6 +289,62 @@ namespace WorkerHarness.Core.Tests.StreamingMessageService
             Assert.AreEqual("turkey", newNode["FavoriteFood"]![0]!.GetValue<string>());
             Assert.AreEqual("Redmond", newNode["Address"]!["City"]!.GetValue<string>());
             Assert.AreEqual("WA", newNode["Address"]!["State"]!.GetValue<string>());
+        }
+
+        [TestMethod]
+        public void SolveVariables_NodeContainsObjectVariablesAndStringVariables_AllVariablesAreSolved()
+        {
+            // Arrange
+            JsonNode stubNode = new JsonObject
+            {
+                ["Date"] = "@{date}",
+                ["Weather"] = "${weatherForecast}",
+                ["Dogs"] = "${my_doggies}",
+                ["Cats"] = new JsonArray(
+                    new JsonObject
+                    {
+                        ["Name"] = "@{name}",
+                        ["Breed"] = "American shorthair"
+                    },
+                    "${cat}"
+                )
+            };
+
+            IVariableObservable globalVariables = new VariableManager();
+
+            var datetime = DateTime.Now.ToString();
+            globalVariables.AddVariable("date", datetime);
+
+            var weather = new WeatherForecast();
+            globalVariables.AddVariable("weatherForecast", weather);
+
+            var dogs = new List<string>() { "frenchies", "beagles" };
+            globalVariables.AddVariable("my_doggies", dogs);
+
+            globalVariables.AddVariable("name", "Summer");
+
+            var cat = new JsonObject { ["Name"] = "Winter", ["Breed"] = "British shorthair" };
+            globalVariables.AddVariable("cat", cat);
+
+            // Act
+            JsonNode newNode = stubNode.SolveVariables(globalVariables);
+
+            // Assert
+            Assert.IsTrue(newNode is JsonObject);
+            Assert.AreEqual(datetime, newNode["Date"]!.GetValue<string>());
+            Assert.AreEqual(
+                JsonSerializer.Serialize(weather), 
+                JsonSerializer.Serialize(newNode["Weather"])
+            );
+            Assert.AreEqual(
+                JsonSerializer.Serialize(dogs),
+                JsonSerializer.Serialize(newNode["Dogs"])
+            );
+            Assert.AreEqual("Summer", newNode["Cats"]![0]!["Name"]!.GetValue<string>());
+            Assert.AreEqual(
+                JsonSerializer.Serialize(cat),
+                JsonSerializer.Serialize(newNode["Cats"]![1])
+            );
         }
 
         [TestMethod]
