@@ -80,7 +80,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         public void Close()
         {
-            _workerProcess?.GetProcessTerminationStatus().GetAwaiter().GetResult();
+            _workerProcess?.ProcessWaitingForTermination.Task.GetAwaiter().GetResult();
 
             if (_handle != IntPtr.Zero)
             {

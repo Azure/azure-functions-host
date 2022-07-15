@@ -927,7 +927,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 WorkerTerminate = workerTerminate
             });
 
-            WorkerProcess.WaitForProcessTermination();
+            WorkerProcess.WaitForProcessExit();
         }
 
         public async Task DrainInvocationsAsync()

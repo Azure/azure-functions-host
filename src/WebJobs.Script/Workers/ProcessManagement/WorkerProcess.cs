@@ -56,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         public Process Process { get; set; }
 
-        public TaskCompletionSource<bool> ProcessTerminationStatus { get; set; } = new TaskCompletionSource<bool>();
+        public TaskCompletionSource<bool> ProcessWaitingForTermination { get; set; } = new TaskCompletionSource<bool>();
 
         internal abstract Process CreateWorkerProcess();
 
@@ -206,16 +206,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         internal abstract void HandleWorkerProcessRestart();
 
-        public async Task GetProcessTerminationStatus()
+        public void WaitForProcessExit()
         {
-            await ProcessTerminationStatus.Task;
-        }
-
-        public void WaitForProcessTermination()
-        {
-            if (!Process.WaitForExit(WorkerConstants.WorkerTerminateGracePeriodInSeconds * 1000))
-            {
-            }
+            Process.WaitForExit(WorkerConstants.WorkerTerminateGracePeriodInSeconds * 1000);
         }
 
         public void Dispose()
@@ -223,7 +216,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             Disposing = true;
             // best effort process disposal
 
-            ProcessTerminationStatus.SetResult(true);
+            ProcessWaitingForTermination.SetResult(false);
 
             try
             {

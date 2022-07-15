@@ -12,6 +12,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         Task StartProcessAsync();
 
-        void WaitForProcessTermination();
+        void WaitForProcessExit();
     }
 }
