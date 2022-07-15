@@ -12,18 +12,18 @@ using WorkerHarness.Core.WorkerProcess;
 
 namespace WorkerHarness.Core
 {
-    public class DefaultWorkerHarnessExecutor : IWorkerHarnessExecutor
+    public class WorkerHarnessExecutor : IWorkerHarnessExecutor
     {
         private readonly IWorkerProcessBuilder _workerProcessBuilder;
         private readonly IScenarioParser _scenarioParser;
-        private readonly ILogger<DefaultWorkerHarnessExecutor> _logger;
+        private readonly ILogger<WorkerHarnessExecutor> _logger;
         private readonly HarnessOptions _harnessOptions;
         private readonly IVariableObservable _globalVariables;
 
-        public DefaultWorkerHarnessExecutor(
+        public WorkerHarnessExecutor(
             IWorkerProcessBuilder workerProcessBuilder,
             IScenarioParser scenarioParser,
-            ILogger<DefaultWorkerHarnessExecutor> logger,
+            ILogger<WorkerHarnessExecutor> logger,
             IOptions<HarnessOptions> harnessOptions,
             IVariableObservable variableObservable)
         {
@@ -34,41 +34,39 @@ namespace WorkerHarness.Core
             _globalVariables = variableObservable;
         }
 
-        public async Task<bool> Start()
+        public async Task<bool> StartAsync()
         {
-            // execution context: information associated with that 
-            // object has information about global variables and context about the exisiting run.
-
-            Process myProcess = _workerProcessBuilder.Build(_harnessOptions.LanguageExecutable!, _harnessOptions.WorkerExecutable!, _harnessOptions.WorkerDirectory!);
-
-            string scenarioFile = _harnessOptions.ScenarioFile!;
-
-            Scenario scenario = _scenarioParser.Parse(scenarioFile);
+            IWorkerProcess myProcess = _workerProcessBuilder.Build(
+                _harnessOptions.LanguageExecutable!, _harnessOptions.WorkerExecutable!,
+                _harnessOptions.WorkerDirectory!);
 
             ExecutionContext executionContext = new(_globalVariables);
 
             try
             {
+                string scenarioFile = _harnessOptions.ScenarioFile!;
+                Scenario scenario = _scenarioParser.Parse(scenarioFile);
+
                 myProcess.Start();
 
                 foreach (IAction action in scenario.Actions)
                 {
                     ActionResult actionResult = await action.ExecuteAsync(executionContext);
-                    // ExecuteAsync get a context
 
                     ShowActionResult(actionResult);
-                    
                 }
-
-                myProcess.Kill();
 
                 return true;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"\n\n{ex}");
+                _logger.LogCritical($"An exception occurs: \n{ex.Message}\n{ex.StackTrace}");
 
                 return false;
+            }
+            finally
+            {
+                myProcess.Kill();
             }
         }
 

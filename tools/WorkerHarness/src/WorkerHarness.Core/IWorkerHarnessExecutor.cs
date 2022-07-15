@@ -12,6 +12,6 @@ namespace WorkerHarness.Core
         /// create a scenario object and execute actions in the scenario object
         /// </summary>
         /// <returns></returns>
-        Task<bool> Start();
+        Task<bool> StartAsync();
     }
 }
