@@ -37,13 +37,13 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
         private readonly IFunctionMetadataManager _functionMetadataManager;
         private readonly IMetricsLogger _metricsLogger;
         private readonly Lazy<IEnumerable<Type>> _startupTypes;
-        private readonly IOptions<LanguageWorkerOptions> _languageWorkerOptions;
+        private readonly IOptionsMonitor<LanguageWorkerOptions> _languageWorkerOptions;
 
         private static readonly ExtensionRequirementsInfo _extensionRequirements = DependencyHelper.GetExtensionRequirements();
         private static string[] _builtinExtensionAssemblies = GetBuiltinExtensionAssemblies();
 
         public ScriptStartupTypeLocator(string rootScriptPath, ILogger<ScriptStartupTypeLocator> logger, IExtensionBundleManager extensionBundleManager,
-            IFunctionMetadataManager functionMetadataManager, IMetricsLogger metricsLogger, IOptions<LanguageWorkerOptions> languageWorkerOptions)
+            IFunctionMetadataManager functionMetadataManager, IMetricsLogger metricsLogger, IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions)
         {
             _rootScriptPath = rootScriptPath ?? throw new ArgumentNullException(nameof(rootScriptPath));
             _extensionBundleManager = extensionBundleManager ?? throw new ArgumentNullException(nameof(extensionBundleManager));
@@ -85,7 +85,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
             // if workerIndexing
             //      Function.json (httpTrigger, blobTrigger, blobTrigger)  -> httpTrigger, blobTrigger
             // dotnet app precompiled -> Do not use bundles
-            var workerConfigs = _languageWorkerOptions.Value.WorkerConfigs;
+            var workerConfigs = _languageWorkerOptions.CurrentValue.WorkerConfigs;
             if (bundleConfigured && !Utility.CanWorkerIndex(workerConfigs, SystemEnvironment.Instance))
             {
                 ExtensionBundleDetails bundleDetails = await _extensionBundleManager.GetExtensionBundleDetails();
