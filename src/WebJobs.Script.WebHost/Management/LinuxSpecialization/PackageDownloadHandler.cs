@@ -28,15 +28,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
         private readonly ILogger<PackageDownloadHandler> _logger;
         private readonly IMetricsLogger _metricsLogger;
         private readonly IEnvironment _environment;
+        private readonly IFileSystem _fileSystem;
 
         public PackageDownloadHandler(HttpClient httpClient, IManagedIdentityTokenProvider managedIdentityTokenProvider,
-            IBashCommandHandler bashCommandHandler, IEnvironment environment, ILogger<PackageDownloadHandler> logger,
+            IBashCommandHandler bashCommandHandler, IEnvironment environment, IFileSystem fileSystem, ILogger<PackageDownloadHandler> logger,
             IMetricsLogger metricsLogger)
         {
             _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
             _managedIdentityTokenProvider = managedIdentityTokenProvider ?? throw new ArgumentNullException(nameof(managedIdentityTokenProvider));
             _bashCommandHandler = bashCommandHandler ?? throw new ArgumentNullException(nameof(bashCommandHandler));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
+            _fileSystem = fileSystem ?? FileUtility.Instance;
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _metricsLogger = metricsLogger ?? throw new ArgumentNullException(nameof(metricsLogger));
         }
@@ -45,13 +47,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
         /// Download the package from blob storage or fileshare.
         /// </summary>
         /// <param name="pkgContext">Package Context.</param>
-        /// <param name="fileSystem">Fileshare object. Only needed for unit tests.</param>
         /// <returns>Path of the downloaded package.</returns>
-        public async Task<string> Download(RunFromPackageContext pkgContext, IFileSystem fileSystem = null)
+        public async Task<string> Download(RunFromPackageContext pkgContext)
         {
             if (pkgContext.IsRunFromLocalPackage())
             {
-                 return CopyPackageFile(fileSystem);
+                 return CopyPackageFile(pkgContext);
             }
 
             if (Utility.TryCleanUrl(pkgContext.Url, out var cleanedUrl))
@@ -230,56 +231,58 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
             }
         }
 
-        private string CopyPackageFile(IFileSystem fileSystem = null)
+        private string CopyPackageFile(RunFromPackageContext pkgContext)
         {
-            fileSystem ??= FileUtility.Instance;
             var packageFolderPath = _environment.GetSitePackagesPath();
-
-            if (!fileSystem.Directory.Exists(packageFolderPath))
+            Action<string> copyPackageFileFailed = (message) =>
             {
-                CopyPackageFileFailed($"{nameof(CopyPackageFile)} failed. {ScriptConstants.SitePackagesFolderName} folder doesn't exist at {packageFolderPath}.");
+                _logger.LogWarning(message);
+                throw new InvalidOperationException(message);
+            };
+
+            if (!_fileSystem.Directory.Exists(packageFolderPath))
+            {
+                copyPackageFileFailed($"{ScriptConstants.SitePackagesFolderName} folder doesn't exist at {packageFolderPath}.");
             }
 
             var packageNameTxtPath = _environment.GetSitePackageNameTxtPath();
-            if (!fileSystem.File.Exists(packageNameTxtPath))
+            if (!_fileSystem.File.Exists(packageNameTxtPath))
             {
-                CopyPackageFileFailed($"{nameof(CopyPackageFile)} failed. {ScriptConstants.SitePackageNameTxtFileName} doesn't exist at {packageNameTxtPath}.");
+                copyPackageFileFailed($"{ScriptConstants.SitePackageNameTxtFileName} doesn't exist at {packageNameTxtPath}.");
             }
 
-            var packageFileName = fileSystem.File.ReadAllText(packageNameTxtPath);
+            var packageFileName = _fileSystem.File.ReadAllText(packageNameTxtPath);
 
             if (string.IsNullOrEmpty(packageFileName))
             {
-                CopyPackageFileFailed($"{nameof(CopyPackageFile)} failed. {ScriptConstants.SitePackageNameTxtFileName} is empty at {packageNameTxtPath}.");
+                copyPackageFileFailed($"{ScriptConstants.SitePackageNameTxtFileName} is empty at {packageNameTxtPath}.");
             }
 
-            var packageFilePath = fileSystem.Path.Combine(packageFolderPath, packageFileName);
-            if (!fileSystem.File.Exists(packageFilePath))
+            var packageFilePath = _fileSystem.Path.Combine(packageFolderPath, packageFileName);
+            if (!_fileSystem.File.Exists(packageFilePath))
             {
-                CopyPackageFileFailed($"{nameof(CopyPackageFile)} failed. {packageFileName} doesn't exist at {packageFilePath}.");
+                copyPackageFileFailed($"{packageFileName} doesn't exist at {packageFilePath}.");
             }
 
-            var packageFileInfo = fileSystem.FileInfo.FromFileName(packageFilePath);
-            if (packageFileInfo.Length == 0)
+            var tmpPath = _fileSystem.Path.GetTempPath();
+            var fileName = _fileSystem.Path.GetFileName(packageFileName);
+            var filePath = _fileSystem.Path.Combine(tmpPath, fileName);
+
+            var copyMetricName = pkgContext.IsWarmUpRequest
+                    ? MetricEventNames.LinuxContainerSpecializationZipMountCopyWarmup
+                    : MetricEventNames.LinuxContainerSpecializationZipMountCopy;
+
+            using (_metricsLogger.LatencyEvent(copyMetricName))
             {
-                CopyPackageFileFailed($"{nameof(CopyPackageFile)} failed. {packageFileName} size is zero at {packageFilePath}.");
+                _fileSystem.File.Copy(packageFilePath, filePath, true);
+
+                var fileInfo = _fileSystem.FileInfo.FromFileName(filePath);
+                _logger.LogInformation($"Downloaded Package size is {fileInfo.Length}");
             }
-
-            var tmpPath = fileSystem.Path.GetTempPath();
-            var fileName = fileSystem.Path.GetFileName(packageFileName);
-            var filePath = fileSystem.Path.Combine(tmpPath, fileName);
-
-            fileSystem.File.Copy(packageFilePath, filePath, true);
 
             _logger.LogInformation($"{nameof(CopyPackageFile)} was successful. {packageFileName} was copied from {packageFilePath} to {filePath}.");
 
             return filePath;
-        }
-
-        private void CopyPackageFileFailed(string message)
-        {
-            _logger.LogWarning(message);
-            throw new InvalidOperationException(message);
         }
     }
 }

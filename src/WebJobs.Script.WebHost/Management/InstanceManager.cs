@@ -347,14 +347,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 {
                     if (!azureFilesMounted)
                     {
-                        var mountErrorMessage = "App Run-From-Package is set as '1'. AzureFiles is needed but is not configured.";
+                        const string mountErrorMessage = "App Run-From-Package is set as '1'. AzureFiles is needed but is not configured.";
                         _logger.LogWarning(mountErrorMessage);
                         throw new Exception(mountErrorMessage);
                     }
 
                     var blobContextApplied =
-                        await _runFromPackageHandler.ApplyRunFromPackageContext(pkgContext, options.ScriptPath,
-                            azureFilesMounted, false);
+                        await _runFromPackageHandler.ApplyRunFromPackageContext(pkgContext, options.ScriptPath, azureFilesMounted);
 
                     if (!blobContextApplied)
                     {

@@ -9,6 +9,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
 {
     public interface IPackageDownloadHandler
     {
-        Task<string> Download(RunFromPackageContext pkgContext, IFileSystem fileSystem = null);
+        Task<string> Download(RunFromPackageContext pkgContext);
     }
 }
