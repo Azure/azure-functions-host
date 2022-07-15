@@ -116,7 +116,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             {
                 return MultiLanguageDefaultProcessCount;
             }
-            else if (_workerConcurrencyOptions != null && !string.IsNullOrEmpty(_workerRuntime))
+
+            if (_workerConcurrencyOptions != null && !string.IsNullOrEmpty(_workerRuntime))
             {
                 var workerConfig = _workerConfigs.Where(c => c.Description.Language.Equals(_workerRuntime, StringComparison.InvariantCultureIgnoreCase))
                                                  .FirstOrDefault();
@@ -490,7 +491,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             IEnumerable<IRpcWorkerChannel> initializedWorkers = workerChannels.Where(ch => ch.IsChannelReadyForInvocations());
 
             int workerCount = await _maxProcessCount.Value;
-
             if (initializedWorkers.Count() > workerCount)
             {
                 throw new InvalidOperationException($"Number of initialized language workers exceeded:{initializedWorkers.Count()} exceeded maxProcessCount: {workerCount}");
