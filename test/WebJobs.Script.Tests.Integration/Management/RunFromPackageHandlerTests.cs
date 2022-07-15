@@ -39,6 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
         private readonly ILogger<RunFromPackageHandler> _logger;
         private readonly Mock<IUnZipHandler> _zipHandler;
         private readonly Mock<IPackageDownloadHandler> _packageDownloadHandler;
+        private readonly Mock<IFileSystem> _fileSystem;
 
         private RunFromPackageHandler _runFromPackageHandler;
         private IHttpClientFactory _httpClientFactory;
@@ -59,6 +60,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
 
             _runFromPackageHandler = new RunFromPackageHandler(_environment, _meshServiceClientMock.Object, 
                 _bashCmdHandlerMock.Object, _zipHandler.Object, _packageDownloadHandler.Object, _metricsLogger, _logger);
+
+            _fileSystem = GetFileSystem();
         }
 
         private static bool IsZipDownloadRequest(HttpRequestMessage httpRequestMessage, string filePath)
@@ -158,7 +161,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
 
             var packageDownloadHandler = new PackageDownloadHandler(_httpClientFactory,
                 new Mock<IManagedIdentityTokenProvider>(MockBehavior.Strict).Object, _bashCmdHandlerMock.Object, 
-                _environment, NullLogger<PackageDownloadHandler>.Instance, _metricsLogger);
+                _environment, _fileSystem.Object, NullLogger<PackageDownloadHandler>.Instance, _metricsLogger);
 
             _runFromPackageHandler = new RunFromPackageHandler(_environment, _meshServiceClientMock.Object,
                 _bashCmdHandlerMock.Object, _zipHandler.Object, packageDownloadHandler, _metricsLogger, _logger);
@@ -242,7 +245,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
 
             var packageDownloadHandler = new PackageDownloadHandler(_httpClientFactory,
                 new Mock<IManagedIdentityTokenProvider>(MockBehavior.Strict).Object, _bashCmdHandlerMock.Object,
-                _environment, NullLogger<PackageDownloadHandler>.Instance, _metricsLogger);
+                _environment, _fileSystem.Object, NullLogger<PackageDownloadHandler>.Instance, _metricsLogger);
 
             _runFromPackageHandler = new RunFromPackageHandler(_environment, _meshServiceClientMock.Object,
                 _bashCmdHandlerMock.Object, _zipHandler.Object, packageDownloadHandler, _metricsLogger, _logger);
@@ -290,7 +293,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
 
             var packageDownloadHandler = new PackageDownloadHandler(_httpClientFactory,
                 new Mock<IManagedIdentityTokenProvider>(MockBehavior.Strict).Object, _bashCmdHandlerMock.Object,
-                _environment, NullLogger<PackageDownloadHandler>.Instance, _metricsLogger);
+                _environment, _fileSystem.Object, NullLogger<PackageDownloadHandler>.Instance, _metricsLogger);
 
             _runFromPackageHandler = new RunFromPackageHandler(_environment, _meshServiceClientMock.Object,
                 _bashCmdHandlerMock.Object, _zipHandler.Object, packageDownloadHandler, _metricsLogger, _logger);
@@ -343,7 +346,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
 
             var packageDownloadHandler = new PackageDownloadHandler(_httpClientFactory,
                 new Mock<IManagedIdentityTokenProvider>(MockBehavior.Strict).Object, _bashCmdHandlerMock.Object,
-                _environment, NullLogger<PackageDownloadHandler>.Instance, _metricsLogger);
+                _environment, _fileSystem.Object, NullLogger<PackageDownloadHandler>.Instance, _metricsLogger);
 
             _runFromPackageHandler = new RunFromPackageHandler(_environment, _meshServiceClientMock.Object,
                 _bashCmdHandlerMock.Object, _zipHandler.Object, packageDownloadHandler, _metricsLogger, _logger);
@@ -399,7 +402,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
         {
             if (throwOnFailure)
             {
-                _packageDownloadHandler.Setup(h => h.Download(It.IsAny<RunFromPackageContext>(), It.IsAny<IFileSystem>()))
+                _packageDownloadHandler.Setup(h => h.Download(It.IsAny<RunFromPackageContext>()))
                     .Returns(Task.FromResult(string.Empty));
                 await Assert.ThrowsAsync<NullReferenceException>(async () =>
                     await _runFromPackageHandler.ApplyRunFromPackageContext(null, string.Empty, true, throwOnFailure));
@@ -436,7 +439,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
 
             var packageDownloadHandler = new PackageDownloadHandler(_httpClientFactory,
                 new Mock<IManagedIdentityTokenProvider>(MockBehavior.Strict).Object, _bashCmdHandlerMock.Object,
-                _environment, NullLogger<PackageDownloadHandler>.Instance, _metricsLogger);
+                _environment, _fileSystem.Object, NullLogger<PackageDownloadHandler>.Instance, _metricsLogger);
 
             _runFromPackageHandler = new RunFromPackageHandler(_environment, _meshServiceClientMock.Object,
                 _bashCmdHandlerMock.Object, _zipHandler.Object, packageDownloadHandler, _metricsLogger, _logger);
@@ -504,7 +507,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
 
             var packageDownloadHandler = new PackageDownloadHandler(_httpClientFactory,
                 new Mock<IManagedIdentityTokenProvider>(MockBehavior.Strict).Object, _bashCmdHandlerMock.Object,
-                _environment, NullLogger<PackageDownloadHandler>.Instance, _metricsLogger);
+                _environment, _fileSystem.Object, NullLogger<PackageDownloadHandler>.Instance, _metricsLogger);
 
             _runFromPackageHandler = new RunFromPackageHandler(_environment, _meshServiceClientMock.Object,
                 _bashCmdHandlerMock.Object, _zipHandler.Object, packageDownloadHandler, _metricsLogger, _logger);
@@ -564,12 +567,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                 });
 
             _httpClientFactory = TestHelpers.CreateHttpClientFactory(handlerMock.Object);
-            _packageDownloadHandler.Setup(p => p.Download(It.IsAny<RunFromPackageContext>(), It.IsAny<IFileSystem>()))
+            _packageDownloadHandler.Setup(p => p.Download(It.IsAny<RunFromPackageContext>()))
                 .Returns(Task.FromResult(string.Empty));
 
             var downloadHandler = new PackageDownloadHandler(_httpClientFactory,
                 new Mock<IManagedIdentityTokenProvider>(MockBehavior.Strict).Object, _bashCmdHandlerMock.Object,
-                _environment, NullLogger<PackageDownloadHandler>.Instance, _metricsLogger);
+                _environment, _fileSystem.Object, NullLogger<PackageDownloadHandler>.Instance, _metricsLogger);
 
             _runFromPackageHandler = new RunFromPackageHandler(_environment, _meshServiceClientMock.Object,
                 _bashCmdHandlerMock.Object, _zipHandler.Object, downloadHandler, _metricsLogger, _logger);
@@ -600,6 +603,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                         s.StartsWith(BashCommandHandler.FileCommand) && url.EndsWith(Path.GetFileName(s),
                             StringComparison.OrdinalIgnoreCase)),
                     MetricEventNames.LinuxContainerSpecializationFileCommand), Times.Once);
+        }
+
+        private static Mock<IFileSystem> GetFileSystem()
+        {
+            var fileSystem = new Mock<IFileSystem>(MockBehavior.Strict);
+            var fileInfo = new Mock<FileInfoBase>(MockBehavior.Strict);
+            fileInfo.SetupGet(f => f.Length).Returns(0);
+            fileSystem.Setup(f => f.FileInfo.FromFileName(It.IsAny<string>())).Returns(fileInfo.Object);
+            return fileSystem;
         }
     }
 }

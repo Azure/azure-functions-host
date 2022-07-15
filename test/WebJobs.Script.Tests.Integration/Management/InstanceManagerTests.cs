@@ -212,7 +212,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             };
             var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(options);
 
-            _packageDownloadHandler.Setup(p => p.Download(It.IsAny<RunFromPackageContext>(), It.IsAny<IFileSystem>()))
+            _packageDownloadHandler.Setup(p => p.Download(It.IsAny<RunFromPackageContext>()))
                 .Returns(Task.FromResult(string.Empty));
 
             var instanceManager = new InstanceManager(optionsFactory, _httpClientFactory, _scriptWebEnvironment,
@@ -1172,6 +1172,74 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 runFromPackageHandler
                     .Verify(r => r.ApplyRunFromPackageContext(It.IsAny<RunFromPackageContext>(), It.IsAny<string>(), It.IsAny<bool>(),
                         It.IsAny<bool>()), Times.Never);
+            }
+        }
+
+
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async void Mounts_Azure_Files_When_If_RunFromPkg_Is_One(bool runFromLocalZip)
+        {
+            const string url = "http://url";
+            const string connectionString = "AzureFiles-ConnectionString";
+            const string contentShare = "Content-Share";
+            const string scriptPath = "/home/site/wwwroot";
+
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+            var context = new HostAssignmentContext
+            {
+                IsWarmupRequest = false,
+                Environment = new Dictionary<string, string>()
+                {
+                    [EnvironmentSettingNames.FunctionWorkerRuntime] = RpcWorkerConstants.PythonLanguageWorkerName,
+                }
+            };
+
+            // AzureFiles
+            context.Environment[EnvironmentSettingNames.AzureFilesConnectionString] = connectionString;
+            context.Environment[EnvironmentSettingNames.AzureFilesContentShare] = contentShare;
+
+            if (runFromLocalZip)
+            {
+                context.Environment[EnvironmentSettingNames.AzureWebsiteRunFromPackage] = "1";
+            }
+            else
+            {
+                context.Environment[EnvironmentSettingNames.AzureWebsiteRunFromPackage] = url;
+            }
+
+            var runFromPackageHandler = new Mock<IRunFromPackageHandler>(MockBehavior.Strict);
+            runFromPackageHandler
+                .Setup(r => r.ApplyRunFromPackageContext(It.IsAny<RunFromPackageContext>(), It.IsAny<string>(), false,
+                    true)).ReturnsAsync(true);
+
+            runFromPackageHandler.Setup(r => r.MountAzureFileShare(context)).ReturnsAsync(true);
+
+            var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions() { ScriptPath = scriptPath });
+
+            var instanceManager = new InstanceManager(optionsFactory, _httpClientFactory, _scriptWebEnvironment, _environment,
+                _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object,
+                runFromPackageHandler.Object, _packageDownloadHandler.Object);
+
+            bool result = instanceManager.StartAssignment(context);
+            Assert.True(result);
+
+            await TestHelpers.Await(() => !_scriptWebEnvironment.InStandbyMode, timeout: 5000);
+
+            if (runFromLocalZip)
+            {
+                runFromPackageHandler.Verify(r => r.MountAzureFileShare(context), Times.Once);
+                runFromPackageHandler
+                    .Verify(r => r.ApplyRunFromPackageContext(It.IsAny<RunFromPackageContext>(), It.IsAny<string>(), true,
+                       It.IsAny<bool>()), Times.Once);
+            }
+            else
+            {
+                runFromPackageHandler.Verify(r => r.MountAzureFileShare(It.IsAny<HostAssignmentContext>()), Times.Never);
+                runFromPackageHandler
+                    .Verify(r => r.ApplyRunFromPackageContext(It.Is<RunFromPackageContext>(c => MatchesRunFromPackageContext(c, url)), scriptPath, false,
+                        true), Times.Once);
             }
         }
 
