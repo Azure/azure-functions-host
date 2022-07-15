@@ -307,7 +307,7 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
-        /// Gets if runtime enviromnent is logic apps.
+        /// Gets if runtime environment is logic apps.
         /// </summary>
         public static bool IsLogicApp(this IEnvironment environment)
         {
