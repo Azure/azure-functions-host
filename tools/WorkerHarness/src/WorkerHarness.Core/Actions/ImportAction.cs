@@ -30,13 +30,13 @@ namespace WorkerHarness.Core.Actions
             IScenarioParser scenarioParser = execuationContext.ScenarioParser;
             Scenario scenario = scenarioParser.Parse(_scenarioFile);
 
-            _logger.LogInformation("Executing the scenario {0}", scenario.ScenarioName);
+            _logger.LogInformation("Executing the scenario: {0}", scenario.ScenarioName);
 
             foreach (IAction action in scenario.Actions)
             {
                 ActionResult actionResult = await action.ExecuteAsync(execuationContext);
 
-                ShowActionResult(actionResult, execuationContext);
+                //ShowActionResult(actionResult, execuationContext);
                     
                 if (actionResult.Status is StatusCode.Failure)
                 {
@@ -44,36 +44,33 @@ namespace WorkerHarness.Core.Actions
                 }
             }
 
-            string status = importActionResult.Status == StatusCode.Success ? "succeeds" : "fails";
-            importActionResult.Message = $"The import action {status}";
-
             return importActionResult;
         }
 
-        private void ShowActionResult(ActionResult actionResult, ExecutionContext executionContext)
-        {
-            switch (actionResult.Status)
-            {
-                case StatusCode.Success:
-                    _logger.LogInformation(actionResult.Message);
-                    break;
+        //private void ShowActionResult(ActionResult actionResult, ExecutionContext executionContext)
+        //{
+        //    switch (actionResult.Status)
+        //    {
+        //        case StatusCode.Success:
+        //            _logger.LogInformation(actionResult.Message);
+        //            break;
 
-                case StatusCode.Failure:
-                    _logger.LogError(actionResult.Message);
+        //        case StatusCode.Failure:
+        //            _logger.LogError(actionResult.Message);
 
-                    IEnumerable<string> messages = executionContext.DisplayVerboseError ? 
-                        actionResult.VerboseErrorMessages : actionResult.ErrorMessages;
+        //            IEnumerable<string> messages = executionContext.DisplayVerboseError ? 
+        //                actionResult.VerboseErrorMessages : actionResult.ErrorMessages;
 
-                    foreach (string message in messages)
-                    {
-                        _logger.LogError(message);
-                    }
+        //            foreach (string message in messages)
+        //            {
+        //                _logger.LogError(message);
+        //            }
 
-                    break;
+        //            break;
 
-                default:
-                    break;
-            }
-        }
+        //        default:
+        //            break;
+        //    }
+        //}
     }
 }

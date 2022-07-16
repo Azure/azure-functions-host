@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using Microsoft.Azure.Functions.WorkerHarness.Grpc.Messages;
+using Microsoft.Extensions.Logging;
 using Moq;
 using System.Text.Json.Nodes;
 using System.Threading.Channels;
@@ -50,13 +51,16 @@ namespace WorkerHarness.Core.Tests.Actions
                 },
             };
 
+            var logger = new LoggerFactory().CreateLogger<RpcAction>();
+
             RpcAction action = new (
                 mockIValidatorFactory.Object,
                 mockMessageMatcher.Object,
                 mockIStreamingMessageProvider.Object,
                 stubActionData,
                 stubInboundChannel,
-                stubOutboundChannel
+                stubOutboundChannel,
+                logger
             );
 
             await stubInboundChannel.Writer.WriteAsync(new StreamingMessage());
@@ -66,8 +70,6 @@ namespace WorkerHarness.Core.Tests.Actions
 
             // Assert
             Assert.AreEqual(StatusCode.Failure, actionResult.Status);
-            Assert.AreEqual(1, actionResult.ErrorMessages.Count());
-            StringAssert.Contains(actionResult.ErrorMessages[0], RpcErrorCode.Message_Not_Sent_Error.ToString());
         }
 
         // test 2: time out => mesage not received
@@ -103,13 +105,16 @@ namespace WorkerHarness.Core.Tests.Actions
                 },
             };
 
+            var logger = new LoggerFactory().CreateLogger<RpcAction>();
+
             RpcAction action = new(
                 mockIValidatorFactory.Object,
                 mockMessageMatcher.Object,
                 mockIStreamingMessageProvider.Object,
                 stubActionData,
                 stubInboundChannel,
-                stubOutboundChannel
+                stubOutboundChannel,
+                logger
             );
 
             await stubInboundChannel.Writer.WriteAsync(new StreamingMessage());
@@ -119,8 +124,6 @@ namespace WorkerHarness.Core.Tests.Actions
 
             // Assert
             Assert.AreEqual(StatusCode.Failure, actionResult.Status);
-            Assert.AreEqual(1, actionResult.ErrorMessages.Count());
-            StringAssert.Contains(actionResult.ErrorMessages[0], RpcErrorCode.Message_Not_Received_Error.ToString());
         }
 
         // test 3: validation error
@@ -165,13 +168,16 @@ namespace WorkerHarness.Core.Tests.Actions
                 },
             };
 
+            var logger = new LoggerFactory().CreateLogger<RpcAction>();
+
             RpcAction action = new(
                 mockIValidatorFactory.Object,
                 mockMessageMatcher.Object,
                 mockIStreamingMessageProvider.Object,
                 stubActionData,
                 stubInboundChannel,
-                stubOutboundChannel
+                stubOutboundChannel,
+                logger
             );
 
             await stubInboundChannel.Writer.WriteAsync(new StreamingMessage());
@@ -181,8 +187,6 @@ namespace WorkerHarness.Core.Tests.Actions
 
             // Assert
             Assert.AreEqual(StatusCode.Failure, actionResult.Status);
-            Assert.AreEqual(1, actionResult.ErrorMessages.Count());
-            StringAssert.Contains(actionResult.ErrorMessages[0], RpcErrorCode.Validation_Error.ToString());
         }
 
         // test 4: all messages are sent, received, and validated
@@ -227,13 +231,16 @@ namespace WorkerHarness.Core.Tests.Actions
                 },
             };
 
+            var logger = new LoggerFactory().CreateLogger<RpcAction>();
+
             RpcAction action = new(
                 mockIValidatorFactory.Object,
                 mockMessageMatcher.Object,
                 mockIStreamingMessageProvider.Object,
                 stubActionData,
                 stubInboundChannel,
-                stubOutboundChannel
+                stubOutboundChannel,
+                logger
             );
 
             await stubInboundChannel.Writer.WriteAsync(new StreamingMessage());
@@ -243,7 +250,6 @@ namespace WorkerHarness.Core.Tests.Actions
 
             // Assert
             Assert.AreEqual(StatusCode.Success, actionResult.Status);
-            Assert.AreEqual(0, actionResult.ErrorMessages.Count());
         }
     }
 }

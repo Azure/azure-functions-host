@@ -56,7 +56,7 @@ namespace WorkerHarness.Core
                 {
                     ActionResult actionResult = await action.ExecuteAsync(executionContext);
 
-                    ShowActionResult(actionResult);
+                    //ShowActionResult(actionResult);
                 }
 
                 return true;
@@ -73,28 +73,28 @@ namespace WorkerHarness.Core
             }
         }
 
-        private void ShowActionResult(ActionResult actionResult)
-        {
-            switch (actionResult.Status)
-            {
-                case StatusCode.Success:
-                    _logger.LogInformation(actionResult.Message);
-                    break;
+        //private void ShowActionResult(ActionResult actionResult)
+        //{
+        //    switch (actionResult.Status)
+        //    {
+        //        case StatusCode.Success:
+        //            _logger.LogInformation(actionResult.Message);
+        //            break;
 
-                case StatusCode.Failure:
-                    _logger.LogError(actionResult.Message);
+        //        case StatusCode.Failure:
+        //            _logger.LogError(actionResult.Message);
 
-                    IEnumerable<string> messages = _harnessOptions.DisplayVerboseError ? actionResult.VerboseErrorMessages : actionResult.ErrorMessages;
-                    foreach (string message in messages)
-                    {
-                        _logger.LogError(message);
-                    }
+        //            IEnumerable<string> messages = _harnessOptions.DisplayVerboseError ? actionResult.VerboseErrorMessages : actionResult.ErrorMessages;
+        //            foreach (string message in messages)
+        //            {
+        //                _logger.LogError(message);
+        //            }
                     
-                    break;
+        //            break;
 
-                default:
-                    break;
-            }
-        }
+        //        default:
+        //            break;
+        //    }
+        //}
     }
 }

@@ -2,7 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using Microsoft.Azure.Functions.WorkerHarness.Grpc.Messages;
-using System.Collections.Concurrent;
+using Microsoft.Extensions.Logging;
 using System.Threading.Channels;
 using WorkerHarness.Core.Commons;
 using WorkerHarness.Core.Matching;
@@ -31,12 +31,16 @@ namespace WorkerHarness.Core.Actions
         // _outboundChannel stores messages that will be consumed by Grpc Layer and sent to the language worker.
         private readonly Channel<StreamingMessage> _outboundChannel;
 
+        // _logger logs info/error of the action execution
+        private readonly ILogger<RpcAction> _logger;
+
         internal RpcAction(IValidatorFactory validatorFactory, 
             IMessageMatcher matchService,
             IStreamingMessageProvider grpcMessageProvider, 
             RpcActionData actionData,
             Channel<StreamingMessage> inboundChannel,
-            Channel<StreamingMessage> outboundChannel)
+            Channel<StreamingMessage> outboundChannel,
+            ILogger<RpcAction> logger)
         {
             _validatorFactory = validatorFactory;
             _messageMatcher = matchService;
@@ -44,19 +48,19 @@ namespace WorkerHarness.Core.Actions
             _actionData = actionData;
             _inboundChannel = inboundChannel;
             _outboundChannel = outboundChannel;
+            _logger = logger;
         }
 
-        // Type of action
-        public string Type { get => _actionData.ActionType; }
+        internal string Type { get => _actionData.ActionType; }
 
-        // Displayed name of the action
-        public string Name { get => _actionData.ActionName; }
+        internal string Name { get => _actionData.ActionName; }
 
-        // Execution timeout for an action
-        public int Timeout { get => _actionData.Timeout; }
+        internal int Timeout { get => _actionData.Timeout; }
 
         public async Task<ActionResult> ExecuteAsync(ExecutionContext executionContext)
         {
+            _logger.LogInformation("Executing the action: {0}", Name);
+
             CancellationTokenSource tokenSource = new();
 
             StatusCode executionStatus;
@@ -69,12 +73,9 @@ namespace WorkerHarness.Core.Actions
             IEnumerable<RpcActionMessage> incomingRpcMessages = _actionData.Messages
                 .Where(msg => string.Equals(msg.Direction, RpcActionMessageTypes.Incoming, StringComparison.OrdinalIgnoreCase));
 
-            // create a concurrent dictionary to map the rpcActionMessage to its status
-            ConcurrentDictionary<RpcActionMessage, RpcActionError> statusMap = new(); 
-
             // wait for timeoutTask, SendGrpc, and ReceiveGrpc with cancellation token
-            Task<bool> sendTask = SendToGrpcAsync(outgoingRpcMessages, statusMap, tokenSource.Token, executionContext);
-            Task<bool> receiveTask = ReceiveFromGrpcAsync(incomingRpcMessages, statusMap, tokenSource.Token, executionContext);
+            Task<bool> sendTask = SendToGrpcAsync(outgoingRpcMessages, executionContext, tokenSource.Token);
+            Task<bool> receiveTask = ReceiveFromGrpcAsync(incomingRpcMessages, executionContext, tokenSource.Token);
 
             tokenSource.CancelAfter(Timeout);
 
@@ -89,42 +90,21 @@ namespace WorkerHarness.Core.Actions
                 executionStatus = StatusCode.Failure;
             }
 
-            ActionResult actionResult = CreateActionResult(executionStatus, statusMap);
+            ActionResult actionResult = new() { Status = executionStatus };
 
             tokenSource.Dispose();
 
             return actionResult;
         }
 
-        private ActionResult CreateActionResult(StatusCode executionStatus, ConcurrentDictionary<RpcActionMessage, RpcActionError> statusMap)
-        {
-            ActionResult result = new()
-            {
-                Status = executionStatus,
-                Message = executionStatus == StatusCode.Success ? $"Action \"{Name}\" succeeds" : $"Action \"{Name}\" fails"
-            };
-
-            var dictionaryEnumerator = statusMap.GetEnumerator();
-            while (dictionaryEnumerator.MoveNext())
-            {
-                RpcActionError error = dictionaryEnumerator.Current.Value;
-                result.ErrorMessages.Add($"[{error.Type}]: {error.ConciseMessage}\n{error.Advice}");
-                result.VerboseErrorMessages.Add($"[{error.Type}]: {error.VerboseMessage}\n{error.Advice}");
-            }
-
-            return result;
-        }
-
         private async Task<bool> ReceiveFromGrpcAsync(IEnumerable<RpcActionMessage> incomingRpcMessages, 
-            ConcurrentDictionary<RpcActionMessage, RpcActionError> statusMap, CancellationToken token, ExecutionContext execuationContext)
+            ExecutionContext executionContext, CancellationToken token)
         {
-            RegisterExpressions(incomingRpcMessages, execuationContext);
+            RegisterExpressions(incomingRpcMessages, executionContext);
 
             bool allValidated = true;
 
             IList<RpcActionMessage> unprocessedRpcMessages = incomingRpcMessages.ToList();
-
-            //var timeout = Task.Run(() => Task.Delay(Timeout).Wait());
 
             while (!token.IsCancellationRequested && unprocessedRpcMessages.Any())
             {
@@ -132,7 +112,6 @@ namespace WorkerHarness.Core.Actions
                 {
                     StreamingMessage streamingMessage = await _inboundChannel.Reader.ReadAsync(token);
 
-                    // filter through the unprocessedRpcMessages to see if there is any match
                     var matchedRpcMesseages = unprocessedRpcMessages
                         .Where(msg => _messageMatcher.Match(msg, streamingMessage));
 
@@ -141,35 +120,16 @@ namespace WorkerHarness.Core.Actions
                         RpcActionMessage rpcActionMessage = matchedRpcMesseages.First();
                         unprocessedRpcMessages.Remove(rpcActionMessage);
 
-                        // validate streamingMessage against the validators in rpcActionMessage
-                        bool validated = true;
-                        foreach (var validationContext in rpcActionMessage.Validators)
-                        {
-                            string validatorType = validationContext.Type.ToLower();
-                            IValidator validator = _validatorFactory.Create(validatorType);
-                            bool validationResult = validator.Validate(validationContext, streamingMessage);
-
-                            validated = validated && validationResult;
-                        }
+                        bool validated = ValidateMessage(streamingMessage, rpcActionMessage);
 
                         allValidated = allValidated && validated;
 
-                        // update the status of the rpcActionMesage
                         if (!validated)
                         {
-                            RpcActionError error = new()
-                            {
-                                Type = RpcErrorCode.Validation_Error,
-                                ConciseMessage = string.Format(RpcErrorConstants.ValidationFailed, rpcActionMessage.MessageType),
-                                VerboseMessage = string.Format(RpcErrorConstants.ValidationFailedVerbose, rpcActionMessage.MessageType, streamingMessage.Serialize()),
-                                Advice = string.Format(RpcErrorConstants.GeneralErrorAdvice, RpcErrorConstants.ValidationFailedLink)
-                            };
-
-                            statusMap.AddOrUpdate(rpcActionMessage, error, (key, value) => error);
+                            LogValidationError(executionContext, streamingMessage, rpcActionMessage);
                         }
 
-                        // setVariables
-                        SetVariables(rpcActionMessage, streamingMessage, execuationContext);
+                        SetVariables(rpcActionMessage, streamingMessage, executionContext);
                     }
 
                 }
@@ -182,18 +142,108 @@ namespace WorkerHarness.Core.Actions
 
             foreach (RpcActionMessage rpcActionMessage in unprocessedRpcMessages)
             {
-                RpcActionError error = new()
-                {
-                    Type = RpcErrorCode.Message_Not_Received_Error,
-                    ConciseMessage = string.Format(RpcErrorConstants.MessageNotReceived, rpcActionMessage.MessageType),
-                    VerboseMessage = string.Format(RpcErrorConstants.MessageNotReceivedVerbose, rpcActionMessage.MessageType, rpcActionMessage.Serialize()),
-                    Advice = string.Format(RpcErrorConstants.GeneralErrorAdvice, RpcErrorConstants.MessageNotReceivedLink)
-                };
-
-                statusMap.AddOrUpdate(rpcActionMessage, error, (key, value) => error);
+                LogMessageNotReceivedError(executionContext, rpcActionMessage);
             }
 
             return allValidated;
+        }
+
+        private bool ValidateMessage(StreamingMessage streamingMessage, RpcActionMessage rpcActionMessage)
+        {
+            bool validated = true;
+            foreach (var validationContext in rpcActionMessage.Validators)
+            {
+                string validatorType = validationContext.Type.ToLower();
+                IValidator validator = _validatorFactory.Create(validatorType);
+                bool validationResult = validator.Validate(validationContext, streamingMessage);
+
+                validated = validated && validationResult;
+            }
+
+            return validated;
+        }
+
+        private async Task<bool> SendToGrpcAsync(IEnumerable<RpcActionMessage> outgoingRpcMessages,
+            ExecutionContext executionContext, CancellationToken token)
+        {
+            bool allSent = true;
+
+            var enumerator = outgoingRpcMessages.GetEnumerator();
+            while (!token.IsCancellationRequested && enumerator.MoveNext())
+            {
+                var rpcActionMessage = enumerator.Current;
+                var sent = await SendToGrpcAsync(rpcActionMessage, executionContext, token);
+
+                allSent = allSent && sent;
+
+                if (!sent)
+                {
+                    LogMessageNotSentError(executionContext, rpcActionMessage);
+                }
+
+            }
+
+            return allSent;
+        }
+
+        private async Task<bool> SendToGrpcAsync(RpcActionMessage rpcActionMessage, ExecutionContext executionContext, CancellationToken cancellationToken)
+        {
+            bool succeeded;
+
+            try
+            {
+                bool created = _grpcMessageProvider.TryCreate(out StreamingMessage streamingMessage,
+                    rpcActionMessage.MessageType, rpcActionMessage.Payload, executionContext.GlobalVariables);
+
+                if (created)
+                {
+                    await _outboundChannel.Writer.WriteAsync(streamingMessage, cancellationToken);
+
+                    SetVariables(rpcActionMessage, streamingMessage, executionContext);
+
+                    succeeded = true;
+                }
+                else
+                {
+                    succeeded = false;
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                succeeded = false;
+            }
+
+            return succeeded;
+        }
+
+        private void LogMessageNotReceivedError(ExecutionContext executionContext, RpcActionMessage rpcActionMessage)
+        {
+            string errorMessage;
+            if (executionContext.DisplayVerboseError)
+            {
+                errorMessage = string.Format(RpcErrorConstants.MessageNotReceivedVerbose, rpcActionMessage.MessageType, rpcActionMessage.Serialize());
+            }
+            else
+            {
+                errorMessage = string.Format(RpcErrorConstants.MessageNotReceived, rpcActionMessage.MessageType);
+            }
+            _logger.LogError("[{0}]: {1}", RpcErrorCode.Message_Not_Received_Error, errorMessage);
+            _logger.LogError(string.Format(RpcErrorConstants.GeneralErrorAdvice, RpcErrorConstants.MessageNotReceivedLink));
+        }
+
+        private void LogValidationError(ExecutionContext executionContext, StreamingMessage streamingMessage, RpcActionMessage rpcActionMessage)
+        {
+            string errorMessage;
+            if (executionContext.DisplayVerboseError)
+            {
+                errorMessage = string.Format(RpcErrorConstants.ValidationFailedVerbose, rpcActionMessage.MessageType, streamingMessage.Serialize());
+            }
+            else
+            {
+                errorMessage = string.Format(RpcErrorConstants.ValidationFailed, rpcActionMessage.MessageType);
+            }
+            _logger.LogError("[{0}]: {1}", RpcErrorCode.Validation_Error, errorMessage);
+            _logger.LogError(string.Format(RpcErrorConstants.GeneralErrorAdvice, RpcErrorConstants.ValidationFailedLink));
         }
 
         private void RegisterExpressions(IEnumerable<RpcActionMessage> incomingRpcMessages, ExecutionContext executionContext)
@@ -220,71 +270,23 @@ namespace WorkerHarness.Core.Actions
                 executionContext.GlobalVariables.Subscribe(validator);
             }
         }
-
-        private async Task<bool> SendToGrpcAsync(IEnumerable<RpcActionMessage> outgoingRpcMessages, 
-            ConcurrentDictionary<RpcActionMessage, RpcActionError> statusMap, CancellationToken token, ExecutionContext executionContext)
+        
+        private void LogMessageNotSentError(ExecutionContext executionContext, RpcActionMessage rpcActionMessage)
         {
-            bool allSent = true;
-
-            var enumerator = outgoingRpcMessages.GetEnumerator();
-            while (!token.IsCancellationRequested && enumerator.MoveNext())
+            string errorMessage;
+            if (executionContext.DisplayVerboseError)
             {
-                var rpcActionMessage = enumerator.Current;
-                var sent = await SendToGrpcAsync(rpcActionMessage, token, executionContext);
-
-                allSent = allSent && sent;
-
-                if (!sent)
-                {
-                    RpcActionError error = new()
-                    {
-                        Type = RpcErrorCode.Message_Not_Sent_Error,
-                        ConciseMessage = string.Format(RpcErrorConstants.MessageNotSent, rpcActionMessage.MessageType),
-                        VerboseMessage = string.Format(RpcErrorConstants.MessageNotSentVerbose, rpcActionMessage.MessageType, Timeout),
-                        Advice = string.Format(RpcErrorConstants.GeneralErrorAdvice, RpcErrorConstants.MessageNotSentLink)
-                    };
-
-                    statusMap.AddOrUpdate(rpcActionMessage, error, (key, value) => error);
-                }
-                
+                errorMessage = string.Format(RpcErrorConstants.MessageNotSentVerbose, rpcActionMessage.MessageType, Timeout);
             }
-
-            return allSent;
+            else
+            {
+                errorMessage = string.Format(RpcErrorConstants.MessageNotSent, rpcActionMessage.MessageType);
+            }
+            _logger.LogError("[{0}]: {1}", RpcErrorCode.Message_Not_Sent_Error, errorMessage);
+            _logger.LogError(string.Format(RpcErrorConstants.GeneralErrorAdvice, RpcErrorConstants.MessageNotSentLink));
         }
 
-        private async Task<bool> SendToGrpcAsync(RpcActionMessage rpcActionMessage, CancellationToken cancellationToken, ExecutionContext executionContext)
-        {
-            bool succeeded;
-
-            try
-            {
-                // create the appropriate Grpc message
-                bool created = _grpcMessageProvider.TryCreate(out StreamingMessage streamingMessage, 
-                    rpcActionMessage.MessageType, rpcActionMessage.Payload, executionContext.GlobalVariables);
-
-                if (created)
-                {
-                    // send it to grpc
-                    await _outboundChannel.Writer.WriteAsync(streamingMessage, cancellationToken);
-
-                    // set variables
-                    SetVariables(rpcActionMessage, streamingMessage, executionContext);
-
-                    succeeded = true;
-                }
-                else
-                {
-                    succeeded = false;
-                }
-            }
-            catch (OperationCanceledException)
-            {
-                succeeded = false;
-            }
-
-            return succeeded;
-        }
-
+        
         private void SetVariables(RpcActionMessage rpcActionMessage, StreamingMessage streamingMessage, ExecutionContext executionContext)
         {
             if (rpcActionMessage.SetVariables == null)
