@@ -2,8 +2,8 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using Channels = System.Threading.Channels;
-using Microsoft.Azure.Functions.WorkerHarness.Grpc.Messages;
 using Grpc.Core;
+using Microsoft.Azure.Functions.WorkerHarness.Grpc.Messages;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
@@ -77,6 +77,7 @@ namespace WorkerHarness
                 .AddSingleton<IContextMatcher, ContextMatcher>()
                 .AddSingleton<IActionProvider, RpcActionProvider>()
                 .AddSingleton<IActionProvider, DelayActionProvider>()
+                .AddSingleton<IActionProvider, ImportActionProvider>()
                 .AddSingleton<IWorkerHarnessExecutor, WorkerHarnessExecutor>()
                 .AddSingleton<GrpcServiceChannel>(s =>
                 {
