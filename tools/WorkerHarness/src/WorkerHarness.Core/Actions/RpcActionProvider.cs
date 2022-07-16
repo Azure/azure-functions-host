@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using Microsoft.Azure.Functions.WorkerHarness.Grpc.Messages;
+using Microsoft.Extensions.Logging;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading.Channels;
@@ -22,6 +23,7 @@ namespace WorkerHarness.Core.Actions
         private readonly IStreamingMessageProvider _rpcMessageProvider;
         private readonly Channel<StreamingMessage> _inboundChannel;
         private readonly Channel<StreamingMessage> _outboundChannel;
+        private readonly ILoggerFactory _loggerFactory;
 
         internal static string ArgumentMissingMessagesProperty = "Missing the \"messages\" array in an Rpc action";
 
@@ -30,13 +32,15 @@ namespace WorkerHarness.Core.Actions
         public RpcActionProvider(IValidatorFactory validatorFactory, 
             IMessageMatcher messageMatcher,
             IStreamingMessageProvider rpcMessageProvider,
-            GrpcServiceChannel channel)
+            GrpcServiceChannel channel,
+            ILoggerFactory loggerFactory)
         {
             _validatorFactory = validatorFactory;
             _messageMatcher = messageMatcher;
             _rpcMessageProvider = rpcMessageProvider;
             _inboundChannel = channel.InboundChannel;
             _outboundChannel = channel.OutboundChannel;
+            _loggerFactory = loggerFactory;
         }
 
         /// <summary>
@@ -55,7 +59,8 @@ namespace WorkerHarness.Core.Actions
                                 _rpcMessageProvider,
                                 actionData,
                                 _inboundChannel,
-                                _outboundChannel);
+                                _outboundChannel,
+                                _loggerFactory.CreateLogger<RpcAction>());
         }
 
         /// <summary>

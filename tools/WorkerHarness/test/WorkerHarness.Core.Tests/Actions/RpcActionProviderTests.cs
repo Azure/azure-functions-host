@@ -5,6 +5,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using Microsoft.Azure.Functions.WorkerHarness.Grpc.Messages;
+using Microsoft.Extensions.Logging;
 using Moq;
 using System.Text.Json.Nodes;
 using System.Threading.Channels;
@@ -25,12 +26,14 @@ namespace WorkerHarness.Core.Tests.Actions
             // Arrange
             Channel<StreamingMessage> InboundChannel = Channel.CreateUnbounded<StreamingMessage>();
             Channel<StreamingMessage> OutboundChannel = Channel.CreateUnbounded<StreamingMessage>();
+            ILoggerFactory loggerFactory = new LoggerFactory();
 
             RpcActionProvider provider = new(
                 new Mock<IValidatorFactory>().Object,
                 new Mock<IMessageMatcher>().Object,
                 new Mock<IStreamingMessageProvider>().Object,
-                new GrpcServiceChannel(InboundChannel, OutboundChannel)
+                new GrpcServiceChannel(InboundChannel, OutboundChannel),
+                loggerFactory
             );
 
             JsonNode actionNode = new JsonObject();
@@ -56,12 +59,14 @@ namespace WorkerHarness.Core.Tests.Actions
             // Arrange
             Channel<StreamingMessage> InboundChannel = Channel.CreateUnbounded<StreamingMessage>();
             Channel<StreamingMessage> OutboundChannel = Channel.CreateUnbounded<StreamingMessage>();
+            ILoggerFactory loggerFactory = new LoggerFactory();
 
             RpcActionProvider provider = new(
                 new Mock<IValidatorFactory>().Object,
                 new Mock<IMessageMatcher>().Object,
                 new Mock<IStreamingMessageProvider>().Object,
-                new GrpcServiceChannel(InboundChannel, OutboundChannel)
+                new GrpcServiceChannel(InboundChannel, OutboundChannel),
+                loggerFactory
             );
 
             JsonNode actionNode = new JsonObject
@@ -90,12 +95,14 @@ namespace WorkerHarness.Core.Tests.Actions
             // Arrange
             Channel<StreamingMessage> InboundChannel = Channel.CreateUnbounded<StreamingMessage>();
             Channel<StreamingMessage> OutboundChannel = Channel.CreateUnbounded<StreamingMessage>();
+            ILoggerFactory loggerFactory = new LoggerFactory();
 
             RpcActionProvider provider = new(
                 new Mock<IValidatorFactory>().Object,
                 new Mock<IMessageMatcher>().Object,
                 new Mock<IStreamingMessageProvider>().Object,
-                new GrpcServiceChannel(InboundChannel, OutboundChannel)
+                new GrpcServiceChannel(InboundChannel, OutboundChannel),
+                loggerFactory
             );
 
             JsonNode actionNode = new JsonObject
