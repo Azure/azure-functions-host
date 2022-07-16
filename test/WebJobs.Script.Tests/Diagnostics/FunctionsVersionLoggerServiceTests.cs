@@ -48,12 +48,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             // wait for a few failures to happen
             LogMessage[] logs = null;
 
-            logs = _loggerProvider.GetAllLogMessages().Where(p => p.Level == LogLevel.Information).ToArray();
-
+            await TestHelpers.Await(() =>
+            {
+                logs = _loggerProvider.GetAllLogMessages().Where(p => p.Level == LogLevel.Information).ToArray();
+                return logs.Length >= 1;
+            });
             Assert.All(logs,
                 p =>
                 {
-                    //Assert.Same(monitor.Exception, p.Exception);
                     Assert.Equal(GetRespectiveMessage(p.FormattedMessage), p.FormattedMessage);
                 });
         }
@@ -62,16 +64,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         {
             switch (msg)
             {
-                case "FUNCTIONS_EXTENSION_VERSION  : ~4":
+                case "FunctionsExtensionVersion : ~4":
                     return msg;
-                case "FRAMEWORK_VERSION: 6":
+                case "Framework : dotnet":
                     return msg;
-                case "FRAMEWORK : dotnet":
+                case "FrameworkVersion : 6":
                     return msg;
-                case "WEBSITE_SLOT_NAME : development":
+                case "SlotName : development":
                     return msg;
             }
-            return string.Empty;
+            return "IncorrectMessage";
         }
     }
 }
