@@ -7,6 +7,7 @@ using System.Text.Json.Nodes;
 using System.Threading.Channels;
 using WorkerHarness.Core.Actions;
 using WorkerHarness.Core.Matching;
+using WorkerHarness.Core.Parsing;
 using WorkerHarness.Core.StreamingMessageService;
 using WorkerHarness.Core.Validators;
 using WorkerHarness.Core.Variables;
@@ -28,7 +29,8 @@ namespace WorkerHarness.Core.Tests.Actions
                 .Returns(true);
 
             var mockIVariableObservable = new Mock<IVariableObservable>();
-            ExecutionContext context = new(mockIVariableObservable.Object);
+            var mockIScenarioParser = new Mock<IScenarioParser>();
+            ExecutionContext context = new(mockIVariableObservable.Object, mockIScenarioParser.Object);
 
             StreamingMessage message;
             var mockIStreamingMessageProvider = new Mock<IStreamingMessageProvider>();
@@ -80,7 +82,8 @@ namespace WorkerHarness.Core.Tests.Actions
                 .Returns(false);
 
             var mockIVariableObservable = new Mock<IVariableObservable>();
-            ExecutionContext context = new(mockIVariableObservable.Object);
+            var mockIScenarioParser = new Mock<IScenarioParser>();
+            ExecutionContext context = new(mockIVariableObservable.Object, mockIScenarioParser.Object);
 
             StreamingMessage message;
             var mockIStreamingMessageProvider = new Mock<IStreamingMessageProvider>();
@@ -138,7 +141,8 @@ namespace WorkerHarness.Core.Tests.Actions
                 .Returns(true);
 
             var mockIVariableObservable = new Mock<IVariableObservable>();
-            ExecutionContext context = new(mockIVariableObservable.Object);
+            var mockIScenarioParser = new Mock<IScenarioParser>();
+            ExecutionContext context = new(mockIVariableObservable.Object, mockIScenarioParser.Object);
 
             StreamingMessage message;
             var mockIStreamingMessageProvider = new Mock<IStreamingMessageProvider>();
@@ -199,7 +203,8 @@ namespace WorkerHarness.Core.Tests.Actions
                 .Returns(true);
 
             var mockIVariableObservable = new Mock<IVariableObservable>();
-            ExecutionContext context = new(mockIVariableObservable.Object);
+            var mockIScenarioParser = new Mock<IScenarioParser>();
+            ExecutionContext context = new(mockIVariableObservable.Object, mockIScenarioParser.Object);
 
             StreamingMessage message;
             var mockIStreamingMessageProvider = new Mock<IStreamingMessageProvider>();

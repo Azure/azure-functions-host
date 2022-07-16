@@ -40,7 +40,10 @@ namespace WorkerHarness.Core
                 _harnessOptions.LanguageExecutable!, _harnessOptions.WorkerExecutable!,
                 _harnessOptions.WorkerDirectory!);
 
-            ExecutionContext executionContext = new(_globalVariables);
+            ExecutionContext executionContext = new(_globalVariables, _scenarioParser)
+            {
+                DisplayVerboseError = _harnessOptions.DisplayVerboseError
+            };
 
             try
             {

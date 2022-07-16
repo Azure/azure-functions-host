@@ -1,7 +1,9 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using Moq;
 using WorkerHarness.Core.Actions;
+using WorkerHarness.Core.Parsing;
 using WorkerHarness.Core.Variables;
 
 namespace WorkerHarness.Core.Tests.Actions
@@ -49,7 +51,7 @@ namespace WorkerHarness.Core.Tests.Actions
             int miliseconds = 500;
             DelayAction action = new(miliseconds);
 
-            ExecutionContext context = new(new VariableManager());
+            ExecutionContext context = new(new VariableManager(), new Mock<IScenarioParser>().Object);
 
             // Act
             ActionResult result = await action.ExecuteAsync(context);
