@@ -28,6 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Host
                 IsSelfHost = true
             };
 
+            // NewtonSoft config
             JsonConvert.DefaultSettings = () => new JsonSerializerSettings { MaxDepth = 128 };
             
             var scriptHostManager = new ScriptHostManager(config);
