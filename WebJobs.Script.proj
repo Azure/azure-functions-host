@@ -293,7 +293,7 @@
     </Task>
   </UsingTask>
 
-  <UsingTask TaskName="Zip" TaskFactory="CodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.v4.0.dll">
+  <UsingTask TaskName="Zip" TaskFactory="CodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.v12.0.dll">
     <ParameterGroup>
       <InputPath ParameterType="System.String" Required="true" />
       <OutputFileName ParameterType="System.String" Required="true" />
