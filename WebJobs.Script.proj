@@ -277,12 +277,6 @@
                     if (!File.Exists(OutputFileName))
                     {
                         Log.LogMessage("Downloading NuGet.exe from {0}...", DownloadUrl);
-                        // Remove insecure protocols (SSL3, TLS 1.0, TLS 1.1)
-                        ServicePointManager.SecurityProtocol &= ~SecurityProtocolType.Ssl3;
-                        ServicePointManager.SecurityProtocol &= ~SecurityProtocolType.Tls;
-                        ServicePointManager.SecurityProtocol &= ~SecurityProtocolType.Tls11;
-                        // Add TLS 1.2
-                        ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
                         WebClient webClient = new WebClient();
                         webClient.DownloadFile(DownloadUrl, OutputFileName);
                     }
