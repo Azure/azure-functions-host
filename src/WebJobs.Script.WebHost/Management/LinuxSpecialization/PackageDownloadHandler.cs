@@ -268,6 +268,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
             var fileName = _fileSystem.Path.GetFileName(packageFileName);
             var filePath = _fileSystem.Path.Combine(tmpPath, fileName);
 
+            if (IsSkipCopyEnabled())
+            {
+                _logger.LogInformation($"{nameof(CopyPackageFile)} skipped the copy action. {packageFileName} was copied from {packageFilePath} to {filePath}.");
+                return packageFilePath;
+            }
+
             var copyMetricName = pkgContext.IsWarmUpRequest
                     ? MetricEventNames.LinuxContainerSpecializationZipMountCopyWarmup
                     : MetricEventNames.LinuxContainerSpecializationZipMountCopy;
@@ -275,7 +281,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
             using (_metricsLogger.LatencyEvent(copyMetricName))
             {
                 _fileSystem.File.Copy(packageFilePath, filePath, true);
-
                 var fileInfo = _fileSystem.FileInfo.FromFileName(filePath);
                 _logger.LogInformation($"Downloaded Package size is {fileInfo.Length}");
             }
@@ -283,6 +288,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
             _logger.LogInformation($"{nameof(CopyPackageFile)} was successful. {packageFileName} was copied from {packageFilePath} to {filePath}.");
 
             return filePath;
+        }
+
+        private bool IsSkipCopyEnabled()
+        {
+            var siteName = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName);
+
+            if (string.IsNullOrWhiteSpace(siteName))
+            {
+                _logger.LogInformation($"Skip Test: Sitename is empty. ");
+                return false;
+            }
+
+            return siteName.Contains("skip");
         }
     }
 }
