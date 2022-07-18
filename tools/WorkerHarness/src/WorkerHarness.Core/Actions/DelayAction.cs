@@ -30,7 +30,6 @@ namespace WorkerHarness.Core.Actions
 
             await Task.Delay(_milisecondsDelay);
 
-
             ActionResult actionResult = new() { Status = StatusCode.Success };
 
             return actionResult;

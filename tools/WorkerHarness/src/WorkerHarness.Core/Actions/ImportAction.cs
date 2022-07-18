@@ -36,8 +36,6 @@ namespace WorkerHarness.Core.Actions
             {
                 ActionResult actionResult = await action.ExecuteAsync(execuationContext);
 
-                //ShowActionResult(actionResult, execuationContext);
-                    
                 if (actionResult.Status is StatusCode.Failure)
                 {
                     importActionResult.Status = StatusCode.Failure;
@@ -46,31 +44,5 @@ namespace WorkerHarness.Core.Actions
 
             return importActionResult;
         }
-
-        //private void ShowActionResult(ActionResult actionResult, ExecutionContext executionContext)
-        //{
-        //    switch (actionResult.Status)
-        //    {
-        //        case StatusCode.Success:
-        //            _logger.LogInformation(actionResult.Message);
-        //            break;
-
-        //        case StatusCode.Failure:
-        //            _logger.LogError(actionResult.Message);
-
-        //            IEnumerable<string> messages = executionContext.DisplayVerboseError ? 
-        //                actionResult.VerboseErrorMessages : actionResult.ErrorMessages;
-
-        //            foreach (string message in messages)
-        //            {
-        //                _logger.LogError(message);
-        //            }
-
-        //            break;
-
-        //        default:
-        //            break;
-        //    }
-        //}
     }
 }
