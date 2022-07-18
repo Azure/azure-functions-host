@@ -16,9 +16,6 @@ namespace WorkerHarness.Core.Parsing
         // a list of actions to execute
         public IList<IAction> Actions { get; private set; }
 
-        // continue to execute the remaining actions upon an action error
-        public bool ContinueUponFailure { get; set; } = true;
-
         public Scenario(string scenarioName)
         {
             ScenarioName = scenarioName;

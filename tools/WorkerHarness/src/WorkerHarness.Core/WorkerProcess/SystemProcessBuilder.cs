@@ -6,7 +6,7 @@ using WorkerHarness.Core.Commons;
 
 namespace WorkerHarness.Core.WorkerProcess
 {
-    public class WorkerProcessBuilder : IWorkerProcessBuilder
+    public class SystemProcessBuilder : IWorkerProcessBuilder
     {
         public IWorkerProcess Build(string languageExecutable, string workerExecutable, string workerDirectory)
         {

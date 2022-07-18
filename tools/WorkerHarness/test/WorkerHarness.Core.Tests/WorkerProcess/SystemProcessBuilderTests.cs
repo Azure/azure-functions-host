@@ -8,7 +8,7 @@ using WorkerHarness.Core.Commons;
 namespace WorkerHarness.Core.Tests.WorkerProcess
 {
     [TestClass]
-    public class WorkerProcessBuilderTests
+    public class SystemProcessBuilderTests
     {
         [TestMethod]
         public void Build_ReturnProcessWhoseStartInfoContainsInputParameters()
@@ -19,7 +19,7 @@ namespace WorkerHarness.Core.Tests.WorkerProcess
             string workerDirectory = "path\\to\\worker\\directory";
 
             // Act
-            WorkerProcessBuilder workerProcessBuilder = new();
+            SystemProcessBuilder workerProcessBuilder = new();
             IWorkerProcess process = workerProcessBuilder.Build(languageExecutable, workerExecutable, workerDirectory);
 
             // Assert
@@ -42,7 +42,7 @@ namespace WorkerHarness.Core.Tests.WorkerProcess
             string grpcMaxMessageLength = HostConstants.GrpcMaxMessageLength.ToString();
 
             // Act
-            WorkerProcessBuilder workerProcessBuilder = new();
+            SystemProcessBuilder workerProcessBuilder = new();
             IWorkerProcess process = workerProcessBuilder.Build(string.Empty, string.Empty, string.Empty);
 
             // Assert
@@ -63,7 +63,7 @@ namespace WorkerHarness.Core.Tests.WorkerProcess
             string workerId = WorkerConstants.WorkerId;
 
             // Act
-            WorkerProcessBuilder workerProcessBuilder = new();
+            SystemProcessBuilder workerProcessBuilder = new();
             IWorkerProcess process = workerProcessBuilder.Build(string.Empty, string.Empty, string.Empty);
 
             // Assert

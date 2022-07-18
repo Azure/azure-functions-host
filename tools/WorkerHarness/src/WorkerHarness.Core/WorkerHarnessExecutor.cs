@@ -3,7 +3,6 @@
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using System.Diagnostics;
 using WorkerHarness.Core.Actions;
 using WorkerHarness.Core.Options;
 using WorkerHarness.Core.Parsing;
@@ -52,18 +51,18 @@ namespace WorkerHarness.Core
 
                 myProcess.Start();
 
+                _logger.LogInformation("Executing the scenario: {0}", scenario.ScenarioName);
+
                 foreach (IAction action in scenario.Actions)
                 {
                     ActionResult actionResult = await action.ExecuteAsync(executionContext);
-
-                    //ShowActionResult(actionResult);
                 }
 
                 return true;
             }
             catch (Exception ex)
             {
-                _logger.LogCritical($"An exception occurs: \n{ex.Message}\n{ex.StackTrace}");
+                _logger.LogCritical("An exception occurs: \n{0}\n{1}", ex.Message, ex.StackTrace);
 
                 return false;
             }
@@ -72,29 +71,5 @@ namespace WorkerHarness.Core
                 myProcess.Kill();
             }
         }
-
-        //private void ShowActionResult(ActionResult actionResult)
-        //{
-        //    switch (actionResult.Status)
-        //    {
-        //        case StatusCode.Success:
-        //            _logger.LogInformation(actionResult.Message);
-        //            break;
-
-        //        case StatusCode.Failure:
-        //            _logger.LogError(actionResult.Message);
-
-        //            IEnumerable<string> messages = _harnessOptions.DisplayVerboseError ? actionResult.VerboseErrorMessages : actionResult.ErrorMessages;
-        //            foreach (string message in messages)
-        //            {
-        //                _logger.LogError(message);
-        //            }
-                    
-        //            break;
-
-        //        default:
-        //            break;
-        //    }
-        //}
     }
 }

@@ -67,7 +67,7 @@ namespace WorkerHarness
             IConfiguration config = configurationBuilder.Build();
 
             ServiceProvider serviceProvider = new ServiceCollection()
-                .AddSingleton<IWorkerProcessBuilder, WorkerProcessBuilder>()
+                .AddSingleton<IWorkerProcessBuilder, SystemProcessBuilder>()
                 .AddSingleton<IScenarioParser, ScenarioParser>()
                 .AddSingleton<IStreamingMessageProvider, StreamingMessageProvider>()
                 .AddSingleton<IPayloadVariableSolver, PayloadVariableSolver>()
