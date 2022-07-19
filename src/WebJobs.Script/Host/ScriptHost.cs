@@ -297,7 +297,8 @@ namespace Microsoft.Azure.WebJobs.Script
                         // Windows Consumption as well.
                         string runtimeVersion = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName);
 
-                        if (!string.IsNullOrEmpty(runtimeVersion))
+                        // If the environment is multi language, we are running multiple language workers, and thus not honoring 'FUNCTIONS_WORKER_RUNTIME_VERSION'
+                        if (!string.IsNullOrEmpty(runtimeVersion) && !_environment.IsMultiLanguageRuntimeEnvironment())
                         {
                             runtimeStack = string.Concat(runtimeStack, "-", runtimeVersion);
                         }
@@ -542,6 +543,13 @@ namespace Microsoft.Azure.WebJobs.Script
                 _logger.HostIsInPlaceholderMode();
                 _logger.AddingDescriptorProviderForLanguage(RpcWorkerConstants.DotNetLanguageWorkerName);
                 _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, _loggerFactory));
+            }
+            else if (_environment.IsMultiLanguageRuntimeEnvironment())
+            {
+                _logger.AddingDescriptorProviderForLanguage("All (Multi Language)");
+
+                _descriptorProviders.Add(new MultiLanguageFunctionDescriptorProvider(this, _languageWorkerOptions.Value.WorkerConfigs, ScriptOptions, _bindingProviders,
+                    _functionDispatcher, _loggerFactory, _applicationLifetime, _languageWorkerOptions.Value.WorkerConfigs.Max(wc => wc.CountOptions.InitializationTimeout)));
             }
             else if (_isHttpWorker)
             {
