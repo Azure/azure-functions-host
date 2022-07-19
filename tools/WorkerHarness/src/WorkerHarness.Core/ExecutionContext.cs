@@ -3,6 +3,7 @@
 
 using WorkerHarness.Core.Parsing;
 using WorkerHarness.Core.Variables;
+using WorkerHarness.Core.WorkerProcess;
 
 namespace WorkerHarness.Core
 {
@@ -10,12 +11,14 @@ namespace WorkerHarness.Core
     {
         public IVariableObservable GlobalVariables { get; private set; }
         public IScenarioParser ScenarioParser { get; private set; }
+        public IWorkerProcess WorkerProcess { get; private set; }
 
         public ExecutionContext(IVariableObservable variableManager,
-            IScenarioParser scenarioParser)
+            IScenarioParser scenarioParser, IWorkerProcess workerProcess)
         {
             GlobalVariables = variableManager;
             ScenarioParser = scenarioParser;
+            WorkerProcess = workerProcess;
         }
 
         public bool DisplayVerboseError { get; set; } = false;

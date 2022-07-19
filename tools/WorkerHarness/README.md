@@ -265,6 +265,13 @@ Please refer to [Rpc Action: Outgoing Message](#outgoing-message) for more info.
 - How to fix the error<br>
 Consider increase the action's __timeout__ so that the Worker Harness has enough time to construct a [StreamingMessage] from the __payload__ and sends it to the language worker.
 
+## Worker_Not_Exit_Error
+- Cause <br>
+This error occurs inside a "terminate" action. The Worker Harness will wait for a grace period in seconds for the worker process to shut down. If the Harness does not see that the worker process has exited, the Harness will show this error.
+
+- How to fix the error <br>
+Check the "gracePeriodInSeconds" property in your scenario file. You may want to increase it if your worker takes longer to shut down. Moreover, check if your worker implements graceful shutdown.
+
 [harness proto]: https://github.com/Azure/azure-functions-host/blob/features/harness/tools/WorkerHarness/src/WorkerHarness.Core/Protos/FunctionRpc.proto
 
 [host proto]: https://github.com/Azure/azure-functions-host/blob/features/harness/src/WebJobs.Script.Grpc/azure-functions-language-worker-protobuf/src/proto/FunctionRpc.proto

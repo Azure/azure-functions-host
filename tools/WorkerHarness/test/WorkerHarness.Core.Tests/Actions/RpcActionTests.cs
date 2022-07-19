@@ -12,6 +12,7 @@ using WorkerHarness.Core.Parsing;
 using WorkerHarness.Core.StreamingMessageService;
 using WorkerHarness.Core.Validators;
 using WorkerHarness.Core.Variables;
+using WorkerHarness.Core.WorkerProcess;
 
 namespace WorkerHarness.Core.Tests.Actions
 {
@@ -31,7 +32,8 @@ namespace WorkerHarness.Core.Tests.Actions
 
             var mockIVariableObservable = new Mock<IVariableObservable>();
             var mockIScenarioParser = new Mock<IScenarioParser>();
-            ExecutionContext context = new(mockIVariableObservable.Object, mockIScenarioParser.Object);
+            ExecutionContext context = new(mockIVariableObservable.Object, 
+                mockIScenarioParser.Object, new Mock<IWorkerProcess>().Object);
 
             StreamingMessage message;
             var mockIStreamingMessageProvider = new Mock<IStreamingMessageProvider>();
@@ -85,7 +87,8 @@ namespace WorkerHarness.Core.Tests.Actions
 
             var mockIVariableObservable = new Mock<IVariableObservable>();
             var mockIScenarioParser = new Mock<IScenarioParser>();
-            ExecutionContext context = new(mockIVariableObservable.Object, mockIScenarioParser.Object);
+            ExecutionContext context = new(mockIVariableObservable.Object, 
+                mockIScenarioParser.Object, new Mock<IWorkerProcess>().Object);
 
             StreamingMessage message;
             var mockIStreamingMessageProvider = new Mock<IStreamingMessageProvider>();
@@ -145,7 +148,8 @@ namespace WorkerHarness.Core.Tests.Actions
 
             var mockIVariableObservable = new Mock<IVariableObservable>();
             var mockIScenarioParser = new Mock<IScenarioParser>();
-            ExecutionContext context = new(mockIVariableObservable.Object, mockIScenarioParser.Object);
+            ExecutionContext context = new(mockIVariableObservable.Object, 
+                mockIScenarioParser.Object, new Mock<IWorkerProcess>().Object);
 
             StreamingMessage message;
             var mockIStreamingMessageProvider = new Mock<IStreamingMessageProvider>();
@@ -208,7 +212,8 @@ namespace WorkerHarness.Core.Tests.Actions
 
             var mockIVariableObservable = new Mock<IVariableObservable>();
             var mockIScenarioParser = new Mock<IScenarioParser>();
-            ExecutionContext context = new(mockIVariableObservable.Object, mockIScenarioParser.Object);
+            ExecutionContext context = new(mockIVariableObservable.Object, 
+                mockIScenarioParser.Object, new Mock<IWorkerProcess>().Object);
 
             StreamingMessage message;
             var mockIStreamingMessageProvider = new Mock<IStreamingMessageProvider>();

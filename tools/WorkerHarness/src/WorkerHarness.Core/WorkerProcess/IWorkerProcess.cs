@@ -8,7 +8,9 @@ namespace WorkerHarness.Core.WorkerProcess
     /// </summary>
     public interface IWorkerProcess
     {
+        bool HasExited { get; }
         bool Start();
-        void Kill();
+        void WaitForProcessExit(int miliseconds);
+        void Dispose();
     }
 }

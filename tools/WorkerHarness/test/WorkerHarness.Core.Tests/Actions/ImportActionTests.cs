@@ -1,12 +1,12 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-
 using Microsoft.Extensions.Logging;
 using Moq;
 using WorkerHarness.Core.Actions;
 using WorkerHarness.Core.Parsing;
 using WorkerHarness.Core.Variables;
+using WorkerHarness.Core.WorkerProcess;
 
 namespace WorkerHarness.Core.Tests.Actions
 {
@@ -35,7 +35,8 @@ namespace WorkerHarness.Core.Tests.Actions
 
             ExecutionContext executionContext = new(
                 new Mock<IVariableObservable>().Object,
-                mockIScenarioParser.Object
+                mockIScenarioParser.Object,
+                new Mock<IWorkerProcess>().Object
             );
 
             var stubLogger = new LoggerFactory().CreateLogger<ImportAction>(); 
@@ -71,7 +72,8 @@ namespace WorkerHarness.Core.Tests.Actions
 
             ExecutionContext executionContext = new(
                 new Mock<IVariableObservable>().Object,
-                mockIScenarioParser.Object
+                mockIScenarioParser.Object,
+                new Mock<IWorkerProcess>().Object
             );
 
             var stubLogger = new LoggerFactory().CreateLogger<ImportAction>();

@@ -6,6 +6,7 @@ using Moq;
 using WorkerHarness.Core.Actions;
 using WorkerHarness.Core.Parsing;
 using WorkerHarness.Core.Variables;
+using WorkerHarness.Core.WorkerProcess;
 
 namespace WorkerHarness.Core.Tests.Actions
 {
@@ -56,7 +57,8 @@ namespace WorkerHarness.Core.Tests.Actions
 
             DelayAction action = new(miliseconds, logger);
 
-            ExecutionContext context = new(new VariableManager(), new Mock<IScenarioParser>().Object);
+            ExecutionContext context = new(new VariableManager(), 
+                new Mock<IScenarioParser>().Object, new Mock<IWorkerProcess>().Object);
 
             // Act
             ActionResult result = await action.ExecuteAsync(context);

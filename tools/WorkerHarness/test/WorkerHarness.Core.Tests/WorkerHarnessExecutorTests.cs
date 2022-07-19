@@ -23,7 +23,7 @@ namespace WorkerHarness.Core.Tests
             // Arrange
             var mockIWorkerProcess = new Mock<IWorkerProcess>();
             mockIWorkerProcess.Setup(x => x.Start()).Returns(true);
-            mockIWorkerProcess.Setup(x => x.Kill());
+            mockIWorkerProcess.Setup(x => x.Dispose());
 
             var mockIWorkerProcessBuilder = new Mock<IWorkerProcessBuilder>();
             mockIWorkerProcessBuilder
@@ -78,7 +78,7 @@ namespace WorkerHarness.Core.Tests
             // Arrange
             var mockIWorkerProcess = new Mock<IWorkerProcess>();
             mockIWorkerProcess.Setup(x => x.Start()).Returns(true);
-            mockIWorkerProcess.Setup(x => x.Kill());
+            mockIWorkerProcess.Setup(x => x.Dispose());
 
             var mockIWorkerProcessBuilder = new Mock<IWorkerProcessBuilder>();
             mockIWorkerProcessBuilder
@@ -131,7 +131,7 @@ namespace WorkerHarness.Core.Tests
             // Arrange
             var mockIWorkerProcess = new Mock<IWorkerProcess>();
             mockIWorkerProcess.Setup(x => x.Start()).Returns(true);
-            mockIWorkerProcess.Setup(x => x.Kill());
+            mockIWorkerProcess.Setup(x => x.Dispose());
 
             var mockIWorkerProcessBuilder = new Mock<IWorkerProcessBuilder>();
             mockIWorkerProcessBuilder

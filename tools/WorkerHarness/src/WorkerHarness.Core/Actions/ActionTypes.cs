@@ -8,5 +8,6 @@ namespace WorkerHarness.Core.Actions
         internal static string Delay = "delay";
         internal static string Rpc = "rpc";
         internal static string Import = "import";
+        internal static string Terminate = "terminate";
     }
 }

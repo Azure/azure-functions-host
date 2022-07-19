@@ -39,7 +39,7 @@ namespace WorkerHarness.Core
                 _harnessOptions.LanguageExecutable!, _harnessOptions.WorkerExecutable!,
                 _harnessOptions.WorkerDirectory!);
 
-            ExecutionContext executionContext = new(_globalVariables, _scenarioParser)
+            ExecutionContext executionContext = new(_globalVariables, _scenarioParser, myProcess)
             {
                 DisplayVerboseError = _harnessOptions.DisplayVerboseError
             };
@@ -68,7 +68,7 @@ namespace WorkerHarness.Core
             }
             finally
             {
-                myProcess.Kill();
+                myProcess.Dispose();
             }
         }
     }
