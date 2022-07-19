@@ -484,34 +484,59 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     _workerChannelLogger.LogDebug($"Function {context.FunctionMetadata.Name} failed to load");
                     context.ResultSource.TrySetException(_functionLoadErrors[context.FunctionMetadata.GetFunctionId()]);
                     _executingInvocations.TryRemove(context.ExecutionContext.InvocationId.ToString(), out ScriptInvocationContext _);
+                    return;
                 }
                 else if (_metadataRequestErrors.ContainsKey(context.FunctionMetadata.GetFunctionId()))
                 {
                     _workerChannelLogger.LogDebug($"Worker failed to load metadata for {context.FunctionMetadata.Name}");
                     context.ResultSource.TrySetException(_metadataRequestErrors[context.FunctionMetadata.GetFunctionId()]);
                     _executingInvocations.TryRemove(context.ExecutionContext.InvocationId.ToString(), out ScriptInvocationContext _);
+                    return;
                 }
-                else
-                {
-                    if (context.CancellationToken.IsCancellationRequested)
-                    {
-                        context.ResultSource.SetCanceled();
-                        return;
-                    }
-                    var invocationRequest = await context.ToRpcInvocationRequest(_workerChannelLogger, _workerCapabilities, _isSharedMemoryDataTransferEnabled, _sharedMemoryManager);
-                    AddAdditionalTraceContext(invocationRequest.TraceContext.Attributes, context);
-                    _executingInvocations.TryAdd(invocationRequest.InvocationId, context);
 
-                    SendStreamingMessage(new StreamingMessage
-                    {
-                        InvocationRequest = invocationRequest
-                    });
+                if (context.CancellationToken.IsCancellationRequested)
+                {
+                    _workerChannelLogger.LogDebug($"Cancellation has been requested");
+                    context.ResultSource.SetCanceled();
+                    return;
                 }
+
+                var invocationRequest = await context.ToRpcInvocationRequest(_workerChannelLogger, _workerCapabilities, _isSharedMemoryDataTransferEnabled, _sharedMemoryManager);
+                AddAdditionalTraceContext(invocationRequest.TraceContext.Attributes, context);
+                _executingInvocations.TryAdd(invocationRequest.InvocationId, context);
+
+                context.CancellationToken.Register(() => SendInvocationCancel(invocationRequest.InvocationId));
+
+                SendStreamingMessage(new StreamingMessage
+                {
+                    InvocationRequest = invocationRequest
+                });
             }
             catch (Exception invokeEx)
             {
                 context.ResultSource.TrySetException(invokeEx);
             }
+        }
+
+        internal void SendInvocationCancel(string invocationId)
+        {
+            bool capabilityEnabled = !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.HandlesInvocationCancelMessage));
+            if (!capabilityEnabled)
+            {
+                return;
+            }
+
+            _workerChannelLogger.LogDebug($"Sending invocation cancel request for InvocationId {invocationId}");
+
+            var invocationCancel = new InvocationCancel
+            {
+                InvocationId = invocationId
+            };
+
+            SendStreamingMessage(new StreamingMessage
+            {
+                InvocationCancel = invocationCancel
+            });
         }
 
         // gets metadata from worker

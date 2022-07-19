@@ -66,6 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string SystemReturnParameterBindingName = "$return";
         public const string SystemReturnParameterName = "_return";
         public const string SystemLoggerParameterName = "_logger";
+        public const string SystemCancellationTokenParameterName = "_cancellationToken";
 
         public const string DebugSentinelFileName = "debug_sentinel";
         public const string DiagnosticSentinelFileName = "diagnostic_sentinel";

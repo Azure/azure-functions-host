@@ -320,6 +320,105 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
+        public async Task SendInvocationRequest_SignalCancellation_SendsInvocationCancelRequest()
+        {
+            var cancellationWaitTimeMs = 5000;
+            var invocationId = Guid.NewGuid();
+            var expectedCancellationLog = $"Sending invocation cancel request for InvocationId {invocationId.ToString()}";
+
+            IDictionary<string, string> capabilities = new Dictionary<string, string>()
+            {
+                { RpcWorkerConstants.HandlesInvocationCancelMessage, "1" }
+            };
+
+            var cts = new CancellationTokenSource();
+            cts.CancelAfter(cancellationWaitTimeMs);
+
+            var initTask = _workerChannel.StartWorkerProcessAsync(CancellationToken.None);
+            _testFunctionRpcService.PublishStartStreamEvent(_workerId);
+            _testFunctionRpcService.PublishWorkerInitResponseEvent(capabilities);
+            await initTask;
+
+            ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(invocationId, null, cts.Token);
+            await _workerChannel.SendInvocationRequest(scriptInvocationContext);
+
+            await Task.Delay(cancellationWaitTimeMs);
+
+            var traces = _logger.GetLogMessages();
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, expectedCancellationLog)));
+        }
+
+        [Fact]
+        public async Task SendInvocationRequest_CancellationAlreadyRequested_ResultSourceCancelled()
+        {
+            var cancellationWaitTimeMs = 5000;
+            var invocationId = Guid.NewGuid();
+            var expectedLog = "Cancellation has been requested";
+
+            IDictionary<string, string> capabilities = new Dictionary<string, string>()
+            {
+                { RpcWorkerConstants.HandlesInvocationCancelMessage, "1" }
+            };
+
+            var cts = new CancellationTokenSource();
+            cts.CancelAfter(cancellationWaitTimeMs);
+
+            var initTask = _workerChannel.StartWorkerProcessAsync(CancellationToken.None);
+            _testFunctionRpcService.PublishStartStreamEvent(_workerId);
+            _testFunctionRpcService.PublishWorkerInitResponseEvent(capabilities);
+            await initTask;
+
+            await Task.Delay(cancellationWaitTimeMs);
+
+            ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(invocationId, null, cts.Token);
+            await _workerChannel.SendInvocationRequest(scriptInvocationContext);
+
+            var traces = _logger.GetLogMessages();
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, expectedLog)));
+            // Assert.True(scriptInvocationContext.ResultSource.Task, StatusResult.C
+        }
+
+        [Fact]
+        public async Task SendInvocationCancelRequest__WithWorkerCapability_PublishesOutboundEvent()
+        {
+            var invocationId = Guid.NewGuid();
+            var expectedCancellationLog = $"Sending invocation cancel request for InvocationId {invocationId.ToString()}";
+
+            IDictionary<string, string> capabilities = new Dictionary<string, string>()
+            {
+                { RpcWorkerConstants.HandlesInvocationCancelMessage, "1" }
+            };
+
+            var initTask = _workerChannel.StartWorkerProcessAsync(CancellationToken.None);
+            _testFunctionRpcService.PublishStartStreamEvent(_workerId);
+            _testFunctionRpcService.PublishWorkerInitResponseEvent(capabilities);
+            await initTask;
+
+            ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(invocationId, null);
+            _workerChannel.SendInvocationCancel(invocationId.ToString());
+
+            var traces = _logger.GetLogMessages();
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, expectedCancellationLog)));
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, _expectedLogMsg)));
+            // The outbound log should happen twice: once for worker init request and once for the invocation cancel request
+            Assert.Equal(traces.Where(m => m.FormattedMessage.Equals(_expectedLogMsg)).Count(), 2);
+        }
+
+        [Fact]
+        public void SendInvocationCancelRequest_WithoutWorkerCapability_NoAction()
+        {
+            var invocationId = Guid.NewGuid();
+            var expectedCancellationLog = $"Sending invocation cancel request for InvocationId {invocationId.ToString()}";
+
+            ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(invocationId, null);
+            _workerChannel.SendInvocationCancel(invocationId.ToString());
+
+            var traces = _logger.GetLogMessages();
+            Assert.False(traces.Any(m => string.Equals(m.FormattedMessage, expectedCancellationLog)));
+            Assert.Equal(traces.Where(m => m.FormattedMessage.Equals(_expectedLogMsg)).Count(), 0);
+        }
+
+        [Fact]
         public async Task Drain_Verify()
         {
             var resultSource = new TaskCompletionSource<ScriptInvocationResult>();
@@ -829,7 +928,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             };
         }
 
-        private ScriptInvocationContext GetTestScriptInvocationContext(Guid invocationId, TaskCompletionSource<ScriptInvocationResult> resultSource)
+        private ScriptInvocationContext GetTestScriptInvocationContext(Guid invocationId, TaskCompletionSource<ScriptInvocationResult> resultSource, CancellationToken? token = null)
         {
             return new ScriptInvocationContext()
             {
@@ -843,7 +942,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 },
                 BindingData = new Dictionary<string, object>(),
                 Inputs = new List<(string name, DataType type, object val)>(),
-                ResultSource = resultSource
+                ResultSource = resultSource,
+                CancellationToken = token == null ? CancellationToken.None : (CancellationToken)token
             };
         }
 
