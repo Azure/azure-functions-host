@@ -496,7 +496,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
                 if (context.CancellationToken.IsCancellationRequested)
                 {
-                    _workerChannelLogger.LogDebug($"Cancellation has been requested");
+                    _workerChannelLogger.LogDebug("Cancellation has been requested, cancelling invocation request");
                     context.ResultSource.SetCanceled();
                     return;
                 }
