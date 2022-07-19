@@ -78,6 +78,7 @@ namespace WorkerHarness
                 .AddSingleton<IActionProvider, RpcActionProvider>()
                 .AddSingleton<IActionProvider, DelayActionProvider>()
                 .AddSingleton<IActionProvider, ImportActionProvider>()
+                .AddSingleton<IActionProvider, TerminateActionProvider>()
                 .AddSingleton<IWorkerHarnessExecutor, WorkerHarnessExecutor>()
                 .AddSingleton<GrpcServiceChannel>(s =>
                 {
