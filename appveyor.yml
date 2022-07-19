@@ -23,8 +23,6 @@ install:
     Add-Type -AssemblyName System.IO.Compression.FileSystem
 
     [System.IO.Compression.ZipFile]::ExtractToDirectory("c:\tools\php\php.zip", "c:\tools\php")
-
-    Install-Product node 6.11.2 x86
 build_script:
 - cmd: msbuild "WebJobs.Script.proj" /target:EnableSkipStrongNames;PackageScriptHost;PackageWebHost;TestBuild /verbosity:minimal /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll" /property:Buildnumber=%APPVEYOR_BUILD_NUMBER%;Configuration=Release
 test_script:
