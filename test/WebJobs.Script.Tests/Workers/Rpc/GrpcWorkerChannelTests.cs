@@ -351,6 +351,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public async Task SendInvocationRequest_CancellationAlreadyRequested_ResultSourceCancelled()
         {
+            var delayTimeMs = 3000;
             var cancellationWaitTimeMs = 2000;
             var invocationId = Guid.NewGuid();
             var expectedCancellationLog = "Cancellation has been requested";
@@ -368,7 +369,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _testFunctionRpcService.PublishWorkerInitResponseEvent(capabilities);
             await initTask;
 
-            await Task.Delay(cancellationWaitTimeMs);
+            await Task.Delay(delayTimeMs);
 
             var resultSource = new TaskCompletionSource<ScriptInvocationResult>();
             var scriptInvocationContext = GetTestScriptInvocationContext(invocationId, resultSource, cts.Token);
