@@ -322,7 +322,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public async Task SendInvocationRequest_SignalCancellation_SendsInvocationCancelRequest()
         {
-            var cancellationWaitTimeMs = 5000;
+            var cancellationWaitTimeMs = 2000;
             var invocationId = Guid.NewGuid();
             var expectedCancellationLog = $"Sending invocation cancel request for InvocationId {invocationId.ToString()}";
 
@@ -339,7 +339,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _testFunctionRpcService.PublishWorkerInitResponseEvent(capabilities);
             await initTask;
 
-            ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(invocationId, null, cts.Token);
+            var scriptInvocationContext = GetTestScriptInvocationContext(invocationId, null, cts.Token);
             await _workerChannel.SendInvocationRequest(scriptInvocationContext);
 
             await Task.Delay(cancellationWaitTimeMs);
@@ -351,9 +351,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public async Task SendInvocationRequest_CancellationAlreadyRequested_ResultSourceCancelled()
         {
-            var cancellationWaitTimeMs = 5000;
+            var cancellationWaitTimeMs = 2000;
             var invocationId = Guid.NewGuid();
-            var expectedLog = "Cancellation has been requested";
+            var expectedCancellationLog = "Cancellation has been requested";
 
             IDictionary<string, string> capabilities = new Dictionary<string, string>()
             {
@@ -370,12 +370,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             await Task.Delay(cancellationWaitTimeMs);
 
-            ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(invocationId, null, cts.Token);
+            var resultSource = new TaskCompletionSource<ScriptInvocationResult>();
+            var scriptInvocationContext = GetTestScriptInvocationContext(invocationId, resultSource, cts.Token);
             await _workerChannel.SendInvocationRequest(scriptInvocationContext);
 
             var traces = _logger.GetLogMessages();
-            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, expectedLog)));
-            // Assert.True(scriptInvocationContext.ResultSource.Task, StatusResult.C
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, expectedCancellationLog)));
+            Assert.Equal(TaskStatus.Canceled, resultSource.Task.Status);
         }
 
         [Fact]
@@ -394,7 +395,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _testFunctionRpcService.PublishWorkerInitResponseEvent(capabilities);
             await initTask;
 
-            ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(invocationId, null);
+            var scriptInvocationContext = GetTestScriptInvocationContext(invocationId, null);
             _workerChannel.SendInvocationCancel(invocationId.ToString());
 
             var traces = _logger.GetLogMessages();
@@ -410,7 +411,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var invocationId = Guid.NewGuid();
             var expectedCancellationLog = $"Sending invocation cancel request for InvocationId {invocationId.ToString()}";
 
-            ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(invocationId, null);
+            var scriptInvocationContext = GetTestScriptInvocationContext(invocationId, null);
             _workerChannel.SendInvocationCancel(invocationId.ToString());
 
             var traces = _logger.GetLogMessages();
