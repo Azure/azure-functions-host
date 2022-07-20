@@ -26,7 +26,12 @@ namespace WorkerHarness
     {
         public static async Task Main(string[] args)
         {
-            ServiceProvider serviceProvider = SetupDependencyInjection(args);
+            if (!TryGetHarnessSetting(out string harnessSettingsPath))
+            {
+                return;
+            }
+
+            ServiceProvider serviceProvider = SetupDependencyInjection(harnessSettingsPath);
 
             // validate user input
             IOptions<HarnessOptions> harnessOptions = serviceProvider.GetRequiredService<IOptions<HarnessOptions>>()!;
@@ -60,10 +65,10 @@ namespace WorkerHarness
             return;
         }
 
-        private static ServiceProvider SetupDependencyInjection(string[] args)
+        private static ServiceProvider SetupDependencyInjection(string harnessSettingsPath)
         {
             IConfigurationBuilder configurationBuilder = new ConfigurationBuilder()
-                .AddJsonFile("harness.settings.json");
+                .AddJsonFile(harnessSettingsPath);
             IConfiguration config = configurationBuilder.Build();
 
             ServiceProvider serviceProvider = new ServiceCollection()
@@ -98,6 +103,21 @@ namespace WorkerHarness
                 .BuildServiceProvider();
 
             return serviceProvider;
+        }
+
+        private static bool TryGetHarnessSetting(out string harnessSettingPath)
+        {
+            string MissingHarnessSettingJsonFile = "Missing the required harness.settings.json file in the current directory.";
+
+            harnessSettingPath = Path.Combine(Directory.GetCurrentDirectory(), "harness.settings.json");
+
+            if (!File.Exists(harnessSettingPath))
+            {
+                System.Console.WriteLine(MissingHarnessSettingJsonFile);
+                return false;
+            }
+
+            return true;
         }
     }
 }
