@@ -322,7 +322,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public async Task SendInvocationRequest_SignalCancellation_SendsInvocationCancelRequest()
         {
-            var cancellationWaitTimeMs = 2000;
+            var cancellationWaitTimeMs = 5000;
             var invocationId = Guid.NewGuid();
             var expectedCancellationLog = $"Sending invocation cancel request for InvocationId {invocationId.ToString()}";
 
