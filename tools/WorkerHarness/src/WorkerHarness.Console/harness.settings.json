@@ -1,5 +1,5 @@
 {
-  "scenarioFile": "C:\\Dev\\sample scenarios\\QueueTriggerScenario.json",
+  "scenarioFile": "C:\\Dev\\sample scenarios\\ComposingScenario.json",
   "languageExecutable": "C:\\Program Files\\dotnet\\dotnet.exe",
   "workerExecutable": "C:\\temp\\FunctionApp1\\FunctionApp1\\bin\\Debug\\net6.0\\FunctionApp1.dll",
   "workerDirectory": "C:\\temp\\FunctionApp1\\FunctionApp1\\bin\\Debug\\net6.0",

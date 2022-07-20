@@ -5,6 +5,9 @@
     <TargetFramework>net6.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+	<PackAsTool>true</PackAsTool>
+	<ToolCommandName>func-harness</ToolCommandName>
+	<PackageOutputPath>./nupkg</PackageOutputPath>
   </PropertyGroup>
 
   <ItemGroup>
@@ -18,8 +21,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="nupkg\" />
+  </ItemGroup>
+	
+  <ItemGroup>
 	<Content Include=".\harness.settings.json">
 		<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+		<Pack>false</Pack>
 	</Content>
   </ItemGroup>
 
