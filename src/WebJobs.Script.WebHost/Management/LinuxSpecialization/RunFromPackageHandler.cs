@@ -131,14 +131,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
         private CodePackageType GetPackageType(string filePath, RunFromPackageContext pkgContext)
         {
             // cloud build always builds squashfs
-            if (pkgContext.IsScmRunFromPackage())
+            if (pkgContext.IsScmRunFromPackage() || pkgContext.IsRunFromLocalPackage())
             {
                 return CodePackageType.Squashfs;
-            }
-
-            if (pkgContext.IsRunFromLocalPackage())
-            {
-                return CodePackageType.Zip;
             }
 
             var uri = new Uri(pkgContext.Url);
