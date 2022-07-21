@@ -3,6 +3,7 @@
 
 using System;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.Host
 {
@@ -27,6 +28,8 @@ namespace Microsoft.Azure.WebJobs.Script.Host
                 IsSelfHost = true
             };
 
+            JsonConvert.DefaultSettings = () => new JsonSerializerSettings { MaxDepth = 128 };
+            
             var scriptHostManager = new ScriptHostManager(config);
             scriptHostManager.RunAndBlock();
         }

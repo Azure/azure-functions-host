@@ -35,5 +35,4 @@ artifacts:
   - path: bin\Packages\*.nupkg
     name: NuGet
 hosts:
-  api.nuget.org: 93.184.221.200
-  dist.nuget.org: 93.184.221.200
+  api.nuget.org: 72.21.81.200
