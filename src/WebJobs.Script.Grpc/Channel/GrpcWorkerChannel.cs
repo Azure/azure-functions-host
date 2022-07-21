@@ -542,7 +542,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 return;
             }
 
-            _workerChannelLogger.LogDebug("Sending invocation cancel request for InvocationId: ", invocationId);
+            _workerChannelLogger.LogDebug($"Sending invocation cancel request for InvocationId {invocationId}");
 
             var invocationCancel = new InvocationCancel
             {

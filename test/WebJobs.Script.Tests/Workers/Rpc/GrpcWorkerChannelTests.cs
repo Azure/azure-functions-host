@@ -55,7 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         private readonly IFunctionDataCache _functionDataCache;
         private readonly IOptions<WorkerConcurrencyOptions> _workerConcurrencyOptions;
         private GrpcWorkerChannel _workerChannel;
-        private GrpcWorkerChannel _workerChannelwithMockEventManager;
+        private GrpcWorkerChannel _workerChannelWithMockEventManager;
 
         public GrpcWorkerChannelTests()
         {
@@ -110,7 +110,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _workerConcurrencyOptions);
 
             _eventManagerMock.Setup(proxy => proxy.Publish(It.IsAny<OutboundGrpcEvent>())).Verifiable();
-            _workerChannelwithMockEventManager = new GrpcWorkerChannel(
+            _workerChannelWithMockEventManager = new GrpcWorkerChannel(
                _workerId,
                _eventManagerMock.Object,
                _testWorkerConfig,
@@ -351,10 +351,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public async Task SendInvocationRequest_CancellationAlreadyRequested_ResultSourceCancelled()
         {
-            var delayTimeMs = 3000;
-            var cancellationWaitTimeMs = 2000;
+            var cancellationWaitTimeMs = 3000;
             var invocationId = Guid.NewGuid();
-            var expectedCancellationLog = "Cancellation has been requested";
+            var expectedCancellationLog = "Cancellation has been requested, cancelling invocation request";
 
             IDictionary<string, string> capabilities = new Dictionary<string, string>()
             {
@@ -369,7 +368,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _testFunctionRpcService.PublishWorkerInitResponseEvent(capabilities);
             await initTask;
 
-            await Task.Delay(delayTimeMs);
+            await Task.Delay(cancellationWaitTimeMs);
 
             var resultSource = new TaskCompletionSource<ScriptInvocationResult>();
             var scriptInvocationContext = GetTestScriptInvocationContext(invocationId, resultSource, cts.Token);
@@ -927,7 +926,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public async Task SendInvocationRequest_ValidateTraceContext()
         {
             ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(Guid.NewGuid(), null);
-            await _workerChannelwithMockEventManager.SendInvocationRequest(scriptInvocationContext);
+            await _workerChannelWithMockEventManager.SendInvocationRequest(scriptInvocationContext);
             if (_testEnvironment.IsApplicationInsightsAgentEnabled())
             {
                 _eventManagerMock.Verify(proxy => proxy.Publish(It.Is<OutboundGrpcEvent>(
@@ -954,7 +953,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             activity.AddBaggage(ScriptConstants.LiveLogsSessionAIKey, sessionId);
             activity.Start();
             ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(Guid.NewGuid(), null);
-            await _workerChannelwithMockEventManager.SendInvocationRequest(scriptInvocationContext);
+            await _workerChannelWithMockEventManager.SendInvocationRequest(scriptInvocationContext);
             activity.Stop();
             _eventManagerMock.Verify(p => p.Publish(It.Is<OutboundGrpcEvent>(grpcEvent => ValidateInvocationRequest(grpcEvent, sessionId))));
         }
