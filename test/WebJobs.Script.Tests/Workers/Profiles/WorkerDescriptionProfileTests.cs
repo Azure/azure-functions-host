@@ -3,13 +3,12 @@
 
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using Microsoft.Azure.WebJobs.Script.Tests;
-using Microsoft.Azure.WebJobs.Script.Tests.Workers.Profiles;
 using Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Xunit;
 
-namespace Microsoft.Azure.WebJobs.Script.Workers.Profiles
+namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Profiles
 {
     public class WorkerDescriptionProfileTests
     {
@@ -43,12 +42,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Profiles
 
         [Theory]
         [MemberData(nameof(WorkerDescriptionProfileData))]
-        public void WorkerDescriptionProfile_ApplyProfile(string name, List<IWorkerProfileCondition> coditions, RpcWorkerDescription workerDescription)
+        public void WorkerDescriptionProfile_ApplyProfile(string name, List<IWorkerProfileCondition> conditions, RpcWorkerDescription workerDescription)
         {
             _testEnvironment.SetEnvironmentVariable("APPLICATIONINSIGHTS_ENABLE_AGENT", "true");
             var defaultDescription = RpcWorkerConfigTestUtilities.GetTestDefaultWorkerDescription("java", new string[] { "-DefaultArgs" });
 
-            var workerDescriptionProfile = new WorkerDescriptionProfile(name, coditions, workerDescription);
+            var workerDescriptionProfile = new WorkerDescriptionProfile(name, conditions, workerDescription);
             defaultDescription = workerDescriptionProfile.ApplyProfile(defaultDescription);
 
             Assert.Equal(defaultDescription.Arguments[0], argumentList[0]);
@@ -69,12 +68,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Profiles
 
         [Theory]
         [MemberData(nameof(WorkerDescriptionProfileInvalidData))]
-        public void WorkerDescriptionProfile_DoNotApplyProfile(string name, List<IWorkerProfileCondition> coditions, RpcWorkerDescription workerDescription)
+        public void WorkerDescriptionProfile_DoNotApplyProfile(string name, List<IWorkerProfileCondition> conditions, RpcWorkerDescription workerDescription)
         {
             _testEnvironment.SetEnvironmentVariable("APPLICATIONINSIGHTS_ENABLE_AGENT", "false");
             var defaultDescription = RpcWorkerConfigTestUtilities.GetTestDefaultWorkerDescription("java", new string[] { "-DefaultArgs" });
 
-            var workerDescriptionProfile = new WorkerDescriptionProfile(name, coditions, workerDescription);
+            var workerDescriptionProfile = new WorkerDescriptionProfile(name, conditions, workerDescription);
             defaultDescription = workerDescriptionProfile.ApplyProfile(defaultDescription);
 
             Assert.NotNull(defaultDescription.Arguments[0]);

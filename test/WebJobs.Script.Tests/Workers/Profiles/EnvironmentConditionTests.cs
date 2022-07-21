@@ -3,10 +3,11 @@
 
 using System;
 using System.ComponentModel.DataAnnotations;
-using Microsoft.Azure.WebJobs.Script.Tests;
+using Microsoft.Azure.WebJobs.Script.Workers;
+using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Xunit;
 
-namespace Microsoft.Azure.WebJobs.Script.Workers.Profiles
+namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Profiles
 {
     public class EnvironmentConditionTests
     {
