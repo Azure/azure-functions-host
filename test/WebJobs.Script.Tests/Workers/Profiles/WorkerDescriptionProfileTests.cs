@@ -20,9 +20,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Profiles
 
         [Theory]
         [MemberData(nameof(WorkerDescriptionProfileExceptionData))]
-        public void WorkerDescriptionProfile_ThrowsValidationException(string name, List<IWorkerProfileCondition> coditions, RpcWorkerDescription workerDescription)
+        public void WorkerDescriptionProfile_ThrowsValidationException(string name, List<IWorkerProfileCondition> conditions, RpcWorkerDescription workerDescription)
         {
-            Assert.Throws<ValidationException>(() => new WorkerDescriptionProfile(name, coditions, workerDescription));
+            Assert.Throws<ValidationException>(() => new WorkerDescriptionProfile(name, conditions, workerDescription));
         }
 
         public static IEnumerable<object[]> WorkerDescriptionProfileExceptionData()
