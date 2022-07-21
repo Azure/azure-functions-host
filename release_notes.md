@@ -7,5 +7,5 @@
 - Surface exception type and details from out-of-proc user code to App Insights ([#8314](https://github.com/Azure/azure-functions-host/pull/8314))
 - Host support for out-of-proc cancellation tokens ([#2153](https://github.com/Azure/azure-functions-host/issues/2152))
 
-**Release sprint:** Sprint 126
-[ [bugs](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+124%22+label%3Abug+is%3Aclosed) | [features](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+124%22+label%3Afeature+is%3Aclosed) ]
+**Release sprint:** Sprint 125
+[ [bugs](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+125%22+label%3Abug+is%3Aclosed) | [features](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+125%22+label%3Afeature+is%3Aclosed) ]
