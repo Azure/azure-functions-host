@@ -322,7 +322,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public async Task SendInvocationRequest_SignalCancellation_SendsInvocationCancelRequest()
         {
-            var cancellationWaitTimeMs = 5000;
+            var cancellationWaitTimeMs = 3000;
             var invocationId = Guid.NewGuid();
             var expectedCancellationLog = $"Sending invocation cancel request for InvocationId {invocationId.ToString()}";
 
@@ -333,16 +333,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             var cts = new CancellationTokenSource();
             cts.CancelAfter(cancellationWaitTimeMs);
+            var token = cts.Token;
 
             var initTask = _workerChannel.StartWorkerProcessAsync(CancellationToken.None);
             _testFunctionRpcService.PublishStartStreamEvent(_workerId);
             _testFunctionRpcService.PublishWorkerInitResponseEvent(capabilities);
             await initTask;
-
-            var scriptInvocationContext = GetTestScriptInvocationContext(invocationId, null, cts.Token);
+            var scriptInvocationContext = GetTestScriptInvocationContext(invocationId, null, token);
             await _workerChannel.SendInvocationRequest(scriptInvocationContext);
 
-            await Task.Delay(cancellationWaitTimeMs);
+            while (!token.IsCancellationRequested)
+            {
+                await Task.Delay(1000);
+                if (token.IsCancellationRequested)
+                {
+                    break;
+                }
+            }
 
             var traces = _logger.GetLogMessages();
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, expectedCancellationLog)));
@@ -362,16 +369,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             var cts = new CancellationTokenSource();
             cts.CancelAfter(cancellationWaitTimeMs);
+            var token = cts.Token;
 
             var initTask = _workerChannel.StartWorkerProcessAsync(CancellationToken.None);
             _testFunctionRpcService.PublishStartStreamEvent(_workerId);
             _testFunctionRpcService.PublishWorkerInitResponseEvent(capabilities);
             await initTask;
 
-            await Task.Delay(cancellationWaitTimeMs);
+            while (!token.IsCancellationRequested)
+            {
+                await Task.Delay(1000);
+                if (token.IsCancellationRequested)
+                {
+                    break;
+                }
+            }
 
             var resultSource = new TaskCompletionSource<ScriptInvocationResult>();
-            var scriptInvocationContext = GetTestScriptInvocationContext(invocationId, resultSource, cts.Token);
+            var scriptInvocationContext = GetTestScriptInvocationContext(invocationId, resultSource, token);
             await _workerChannel.SendInvocationRequest(scriptInvocationContext);
 
             var traces = _logger.GetLogMessages();
