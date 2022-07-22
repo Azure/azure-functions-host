@@ -121,7 +121,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             {
                 var workerConfig = _workerConfigs.Where(c => c.Description.Language.Equals(_workerRuntime, StringComparison.InvariantCultureIgnoreCase))
                                                 .FirstOrDefault();
-                return workerConfig?.CountOptions?.ProcessCount;
+                if (workerConfig != null)
+                {
+                    return workerConfig.CountOptions.ProcessCount;
+                }
             }
 
             return (await GetAllWorkerChannelsAsync()).Count();
