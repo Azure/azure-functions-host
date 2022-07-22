@@ -181,7 +181,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             string executionStage, long executionTimeSpan, bool success)
         {
             _generator.LogFunctionExecutionEvent(executionId, siteName, concurrency, functionName, invocationId, executionStage, executionTimeSpan, success);
-            string evt = _events.Single();
+            string evt = _loggers[LinuxEventGenerator.FunctionsExecutionEventsCategory].Events.Single();
 
             Regex regex = new Regex(LinuxAppServiceEventGenerator.ExecutionEventRegex);
             var match = regex.Match(evt);
