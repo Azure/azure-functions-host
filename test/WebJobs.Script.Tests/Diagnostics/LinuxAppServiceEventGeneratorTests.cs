@@ -37,7 +37,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
                 [LinuxEventGenerator.FunctionsMetricsCategory] =
                     new MockLinuxAppServiceFileLogger(LinuxEventGenerator.FunctionsMetricsCategory, string.Empty, null),
                 [LinuxEventGenerator.FunctionsDetailsCategory] =
-                    new MockLinuxAppServiceFileLogger(LinuxEventGenerator.FunctionsDetailsCategory, string.Empty, null)
+                    new MockLinuxAppServiceFileLogger(LinuxEventGenerator.FunctionsDetailsCategory, string.Empty, null),
+                [LinuxEventGenerator.FunctionsExecutionEventsCategory] =
+                    new MockLinuxAppServiceFileLogger(LinuxEventGenerator.FunctionsExecutionEventsCategory, string.Empty, null)
             };
 
             var loggerFactoryMock = new Mock<LinuxAppServiceFileLoggerFactory>(MockBehavior.Strict);
