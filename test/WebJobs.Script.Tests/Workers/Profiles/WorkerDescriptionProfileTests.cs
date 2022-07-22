@@ -52,6 +52,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Profiles
 
             Assert.Equal(defaultDescription.Arguments[0], argumentList[0]);
             Assert.NotEqual(defaultDescription.Arguments[0], "-DefaultArgs");
+
+            // Reset environment
+            _testEnvironment = new TestEnvironment();
         }
 
         public static IEnumerable<object[]> WorkerDescriptionProfileData()
@@ -78,6 +81,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Profiles
 
             Assert.NotNull(defaultDescription.Arguments[0]);
             Assert.Equal(defaultDescription.Arguments[0], "-DefaultArgs");
+
+            // Reset environment
+            _testEnvironment = new TestEnvironment();
         }
 
         public static IEnumerable<object[]> WorkerDescriptionProfileInvalidData()
@@ -114,6 +120,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Profiles
             workerDescriptionProfile = new WorkerDescriptionProfile("profileName", conditions, description);
 
             Assert.False(workerDescriptionProfile.EvaluateConditions());
+
+            // Reset environment
+            _testEnvironment = new TestEnvironment();
         }
     }
 }
