@@ -447,7 +447,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 if (string.IsNullOrEmpty(extensionVersion))
                 {
                     throw new HostInitializationException($"Invalid site extension configuration. " +
-                        $"Please update the App Setting '{EnvironmentSettingNames.FunctionsExtensionVersion}' to a valid value (e.g. ~2). " +
+                        $"Please update the App Setting '{EnvironmentSettingNames.FunctionsExtensionVersion}' to a valid value (e.g. ~4). " +
                         $"The value cannot be missing or an empty string.");
                 }
                 else if (string.Equals(extensionVersion, "latest", StringComparison.OrdinalIgnoreCase))
