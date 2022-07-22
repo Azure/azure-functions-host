@@ -519,8 +519,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var traces = _logger.GetLogMessages();
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Setting up FunctionInvocationBuffer for function:js1 with functionId:TestFunctionId1")));
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Setting up FunctionInvocationBuffer for function:js2 with functionId:TestFunctionId2")));
-            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Worker failed to functionId TestFunctionId1.")));
-            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Worker failed to functionId TestFunctionId2.")));
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Worker failed to function id TestFunctionId1.")));
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Worker failed to function id TestFunctionId2.")));
         }
 
         [Fact]
