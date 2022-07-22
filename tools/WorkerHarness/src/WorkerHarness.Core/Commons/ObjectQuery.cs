@@ -21,6 +21,10 @@ namespace WorkerHarness.Core.Commons
         internal static readonly string MissingPropertyMessage = "The property \"{0}\" is not present in the queried object. ";
         internal static readonly string InvalidPropertyMessage = "The property {0} is invalid because {1}. ";
 
+        // Exception type
+        internal static readonly string QuerySyntaxError = "QuerySyntaxError";
+        internal static readonly string MissingPropertyError = "MissingPropertyError";
+
         /// <summary>
         /// Query an object using the given query
         /// </summary>
@@ -32,7 +36,11 @@ namespace WorkerHarness.Core.Commons
         {
             if (!IsQueryValid(query))
             {
-                throw new ArgumentException(string.Format(InvalidQueryMessage, query));
+                ArgumentException ex = new(string.Format(InvalidQueryMessage, query));
+                ex.Data.Add("Type", QuerySyntaxError);
+                ex.Data.Add("Data", query);
+
+                throw ex;
             }
 
             JsonNode jsonNode;
@@ -56,7 +64,7 @@ namespace WorkerHarness.Core.Commons
             // recursively index into jsonNode until all properties have been traversed
             try
             {
-                JsonNode rawQueryResult = RecursiveIndex(jsonNode, properties, query);
+                JsonNode rawQueryResult = RecursiveIndex(jsonNode, properties);
 
                 object queryResult;
                 if (rawQueryResult is JsonValue)
@@ -72,12 +80,14 @@ namespace WorkerHarness.Core.Commons
             }
             catch (ArgumentException ex)
             {
-                throw new ArgumentException(ex.Message);
+                ex.Data.Add("Data", query);
+
+                throw ex;
             }
 
         }
 
-        private static JsonNode RecursiveIndex(JsonNode jsonNode, string[] properties, string query, int index=0)
+        private static JsonNode RecursiveIndex(JsonNode jsonNode, string[] properties, int index=0)
         {
             if (index == properties.Length)
             {
@@ -90,7 +100,11 @@ namespace WorkerHarness.Core.Commons
 
             if (propertyValue == null)
             {
-                throw new ArgumentException(string.Format(MissingPropertyMessage, property));
+                string message = string.Format(MissingPropertyMessage, property);
+                ArgumentException ex = new(message);
+                ex.Data.Add("Type", MissingPropertyError);
+
+                throw ex;
             }
 
             Match indexPatternMatch = Regex.Match(property, ArrayIndexPattern);
@@ -100,12 +114,14 @@ namespace WorkerHarness.Core.Commons
             {
                 if (hasIndexPattern)
                 {
-                    string explanation = string.Format(InvalidPropertyMessage, property, $"{propertyName} is a Json object");
-                    string exceptionMessage = string.Format(InvalidQueryMessage, query) + explanation;
-                    throw new ArgumentException(exceptionMessage);
+                    string message = string.Format(InvalidPropertyMessage, property, $"{propertyName} is a Json object");
+                    ArgumentException ex = new(message);
+                    ex.Data.Add("Type", QuerySyntaxError);
+
+                    throw ex;
                 }
 
-                return RecursiveIndex(propertyValue, properties, query, index + 1);
+                return RecursiveIndex(propertyValue, properties, index + 1);
             }
             else if (propertyValue is JsonArray)
             {
@@ -116,25 +132,29 @@ namespace WorkerHarness.Core.Commons
                         int length = indexPatternMatch.Length;
                         int arrayIndex = int.Parse(indexPatternMatch.Value.Substring(1, length - 2));
 
-                        return RecursiveIndex(propertyValue[arrayIndex]!, properties, query, index + 1);
+                        return RecursiveIndex(propertyValue[arrayIndex]!, properties, index + 1);
                     }
                     catch (FormatException)
                     {
-                        string explanation = string.Format(InvalidPropertyMessage, property, $"{property} is a Json array but the index is not an integer.");
-                        string exceptionMessage = string.Format(InvalidQueryMessage, query) + explanation;
-                        throw new ArgumentException(exceptionMessage);
+                        string message = string.Format(InvalidPropertyMessage, property, $"{property} is a Json array but the index is not an integer.");
+                        ArgumentException ex = new(message);
+                        ex.Data.Add("Type", QuerySyntaxError);
+
+                        throw ex;
                     }
                 }
                 else
                 {
-                    string explanation = string.Format(InvalidPropertyMessage, property, $"{property} is a Json array but missing an integer index");
-                    string exceptionMessage = string.Format(InvalidQueryMessage, query) + explanation;
-                    throw new ArgumentException(exceptionMessage);
+                    string message = string.Format(InvalidPropertyMessage, property, $"{property} is a Json array but missing an integer index");
+                    ArgumentException ex = new(message);
+                    ex.Data.Add("Type", QuerySyntaxError);
+
+                    throw ex;
                 }
             }
             else
             {
-                return RecursiveIndex(propertyValue, properties, query, index + 1);
+                return RecursiveIndex(propertyValue, properties, index + 1);
             }
         }
 
