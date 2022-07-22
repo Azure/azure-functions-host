@@ -77,6 +77,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             return new Tuple<string, string, CookieOptions>(cookie.Name, cookie.Value, cookieOptions);
         }
 
+        internal static void UpdateWorkerMetadata(this WorkerInitResponse initResponse, RpcWorkerConfig workerConfig)
+        {
+            initResponse.WorkerMetadata.RuntimeName = string.IsNullOrEmpty(initResponse.WorkerMetadata.RuntimeName)
+                                            ? workerConfig.Description.Language : initResponse.WorkerMetadata.RuntimeName;
+            initResponse.WorkerMetadata.RuntimeVersion = string.IsNullOrEmpty(initResponse.WorkerMetadata.RuntimeVersion)
+                                            ? workerConfig.Description.DefaultRuntimeVersion : initResponse.WorkerMetadata.RuntimeVersion;
+        }
+
         private static SameSiteMode RpcSameSiteEnumConverter(RpcHttpCookie.Types.SameSite sameSite)
         {
             switch (sameSite)
