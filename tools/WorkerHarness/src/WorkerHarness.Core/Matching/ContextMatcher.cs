@@ -8,7 +8,7 @@ namespace WorkerHarness.Core.Matching
 {
     public class ContextMatcher : IContextMatcher
     {
-        internal static string MatchingException = "Matching exception occurs: {0}";
+        internal static string MatchingExceptionMessage = "An error occurs in the message matching";
 
         public bool Match(MatchingContext match, object source)
         {
@@ -32,7 +32,10 @@ namespace WorkerHarness.Core.Matching
             }
             catch (ArgumentException ex)
             {
-                throw new ArgumentException(string.Format(MatchingException, ex.Message));
+                string exMsg = $"{MatchingExceptionMessage}: {match.Query} == {match.Expected}. {ex.Message}";
+                ArgumentException newEx = new(exMsg, ex);
+
+                throw newEx;
             }
         }
 
@@ -50,9 +53,9 @@ namespace WorkerHarness.Core.Matching
 
                 return true;
             }
-            catch (ArgumentException ex)
+            catch (ArgumentException)
             {
-                throw ex;
+                return false;
             }
         }
     }

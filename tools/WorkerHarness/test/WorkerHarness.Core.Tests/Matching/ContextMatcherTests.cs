@@ -33,7 +33,7 @@ namespace WorkerHarness.Core.Tests.Matching
             // Assert
             catch (ArgumentException ex)
             {
-                StringAssert.Contains(ex.Message, "Matching exception occurs:");
+                StringAssert.Contains(ex.Message, ContextMatcher.MatchingExceptionMessage);
                 return;
             }
 
@@ -61,7 +61,7 @@ namespace WorkerHarness.Core.Tests.Matching
             // Assert
             catch (ArgumentException ex)
             {
-                StringAssert.Contains(ex.Message, "Matching exception occurs:");
+                StringAssert.Contains(ex.Message, ContextMatcher.MatchingExceptionMessage);
                 return;
             }
 
@@ -137,7 +137,7 @@ namespace WorkerHarness.Core.Tests.Matching
         }
 
         [TestMethod]
-        public void MatchAll_SingleMatchThrows_ThrowArgumentException()
+        public void MatchAll_SingleMatchThrows_ReturnFalse()
         {
             // Arrange
             MatchingContext context1 = new() { Query = "A.B.C" };
@@ -152,18 +152,10 @@ namespace WorkerHarness.Core.Tests.Matching
             ContextMatcher contextMatcher = new();
 
             // Act
-            try
-            {
-                contextMatcher.MatchAll(contexts, stubObject);
-            }
-            // Assert
-            catch (ArgumentException ex)
-            {
-                StringAssert.Contains(ex.Message, "Matching exception occurs:");
-                return;
-            }
+            bool result = contextMatcher.MatchAll(contexts, stubObject);
 
-            Assert.Fail($"The expected {typeof(ArgumentException)} exception is not thrown");
+            // Assert
+            Assert.IsFalse(result);
         }
 
         [TestMethod]
