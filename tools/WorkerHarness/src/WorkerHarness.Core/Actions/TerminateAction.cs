@@ -67,9 +67,9 @@ namespace WorkerHarness.Core.Actions
                 actionResult.Status = StatusCode.Failure;
 
                 string errorMessage = string.Format(ActionErrors.WorkerNotExitMessage, _gracePeriodInSeconds);
-                _logger.LogError("[{0}]: {1}", ActionErrorCode.Worker_Not_Exit_Error, errorMessage);
+                _logger.LogError("[{0}]: {1}", ActionErrorCode.WorkerNotExitError, errorMessage);
                 _logger.LogError("{0}", ActionErrors.WorkerNotExitAdvice);
-                _logger.LogError("For more information on the error, please visit {0}", ActionErrors.WorkerNotExitLink);
+                _logger.LogError(ActionErrors.GeneralErrorAdvice);
             }
 
             return actionResult;

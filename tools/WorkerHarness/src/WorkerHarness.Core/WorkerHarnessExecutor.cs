@@ -51,11 +51,14 @@ namespace WorkerHarness.Core
 
                 myProcess.Start();
 
-                _logger.LogInformation("Executing the scenario: {0}", scenario.ScenarioName);
-
                 foreach (IAction action in scenario.Actions)
                 {
                     ActionResult actionResult = await action.ExecuteAsync(executionContext);
+
+                    if (!_harnessOptions.ContinueUponFailure && actionResult.Status == StatusCode.Failure)
+                    {
+                        break;
+                    }
                 }
 
                 return true;

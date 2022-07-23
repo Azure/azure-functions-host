@@ -22,5 +22,7 @@ namespace WorkerHarness.Core
         }
 
         public bool DisplayVerboseError { get; set; } = false;
+
+        public bool ContinueUponFailure { get; set; } = false;
     }
 }

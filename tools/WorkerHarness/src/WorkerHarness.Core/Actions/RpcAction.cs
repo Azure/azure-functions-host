@@ -59,7 +59,7 @@ namespace WorkerHarness.Core.Actions
 
         public async Task<ActionResult> ExecuteAsync(ExecutionContext executionContext)
         {
-            _logger.LogInformation("Executing the action: {0}", Name);
+            _logger.LogInformation($"Executing the action: {Name} ...");
 
             CancellationTokenSource tokenSource = new();
 
@@ -92,6 +92,15 @@ namespace WorkerHarness.Core.Actions
 
             ActionResult actionResult = new() { Status = executionStatus };
 
+            if (actionResult.Status == StatusCode.Success)
+            {
+                _logger.LogInformation($"Success!");
+            }
+            else
+            {
+                _logger.LogError($"Failure!");
+            }
+
             tokenSource.Dispose();
 
             return actionResult;
@@ -120,14 +129,9 @@ namespace WorkerHarness.Core.Actions
                         RpcActionMessage rpcActionMessage = matchedRpcMesseages.First();
                         unprocessedRpcMessages.Remove(rpcActionMessage);
 
-                        bool validated = ValidateMessage(streamingMessage, rpcActionMessage);
+                        bool validated = ValidateMessage(streamingMessage, rpcActionMessage, executionContext);
 
                         allValidated = allValidated && validated;
-
-                        if (!validated)
-                        {
-                            LogValidationError(executionContext, streamingMessage, rpcActionMessage);
-                        }
 
                         SetVariables(rpcActionMessage, streamingMessage, executionContext);
                     }
@@ -146,21 +150,6 @@ namespace WorkerHarness.Core.Actions
             }
 
             return allValidated;
-        }
-
-        private bool ValidateMessage(StreamingMessage streamingMessage, RpcActionMessage rpcActionMessage)
-        {
-            bool validated = true;
-            foreach (var validationContext in rpcActionMessage.Validators)
-            {
-                string validatorType = validationContext.Type.ToLower();
-                IValidator validator = _validatorFactory.Create(validatorType);
-                bool validationResult = validator.Validate(validationContext, streamingMessage);
-
-                validated = validated && validationResult;
-            }
-
-            return validated;
         }
 
         private async Task<bool> SendToGrpcAsync(IEnumerable<RpcActionMessage> outgoingRpcMessages,
@@ -184,6 +173,51 @@ namespace WorkerHarness.Core.Actions
             }
 
             return allSent;
+        }
+
+        private bool ValidateMessage(StreamingMessage streamingMessage, RpcActionMessage rpcActionMessage, ExecutionContext executionContext)
+        {
+            bool validated = true;
+            foreach (var validationContext in rpcActionMessage.Validators)
+            {
+                bool validationResult = ValidateMessageAgainstContext(streamingMessage, validationContext);
+
+                validated = validated && validationResult;
+            }
+
+            if (!validated)
+            {
+                LogAdviceForValidationError(executionContext, streamingMessage);
+            }
+
+            return validated;
+        }
+
+        private bool ValidateMessageAgainstContext(StreamingMessage streamingMessage, ValidationContext validationContext)
+        {
+            bool validationResult;
+
+            try
+            {
+                string validatorType = validationContext.Type.ToLower();
+                IValidator validator = _validatorFactory.Create(validatorType);
+
+                validationResult = validator.Validate(validationContext, streamingMessage);
+
+                if (!validationResult)
+                {
+                    string errorMessage = $"The message failed the validation: {validationContext.Query} == {validationContext.Expected}. The query result is different from the expected value";
+                    _logger.LogError($"{ActionErrorCode.ValidationError}: {errorMessage}");
+                }
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogError($"{ActionErrorCode.ValidationError}: {ex.Message}");
+
+                validationResult = false;
+            }
+
+            return validationResult;
         }
 
         private async Task<bool> SendToGrpcAsync(RpcActionMessage rpcActionMessage, ExecutionContext executionContext, CancellationToken cancellationToken)
@@ -216,34 +250,51 @@ namespace WorkerHarness.Core.Actions
             return succeeded;
         }
 
-        private void LogMessageNotReceivedError(ExecutionContext executionContext, RpcActionMessage rpcActionMessage)
+        private void LogAdviceForValidationError(ExecutionContext executionContext, StreamingMessage streamingMessage)
         {
-            string errorMessage;
             if (executionContext.DisplayVerboseError)
             {
-                errorMessage = string.Format(RpcErrorConstants.MessageNotReceivedVerbose, rpcActionMessage.MessageType, rpcActionMessage.Serialize());
+                _logger.LogError($"The failed StreamingMessage is \n {streamingMessage.Serialize()}");
             }
             else
             {
-                errorMessage = string.Format(RpcErrorConstants.MessageNotReceived, rpcActionMessage.MessageType);
+                _logger.LogError($"Consider setting the \"DisplayVerboseError\" to \"true\" in the harness.settings.json file to see the failed message");
             }
-            _logger.LogError("[{0}]: {1}", RpcErrorCode.Message_Not_Received_Error, errorMessage);
-            _logger.LogError(string.Format(RpcErrorConstants.GeneralErrorAdvice, RpcErrorConstants.MessageNotReceivedLink));
+
+            _logger.LogError(ActionErrors.GeneralErrorAdvice);
         }
 
-        private void LogValidationError(ExecutionContext executionContext, StreamingMessage streamingMessage, RpcActionMessage rpcActionMessage)
+        private void LogMessageNotReceivedError(ExecutionContext executionContext, RpcActionMessage rpcActionMessage)
         {
-            string errorMessage;
-            if (executionContext.DisplayVerboseError)
+            _logger.LogError($"{ActionErrorCode.MessageNotReceivedError}: The worker did not emit a StreamingMessage of type \"{rpcActionMessage.MessageType}\" that meets the matching criteria");
+
+            if (executionContext.DisplayVerboseError && rpcActionMessage.MatchingCriteria.Any())
             {
-                errorMessage = string.Format(RpcErrorConstants.ValidationFailedVerbose, rpcActionMessage.MessageType, streamingMessage.Serialize());
+                _logger.LogError($"The matching criteria are: {rpcActionMessage.MatchingCriteria.Serialize()}");
             }
             else
             {
-                errorMessage = string.Format(RpcErrorConstants.ValidationFailed, rpcActionMessage.MessageType);
+                _logger.LogError($"Consider setting the \"DisplayVerboseError\" to \"true\" in the harness.settings.json file to see the matching criteria");
             }
-            _logger.LogError("[{0}]: {1}", RpcErrorCode.Validation_Error, errorMessage);
-            _logger.LogError(string.Format(RpcErrorConstants.GeneralErrorAdvice, RpcErrorConstants.ValidationFailedLink));
+
+            _logger.LogError(ActionErrors.GeneralErrorAdvice);
+        }
+
+        private void LogMessageNotSentError(ExecutionContext executionContext, RpcActionMessage rpcActionMessage)
+        {
+            _logger.LogError($"{ActionErrorCode.MessageNotSentError}: The harness cannot create a StreamingMessage of type \"{rpcActionMessage.MessageType}\" with the given payload");
+            _logger.LogError($"If the payload contains variables, it's possible that the variables did not exist when the harness attempted to create the message");
+
+            if (executionContext.DisplayVerboseError && rpcActionMessage.Payload != null)
+            {
+                _logger.LogError($"The payload is: {rpcActionMessage.Payload.Serialize()}");
+            }
+            else
+            {
+                _logger.LogError($"Consider setting the \"DisplayVerboseError\" to \"true\" in the harness.settings.json file to see the payload");
+            }
+
+            _logger.LogError(ActionErrors.GeneralErrorAdvice);
         }
 
         private void RegisterExpressions(IEnumerable<RpcActionMessage> incomingRpcMessages, ExecutionContext executionContext)
@@ -270,22 +321,6 @@ namespace WorkerHarness.Core.Actions
                 executionContext.GlobalVariables.Subscribe(validator);
             }
         }
-        
-        private void LogMessageNotSentError(ExecutionContext executionContext, RpcActionMessage rpcActionMessage)
-        {
-            string errorMessage;
-            if (executionContext.DisplayVerboseError)
-            {
-                errorMessage = string.Format(RpcErrorConstants.MessageNotSentVerbose, rpcActionMessage.MessageType, Timeout);
-            }
-            else
-            {
-                errorMessage = string.Format(RpcErrorConstants.MessageNotSent, rpcActionMessage.MessageType);
-            }
-            _logger.LogError("[{0}]: {1}", RpcErrorCode.Message_Not_Sent_Error, errorMessage);
-            _logger.LogError(string.Format(RpcErrorConstants.GeneralErrorAdvice, RpcErrorConstants.MessageNotSentLink));
-        }
-
         
         private void SetVariables(RpcActionMessage rpcActionMessage, StreamingMessage streamingMessage, ExecutionContext executionContext)
         {

@@ -33,5 +33,10 @@ namespace WorkerHarness.Core.Options
         /// </summary>
         public bool DisplayVerboseError { get; set; } = false;
 
+        /// <summary>
+        /// Optional flag to display verbose error messages to users
+        /// </summary>
+        public bool ContinueUponFailure { get; set; } = false;
+
     }
 }

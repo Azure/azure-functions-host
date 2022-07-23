@@ -17,13 +17,9 @@ namespace WorkerHarness.Core.Commons
         private static readonly string ArrayIndexPattern = @"\[[0-9]+\]$";
 
         // Exception messages
-        internal static readonly string InvalidQueryMessage = "The \"{0}\" query is invalid. ";
-        internal static readonly string MissingPropertyMessage = "The property \"{0}\" is not present in the queried object. ";
-        internal static readonly string InvalidPropertyMessage = "The property {0} is invalid because {1}. ";
-
-        // Exception type
-        internal static readonly string QuerySyntaxError = "QuerySyntaxError";
-        internal static readonly string MissingPropertyError = "MissingPropertyError";
+        internal static readonly string InvalidQueryMessage = "The \"{0}\" query is invalid";
+        internal static readonly string MissingPropertyMessage = "The property \"{0}\" is missing";
+        internal static readonly string InvalidPropertyMessage = "The property \"{0}\" is invalid because {1}";
 
         /// <summary>
         /// Query an object using the given query
@@ -37,8 +33,6 @@ namespace WorkerHarness.Core.Commons
             if (!IsQueryValid(query))
             {
                 ArgumentException ex = new(string.Format(InvalidQueryMessage, query));
-                ex.Data.Add("Type", QuerySyntaxError);
-                ex.Data.Add("Data", query);
 
                 throw ex;
             }
@@ -80,8 +74,6 @@ namespace WorkerHarness.Core.Commons
             }
             catch (ArgumentException ex)
             {
-                ex.Data.Add("Data", query);
-
                 throw ex;
             }
 
@@ -102,7 +94,6 @@ namespace WorkerHarness.Core.Commons
             {
                 string message = string.Format(MissingPropertyMessage, property);
                 ArgumentException ex = new(message);
-                ex.Data.Add("Type", MissingPropertyError);
 
                 throw ex;
             }
@@ -116,7 +107,6 @@ namespace WorkerHarness.Core.Commons
                 {
                     string message = string.Format(InvalidPropertyMessage, property, $"{propertyName} is a Json object");
                     ArgumentException ex = new(message);
-                    ex.Data.Add("Type", QuerySyntaxError);
 
                     throw ex;
                 }
@@ -138,7 +128,6 @@ namespace WorkerHarness.Core.Commons
                     {
                         string message = string.Format(InvalidPropertyMessage, property, $"{property} is a Json array but the index is not an integer.");
                         ArgumentException ex = new(message);
-                        ex.Data.Add("Type", QuerySyntaxError);
 
                         throw ex;
                     }
@@ -147,7 +136,6 @@ namespace WorkerHarness.Core.Commons
                 {
                     string message = string.Format(InvalidPropertyMessage, property, $"{property} is a Json array but missing an integer index");
                     ArgumentException ex = new(message);
-                    ex.Data.Add("Type", QuerySyntaxError);
 
                     throw ex;
                 }
