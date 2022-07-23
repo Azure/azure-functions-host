@@ -206,7 +206,7 @@ namespace WorkerHarness.Core.Actions
 
                 if (!validationResult)
                 {
-                    string errorMessage = $"The message failed the validation: {validationContext.Query} == {validationContext.Expected}. The query result is different from the expected value";
+                    string errorMessage = string.Format(ActionErrors.ValidationErrorMessage, validationContext.Query, validationContext.Expected);
                     _logger.LogError($"{ActionErrorCode.ValidationError}: {errorMessage}");
                 }
             }
@@ -258,7 +258,7 @@ namespace WorkerHarness.Core.Actions
             }
             else
             {
-                _logger.LogError($"Consider setting the \"DisplayVerboseError\" to \"true\" in the harness.settings.json file to see the failed message");
+                _logger.LogError(ActionErrors.DisplayVerboseErrorAdvice);
             }
 
             _logger.LogError(ActionErrors.GeneralErrorAdvice);
@@ -266,7 +266,7 @@ namespace WorkerHarness.Core.Actions
 
         private void LogMessageNotReceivedError(ExecutionContext executionContext, RpcActionMessage rpcActionMessage)
         {
-            _logger.LogError($"{ActionErrorCode.MessageNotReceivedError}: The worker did not emit a StreamingMessage of type \"{rpcActionMessage.MessageType}\" that meets the matching criteria");
+            _logger.LogError($"{ActionErrorCode.MessageNotReceivedError}: {string.Format(ActionErrors.MessageNotReceiveErrorMessage, rpcActionMessage.MessageType)}");
 
             if (executionContext.DisplayVerboseError && rpcActionMessage.MatchingCriteria.Any())
             {
@@ -274,7 +274,7 @@ namespace WorkerHarness.Core.Actions
             }
             else
             {
-                _logger.LogError($"Consider setting the \"DisplayVerboseError\" to \"true\" in the harness.settings.json file to see the matching criteria");
+                _logger.LogError(ActionErrors.DisplayVerboseErrorAdvice);
             }
 
             _logger.LogError(ActionErrors.GeneralErrorAdvice);
@@ -282,8 +282,8 @@ namespace WorkerHarness.Core.Actions
 
         private void LogMessageNotSentError(ExecutionContext executionContext, RpcActionMessage rpcActionMessage)
         {
-            _logger.LogError($"{ActionErrorCode.MessageNotSentError}: The harness cannot create a StreamingMessage of type \"{rpcActionMessage.MessageType}\" with the given payload");
-            _logger.LogError($"If the payload contains variables, it's possible that the variables did not exist when the harness attempted to create the message");
+            _logger.LogError($"{ActionErrorCode.MessageNotSentError}: {string.Format(ActionErrors.MessageNotSentErrorMessage, rpcActionMessage.MessageType)}");
+            _logger.LogError(ActionErrors.MessageNotSentErrorAdvice);
 
             if (executionContext.DisplayVerboseError && rpcActionMessage.Payload != null)
             {
@@ -291,7 +291,7 @@ namespace WorkerHarness.Core.Actions
             }
             else
             {
-                _logger.LogError($"Consider setting the \"DisplayVerboseError\" to \"true\" in the harness.settings.json file to see the payload");
+                _logger.LogError(ActionErrors.DisplayVerboseErrorAdvice);
             }
 
             _logger.LogError(ActionErrors.GeneralErrorAdvice);
