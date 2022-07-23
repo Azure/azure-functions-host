@@ -30,8 +30,6 @@ namespace WorkerHarness.Core.Actions
             IScenarioParser scenarioParser = execuationContext.ScenarioParser;
             Scenario scenario = scenarioParser.Parse(_scenarioFile);
 
-            _logger.LogInformation("Executing the scenario: {0}", scenario.ScenarioName);
-
             foreach (IAction action in scenario.Actions)
             {
                 ActionResult actionResult = await action.ExecuteAsync(execuationContext);
@@ -39,6 +37,11 @@ namespace WorkerHarness.Core.Actions
                 if (actionResult.Status is StatusCode.Failure)
                 {
                     importActionResult.Status = StatusCode.Failure;
+
+                    if (!execuationContext.ContinueUponFailure)
+                    {
+                        break;
+                    }
                 }
             }
 

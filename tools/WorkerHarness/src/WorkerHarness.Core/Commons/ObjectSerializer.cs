@@ -5,11 +5,11 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace WorkerHarness.Core.Actions
+namespace WorkerHarness.Core.Commons
 {
-    internal static class RpcActionMessageSerializer
+    internal static class ObjectSerializer
     {
-        internal static string Serialize(this RpcActionMessage rpcActionMessage)
+        internal static string Serialize(this object obj)
         {
             JsonSerializerOptions serializerOptions = new()
             {
@@ -19,7 +19,7 @@ namespace WorkerHarness.Core.Actions
             };
             serializerOptions.Converters.Add(new JsonStringEnumConverter());
 
-            return JsonSerializer.Serialize(rpcActionMessage, serializerOptions);
+            return JsonSerializer.Serialize(obj, serializerOptions);
         }
     }
 }

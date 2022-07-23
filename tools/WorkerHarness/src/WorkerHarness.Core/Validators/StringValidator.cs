@@ -8,7 +8,8 @@ namespace WorkerHarness.Core.Validators
 {
     internal class StringValidator : IValidator
     {
-        internal static string ValidationExceptionMessage = $"{typeof(StringValidator)} exception occurs: ";
+        // exception message
+        internal static string ValidationExceptionMessage = "An error occurs in the validation";
 
         public bool Validate(ValidationContext context, object message)
         {
@@ -30,10 +31,14 @@ namespace WorkerHarness.Core.Validators
                 context.TryEvaluate(out string? expected);
 
                 return string.Equals(queryResult, expected, StringComparison.Ordinal);
+
             }
             catch (ArgumentException ex)
             {
-                throw new ArgumentException(string.Concat(ValidationExceptionMessage, ex.Message));
+                string exMsg = $"{ValidationExceptionMessage}: {context.Query} == {context.Expected}. {ex.Message}";
+                ArgumentException newEx = new(exMsg, ex);
+
+                throw newEx;
             }
 
         }

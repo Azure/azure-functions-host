@@ -29,31 +29,5 @@ namespace WorkerHarness.Core.Actions
         public JsonNode? Payload { get; set; }
 
         public IDictionary<string, string>? SetVariables { get; set; }
-
-        /// <summary>
-        /// Check whether all variable dependencies in Match and Validators have been resolved
-        /// </summary>
-        /// <returns></returns>
-        internal bool DependenciesResolved()
-        {
-            foreach (var match in MatchingCriteria)
-            {
-                if (!match.Resolved)
-                {
-                    return false;
-                }
-            }
-
-            foreach (var validator in Validators)
-            {
-                if (!validator.Resolved)
-                {
-                    return false;
-                }
-            }
-
-            return true;
-        }
-
     }
 }

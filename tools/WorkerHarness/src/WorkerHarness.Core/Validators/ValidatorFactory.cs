@@ -8,14 +8,14 @@ namespace WorkerHarness.Core.Validators
     /// </summary>
     public class ValidatorFactory : IValidatorFactory
     {
-        internal static string InvalidValidatorTypeMessage = "The {0} validator does not exist.";
+        internal static string InvalidValidatorTypeMessage = "An error occurs when creating a validator. The {0} validator does not exist. ";
 
         /// <summary>
         /// Crete IValidator object based on the validator type.
         /// </summary>
         /// <param name="validatorType"></param>
         /// <returns></returns>
-        /// <exception cref="NotImplementedException">throw when the given validator type is not supported</exception>
+        /// <exception cref="ArgumentException">throw when the given validator type is not supported</exception>
         public IValidator Create(string validatorType)
         {
             IValidator validator;
@@ -30,7 +30,11 @@ namespace WorkerHarness.Core.Validators
             }
             else
             {
-                throw new ArgumentException(string.Format(InvalidValidatorTypeMessage, validatorType));
+                ArgumentException ex = new(string.Format(InvalidValidatorTypeMessage, validatorType));
+                ex.Data["Type"] = ValidatorExceptionType.UserInputError;
+                ex.Data["Data"] = validatorType;
+
+                throw ex;
             }
 
             return validator;

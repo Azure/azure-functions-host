@@ -9,7 +9,7 @@ namespace WorkerHarness.Core.Validators
 {
     internal class RegexValidator : IValidator
     {
-        internal static string ValidationExceptionMessage = $"{typeof(RegexValidator)} exception occurs: ";
+        internal static string ValidationExceptionMessage = "An error occurs in the validation";
 
         public bool Validate(ValidationContext context, object message)
         {
@@ -31,10 +31,14 @@ namespace WorkerHarness.Core.Validators
                 context.TryEvaluate(out string? pattern);
 
                 return pattern != null && Regex.IsMatch(queryResult, pattern);
+
             }
             catch (ArgumentException ex)
             {
-                throw new ArgumentException(string.Concat(ValidationExceptionMessage, ex.Message));
+                string exMsg = $"{ValidationExceptionMessage}: {context.Query} == {context.Expected}. {ex.Message}";
+                ArgumentException newEx = new(exMsg, ex);
+
+                throw newEx;
             }
         }
     }
