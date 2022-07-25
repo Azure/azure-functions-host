@@ -3,8 +3,6 @@
 - My change description (#PR)
 -->
 
-- Update Python Worker Version to [4.3.0](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.3.0)
-- Surface exception type and details from out-of-proc user code to App Insights ([#8314](https://github.com/Azure/azure-functions-host/pull/8314))
 - Host support for out-of-proc cancellation tokens ([#2153](https://github.com/Azure/azure-functions-host/issues/2152))
 
 **Release sprint:** Sprint 125
