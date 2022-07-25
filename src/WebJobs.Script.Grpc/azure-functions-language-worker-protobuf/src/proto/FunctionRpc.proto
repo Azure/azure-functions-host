@@ -78,7 +78,13 @@ message StreamingMessage {
 
     // Worker indexing message types
     FunctionsMetadataRequest functions_metadata_request = 29;
-    FunctionMetadataResponses function_metadata_responses = 30;
+FunctionMetadataResponse function_metadata_response = 30;
+
+    // Host sends required metadata to worker to load functions
+    FunctionLoadRequestCollection function_load_request_collection = 31;
+
+    // Host gets the list of function load responses
+    FunctionLoadResponseCollection function_load_response_collection = 32;
   }
 }
 
@@ -107,6 +113,9 @@ message WorkerInitRequest {
 
   // Full path of worker.config.json location
   string worker_directory = 4;
+
+  // base directory for function app
+  string function_app_directory = 5;
 }
 
 // Worker responds with the result of initializing itself
@@ -220,7 +229,17 @@ message CloseSharedMemoryResourcesResponse {
   map<string, bool> close_map_results = 1;
 }
 
-// Host tells the worker to load a Function
+// Host tells the worker to load a list of Functions
+message FunctionLoadRequestCollection {
+  repeated FunctionLoadRequest function_load_requests = 1;
+}
+
+// Host gets the list of function load responses
+message FunctionLoadResponseCollection {
+  repeated FunctionLoadResponse function_load_responses = 1;
+}
+
+// Load request of a single Function
 message FunctionLoadRequest {
   // unique function identifier (avoid name collisions, facilitate reload case)
   string function_id = 1;
@@ -274,11 +293,16 @@ message RpcFunctionMetadata {
   // Raw binding info
   repeated string raw_bindings = 10;
 
-  // Retry Options: string representation of JObject retry options (maxRetryCount, intervals, etc.)
-  string retry_options = 11;
+  // unique function identifier (avoid name collisions, facilitate reload case)
+  string function_id = 13;
 
-  // Configuration Source: string representation of JToken configuration source property in function metadata
-  string config_source = 12;
+  // A flag indicating if managed dependency is enabled or not
+  bool managed_dependency_enabled = 14;
+
+  // Properties for function metadata
+  // They're usually specific to a worker and largely passed along to the controller API for use
+  // outside the host
+   map<string,string> Properties = 16;
 }
 
 // Host tells worker it is ready to receive metadata
@@ -288,13 +312,17 @@ message FunctionsMetadataRequest {
 }
 
 // Worker sends function metadata back to host
-message FunctionMetadataResponses {
+message FunctionMetadataResponse {
   // list of function indexing responses
-  repeated FunctionLoadRequest function_load_requests_results = 1;
+  repeated RpcFunctionMetadata function_metadata_results = 1;
 
   // status of overall metadata request
   StatusResult result = 2;
+
+  // if set to true then host will perform indexing
+  bool use_default_metadata_indexing = 3;
 }
+
 
 // Host requests worker to invoke a Function
 message InvocationRequest {

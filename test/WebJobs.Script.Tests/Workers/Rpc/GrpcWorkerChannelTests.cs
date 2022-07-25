@@ -358,6 +358,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
+        public void SendLoadRequestCollection_PublishesOutboundEvents()
+        {
+            StartStream startStream = new StartStream()
+            {
+                WorkerId = _workerId
+            };
+            StreamingMessage startStreamMessage = new StreamingMessage()
+            {
+                StartStream = startStream
+            };
+            GrpcEvent rpcEvent = new GrpcEvent(_workerId, startStreamMessage);
+            _workerChannel.SendWorkerInitRequest(rpcEvent);
+            _testFunctionRpcService.PublishWorkerInitResponseEvent(new Dictionary<string, string>() { { RpcWorkerConstants.SupportsLoadResponseCollection, "true" } });
+            _metricsLogger.ClearCollections();
+            IEnumerable<FunctionMetadata> functionMetadata = GetTestFunctionsList("node");
+            _workerChannel.SetupFunctionInvocationBuffers(functionMetadata);
+            _workerChannel.SendFunctionLoadRequests(null, TimeSpan.FromMinutes(5));
+            var traces = _logger.GetLogMessages();
+            var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, _expectedLogMsg));
+            AreExpectedMetricsGenerated();
+            Assert.True(functionLoadLogs.Count() == 2);
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, string.Format("Sending FunctionLoadRequestCollection with number of functions:'{0}'", functionMetadata.ToList().Count))));
+        }
+
+        [Fact]
         public void SendLoadRequests_PublishesOutboundEvents_OrdersDisabled()
         {
             var funcName = "ADisabledFunc";
@@ -464,7 +489,78 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
-        public void ReceivesInboundEvent_Successful_FunctionMetadataResponses()
+        public void ReceivesInboundEvent_Failed_FunctionLoadResponses()
+        {
+            IDictionary<string, string> capabilities = new Dictionary<string, string>()
+            {
+                { RpcWorkerConstants.SupportsLoadResponseCollection, "1" }
+            };
+
+            StartStream startStream = new StartStream()
+            {
+                WorkerId = _workerId
+            };
+
+            StreamingMessage startStreamMessage = new StreamingMessage()
+            {
+                StartStream = startStream
+            };
+
+            GrpcEvent rpcEvent = new GrpcEvent(_workerId, startStreamMessage);
+            _workerChannel.SendWorkerInitRequest(rpcEvent);
+            _testFunctionRpcService.PublishWorkerInitResponseEvent(capabilities);
+
+            var functionMetadatas = GetTestFunctionsList("node");
+            _workerChannel.SetupFunctionInvocationBuffers(functionMetadatas);
+            _workerChannel.SendFunctionLoadRequests(null, TimeSpan.FromMinutes(1));
+            _testFunctionRpcService.PublishFunctionLoadResponsesEvent(
+                            new List<string>() { "TestFunctionId1", "TestFunctionId2" },
+                            new StatusResult() { Status = StatusResult.Types.Status.Failure });
+            var traces = _logger.GetLogMessages();
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Setting up FunctionInvocationBuffer for function:js1 with functionId:TestFunctionId1")));
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Setting up FunctionInvocationBuffer for function:js2 with functionId:TestFunctionId2")));
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Worker failed to function id TestFunctionId1.")));
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Worker failed to function id TestFunctionId2.")));
+        }
+
+        [Fact]
+        public void ReceivesInboundEvent_FunctionLoadResponses()
+        {
+            IDictionary<string, string> capabilities = new Dictionary<string, string>()
+            {
+                { RpcWorkerConstants.SupportsLoadResponseCollection, "1" }
+            };
+
+            StartStream startStream = new StartStream()
+            {
+                WorkerId = _workerId
+            };
+
+            StreamingMessage startStreamMessage = new StreamingMessage()
+            {
+                StartStream = startStream
+            };
+
+            GrpcEvent rpcEvent = new GrpcEvent(_workerId, startStreamMessage);
+            _workerChannel.SendWorkerInitRequest(rpcEvent);
+            _testFunctionRpcService.PublishWorkerInitResponseEvent(capabilities);
+
+            var functionMetadatas = GetTestFunctionsList("node");
+            _workerChannel.SetupFunctionInvocationBuffers(functionMetadatas);
+            _workerChannel.SendFunctionLoadRequests(null, TimeSpan.FromMinutes(1));
+            _testFunctionRpcService.PublishFunctionLoadResponsesEvent(
+                            new List<string>() { "TestFunctionId1", "TestFunctionId2" },
+                            new StatusResult() { Status = StatusResult.Types.Status.Success });
+            var traces = _logger.GetLogMessages();
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Setting up FunctionInvocationBuffer for function:js1 with functionId:TestFunctionId1")));
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Setting up FunctionInvocationBuffer for function:js2 with functionId:TestFunctionId2")));
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, string.Format("Received FunctionLoadResponseCollection with number of functions: '{0}'.", functionMetadatas.ToList().Count))));
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Received FunctionLoadResponse for functionId:TestFunctionId1")));
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Received FunctionLoadResponse for functionId:TestFunctionId2")));
+        }
+
+        [Fact]
+        public void ReceivesInboundEvent_Successful_FunctionMetadataResponse()
         {
             var functionMetadata = GetTestFunctionsList("python");
             var functions = _workerChannel.GetFunctionMetadata();
@@ -475,7 +571,51 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
-        public void ReceivesInboundEvent_Failed_FunctionMetadataResponses()
+        public void ReceivesInboundEvent_Successful_FunctionMetadataResponse_UseDefaultMetadataIndexing_True()
+        {
+            var functionMetadata = GetTestFunctionsList("python");
+            var functions = _workerChannel.GetFunctionMetadata();
+            var functionId = "id123";
+            _testFunctionRpcService.PublishWorkerMetadataResponse("TestFunctionId1", functionId, functionMetadata, true, useDefaultMetadataIndexing: true);
+            var traces = _logger.GetLogMessages();
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"Received the worker function metadata response from worker {_workerChannel.Id}")));
+        }
+
+        [Fact]
+        public void ReceivesInboundEvent_Successful_FunctionMetadataResponse_UseDefaultMetadataIndexing_False()
+        {
+            var functionMetadata = GetTestFunctionsList("python");
+            var functions = _workerChannel.GetFunctionMetadata();
+            var functionId = "id123";
+            _testFunctionRpcService.PublishWorkerMetadataResponse("TestFunctionId1", functionId, functionMetadata, true, useDefaultMetadataIndexing: false);
+            var traces = _logger.GetLogMessages();
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"Received the worker function metadata response from worker {_workerChannel.Id}")));
+        }
+
+        [Fact]
+        public void ReceivesInboundEvent_Failed_UseDefaultMetadataIndexing_True_HostIndexing()
+        {
+            var functionMetadata = GetTestFunctionsList("python");
+            var functions = _workerChannel.GetFunctionMetadata();
+            var functionId = "id123";
+            _testFunctionRpcService.PublishWorkerMetadataResponse("TestFunctionId1", functionId, functionMetadata, false, useDefaultMetadataIndexing: true);
+            var traces = _logger.GetLogMessages();
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"Received the worker function metadata response from worker {_workerChannel.Id}")));
+        }
+
+        [Fact]
+        public void ReceivesInboundEvent_Failed_UseDefaultMetadataIndexing_False_WorkerIndexing()
+        {
+            var functionMetadata = GetTestFunctionsList("python");
+            var functions = _workerChannel.GetFunctionMetadata();
+            var functionId = "id123";
+            _testFunctionRpcService.PublishWorkerMetadataResponse("TestFunctionId1", functionId, functionMetadata, false, useDefaultMetadataIndexing: false);
+            var traces = _logger.GetLogMessages();
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"Worker failed to index function {functionId}")));
+        }
+
+        [Fact]
+        public void ReceivesInboundEvent_Failed_FunctionMetadataResponse()
         {
             var functionMetadata = GetTestFunctionsList("python");
             var functions = _workerChannel.GetFunctionMetadata();
@@ -483,6 +623,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _testFunctionRpcService.PublishWorkerMetadataResponse("TestFunctionId1", functionId, functionMetadata, false);
             var traces = _logger.GetLogMessages();
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"Worker failed to index function {functionId}")));
+        }
+
+        [Fact]
+        public void ReceivesInboundEvent_Failed_OverallFunctionMetadataResponse()
+        {
+            var functions = _workerChannel.GetFunctionMetadata();
+            _testFunctionRpcService.PublishWorkerMetadataResponse("TestFunctionId1", null, null, false, false, false);
+            var traces = _logger.GetLogMessages();
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"Worker failed to index functions")));
         }
 
         [Fact]

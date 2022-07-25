@@ -62,6 +62,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _eventManager.Publish(new InboundGrpcEvent(_workerId, responseMessage));
         }
 
+        public void PublishFunctionLoadResponsesEvent(List<string> functionIds, StatusResult statusResult)
+        {
+            FunctionLoadResponseCollection functionLoadResponseCollection = new FunctionLoadResponseCollection();
+
+            foreach (string functionId in functionIds)
+            {
+                FunctionLoadResponse functionLoadResponse = new FunctionLoadResponse()
+                {
+                    FunctionId = functionId,
+                    Result = statusResult
+                };
+
+                functionLoadResponseCollection.FunctionLoadResponses.Add(functionLoadResponse);
+            }
+
+            StreamingMessage responseMessage = new StreamingMessage()
+            {
+                FunctionLoadResponseCollection = functionLoadResponseCollection
+            };
+            _eventManager.Publish(new InboundGrpcEvent(_workerId, responseMessage));
+        }
+
         public void PublishFunctionEnvironmentReloadResponseEvent()
         {
             FunctionEnvironmentReloadResponse relaodEnvResponse = GetTestFunctionEnvReloadResponse();
@@ -178,7 +200,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _eventManager.Publish(new InboundGrpcEvent(_workerId, responseMessage));
         }
 
-        public void PublishWorkerMetadataResponse(string workerId, string functionId, IEnumerable<FunctionMetadata> functionMetadata, bool successful)
+        public void PublishWorkerMetadataResponse(string workerId, string functionId, IEnumerable<FunctionMetadata> functionMetadata, bool successful, bool useDefaultMetadataIndexing = false, bool overallStatus = true)
         {
             StatusResult statusResult = new StatusResult();
             if (successful)
@@ -190,28 +212,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 statusResult.Status = StatusResult.Types.Status.Failure;
             }
 
-            FunctionMetadataResponses overallResponse = new FunctionMetadataResponses();
-            foreach (FunctionMetadata response in functionMetadata)
+            FunctionMetadataResponse overallResponse = new FunctionMetadataResponse();
+            overallResponse.UseDefaultMetadataIndexing = useDefaultMetadataIndexing;
+
+            if (functionMetadata != null)
             {
-                RpcFunctionMetadata indexingResponse = new RpcFunctionMetadata()
+                foreach (FunctionMetadata response in functionMetadata)
                 {
-                    Name = response.Name,
-                    Language = response.Language,
-                    Status = statusResult
-                };
+                    RpcFunctionMetadata indexingResponse = new RpcFunctionMetadata()
+                    {
+                        Name = response.Name,
+                        Language = response.Language,
+                        Status = statusResult,
+                        FunctionId = functionId
+                    };
 
-                FunctionLoadRequest loadRequest = new FunctionLoadRequest()
-                {
-                    FunctionId = functionId,
-                    Metadata = indexingResponse,
-                };
-
-                overallResponse.FunctionLoadRequestsResults.Add(loadRequest);
+                    overallResponse.FunctionMetadataResults.Add(indexingResponse);
+                }
             }
+
+            overallResponse.Result = new StatusResult()
+            {
+                Status = overallStatus == true ? StatusResult.Types.Status.Success : StatusResult.Types.Status.Failure
+            };
 
             StreamingMessage responseMessage = new StreamingMessage()
             {
-                FunctionMetadataResponses = overallResponse
+                FunctionMetadataResponse = overallResponse
             };
             _eventManager.Publish(new InboundGrpcEvent(_workerId, responseMessage));
         }
