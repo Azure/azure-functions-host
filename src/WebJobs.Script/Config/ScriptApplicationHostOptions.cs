@@ -21,6 +21,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public string LogPath { get; set; }
 
         public string TestDataPath { get; set; }
+        
+        public List<string> FuncNames { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether the ScriptHost is running inside of a WebHost. When true,

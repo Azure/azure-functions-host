@@ -144,6 +144,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                     ScriptApplicationHostOptions options = _configurationSource.HostOptions;
                     string hostFilePath = Path.Combine(options.ScriptPath, ScriptConstants.HostMetadataFileName);
                     JObject hostConfigObject = LoadHostConfig(hostFilePath);
+                    //hostConfigObject. CHANGE HERE
                     hostConfigObject = InitializeHostConfig(hostFilePath, hostConfigObject);
                     string sanitizedJson = SanitizeHostJson(hostConfigObject);
 

@@ -18,6 +18,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
         [JsonProperty("siteName")]
         public string SiteName { get; set; }
 
+        [JsonProperty("FuncName")]
+        public  string FuncName { get; set; }
+
         [JsonProperty("environment")]
         public Dictionary<string, string> Environment { get; set; }
 
