@@ -346,6 +346,7 @@ message FunctionMetadataResponse {
   bool use_default_metadata_indexing = 3;
 }
 
+
 // Host requests worker to invoke a Function
 message InvocationRequest {
   // Unique id for each invocation
