@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -21,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public string LogPath { get; set; }
 
         public string TestDataPath { get; set; }
-        
+
         public List<string> FuncNames { get; set; }
 
         /// <summary>

@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Threading.Tasks;
+using MappingSample;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -40,7 +41,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             _logger.LogDebug($"Starting container assignment for host : {Request?.Host}. ContextLength is: {encryptedAssignmentContext.EncryptedContext?.Length}");
 
             var assignmentContext = _startupContextProvider.SetContext(encryptedAssignmentContext);
-
+            //saving FunctionName passed in from DataRole to JObject
+            string nameToSend = assignmentContext.FuncName;
+            //adding to a list, and a string, depending on how usage will be
+            //check if it doesnt already exist?
+            MappingUtils.FunctionNames.Add(nameToSend);
             // before starting the assignment we want to perform as much
             // up front validation on the context as possible
             string error = await _instanceManager.ValidateContext(assignmentContext);
