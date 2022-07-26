@@ -915,19 +915,21 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 return;
             }
 
+            int gracePeriod = WorkerConstants.WorkerTerminateGracePeriodInSeconds;
+
             var workerTerminate = new WorkerTerminate()
             {
-                GracePeriod = Duration.FromTimeSpan(TimeSpan.FromSeconds(WorkerConstants.WorkerTerminateGracePeriodInSeconds))
+                GracePeriod = Duration.FromTimeSpan(TimeSpan.FromSeconds(gracePeriod))
             };
 
-            _workerChannelLogger.LogDebug($"Sending WorkerTerminate message with grace period {WorkerConstants.WorkerTerminateGracePeriodInSeconds} seconds.");
+            _workerChannelLogger.LogDebug($"Sending WorkerTerminate message with grace period {gracePeriod} seconds.");
 
             SendStreamingMessage(new StreamingMessage
             {
                 WorkerTerminate = workerTerminate
             });
 
-            WorkerProcess.WaitForProcessExit();
+            WorkerProcess.WaitForProcessExitInMilliSeconds(gracePeriod * 1000);
         }
 
         public async Task DrainInvocationsAsync()

@@ -206,9 +206,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         internal abstract void HandleWorkerProcessRestart();
 
-        public void WaitForProcessExit()
+        public void WaitForProcessExitInMilliSeconds(int waitTime)
         {
-            Process.WaitForExit(WorkerConstants.WorkerTerminateGracePeriodInSeconds * 1000);
+            Process.WaitForExit(waitTime);
         }
 
         public void Dispose()
