@@ -67,13 +67,14 @@ namespace WorkerHarness.Core.Tests.Actions
         }
 
         [TestMethod]
-        public void Create_ActionNodeIsValid_ReturnImportAction()
+        public void Create_ActionNodeContainsAbsoluteScenarioPath_ReturnImportAction()
         {
             // Arrange
+            string scenarioPath = Path.Combine(Directory.GetCurrentDirectory(), @"ScenarioFileSamples\ValidScenario.json");
             JsonNode stubNode = new JsonObject
             {
                 ["actionType"] = "import",
-                ["scenarioFile"] = Directory.GetFiles(Directory.GetCurrentDirectory())[0]
+                ["scenarioFile"] = scenarioPath
             };
 
             var mockILoggerFactory = new Mock<ILoggerFactory>();
@@ -87,7 +88,36 @@ namespace WorkerHarness.Core.Tests.Actions
             Assert.AreEqual(ActionTypes.Import, provider.Type);
             Assert.IsTrue(action is ImportAction);
             ImportAction importAction = (ImportAction)action;
-            Assert.AreEqual(stubNode["scenarioFile"]!.GetValue<string>(), importAction.ScenarioFile);
+            Assert.AreEqual(scenarioPath, importAction.ScenarioFile);
+            Assert.AreEqual(ActionTypes.Import, importAction.Type);
+        }
+
+        [TestMethod]
+        public void Create_ActionNodeContainsRelativeScenarioPath_ReturnImportAction()
+        {
+            // Arrange
+            string scenarioPath = @"ScenarioFileSamples\ValidScenario.json";
+            JsonNode stubNode = new JsonObject
+            {
+                ["actionType"] = "import",
+                ["scenarioFile"] = scenarioPath
+            };
+
+            var mockILoggerFactory = new Mock<ILoggerFactory>();
+
+            ImportActionProvider provider = new(mockILoggerFactory.Object);
+
+            string expectedpath = Path.Combine(Directory.GetCurrentDirectory(), scenarioPath);
+
+            // Act
+            IAction action = provider.Create(stubNode);
+
+            // Assert
+            Assert.AreEqual(ActionTypes.Import, provider.Type);
+            Assert.IsTrue(action is ImportAction);
+            ImportAction importAction = (ImportAction)action;
+            Assert.IsTrue(Path.IsPathRooted(importAction.ScenarioFile));
+            Assert.AreEqual(expectedpath, importAction.ScenarioFile);
             Assert.AreEqual(ActionTypes.Import, importAction.Type);
         }
     }

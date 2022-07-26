@@ -43,6 +43,7 @@ namespace WorkerHarness.Core.Actions
             }
 
             scenarioFile = actionNode["scenarioFile"]!.GetValue<string>();
+            scenarioFile = Path.GetFullPath(scenarioFile);
 
             if (!File.Exists(scenarioFile))
             {
