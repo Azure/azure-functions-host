@@ -1,8 +1,12 @@
 Worker Harness is a tool that validates a scenario against a language worker. Language worker developers can leverage this tool to test their isolated language model end-to-end, eliminating the need to spin up a host process.
 
 # Run Worker Harness
-Worker Harness is a Console Application. Clone the [Azure/azure-functions-host](https://github.com/Azure/azure-functions-host/) repos to your local machine and open it in Terminal or Command Prompt. Then use the `cd .\tools\WorkerHarness\` command to open the *WorkerHarness* folder.
+Worker Harness is offered as a dotnet CLI tool. Go to the [Azure Functions DevOps Artifacts] and click on the top right "Download" button to download the NuGet package. Open a Terminal or Windows PowerShell application and `cd` into the directory that has the downloaded NuGet package. Then run the dotnet tool CLI command: `dotnet tool install Microsoft.Azure.Functions.Worker.Harness --global`.
+```cs
+PS C:\Users\my_name> cd "path\to\Worker\Harness\NuGet"
 
+PS path\to\Worker\Harness\NuGet> dotnet tool install Microsoft.Azure.Functions.Worker.Harness --global
+```
 ## User Inputs
 ### Requires Inputs:
 - A scenario file. This file follows **Json** format and contains a list of actions to validate against a language worker. The [Scenario](#scenario) section explains the available actions and how to put them together to create a scenario.
@@ -10,7 +14,7 @@ Worker Harness is a Console Application. Clone the [Azure/azure-functions-host](
 - A worker executable. This is the worker executable file of your Functions App.
 - A worker directory: This is the folder that contains the worker executable, functions metadata file, and libraries/assemblies of your Functions App.
 
-Put the paths to those requirements in *src\WorkerHarness.Console\harness.settings.json*. For example, a .NET developer would construct the *harness.settings.json* as followed
+Put those requirements in a `harness.settings.json` file. For example, a .NET developer would construct the `harness.settings.json` file as followed:
 
 ```
 {
@@ -25,20 +29,13 @@ Put the paths to those requirements in *src\WorkerHarness.Console\harness.settin
 - DisplayVerboseError: `true`/`false`. If true, the Worker Harness displays verbose error messages. The content of a verbose error message depends on the error type. See [Errors](#errors) for more info. The flag is set to `false` by default.
 
 ## How to Run
-Make sure you are in the *azure-functions-host\tools\WorkerHarness* directory
-* Use the `dotnet build` command
+Open the folder that contains your `harness.settings.json` in Terminal or a CLI application of your choice. Then run `func-harness`.
+```cs
+PS C:\Users\my_name> cd "path\\to\\harness\\settings\\folder"
+PS path\to\harness\settings\folder> func-harness
 ```
-dotnet build
 
-cd .\src\WorkerHarness.Console\bin\Debug\net6.0\
-
-.\WorkerHarness.Console.exe 
-```
-* Use the `dotnet run` command
-```
-dotnet run --project="src\WorkerHarness.Console"
-```
-The Worker Harness will spin up a language worker process just like a real host instance and then execute a scenario.
+The harness will spin up a language worker process just like a real host instance and then execute a scenario.
 
 # Scenario
 A scenario consists of the following:
@@ -239,7 +236,7 @@ Internally, the Worker Harness will load the scenario file and execute all actio
 
 # Errors
 
-## Message_Not_Received_Error
+## MessageNotReceivedError
 - Cause <br>
 This error occurs when the language worker never emits the message of type __messageType__ that meets the __matchingCriteria__ in an rpc action. <br>
 Please refer to [Rpc Action: Incoming Message](#incoming-message) for more info on the __matchingCriteria__ property.
@@ -249,7 +246,7 @@ Consider increase the action's __timeout__ if you expects some delay before the 
 Consider turning on the [DisplayVerboseError](#optional-flags) flag. The Worker Harness will shows the expected message that is never received from worker. <br>
 Check your language worker's logic. The error could indicate that your worker has a bug that never fires the expected message.
 
-## Validation_Error
+## ValidationError
 - Cause<br>
 This error occurs when the language worker has emitted the expected message that meets the __matchingCriteria__ but fails at least one of the __validators__. <br>
 Please refer to [Rpc Action: Incoming Message](#incoming-message) for more info on the __validators__ property.
@@ -257,7 +254,7 @@ Please refer to [Rpc Action: Incoming Message](#incoming-message) for more info 
 - How to fix the error <br>
 Consider turning on the [DisplayVerboseError](#optional-flags) flag. The Worker Harness will shows the [StreamingMessage] that meets the __matchingCriteria__ but fails the __validators__. Inspecting the content of the [StreamingMessage] can help developers discover where and how a bug occurs.
 
-## Message_Not_Sent_Error
+## MessageNotSentError
 - Cause <br>
 This error occurs when the Worker Harness fails to send an __outgoing__ message to the language worker before __timeout__ occurs. It usually happens if an __outgoing__ message's payload uses a variable that has not been initialized. <br>
 Please refer to [Rpc Action: Outgoing Message](#outgoing-message) for more info.
@@ -265,7 +262,7 @@ Please refer to [Rpc Action: Outgoing Message](#outgoing-message) for more info.
 - How to fix the error<br>
 Consider increase the action's __timeout__ so that the Worker Harness has enough time to construct a [StreamingMessage] from the __payload__ and sends it to the language worker.
 
-## Worker_Not_Exit_Error
+## WorkerNotExitError
 - Cause <br>
 This error occurs inside a "terminate" action. The Worker Harness will wait for a grace period in seconds for the worker process to shut down. If the Harness does not see that the worker process has exited, the Harness will show this error.
 
@@ -291,3 +288,5 @@ Check the "gracePeriodInSeconds" property in your scenario file. You may want to
 [Message_Not_Received_Error]: #messagenotreceivederror
 
 [Validation_Error]: #validationerror
+
+[Azure Functions DevOps Artifacts]: https://azfunc.visualstudio.com/Azure%20Functions/_artifacts/feed/AzureFunctionsTempStaging/NuGet/WorkerHarness.Console/overview/1.0.0
