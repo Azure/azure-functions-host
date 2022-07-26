@@ -10,7 +10,9 @@
 	<PackageOutputPath>./nupkg</PackageOutputPath>
 	<PackageId>Microsoft.Azure.Functions.Worker.Harness</PackageId>
 	<AssemblyName>Microsoft.Azure.Functions.Worker.Harness</AssemblyName>
-	<Version>1.0.3</Version>
+	<Description>This package installs the Worker Harness as a dotnet CLI tool, which validates a language worker implementation.</Description>
+	<PackageProjectUrl>https://github.com/Azure/azure-functions-host/tree/features/harness/tools/WorkerHarness</PackageProjectUrl>
+	<Version>1.0.1-Preview1</Version>
   </PropertyGroup>
 
   <ItemGroup>
