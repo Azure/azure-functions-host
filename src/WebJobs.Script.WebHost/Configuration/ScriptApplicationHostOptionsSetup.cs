@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using Azure.Storage.Blobs;
@@ -67,6 +68,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
 
             options.IsFileSystemReadOnly |= IsZipDeployment(out bool isScmRunFromPackage);
             options.IsScmRunFromPackage = isScmRunFromPackage;
+            //come back
+            options.FuncNames = new List<string>();
+            options.FuncNames.Add(_environment.GetEnvironmentVariable("functionName"));
         }
 
         private bool IsZipDeployment(out bool isScmRunFromPackage)

@@ -35,17 +35,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         [HttpPost]
         [Route("admin/instance/assign")]
-        [Authorize(Policy = PolicyNames.AdminAuthLevel)]
-        public async Task<IActionResult> Assign([FromBody] EncryptedHostAssignmentContext encryptedAssignmentContext)
+        //[Authorize(Policy = PolicyNames.AdminAuthLevel)]
+        public async Task<IActionResult> Assign([FromBody] EncryptedHostAssignmentContext encryptedAssignmentContext, string funcName)
         {
             _logger.LogDebug($"Starting container assignment for host : {Request?.Host}. ContextLength is: {encryptedAssignmentContext.EncryptedContext?.Length}");
 
             var assignmentContext = _startupContextProvider.SetContext(encryptedAssignmentContext);
-            //saving FunctionName passed in from DataRole to JObject
-            string nameToSend = assignmentContext.FuncName;
-            //adding to a list, and a string, depending on how usage will be
-            //check if it doesnt already exist?
-            MappingUtils.FunctionNames.Add(nameToSend);
+
+            //for the configuration:
+            //environment variable setup
+            _environment.SetEnvironmentVariable("functionName", funcName);
+            //internal var setup
+            assignmentContext.FuncName = funcName;
+
             // before starting the assignment we want to perform as much
             // up front validation on the context as possible
             string error = await _instanceManager.ValidateContext(assignmentContext);
