@@ -49,10 +49,38 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
                 {
                     Activity.Current?.AddBaggage(ScriptConstants.LiveLogsSessionAIKey, sessionId);
                 }
+
+                int nestedProxiesCount = GetNestedProxiesCount(context, functionExecution);
                 IActionResult result = await GetResultAsync(context, functionExecution);
+                if (nestedProxiesCount > 0)
+                {
+                    // if Proxy, the rest of the pipeline will be processed by Proxies in
+                    // case there are response overrides and what not.
+                    SetProxyResult(context, nestedProxiesCount, result);
+                    return;
+                }
+
                 ActionContext actionContext = new ActionContext(context, context.GetRouteData(), new ActionDescriptor());
                 await result.ExecuteResultAsync(actionContext);
             }
+        }
+
+        private static void SetProxyResult(HttpContext context, int nestedProxiesCount, IActionResult result)
+        {
+            context.Items[ScriptConstants.AzureFunctionsProxyResult] = result;
+            context.Items[ScriptConstants.AzureFunctionsNestedProxyCount] = nestedProxiesCount - 1;
+        }
+
+        private static int GetNestedProxiesCount(HttpContext context, IFunctionExecutionFeature functionExecution)
+        {
+            context.Items.TryGetValue(ScriptConstants.AzureFunctionsNestedProxyCount, out object nestedProxiesCount);
+
+            if (nestedProxiesCount != null)
+            {
+                return (int)nestedProxiesCount;
+            }
+
+            return 0;
         }
 
         private async Task<IActionResult> GetResultAsync(HttpContext context, IFunctionExecutionFeature functionExecution)
@@ -168,7 +196,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
         internal static bool RequiresAuthz(HttpRequest request, FunctionDescriptor descriptor)
         {
-            if (descriptor.IsWarmupFunction())
+            if (descriptor.Metadata.IsProxy() || descriptor.IsWarmupFunction())
             {
                 return false;
             }
