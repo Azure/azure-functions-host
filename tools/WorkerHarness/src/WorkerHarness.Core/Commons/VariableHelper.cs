@@ -25,7 +25,7 @@ namespace WorkerHarness.Core.Commons
         /// </summary>
         /// <param name="expression"></param>
         /// <returns></returns>
-        public static IList<string> ExtractVariableNames(string expression)
+        internal static IList<string> ExtractVariableNames(string expression)
         {
             HashSet<string> variables = new();
 
@@ -51,7 +51,7 @@ namespace WorkerHarness.Core.Commons
         /// <param name="variableValue"></param>
         /// <param name="expression"></param>
         /// <returns></returns>
-        public static string ResolveStringVariable(string variableName, string variableValue, string expression)
+        internal static string ResolveStringVariable(string variableName, string variableValue, string expression)
         {
             string variableNamePattern = @"@\{" + variableName + @"\}";
             string newExpression = Regex.Replace(expression, variableNamePattern, variableValue);
@@ -66,7 +66,7 @@ namespace WorkerHarness.Core.Commons
         /// <param name="variableValue"></param>
         /// <param name="expression"></param>
         /// <returns></returns>
-        public static string ResolveObjectVariable(string variableName, object? variableValue, string expression)
+        internal static string ResolveObjectVariable(string variableName, object? variableValue, string expression)
         {
             if (variableValue == null || Regex.IsMatch(expression, stringVariablePattern))
             {
@@ -104,7 +104,7 @@ namespace WorkerHarness.Core.Commons
         /// </summary>
         /// <param name="expression"></param>
         /// <returns></returns>
-        public static bool ContainVariables(string expression)
+        internal static bool ContainVariables(string expression)
         {
             MatchCollection objectVariableMatches = Regex.Matches(expression, objectVariablePattern);
             MatchCollection stringVariableMatches = Regex.Matches(expression, stringVariablePattern);
@@ -121,7 +121,7 @@ namespace WorkerHarness.Core.Commons
         /// </summary>
         /// <param name="expression" cref="string"></param>
         /// <exception cref="InvalidDataException">throw when the expression contains invalid variables</exception>
-        public static void ValidateVariableExpression(string expression)
+        internal static void ValidateVariableExpression(string expression)
         {
             MatchCollection? objectExpressionMatches = Regex.Matches(expression, objectVariablePattern);
             if (objectExpressionMatches.Count > 1)
