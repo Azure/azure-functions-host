@@ -52,29 +52,10 @@ namespace WorkerHarness.Core.Tests.Options
         }
 
         [TestMethod]
-        public void Validate_HarnessOptionsWithNonExistingFiles_ReturnFalse()
-        {
-            // Arrange
-            HarnessOptions options = new()
-            {
-                ScenarioFile = @"path\to\a\scenario\file",
-                LanguageExecutable = @"path\to\a\language\executable",
-                WorkerExecutable = @"path\to\a\language\worker\executable",
-                WorkerDirectory = Directory.GetCurrentDirectory()
-            };
-            IHarnessOptionsValidate harnessOptionsValidate = new HarnessOptionsValidate(stubLogger);
-
-            // Act
-            bool actual = harnessOptionsValidate.Validate(options);
-
-            // Assert
-            Assert.IsFalse(actual);
-        }
-
-        [TestMethod]
         [DataRow(@"ScenarioFileSamples\ValidScenario.json")]
         [DataRow(@"ScenarioFileSamples\NoScenarioName.json")]
-        public void Validate_HarnessOptionsWithRelativeScenarioFileThatExists_ReturnTrue(string relativeScenarioPath)
+        [DataRow(@"..\net6.0\ScenarioFileSamples\ValidScenario.json")]
+        public void Validate_HarnessOptionsWithValidScenarioFile_ReturnTrue(string relativeScenarioPath)
         {
             // Arrange
             string directoryPath = Path.Combine(Directory.GetCurrentDirectory(), "ScenarioFileSamples");
@@ -89,7 +70,7 @@ namespace WorkerHarness.Core.Tests.Options
             };
             IHarnessOptionsValidate harnessOptionsValidate = new HarnessOptionsValidate(stubLogger);
 
-            string expectedScenarioPath = Path.Combine(Directory.GetCurrentDirectory(), relativeScenarioPath);
+            string expectedScenarioPath = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), relativeScenarioPath));
 
             // Act
             bool actual = harnessOptionsValidate.Validate(options);
@@ -103,7 +84,7 @@ namespace WorkerHarness.Core.Tests.Options
         [TestMethod]
         [DataRow("")]
         [DataRow(@"ScenarioFileSamples\NotExistingScenario.json")]
-        public void Validate_HarnessOptionsWithRelativeScenarioFileThatNotExists_ReturnFalse(string relativeScenarioPath)
+        public void Validate_HarnessOptionsWithInvalidScenarioFile_ReturnFalse(string relativeScenarioPath)
         {
             // Arrange
             string directoryPath = Path.Combine(Directory.GetCurrentDirectory(), "ScenarioFileSamples");
@@ -115,6 +96,171 @@ namespace WorkerHarness.Core.Tests.Options
                 LanguageExecutable = stubFiles[0],
                 WorkerExecutable = stubFiles[1],
                 WorkerDirectory = directoryPath
+            };
+            IHarnessOptionsValidate harnessOptionsValidate = new HarnessOptionsValidate(stubLogger);
+
+            // Act
+            bool actual = harnessOptionsValidate.Validate(options);
+
+            // Assert
+            Assert.IsFalse(actual);
+        }
+
+        [TestMethod]
+        [DataRow(@"ScenarioFileSamples\ValidScenario.json")]
+        [DataRow(@"ScenarioFileSamples\NoScenarioName.json")]
+        [DataRow(@"..\net6.0\ScenarioFileSamples\ValidScenario.json")]
+        public void Validate_HarnessOptionsWithValidLanguageExecutable_ReturnTrue(string relativeLanguageExecutable)
+        {
+            // Arrange
+            string directoryPath = Path.Combine(Directory.GetCurrentDirectory(), "ScenarioFileSamples");
+            string[] stubFiles = Directory.GetFiles(directoryPath);
+
+            HarnessOptions options = new()
+            {
+                ScenarioFile = stubFiles[0],
+                LanguageExecutable = relativeLanguageExecutable,
+                WorkerExecutable = stubFiles[1],
+                WorkerDirectory = directoryPath
+            };
+            IHarnessOptionsValidate harnessOptionsValidate = new HarnessOptionsValidate(stubLogger);
+
+            string expected = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), relativeLanguageExecutable));
+
+            // Act
+            bool actual = harnessOptionsValidate.Validate(options);
+
+            // Assert
+            Assert.IsTrue(actual);
+            Assert.IsTrue(Path.IsPathRooted(options.LanguageExecutable));
+            Assert.AreEqual(expected, options.LanguageExecutable);
+        }
+
+        [TestMethod]
+        [DataRow("")]
+        [DataRow(@"ScenarioFileSamples\NotExistingScenario.json")]
+        public void Validate_HarnessOptionsWithInvalidLanguageExecutable_ReturnFalse(string relativeLanguageExecutable)
+        {
+            // Arrange
+            string directoryPath = Path.Combine(Directory.GetCurrentDirectory(), "ScenarioFileSamples");
+            string[] stubFiles = Directory.GetFiles(directoryPath);
+
+            HarnessOptions options = new()
+            {
+                ScenarioFile = stubFiles[0],
+                LanguageExecutable = relativeLanguageExecutable,
+                WorkerExecutable = stubFiles[1],
+                WorkerDirectory = directoryPath
+            };
+            IHarnessOptionsValidate harnessOptionsValidate = new HarnessOptionsValidate(stubLogger);
+
+            // Act
+            bool actual = harnessOptionsValidate.Validate(options);
+
+            // Assert
+            Assert.IsFalse(actual);
+        }
+
+        [TestMethod]
+        [DataRow(@"ScenarioFileSamples\ValidScenario.json")]
+        [DataRow(@"ScenarioFileSamples\NoScenarioName.json")]
+        [DataRow(@"..\net6.0\ScenarioFileSamples\ValidScenario.json")]
+        public void Validate_HarnessOptionsWithValidWorkerExecutable_ReturnTrue(string relativeWorkerExecutable)
+        {
+            // Arrange
+            string directoryPath = Path.Combine(Directory.GetCurrentDirectory(), "ScenarioFileSamples");
+            string[] stubFiles = Directory.GetFiles(directoryPath);
+
+            HarnessOptions options = new()
+            {
+                ScenarioFile = stubFiles[0],
+                LanguageExecutable = stubFiles[1],
+                WorkerExecutable = relativeWorkerExecutable,
+                WorkerDirectory = directoryPath
+            };
+            IHarnessOptionsValidate harnessOptionsValidate = new HarnessOptionsValidate(stubLogger);
+
+            string expected = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), relativeWorkerExecutable));
+
+            // Act
+            bool actual = harnessOptionsValidate.Validate(options);
+
+            // Assert
+            Assert.IsTrue(actual);
+            Assert.IsTrue(Path.IsPathRooted(options.WorkerExecutable));
+            Assert.AreEqual(expected, options.WorkerExecutable);
+        }
+
+        [TestMethod]
+        [DataRow("")]
+        [DataRow(@"ScenarioFileSamples\NotExistingScenario.json")]
+        public void Validate_HarnessOptionsWithInvalidWorkerExecutable_ReturnFalse(string relativeWorkerExecutable)
+        {
+            // Arrange
+            string directoryPath = Path.Combine(Directory.GetCurrentDirectory(), "ScenarioFileSamples");
+            string[] stubFiles = Directory.GetFiles(directoryPath);
+
+            HarnessOptions options = new()
+            {
+                ScenarioFile = stubFiles[0],
+                LanguageExecutable = stubFiles[1],
+                WorkerExecutable = relativeWorkerExecutable,
+                WorkerDirectory = directoryPath
+            };
+            IHarnessOptionsValidate harnessOptionsValidate = new HarnessOptionsValidate(stubLogger);
+
+            // Act
+            bool actual = harnessOptionsValidate.Validate(options);
+
+            // Assert
+            Assert.IsFalse(actual);
+        }
+
+        [TestMethod]
+        [DataRow(@"ScenarioFileSamples")]
+        [DataRow(@"ScenarioFileSamples")]
+        [DataRow(@"..\net6.0\ScenarioFileSamples")]
+        public void Validate_HarnessOptionsWithValidWorkerDirectory_ReturnTrue(string relativeWorkerDirectory)
+        {
+            // Arrange
+            string directoryPath = Path.Combine(Directory.GetCurrentDirectory(), "ScenarioFileSamples");
+            string[] stubFiles = Directory.GetFiles(directoryPath);
+
+            HarnessOptions options = new()
+            {
+                ScenarioFile = stubFiles[0],
+                LanguageExecutable = stubFiles[1],
+                WorkerExecutable = stubFiles[2],
+                WorkerDirectory = relativeWorkerDirectory
+            };
+            IHarnessOptionsValidate harnessOptionsValidate = new HarnessOptionsValidate(stubLogger);
+
+            string expected = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), relativeWorkerDirectory));
+
+            // Act
+            bool actual = harnessOptionsValidate.Validate(options);
+
+            // Assert
+            Assert.IsTrue(actual);
+            Assert.IsTrue(Path.IsPathRooted(options.WorkerDirectory));
+            Assert.AreEqual(expected, options.WorkerDirectory);
+        }
+
+        [TestMethod]
+        [DataRow("")]
+        [DataRow(@"NonExistentScenarioFileSamples")]
+        public void Validate_HarnessOptionsWithInvalidWorkerDirectory_ReturnFalse(string relativeWorkerDirectory)
+        {
+            // Arrange
+            string directoryPath = Path.Combine(Directory.GetCurrentDirectory(), "ScenarioFileSamples");
+            string[] stubFiles = Directory.GetFiles(directoryPath);
+
+            HarnessOptions options = new()
+            {
+                ScenarioFile = stubFiles[0],
+                LanguageExecutable = stubFiles[1],
+                WorkerExecutable = stubFiles[2],
+                WorkerDirectory = relativeWorkerDirectory
             };
             IHarnessOptionsValidate harnessOptionsValidate = new HarnessOptionsValidate(stubLogger);
 
