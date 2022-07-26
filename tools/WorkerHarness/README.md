@@ -289,4 +289,4 @@ Check the "gracePeriodInSeconds" property in your scenario file. You may want to
 
 [Validation_Error]: #validationerror
 
-[Azure Functions DevOps Artifacts]: https://azfunc.visualstudio.com/Azure%20Functions/_artifacts/feed/AzureFunctionsTempStaging/NuGet/WorkerHarness.Console/overview/1.0.0
+[Azure Functions DevOps Artifacts]: https://azfunc.visualstudio.com/Azure%20Functions/_artifacts/feed/AzureFunctionsTempStaging/NuGet/Microsoft.Azure.Functions.Worker.Harness/overview/1.0.1-Preview1
