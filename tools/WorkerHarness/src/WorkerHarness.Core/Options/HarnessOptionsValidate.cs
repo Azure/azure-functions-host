@@ -19,10 +19,20 @@ namespace WorkerHarness.Core.Options
             bool valid = true;
             string errorMessage = "Invalid or missing --{0} argument";
 
-            if (string.IsNullOrEmpty(harnessOptions.ScenarioFile) || !File.Exists(harnessOptions.ScenarioFile))
+            if (string.IsNullOrEmpty(harnessOptions.ScenarioFile))
             {
                 _logger.LogError(errorMessage, "scenarioFile");
                 valid = false;
+            }
+            else
+            {
+                harnessOptions.ScenarioFile = Path.GetFullPath(harnessOptions.ScenarioFile);
+
+                if (!File.Exists(harnessOptions.ScenarioFile))
+                {
+                    _logger.LogError(errorMessage, "scenarioFile");
+                    valid = false;
+                }
             }
 
             if (string.IsNullOrEmpty(harnessOptions.WorkerExecutable) || !File.Exists(harnessOptions.WorkerExecutable))
