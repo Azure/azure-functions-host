@@ -3,8 +3,8 @@
 
 namespace WorkerHarness.Core.Commons
 {
-    public class WorkerConstants
+    internal class WorkerConstants
     {
-        public static readonly string WorkerId = Guid.NewGuid().ToString();
+        internal static readonly string WorkerId = Guid.NewGuid().ToString();
     }
 }
