@@ -5,7 +5,7 @@ Worker Harness is offered as a dotnet CLI tool. Go to the [Azure Functions DevOp
 ```cs
 PS C:\Users\my_name> cd "path\to\Worker\Harness\NuGet"
 
-PS path\to\Worker\Harness\NuGet> dotnet tool install Microsoft.Azure.Functions.Worker.Harness --global
+PS path\to\Worker\Harness\NuGet> dotnet tool install Microsoft.Azure.Functions.Worker.Harness --version 1.0.1-Preview1 --global --add-source ./
 ```
 ## User Inputs
 ### Requires Inputs:
