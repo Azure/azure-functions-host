@@ -94,7 +94,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _eventManager.Publish(new InboundGrpcEvent(_workerId, responseMessage));
         }
 
-        public void PublishWorkerInitResponseEvent(IDictionary<string, string> capabilities = null, , WorkerMetadata workerMetadata = null)
+        public void PublishWorkerInitResponseEvent(IDictionary<string, string> capabilities = null, WorkerMetadata workerMetadata = null)
         {
             StatusResult statusResult = new StatusResult()
             {
