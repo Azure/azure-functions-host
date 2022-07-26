@@ -23,9 +23,9 @@
   </ItemGroup>
 
   <ItemGroup>
-	  <Content Include=".\Parsing\ScenarioFileSamples\*">
+	  <Content Include=".\ScenarioFileSamples\*">
 		  <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-		  <Link>Parsing\ScenarioFileSamples\%(Filename)%(Extension)</Link>
+		  <Link>ScenarioFileSamples\%(Filename)%(Extension)</Link>
 	  </Content>
   </ItemGroup>
 

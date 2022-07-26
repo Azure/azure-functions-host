@@ -44,7 +44,8 @@ namespace WorkerHarness.Core.Tests.Parsing
         public void Parse_ScenarioFileNotInJson_ThrowArgumentException()
         {
             // Arrange
-            string filePath = Path.Combine(Directory.GetCurrentDirectory(), "Parsing\\ScenarioFileSamples\\InvalidFormat.json");
+            string filePath = Path.Combine(Directory.GetCurrentDirectory(), "ScenarioFileSamples\\InvalidFormat.json");
+
             IEnumerable<IActionProvider> actionProviders = new List<IActionProvider>()
             {
                 new Mock<IActionProvider>().Object,
@@ -69,8 +70,8 @@ namespace WorkerHarness.Core.Tests.Parsing
         }
 
         [TestMethod]
-        [DataRow("Parsing\\ScenarioFileSamples\\NullActions.json")]
-        [DataRow("Parsing\\ScenarioFileSamples\\NonArrayActions.json")]
+        [DataRow("ScenarioFileSamples\\NullActions.json")]
+        [DataRow("ScenarioFileSamples\\NonArrayActions.json")]
         public void Parse_MissingActionsListInScenarioFile_ThrowArgumentException(string fileName)
         {
             // Arrange
@@ -104,7 +105,7 @@ namespace WorkerHarness.Core.Tests.Parsing
         public void Parse_ScenarioFileHasNoScenarioName_ScenarioNameDefaultsToFileName()
         {
             // Arrange
-            string filePath = Path.Combine(Directory.GetCurrentDirectory(), "Parsing\\ScenarioFileSamples\\NoScenarioName.json");
+            string filePath = Path.Combine(Directory.GetCurrentDirectory(), "ScenarioFileSamples\\NoScenarioName.json");
 
             IEnumerable<IActionProvider> actionProviders = new List<IActionProvider>()
             {
@@ -124,7 +125,7 @@ namespace WorkerHarness.Core.Tests.Parsing
         public void Parse_ScenarioFileMissingActionType_ThrowArgumentException()
         {
             // Arrange
-            string filePath = Path.Combine(Directory.GetCurrentDirectory(), "Parsing\\ScenarioFileSamples\\MissingActionType.json");
+            string filePath = Path.Combine(Directory.GetCurrentDirectory(), "ScenarioFileSamples\\MissingActionType.json");
 
             IEnumerable<IActionProvider> actionProviders = new List<IActionProvider>()
             {
@@ -154,7 +155,7 @@ namespace WorkerHarness.Core.Tests.Parsing
         public void Parse_ScenarioFileHasInvalidActionType_ThrowArgumentException()
         {
             // Arrange
-            string filePath = Path.Combine(Directory.GetCurrentDirectory(), "Parsing\\ScenarioFileSamples\\InvalidActionType.json");
+            string filePath = Path.Combine(Directory.GetCurrentDirectory(), "ScenarioFileSamples\\InvalidActionType.json");
 
             var mockActionProvider1 = new Mock<IActionProvider>();
             mockActionProvider1.Setup(x => x.Type).Returns("rpc");
@@ -187,7 +188,7 @@ namespace WorkerHarness.Core.Tests.Parsing
         public void Parse_ScenarioFileIsValid_ReturnAScenario()
         {
             // Arrange
-            string filePath = Path.Combine(Directory.GetCurrentDirectory(), "Parsing\\ScenarioFileSamples\\ValidScenario.json");
+            string filePath = Path.Combine(Directory.GetCurrentDirectory(), "ScenarioFileSamples\\ValidScenario.json");
 
             var mockActionProvider1 = new Mock<IActionProvider>();
             mockActionProvider1.Setup(x => x.Type).Returns("rpc");
