@@ -42,7 +42,7 @@ jobs:
       inputs:
         command: 'build'
         arguments: '-c Release -p:BuildNumber=$(buildNumber) -p:IsLocalBuild=False'
-        projects: 'WorkerHarness.sln'
+        projects: '**\WorkerHarness.sln'
 
     - task: DotNetCoreCLI@2
       displayName: 'Build packages'
