@@ -489,7 +489,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <summary>
         /// Generate function wrappers from descriptors.
         /// </summary>
-        private void GenerateFunctions()
+        private void GenerateFunctions(IEnumerable<Type> directTypes)
         {
             // generate Type level attributes
             var typeAttributes = CreateTypeAttributes(ScriptOptions);
@@ -506,6 +506,12 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 functionWrapperType
             };
+
+            // TODO: is this duplicating the intent below?
+            foreach (var type in directTypes)
+            {
+                types.Add(type);
+            }
 
             foreach (var descriptor in Functions)
             {
@@ -719,6 +725,39 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 return;
             }
+        }
+
+        /// <summary>
+        /// Get the set of types that should be directly loaded. These have the "configurationSource" : "attributes" set.
+        /// They will be indexed and invoked directly by the WebJobs SDK and skip the IL generator and invoker paths.
+        /// </summary>
+        private IEnumerable<Type> GetDirectTypes(IEnumerable<FunctionMetadata> functionMetadataList)
+        {
+            HashSet<Type> visitedTypes = new HashSet<Type>();
+
+            foreach (var metadata in functionMetadataList)
+            {
+                if (!metadata.IsDirect())
+                {
+                    continue;
+                }
+
+                string path = metadata.ScriptFile;
+                var typeName = Utility.GetFullClassName(metadata.EntryPoint);
+
+                Assembly assembly = FunctionAssemblyLoadContext.Shared.LoadFromAssemblyPath(path);
+                var type = assembly.GetType(typeName);
+                if (type != null)
+                {
+                    visitedTypes.Add(type);
+                }
+                else
+                {
+                    // This likely means the function.json and dlls are out of sync. Perhaps a badly generated function.json?
+                    _logger.FailedToLoadType(typeName, path);
+                }
+            }
+            return visitedTypes;
         }
 
         /// <summary>
