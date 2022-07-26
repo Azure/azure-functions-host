@@ -284,6 +284,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 return true;
             }
 
+            if (_environment.IsMultiLanguageRuntimeEnvironment())
+            {
+                _logger.LogInformation($"Found multi-language runtime environment. Starting WorkerConfig for language: {workerDescriptionLanguage}");
+                return true;
+            }
+
             if (!string.IsNullOrEmpty(_workerRuntime))
             {
                 _logger.LogDebug($"EnvironmentVariable {RpcWorkerConstants.FunctionWorkerRuntimeSettingName}: {_workerRuntime}");
