@@ -16,7 +16,9 @@ pr:
 jobs:
 - job: "Build"
   pool:
-    vmImage: 'windows-latest'
+    name: '1ES-Hosted-AzFunc'
+    demands:
+      - ImageOverride -equals MMS2022TLS
 
   variables:
     ${{ if not(contains(variables['Build.SourceBranch'], '/release/' )) }}:
