@@ -161,14 +161,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
-        public void WorkerChannel_Dispose_With_WorkerTerminateCapability()
+        public async Task WorkerChannel_Dispose_With_WorkerTerminateCapability()
         {
-            var initTask = CreateDefaultWorkerChannel();
-
-            IDictionary<string, string> capabilities = new Dictionary<string, string>()
-            {
-                { RpcWorkerConstants.HandlesWorkerTerminateMessage, "1" }
-            };
+            await CreateDefaultWorkerChannel(capabilities: new Dictionary<string, string>() { { RpcWorkerConstants.HandlesWorkerTerminateMessage, "1" } });
 
             StartStream startStream = new StartStream()
             {
@@ -182,8 +177,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             // Send worker init request and enable the capabilities
             GrpcEvent rpcEvent = new GrpcEvent(_workerId, startStreamMessage);
+            _testFunctionRpcService.AutoReply(StreamingMessage.ContentOneofCase.WorkerInitRequest);
             _workerChannel.SendWorkerInitRequest(rpcEvent);
-            _testFunctionRpcService.PublishWorkerInitResponseEvent(capabilities);
+
+            await Task.Delay(500);
 
             _workerChannel.Dispose();
             var traces = _logger.GetLogMessages();
@@ -192,9 +189,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
-        public void WorkerChannel_Dispose_Without_WorkerTerminateCapability()
+        public async Task WorkerChannel_Dispose_Without_WorkerTerminateCapability()
         {
-            var initTask = CreateDefaultWorkerChannel();
+            await CreateDefaultWorkerChannel();
 
             _workerChannel.Dispose();
             var traces = _logger.GetLogMessages();
