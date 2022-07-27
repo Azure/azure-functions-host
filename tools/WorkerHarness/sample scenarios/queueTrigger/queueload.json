@@ -3,16 +3,16 @@
     "actions": [
         {
             "actionType": "rpc",
-            "actionName": "load a queue-trigger function",
+            "actionName": "validate worker's abliblity to handle function load",
             "messages": [
                 {
                     "direction": "outgoing",
                     "messageType": "FunctionLoadRequest",
                     "payload": {
                         "Metadata": {
-                            "scriptFile": "<FunctionScriptFile>",
-                            "EntryPoint": "<FunctionScriptFile>.<QueueTriggerFunctionName>.Run",
-                            "Name": "<QueueTriggerFunctionName>",
+                            "scriptFile": "TestFunctionApp.dll",
+                            "EntryPoint": "TestFunctionApp.QueueTrigger.Run",
+                            "Name": "QueueTrigger",
                             "Bindings": {
                                 "myQueueItem": {
                                     "type": "queueTrigger",
