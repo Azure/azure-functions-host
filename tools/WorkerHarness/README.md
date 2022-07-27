@@ -6,13 +6,13 @@ Worker Harness is a tool that validates a scenario against a language worker. La
 - a worker executable, which is a Functions App executable that uses your language worker extension.
 
 ## Install Worker Harness CLI
-- Download the Worker Harness NuGet package from [Azure Functions DevOps Artifacts].
+- Download [Worker Harness NuGet Latest Release].
 - Install the Worker Harness CLI with the [dotnet tool] command
 ```cs
-PS C:\Users\username> dotnet tool install Microsoft.Azure.Functions.Worker.Harness --version 1.0.1-Preview1 --global --add-source ./path/to/Worker/Harness/NuGet
+dotnet tool install Microsoft.Azure.Functions.Worker.Harness --version 1.0.1-Preview2 --global --add-source ./path/to/Worker/Harness/NuGet
 ```
 
-## Download the [queueTrigger] folder
+## Copy the [queueTrigger] folder to your machine
 This folder contains:
 - sample [scenario files](#scenario) to test a queue trigger
 - a [harness.settings.json](#requires-inputs) file, which is required to run `func-harness` command
@@ -22,12 +22,14 @@ This folder contains:
 - Build the Function App
 
 ## Update [queueload.json](https://github.com/Azure/azure-functions-host/blob/features/harness/tools/WorkerHarness/sample%20scenarios/queueTrigger/queueload.json)
+- Go into the `queueTrigger` folder and open the file `queueload.json`
 - Replace `<FunctionScriptFile>` with the name of the function `scriptFile`. For instance, if a C# Function App has a name "TestApp", then replace `<FunctionScriptFile>` with "TestApp.dll"
 - Replace `<QueueTriggerFunctionName>` with the name of the function `name`. For instance, if a queue-trigger function has a name "QueueTrigger", then replace `<FunctionScriptFile>` with "QueueTrigger"
 
 ![functionload image]
 
 ## Update [harness.settings.json](https://github.com/Azure/azure-functions-host/blob/features/harness/tools/WorkerHarness/sample%20scenarios/queueTrigger/harness.settings.json)
+- In the `queueTrigger` folder, open the file `harness.settings.json`
 - Replace `<languageExecutable>` with the path to your language executable. Example language exectuables include `dotnet.exe`, `python.exe`, ...
 - Replace `<workerExecutable>` with the path to your worker executable.
 - Replace `<workerDirectory>` with the path to your worker directory
@@ -324,7 +326,7 @@ Check the "gracePeriodInSeconds" property in your scenario file. You may want to
 
 [Validation_Error]: #validationerror
 
-[Azure Functions DevOps Artifacts]: https://azfunc.visualstudio.com/Azure%20Functions/_artifacts/feed/AzureFunctionsTempStaging/NuGet/Microsoft.Azure.Functions.Worker.Harness/overview/1.0.1-Preview1
+[Worker Harness NuGet Latest Release]: https://azfunc.visualstudio.com/Azure%20Functions/_artifacts/feed/AzureFunctionsTempStaging/NuGet/Microsoft.Azure.Functions.Worker.Harness/overview/1.0.1-Preview2
 
 [.NET CLI]: https://docs.microsoft.com/en-us/dotnet/core/tools/
 
