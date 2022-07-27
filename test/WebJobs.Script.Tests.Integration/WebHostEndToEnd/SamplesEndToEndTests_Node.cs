@@ -122,7 +122,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             await SamplesTestHelpers.InvokeAndValidateHttpTriggerWithoutContentType(_fixture, "HttpTrigger");
         }
 
-        [Fact(Skip = "Proxies disabled")]
+        [Fact]
         public async Task InvokeProxy_GetsResponse()
         {
             string uri = "something";
