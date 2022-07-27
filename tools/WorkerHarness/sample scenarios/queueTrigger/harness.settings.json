@@ -1,7 +1,0 @@
-{
-    "scenarioFile": "queueTriggerScenario.json",
-    "languageExecutable": "<languageExecutable>",
-    "workerExecutable": "<workerExecutable>",
-    "workerDirectory": "<workerDirectory>",
-    "DisplayVerboseError": false
-}
