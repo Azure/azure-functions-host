@@ -109,7 +109,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             _workerCapabilities = new GrpcCapabilities(_workerChannelLogger);
 
-            if (eventManager.TryGetGrpcChannels(workerId, out var inbound, out var outbound))
+            if (_eventManager.TryGetGrpcChannels(workerId, out var inbound, out var outbound))
             {
                 _outbound = outbound.Writer;
                 _inbound = inbound.Reader;

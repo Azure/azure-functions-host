@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Channels;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -45,7 +44,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         internal class TestScriptEventManager : IScriptEventManager, IDisposable
         {
             private readonly IScriptEventManager _scriptEventManager;
-
 
             public TestScriptEventManager()
             {
