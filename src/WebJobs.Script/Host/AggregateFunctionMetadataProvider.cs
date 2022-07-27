@@ -44,10 +44,10 @@ namespace Microsoft.Azure.WebJobs.Script
         public async Task<ImmutableArray<FunctionMetadata>> GetFunctionMetadataAsync(IEnumerable<RpcWorkerConfig> workerConfigs, IEnvironment environment, bool forceRefresh, IFunctionInvocationDispatcher dispatcher = null)
         {
             _logger.FunctionMetadataProviderParsingFunctions();
+            IEnumerable<FunctionMetadata> functions = new List<FunctionMetadata>();
 
             if (_functions.IsDefaultOrEmpty || forceRefresh)
             {
-                IEnumerable<FunctionMetadata> functions = new List<FunctionMetadata>();
                 IEnumerable<RawFunctionMetadata> rawFunctions = new List<RawFunctionMetadata>();
                 bool workerIndexing = Utility.CanWorkerIndex(workerConfigs, environment);
 
@@ -67,7 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     if (IsDefaultIndexingRequired(rawFunctions))
                     {
                         _logger.LogDebug("Fallback to host indexing as worker denied indexing");
-                        functions = await _hostFunctionMetadataProvider.GetFunctionMetadataAsync(workerConfigs, environment, forceRefresh);
+                        functions = await _hostFunctionMetadataProvider.GetFunctionMetadataAsync(workerConfigs, environment, forceRefresh, null);
                     }
                     else if (!IsNullOrEmpty(rawFunctions))
                     {
@@ -82,11 +82,11 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
                 else
                 {
-                    functions = await _hostFunctionMetadataProvider.GetFunctionMetadataAsync(workerConfigs, environment, forceRefresh);
+                    functions = await _hostFunctionMetadataProvider.GetFunctionMetadataAsync(workerConfigs, environment, forceRefresh, null);
                 }
-
-                _functions = functions.ToImmutableArray();
             }
+
+            _functions = functions.ToImmutableArray();
             _logger.FunctionMetadataProviderFunctionFound(_functions.IsDefault ? 0 : _functions.Count());
             return _functions;
         }

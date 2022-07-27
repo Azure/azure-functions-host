@@ -7,7 +7,9 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Script.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.Configuration;
+using Moq;
 using Newtonsoft.Json.Linq;
 using Xunit;
 using static Microsoft.Azure.WebJobs.Script.Tests.FunctionInvokerBaseTests;
@@ -23,6 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         private readonly string _bindingExpression = $"%{_bindingExpressionLookup}%";
         private readonly IFunctionMetadataManager _metadataManager;
         private readonly IConfigurationBuilder _configBuilder;
+        private Mock<IFunctionInvocationDispatcher> _mockRpcFunctionInvocationDispatcher;
 
         public ExternalConfigurationStartupValidatorTests()
         {
@@ -75,6 +78,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                     { _lookup, "abc" },
                     { _bindingExpressionLookup, "def" }
                 });
+
+            _mockRpcFunctionInvocationDispatcher = new Mock<IFunctionInvocationDispatcher>();
         }
 
         [Fact]
