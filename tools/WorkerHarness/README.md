@@ -32,7 +32,15 @@ This folder contains:
 - Replace `<workerExecutable>` with the path to your worker executable.
 - Replace `<workerDirectory>` with the path to your worker directory
 
-![harness.setttings.json image]
+![harness.settings.json image]
+
+## Run the Worker Harness CLI
+- `cd` into the queueTrigger folder that you downloaded.
+- `func-harness`
+```cs
+PS C:\Users\username> cd path\to\queueTrigger\folder
+PS path\to\queueTrigger\folder> func-harness
+```
 
 # User Inputs
 ## Requires Inputs:
@@ -58,7 +66,7 @@ Put those requirements in a `harness.settings.json` file. For example, a .NET de
 ## How to Run
 Open the folder that contains your `harness.settings.json` in Terminal or a CLI application of your choice. Then run `func-harness`.
 ```cs
-PS C:\Users\my_name> cd "path\\to\\harness\\settings\\folder"
+PS C:\Users\username> cd "path\\to\\harness\\settings\\folder"
 PS path\to\harness\settings\folder> func-harness
 ```
 
@@ -328,4 +336,4 @@ Check the "gracePeriodInSeconds" property in your scenario file. You may want to
 
 [functionload image]: assets/functionload.png
 
-[harness.settings.json image]: assets/harness.settings.json.png
+[harness.settings.json image]: assets/harnessSettings.png
