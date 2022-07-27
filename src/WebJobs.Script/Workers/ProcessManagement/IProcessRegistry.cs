@@ -9,6 +9,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
     internal interface IProcessRegistry
     {
         // Registers processes to ensure that they are cleaned up on host exit.
-        bool Register(Process process);
+        bool Register(WorkerProcess process);
+
+        void Close();
     }
 }

@@ -15,6 +15,7 @@ using System.Threading.Channels;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Google.Protobuf.Collections;
+using Google.Protobuf.WellKnownTypes;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -754,9 +755,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         internal async Task InvokeResponse(InvocationResponse invokeResponse)
         {
             _workerChannelLogger.LogDebug("InvocationResponse received for invocation id: '{invocationId}'", invokeResponse.InvocationId);
+            // Check if the worker supports logging user-code-thrown exceptions to app insights
+            bool capabilityEnabled = !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.EnableUserCodeException));
 
             if (_executingInvocations.TryRemove(invokeResponse.InvocationId, out ScriptInvocationContext context)
-                && invokeResponse.Result.IsSuccess(context.ResultSource))
+                && invokeResponse.Result.IsInvocationSuccess(context.ResultSource, capabilityEnabled))
             {
                 try
                 {
@@ -1044,8 +1047,34 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         public void Dispose()
         {
+            StopWorkerProcess();
             _disposing = true;
             Dispose(true);
+        }
+
+        private void StopWorkerProcess()
+        {
+            bool capabilityEnabled = !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.HandlesWorkerTerminateMessage));
+            if (!capabilityEnabled)
+            {
+                return;
+            }
+
+            int gracePeriod = WorkerConstants.WorkerTerminateGracePeriodInSeconds;
+
+            var workerTerminate = new WorkerTerminate()
+            {
+                GracePeriod = Duration.FromTimeSpan(TimeSpan.FromSeconds(gracePeriod))
+            };
+
+            _workerChannelLogger.LogDebug($"Sending WorkerTerminate message with grace period {gracePeriod} seconds.");
+
+            SendStreamingMessage(new StreamingMessage
+            {
+                WorkerTerminate = workerTerminate
+            });
+
+            WorkerProcess.WaitForProcessExitInMilliSeconds(gracePeriod * 1000);
         }
 
         public async Task DrainInvocationsAsync()
