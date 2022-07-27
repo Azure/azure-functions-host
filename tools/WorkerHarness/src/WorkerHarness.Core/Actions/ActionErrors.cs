@@ -15,7 +15,7 @@ namespace WorkerHarness.Core.Actions
         internal static string MessageNotSentErrorMessage = "The harness cannot create a StreamingMessage of type \"{0}\" with the given payload";
         internal static string MessageNotSentErrorAdvice = "If the payload contains variables, it's possible that the variables did not exist when the harness attempted to create the message";
 
-        internal static string DisplayVerboseErrorAdvice = "Consider setting the \"DisplayVerboseError\" to \"true\" in the harness.settings.json file to see the matching criteria";
+        internal static string DisplayVerboseErrorAdvice = "Consider setting the \"DisplayVerboseError\" to \"true\" in the harness.settings.json file";
         internal static string GeneralErrorAdvice = "For more information, please visit https://github.com/Azure/azure-functions-host/tree/features/harness/tools/WorkerHarness#errors";
     }
 
