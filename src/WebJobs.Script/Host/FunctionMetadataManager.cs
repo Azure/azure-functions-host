@@ -25,6 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IServiceProvider _serviceProvider;
         private readonly ILoggerFactory _loggerFactory;
         private IFunctionMetadataProvider _functionMetadataProvider;
+        private IFunctionMetadataProvider _aggregateMetadataProvider;
         private bool _isHttpWorker;
         private IEnvironment _environment;
         private bool _servicesReset = false;
@@ -47,6 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script
             _logger = loggerFactory.CreateLogger(LogCategories.Startup);
             _isHttpWorker = httpWorkerOptions?.Value?.Description != null;
             _environment = environment;
+            _aggregateMetadataProvider = new AggregateFunctionMetadataProvider(_loggerFactory.CreateLogger<AggregateFunctionMetadataProvider>(), _functionMetadataProvider, _scriptOptions);
 
             // Every time script host is re-intializing, we also need to re-initialize
             // services that change with the scope of the script host.
@@ -132,9 +134,7 @@ namespace Microsoft.Azure.WebJobs.Script
             ImmutableArray<FunctionMetadata> immutableFunctionMetadata;
             var workerConfigs = _languageWorkerOptions.Value.WorkerConfigs;
 
-            IFunctionMetadataProvider metadataProvider = new AggregateFunctionMetadataProvider(_loggerFactory.CreateLogger<AggregateFunctionMetadataProvider>(), dispatcher, _functionMetadataProvider, _scriptOptions);
-
-            immutableFunctionMetadata = metadataProvider.GetFunctionMetadataAsync(workerConfigs, SystemEnvironment.Instance, forceRefresh).GetAwaiter().GetResult();
+            immutableFunctionMetadata = _aggregateMetadataProvider.GetFunctionMetadataAsync(workerConfigs, SystemEnvironment.Instance, forceRefresh, dispatcher).GetAwaiter().GetResult();
 
             var functionMetadataList = new List<FunctionMetadata>();
             _functionErrors = new Dictionary<string, ICollection<string>>();

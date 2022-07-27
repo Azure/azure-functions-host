@@ -24,19 +24,16 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         private readonly Dictionary<string, ICollection<string>> _functionErrors = new Dictionary<string, ICollection<string>>();
         private readonly ILogger _logger;
-        private readonly IFunctionInvocationDispatcher _dispatcher;
         private ImmutableArray<FunctionMetadata> _functions;
         private IOptions<ScriptJobHostOptions> _scriptOptions;
         private IFunctionMetadataProvider _hostFunctionMetadataProvider;
 
         public AggregateFunctionMetadataProvider(
             ILogger logger,
-            IFunctionInvocationDispatcher invocationDispatcher,
             IFunctionMetadataProvider hostFunctionMetadataProvider,
             IOptions<ScriptJobHostOptions> scriptOptions)
         {
             _logger = logger;
-            _dispatcher = invocationDispatcher;
             _hostFunctionMetadataProvider = hostFunctionMetadataProvider;
             _scriptOptions = scriptOptions;
         }
@@ -44,28 +41,28 @@ namespace Microsoft.Azure.WebJobs.Script
         public ImmutableDictionary<string, ImmutableArray<string>> FunctionErrors
            => _functionErrors.ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray());
 
-        public async Task<ImmutableArray<FunctionMetadata>> GetFunctionMetadataAsync(IEnumerable<RpcWorkerConfig> workerConfigs, IEnvironment environment, bool forceRefresh)
+        public async Task<ImmutableArray<FunctionMetadata>> GetFunctionMetadataAsync(IEnumerable<RpcWorkerConfig> workerConfigs, IEnvironment environment, bool forceRefresh, IFunctionInvocationDispatcher dispatcher = null)
         {
-            IEnumerable<FunctionMetadata> functions = new List<FunctionMetadata>();
             _logger.FunctionMetadataProviderParsingFunctions();
 
             if (_functions.IsDefaultOrEmpty || forceRefresh)
             {
+                IEnumerable<FunctionMetadata> functions = new List<FunctionMetadata>();
                 IEnumerable<RawFunctionMetadata> rawFunctions = new List<RawFunctionMetadata>();
                 bool workerIndexing = Utility.CanWorkerIndex(workerConfigs, environment);
 
                 if (workerIndexing)
                 {
-                    if (_dispatcher == null)
+                    if (dispatcher == null)
                     {
-                        throw new InvalidOperationException(nameof(_dispatcher));
+                        throw new InvalidOperationException(nameof(dispatcher));
                     }
 
                     // start up GRPC channels
-                    await _dispatcher.InitializeAsync(new List<FunctionMetadata>());
+                    await dispatcher.InitializeAsync(new List<FunctionMetadata>());
 
                     // get function metadata from worker, then validate it
-                    rawFunctions = await _dispatcher.GetWorkerMetadata();
+                    rawFunctions = await dispatcher.GetWorkerMetadata();
 
                     if (IsDefaultIndexingRequired(rawFunctions))
                     {
@@ -78,7 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     }
 
                     // set up invocation buffers and send load requests
-                    await _dispatcher.FinishInitialization(functions);
+                    await dispatcher.FinishInitialization(functions);
 
                     // Validate if the app has functions in legacy format and add in logs to inform about the mixed app
                     _ = Task.Delay(TimeSpan.FromMinutes(1)).ContinueWith(t => ValidateFunctionAppFormat(_scriptOptions.Value.RootScriptPath, _logger, environment));
@@ -87,8 +84,9 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     functions = await _hostFunctionMetadataProvider.GetFunctionMetadataAsync(workerConfigs, environment, forceRefresh);
                 }
+
+                _functions = functions.ToImmutableArray();
             }
-            _functions = functions.ToImmutableArray();
             _logger.FunctionMetadataProviderFunctionFound(_functions.IsDefault ? 0 : _functions.Count());
             return _functions;
         }

@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json.Linq;
 
@@ -15,12 +16,14 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
         private readonly IConfiguration _config;
         private readonly IFunctionMetadataManager _metadataManager;
         private readonly DefaultNameResolver _nameResolver;
+        private readonly IFunctionInvocationDispatcher _dispatcher;
 
-        public ExternalConfigurationStartupValidator(IConfiguration config, IFunctionMetadataManager metadataManager)
+        public ExternalConfigurationStartupValidator(IConfiguration config, IFunctionMetadataManager metadataManager, IFunctionInvocationDispatcherFactory functionDispatcherFactory = null)
         {
             _config = config ?? throw new ArgumentNullException(nameof(config));
             _metadataManager = metadataManager ?? throw new ArgumentNullException(nameof(metadataManager));
             _nameResolver = new DefaultNameResolver(config);
+            _dispatcher = functionDispatcherFactory.GetFunctionDispatcher();
         }
 
         /// <summary>
@@ -39,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
             INameResolver originalNameResolver = new DefaultNameResolver(originalConfig);
             IDictionary<string, IEnumerable<string>> invalidValues = new Dictionary<string, IEnumerable<string>>();
 
-            var functions = _metadataManager.GetFunctionMetadata();
+            var functions = _metadataManager.GetFunctionMetadata(dispatcher: _dispatcher);
 
             foreach (var function in functions)
             {
