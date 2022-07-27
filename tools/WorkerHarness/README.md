@@ -16,7 +16,7 @@ Open a cmd prompt/terminal window and execute the below command.
 ```cs
 dotnet tool install Microsoft.Azure.Functions.Worker.Harness --version <version> --global --add-source <nugetSource>
 ```
-You can find all the available versions of the tool [here](https://azfunc.visualstudio.com/Azure%20Functions/_artifacts/feed/AzureFunctionsTempStaging/NuGet/WorkerHarness.Console/versions/)
+You can find all the available versions of the tool [here](https://azfunc.visualstudio.com/Azure%20Functions/_artifacts/feed/AzureFunctionsTempStaging/NuGet/Microsoft.Azure.Functions.Worker.Harness/versions/1.0.1-Preview2)
 
 Example
 ```cs
