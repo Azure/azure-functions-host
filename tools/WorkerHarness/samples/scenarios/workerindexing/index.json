@@ -1,0 +1,41 @@
+{
+    "scenarioName": "send worker FunctionsMetadataRequest and validate FunctionMetadataResponse",
+    "actions": [
+        {
+            "actionType": "rpc",
+            "actionName": "send worker FunctionsMetadataRequest",
+            "messages": [
+                {
+                    "direction": "outgoing",
+                    "messageType": "FunctionsMetadataRequest",
+                    "payload": {}
+                },
+                {
+                    "direction": "incoming",
+                    "messageType": "FunctionMetadataResponse",
+                    "validators": [
+                        {
+                            "type": "string",
+                            "query": "$.FunctionMetadataResponse.Result.Status",
+                            "expected": "Success"
+                        },
+                        {
+                            "type": "string",
+                            "query": "$.FunctionMetadataResponse.FunctionMetadataResults[0].Name",
+                            "expected": "QueueTrigger"
+                        },
+                        {
+                            "type": "string",
+                            "query": "$.FunctionMetadataResponse.UseDefaultMetadataIndexing",
+                            "expected": "false"
+                        }
+                    ],
+                    "setVariables": {
+                        "HttpTriggerFunctionId": "$.FunctionMetadataResponse.FunctionMetadataResults[0].FunctionId",
+                        "HttpTriggerFunctionMetadata": "$.FunctionMetadataResponse.FunctionMetadataResults[0]"
+                    }
+                }
+            ]
+        }
+    ]
+}

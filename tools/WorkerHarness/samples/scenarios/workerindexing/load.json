@@ -1,0 +1,36 @@
+{
+    "scenarioName": "load function",
+    "actions": [
+        {
+            "actionType": "rpc",
+            "actionName": "do function load",
+            "messages": [
+                {
+                    "direction": "outgoing",
+                    "messageType": "FunctionLoadRequest",
+                    "payload": {
+                        "FunctionId": "@{QueueTriggerFunctionId}",
+                        "Metadata": "${QueueTriggerFunctionMetadata}"
+                    }
+                },
+                {
+                    "direction": "incoming",
+                    "messageType": "FunctionLoadResponse",
+                    "matchingCriteria": [
+                        {
+                            "query": "$.FunctionLoadResponse.FunctionId",
+                            "expected": "@{QueueTriggerFunctionId}"
+                        }
+                    ],
+                    "validators": [
+                        {
+                            "type": "string",
+                            "query": "$.FunctionLoadResponse.Result.Status",
+                            "expected": "Success"
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

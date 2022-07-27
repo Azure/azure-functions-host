@@ -6,46 +6,40 @@ Worker Harness is a tool that validates a scenario against a language worker. La
 - a worker executable, which is a Functions App executable that uses your language worker extension.
 
 ## Install Worker Harness CLI
-
-Worker harness tool is published as a [dotnet tool](https://docs.microsoft.com/en-us/dotnet/core/tools/global-tools), which you can install using the `dotnet tool install` command.
-
-_The tool is currently published to our internal staging feed only. So you need to specify the staging feed as the source when installing the tool._
-
-Open a cmd prompt/terminal window and execute the below command.
-
+- Download [Worker Harness NuGet Latest Release].
+- Open a CLI application such as Terminal, Command Prompt
+- Install the Worker Harness CLI with the [dotnet tool] command
 ```cs
-dotnet tool install Microsoft.Azure.Functions.Worker.Harness --version <version> --global --add-source <nugetSource>
-```
-You can find all the available versions of the tool [here](https://azfunc.visualstudio.com/Azure%20Functions/_artifacts/feed/AzureFunctionsTempStaging/NuGet/WorkerHarness.Console/versions/)
-
-Example
-```cs
-dotnet tool install Microsoft.Azure.Functions.Worker.Harness --version 1.0.1-Preview2 --global --add-source https://azfunc.pkgs.visualstudio.com/e6a70c92-4128-439f-8012-382fe78d6396/_packaging/AzureFunctionsTempStaging/nuget/v3/index.json
+dotnet tool install Microsoft.Azure.Functions.Worker.Harness --version <version> --global --add-source ./path/to/Worker/Harness/NuGet
 ```
 
-## Copy the [queueTrigger] folder to your machine
+## Download the queueTrigger.zip
+The queueTrigger.zip can be found [here](samples/scenarios).
+Unzip the queueTrigger.zip into a folder.
 This folder contains:
-- sample [scenario files](#scenario) to test a queue trigger
-- a [harness.settings.json](#requires-inputs) file, which is required to run `func-harness` command
+- sample scenario files to test a queue trigger. Detailed documentation about a scenario file can be found [here](#scenario)
+- a harness.settings.json file, which is required to run `func-harness` command. Detailed documentation about the harness.settings.json file can be found [here](#requires-inputs)
 
 ## Prepare the worker executable for the test
 - Add a queue-trigger function in your Function App. Skip this step if you already one
 - Build the Function App
 
-## Update [queueload.json](https://github.com/Azure/azure-functions-host/blob/features/harness/tools/WorkerHarness/sample%20scenarios/queueTrigger/queueload.json)
-- Go into the `queueTrigger` folder and open the file `queueload.json`
+## Update queueload.json
+- Go into the queueTrigger folder and open the file "queueload.json"
 - Replace `<FunctionScriptFile>` with the name of the function `scriptFile`. For instance, if a C# Function App has a name "TestApp", then replace `<FunctionScriptFile>` with "TestApp.dll"
 - Replace `<QueueTriggerFunctionName>` with the name of the function `name`. For instance, if a queue-trigger function has a name "QueueTrigger", then replace `<FunctionScriptFile>` with "QueueTrigger"
 
 ![functionload image]
 
-## Update [harness.settings.json](https://github.com/Azure/azure-functions-host/blob/features/harness/tools/WorkerHarness/sample%20scenarios/queueTrigger/harness.settings.json)
-- In the `queueTrigger` folder, open the file `harness.settings.json`
-- Replace `<languageExecutable>` with the path to your language executable. Example language exectuables include `dotnet.exe`, `python.exe`, ...
-- Replace `<workerExecutable>` with the path to your worker executable.
-- Replace `<workerDirectory>` with the path to your worker directory
+## Update harness.settings.json
+- In the queueTrigger folder, open the file "harness.settings.json"
+- Replace `<languageExecutable>` with the absolute path of your language executable
+- Replace `<workerExecutable>` with the absolute path of your worker executable
+- Replace `<workerDirectory>` with the absolute path of your worker directory
 
 ![harness.settings.json image]
+
+See some sample "harness.settings.json" [here](samples/harness.settings.json/).
 
 ## Run the Worker Harness CLI
 - Open a CLI application such as Terminal, Command Prompt
@@ -56,6 +50,17 @@ cd path\to\queueTrigger\folder
 func-harness
 ```
 
+## Interpret the result
+If you test this scenario with a stable language worker, the scenario will pass, and you would see the following messages on the CLI application.
+
+![queueTrigger result image]
+
+The "queueTriggerScenario" tests the following sequence:
+1. After the harness spawns a language worker, the worker responses with a StartStream message. In a real host-worker interaction, the StartStream message notifies the host that the worker is ready. As you can see in the above image, the first action ("validate worker's ability to sends a StartStream message") validates this StartStream message.
+1. Next, the harness and worker exchanges WorkerInitRequest - WorkerInitResponse messages. If this were an actual exchange between host and worker, the host would only proceeds if the status of the WorkerInitResponse is Success. Thus, in the second action ("validate worker's ability to handle worker initialization"), the harness sends a WorkerInitRequest and validates that worker responds with a Success WorkerInitResponse.
+1. Next, the harness and worker exchanges FunctionLoadRequest - FunctionLoadResponse messages. After receiving a FunctionLoadRequest, worker should respond with a FunctionLoadResponse whose Status is Success. The harness will validate this response from worker in the third action ("validate worker's ability to handle function load").
+1. Lastly, the harness will send an InvocationRequest that asks the worker to invoke the queue-trigger function. If the worker handles invocation correctly, it will sends an InvocationResponse with a Status of Success. In the fourth action, the harness validates this InvocationResponse from worker.
+
 # User Inputs
 ## Requires Inputs:
 - A scenario file. This file follows **Json** format and contains a list of actions to validate against a language worker. The [Scenario](#scenario) section explains the available actions and how to put them together to create a scenario.
@@ -63,7 +68,7 @@ func-harness
 - A worker executable. This is the worker executable file of your Functions App.
 - A worker directory: This is the folder that contains the worker executable, functions metadata file, and libraries/assemblies of your Functions App.
 
-Put those requirements in a `harness.settings.json` file. For example, a .NET developer would construct the `harness.settings.json` file as followed:
+Put those requirements in a "harness.settings.json" file. For example, a .NET developer would construct the "harness.settings.json" file as followed:
 
 ```
 {
@@ -74,16 +79,17 @@ Put those requirements in a `harness.settings.json` file. For example, a .NET de
 }
 ```
 
+See sample "harness.settings.json" [here](samples/harness.settings.json/).
+
 ## Optional Flags:
 - DisplayVerboseError: `true`/`false`. If true, the Worker Harness displays verbose error messages. The content of a verbose error message depends on the error type. See [Errors](#errors) for more info. The flag is set to `false` by default.
 
 ## How to Run
-Open the folder that contains your `harness.settings.json` in Terminal or a CLI application of your choice. Then run `func-harness`.
+Open the folder that contains your "harness.settings.json" in Terminal or a CLI application of your choice. Then run `func-harness`.
 ```cs
-PS C:\Users\username> cd "path\\to\\harness\\settings\\folder"
-PS path\to\harness\settings\folder> func-harness
+cd "path\\to\\harness\\settings\\folder"
+func-harness
 ```
-
 The harness will spin up a language worker process just like a real host instance and then execute a scenario.
 
 # Scenario
@@ -351,3 +357,5 @@ Check the "gracePeriodInSeconds" property in your scenario file. You may want to
 [functionload image]: assets/functionload.png
 
 [harness.settings.json image]: assets/harnessSettings.png
+
+[queueTrigger result image]: assets/queueTriggerResult.png
