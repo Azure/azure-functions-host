@@ -163,7 +163,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public void WorkerChannel_Dispose_With_WorkerTerminateCapability()
         {
-            var initTask = _workerChannel.StartWorkerProcessAsync(CancellationToken.None);
+            var initTask = CreateDefaultWorkerChannel();
 
             IDictionary<string, string> capabilities = new Dictionary<string, string>()
             {
@@ -194,7 +194,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public void WorkerChannel_Dispose_Without_WorkerTerminateCapability()
         {
-            var initTask = _workerChannel.StartWorkerProcessAsync(CancellationToken.None);
+            var initTask = CreateDefaultWorkerChannel();
 
             _workerChannel.Dispose();
             var traces = _logger.GetLogMessages();
