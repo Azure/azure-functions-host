@@ -10,9 +10,9 @@
                     "messageType": "FunctionLoadRequest",
                     "payload": {
                         "Metadata": {
-                            "scriptFile": "TestApp1.dll",
-                            "EntryPoint": "TestApp1.QueueTrigger.Run",
-                            "Name": "QueueTrigger",
+                            "scriptFile": "<FunctionScriptFile>",
+                            "EntryPoint": "<FunctionScriptFile>.<QueueTriggerFunctionName>.Run",
+                            "Name": "<QueueTriggerFunctionName>",
                             "Bindings": {
                                 "myQueueItem": {
                                     "type": "queueTrigger",
