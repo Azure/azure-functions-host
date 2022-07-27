@@ -1,7 +1,7 @@
 {
-    "scenarioFile": "scenario\\file\\path",
-    "languageExecutable": "path\\to\\your\\language\\executable",
-    "workerExecutable": "path\\to\\your\\worker\\executable",
-    "workerDirectory": "path\\to\\your\\worker\\directory",
+    "scenarioFile": "queueTriggerScenario.json",
+    "languageExecutable": "<languageExecutable>",
+    "workerExecutable": "<workerExecutable>",
+    "workerDirectory": "<workerDirectory>",
     "DisplayVerboseError": false
 }
