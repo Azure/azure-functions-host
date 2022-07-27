@@ -1,0 +1,17 @@
+{
+    "scenarioName": "validate a queue-trigger function",
+    "actions": [
+        {
+            "actionType": "import",
+            "scenarioFile": "start.json"
+        },
+        {
+            "actionType": "import",
+            "scenarioFile": "queueload.json"
+        },
+        {
+            "actionType": "import",
+            "scenarioFile": "queueinvoke.json"
+        }
+    ]
+}

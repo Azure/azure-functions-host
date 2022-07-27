@@ -1,0 +1,43 @@
+{
+    "scenarioName": "invoke a queue-trigger function",
+    "actions": [
+        {
+            "actionType": "rpc",
+            "actionName": "Invoke a queue-trigger function. Expect success",
+            "messages": [
+                {
+                    "direction": "outgoing",
+                    "messageType": "InvocationRequest",
+                    "payload": {
+                        "FunctionId": "@{queueFunctionId}",
+                        "InputData": [
+                            {
+                                "name": "myQueueItem",
+                                "data": {
+                                    "string": "foo"
+                                }
+                            }
+                        ],
+                        "TraceContext": {}
+                    },
+                    "setVariables": {
+                        "queueInvocationId": "$.InvocationRequest.InvocationId"
+                    }
+                },
+                {
+                    "direction": "incoming",
+                    "messageType": "InvocationResponse",
+                    "matchingCriteria": [{
+                        "query": "$.InvocationResponse.InvocationId",
+                        "expected": "@{queueInvocationId}"
+                    }],
+                    "validators": [{
+                        "type": "string",
+                        "query": "$.InvocationResponse.Result.Status",
+                        "expected": "Success"
+                    }]
+                }
+            ]
+        }
+    ]
+}

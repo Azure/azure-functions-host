@@ -1,0 +1,44 @@
+{
+    "scenarioName": "a scenario to validate function loading",
+    "actions": [
+        {
+            "actionType": "rpc",
+            "actionName": "load a queue-trigger function",
+            "messages": [
+                {
+                    "direction": "outgoing",
+                    "messageType": "FunctionLoadRequest",
+                    "payload": {
+                        "Metadata": {
+                            "scriptFile": "TestApp1.dll",
+                            "EntryPoint": "TestApp1.QueueTrigger.Run",
+                            "Name": "QueueTrigger",
+                            "Bindings": {
+                                "myQueueItem": {
+                                    "type": "queueTrigger",
+                                    "dataType": "string"
+                                }
+                            }
+                        }
+                    },
+                    "setVariables": {
+                        "queueFunctionId": "$.FunctionLoadRequest.FunctionId"
+                    }
+                },
+                {
+                    "direction": "incoming",
+                    "messageType": "FunctionLoadResponse",
+                    "matchingCriteria": [{
+                        "query": "$.FunctionLoadResponse.FunctionId",
+                        "expected": "@{queueFunctionId}"
+                    }],
+                    "validators": [{
+                        "type": "string",
+                        "query": "$.FunctionLoadResponse.Result.Status",
+                        "expected": "Success"
+                    }]
+                }
+            ]
+        }
+    ]
+}
