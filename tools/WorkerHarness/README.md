@@ -10,7 +10,7 @@ Worker Harness is a tool that validates a scenario against a language worker. La
 - Open a CLI application such as Terminal, Command Prompt
 - Install the Worker Harness CLI with the [dotnet tool] command
 ```cs
-dotnet tool install Microsoft.Azure.Functions.Worker.Harness --version 1.0.1-Preview2 --global --add-source ./path/to/Worker/Harness/NuGet
+dotnet tool install Microsoft.Azure.Functions.Worker.Harness --version <version> --global --add-source ./path/to/Worker/Harness/NuGet
 ```
 
 ## Copy the [queueTrigger] folder to your machine
@@ -42,8 +42,8 @@ This folder contains:
 - `cd` into the queueTrigger folder that you downloaded.
 - `func-harness`
 ```cs
-PS C:\Users\username> cd path\to\queueTrigger\folder
-PS path\to\queueTrigger\folder> func-harness
+cd path\to\queueTrigger\folder
+func-harness
 ```
 
 # User Inputs
