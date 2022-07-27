@@ -1,15 +1,15 @@
-Worker Harness is a tool that validates a scenario against a language worker. Language worker developers can leverage this tool to test their isolated language model end-to-end, eliminating the need to spin up a host process.
+The Worker Harness is a tool that helps validate new features in an out-of-process worker by testing gRPC communication between the host and worker. Language worker developers can leverage this tool to test their out-of-process language worker end-to-end in a simple and efficient manner by eliminating the need to spin up a host process.
 
 # Getting Started
 ## Configure your environment
 - [.NET CLI], which is included with the .NET SDK. To learn how to install the .NET SDK, see [Install .NET Core].
-- a worker executable, which is a Functions App executable that uses your language worker extension.
+- A worker executable, which is a Functions App executable that uses your language worker extension.
 
 ## Install Worker Harness CLI
 
 Worker harness tool is published as a [dotnet tool](https://docs.microsoft.com/en-us/dotnet/core/tools/global-tools), which you can install using the `dotnet tool install` command.
 
-_The tool is currently published to our internal staging feed only. So you need to specify the staging feed as the source when installing the tool._
+_The tool is currently published to our internal staging feed only. You need to specify the staging feed as the source when installing the tool._
 
 Open a cmd prompt/terminal window and execute the below command.
 
@@ -27,34 +27,34 @@ dotnet tool install Microsoft.Azure.Functions.Worker.Harness --version 1.0.1-Pre
 The queueTrigger.zip can be found [here](samples/scenarios).
 Unzip the queueTrigger.zip into a folder.
 This folder contains:
-- sample scenario files to test a queue trigger. Detailed documentation about a scenario file can be found [here](#scenario)
-- a harness.settings.json file, which is required to run `func-harness` command. Detailed documentation about the harness.settings.json file can be found [here](#requires-inputs)
+- Sample scenario files to test a queue trigger. Detailed documentation about a scenario file can be found [here](#scenario).
+- A harness.settings.json file, which is required to run `func-harness` command. Detailed documentation about the harness.settings.json file can be found [here](#requires-inputs).
 
 ## Prepare the worker executable for the test
-- Add a queue-trigger function in your Function App. Skip this step if you already one
-- Build the Function App
+- Add a queue-trigger function in your Function App. Skip this step if you already one.
+- Build the Function App.
 
 ## Update queueload.json
 - Go into the queueTrigger folder and open the file "queueload.json"
-- Replace `<FunctionScriptFile>` with the name of the function `scriptFile`. For instance, if a C# Function App has a name "TestApp", then replace `<FunctionScriptFile>` with "TestApp.dll"
-- Replace `<QueueTriggerFunctionName>` with the name of the function `name`. For instance, if a queue-trigger function has a name "QueueTrigger", then replace `<FunctionScriptFile>` with "QueueTrigger"
+- Replace `<FunctionScriptFile>` with the name of the function `scriptFile`. For instance, if a C# Function App has a name "TestApp", then replace `<FunctionScriptFile>` with "TestApp.dll".
+- Replace `<QueueTriggerFunctionName>` with the name of the function `name`. For instance, if a queue-trigger function has a name "QueueTrigger", then replace `<FunctionScriptFile>` with "QueueTrigger".
 
 ![functionload image]
 
 ## Update harness.settings.json
-- In the queueTrigger folder, open the file "harness.settings.json"
-- Replace `<languageExecutable>` with the absolute path of your language executable
-- Replace `<workerExecutable>` with the absolute path of your worker executable
-- Replace `<workerDirectory>` with the absolute path of your worker directory
+- In the queueTrigger folder, open the file "harness.settings.json".
+- Replace `<languageExecutable>` with the absolute path of your language executable.
+- Replace `<workerExecutable>` with the absolute path of your worker executable.
+- Replace `<workerDirectory>` with the absolute path of your worker directory.
 
 ![harness.settings.json image]
 
 See some sample "harness.settings.json" [here](samples/harness.settings.json/).
 
 ## Run the Worker Harness CLI
-- Open a CLI application such as Terminal, Command Prompt
+- Open a CLI application such as Terminal, Command Prompt.
 - `cd` into the queueTrigger folder that you downloaded.
-- `func-harness`
+- `func-harness`.
 ```cs
 cd path\to\queueTrigger\folder
 func-harness
@@ -66,10 +66,10 @@ If you test this scenario with a stable language worker, the scenario will pass,
 ![queueTrigger result image]
 
 The "queueTriggerScenario" tests the following sequence:
-1. After the harness spawns a language worker, the worker responses with a StartStream message. In a real host-worker interaction, the StartStream message notifies the host that the worker is ready. As you can see in the above image, the first action ("validate worker's ability to sends a StartStream message") validates this StartStream message.
-1. Next, the harness and worker exchanges WorkerInitRequest - WorkerInitResponse messages. If this were an actual exchange between host and worker, the host would only proceeds if the status of the WorkerInitResponse is Success. Thus, in the second action ("validate worker's ability to handle worker initialization"), the harness sends a WorkerInitRequest and validates that worker responds with a Success WorkerInitResponse.
-1. Next, the harness and worker exchanges FunctionLoadRequest - FunctionLoadResponse messages. After receiving a FunctionLoadRequest, worker should respond with a FunctionLoadResponse whose Status is Success. The harness will validate this response from worker in the third action ("validate worker's ability to handle function load").
-1. Lastly, the harness will send an InvocationRequest that asks the worker to invoke the queue-trigger function. If the worker handles invocation correctly, it will sends an InvocationResponse with a Status of Success. In the fourth action, the harness validates this InvocationResponse from worker.
+1. After the harness spawns a language worker, the worker responds with a StartStream message. In a real host-worker interaction, the StartStream message notifies the host that the worker is ready. As you can see in the above image, the first action ("validate worker's ability to sends a StartStream message") validates this StartStream message.
+1. Next, the harness and worker exchange WorkerInitRequest - WorkerInitResponse messages. If this were an actual exchange between host and worker, the host would only proceed if the status of the WorkerInitResponse is Success. Thus, in the second action ("validate worker's ability to handle worker initialization"), the harness sends a WorkerInitRequest and validates that worker responds with a Success WorkerInitResponse.
+1. Next, the harness and worker exchange FunctionLoadRequest - FunctionLoadResponse messages. After receiving a FunctionLoadRequest, the worker should respond with a FunctionLoadResponse whose Status is Success. The harness will validate this response from worker in the third action ("validate worker's ability to handle function load").
+1. Lastly, the harness will send an InvocationRequest that ask the worker to invoke the queue-trigger function. If the worker handles invocation correctly, it will send an InvocationResponse with a Status of Success. In the fourth action, the harness validates this InvocationResponse from worker.
 
 # User Inputs
 ## Requires Inputs:
@@ -129,7 +129,7 @@ Additional properties may be required depending on the type of action. The Worke
 - [**Import**](#import-action): import and execute actions in another scenario file.
 
 ## Rpc Action
-An **rpc** action sends messages to and validates message from a language worker through gRPC. Users indicate the content of the messages to send to worker and specify which messages to receive from worker and how to validate them.
+An **rpc** action sends messages to and validates messages from a language worker through gRPC. Users indicate the content of the messages to send to worker and specify which messages to receive from worker and how to validate them.
 
 The structure of an **rpc** action:
 * **timeout** (optional): the amount of time in **_miliseconds_** to execute an **rpc** action. Default to 5000 ms.
@@ -145,9 +145,9 @@ The structure of an **rpc** action:
 ```
 
 ### Messages:
-Because Worker Harness communicates with the language worker via gRPC, all messages must have a **messageType** property, which indicates the type of [StreamingMessage][StreamingMessage]. The [StreamingMessage][StreamingMessage] class is defined in the Harness's [proto file][harness proto], which mirrors the [proto file][host proto] in the host.
+Because the Worker Harness communicates with the language worker via gRPC, all messages must have a **messageType** property, which indicates the type of [StreamingMessage][StreamingMessage]. The [StreamingMessage][StreamingMessage] class is defined in the Harness's [proto file][harness proto], which mirrors the [proto file][host proto] in the host.
 
-Messages are characterized by **direction** property: 
+Messages are characterized by the **direction** property: 
 - the **outgoing** direction tells the Harness to *construct + send* a message to worker
 - the **incoming** direction tells the Harness to *receive + validate* a message from worker.
 
@@ -167,7 +167,7 @@ Messages are characterized by **direction** property:
 ```
 Given this **outgoing** message, the Worker Harness will construct a StreamingMessage of type [InvocationRequest][InvocationRequest] whose content is the value of the **payload** property, and then send it to language worker.
 
-The Worker Harness knows how to create only the [StreamingMessage] that the host creates, such as [WorkerInitRequest], [FunctionLoadRequest], [FunctionsMetadataRequest], [InvocationRequest], etc.
+The Worker Harness only knows how to create [StreamingMessage] types that the host creates, such as [WorkerInitRequest], [FunctionLoadRequest], etc. It __cannot__ create [StreamingMessage] types that the language worker sends, such as [WorkerInitResponse], [FunctionLoadResponse], etc.
 
 In summary, an **outgoing** rpc message has the following properties:
 - **direction** (required): outgoing.
@@ -210,7 +210,7 @@ The Worker Harness will wait for a __timeout__ duration. If no StreamingMessage 
 
  __Validators:__
 
-The Worker Harness validate a matched StreamingMessage against the __validators__ list. Similar to __matchingCriteria__, each validator has a __query__ string and an __expected__ string.  
+The Worker Harness validates a matched StreamingMessage against the __validators__ list. Similar to __matchingCriteria__, each validator has a __query__ string and an __expected__ string.  
 
 There are two types of __validator__: _regex_ and _string_. 
 - If a _regex_ validator is used, then the Harness will use regular expression matching to validate the __query__ result. The __expected__ string should be a regular expression. See [Regular Expression Language - Quick Reference](https://docs.microsoft.com/en-us/dotnet/standard/base-types/regular-expression-language-quick-reference). 
@@ -302,37 +302,39 @@ Internally, the Worker Harness will load the scenario file and execute all actio
 # Errors
 
 ## MessageNotReceivedError
-- Cause <br>
-This error occurs when the language worker never emits the message of type __messageType__ that meets the __matchingCriteria__ in an rpc action. <br>
-Please refer to [Rpc Action: Incoming Message](#incoming-message) for more info on the __matchingCriteria__ property.
+### Cause <br>
+- This error occurs when the language worker never emits the message of type __messageType__ and meets the __matchingCriteria__ in an rpc action. <br>
+- Please refer to [Rpc Action: Incoming Message](#incoming-message) for more info on the __matchingCriteria__ property.
 
--  How to fix the error<br>
-Consider increase the action's __timeout__ if you expects some delay before the worker emits the mesage.<br>
-Consider turning on the [DisplayVerboseError](#optional-flags) flag. The Worker Harness will shows the expected message that is never received from worker. <br>
-Check your language worker's logic. The error could indicate that your worker has a bug that never fires the expected message.
+### How to fix the error<br>
+- Consider increase the action's __timeout__ if you expects some delay before the worker emits the mesage.<br>
+- Consider turning on the [DisplayVerboseError](#optional-flags) flag. The Worker Harness will shows the expected message that is never received from worker. <br>
+- Check your language worker's logic. The error could indicate that your worker has a bug that never fires the expected message.
 
 ## ValidationError
-- Cause<br>
-This error occurs when the language worker has emitted the expected message that meets the __matchingCriteria__ but fails at least one of the __validators__. <br>
-Please refer to [Rpc Action: Incoming Message](#incoming-message) for more info on the __validators__ property.
+### Cause<br>
+- This error occurs when the language worker has emitted the expected message that meets the __matchingCriteria__ but fails at least one of the __validators__. <br>
+- Please refer to [Rpc Action: Incoming Message](#incoming-message) for more info on the __validators__ property.
 
-- How to fix the error <br>
-Consider turning on the [DisplayVerboseError](#optional-flags) flag. The Worker Harness will shows the [StreamingMessage] that meets the __matchingCriteria__ but fails the __validators__. Inspecting the content of the [StreamingMessage] can help developers discover where and how a bug occurs.
+### How to fix the error <br>
+- Consider turning on the [DisplayVerboseError](#optional-flags) flag. The Worker Harness will shows the [StreamingMessage] that meets the __matchingCriteria__ but fails the __validators__. Inspecting the content of the [StreamingMessage] can help developers discover where and how a bug occurs.
 
 ## MessageNotSentError
-- Cause <br>
-This error occurs when the Worker Harness fails to send an __outgoing__ message to the language worker before __timeout__ occurs. It usually happens if an __outgoing__ message's payload uses a variable that has not been initialized. <br>
+### Cause <br>
+- This error occurs when the Worker Harness fails to send an __outgoing__ message to the language worker before __timeout__ occurs. It usually happens if an __outgoing__ message's payload uses a variable that has not been initialized. <br>
 Please refer to [Rpc Action: Outgoing Message](#outgoing-message) for more info.
 
-- How to fix the error<br>
-Consider increase the action's __timeout__ so that the Worker Harness has enough time to construct a [StreamingMessage] from the __payload__ and sends it to the language worker.
+### How to fix the error<br>
+- Double check any variables used in the payload. Make sure those variables are declared and initialized in previous actions.
+- Consider increase the action's __timeout__ so that the Worker Harness has enough time to construct a [StreamingMessage] from the __payload__ and sends it to the language worker.
 
 ## WorkerNotExitError
-- Cause <br>
-This error occurs inside a "terminate" action. The Worker Harness will wait for a grace period in seconds for the worker process to shut down. If the Harness does not see that the worker process has exited, the Harness will show this error.
+### Cause <br>
+- This error occurs inside a "terminate" action. The Worker Harness will wait for a grace period in seconds for the worker process to shut down. If the Harness does not see that the worker process has exited, the Harness will show this error.
 
-- How to fix the error <br>
-Check the "gracePeriodInSeconds" property in your scenario file. You may want to increase it if your worker takes longer to shut down. Moreover, check if your worker implements graceful shutdown.
+### How to fix the error <br>
+- Check the "gracePeriodInSeconds" property in your scenario file. You may want to increase it if your worker takes longer to shut down. 
+- Check if your worker implements graceful shutdown.
 
 [harness proto]: https://github.com/Azure/azure-functions-host/blob/features/harness/tools/WorkerHarness/src/WorkerHarness.Core/Protos/FunctionRpc.proto
 
