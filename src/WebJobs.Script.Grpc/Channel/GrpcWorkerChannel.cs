@@ -14,6 +14,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Google.Protobuf.Collections;
+using Google.Protobuf.WellKnownTypes;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -70,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private TaskCompletionSource<bool> _reloadTask = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         private TaskCompletionSource<bool> _workerInitTask = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         private TaskCompletionSource<List<RawFunctionMetadata>> _functionsIndexingTask = new TaskCompletionSource<List<RawFunctionMetadata>>(TaskCreationOptions.RunContinuationsAsynchronously);
-        private TimeSpan _functionLoadTimeout = TimeSpan.FromMinutes(10);
+        private TimeSpan _functionLoadTimeout = TimeSpan.FromMinutes(1);
         private bool _isSharedMemoryDataTransferEnabled;
 
         private object _syncLock = new object();
@@ -255,12 +256,22 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _workerChannelLogger.LogDebug("Received WorkerInitResponse. Worker process initialized");
             _initMessage = initEvent.Message.WorkerInitResponse;
             _workerChannelLogger.LogDebug($"Worker capabilities: {_initMessage.Capabilities}");
+
+            if (_initMessage.WorkerMetadata != null)
+            {
+                _initMessage.UpdateWorkerMetadata(_workerConfig);
+                var workerMetadata = _initMessage.WorkerMetadata.ToString();
+                _metricsLogger.LogEvent(MetricEventNames.WorkerMetadata, functionName: null, workerMetadata);
+                _workerChannelLogger.LogDebug($"Worker metadata: {workerMetadata}");
+            }
+
             if (_initMessage.Result.IsFailure(out Exception exc))
             {
                 HandleWorkerInitError(exc);
                 _workerInitTask.SetResult(false);
                 return;
             }
+
             _state = _state | RpcWorkerChannelState.Initialized;
             _workerCapabilities.UpdateCapabilities(_initMessage.Capabilities);
             _isSharedMemoryDataTransferEnabled = IsSharedMemoryDataTransferEnabled();
@@ -289,32 +300,38 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         {
             if (_functions != null)
             {
-                if (functionTimeout.HasValue)
-                {
-                    _functionLoadTimeout = functionTimeout.Value > _functionLoadTimeout ? functionTimeout.Value : _functionLoadTimeout;
-                    _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionLoadResponse)
-                        .Timeout(_functionLoadTimeout)
-                        .Take(_functions.Count())
-                        .Subscribe((msg) => LoadResponse(msg.Message.FunctionLoadResponse), HandleWorkerFunctionLoadError));
-                }
-                else
-                {
-                    _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionLoadResponse)
-                        .Subscribe((msg) => LoadResponse(msg.Message.FunctionLoadResponse), HandleWorkerFunctionLoadError));
-                }
-
                 // Load Request is also sent for disabled function as it is invocable using the portal and admin endpoints
                 // Loading disabled functions at the end avoids unnecessary performance issues. Refer PR #5072 and commit #38b57883be28524fa6ee67a457fa47e96663094c
                 _functions = _functions.OrderBy(metadata => metadata.IsDisabled());
 
                 // Check if the worker supports this feature
-                bool capabilityEnabled = !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.AcceptsListOfFunctionLoadRequests));
+                bool capabilityEnabled = !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.SupportsLoadResponseCollection));
                 if (capabilityEnabled)
                 {
+                    var loadResponseCollectionObservable = _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionLoadResponseCollection);
+                    if (functionTimeout.HasValue)
+                    {
+                        _functionLoadTimeout = functionTimeout.Value > _functionLoadTimeout ? functionTimeout.Value : _functionLoadTimeout;
+                        loadResponseCollectionObservable = loadResponseCollectionObservable.Timeout(_functionLoadTimeout);
+                    }
+
+                    _eventSubscriptions.Add(loadResponseCollectionObservable
+                            .Subscribe((msg) => LoadResponse(msg.Message.FunctionLoadResponseCollection), HandleWorkerFunctionLoadError));
+
                     SendFunctionLoadRequestCollection(_functions, managedDependencyOptions);
                 }
                 else
                 {
+                    var loadResponseObservable = _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionLoadResponse);
+                    if (functionTimeout.HasValue)
+                    {
+                        _functionLoadTimeout = functionTimeout.Value > _functionLoadTimeout ? functionTimeout.Value : _functionLoadTimeout;
+                        loadResponseObservable = loadResponseObservable.Timeout(_functionLoadTimeout);
+                    }
+
+                    _eventSubscriptions.Add(loadResponseObservable.Take(_functions.Count())
+                            .Subscribe((msg) => LoadResponse(msg.Message.FunctionLoadResponse), HandleWorkerFunctionLoadError));
+
                     foreach (FunctionMetadata metadata in _functions)
                     {
                         SendFunctionLoadRequest(metadata, managedDependencyOptions);
@@ -462,6 +479,16 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             // associate the invocation input buffer with the function
             var disposableLink = _functionInputBuffers[loadResponse.FunctionId].LinkTo(invokeBlock);
             _inputLinks.Add(disposableLink);
+        }
+
+        internal void LoadResponse(FunctionLoadResponseCollection loadResponseCollection)
+        {
+            _workerChannelLogger.LogDebug("Received FunctionLoadResponseCollection with number of functions: '{count}'.", loadResponseCollection.FunctionLoadResponses.Count);
+
+            foreach (FunctionLoadResponse loadResponse in loadResponseCollection.FunctionLoadResponses)
+            {
+                LoadResponse(loadResponse);
+            }
         }
 
         internal async Task SendInvocationRequest(ScriptInvocationContext context)
@@ -629,9 +656,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         internal async Task InvokeResponse(InvocationResponse invokeResponse)
         {
             _workerChannelLogger.LogDebug("InvocationResponse received for invocation id: '{invocationId}'", invokeResponse.InvocationId);
+            // Check if the worker supports logging user-code-thrown exceptions to app insights
+            bool capabilityEnabled = !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.EnableUserCodeException));
 
             if (_executingInvocations.TryRemove(invokeResponse.InvocationId, out ScriptInvocationContext context)
-                && invokeResponse.Result.IsSuccess(context.ResultSource))
+                && invokeResponse.Result.IsInvocationSuccess(context.ResultSource, capabilityEnabled))
             {
                 try
                 {
@@ -873,8 +902,34 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         public void Dispose()
         {
+            StopWorkerProcess();
             _disposing = true;
             Dispose(true);
+        }
+
+        private void StopWorkerProcess()
+        {
+            bool capabilityEnabled = !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.HandlesWorkerTerminateMessage));
+            if (!capabilityEnabled)
+            {
+                return;
+            }
+
+            int gracePeriod = WorkerConstants.WorkerTerminateGracePeriodInSeconds;
+
+            var workerTerminate = new WorkerTerminate()
+            {
+                GracePeriod = Duration.FromTimeSpan(TimeSpan.FromSeconds(gracePeriod))
+            };
+
+            _workerChannelLogger.LogDebug($"Sending WorkerTerminate message with grace period {gracePeriod} seconds.");
+
+            SendStreamingMessage(new StreamingMessage
+            {
+                WorkerTerminate = workerTerminate
+            });
+
+            WorkerProcess.WaitForProcessExitInMilliSeconds(gracePeriod * 1000);
         }
 
         public async Task DrainInvocationsAsync()

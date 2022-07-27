@@ -10,6 +10,12 @@ using Microsoft.Extensions.Logging;
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     [DebuggerDisplay("{DebuggerDisplay,nq}")]
+    public class TestLogger<T> : TestLogger, ILogger<T>
+    {
+        public TestLogger() : base(typeof(T).Name) { }
+    }
+
+    [DebuggerDisplay("{DebuggerDisplay,nq}")]
     public class TestLogger : ILogger
     {
         private readonly object _syncLock = new object();

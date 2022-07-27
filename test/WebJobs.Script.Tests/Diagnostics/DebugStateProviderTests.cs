@@ -17,6 +17,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
 
         public DebugStateProviderTests()
         {
+            var environment = new TestEnvironment();
+
             _options = new ScriptApplicationHostOptions
             {
                 LogPath = Path.Combine(Directory.GetCurrentDirectory(), "DebugPath1")
@@ -27,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             var changeTokens = new[] { _tokenSource };
             var optionsMonitor = new OptionsMonitor<ScriptApplicationHostOptions>(factory, changeTokens, factory);
 
-            _provider = new DebugStateProvider(optionsMonitor, new ScriptEventManager());
+            _provider = new DebugStateProvider(environment, optionsMonitor, new ScriptEventManager());
         }
 
         [Fact]

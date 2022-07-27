@@ -9,6 +9,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         public const string HttpScheme = "http";
 
         public const int WorkerReadyCheckPollingIntervalMilliseconds = 25;
+        public const int WorkerTerminateGracePeriodInSeconds = 5;
         public const string WorkerConfigFileName = "worker.config.json";
         public const string DefaultWorkersDirectoryName = "workers";
 
@@ -29,6 +30,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         // Profiles
         public const string WorkerDescriptionProfiles = "profiles";
+        public const string WorkerDescriptionProfileName = "profileName";
+        public const string WorkerDescriptionProfileConditions = "conditions";
+        public const string WorkerDescriptionProfileConditionType = "conditionType";
+        public const string WorkerDescriptionProfileEnvironmentCondition = "environment";
+        public const string WorkerDescriptionProfileHostPropertyCondition = "hostProperty";
+        public const string WorkerDescriptionProfileConditionName = "conditionName";
+        public const string WorkerDescriptionProfileConditionExpression = "conditionExpression";
         public const string WorkerDescriptionAppServiceEnvProfileName = "appServiceEnvironment";
 
         // Logs

@@ -34,6 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         private readonly Mock<IWorkerProcess> _rpcWorkerProcess;
         private readonly TestLogger _testLogger;
         private readonly IConfiguration _emptyConfig;
+        private readonly TestSystemRuntimeInformation _testSysRuntimeInfo = new TestSystemRuntimeInformation();
 
         private WebHostRpcWorkerChannelManager _rpcWorkerChannelManager;
 

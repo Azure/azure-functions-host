@@ -18,6 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         private RpcWorkerProcess _rpcWorkerProcess;
         private Mock<IScriptEventManager> _eventManager;
         private Mock<IHostProcessMonitor> _hostProcessMonitorMock;
+        private TestLogger _logger = new TestLogger("test");
 
         public RpcWorkerProcessTests()
         {
@@ -45,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 _eventManager.Object,
                 workerProcessFactory.Object,
                 processRegistry.Object,
-                new TestLogger("test"),
+                _logger,
                 languageWorkerConsoleLogSource.Object,
                 new TestMetricsLogger(),
                 serviceProviderMock.Object);
@@ -178,6 +179,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             _eventManager.Verify(_ => _.Publish(It.IsAny<WorkerRestartEvent>()), Times.Once());
             _eventManager.Verify(_ => _.Publish(It.IsAny<WorkerErrorEvent>()), Times.Never());
+        }
+
+        [Fact]
+        public void WorkerProcess_Dispose()
+        {
+            Process process = new Process();
+            ProcessStartInfo startInfo = new ProcessStartInfo();
+            startInfo.WindowStyle = ProcessWindowStyle.Hidden;
+            startInfo.FileName = "cmd.exe";
+            startInfo.Arguments = $"ls";
+            process.StartInfo = startInfo;
+            process.Start();
+
+            _rpcWorkerProcess.Process = process;
+            _rpcWorkerProcess.Dispose();
+            var traces = _logger.GetLogMessages();
+            var disposeLogs = traces.Where(m => string.Equals(m.FormattedMessage, "Worker process has not exited despite waiting for 1000 ms"));
+            Assert.False(disposeLogs.Any());
         }
     }
 }

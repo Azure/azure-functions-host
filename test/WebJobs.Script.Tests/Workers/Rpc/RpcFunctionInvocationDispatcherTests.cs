@@ -636,22 +636,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.Equal(expectedProcessCount, functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels().Count());
         }
 
-        [Fact]
-        public async Task FunctionDispatcher_AdditionalAttributes()
-        {
-            int expectedProcessCount = 3;
-            RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher(expectedProcessCount, false, runtime: RpcWorkerConstants.JavaLanguageWorkerName, workerIndexing: true);
-
-            var functions = GetTestFunctionsList(RpcWorkerConstants.JavaLanguageWorkerName);
-            await functionDispatcher.FinishInitialization(functions);
-            foreach (var item in functions)
-            {
-                Assert.Equal(item.Properties.Count, 2);
-                Assert.True(item.Properties.ContainsKey(LogConstants.CategoryNameKey) &&
-                    item.Properties.ContainsKey(ScriptConstants.LogPropertyHostInstanceIdKey));
-            }
-        }
-
         [Theory]
         [InlineData("node", "node", false, true, true)]
         [InlineData("node", "node", true, false, true)]
