@@ -1,14 +1,41 @@
 Worker Harness is a tool that validates a scenario against a language worker. Language worker developers can leverage this tool to test their isolated language model end-to-end, eliminating the need to spin up a host process.
 
-# Run Worker Harness
-Worker Harness is offered as a dotnet CLI tool. Go to the [Azure Functions DevOps Artifacts] and click on the top right "Download" button to download the NuGet package. Open a Terminal or Windows PowerShell application and `cd` into the directory that has the downloaded NuGet package. Then run the dotnet tool CLI command: `dotnet tool install Microsoft.Azure.Functions.Worker.Harness --global`.
-```cs
-PS C:\Users\my_name> cd "path\to\Worker\Harness\NuGet"
+# Getting Started
+## Configure your environment
+- [.NET CLI], which is included with the .NET SDK. To learn how to install the .NET SDK, see [Install .NET Core].
+- a worker executable, which is a Functions App executable that uses your language worker extension.
 
-PS path\to\Worker\Harness\NuGet> dotnet tool install Microsoft.Azure.Functions.Worker.Harness --version 1.0.1-Preview1 --global --add-source ./
+## Install Worker Harness CLI
+- Download the Worker Harness NuGet package from [Azure Functions DevOps Artifacts].
+- Install the Worker Harness CLI with the [dotnet tool] command
+```cs
+PS C:\Users\username> dotnet tool install Microsoft.Azure.Functions.Worker.Harness --version 1.0.1-Preview1 --global --add-source ./path/to/Worker/Harness/NuGet
 ```
-## User Inputs
-### Requires Inputs:
+
+## Download the [queueTrigger] folder
+This folder contains:
+- sample [scenario files](#scenario) to test a queue trigger
+- a [harness.settings.json](#requires-inputs) file, which is required to run `func-harness` command
+
+## Prepare the worker executable for the test
+- Add a queue-trigger function in your Function App. Skip this step if you already one
+- Build the Function App
+
+## Update [queueload.json](https://github.com/Azure/azure-functions-host/blob/features/harness/tools/WorkerHarness/sample%20scenarios/queueTrigger/queueload.json)
+- Replace `<FunctionScriptFile>` with the name of the function `scriptFile`. For instance, if a C# Function App has a name "TestApp", then replace `<FunctionScriptFile>` with "TestApp.dll"
+- Replace `<QueueTriggerFunctionName>` with the name of the function `name`. For instance, if a queue-trigger function has a name "QueueTrigger", then replace `<FunctionScriptFile>` with "QueueTrigger"
+
+![functionload image]
+
+## Update [harness.settings.json](https://github.com/Azure/azure-functions-host/blob/features/harness/tools/WorkerHarness/sample%20scenarios/queueTrigger/harness.settings.json)
+- Replace `<languageExecutable>` with the path to your language executable. Example language exectuables include `dotnet.exe`, `python.exe`, ...
+- Replace `<workerExecutable>` with the path to your worker executable.
+- Replace `<workerDirectory>` with the path to your worker directory
+
+![harness.setttings.json image]
+
+# User Inputs
+## Requires Inputs:
 - A scenario file. This file follows **Json** format and contains a list of actions to validate against a language worker. The [Scenario](#scenario) section explains the available actions and how to put them together to create a scenario.
 - A language executable. E.g. python.exe, dotnet.exe, node.exe, etc.
 - A worker executable. This is the worker executable file of your Functions App.
@@ -25,7 +52,7 @@ Put those requirements in a `harness.settings.json` file. For example, a .NET de
 }
 ```
 
-### Optional Flags:
+## Optional Flags:
 - DisplayVerboseError: `true`/`false`. If true, the Worker Harness displays verbose error messages. The content of a verbose error message depends on the error type. See [Errors](#errors) for more info. The flag is set to `false` by default.
 
 ## How to Run
@@ -290,3 +317,15 @@ Check the "gracePeriodInSeconds" property in your scenario file. You may want to
 [Validation_Error]: #validationerror
 
 [Azure Functions DevOps Artifacts]: https://azfunc.visualstudio.com/Azure%20Functions/_artifacts/feed/AzureFunctionsTempStaging/NuGet/Microsoft.Azure.Functions.Worker.Harness/overview/1.0.1-Preview1
+
+[.NET CLI]: https://docs.microsoft.com/en-us/dotnet/core/tools/
+
+[Install .NET Core]: https://docs.microsoft.com/en-us/dotnet/core/install/windows
+
+[dotnet tool]: https://docs.microsoft.com/en-us/dotnet/core/tools/dotnet-tool-install
+
+[queueTrigger]: https://github.com/Azure/azure-functions-host/tree/features/harness/tools/WorkerHarness/sample%20scenarios
+
+[functionload image]: assets/functionload.png
+
+[harness.settings.json image]: assets/harness.settings.json.png
