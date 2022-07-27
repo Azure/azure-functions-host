@@ -3,7 +3,7 @@
     "actions": [
         {
             "actionType": "rpc",
-            "actionName": "load a queue-trigger function",
+            "actionName": "validate worker's abliblity to handle function load",
             "messages": [
                 {
                     "direction": "outgoing",

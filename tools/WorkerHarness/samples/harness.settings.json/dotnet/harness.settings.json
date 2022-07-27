@@ -1,0 +1,7 @@
+{
+    "scenarioFile": "queueTriggerScenario.json",
+    "languageExecutable": "C:\\Program Files\\dotnet\\dotnet.exe",
+    "workerExecutable": "C:\\temp\\TestApp1\\TestApp1\\bin\\Debug\\net6.0\\TestApp1.dll",
+    "workerDirectory": "C:\\temp\\TestApp1\\TestApp1\\bin\\Debug\\net6.0",
+    "DisplayVerboseError": false
+}
