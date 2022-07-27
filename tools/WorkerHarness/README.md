@@ -6,11 +6,21 @@ Worker Harness is a tool that validates a scenario against a language worker. La
 - a worker executable, which is a Functions App executable that uses your language worker extension.
 
 ## Install Worker Harness CLI
-- Download [Worker Harness NuGet Latest Release].
-- Open a CLI application such as Terminal, Command Prompt
-- Install the Worker Harness CLI with the [dotnet tool] command
+
+Worker harness tool is published as a [dotnet tool](https://docs.microsoft.com/en-us/dotnet/core/tools/global-tools), which you can install using the `dotnet tool install` command.
+
+_The tool is currently published to our internal staging feed only. So you need to specify the staging feed as the source when installing the tool._
+
+Open a cmd prompt/terminal window and execute the below command.
+
 ```cs
-dotnet tool install Microsoft.Azure.Functions.Worker.Harness --version <version> --global --add-source ./path/to/Worker/Harness/NuGet
+dotnet tool install Microsoft.Azure.Functions.Worker.Harness --version <version> --global --add-source <nugetSource>
+```
+You can find all the available versions of the tool [here](https://azfunc.visualstudio.com/Azure%20Functions/_artifacts/feed/AzureFunctionsTempStaging/NuGet/WorkerHarness.Console/versions/)
+
+Example
+```cs
+dotnet tool install Microsoft.Azure.Functions.Worker.Harness --version 1.0.1-Preview2 --global --add-source https://azfunc.pkgs.visualstudio.com/e6a70c92-4128-439f-8012-382fe78d6396/_packaging/AzureFunctionsTempStaging/nuget/v3/index.json
 ```
 
 ## Copy the [queueTrigger] folder to your machine
