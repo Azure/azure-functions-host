@@ -3,7 +3,7 @@
     "actions": [
         {
             "actionType": "rpc",
-            "actionName": "validate StartStream message",
+            "actionName": "validate worker's ability to sends a StartStream message",
             "messages": [
                 {
                     "direction": "incoming",
@@ -20,7 +20,7 @@
         },
         {
             "actionType": "rpc",
-            "actionName": "validate that worker has HandlesInvocationCancelMessage capability",
+            "actionName": "validate worker's ability to handle worker initialization",
             "messages": [
                 {
                     "direction": "outgoing",

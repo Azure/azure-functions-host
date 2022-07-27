@@ -3,7 +3,7 @@
     "actions": [
         {
             "actionType": "rpc",
-            "actionName": "Invoke a queue-trigger function. Expect success",
+            "actionName": "validate worker's ability to respond to an invocation request. Expect Success",
             "messages": [
                 {
                     "direction": "outgoing",
