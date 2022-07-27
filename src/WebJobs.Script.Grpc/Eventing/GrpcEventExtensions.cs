@@ -18,14 +18,14 @@ internal static class GrpcEventExtensions
     //    inbound-writer (note we will allow for multi-stream possibility)
     // 4) the GrpcWorkerChannel has a single dedicated consumer of inbound-reader, which it then marries to
     //    in-flight operations
-    private static readonly UnboundedChannelOptions InboundOptions = new UnboundedChannelOptions
+    internal static readonly UnboundedChannelOptions InboundOptions = new UnboundedChannelOptions
     {
         SingleReader = true, // see 4
         SingleWriter = false, // see 3
         AllowSynchronousContinuations = false,
     };
 
-    private static readonly UnboundedChannelOptions OutboundOptions = new UnboundedChannelOptions
+    internal static readonly UnboundedChannelOptions OutboundOptions = new UnboundedChannelOptions
     {
         SingleReader = false, // see 2
         SingleWriter = false, // see 1
