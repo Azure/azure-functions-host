@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
             _config = config ?? throw new ArgumentNullException(nameof(config));
             _metadataManager = metadataManager ?? throw new ArgumentNullException(nameof(metadataManager));
             _nameResolver = new DefaultNameResolver(config);
-            _dispatcher = functionDispatcherFactory.GetFunctionDispatcher();
+            _dispatcher = functionDispatcherFactory != null ? functionDispatcherFactory.GetFunctionDispatcher() : null;
         }
 
         /// <summary>
