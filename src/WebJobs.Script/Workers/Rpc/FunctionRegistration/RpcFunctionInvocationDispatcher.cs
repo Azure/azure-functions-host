@@ -277,13 +277,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             var workerConfig = _workerConfigs.Where(c => c.Description.Language.Equals(_workerRuntime, StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
 
-            // For dotnet isolated workerConfig is populated by reading workerconfig.json from the deployed payload
-            var isDotnetIsolatedApp = string.Equals(_workerRuntime, RpcWorkerConstants.DotNetIsolatedLanguageWorkerName, StringComparison.InvariantCultureIgnoreCase);
-            var isDotNetIsolatedAppWithoutPayload = isDotnetIsolatedApp && workerConfig == null;
-
-            _logger.LogInformation($"isDotnetIsolatedApp: {isDotnetIsolatedApp}, isDotNetIsolatedAppWithoutPayload:{isDotNetIsolatedAppWithoutPayload}");
+            // For other OOP workers, workerconfigs are present inside "workers" folder of host bin directory and is used to populate "_workerConfigs".
+            // For dotnet-isolated _workerConfigs is populated by reading workerconfig.json from the deployed payload(customer function app code).
+            // So if workerConfig is null and worker runtime is dotnet-isolated, that means isolated function code was not deployed yet.
+            var isDotNetIsolatedAppWithoutPayload = string.Equals(_workerRuntime, RpcWorkerConstants.DotNetIsolatedLanguageWorkerName, StringComparison.InvariantCultureIgnoreCase)
+                                                    && workerConfig == null;
 
             // We are skipping this check for multi-language environments because they use multiple workers and thus doesn't honor 'FUNCTIONS_WORKER_RUNTIME'
+            // Also, skip if dotnet-isoalted app without payload as it is a valid case to exist.
             if ((workerConfig == null && (functions == null || functions.Count() == 0))
                 && !_environment.IsMultiLanguageRuntimeEnvironment()
                 && !isDotNetIsolatedAppWithoutPayload)
