@@ -277,8 +277,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             var workerConfig = _workerConfigs.Where(c => c.Description.Language.Equals(_workerRuntime, StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
 
+            // For dotnet isolated workerConfig is populated by reading workerconfig.json from the deployed payload
+            var isDotnetIsolatedApp = string.Equals(_workerRuntime, RpcWorkerConstants.DotNetIsolatedLanguageWorkerName, StringComparison.InvariantCultureIgnoreCase);
+            var isDotNetIsolatedAppWithoutPayload = isDotnetIsolatedApp && workerConfig == null;
+
+            _logger.LogInformation($"isDotnetIsolatedApp: {isDotnetIsolatedApp}, isDotNetIsolatedAppWithoutPayload:{isDotNetIsolatedAppWithoutPayload}");
+
             // We are skipping this check for multi-language environments because they use multiple workers and thus doesn't honor 'FUNCTIONS_WORKER_RUNTIME'
-            if ((workerConfig == null && (functions == null || functions.Count() == 0)) && !_environment.IsMultiLanguageRuntimeEnvironment())
+            if ((workerConfig == null && (functions == null || functions.Count() == 0))
+                && !_environment.IsMultiLanguageRuntimeEnvironment()
+                && !isDotNetIsolatedAppWithoutPayload)
             {
                 // Only throw if workerConfig is null AND some functions have been found.
                 // With .NET out-of-proc, worker config comes from functions.
