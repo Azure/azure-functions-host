@@ -45,6 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             _logger.FunctionMetadataProviderParsingFunctions();
             IEnumerable<FunctionMetadata> functions = new List<FunctionMetadata>();
+            _functions = default(ImmutableArray<FunctionMetadata>);
 
             if (_functions.IsDefaultOrEmpty || forceRefresh)
             {
