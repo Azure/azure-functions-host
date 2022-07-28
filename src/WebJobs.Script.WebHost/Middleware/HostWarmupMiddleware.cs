@@ -52,10 +52,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
         /// </summary>
         public async Task WarmupInvoke(HttpContext httpContext)
         {
-            PreJitPrepare(WarmUpConstants.JitTraceFileName);
-            if (_environment.IsLinuxConsumption())
+            // We only want to run our JIT traces on the first warmup call.
+            if (!_jitTraceHasRun)
             {
-                PreJitPrepare(WarmUpConstants.LinuxJitTraceFileName);
+                PreJitPrepare(WarmUpConstants.JitTraceFileName);
+                if (_environment.IsLinuxConsumption())
+                {
+                    PreJitPrepare(WarmUpConstants.LinuxJitTraceFileName);
+                }
+                _jitTraceHasRun = true;
             }
 
             ReadRuntimeAssemblyFiles();
@@ -110,11 +115,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
         private void PreJitPrepare(string jitTraceFileName)
         {
-            if (_jitTraceHasRun)
-            {
-                return;
-            }
-
             // This is to PreJIT all methods captured in coldstart.jittrace file to improve cold start time
             var path = Path.Combine(
                 _assemblyLocalPath,
@@ -131,7 +131,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
                 _logger.LogInformation(new EventId(100, "PreJit"),
                     $"PreJIT Successful prepares: {successfulPrepares}, Failed prepares: {failedPrepares} FileName = {jitTraceFileName}");
             }
-            _jitTraceHasRun = true;
         }
 
         public async Task WarmUp(HttpRequest request)
