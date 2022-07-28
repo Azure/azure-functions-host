@@ -42,7 +42,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
             var assignmentContext = _startupContextProvider.SetContext(encryptedAssignmentContext);
 
-            //for the configuration:
+            //for the configuration
+
             //environment variable setup
             _environment.SetEnvironmentVariable("functionName", funcName);
             //internal var setup

@@ -66,9 +66,10 @@ namespace Microsoft.Diagnostics.JitTrace
             {
                 writer.Write(jittraceString);
             }
-
-            strStream.Position = 0;
-            Prepare(new StreamReader(strStream), out successfulPrepares, out failedPrepares);
+            successfulPrepares = 0;
+            failedPrepares = 0;
+            //strStream.Position = 0;
+            //Prepare(new StreamReader(strStream), out successfulPrepares, out failedPrepares);
         }
 
         /// <summary>

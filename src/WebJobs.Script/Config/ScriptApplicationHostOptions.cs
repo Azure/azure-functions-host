@@ -23,7 +23,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public string TestDataPath { get; set; }
 
-        public List<string> FuncNames { get; set; }
+        public List<string> FuncNames { get; set; } = new List<string>();
+        //TODO: include null check, if null: initialize new list
 
         /// <summary>
         /// Gets or sets a value indicating whether the ScriptHost is running inside of a WebHost. When true,

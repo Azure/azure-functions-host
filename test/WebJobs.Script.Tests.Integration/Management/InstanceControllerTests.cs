@@ -88,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerEncryptionKey, containerEncryptionKey);
 
-            IActionResult result = await instanceController.Assign(encryptedHostAssignmentContext, "");
+            IActionResult result = await instanceController.Assign(encryptedHostAssignmentContext, "Anisha");
 
             var objectResult = result as ObjectResult;
 
@@ -165,7 +165,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerEncryptionKey, containerEncryptionKey);
 
-            await instanceController.Assign(encryptedHostAssignmentContext, "");
+            await instanceController.Assign(encryptedHostAssignmentContext, "Anisha");
             Assert.NotNull(startupContextProvider.Context);
         }
 
@@ -261,7 +261,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerEncryptionKey, containerEncryptionKey);
             
-            await instanceController.Assign(encryptedHostAssignmentContext, "");
+            await instanceController.Assign(encryptedHostAssignmentContext, "Anisha");
 
             instanceManager.Verify(i => i.ValidateContext(It.IsAny<HostAssignmentContext>()),
                 shouldInvokeMethod ? Times.Once() : Times.Never());

@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -71,7 +72,12 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             options.IsSelfHost = webHostOptions.IsSelfHost;
             options.TestDataPath = webHostOptions.TestDataPath;
             options.IsFileSystemReadOnly = webHostOptions.IsFileSystemReadOnly;
+            if (webHostOptions.FuncNames == null)
+            {
+                webHostOptions.FuncNames = new List<string>();
+            }
             options.Functions = webHostOptions.FuncNames;
+            //ideally, this is where functions should be passed in after getting added
             //come back
             options.IsStandbyConfiguration = webHostOptions.IsStandbyConfiguration;
         }
