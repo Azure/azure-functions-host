@@ -22,6 +22,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
         private readonly IScriptHostManager _hostManager;
         private readonly ILogger _logger;
         private string _assemblyLocalPath;
+        private volatile bool _jitTraceHasRun;
+
+        private static readonly PathString _warmupRoutePath = new PathString($"/api/{WarmUpConstants.FunctionName}");
+        private static readonly PathString _warmupRouteAlternatePath = new PathString($"/api/{WarmUpConstants.AlternateRoute}");
 
         public HostWarmupMiddleware(RequestDelegate next, IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment, IScriptHostManager hostManager, ILogger<HostWarmupMiddleware> logger)
         {
@@ -33,20 +37,35 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             _assemblyLocalPath = Path.GetDirectoryName(new Uri(typeof(HostWarmupMiddleware).Assembly.Location).LocalPath);
         }
 
-        public async Task Invoke(HttpContext httpContext)
+        public Task Invoke(HttpContext httpContext)
         {
             if (IsWarmUpRequest(httpContext.Request, _webHostEnvironment.InStandbyMode, _environment))
+            {
+                return WarmupInvoke(httpContext);
+            }
+
+            return _next.Invoke(httpContext);
+        }
+
+        /// <summary>
+        /// This is so we only pay the async overhead while in the warmup path, but not for primary runtime.
+        /// </summary>
+        public async Task WarmupInvoke(HttpContext httpContext)
+        {
+            // We only want to run our JIT traces on the first warmup call.
+            if (!_jitTraceHasRun)
             {
                 PreJitPrepare(WarmUpConstants.JitTraceFileName);
                 if (_environment.IsLinuxConsumption())
                 {
                     PreJitPrepare(WarmUpConstants.LinuxJitTraceFileName);
                 }
-
-                ReadRuntimeAssemblyFiles();
-
-                await WarmUp(httpContext.Request);
+                _jitTraceHasRun = true;
             }
+
+            ReadRuntimeAssemblyFiles();
+
+            await WarmUp(httpContext.Request);
 
             await _next.Invoke(httpContext);
         }
@@ -127,10 +146,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
         public static bool IsWarmUpRequest(HttpRequest request, bool inStandbyMode, IEnvironment environment)
         {
-            return inStandbyMode &&
-                ((environment.IsAppService() && request.IsAppServiceInternalRequest(environment)) || environment.IsLinuxConsumption()) &&
-                (request.Path.StartsWithSegments(new PathString($"/api/{WarmUpConstants.FunctionName}")) ||
-                request.Path.StartsWithSegments(new PathString($"/api/{WarmUpConstants.AlternateRoute}")));
+            return inStandbyMode
+                && ((environment.IsAppService() && request.IsAppServiceInternalRequest(environment)) || environment.IsLinuxConsumption())
+                && (request.Path.StartsWithSegments(_warmupRoutePath) || request.Path.StartsWithSegments(_warmupRouteAlternatePath));
         }
     }
 }

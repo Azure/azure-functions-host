@@ -146,6 +146,48 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
+        public void WorkerChannel_Dispose_With_WorkerTerminateCapability()
+        {
+            var initTask = _workerChannel.StartWorkerProcessAsync(CancellationToken.None);
+
+            IDictionary<string, string> capabilities = new Dictionary<string, string>()
+            {
+                { RpcWorkerConstants.HandlesWorkerTerminateMessage, "1" }
+            };
+
+            StartStream startStream = new StartStream()
+            {
+                WorkerId = _workerId
+            };
+
+            StreamingMessage startStreamMessage = new StreamingMessage()
+            {
+                StartStream = startStream
+            };
+
+            // Send worker init request and enable the capabilities
+            GrpcEvent rpcEvent = new GrpcEvent(_workerId, startStreamMessage);
+            _workerChannel.SendWorkerInitRequest(rpcEvent);
+            _testFunctionRpcService.PublishWorkerInitResponseEvent(capabilities);
+
+            _workerChannel.Dispose();
+            var traces = _logger.GetLogMessages();
+            var expectedLogMsg = $"Sending WorkerTerminate message with grace period {WorkerConstants.WorkerTerminateGracePeriodInSeconds} seconds.";
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, expectedLogMsg)));
+        }
+
+        [Fact]
+        public void WorkerChannel_Dispose_Without_WorkerTerminateCapability()
+        {
+            var initTask = _workerChannel.StartWorkerProcessAsync(CancellationToken.None);
+
+            _workerChannel.Dispose();
+            var traces = _logger.GetLogMessages();
+            var expectedLogMsg = $"Sending WorkerTerminate message with grace period {WorkerConstants.WorkerTerminateGracePeriodInSeconds} seconds.";
+            Assert.False(traces.Any(m => string.Equals(m.FormattedMessage, expectedLogMsg)));
+        }
+
+        [Fact]
         public async Task StartWorkerProcessAsync_Invoked_SetupFunctionBuffers_Verify_ReadyForInvocation()
         {
             var initTask = _workerChannel.StartWorkerProcessAsync(CancellationToken.None);
