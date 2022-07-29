@@ -94,7 +94,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions
             LoggerMessage.Define<string, bool, bool, Guid>(
                 LogLevel.Information,
                 new EventId(513, nameof(Building)),
-                "Building host: version spec: {functionExtensionVersion}, startup suppressed: '{skipHostStartup}', configuration suppressed: '{skipHostJsonConfiguration}', startup operation id: '{operationId}'");
+                "Building host: version spec: {functionsExtensionVersion}, startup suppressed: '{skipHostStartup}', configuration suppressed: '{skipHostJsonConfiguration}', startup operation id: '{operationId}'");
 
         private static readonly Action<ILogger, Guid, Exception> _startupOperationWasCanceled =
             LoggerMessage.Define<Guid>(
