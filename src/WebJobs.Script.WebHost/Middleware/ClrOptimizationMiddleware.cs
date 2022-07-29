@@ -92,7 +92,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex.Message, ex.StackTrace);
+                _logger.LogError(ex, "Error in NoGCRegion, GC optimization will not get applied.");
             }
         }
     }
