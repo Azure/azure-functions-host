@@ -43,9 +43,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     return false;
 
                 case StatusResult.Types.Status.Cancelled:
-                    var rpcException = GetRpcException(status, enableUserCodeExceptionCapability);
-                    throw TaskCanceledException("Invocation was cancelled", rpcException);
-                    return false;
+                    var cancellationException = GetRpcException(status);
+                    throw new OperationCanceledException("Invocation was cancelled", cancellationException);
 
                 default:
                     return true;
