@@ -268,9 +268,12 @@ namespace WorkerHarness.Core.Actions
         {
             _logger.LogError($"{ActionErrorCode.MessageNotReceivedError}: {string.Format(ActionErrors.MessageNotReceiveErrorMessage, rpcActionMessage.MessageType)}");
 
-            if (executionContext.DisplayVerboseError && rpcActionMessage.MatchingCriteria.Any())
+            if (executionContext.DisplayVerboseError)
             {
-                _logger.LogError($"The matching criteria are: {rpcActionMessage.MatchingCriteria.Serialize()}");
+                if (rpcActionMessage.MatchingCriteria.Any())
+                {
+                    _logger.LogError($"The matching criteria are: {rpcActionMessage.MatchingCriteria.Serialize()}");
+                }
             }
             else
             {
@@ -285,9 +288,12 @@ namespace WorkerHarness.Core.Actions
             _logger.LogError($"{ActionErrorCode.MessageNotSentError}: {string.Format(ActionErrors.MessageNotSentErrorMessage, rpcActionMessage.MessageType)}");
             _logger.LogError(ActionErrors.MessageNotSentErrorAdvice);
 
-            if (executionContext.DisplayVerboseError && rpcActionMessage.Payload != null)
+            if (executionContext.DisplayVerboseError)
             {
-                _logger.LogError($"The payload is: {rpcActionMessage.Payload.Serialize()}");
+                if (rpcActionMessage.Payload != null)
+                {
+                    _logger.LogError($"The payload is: {rpcActionMessage.Payload.Serialize()}");
+                }
             }
             else
             {
