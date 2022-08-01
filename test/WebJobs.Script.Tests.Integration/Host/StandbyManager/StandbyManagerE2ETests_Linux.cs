@@ -66,8 +66,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(1, functions.Length);
             Assert.Equal("WarmUp", functions[0]);
 
-            //await VerifyWarmupSucceeds();
-            //await VerifyWarmupSucceeds(restart: true);
+            await VerifyWarmupSucceeds();
+            await VerifyWarmupSucceeds(restart: true);
 
             // now specialize the site
             await Assign(encryptionKey);
@@ -161,7 +161,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // Now specialize the host by invoking assign
             var secretManager = _httpServer.Host.Services.GetService<ISecretManagerProvider>().Current;
             var masterKey = (await secretManager.GetHostSecretsAsync()).MasterKey;
-            string uri = "admin/instance/assign";
+            string uri = "admin/instance/assign/?funcName=TestFunc1";
             var request = new HttpRequestMessage(HttpMethod.Post, uri);
             var environment = new Dictionary<string, string>()
                 {
@@ -174,7 +174,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 SiteId = 1234,
                 SiteName = "TestApp",
                 Environment = environment,
-                FuncName = "modified for testing purposes!"
+                //FuncName = "TestFunc1"
             };
             var encryptedAssignmentContext = CreateEncryptedContext(assignmentContext, encryptionKey);
             string json = JsonConvert.SerializeObject(encryptedAssignmentContext);

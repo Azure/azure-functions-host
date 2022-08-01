@@ -72,13 +72,14 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             options.IsSelfHost = webHostOptions.IsSelfHost;
             options.TestDataPath = webHostOptions.TestDataPath;
             options.IsFileSystemReadOnly = webHostOptions.IsFileSystemReadOnly;
+
+            //set options Functions array
             if (webHostOptions.FuncNames == null)
             {
                 webHostOptions.FuncNames = new List<string>();
             }
             options.Functions = webHostOptions.FuncNames;
-            //ideally, this is where functions should be passed in after getting added
-            //come back
+
             options.IsStandbyConfiguration = webHostOptions.IsStandbyConfiguration;
         }
 

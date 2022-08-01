@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Threading.Tasks;
-using MappingSample;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -36,18 +35,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         [HttpPost]
         [Route("admin/instance/assign")]
-        //[Authorize(Policy = PolicyNames.AdminAuthLevel)]
+        [Authorize(Policy = PolicyNames.AdminAuthLevel)] //originally commented for testing purposes
         public async Task<IActionResult> Assign([FromBody] EncryptedHostAssignmentContext encryptedAssignmentContext, string funcName)
         {
             _logger.LogDebug($"Starting container assignment for host : {Request?.Host}. ContextLength is: {encryptedAssignmentContext.EncryptedContext?.Length}");
 
             var assignmentContext = _startupContextProvider.SetContext(encryptedAssignmentContext);
 
-            //for the configuration
-
-            //environment variable setup
-            //_environment.SetEnvironmentVariable("functionName", funcName);
-            //internal var setup
+            //setting environment var here if functionName is not empty
             if (!funcName.IsNullOrEmpty())
             {
                 assignmentContext.FuncName = funcName;

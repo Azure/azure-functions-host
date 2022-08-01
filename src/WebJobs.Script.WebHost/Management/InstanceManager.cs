@@ -314,11 +314,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             // We need to get the non-PlaceholderMode script Path so we can unzip to the correct location.
             // This asks the factory to skip the PlaceholderMode check when configuring options.
             var options = _optionsFactory.Create(ScriptApplicationHostOptionsSetup.SkipPlaceholder);
-            //try this vs environmental variable
+
+            //adding FuncName to options
             if (!assignmentContext.FuncName.IsNullOrEmpty())
             {
                 options.FuncNames.Add(assignmentContext.FuncName);
-                _environment.GetEnvironmentVariable("functionName");
+                string envVar = _environment.GetEnvironmentVariable("functionName");
+                _logger.LogInformation($"Assignment Context FuncName: {assignmentContext.FuncName}, environmental var: {envVar}");
             }
             RunFromPackageContext pkgContext = assignmentContext.GetRunFromPkgContext();
 

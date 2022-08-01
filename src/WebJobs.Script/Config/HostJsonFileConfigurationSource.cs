@@ -7,7 +7,6 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
-using MappingSample;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
@@ -145,10 +144,6 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                     ScriptApplicationHostOptions options = _configurationSource.HostOptions;
                     string hostFilePath = Path.Combine(options.ScriptPath, ScriptConstants.HostMetadataFileName);
                     JObject hostConfigObject = LoadHostConfig(hostFilePath);
-
-                    //create a JTOKEN from the last value of functions (Assuming one at a time) and replace current config object's functions
-                    //var token = JToken.FromObject(MappingUtils.FunctionNames.Last());
-                    //hostConfigObject["functions"] = token;
 
                     hostConfigObject = InitializeHostConfig(hostFilePath, hostConfigObject);
                     string sanitizedJson = SanitizeHostJson(hostConfigObject);
