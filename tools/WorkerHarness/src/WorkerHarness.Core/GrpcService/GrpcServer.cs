@@ -14,7 +14,7 @@ namespace WorkerHarness.Core.GrpcService
         public GrpcServer(GrpcServiceChannel channel)
         {
             int port = WorkerUtilities.GetUnusedTcpPort();
-            Uri = new Uri($"http://{WorkerConstants.HostName}:{port}");
+            Uri = new Uri($"http://{HostConstants.HostName}:{port}");
 
             GrpcService grpcService = new(channel.InboundChannel, channel.OutboundChannel);
             _grpcServer = new()
