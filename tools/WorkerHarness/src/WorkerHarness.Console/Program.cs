@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using Channels = System.Threading.Channels;
-using Grpc.Core;
 using Microsoft.Azure.Functions.WorkerHarness.Grpc.Messages;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -10,7 +9,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using WorkerHarness.Core;
 using WorkerHarness.Core.WorkerProcess;
-using WorkerHarness.Core.Commons;
 using WorkerHarness.Core.Options;
 using WorkerHarness.Core.Variables;
 using WorkerHarness.Core.Matching;
