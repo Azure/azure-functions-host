@@ -1,7 +1,7 @@
 {
-  "scenarioFile": "C:\\Dev\\demo\\queueTrigger\\nodejs\\queueTriggerScenario.json",
-  "languageExecutable": "C:\\Program Files\\nodejs\\node.exe",
-  "workerPath": "C:\\Dev\\azure-functions-host\\src\\WebJobs.Script.WebHost\\bin\\Debug\\net6.0\\workers\\node\\dist\\src\\nodejsWorker.js",
-  "functionAppDirectory": "C:\\temp\\JSFunctionApp",
-  "DisplayVerboseError": true
+  "scenarioFile": "path\\to\\scenario\\file",
+  "languageExecutable": "C:\\Program Files\\dotnet\\dotnet.exe",
+  "workerExecutable": "path\\to\\worker\\executable",
+  "workerDirectory": "path\\to\\worker\\directory",
+  "DisplayVerboseError": false
 }

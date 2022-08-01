@@ -11,8 +11,10 @@ namespace WorkerHarness.Core.WorkerProcess
         /// <summary>
         /// Build and return a worker process
         /// </summary>
-        /// <param name="workerContext">encapsulate info to build a worker process</param>
+        /// <param name="languageExecutable">the executable file of your language</param>
+        /// <param name="workerExecutable">the executable file of your language worker</param>
+        /// <param name="workerDirectory">the directory of your language worker</param>
         /// <returns cref="Process"></returns>
-        IWorkerProcess Build(WorkerContext workerContext);
+        IWorkerProcess Build(string languageExecutable, string workerExecutable, string workerDirectory);
     }
 }

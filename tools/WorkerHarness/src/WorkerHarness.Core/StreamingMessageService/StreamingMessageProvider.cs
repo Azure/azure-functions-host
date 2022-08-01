@@ -146,7 +146,7 @@ namespace WorkerHarness.Core.StreamingMessageService
 
             if (string.IsNullOrEmpty(request.FunctionAppDirectory))
             {
-                request.FunctionAppDirectory = _workerOptions.FunctionAppDirectory;
+                request.FunctionAppDirectory = _workerOptions.WorkerDirectory;
             }
 
             if (content["EnvironmentVariables"] != null && content["EnvironmentVariables"] is JsonObject environmentVariables)
@@ -206,7 +206,7 @@ namespace WorkerHarness.Core.StreamingMessageService
 
             if (string.IsNullOrEmpty(functionsMetadataRequest.FunctionAppDirectory))
             {
-                functionsMetadataRequest.FunctionAppDirectory = _workerOptions.FunctionAppDirectory;
+                functionsMetadataRequest.FunctionAppDirectory = _workerOptions.WorkerDirectory;
             }
 
             return functionsMetadataRequest;
@@ -270,8 +270,6 @@ namespace WorkerHarness.Core.StreamingMessageService
                 functionLoadRequest.FunctionId = Guid.NewGuid().ToString();
             }
 
-            functionLoadRequest.Metadata.FunctionId = functionLoadRequest.FunctionId;
-
             // Since FunctionLoadRequest does not expose a public set methods for Bindings and RawBindings properties,
             // these properties can't be deserialize. We have to manually iterate through user input and set them.
             if (content["Metadata"] != null && content["Metadata"]!["Bindings"] != null && content["Metadata"]!["Bindings"] is JsonObject bindingsInJsonObject)
@@ -302,7 +300,7 @@ namespace WorkerHarness.Core.StreamingMessageService
             // if the user does not specify the FunctionAppDirectory, use the WorkerDirectory value in the _workerDescription object
             if (string.IsNullOrEmpty(workerInitRequest.FunctionAppDirectory))
             {
-                workerInitRequest.FunctionAppDirectory = _workerOptions.FunctionAppDirectory;
+                workerInitRequest.FunctionAppDirectory = _workerOptions.WorkerDirectory;
             }
 
             // if the user does not specify the WorkerDirectory, use the WorkerDirectory value in the _workerDescription object
