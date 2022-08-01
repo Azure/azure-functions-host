@@ -10,6 +10,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
 using Microsoft.Extensions.Logging;
+using Microsoft.IdentityModel.Tokens;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 {
@@ -45,9 +46,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             //for the configuration
 
             //environment variable setup
-            _environment.SetEnvironmentVariable("functionName", funcName);
+            //_environment.SetEnvironmentVariable("functionName", funcName);
             //internal var setup
-            assignmentContext.FuncName = funcName;
+            if (!funcName.IsNullOrEmpty())
+            {
+                assignmentContext.FuncName = funcName;
+                _environment.SetEnvironmentVariable("functionName", assignmentContext.FuncName);
+            }
 
             // before starting the assignment we want to perform as much
             // up front validation on the context as possible

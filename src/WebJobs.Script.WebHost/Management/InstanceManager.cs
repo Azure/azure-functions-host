@@ -13,8 +13,10 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
@@ -313,7 +315,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             // This asks the factory to skip the PlaceholderMode check when configuring options.
             var options = _optionsFactory.Create(ScriptApplicationHostOptionsSetup.SkipPlaceholder);
             //try this vs environmental variable
-            options.FuncNames.Add(assignmentContext.FuncName);
+            if (!assignmentContext.FuncName.IsNullOrEmpty())
+            {
+                options.FuncNames.Add(assignmentContext.FuncName);
+                _environment.GetEnvironmentVariable("functionName");
+            }
             RunFromPackageContext pkgContext = assignmentContext.GetRunFromPkgContext();
 
             if (_environment.SupportsAzureFileShareMount())

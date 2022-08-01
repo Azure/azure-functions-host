@@ -70,7 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
             options.IsScmRunFromPackage = isScmRunFromPackage;
             //come back
             //create env var here?
-            //options.FuncNames = new List<string>();
+            //options.FuncNames = new List<string>()
             var functionName = _environment.GetEnvironmentVariable("functionName");
             if (!string.IsNullOrEmpty(functionName))
             {

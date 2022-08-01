@@ -66,8 +66,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(1, functions.Length);
             Assert.Equal("WarmUp", functions[0]);
 
-            await VerifyWarmupSucceeds();
-            await VerifyWarmupSucceeds(restart: true);
+            //await VerifyWarmupSucceeds();
+            //await VerifyWarmupSucceeds(restart: true);
 
             // now specialize the site
             await Assign(encryptionKey);
@@ -173,7 +173,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 SiteId = 1234,
                 SiteName = "TestApp",
-                Environment = environment
+                Environment = environment,
+                FuncName = "modified for testing purposes!"
             };
             var encryptedAssignmentContext = CreateEncryptedContext(assignmentContext, encryptionKey);
             string json = JsonConvert.SerializeObject(encryptedAssignmentContext);
