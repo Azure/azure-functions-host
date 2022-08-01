@@ -84,6 +84,7 @@ namespace WorkerHarness.Core.Tests.StreamingMessageService
 
             HarnessOptions harnessOptions = CreateDefaultHarnessOptions();
             MSOptions.IOptions<HarnessOptions> stubOptions = MSOptions.Options.Create<HarnessOptions>(harnessOptions);
+            stubOptions.Value.FunctionAppDirectory = "path\\to\\function\\app";
             IPayloadVariableSolver stubPayloadVariableSolver = new PayloadVariableSolver();
 
             StreamingMessageProvider provider = new(stubOptions, stubPayloadVariableSolver);
@@ -94,7 +95,7 @@ namespace WorkerHarness.Core.Tests.StreamingMessageService
             // Assert
             Assert.IsNotNull(message.WorkerInitRequest);
             Assert.AreEqual(harnessOptions.WorkerDirectory, message.WorkerInitRequest.WorkerDirectory);
-            Assert.AreEqual(harnessOptions.WorkerDirectory, message.WorkerInitRequest.FunctionAppDirectory);
+            Assert.AreEqual(harnessOptions.FunctionAppDirectory, message.WorkerInitRequest.FunctionAppDirectory);
             Assert.AreEqual(HostConstants.HostVersion, message.WorkerInitRequest.HostVersion);
             Assert.IsTrue(message.WorkerInitRequest.Capabilities.Count == 0);
             Assert.IsTrue(message.WorkerInitRequest.LogCategories.Count == 0);
@@ -243,6 +244,7 @@ namespace WorkerHarness.Core.Tests.StreamingMessageService
 
             HarnessOptions harnessOptions = CreateDefaultHarnessOptions();
             MSOptions.IOptions<HarnessOptions> stubOptions = MSOptions.Options.Create<HarnessOptions>(harnessOptions);
+            stubOptions.Value.FunctionAppDirectory = "path\\to\\function\\app";
             IPayloadVariableSolver stubPayloadVariableSolver = new PayloadVariableSolver();
 
             StreamingMessageProvider provider = new(stubOptions, stubPayloadVariableSolver);
@@ -252,7 +254,7 @@ namespace WorkerHarness.Core.Tests.StreamingMessageService
 
             // Assert
             Assert.IsNotNull(message.FunctionsMetadataRequest);
-            Assert.AreEqual(harnessOptions.WorkerDirectory, message.FunctionsMetadataRequest.FunctionAppDirectory);
+            Assert.AreEqual(harnessOptions.FunctionAppDirectory, message.FunctionsMetadataRequest.FunctionAppDirectory);
         }
 
         [TestMethod]
@@ -542,7 +544,7 @@ namespace WorkerHarness.Core.Tests.StreamingMessageService
             {
                 ScenarioFile = "path\\to\\scenario\\path",
                 LanguageExecutable = "path\\to\\language\\executable",
-                WorkerExecutable = "path\\to\\worker\\executable",
+                WorkerPath = "path\\to\\worker\\executable",
                 WorkerDirectory = "path\\to\\worker\\directory"
             };
         }
