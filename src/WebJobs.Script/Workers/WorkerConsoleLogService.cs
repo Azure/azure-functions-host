@@ -65,8 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
                     if (WorkerProcessUtilities.IsToolingConsoleJsonLogEntry(consoleLog))
                     {
-                        _toolingConsoleJsonLoggerLazy.Value.Log(consoleLog.Level,
-                            WorkerProcessUtilities.RemoveToolingConsoleJsonLogPrefix(consoleLog.Message));
+                        _toolingConsoleJsonLoggerLazy.Value.Log(consoleLog.Level, consoleLog.Message);
                     }
                     else
                     {

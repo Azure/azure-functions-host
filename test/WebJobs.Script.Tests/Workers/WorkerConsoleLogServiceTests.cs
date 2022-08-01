@@ -73,13 +73,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             {
                 VerifyLogLevel(userLogs, "Test Message No keyword", LogLevel.Error);
                 VerifyLogLevel(systemLogs, "[Test Worker Message No keyword]", LogLevel.Error);
-                VerifyLogLevel(toolingConsoleLogs, "Azure Functions .NET Worker (PID: 4) initialized in debug mode.", LogLevel.Error);
+                VerifyLogLevel(toolingConsoleLogs, "azfuncjsonlog:Azure Functions .NET Worker (PID: 4) initialized in debug mode.", LogLevel.Error);
             }
             else
             {
                 VerifyLogLevel(userLogs, "Test Message No keyword", LogLevel.Information);
                 VerifyLogLevel(systemLogs, "[Test Worker Message No keyword]", LogLevel.Information);
-                VerifyLogLevel(toolingConsoleLogs, "Azure Functions .NET Worker (PID: 4) initialized in debug mode.", LogLevel.Information);
+                VerifyLogLevel(toolingConsoleLogs, "azfuncjsonlog:Azure Functions .NET Worker (PID: 4) initialized in debug mode.", LogLevel.Information);
             }
         }
 
@@ -88,7 +88,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             var message = allLogs.FirstOrDefault(l => l.FormattedMessage.Contains(msg));
             Assert.NotNull(message);
             Assert.DoesNotContain(WorkerConstants.LanguageWorkerConsoleLogPrefix, message.FormattedMessage);
-            Assert.DoesNotContain(WorkerConstants.ToolingConsoleLogPrefix, message.FormattedMessage);
             Assert.Equal(expectedLevel, message.Level);
         }
     }
