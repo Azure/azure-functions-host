@@ -21,8 +21,7 @@ namespace WorkerHarness.Core.Tests.Options
             {
                 ScenarioFile = stubFiles[0],
                 LanguageExecutable = stubFiles[1],
-                WorkerExecutable = stubFiles[2],
-                WorkerDirectory = Directory.GetCurrentDirectory()
+                WorkerPath = stubFiles[2],
             };
             IHarnessOptionsValidate harnessOptionsValidate = new HarnessOptionsValidate(stubLogger);
 
@@ -33,7 +32,7 @@ namespace WorkerHarness.Core.Tests.Options
             Assert.IsTrue(actual);
             Assert.IsTrue(Path.IsPathRooted(options.ScenarioFile));
             Assert.IsTrue(Path.IsPathRooted(options.LanguageExecutable));
-            Assert.IsTrue(Path.IsPathRooted(options.WorkerExecutable));
+            Assert.IsTrue(Path.IsPathRooted(options.WorkerPath));
             Assert.IsTrue(Path.IsPathRooted(options.WorkerDirectory));
         }
 
@@ -65,8 +64,7 @@ namespace WorkerHarness.Core.Tests.Options
             {
                 ScenarioFile = relativeScenarioPath,
                 LanguageExecutable = stubFiles[0],
-                WorkerExecutable = stubFiles[1],
-                WorkerDirectory = directoryPath
+                WorkerPath = stubFiles[1],
             };
             IHarnessOptionsValidate harnessOptionsValidate = new HarnessOptionsValidate(stubLogger);
 
@@ -94,8 +92,7 @@ namespace WorkerHarness.Core.Tests.Options
             {
                 ScenarioFile = relativeScenarioPath,
                 LanguageExecutable = stubFiles[0],
-                WorkerExecutable = stubFiles[1],
-                WorkerDirectory = directoryPath
+                WorkerPath = stubFiles[1],
             };
             IHarnessOptionsValidate harnessOptionsValidate = new HarnessOptionsValidate(stubLogger);
 
@@ -120,8 +117,7 @@ namespace WorkerHarness.Core.Tests.Options
             {
                 ScenarioFile = stubFiles[0],
                 LanguageExecutable = relativeLanguageExecutable,
-                WorkerExecutable = stubFiles[1],
-                WorkerDirectory = directoryPath
+                WorkerPath = stubFiles[1],
             };
             IHarnessOptionsValidate harnessOptionsValidate = new HarnessOptionsValidate(stubLogger);
 
@@ -149,8 +145,7 @@ namespace WorkerHarness.Core.Tests.Options
             {
                 ScenarioFile = stubFiles[0],
                 LanguageExecutable = relativeLanguageExecutable,
-                WorkerExecutable = stubFiles[1],
-                WorkerDirectory = directoryPath
+                WorkerPath = stubFiles[1]
             };
             IHarnessOptionsValidate harnessOptionsValidate = new HarnessOptionsValidate(stubLogger);
 
@@ -165,7 +160,7 @@ namespace WorkerHarness.Core.Tests.Options
         [DataRow(@"ScenarioFileSamples\ValidScenario.json")]
         [DataRow(@"ScenarioFileSamples\NoScenarioName.json")]
         [DataRow(@"..\net6.0\ScenarioFileSamples\ValidScenario.json")]
-        public void Validate_HarnessOptionsWithValidWorkerExecutable_ReturnTrue(string relativeWorkerExecutable)
+        public void Validate_HarnessOptionsWithValidWorkerPath_ReturnTrue(string relativeWorkerExecutable)
         {
             // Arrange
             string directoryPath = Path.Combine(Directory.GetCurrentDirectory(), "ScenarioFileSamples");
@@ -175,8 +170,7 @@ namespace WorkerHarness.Core.Tests.Options
             {
                 ScenarioFile = stubFiles[0],
                 LanguageExecutable = stubFiles[1],
-                WorkerExecutable = relativeWorkerExecutable,
-                WorkerDirectory = directoryPath
+                WorkerPath = relativeWorkerExecutable,
             };
             IHarnessOptionsValidate harnessOptionsValidate = new HarnessOptionsValidate(stubLogger);
 
@@ -187,14 +181,16 @@ namespace WorkerHarness.Core.Tests.Options
 
             // Assert
             Assert.IsTrue(actual);
-            Assert.IsTrue(Path.IsPathRooted(options.WorkerExecutable));
-            Assert.AreEqual(expected, options.WorkerExecutable);
+            Assert.IsTrue(Path.IsPathRooted(options.WorkerPath));
+            Assert.AreEqual(expected, options.WorkerPath);
+            Assert.IsTrue(Path.IsPathRooted(options.WorkerDirectory));
+            Assert.AreEqual(Path.GetDirectoryName(expected), options.WorkerDirectory);
         }
 
         [TestMethod]
         [DataRow("")]
         [DataRow(@"ScenarioFileSamples\NotExistingScenario.json")]
-        public void Validate_HarnessOptionsWithInvalidWorkerExecutable_ReturnFalse(string relativeWorkerExecutable)
+        public void Validate_HarnessOptionsWithInvalidWorkerPath_ReturnFalse(string relativeWorkerExecutable)
         {
             // Arrange
             string directoryPath = Path.Combine(Directory.GetCurrentDirectory(), "ScenarioFileSamples");
@@ -204,63 +200,7 @@ namespace WorkerHarness.Core.Tests.Options
             {
                 ScenarioFile = stubFiles[0],
                 LanguageExecutable = stubFiles[1],
-                WorkerExecutable = relativeWorkerExecutable,
-                WorkerDirectory = directoryPath
-            };
-            IHarnessOptionsValidate harnessOptionsValidate = new HarnessOptionsValidate(stubLogger);
-
-            // Act
-            bool actual = harnessOptionsValidate.Validate(options);
-
-            // Assert
-            Assert.IsFalse(actual);
-        }
-
-        [TestMethod]
-        [DataRow(@"ScenarioFileSamples")]
-        [DataRow(@"ScenarioFileSamples")]
-        [DataRow(@"..\net6.0\ScenarioFileSamples")]
-        public void Validate_HarnessOptionsWithValidWorkerDirectory_ReturnTrue(string relativeWorkerDirectory)
-        {
-            // Arrange
-            string directoryPath = Path.Combine(Directory.GetCurrentDirectory(), "ScenarioFileSamples");
-            string[] stubFiles = Directory.GetFiles(directoryPath);
-
-            HarnessOptions options = new()
-            {
-                ScenarioFile = stubFiles[0],
-                LanguageExecutable = stubFiles[1],
-                WorkerExecutable = stubFiles[2],
-                WorkerDirectory = relativeWorkerDirectory
-            };
-            IHarnessOptionsValidate harnessOptionsValidate = new HarnessOptionsValidate(stubLogger);
-
-            string expected = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), relativeWorkerDirectory));
-
-            // Act
-            bool actual = harnessOptionsValidate.Validate(options);
-
-            // Assert
-            Assert.IsTrue(actual);
-            Assert.IsTrue(Path.IsPathRooted(options.WorkerDirectory));
-            Assert.AreEqual(expected, options.WorkerDirectory);
-        }
-
-        [TestMethod]
-        [DataRow("")]
-        [DataRow(@"NonExistentScenarioFileSamples")]
-        public void Validate_HarnessOptionsWithInvalidWorkerDirectory_ReturnFalse(string relativeWorkerDirectory)
-        {
-            // Arrange
-            string directoryPath = Path.Combine(Directory.GetCurrentDirectory(), "ScenarioFileSamples");
-            string[] stubFiles = Directory.GetFiles(directoryPath);
-
-            HarnessOptions options = new()
-            {
-                ScenarioFile = stubFiles[0],
-                LanguageExecutable = stubFiles[1],
-                WorkerExecutable = stubFiles[2],
-                WorkerDirectory = relativeWorkerDirectory
+                WorkerPath = relativeWorkerExecutable,
             };
             IHarnessOptionsValidate harnessOptionsValidate = new HarnessOptionsValidate(stubLogger);
 

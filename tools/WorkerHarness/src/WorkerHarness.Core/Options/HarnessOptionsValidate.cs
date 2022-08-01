@@ -23,35 +23,17 @@ namespace WorkerHarness.Core.Options
             ValidateScenarioFile(harnessOptions, ref valid, errorMessage);
 
             // validate worker executable
-            ValidateWorkerExecutable(harnessOptions, ref valid, errorMessage);
+            ValidateWorkerPath(harnessOptions, ref valid, errorMessage);
 
             // validate language executable
             ValidateLanguageExecutable(harnessOptions, ref valid, errorMessage);
 
-            // validate worker directory
-            ValidateWorkerDirectory(harnessOptions, ref valid, errorMessage);
+            // set worker directory
+            harnessOptions.WorkerDirectory = Path.GetDirectoryName(harnessOptions.WorkerPath);
 
             return valid;
         }
 
-        private void ValidateWorkerDirectory(HarnessOptions harnessOptions, ref bool valid, string errorMessage)
-        {
-            if (string.IsNullOrEmpty(harnessOptions.WorkerDirectory))
-            {
-                _logger.LogError(errorMessage, "workerDirectory");
-                valid = false;
-            }
-            else
-            {
-                harnessOptions.WorkerDirectory = Path.GetFullPath(harnessOptions.WorkerDirectory);
-
-                if (!Directory.Exists(harnessOptions.WorkerDirectory))
-                {
-                    _logger.LogError(errorMessage, "workerDirectory");
-                    valid = false;
-                }
-            }
-        }
 
         private void ValidateLanguageExecutable(HarnessOptions harnessOptions, ref bool valid, string errorMessage)
         {
@@ -72,20 +54,20 @@ namespace WorkerHarness.Core.Options
             }
         }
 
-        private void ValidateWorkerExecutable(HarnessOptions harnessOptions, ref bool valid, string errorMessage)
+        private void ValidateWorkerPath(HarnessOptions harnessOptions, ref bool valid, string errorMessage)
         {
-            if (string.IsNullOrEmpty(harnessOptions.WorkerExecutable))
+            if (string.IsNullOrEmpty(harnessOptions.WorkerPath))
             {
-                _logger.LogError(errorMessage, "workerExecutable");
+                _logger.LogError(errorMessage, "workerPath");
                 valid = false;
             }
             else
             {
-                harnessOptions.WorkerExecutable = Path.GetFullPath(harnessOptions.WorkerExecutable);
+                harnessOptions.WorkerPath = Path.GetFullPath(harnessOptions.WorkerPath);
 
-                if (!File.Exists(harnessOptions.WorkerExecutable))
+                if (!File.Exists(harnessOptions.WorkerPath))
                 {
-                    _logger.LogError(errorMessage, "workerExecutable");
+                    _logger.LogError(errorMessage, "workerPath");
                     valid = false;
                 }
             }
