@@ -71,6 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
 
             //adding functionName to options in Configuration
             var functionName = _environment.GetEnvironmentVariable("functionName");
+            LinuxContainerEventGenerator.LogEvent(message: $"functionName from env var: {functionName} ", source: nameof(ScriptApplicationHostOptionsSetup));
             if (!string.IsNullOrEmpty(functionName))
             {
                 options.FuncNames.Add(functionName);

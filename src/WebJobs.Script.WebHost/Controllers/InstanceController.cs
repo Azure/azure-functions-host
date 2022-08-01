@@ -47,6 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             {
                 assignmentContext.FuncName = funcName;
                 _environment.SetEnvironmentVariable("functionName", assignmentContext.FuncName);
+                _logger.LogInformation($"Assignment Context FuncName: {assignmentContext.FuncName}, env var is set here");
             }
 
             // before starting the assignment we want to perform as much
