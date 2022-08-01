@@ -44,22 +44,16 @@ namespace WorkerHarness
                 return;
             }
 
-            // run WorkerHarness
+            // start the grpc server
+            var grpcServer = serviceProvider.GetRequiredService<IGrpcServer>();
+            grpcServer.Start();
+
+            // run the harness
             var harnessExecutor = serviceProvider.GetRequiredService<IWorkerHarnessExecutor>();
-
-            var channel = serviceProvider.GetRequiredService<GrpcServiceChannel>()!;
-
-            GrpcService grpcService = new(channel.InboundChannel, channel.OutboundChannel);
-
-            Server server = new()
-            {
-                Services = { FunctionRpc.BindService(grpcService) },
-                Ports = { new ServerPort(HostConstants.DefaultHostUri, HostConstants.DefaultPort, ServerCredentials.Insecure) }
-            };
-            server.Start();
-
             await harnessExecutor.StartAsync();
 
+            // clean up
+            await grpcServer.Shutdown();
             serviceProvider.Dispose();
 
             return;
@@ -98,6 +92,7 @@ namespace WorkerHarness
                         Channels.Channel.CreateUnbounded<StreamingMessage>(outputOptions));
                 })
                 .AddSingleton<IHarnessOptionsValidate, HarnessOptionsValidate>()
+                .AddSingleton<IGrpcServer, GrpcServer>()
                 .Configure<HarnessOptions>(config)
                 .AddLogging(c => { c.AddConsole(); })
                 .BuildServiceProvider();

@@ -5,6 +5,8 @@ namespace WorkerHarness.Core.Commons
 {
     internal class WorkerConstants
     {
+        internal const string HostName = "127.0.0.1";
+        // tobe deleted
         internal static readonly string WorkerId = Guid.NewGuid().ToString();
     }
 }
