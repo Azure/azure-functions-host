@@ -65,6 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
                     if (WorkerProcessUtilities.IsToolingConsoleJsonLogEntry(consoleLog))
                     {
+                        // log with the message prefix as coretools expects it.
                         _toolingConsoleJsonLoggerLazy.Value.Log(consoleLog.Level, consoleLog.Message);
                     }
                     else
