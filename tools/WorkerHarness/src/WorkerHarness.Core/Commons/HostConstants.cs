@@ -3,14 +3,9 @@
 
 namespace WorkerHarness.Core.Commons
 {
-    public class HostConstants
+    internal class HostConstants
     {
-        public const string DefaultHostUri = "127.0.0.1";
-
-        public const int DefaultPort = 30052;
-
-        public const int GrpcMaxMessageLength = int.MaxValue;
-
-        public const string HostVersion = "4.10.0.0";
+        internal const string HostVersion = "4.10.0.0";
+        internal const string HostName = "127.0.0.1";
     }
 }
