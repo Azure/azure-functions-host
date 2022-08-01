@@ -11,6 +11,6 @@ namespace WorkerHarness.Core.Commons
 
         public const int GrpcMaxMessageLength = int.MaxValue;
 
-        public const string HostVersion = "4.10.0.0";
+        public const string HostVersion = "4.3.2.0";
     }
 }
