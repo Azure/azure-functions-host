@@ -4,6 +4,7 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using WorkerHarness.Core.Actions;
+using WorkerHarness.Core.GrpcService;
 using WorkerHarness.Core.Options;
 using WorkerHarness.Core.Parsing;
 using WorkerHarness.Core.Variables;
@@ -18,26 +19,34 @@ namespace WorkerHarness.Core
         private readonly ILogger<WorkerHarnessExecutor> _logger;
         private readonly HarnessOptions _harnessOptions;
         private readonly IVariableObservable _globalVariables;
+        private readonly Uri _serverUri;
 
         public WorkerHarnessExecutor(
             IWorkerProcessBuilder workerProcessBuilder,
             IScenarioParser scenarioParser,
             ILogger<WorkerHarnessExecutor> logger,
             IOptions<HarnessOptions> harnessOptions,
-            IVariableObservable variableObservable)
+            IVariableObservable variableObservable,
+            IGrpcServer grpcServer)
         {
             _workerProcessBuilder = workerProcessBuilder;
             _scenarioParser = scenarioParser;
             _logger = logger;
             _harnessOptions = harnessOptions.Value;
             _globalVariables = variableObservable;
+            _serverUri = grpcServer.Uri;
         }
 
         public async Task<bool> StartAsync()
         {
-            IWorkerProcess myProcess = _workerProcessBuilder.Build(
-                _harnessOptions.LanguageExecutable!, _harnessOptions.WorkerExecutable!,
-                _harnessOptions.WorkerDirectory!);
+            WorkerContext context = new(_harnessOptions.LanguageExecutable!,
+                _harnessOptions.LanguageExecutableArguments,
+                _harnessOptions.WorkerPath!,
+                _harnessOptions.WorkerArguments,
+                _harnessOptions.FunctionAppDirectory!,
+                _serverUri);
+
+            IWorkerProcess myProcess = _workerProcessBuilder.Build(context);
 
             ExecutionContext executionContext = new(_globalVariables, _scenarioParser, myProcess)
             {
