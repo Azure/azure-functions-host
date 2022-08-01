@@ -6,6 +6,7 @@ using Microsoft.Extensions.Options;
 using Moq;
 using System.Diagnostics;
 using WorkerHarness.Core.Actions;
+using WorkerHarness.Core.GrpcService;
 using WorkerHarness.Core.Options;
 using WorkerHarness.Core.Parsing;
 using WorkerHarness.Core.Variables;
@@ -27,8 +28,11 @@ namespace WorkerHarness.Core.Tests
 
             var mockIWorkerProcessBuilder = new Mock<IWorkerProcessBuilder>();
             mockIWorkerProcessBuilder
-                .Setup(x => x.Build(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+                .Setup(x => x.Build(It.IsAny<WorkerContext>()))
                 .Returns(mockIWorkerProcess.Object);
+
+            var mockIGrpcServer = new Mock<IGrpcServer>();
+            mockIGrpcServer.Setup(x => x.Uri).Returns(new Uri(@"https:\\127.0.0.1:3520"));
 
             var mockIAction1 = new Mock<IAction>();
             mockIAction1.Setup(x => x.ExecuteAsync(It.IsAny<ExecutionContext>()))
@@ -54,7 +58,7 @@ namespace WorkerHarness.Core.Tests
                 {
                     ScenarioFile = "random\\file",
                     LanguageExecutable = "random\\language\\executable",
-                    WorkerExecutable = "random\\worker\\executable",
+                    WorkerPath = "random\\worker\\executable",
                     WorkerDirectory = "random\\worker\\directory"
                 });
 
@@ -62,7 +66,8 @@ namespace WorkerHarness.Core.Tests
 
             WorkerHarnessExecutor executor = new(mockIWorkerProcessBuilder.Object,
                 mockIScenarioParser.Object, mockILogger.Object, mockIOption.Object,
-                mockIVariableObservable.Object);
+                mockIVariableObservable.Object,
+                mockIGrpcServer.Object);
 
             // Act
             bool executionResult = await executor.StartAsync();
@@ -82,8 +87,11 @@ namespace WorkerHarness.Core.Tests
 
             var mockIWorkerProcessBuilder = new Mock<IWorkerProcessBuilder>();
             mockIWorkerProcessBuilder
-                .Setup(x => x.Build(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+                .Setup(x => x.Build(It.IsAny<WorkerContext>()))
                 .Returns(mockIWorkerProcess.Object);
+
+            var mockIGrpcServer = new Mock<IGrpcServer>();
+            mockIGrpcServer.Setup(x => x.Uri).Returns(new Uri(@"https:\\127.0.0.1:3520"));
 
             var mockIAction1 = new Mock<IAction>();
             mockIAction1.Setup(x => x.ExecuteAsync(It.IsAny<ExecutionContext>()))
@@ -107,7 +115,7 @@ namespace WorkerHarness.Core.Tests
                 {
                     ScenarioFile = "random\\file",
                     LanguageExecutable = "random\\language\\executable",
-                    WorkerExecutable = "random\\worker\\executable",
+                    WorkerPath = "random\\worker\\executable",
                     WorkerDirectory = "random\\worker\\directory"
                 });
 
@@ -115,7 +123,8 @@ namespace WorkerHarness.Core.Tests
 
             WorkerHarnessExecutor executor = new(mockIWorkerProcessBuilder.Object,
                 mockIScenarioParser.Object, mockILogger.Object, mockIOption.Object,
-                mockIVariableObservable.Object);
+                mockIVariableObservable.Object,
+                mockIGrpcServer.Object);
 
             // Act
             bool executionResult = await executor.StartAsync();
@@ -135,8 +144,11 @@ namespace WorkerHarness.Core.Tests
 
             var mockIWorkerProcessBuilder = new Mock<IWorkerProcessBuilder>();
             mockIWorkerProcessBuilder
-                .Setup(x => x.Build(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+                .Setup(x => x.Build(It.IsAny<WorkerContext>()))
                 .Returns(mockIWorkerProcess.Object);
+
+            var mockIGrpcServer = new Mock<IGrpcServer>();
+            mockIGrpcServer.Setup(x => x.Uri).Returns(new Uri(@"https:\\127.0.0.1:3520"));
 
             var mockIAction1 = new Mock<IAction>();
             mockIAction1.Setup(x => x.ExecuteAsync(It.IsAny<ExecutionContext>()))
@@ -162,7 +174,7 @@ namespace WorkerHarness.Core.Tests
                 {
                     ScenarioFile = "random\\file",
                     LanguageExecutable = "random\\language\\executable",
-                    WorkerExecutable = "random\\worker\\executable",
+                    WorkerPath = "random\\worker\\executable",
                     WorkerDirectory = "random\\worker\\directory"
                 });
 
@@ -170,7 +182,8 @@ namespace WorkerHarness.Core.Tests
 
             WorkerHarnessExecutor executor = new(mockIWorkerProcessBuilder.Object,
                 mockIScenarioParser.Object, mockILogger.Object, mockIOption.Object,
-                mockIVariableObservable.Object);
+                mockIVariableObservable.Object,
+                mockIGrpcServer.Object);
 
             // Act
             bool executionResult = await executor.StartAsync();

@@ -8,34 +8,31 @@ namespace WorkerHarness.Core.Options
     /// </summary>
     public class HarnessOptions
     {
-        /// <summary>
-        /// Full path of the directory that contains the worker executable file
-        /// </summary>
-        public string? WorkerDirectory { get; set; }
-
-        /// <summary>
-        /// Full path of a scenario file
-        /// </summary>
+        // Full path of a scenario file
         public string? ScenarioFile { get; set; }
 
-        /// <summary>
-        /// Full path of the worker (or Function App) executable
-        /// </summary>
-        public string? WorkerExecutable { get; set; }
-
-        /// <summary>
-        /// Full path of the language executable (e.g. dotnet.exe)
-        /// </summary>
+        // Full path of the language executable (e.g. dotnet.exe)
         public string? LanguageExecutable { get; set; }
 
-        /// <summary>
-        /// Optional flag to display verbose error messages to users
-        /// </summary>
+        // Language executable arguments
+        public List<string> LanguageExecutableArguments { get; set; } = new List<string>();
+
+        // Full path of the worker (e.g. worker.py)
+        public string? WorkerPath { get; set; }
+
+        // Full path to worker directory
+        public string? WorkerDirectory { get; set; }
+
+        // Worker arguments
+        public List<string> WorkerArguments { get; set; } = new List<string>();
+
+        // Full path of the Function App directory
+        public string? FunctionAppDirectory { get; set; }
+
+        // Optional flag to display verbose error messages to users
         public bool DisplayVerboseError { get; set; } = false;
 
-        /// <summary>
-        /// Optional flag to display verbose error messages to users
-        /// </summary>
+        // Optional flag to display verbose error messages to users
         public bool ContinueUponFailure { get; set; } = false;
 
     }
