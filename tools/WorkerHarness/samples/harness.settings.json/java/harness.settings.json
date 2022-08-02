@@ -1,0 +1,8 @@
+{
+  "scenarioFile": "C:\\Dev\\demo\\queueTrigger\\java\\queueTriggerScenario.json",
+  "languageExecutable": "C:\\Program Files\\Java\\jdk-11.0.15+10\\bin\\java.exe",
+  "languageExecutableArguments": ["-XX:+TieredCompilation -XX:TieredStopAtLevel=1 -noverify -Djava.net.preferIPv4Stack=true -jar", "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005"],
+  "workerPath": "C:\\Dev\\azure-functions-host\\src\\WebJobs.Script.WebHost\\bin\\Debug\\net6.0\\workers\\java\\azure-functions-java-worker.jar",
+  "functionAppDirectory": "C:\\temp\\JavaFunctionApp\\target\\azure-functions\\myJavaFunction",
+  "DisplayVerboseError": false
+}
