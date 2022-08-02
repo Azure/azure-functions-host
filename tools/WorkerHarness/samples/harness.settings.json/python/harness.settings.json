@@ -1,0 +1,7 @@
+{
+    "scenarioFile": "C:\\Dev\\demo\\queueTrigger\\python\\queueTriggerScenario.json",
+    "languageExecutable": "C:\\Dev\\azure-functions-python-worker\\.env\\Scripts\\python.exe",
+    "workerPath": "C:\\Dev\\azure-functions-python-worker\\python\\test\\worker.py",
+    "functionAppDirectory": "C:\\temp\\PythonFunctionApp",
+    "DisplayVerboseError": true
+}

@@ -36,16 +36,26 @@ This folder contains:
 
 ## Update queueload.json
 - Go into the queueTrigger folder and open the file "queueload.json"
-- Replace `<FunctionScriptFile>` with the name of the function `scriptFile`. For instance, if a C# Function App has a name "TestApp", then replace `<FunctionScriptFile>` with "TestApp.dll".
-- Replace `<QueueTriggerFunctionName>` with the name of the function `name`. For instance, if a queue-trigger function has a name "QueueTrigger", then replace `<FunctionScriptFile>` with "QueueTrigger".
+- Replace `<FunctionScriptFile>` with the `scriptFile` of your function app. 
+    - C#: replace `<FunctionScriptFile>` with "TestApp.dll" if your function app has a name "TestApp". 
+    - Java: replace `<FunctionScriptFile>` with `path\to\function-folder\\target\\azure-functions\\artifactID\\appname-version.jar`
+    - Python: replace `<FunctionScriptFile>` with `functionname\__init__.py`
+    - Nodejs: replace `<FunctionScriptFile>` with `path\to\function-folder\functioname\index.js`
+- Replace `<QueueTriggerFunctionName>` with the name of the function. For instance, if a queue-trigger function has a name "QueueTrigger", then replace `<FunctionScriptFile>` with "QueueTrigger".
+- Replace `<QueueTriggerFunctionEntryPoint>` with the entry point of your function.
+    - C#: replace it with `TestApp.QueueTrigger.Run` if TestApp is the function app's name, and QueueTrigger is the function's name.
+    - Java: replace it with `com.function.QueueFunction.run` if com.function is the group ID, and QueueTrigger is the function's name.
+    - Python: replace it with `main`
+    - Nodejs: replace it with an empty string.
 
 ![functionload image]
 
 ## Update harness.settings.json
 - In the queueTrigger folder, open the file "harness.settings.json".
 - Replace `<languageExecutable>` with the absolute path of your language executable.
-- Replace `<workerExecutable>` with the absolute path of your worker executable.
-- Replace `<workerDirectory>` with the absolute path of your worker directory.
+- Replace `<workerExecutable>` with the absolute path of your worker.
+- Replace `<workerDirectory>` with the absolute path of your function app directory.
+- If you have any executable arguments or worker arguments, put them in the "languageExecutableArguments" list and the "workerArguments" list. They will be added as arguments to the worker process. The difference between the 2 lists is the order: the former is put before the worker path, the later is put after.
 
 ![harness.settings.json image]
 
@@ -75,8 +85,8 @@ The "queueTriggerScenario" tests the following sequence:
 ## Requires Inputs:
 - A scenario file. This file follows **Json** format and contains a list of actions to validate against a language worker. The [Scenario](#scenario) section explains the available actions and how to put them together to create a scenario.
 - A language executable. E.g. python.exe, dotnet.exe, node.exe, etc.
-- A worker executable. This is the worker executable file of your Functions App.
-- A worker directory: This is the folder that contains the worker executable, functions metadata file, and libraries/assemblies of your Functions App.
+- A worker path. This is the worker file of your Functions App.
+- A function app directory: This is the directory of your Function App.
 
 Put those requirements in a "harness.settings.json" file. For example, a .NET developer would construct the "harness.settings.json" file as followed:
 
@@ -84,14 +94,16 @@ Put those requirements in a "harness.settings.json" file. For example, a .NET de
 {
   "scenarioFile": "C:\\dev\\testings\\scenario_a.json",
   "languageExecutable": "C:\\Program Files\\dotnet\\dotnet.exe",
-  "workerExecutable": "C:\\FunctionApp1\\FunctionApp1\\bin\\Debug\\net6.0\\FunctionApp1.dll",
-  "workerDirectory": "C:\\FunctionApp1\\FunctionApp1\\bin\\Debug\\net6.0"
+  "workerPath": "C:\\FunctionApp1\\FunctionApp1\\bin\\Debug\\net6.0\\FunctionApp1.dll",
+  "functionAppDirectory": "C:\\FunctionApp1\\FunctionApp1\\bin\\Debug\\net6.0"
 }
 ```
 
 See sample "harness.settings.json" [here](samples/harness.settings.json/).
 
-## Optional Flags:
+## Optional:
+- Language executable arguments: a list of arguments that go before the worker path in a process's argument. Empty by default.
+- Worker arguments: a list of arguments that go after the worker path in a process's argument. Empty by default.
 - DisplayVerboseError: `true`/`false`. If true, the Worker Harness displays verbose error messages. The content of a verbose error message depends on the error type. See [Errors](#errors) for more info. The flag is set to `false` by default.
 
 ## How to Run
