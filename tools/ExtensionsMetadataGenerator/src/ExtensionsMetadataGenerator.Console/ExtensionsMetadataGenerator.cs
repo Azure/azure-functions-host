@@ -90,6 +90,11 @@ namespace ExtensionsMetadataGenerator
                     return true;
                 }
 
+                //if (currentAttributeType.FullName.StartsWith("System", StringComparison.OrdinalIgnoreCase))
+                //{
+                //    return false;
+                //}
+
                 try
                 {
                     currentAttributeType = currentAttributeType.Resolve()?.BaseType;
