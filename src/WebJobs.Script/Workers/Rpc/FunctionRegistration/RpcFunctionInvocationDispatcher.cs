@@ -284,7 +284,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                                                     && workerConfig == null;
 
             // We are skipping this check for multi-language environments because they use multiple workers and thus doesn't honor 'FUNCTIONS_WORKER_RUNTIME'
-            // Also, skip if dotnet-isoalted app without payload as it is a valid case to exist.
+            // Also, skip if dotnet-isolated app without payload as it is a valid case to exist.
             if ((workerConfig == null && (functions == null || functions.Count() == 0))
                 && !_environment.IsMultiLanguageRuntimeEnvironment()
                 && !isDotNetIsolatedAppWithoutPayload)
