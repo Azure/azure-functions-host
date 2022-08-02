@@ -130,10 +130,10 @@ namespace WorkerHarness.Core.Actions
                         unprocessedRpcMessages.Remove(rpcActionMessage);
 
                         bool validated = ValidateMessage(streamingMessage, rpcActionMessage, executionContext);
+                        allValidated &= validated;
 
-                        allValidated = allValidated && validated;
-
-                        SetVariables(rpcActionMessage, streamingMessage, executionContext);
+                        bool setVariablesResult = SetVariables(rpcActionMessage, streamingMessage, executionContext);
+                        allValidated &= setVariablesResult;
                     }
 
                 }
@@ -233,9 +233,8 @@ namespace WorkerHarness.Core.Actions
                 {
                     await _outboundChannel.Writer.WriteAsync(streamingMessage, cancellationToken);
 
-                    SetVariables(rpcActionMessage, streamingMessage, executionContext);
-
-                    succeeded = true;
+                    bool setVariablesResult = SetVariables(rpcActionMessage, streamingMessage, executionContext);
+                    succeeded = setVariablesResult;
                 }
                 else
                 {
@@ -328,11 +327,11 @@ namespace WorkerHarness.Core.Actions
             }
         }
         
-        private void SetVariables(RpcActionMessage rpcActionMessage, StreamingMessage streamingMessage, ExecutionContext executionContext)
+        private bool SetVariables(RpcActionMessage rpcActionMessage, StreamingMessage streamingMessage, ExecutionContext executionContext)
         {
             if (rpcActionMessage.SetVariables == null)
             {
-                return;
+                return true;
             }
 
             IDictionary<string, string> variableSettings = rpcActionMessage.SetVariables;
@@ -347,9 +346,15 @@ namespace WorkerHarness.Core.Actions
                 }
                 catch (ArgumentException ex)
                 {
-                    throw new ArgumentException($"Scenario input error: \"SetVariables\" property contains invalid query", ex);
+                    _logger.LogCritical("Scenario input error: \"SetVariables\" property contains invalid query. {0}", ex.Message);
+                    _logger.LogCritical("The invalid query is \"{0}\"", query);
+                    _logger.LogCritical("The queried message is {0}", streamingMessage.Serialize());
+
+                    return false;
                 }
             }
+
+            return true;
         }
 
     }
