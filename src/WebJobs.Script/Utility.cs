@@ -541,10 +541,10 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             functionName = isFunctionShortName ? functionName : Utility.GetFunctionShortName(functionName);
 
-            ICollection<string> functionErrorCollection = new Collection<string>();
+            ICollection<string> functionErrorCollection = new HashSet<string>();
             if (!string.IsNullOrEmpty(functionName) && !functionErrors.TryGetValue(functionName, out functionErrorCollection))
             {
-                functionErrors[functionName] = functionErrorCollection = new Collection<string>();
+                functionErrors[functionName] = functionErrorCollection = new HashSet<string>();
             }
             functionErrorCollection.Add(error);
         }
