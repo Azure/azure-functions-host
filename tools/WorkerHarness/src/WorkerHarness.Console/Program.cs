@@ -17,6 +17,7 @@ using WorkerHarness.Core.Parsing;
 using WorkerHarness.Core.GrpcService;
 using WorkerHarness.Core.StreamingMessageService;
 using WorkerHarness.Core.Actions;
+using System.Reflection;
 
 namespace WorkerHarness
 {
@@ -24,6 +25,8 @@ namespace WorkerHarness
     {
         public static async Task Main(string[] args)
         {
+            System.Console.WriteLine($"Worker Harness version: {GetHarnessVersion()}");
+
             if (!TryGetHarnessSetting(out string harnessSettingsPath))
             {
                 return;
@@ -112,6 +115,12 @@ namespace WorkerHarness
             }
 
             return true;
+        }
+
+        private static string GetHarnessVersion()
+        {
+            return Assembly.GetAssembly(typeof(Program))!.GetName().Version!.ToString();
+
         }
     }
 }
