@@ -371,7 +371,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public class TestFixture : IDisposable
         {
-            private readonly TestServer _testServer;
             private readonly string _testHome;
 
             public TestFixture()
@@ -403,33 +402,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 var provider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, new TestMetricsLogger());
 
-                var builder = AspNetCore.WebHost.CreateDefaultBuilder()
-                   .UseStartup<Startup>()
-                   .ConfigureServices(services =>
-                   {
-                       services.Replace(new ServiceDescriptor(typeof(IOptions<ScriptApplicationHostOptions>), new OptionsWrapper<ScriptApplicationHostOptions>(HostOptions)));
-                       services.Replace(new ServiceDescriptor(typeof(ISecretManagerProvider), new TestSecretManagerProvider(new TestSecretManager())));
-                       services.Replace(new ServiceDescriptor(typeof(IOptionsMonitor<ScriptApplicationHostOptions>), optionsMonitor));
-                       services.Replace(new ServiceDescriptor(typeof(IFunctionMetadataProvider), provider));
-                   });
+                TestHost = new TestFunctionHost(HostOptions.ScriptPath, HostOptions.LogPath,
+                    configureScriptHostServices: services =>
+                    {
+                        services.Replace(new ServiceDescriptor(typeof(IOptions<ScriptApplicationHostOptions>), new OptionsWrapper<ScriptApplicationHostOptions>(HostOptions)));
+                        services.Replace(new ServiceDescriptor(typeof(ISecretManagerProvider), new TestSecretManagerProvider(new TestSecretManager())));
+                        services.Replace(new ServiceDescriptor(typeof(IOptionsMonitor<ScriptApplicationHostOptions>), optionsMonitor));
+                        services.Replace(new ServiceDescriptor(typeof(IFunctionMetadataProvider), provider));
+                    });
 
-                // TODO: https://github.com/Azure/azure-functions-host/issues/4876
-                _testServer = new TestServer(builder);
-                HostOptions.RootServiceProvider = _testServer.Host.Services;
-                var scriptConfig = _testServer.Host.Services.GetService<IOptions<ScriptJobHostOptions>>().Value;
-
-                HttpClient = _testServer.CreateClient();
-                HttpClient.BaseAddress = new Uri("https://localhost/");
+                HttpClient = TestHost.HttpClient;
 
                 TestHelpers.WaitForWebHost(HttpClient);
             }
 
             public async Task<string> GetFunctionSecretAsync(string functionName)
             {
-                var secretManager = _testServer.Host.Services.GetService<ISecretManagerProvider>().Current;
+                var secretManager = TestHost.SecretManagerProvider.Current;
                 var secrets = await secretManager.GetFunctionSecretsAsync(functionName);
                 return secrets.First().Value;
             }
+
+            public TestFunctionHost TestHost { get; }
 
             public ScriptApplicationHostOptions HostOptions { get; private set; }
 
@@ -439,7 +433,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             public void Dispose()
             {
-                _testServer?.Dispose();
+                TestHost?.Dispose();
                 HttpServer?.Dispose();
                 HttpClient?.Dispose();
 
