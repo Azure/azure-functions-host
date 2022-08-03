@@ -107,6 +107,7 @@ namespace WorkerHarness
             if (!File.Exists(harnessSettingPath))
             {
                 System.Console.WriteLine(MissingHarnessSettingJsonFile);
+                System.Console.WriteLine(harnessSettingPath);
                 return false;
             }
 
