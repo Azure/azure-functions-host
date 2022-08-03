@@ -187,6 +187,9 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string HelpLinkKey = "MS_HelpLink";
         public const string ErrorCodeKey = "MS_ErrorCode";
 
+        public const string DataFolderName = "data";
+        public const string SitePackagesFolderName = "SitePackages";
+        public const string SitePackageNameTxtFileName = "packagename.txt";
         // Diagnostic sources
         public const string HostDiagnosticSourcePrefix = "Microsoft.Azure.Functions.Host.";
         public const string HostDiagnosticSourceDebugEventNamePrefix = "debug-";

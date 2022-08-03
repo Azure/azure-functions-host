@@ -3,11 +3,13 @@
 
 using System;
 using System.IO;
+using System.IO.Abstractions;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
+using DryIoc;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.Logging;
@@ -25,20 +27,34 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
         private readonly IBashCommandHandler _bashCommandHandler;
         private readonly ILogger<PackageDownloadHandler> _logger;
         private readonly IMetricsLogger _metricsLogger;
+        private readonly IEnvironment _environment;
+        private readonly IFileSystem _fileSystem;
 
         public PackageDownloadHandler(IHttpClientFactory httpClientFactory, IManagedIdentityTokenProvider managedIdentityTokenProvider,
-            IBashCommandHandler bashCommandHandler, ILogger<PackageDownloadHandler> logger,
+            IBashCommandHandler bashCommandHandler, IEnvironment environment, IFileSystem fileSystem, ILogger<PackageDownloadHandler> logger,
             IMetricsLogger metricsLogger)
         {
             _httpClient = httpClientFactory?.CreateClient() ?? throw new ArgumentNullException(nameof(httpClientFactory));
             _managedIdentityTokenProvider = managedIdentityTokenProvider ?? throw new ArgumentNullException(nameof(managedIdentityTokenProvider));
             _bashCommandHandler = bashCommandHandler ?? throw new ArgumentNullException(nameof(bashCommandHandler));
+            _environment = environment ?? throw new ArgumentNullException(nameof(environment));
+            _fileSystem = fileSystem ?? FileUtility.Instance;
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _metricsLogger = metricsLogger ?? throw new ArgumentNullException(nameof(metricsLogger));
         }
 
+        /// <summary>
+        /// Download the package from blob storage or fileshare.
+        /// </summary>
+        /// <param name="pkgContext">Package Context.</param>
+        /// <returns>Path of the downloaded package.</returns>
         public async Task<string> Download(RunFromPackageContext pkgContext)
         {
+            if (pkgContext.IsRunFromLocalPackage())
+            {
+                 return CopyPackageFile(pkgContext);
+            }
+
             if (Utility.TryCleanUrl(pkgContext.Url, out var cleanedUrl))
             {
                 _logger.LogDebug("Downloading app contents from '{cleanedUrl}'", cleanedUrl);
@@ -213,6 +229,60 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
                 _logger.LogError(e, nameof(IsResourceAccessibleWithoutAuthorization));
                 return false;
             }
+        }
+
+        private string CopyPackageFile(RunFromPackageContext pkgContext)
+        {
+            var packageFolderPath = _environment.GetSitePackagesPath();
+            Action<string> copyPackageFileFailed = (message) =>
+            {
+                _logger.LogWarning(message);
+                throw new InvalidOperationException(message);
+            };
+
+            if (!_fileSystem.Directory.Exists(packageFolderPath))
+            {
+                copyPackageFileFailed($"{ScriptConstants.SitePackagesFolderName} folder doesn't exist at {packageFolderPath}.");
+            }
+
+            var packageNameTxtPath = _environment.GetSitePackageNameTxtPath();
+            if (!_fileSystem.File.Exists(packageNameTxtPath))
+            {
+                copyPackageFileFailed($"{ScriptConstants.SitePackageNameTxtFileName} doesn't exist at {packageNameTxtPath}.");
+            }
+
+            var packageFileName = _fileSystem.File.ReadAllText(packageNameTxtPath);
+
+            if (string.IsNullOrEmpty(packageFileName))
+            {
+                copyPackageFileFailed($"{ScriptConstants.SitePackageNameTxtFileName} is empty at {packageNameTxtPath}.");
+            }
+
+            var packageFilePath = _fileSystem.Path.Combine(packageFolderPath, packageFileName);
+            if (!_fileSystem.File.Exists(packageFilePath))
+            {
+                copyPackageFileFailed($"{packageFileName} doesn't exist at {packageFilePath}.");
+            }
+
+            var tmpPath = _fileSystem.Path.GetTempPath();
+            var fileName = _fileSystem.Path.GetFileName(packageFileName);
+            var filePath = _fileSystem.Path.Combine(tmpPath, fileName);
+
+            var copyMetricName = pkgContext.IsWarmUpRequest
+                    ? MetricEventNames.LinuxContainerSpecializationZipMountCopyWarmup
+                    : MetricEventNames.LinuxContainerSpecializationZipMountCopy;
+
+            using (_metricsLogger.LatencyEvent(copyMetricName))
+            {
+                _fileSystem.File.Copy(packageFilePath, filePath, true);
+
+                var fileInfo = _fileSystem.FileInfo.FromFileName(filePath);
+                _logger.LogInformation($"Downloaded Package size is {fileInfo.Length}");
+            }
+
+            _logger.LogInformation($"{nameof(CopyPackageFile)} was successful. {packageFileName} was copied from {packageFilePath} to {filePath}.");
+
+            return filePath;
         }
     }
 }
