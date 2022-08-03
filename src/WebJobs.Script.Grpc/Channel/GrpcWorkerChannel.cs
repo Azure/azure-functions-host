@@ -73,6 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private TaskCompletionSource<List<RawFunctionMetadata>> _functionsIndexingTask = new TaskCompletionSource<List<RawFunctionMetadata>>(TaskCreationOptions.RunContinuationsAsynchronously);
         private TimeSpan _functionLoadTimeout = TimeSpan.FromMinutes(1);
         private bool _isSharedMemoryDataTransferEnabled;
+        private bool _cancelCapabilityEnabled;
 
         private object _syncLock = new object();
         private System.Timers.Timer _timer;
@@ -275,6 +276,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _state = _state | RpcWorkerChannelState.Initialized;
             _workerCapabilities.UpdateCapabilities(_initMessage.Capabilities);
             _isSharedMemoryDataTransferEnabled = IsSharedMemoryDataTransferEnabled();
+            _cancelCapabilityEnabled = !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.HandlesInvocationCancelMessage));
 
             if (!_isSharedMemoryDataTransferEnabled)
             {
@@ -522,8 +524,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 AddAdditionalTraceContext(invocationRequest.TraceContext.Attributes, context);
                 _executingInvocations.TryAdd(invocationRequest.InvocationId, context);
 
-                bool capabilityEnabled = !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.HandlesInvocationCancelMessage));
-                if (capabilityEnabled)
+                if (_cancelCapabilityEnabled)
                 {
                     context.CancellationToken.Register(() => SendInvocationCancel(invocationRequest.InvocationId));
                 }
