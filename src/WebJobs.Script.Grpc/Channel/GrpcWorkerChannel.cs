@@ -522,7 +522,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 AddAdditionalTraceContext(invocationRequest.TraceContext.Attributes, context);
                 _executingInvocations.TryAdd(invocationRequest.InvocationId, context);
 
-                context.CancellationToken.Register(() => SendInvocationCancel(invocationRequest.InvocationId));
+                bool capabilityEnabled = !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.HandlesInvocationCancelMessage));
+                if (capabilityEnabled)
+                {
+                    context.CancellationToken.Register(() => SendInvocationCancel(invocationRequest.InvocationId));
+                }
 
                 SendStreamingMessage(new StreamingMessage
                 {
@@ -537,12 +541,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         internal void SendInvocationCancel(string invocationId)
         {
-            bool capabilityEnabled = !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.HandlesInvocationCancelMessage));
-            if (!capabilityEnabled)
-            {
-                return;
-            }
-
             _workerChannelLogger.LogDebug($"Sending invocation cancel request for InvocationId {invocationId}");
 
             var invocationCancel = new InvocationCancel
