@@ -70,7 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             // Call function with cancellation token handler
             response = await SamplesTestHelpers.InvokeHttpTrigger(this, "HttpTrigger-Cancellation");
-            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         }
     }
 

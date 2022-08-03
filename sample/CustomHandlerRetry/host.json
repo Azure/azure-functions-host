@@ -1,0 +1,15 @@
+{
+  "version": "2.0",
+  "customHandler": {
+    "enableForwardingHttpRequest": false,
+    "description": {
+      "defaultExecutablePath": "node",
+      "arguments": [ "server.js" ]
+    }
+  },
+  "retry": {
+    "strategy": "fixedDelay",
+    "maxRetryCount": 2,
+    "delayInterval": "00:00:00"
+  }
+}

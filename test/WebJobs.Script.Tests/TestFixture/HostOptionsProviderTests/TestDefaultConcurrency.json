@@ -1,0 +1,15 @@
+{
+  "extensions": {
+    "test": {
+      "config1": "default",
+      "config2": "default",
+      "config3": "default"
+    }
+  },
+  "concurrency": {
+    "dynamicConcurrencyEnabled": false,
+    "maximumFunctionConcurrency": 500,
+    "cpuThreshold": 0.8,
+    "snapshotPersistenceEnabled": true
+  }
+}

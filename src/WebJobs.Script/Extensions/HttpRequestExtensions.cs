@@ -13,6 +13,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Primitives;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -21,14 +23,17 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
 {
     public static class HttpRequestExtensions
     {
+        private static readonly PathString _adminRoot = new PathString("/admin");
+        private static readonly PathString _adminDownloadRequestRoot = new PathString("/admin/functions/download");
+
         public static bool IsAdminRequest(this HttpRequest request)
         {
-            return request.Path.StartsWithSegments("/admin");
+            return request.Path.StartsWithSegments(_adminRoot);
         }
 
         public static bool IsAdminDownloadRequest(this HttpRequest request)
         {
-            return request.Path.StartsWithSegments("/admin/functions/download");
+            return request.Path.StartsWithSegments(_adminDownloadRequestRoot);
         }
 
         public static TValue GetRequestPropertyOrDefault<TValue>(this HttpRequest request, string key)
@@ -58,12 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
 
         public static string GetHeaderValueOrDefault(this HttpRequest request, string headerName)
         {
-            StringValues values;
-            if (request.Headers.TryGetValue(headerName, out values))
-            {
-                return values.First();
-            }
-            return null;
+            return request.Headers.TryGetValue(headerName, out var values) ? values[0] : null;
         }
 
         public static TValue GetItemOrDefault<TValue>(this HttpRequest request, string key)
@@ -78,7 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
 
         public static bool IsAppServiceInternalRequest(this HttpRequest request, IEnvironment environment = null)
         {
-            environment = environment ?? SystemEnvironment.Instance;
+            environment = GetEnvironment(request, environment);
             if (!environment.IsAppService())
             {
                 return false;
@@ -88,6 +88,24 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
             // through the Anatares front end). For requests originating internally it will NOT be
             // present.
             return !request.Headers.Keys.Contains(ScriptConstants.AntaresLogIdHeaderName);
+        }
+
+        public static bool IsPlatformInternalRequest(this HttpRequest request, IEnvironment environment = null)
+        {
+            environment = GetEnvironment(request, environment);
+            if (!environment.IsAppService())
+            {
+                return false;
+            }
+
+            var header = request.Headers[ScriptConstants.AntaresPlatformInternal];
+            string value = header.FirstOrDefault();
+            return string.Compare(value, "true", StringComparison.OrdinalIgnoreCase) == 0;
+        }
+
+        private static IEnvironment GetEnvironment(HttpRequest request, IEnvironment environment = null)
+        {
+            return environment ?? request.HttpContext.RequestServices?.GetService<IEnvironment>() ?? SystemEnvironment.Instance;
         }
 
         public static bool IsColdStart(this HttpRequest request)

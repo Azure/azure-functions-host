@@ -64,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 throw new ArgumentNullException(nameof(rpcWorkerProcessExitException));
             }
             // The subscriber of WorkerErrorEvent is expected to Dispose() the errored channel
-            _workerProcessLogger.LogDebug(rpcWorkerProcessExitException, $"Language Worker Process exited. Pid={rpcWorkerProcessExitException.Pid}.", _workerProcessArguments.ExecutablePath);
+            _workerProcessLogger.LogError(rpcWorkerProcessExitException, $"Language Worker Process exited. Pid={rpcWorkerProcessExitException.Pid}.", _workerProcessArguments.ExecutablePath);
             _eventManager.Publish(new WorkerErrorEvent(_runtime, _workerId, rpcWorkerProcessExitException));
         }
 

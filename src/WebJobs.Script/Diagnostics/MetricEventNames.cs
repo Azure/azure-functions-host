@@ -37,6 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
 
         // LanguageWorkerChannel events
         public const string FunctionLoadRequestResponse = "rpcworkerchannel.functionloadrequestresponse";
+        public const string WorkerMetadata = "rpcworkerchannel.workerinitresponse.workermetadata";
 
         // ScriptStartupTypeLocator events
         public const string ParseExtensions = "ScriptStartupTypeLocator.ParseExtensions";
@@ -48,7 +49,6 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         // function level events
         public const string FunctionInvokeLatency = "function.invoke.latency";
         public const string FunctionBindingTypeFormat = "function.binding.{0}";
-        public const string FunctionBindingTypeDirectionFormat = "function.binding.{0}.{1}";
         public const string FunctionCompileLatencyByLanguageFormat = "function.compile.{0}.latency";
         public const string FunctionInvokeThrottled = "function.invoke.throttled";
         public const string FunctionUserLog = "function.userlog";

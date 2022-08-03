@@ -631,9 +631,21 @@ namespace Microsoft.Azure.WebJobs.Script
             return ContainsFunctionWithWorkerRuntime(filteredFunctions, workerRuntime);
         }
 
-        internal static string GetWorkerRuntime(IEnumerable<FunctionMetadata> functions)
+        internal static string GetWorkerRuntime(IEnumerable<FunctionMetadata> functions, IEnvironment environment = null)
         {
-            if (IsSingleLanguage(functions, null))
+            string workerRuntime = null;
+
+            if (environment != null)
+            {
+                workerRuntime = environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
+
+                if (!string.IsNullOrEmpty(workerRuntime))
+                {
+                    return workerRuntime;
+                }
+            }
+
+            if (functions != null && IsSingleLanguage(functions, null))
             {
                 var filteredFunctions = functions?.Where(f => !f.IsCodeless());
                 string functionLanguage = filteredFunctions.FirstOrDefault()?.Language;
@@ -661,7 +673,13 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 return true;
             }
+
             return !string.IsNullOrEmpty(functionMetadata.Language) && functionMetadata.Language.Equals(workerRuntime, StringComparison.OrdinalIgnoreCase);
+        }
+
+        internal static bool IsFunctionMetadataLanguageSupportedByWorkerRuntime(FunctionMetadata functionMetadata, IList<RpcWorkerConfig> workerConfigs)
+        {
+            return !string.IsNullOrEmpty(functionMetadata.Language) && workerConfigs.Select(wc => wc.Description.Language).Contains(functionMetadata.Language);
         }
 
         public static bool IsDotNetLanguageFunction(string functionLanguage)
@@ -894,17 +912,21 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static bool CanWorkerIndex(IEnumerable<RpcWorkerConfig> workerConfigs, IEnvironment environment)
         {
-            var workerRuntime = environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
-            if (workerConfigs != null)
+            if (!FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableWorkerIndexing, environment))
             {
+                return false;
+            }
+
+            if (workerConfigs != null && !environment.IsMultiLanguageRuntimeEnvironment())
+            {
+                var workerRuntime = environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
                 var workerConfig = workerConfigs.Where(c => c.Description != null && c.Description.Language != null && c.Description.Language.Equals(workerRuntime, StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
 
                 // if feature flag is enabled and workerConfig.WorkerIndexing == true, then return true
-                if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableWorkerIndexing, environment)
-                    && (workerConfig != null
+                if (workerConfig != null
                         && workerConfig.Description != null
                         && workerConfig.Description.WorkerIndexing != null
-                        && workerConfig.Description.WorkerIndexing.Equals("true", StringComparison.OrdinalIgnoreCase)))
+                        && workerConfig.Description.WorkerIndexing.Equals("true", StringComparison.OrdinalIgnoreCase))
                 {
                     return true;
                 }

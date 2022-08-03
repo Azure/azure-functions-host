@@ -7,6 +7,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Options;
@@ -16,7 +17,10 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     internal static class EnvironmentExtensions
     {
-        // For testing
+        private static bool? isApplicationInsightsAgentEnabled;
+
+        private static bool? isMultiLanguageEnabled;
+
         internal static string BaseDirectory { get; set; }
 
         public static string GetEnvironmentVariableOrDefault(this IEnvironment environment, string name, string defaultValue)
@@ -43,6 +47,11 @@ namespace Microsoft.Azure.WebJobs.Script
         public static bool IsRuntimeScaleMonitoringEnabled(this IEnvironment environment)
         {
             return environment.GetEnvironmentVariable(FunctionsRuntimeScaleMonitoringEnabled) == "1";
+        }
+
+        public static bool IsAdminIsolationEnabled(this IEnvironment environment)
+        {
+            return environment.GetEnvironmentVariable(FunctionsAdminIsolationEnabled) == "1";
         }
 
         public static bool IsEasyAuthEnabled(this IEnvironment environment)
@@ -320,12 +329,24 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
-        /// Gets the computer name.
+        /// Gets if runtime environment is logic apps.
         /// </summary>
         public static bool IsLogicApp(this IEnvironment environment)
         {
             string appKind = environment.GetEnvironmentVariable(AppKind)?.ToLower();
             return !string.IsNullOrEmpty(appKind) && appKind.Contains(ScriptConstants.WorkFlowAppKind);
+        }
+
+        /// <summary>
+        /// Gets if runtime environment needs multi language
+        /// </summary>
+        public static bool IsMultiLanguageRuntimeEnvironment(this IEnvironment environment)
+        {
+            if (!isMultiLanguageEnabled.HasValue)
+            {
+                isMultiLanguageEnabled = environment.IsLogicApp() && FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableMultiLanguageWorker, environment);
+            }
+            return isMultiLanguageEnabled.Value;
         }
 
         /// <summary>
@@ -522,6 +543,32 @@ namespace Microsoft.Azure.WebJobs.Script
                 placeholderRuntimeSet.Add(workerRuntime);
             }
             return placeholderRuntimeSet;
+        }
+
+        public static bool IsApplicationInsightsAgentEnabled(this IEnvironment environment)
+        {
+            // cache the value of the environment variable
+            if (isApplicationInsightsAgentEnabled.HasValue)
+            {
+                return isApplicationInsightsAgentEnabled.Value;
+            }
+            else if (!environment.IsPlaceholderModeEnabled())
+            {
+                bool.TryParse(environment.GetEnvironmentVariable(AppInsightsAgent), out bool isEnabled);
+                isApplicationInsightsAgentEnabled = isEnabled;
+                return isApplicationInsightsAgentEnabled.Value;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Clears all cached static flags in <see cref="EnvironmentExtensions"/>.
+        /// Currently we only use it to purge static initialisations in across tests.
+        /// </summary>
+        public static void ClearCache()
+        {
+            isMultiLanguageEnabled = null;
+            isApplicationInsightsAgentEnabled = null;
         }
     }
 }

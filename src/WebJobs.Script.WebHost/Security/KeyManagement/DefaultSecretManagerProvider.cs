@@ -7,7 +7,6 @@ using System.Threading;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -17,10 +16,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     {
         private const string FileStorage = "Files";
         private readonly ILoggerFactory _loggerFactory;
+        private readonly ILogger<DefaultSecretManagerProvider> _logger;
         private readonly IMetricsLogger _metricsLogger;
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _options;
         private readonly IHostIdProvider _hostIdProvider;
-        private readonly IConfiguration _configuration;
         private readonly IEnvironment _environment;
         private readonly HostNameProvider _hostNameProvider;
         private readonly StartupContextProvider _startupContextProvider;
@@ -28,19 +27,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private Lazy<ISecretManager> _secretManagerLazy;
         private Lazy<bool> _secretsEnabledLazy;
 
-        public DefaultSecretManagerProvider(IOptionsMonitor<ScriptApplicationHostOptions> options, IHostIdProvider hostIdProvider,
-            IConfiguration configuration, IEnvironment environment, ILoggerFactory loggerFactory, IMetricsLogger metricsLogger, HostNameProvider hostNameProvider, StartupContextProvider startupContextProvider, IAzureBlobStorageProvider azureBlobStorageProvider)
+        public DefaultSecretManagerProvider(IOptionsMonitor<ScriptApplicationHostOptions> options, IHostIdProvider hostIdProvider, IEnvironment environment,
+            ILoggerFactory loggerFactory, IMetricsLogger metricsLogger, HostNameProvider hostNameProvider, StartupContextProvider startupContextProvider,
+            IAzureBlobStorageProvider azureBlobStorageProvider)
         {
             ArgumentNullException.ThrowIfNull(loggerFactory);
 
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _hostIdProvider = hostIdProvider ?? throw new ArgumentNullException(nameof(hostIdProvider));
-            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _hostNameProvider = hostNameProvider ?? throw new ArgumentNullException(nameof(hostNameProvider));
             _startupContextProvider = startupContextProvider ?? throw new ArgumentNullException(nameof(startupContextProvider));
 
             _loggerFactory = loggerFactory;
+            _logger = _loggerFactory.CreateLogger<DefaultSecretManagerProvider>();
+
             _metricsLogger = metricsLogger ?? throw new ArgumentNullException(nameof(metricsLogger));
             _secretManagerLazy = new Lazy<ISecretManager>(Create);
             _secretsEnabledLazy = new Lazy<bool>(GetSecretsEnabled);
@@ -69,6 +70,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             Interlocked.Exchange(ref _secretsEnabledLazy, new Lazy<bool>(GetSecretsEnabled));
             Interlocked.Exchange(ref _secretManagerLazy, new Lazy<ISecretManager>(Create));
+
+            _logger.LogDebug(new EventId(1, "ResetSecretManager"), "Reset SecretManager.");
         }
 
         private ISecretManager Create() => new SecretManager(CreateSecretsRepository(), _loggerFactory.CreateLogger<SecretManager>(), _metricsLogger, _hostNameProvider, _startupContextProvider);
@@ -128,8 +131,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         $"For Blob Storage, please provide at least one of these. If you intend to use files for secrets, add an App Setting key '{EnvironmentSettingNames.AzureWebJobsSecretStorageType}' with value '{FileStorage}'.");
             }
 
-            ILogger logger = _loggerFactory.CreateLogger<DefaultSecretManagerProvider>();
-            logger.LogInformation("Resolved secret storage provider {provider}", repository.Name);
+            _logger.LogInformation(new EventId(3, "CreatedSecretRespository"), "Resolved secret storage provider {provider}", repository.Name);
 
             return repository;
         }
@@ -183,7 +185,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         internal bool GetSecretsEnabled()
         {
-            return TryGetSecretsRepositoryType(out _);
+            bool secretsEnabled = TryGetSecretsRepositoryType(out Type repositoryType);
+
+            _logger.LogDebug(new EventId(2, "GetSecretsEnabled"), "SecretsEnabled evaluated to {secretsEnabled} with type {provider}.", secretsEnabled, repositoryType?.Name);
+
+            return secretsEnabled;
         }
     }
 }

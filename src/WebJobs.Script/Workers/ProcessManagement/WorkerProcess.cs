@@ -11,6 +11,7 @@ using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -53,8 +54,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         internal Queue<string> ProcessStdErrDataQueue => _processStdErrDataQueue;
 
-        // for testing
-        internal Process Process { get; set; }
+        public Process Process { get; set; }
+
+        public TaskCompletionSource<bool> ProcessWaitingForTermination { get; set; } = new TaskCompletionSource<bool>();
 
         internal abstract Process CreateWorkerProcess();
 
@@ -78,7 +80,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                     Process.BeginOutputReadLine();
 
                     // Register process only after it starts
-                    _processRegistry?.Register(Process);
+                    _processRegistry?.Register(this);
 
                     RegisterWithProcessMonitor();
 
@@ -114,9 +116,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 }
                 else
                 {
+                    // TODO: redesign how we log errors so it's not based on the string contents (GH issue #8273)
                     if ((msg.IndexOf("error", StringComparison.OrdinalIgnoreCase) > -1) ||
-                              (msg.IndexOf("fail", StringComparison.OrdinalIgnoreCase) > -1) ||
-                              (msg.IndexOf("severe", StringComparison.OrdinalIgnoreCase) > -1))
+                        (msg.IndexOf("fail", StringComparison.OrdinalIgnoreCase) > -1) ||
+                        (msg.IndexOf("severe", StringComparison.OrdinalIgnoreCase) > -1) ||
+                        (msg.IndexOf("unhandled exception", StringComparison.OrdinalIgnoreCase) > -1))
                     {
                         LogError(msg);
                     }
@@ -156,7 +160,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 }
                 else
                 {
-                    var processExitEx = new WorkerProcessExitException($"{Process.StartInfo.FileName} exited with code {Process.ExitCode}\n {exceptionMessage}");
+                    var processExitEx = new WorkerProcessExitException($"{Process.StartInfo.FileName} exited with code {Process.ExitCode} (0x{Process.ExitCode.ToString("X")})", new Exception(exceptionMessage));
                     processExitEx.ExitCode = Process.ExitCode;
                     processExitEx.Pid = Process.Id;
                     HandleWorkerProcessExitError(processExitEx);
@@ -190,7 +194,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             };
             if (WorkerProcessUtilities.IsConsoleLog(msg))
             {
-                _workerProcessLogger?.LogDebug(WorkerProcessUtilities.RemoveLogPrefix(msg));
+                _workerProcessLogger?.Log(level, WorkerProcessUtilities.RemoveLogPrefix(msg));
             }
             else
             {
@@ -202,10 +206,18 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         internal abstract void HandleWorkerProcessRestart();
 
+        public void WaitForProcessExitInMilliSeconds(int waitTime)
+        {
+            Process.WaitForExit(waitTime);
+        }
+
         public void Dispose()
         {
             Disposing = true;
             // best effort process disposal
+
+            ProcessWaitingForTermination.SetResult(false);
+
             try
             {
                 _eventSubscription?.Dispose();

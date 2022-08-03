@@ -6,6 +6,7 @@ using System.Linq;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Configuration;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 
@@ -36,7 +37,7 @@ namespace Microsoft.Extensions.Logging
 
         private static bool IsFiltered(string category)
         {
-            return _filteredCategoryCache.GetOrAdd(category, c => ScriptConstants.SystemLogCategoryPrefixes.Where(p => category.StartsWith(p)).Any());
+            return _filteredCategoryCache.GetOrAdd(category, static cat => ScriptConstants.SystemLogCategoryPrefixes.Any(p => cat.StartsWith(p)));
         }
 
         public static void AddConsoleIfEnabled(this ILoggingBuilder builder, HostBuilderContext context)
@@ -65,7 +66,10 @@ namespace Microsoft.Extensions.Logging
 
             if (enableConsole)
             {
-                builder.AddConsole();
+                builder.AddConsole()
+                       // Tooling console json log entries are meant to be used by IDEs / Debuggers.
+                       // Users are not supposed to set the log level for this category via host.JSON logging settings.
+                       .AddFilter(WorkerConstants.ToolingConsoleLogCategoryName, LogLevel.Information);
             }
         }
     }

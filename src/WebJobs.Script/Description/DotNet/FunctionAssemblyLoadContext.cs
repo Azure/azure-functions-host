@@ -442,12 +442,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected override IntPtr LoadUnmanagedDll(string unmanagedDllName)
         {
-            string fileName = GetUnmanagedLibraryFileName(unmanagedDllName);
-            string filePath = GetRuntimeNativeAssetPath(fileName);
-
-            if (filePath != null)
+            foreach (var fileName in GetUnmanagedLibraryFileNames(unmanagedDllName, SystemRuntimeInformation.Instance.GetOSPlatform()))
             {
-                return LoadUnmanagedDllFromPath(filePath);
+                string filePath = GetRuntimeNativeAssetPath(fileName);
+
+                if (filePath != null)
+                {
+                    return LoadUnmanagedDllFromPath(filePath);
+                }
             }
 
             return base.LoadUnmanagedDll(unmanagedDllName);
@@ -483,45 +485,102 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             List<string> rids = DependencyHelper.GetRuntimeFallbacks();
 
-            string result = rids.Select(r => Path.Combine(runtimesPath, r, ridSubFolder, assetFileName))
-                .Union(probingPaths.Select(p => Path.Combine(p, assetFileName)))
-                .FirstOrDefault(p => fileBase.Exists(p));
+            foreach (string rid in rids)
+            {
+                string path = Path.Combine(runtimesPath, rid, ridSubFolder, assetFileName);
+                if (fileBase.Exists(path))
+                {
+                    return path;
+                }
+            }
 
-            return result;
+            foreach (var probingPath in probingPaths)
+            {
+                string path = Path.Combine(probingPath, assetFileName);
+
+                if (fileBase.Exists(path))
+                {
+                    return path;
+                }
+            }
+
+            return null;
         }
 
-        internal string GetUnmanagedLibraryFileName(string unmanagedLibraryName)
+        internal static IEnumerable<string> GetUnmanagedLibraryFileNames(string unmanagedLibraryName, OSPlatform platform)
         {
             // We need to properly resolve the native library in different platforms:
-            // - Windows will append the '.DLL' extension to the name
-            // - Linux uses the 'lib' prefix and '.so' suffix. The version may also be appended to the suffix
-            // - macOS uses the 'lib' prefix '.dylib'
-            // To handle the different scenarios described above, we'll just have a pattern that gives us the ability
-            // to match the variations across different platforms. If needed, we can expand this in the future to have
-            // logic specific to the platform we're running under.
+            // Windows:
+            //  - Will append the '.dll' extension to the name, if it does not already have the extension.
+            // Linux and macOS:
+            // - Returns the following, in order (where prefix is 'lib' and suffix is '.so' for Linux and '.dylib' for macOS):
+            //    - libname + suffix
+            //    - prefix + libname + suffix **
+            //    - libname
+            //    - prefix + libname *
+            // On Linux only, if the library name ends with the suffix or contains the suffix + '.' (i.e. .so or .so.)
+            // - Returns the following, in order (where prefix is 'lib' and suffix is '.so'):
+            //    - libname
+            //    - prefix + libname *
+            //    - libname + suffix
+            //    - prefix + libname + suffix **
+            // * Will only be returned if the path delimiter is not present in the library name
+            // ** Would typically have the same path delimiter check, but we maintain this here for backwards compatibility
 
-            string fileName = null;
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            if (platform == OSPlatform.Windows)
             {
                 if (unmanagedLibraryName.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
                 {
-                    fileName = unmanagedLibraryName;
+                    yield return unmanagedLibraryName;
                 }
                 else
                 {
-                    fileName = unmanagedLibraryName + ".dll";
+                    yield return unmanagedLibraryName + ".dll";
                 }
-            }
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-            {
-                fileName = "lib" + unmanagedLibraryName + ".dylib";
             }
             else
             {
-                fileName = "lib" + unmanagedLibraryName + ".so";
+                const string prefix = "lib";
+                string suffix = platform == OSPlatform.Linux
+                    ? ".so"
+                    : ".dylib";
+
+                foreach (var name in GetUnixUnmanagedLibraryFileNames(unmanagedLibraryName, prefix, suffix, platform))
+                {
+                    yield return name;
+                }
+            }
+        }
+
+        private static IEnumerable<string> GetUnixUnmanagedLibraryFileNames(string unmanagedLibraryName, string prefix, string suffix, OSPlatform platform)
+        {
+            bool containsPathDelimiter = unmanagedLibraryName.Contains(Path.DirectorySeparatorChar);
+            bool containsExtension = platform == OSPlatform.Linux
+                && (unmanagedLibraryName.EndsWith(suffix, StringComparison.OrdinalIgnoreCase)
+                || unmanagedLibraryName.Contains(suffix + ".", StringComparison.OrdinalIgnoreCase));
+
+            if (containsExtension)
+            {
+                yield return unmanagedLibraryName;
+
+                if (!containsPathDelimiter)
+                {
+                    yield return prefix + unmanagedLibraryName;
+                }
             }
 
-            return fileName;
+            yield return unmanagedLibraryName + suffix;
+            yield return prefix + unmanagedLibraryName + suffix;
+
+            if (!containsExtension)
+            {
+                yield return unmanagedLibraryName;
+
+                if (!containsPathDelimiter)
+                {
+                    yield return prefix + unmanagedLibraryName;
+                }
+            }
         }
 
         protected static string ResolveFunctionBaseProbingPath()

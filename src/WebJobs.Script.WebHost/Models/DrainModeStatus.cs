@@ -11,5 +11,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
         [JsonProperty("state")]
         [JsonConverter(typeof(StringEnumConverter))]
         public DrainModeState State { get; set; }
+
+        [JsonProperty("outstandingInvocations")]
+        public int OutstandingInvocations { get; set; }
+
+        [JsonProperty("outstandingRetries")]
+        public int OutstandingRetries { get; set; }
     }
 }

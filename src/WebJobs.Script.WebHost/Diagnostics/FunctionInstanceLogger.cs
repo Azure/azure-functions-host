@@ -81,11 +81,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             // log events for each of the binding types used
             foreach (var binding in metadata.Bindings)
             {
-                string eventName = _bindingMetricEventNames.GetOrAdd(binding, (existing) =>
+                string eventName = _bindingMetricEventNames.GetOrAdd(binding, static (b) =>
                 {
-                    return binding.IsTrigger ?
-                        string.Format(MetricEventNames.FunctionBindingTypeFormat, binding.Type) :
-                        string.Format(MetricEventNames.FunctionBindingTypeDirectionFormat, binding.Type, binding.Direction);
+                    return string.Format(MetricEventNames.FunctionBindingTypeFormat, b.Type);
                 });
                 _metrics.LogEvent(eventName, metadata.Name);
             }

@@ -16,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Logging
 
         // List of keywords that should not be replaced with [Hidden Credential]
         private static readonly string[] AllowedTokens = new string[] { "PublicKeyToken=" };
-        private static readonly string[] CredentialTokens = new string[] { "Token=", "DefaultEndpointsProtocol=http", "AccountKey=", "Data Source=", "Server=", "Password=", "pwd=", "&amp;sig=", "SharedAccessKey=" };
+        internal static readonly string[] CredentialTokens = new string[] { "Token=", "DefaultEndpointsProtocol=http", "AccountKey=", "Data Source=", "Server=", "Password=", "pwd=", "&amp;sig=", "SharedAccessKey=" };
 
         /// <summary>
         /// Removes well-known credential strings from strings.
@@ -28,6 +28,14 @@ namespace Microsoft.Azure.WebJobs.Logging
             if (string.IsNullOrEmpty(input))
             {
                 return string.Empty;
+            }
+
+            // Everything we *might* replace contains an equal, so if we don't have that short circuit out.
+            // This can be likely be more efficient with a Regex, but that's best done with a large test suite and this is
+            // a quick/simple win for the high traffic case.
+            if (!MayContainCredentials(input))
+            {
+                return input;
             }
 
             string t = input;
@@ -65,5 +73,11 @@ namespace Microsoft.Azure.WebJobs.Logging
 
             return t;
         }
+
+        /// <summary>
+        /// Checks if a string even *possibly* contains one of our <see cref="CredentialTokens"/>.
+        /// Useful for short-circuiting more expensive checks and replacements if it's known we wouldn't do anything.
+        /// </summary>
+        internal static bool MayContainCredentials(string input) => input.Contains("=");
     }
 }

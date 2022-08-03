@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public ImmutableDictionary<string, ImmutableArray<string>> FunctionErrors
            => _functionErrors.ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray());
 
-        public async Task<ImmutableArray<FunctionMetadata>> GetFunctionMetadataAsync(IEnumerable<RpcWorkerConfig> workerConfigs, bool forceRefresh)
+        public async Task<ImmutableArray<FunctionMetadata>> GetFunctionMetadataAsync(IEnumerable<RpcWorkerConfig> workerConfigs, IEnvironment environment, bool forceRefresh)
         {
             _functions = default(ImmutableArray<FunctionMetadata>);
 
@@ -241,6 +241,7 @@ namespace Microsoft.Azure.WebJobs.Script
                         fileSystem.Path.GetFileNameWithoutExtension(p).ToLowerInvariant() == "run" ||
                         fileSystem.Path.GetFileName(p).ToLowerInvariant() == "index.js" ||
                         fileSystem.Path.GetFileName(p).ToLowerInvariant() == "index.mjs" ||
+                        fileSystem.Path.GetFileName(p).ToLowerInvariant() == "index.cjs" ||
                         fileSystem.Path.GetFileName(p).ToLowerInvariant() == "__init__.py");
                 }
             }

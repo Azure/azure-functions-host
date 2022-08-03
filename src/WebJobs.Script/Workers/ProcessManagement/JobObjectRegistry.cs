@@ -12,6 +12,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
     {
         private IntPtr _handle;
         private bool _disposed = false;
+        private WorkerProcess _workerProcess = null;
 
         public JobObjectRegistry()
         {
@@ -37,9 +38,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             }
         }
 
-        public bool Register(Process proc)
+        public bool Register(WorkerProcess workerProcess)
         {
-            return AssignProcessToJobObject(_handle, proc.Handle);
+            _workerProcess = workerProcess;
+            return AssignProcessToJobObject(_handle, _workerProcess.Process.Handle);
         }
 
         [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
@@ -78,6 +80,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         public void Close()
         {
+            _workerProcess?.ProcessWaitingForTermination.Task.GetAwaiter().GetResult();
+
             if (_handle != IntPtr.Zero)
             {
                 CloseHandle(_handle);

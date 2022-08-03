@@ -36,13 +36,13 @@ namespace Microsoft.Azure.WebJobs.Script
         private ConcurrentDictionary<string, FunctionMetadata> _functionMetadataMap = new ConcurrentDictionary<string, FunctionMetadata>(StringComparer.OrdinalIgnoreCase);
 
         public FunctionMetadataManager(IOptions<ScriptJobHostOptions> scriptOptions, IFunctionMetadataProvider functionMetadataProvider,
-            IOptions<HttpWorkerOptions> httpWorkerOptions, IScriptHostManager scriptHostManager, ILoggerFactory loggerFactory, IOptions<LanguageWorkerOptions> languageWorkerOptions, IEnvironment environment)
+            IOptions<HttpWorkerOptions> httpWorkerOptions, IScriptHostManager scriptHostManager, ILoggerFactory loggerFactory,
+            IOptions<LanguageWorkerOptions> languageWorkerOptions, IEnvironment environment)
         {
             _scriptOptions = scriptOptions;
             _languageWorkerOptions = languageWorkerOptions;
             _serviceProvider = scriptHostManager as IServiceProvider;
             _functionMetadataProvider = functionMetadataProvider;
-
             _loggerFactory = loggerFactory;
             _logger = loggerFactory.CreateLogger(LogCategories.Startup);
             _isHttpWorker = httpWorkerOptions?.Value?.Description != null;
@@ -132,11 +132,9 @@ namespace Microsoft.Azure.WebJobs.Script
             ImmutableArray<FunctionMetadata> immutableFunctionMetadata;
             var workerConfigs = _languageWorkerOptions.Value.WorkerConfigs;
 
-            IFunctionMetadataProvider metadataProvider = Utility.CanWorkerIndex(workerConfigs, _environment)
-                ? new WorkerFunctionMetadataProvider(_loggerFactory.CreateLogger<WorkerFunctionMetadataProvider>(), dispatcher)
-                : _functionMetadataProvider;
+            IFunctionMetadataProvider metadataProvider = new AggregateFunctionMetadataProvider(_loggerFactory.CreateLogger<AggregateFunctionMetadataProvider>(), dispatcher, _functionMetadataProvider, _scriptOptions);
 
-            immutableFunctionMetadata = metadataProvider.GetFunctionMetadataAsync(workerConfigs, forceRefresh).GetAwaiter().GetResult();
+            immutableFunctionMetadata = metadataProvider.GetFunctionMetadataAsync(workerConfigs, SystemEnvironment.Instance, forceRefresh).GetAwaiter().GetResult();
 
             var functionMetadataList = new List<FunctionMetadata>();
             _functionErrors = new Dictionary<string, ICollection<string>>();
@@ -209,6 +207,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private void AddMetadataFromCustomProviders(IEnumerable<IFunctionProvider> functionProviders, List<FunctionMetadata> functionMetadataList)
         {
+            _logger.FunctionMetadataProviderParsingFunctions();
+
             var functionProviderTasks = new List<Task<ImmutableArray<FunctionMetadata>>>();
             foreach (var functionProvider in functionProviders)
             {
@@ -219,6 +219,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
             // This is used to make sure no duplicates are registered
             var distinctFunctionNames = new HashSet<string>(functionMetadataList.Select(m => m.Name));
+
+            _logger.FunctionMetadataProviderFunctionFound(functionMetadataListArray.Length);
 
             foreach (var metadataArray in functionMetadataListArray)
             {

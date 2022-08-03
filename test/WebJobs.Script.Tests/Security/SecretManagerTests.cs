@@ -6,9 +6,11 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -52,6 +54,53 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
             _hostNameProvider = new HostNameProvider(_testEnvironment);
             _startupContextProvider = new StartupContextProvider(_testEnvironment, loggerFactory.CreateLogger<StartupContextProvider>());
+        }
+
+        [Fact]
+        public async Task SecretManager_NewlyGeneratedKeysAreIdentifiable()
+        {
+            using (var directory = new TempDirectory())
+            {
+                string startupContextPath = Path.Combine(directory.Path, Guid.NewGuid().ToString());
+                _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteStartupContextCache, startupContextPath);
+                _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey, TestEncryptionKey);
+
+                // Because we don't initialize any disk context, we can configure
+                // the secret manager to allocate fresh keys on start-up.
+                using (var secretManager = CreateSecretManager(directory.Path, createHostSecretsIfMissing: true))
+                {
+                    var hostSecrets = await secretManager.GetHostSecretsAsync();
+                    ValidateHostSecrets(hostSecrets);
+                }
+            }
+        }
+
+        private bool ValidateHostSecrets(HostSecretsInfo hostSecrets)
+        {
+            // Here and elsewhere we elide the '!' character which is prepended to every
+            // generated secret value, as a clue that actual encryption is simulated in
+            // the test case.
+            string normalizedKey = NormalizeKey(hostSecrets.MasterKey);
+            SecretGeneratorTests.ValidateSecret(normalizedKey, SecretGenerator.MasterKeySeed);
+
+            // Create host secrets if missing knob does not allocate a system
+            // key. The system key creation/validation test is done in the
+            // DefaultScriptWebHookProvider tests.
+            Assert.True(hostSecrets.SystemKeys.Count == 0);
+
+            foreach (string key in hostSecrets.FunctionKeys.Values)
+            {
+                normalizedKey = NormalizeKey(key);
+                SecretGeneratorTests.ValidateSecret(normalizedKey, SecretGenerator.FunctionKeySeed);
+            }
+
+            return true;
+        }
+
+        private string NormalizeKey(string key)
+        {
+            // Elide the '!' appended to secrets which are simulated as encrypted.
+            return key.StartsWith("!") ? key.Substring(1) : key;
         }
 
         [Fact]
@@ -365,6 +414,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 Assert.Equal(1, testRepository.FunctionSecrets.Count);
                 var functionSecrets = (FunctionSecrets)testRepository.FunctionSecrets[testFunctionName];
                 string defaultKeyValue = functionSecrets.Keys.Where(p => p.Name == "default").Single().Value;
+                SecretGeneratorTests.ValidateSecret(defaultKeyValue, SecretGenerator.FunctionKeySeed);
                 Assert.True(tasks.Select(p => p.Result).All(t => t["default"] == defaultKeyValue));
             }
         }
@@ -388,7 +438,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
                 // verify all calls return the same result
                 var masterKey = tasks.First().Result.MasterKey;
+                var functionKey = tasks.First().Result.FunctionKeys.First();
                 Assert.True(tasks.Select(p => p.Result).All(q => q.MasterKey == masterKey));
+                Assert.True(tasks.Select(p => p.Result).All(q => q.FunctionKeys.First().Value == functionKey.Value));
+
+                // verify generated master and function keys are valid
+                tasks.Select(p => p.Result).All(q => ValidateHostSecrets(q));
             }
         }
 
@@ -465,6 +520,30 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 Assert.NotNull(persistedSecrets);
                 Assert.Equal(result.Secret, persistedSecrets.Keys.First().Value);
                 Assert.Equal(secretName, persistedSecrets.Keys.First().Name, StringComparer.Ordinal);
+            }
+        }
+
+        [Fact]
+        public async Task AddOrUpdateFunctionSecret_WhenStorageWriteError_ThrowsException()
+        {
+            using (var directory = new TempDirectory())
+            {
+                CreateTestSecrets(directory.Path);
+
+                KeyOperationResult result;
+
+                ISecretsRepository repository = new TestSecretsRepository(false, true, HttpStatusCode.InternalServerError);
+                using (var secretManager = CreateSecretManager(directory.Path, simulateWriteConversion: false, secretsRepository: repository))
+                {
+                    try
+                    {
+                        result = await secretManager.AddOrUpdateFunctionSecretAsync("function-key-3", "9876", "TestFunction", ScriptSecretsType.Function);
+                    }
+                    catch (RequestFailedException ex)
+                    {
+                        Assert.Equal(ex.Status, (int)HttpStatusCode.InternalServerError);
+                    }
+                }
             }
         }
 
@@ -1105,7 +1184,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             return mockValueConverterFactory;
         }
 
-        private SecretManager CreateSecretManager(string secretsPath, ILogger logger = null, IMetricsLogger metricsLogger = null, IKeyValueConverterFactory keyConverterFactory = null, bool createHostSecretsIfMissing = false, bool simulateWriteConversion = true, bool setStaleValue = true)
+        private SecretManager CreateSecretManager(string secretsPath, ILogger logger = null, IMetricsLogger metricsLogger = null, IKeyValueConverterFactory keyConverterFactory = null, bool createHostSecretsIfMissing = false, bool simulateWriteConversion = true, bool setStaleValue = true, ISecretsRepository secretsRepository = null)
         {
             logger = logger ?? _logger;
             metricsLogger = metricsLogger ?? new TestMetricsLogger();
@@ -1116,7 +1195,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 keyConverterFactory = mockValueConverterFactory.Object;
             }
 
-            ISecretsRepository repository = new FileSystemSecretsRepository(secretsPath, logger, _testEnvironment);
+            ISecretsRepository repository = secretsRepository ?? new FileSystemSecretsRepository(secretsPath, logger, _testEnvironment);
             var secretManager = new SecretManager(repository, keyConverterFactory, logger, metricsLogger, _hostNameProvider, _startupContextProvider);
 
             if (createHostSecretsIfMissing)
@@ -1185,10 +1264,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             private int _writeCount = 0;
             private Random _rand = new Random();
             private bool _enforceSerialWrites = false;
+            private bool _forceWriteErrors = false;
+            private HttpStatusCode _httpstaus;
 
             public TestSecretsRepository(bool enforceSerialWrites)
             {
                 _enforceSerialWrites = enforceSerialWrites;
+            }
+
+            public TestSecretsRepository(bool enforceSerialWrites, bool forceWriteErrors, HttpStatusCode httpstaus = HttpStatusCode.InternalServerError)
+                : this(enforceSerialWrites)
+            {
+                _forceWriteErrors = forceWriteErrors;
+                _httpstaus = httpstaus;
             }
 
             public event EventHandler<SecretsChangedEventArgs> SecretsChanged;
@@ -1229,6 +1317,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
             public async Task WriteAsync(ScriptSecretsType type, string functionName, ScriptSecrets secrets)
             {
+                if (_forceWriteErrors)
+                {
+                    throw new RequestFailedException((int)_httpstaus, "Error");
+                }
+
                 if (_enforceSerialWrites && _writeCount > 1)
                 {
                     throw new Exception("Concurrent writes detected!");

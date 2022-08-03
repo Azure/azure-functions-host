@@ -33,11 +33,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public const string OSPlaceholder = "{os}";
         public const string ArchitecturePlaceholder = "{architecture}";
         public const string RuntimeVersionPlaceholder = "%" + FunctionWorkerRuntimeVersionSettingName + "%";
+        public const string WorkerDirectoryPath = "{workerDirectoryPath}";
 
         // Rpc message length
         public const int DefaultMaxMessageLengthBytes = int.MaxValue;
 
-        // Capabilites
+        // Capabilities
         public const string RawHttpBodyBytes = "RawHttpBodyBytes";
         public const string TypedDataCollection = "TypedDataCollection";
         public const string RpcHttpBodyOnly = "RpcHttpBodyOnly";
@@ -47,8 +48,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public const string UseNullableValueDictionaryForHttp = "UseNullableValueDictionaryForHttp";
         public const string SharedMemoryDataTransfer = "SharedMemoryDataTransfer";
         public const string FunctionDataCache = "FunctionDataCache";
+        public const string AcceptsListOfFunctionLoadRequests = "AcceptsListOfFunctionLoadRequests";
+        public const string EnableUserCodeException = "EnableUserCodeException";
+        public const string SupportsLoadResponseCollection = "SupportsLoadResponseCollection";
+        public const string HandlesWorkerTerminateMessage = "HandlesWorkerTerminateMessage";
 
-        // Host Capabilites
+        // Host Capabilities
         public const string V2Compatable = "V2Compatable";
 
         // dotnet executable file path components

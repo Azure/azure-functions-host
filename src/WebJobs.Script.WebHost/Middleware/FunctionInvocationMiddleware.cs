@@ -13,8 +13,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Abstractions;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Azure.WebJobs.Extensions.Http;
-using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Features;
@@ -43,6 +43,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             var functionExecution = context.Features.Get<IFunctionExecutionFeature>();
             if (functionExecution != null && !context.Response.HasStarted)
             {
+                // LiveLogs session id is used to show only contextual logs in the "Code + Test" experience. The id is included in the custom dimension.
+                string sessionId = context.Request?.Headers[ScriptConstants.LiveLogsSessionAIKey];
+                if (!string.IsNullOrWhiteSpace(sessionId))
+                {
+                    Activity.Current?.AddBaggage(ScriptConstants.LiveLogsSessionAIKey, sessionId);
+                }
                 IActionResult result = await GetResultAsync(context, functionExecution);
                 ActionContext actionContext = new ActionContext(context, context.GetRouteData(), new ActionDescriptor());
                 await result.ExecuteResultAsync(actionContext);
@@ -62,9 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
                 // pipeline dispatch time
                 // important that this stopwatch is started as early as possible
                 // in the pipeline (in this case, in our first middleware)
-                var sw = new Stopwatch();
-                sw.Start();
-                context.Items[ScriptConstants.AzureFunctionsColdStartKey] = sw;
+                context.Items[ScriptConstants.AzureFunctionsColdStartKey] = ValueStopwatch.StartNew();
             }
 
             PopulateRouteData(context);

@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>net6.0</TargetFrameworks>
+    <OutputType>Exe</OutputType>
+    <!-- BenchmarkDotNet looks for a matching Project, see https://github.com/dotnet/BenchmarkDotNet/issues/1019 -->
+    <!--<AssemblyName>Microsoft.Azure.WebJobs.Script.Benchmarks</AssemblyName>-->
+    <RootNamespace>Microsoft.Azure.WebJobs.Script.Benchmarks</RootNamespace>
+    <LangVersion>Latest</LangVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="BenchmarkDotNet" Version="0.13.1" />
+    <ProjectReference Include="../../src/WebJobs.Script/WebJobs.Script.csproj" />
+    <ProjectReference Include="../../src/WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj" />
+  </ItemGroup>
+</Project>

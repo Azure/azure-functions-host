@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
@@ -15,8 +16,10 @@ using Azure;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
+using Microsoft.Azure.WebJobs.Script.WebHost.Security;
 using Microsoft.Extensions.Logging;
-using DataProtectionCostants = Microsoft.Azure.Web.DataProtection.Constants;
+
+using DataProtectionConstants = Microsoft.Azure.Web.DataProtection.Constants;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -36,7 +39,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private string _repositoryClassName;
         private DateTime _lastCacheResetTime;
 
-        // for testing
         public SecretManager()
         {
         }
@@ -254,7 +256,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 if (value == null)
                 {
                     // Generate a new secret (clear)
-                    masterKey = GenerateSecret();
+                    masterKey = SecretGenerator.GenerateMasterKeyValue();
                     result = OperationResult.Created;
                 }
                 else
@@ -303,7 +305,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             OperationResult result = OperationResult.NotFound;
 
-            secret = secret ?? GenerateSecret();
+            secret ??= SecretGenerator.GenerateFunctionKeyValue();
 
             await ModifyFunctionSecretsAsync(secretsType, keyScope, secrets =>
             {
@@ -326,13 +328,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 }
 
                 return secrets;
-            }, secretsFactory).ContinueWith(t =>
-            {
-                if (t.IsFaulted && t.Exception.InnerException is RequestFailedException)
-                {
-                    result = OperationResult.Forbidden;
-                }
-            });
+            }, secretsFactory);
 
             return new KeyOperationResult(secret, result);
         }
@@ -493,11 +489,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             return new HostSecrets
             {
-                MasterKey = GenerateKey(ScriptConstants.DefaultMasterKeyName),
+                MasterKey = GenerateMasterKey(),
                 FunctionKeys = new List<Key>
-            {
-                GenerateKey(ScriptConstants.DefaultFunctionKeyName)
-            },
+                {
+                    GenerateFunctionKey(),
+                },
                 SystemKeys = new List<Key>()
             };
         }
@@ -506,10 +502,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             if (secrets.MasterKey.IsEncrypted)
             {
-                secrets.MasterKey.Value = GenerateSecret();
+                secrets.MasterKey.Value = SecretGenerator.GenerateMasterKeyValue();
             }
-            secrets.SystemKeys = RegenerateKeys(secrets.SystemKeys);
-            secrets.FunctionKeys = RegenerateKeys(secrets.FunctionKeys);
+            secrets.SystemKeys = RegenerateKeys(secrets.SystemKeys, SecretGenerator.SystemKeySeed);
+            secrets.FunctionKeys = RegenerateKeys(secrets.FunctionKeys, SecretGenerator.FunctionKeySeed);
             return secrets;
         }
 
@@ -519,24 +515,24 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 Keys = new List<Key>
                 {
-                    GenerateKey(ScriptConstants.DefaultFunctionKeyName)
+                    GenerateFunctionKey()
                 }
             };
         }
 
         private FunctionSecrets GenerateFunctionSecrets(FunctionSecrets secrets)
         {
-            secrets.Keys = RegenerateKeys(secrets.Keys);
+            secrets.Keys = RegenerateKeys(secrets.Keys, SecretGenerator.FunctionKeySeed);
             return secrets;
         }
 
-        private IList<Key> RegenerateKeys(IList<Key> list)
+        private IList<Key> RegenerateKeys(IList<Key> list, ulong seed)
         {
             return list.Select(k =>
             {
                 if (k.IsEncrypted)
                 {
-                    k.Value = GenerateSecret();
+                    k.Value = SecretGenerator.GenerateIdentifiableSecret(seed);
                 }
                 return k;
             }).ToList();
@@ -594,9 +590,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             };
         }
 
-        private Key GenerateKey(string name = null)
+        private Key GenerateMasterKey()
         {
-            string secret = GenerateSecret();
+            string secret = SecretGenerator.GenerateMasterKeyValue();
+
+            return CreateKey(ScriptConstants.DefaultMasterKeyName, secret);
+        }
+
+        private Key GenerateFunctionKey()
+        {
+            string secret = SecretGenerator.GenerateFunctionKeyValue();
+
+            return CreateKey(ScriptConstants.DefaultFunctionKeyName, secret);
+        }
+
+        private Key CreateKey(string name, ulong seed)
+        {
+            string secret = SecretGenerator.GenerateIdentifiableSecret(seed);
 
             return CreateKey(name, secret);
         }
@@ -606,19 +616,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             var key = new Key(name, secret);
 
             return _keyValueConverterFactory.WriteKey(key);
-        }
-
-        internal static string GenerateSecret()
-        {
-            using (var rng = RandomNumberGenerator.Create())
-            {
-                byte[] data = new byte[40];
-                rng.GetBytes(data);
-                string secret = Convert.ToBase64String(data);
-
-                // Replace pluses as they are problematic as URL values
-                return secret.Replace('+', 'a');
-            }
         }
 
         private void OnSecretsChanged(object sender, SecretsChangedEventArgs e)
@@ -725,22 +722,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private string GetEncryptionKeysHashes()
         {
             string result = string.Empty;
-            string azureWebsiteLocalEncryptionKey = SystemEnvironment.Instance.GetEnvironmentVariable(DataProtectionCostants.AzureWebsiteLocalEncryptionKey) ?? string.Empty;
+            string azureWebsiteLocalEncryptionKey = SystemEnvironment.Instance.GetEnvironmentVariable(DataProtectionConstants.AzureWebsiteLocalEncryptionKey) ?? string.Empty;
             SHA256 hash = SHA256.Create();
 
             if (!string.IsNullOrEmpty(azureWebsiteLocalEncryptionKey))
             {
                 byte[] hashBytes = hash.ComputeHash(Encoding.UTF8.GetBytes(azureWebsiteLocalEncryptionKey));
                 string azureWebsiteLocalEncryptionKeyHash = Convert.ToBase64String(hashBytes);
-                result += $"{DataProtectionCostants.AzureWebsiteLocalEncryptionKey}={azureWebsiteLocalEncryptionKeyHash};";
+                result += $"{DataProtectionConstants.AzureWebsiteLocalEncryptionKey}={azureWebsiteLocalEncryptionKeyHash};";
             }
 
-            string azureWebsiteEnvironmentMachineKey = SystemEnvironment.Instance.GetEnvironmentVariable(DataProtectionCostants.AzureWebsiteEnvironmentMachineKey) ?? string.Empty;
+            string azureWebsiteEnvironmentMachineKey = SystemEnvironment.Instance.GetEnvironmentVariable(DataProtectionConstants.AzureWebsiteEnvironmentMachineKey) ?? string.Empty;
             if (!string.IsNullOrEmpty(azureWebsiteEnvironmentMachineKey))
             {
                 byte[] hashBytes = hash.ComputeHash(Encoding.UTF8.GetBytes(azureWebsiteEnvironmentMachineKey));
                 string azureWebsiteEnvironmentMachineKeyHash = Convert.ToBase64String(hashBytes);
-                result += $"{DataProtectionCostants.AzureWebsiteEnvironmentMachineKey}={azureWebsiteEnvironmentMachineKeyHash};";
+                result += $"{DataProtectionConstants.AzureWebsiteEnvironmentMachineKey}={azureWebsiteEnvironmentMachineKeyHash};";
             }
 
             return result;
@@ -750,7 +747,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             // We're only serializing access to secrets per-function, not across all functions,
             // so we need to ensure we're using a single shared lock per-function.
-            return _functionSecretsLocks.GetOrAdd(functionName, k => new SemaphoreSlim(1, 1));
+            return _functionSecretsLocks.GetOrAdd(functionName, static k => new SemaphoreSlim(1, 1));
         }
     }
 }

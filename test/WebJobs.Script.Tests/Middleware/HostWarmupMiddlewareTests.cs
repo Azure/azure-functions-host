@@ -2,8 +2,12 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Linq;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
+using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Xunit;
@@ -52,6 +56,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
             environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, "TestContainer");
             Assert.True(environment.IsLinuxConsumption());
             Assert.True(HostWarmupMiddleware.IsWarmUpRequest(request, hostEnvironment.InStandbyMode, environment));
+        }
+
+        [Fact]
+        public void ReadRuntimeAssemblyFiles_VerifyLogs()
+        {
+            var environment = new TestEnvironment();
+            var hostEnvironment = new ScriptWebHostEnvironment(environment);
+            var testLoggerFactory = new LoggerFactory();
+            TestLoggerProvider testLoggerProvider = new TestLoggerProvider();
+            testLoggerFactory.AddProvider(testLoggerProvider);
+            ILogger<HostWarmupMiddleware> testLogger = testLoggerFactory.CreateLogger<HostWarmupMiddleware>();
+            HostWarmupMiddleware hostWarmupMiddleware = new HostWarmupMiddleware(null, new Mock<IScriptWebHostEnvironment>().Object, environment, new Mock<IScriptHostManager>().Object, testLogger);
+            hostWarmupMiddleware.ReadRuntimeAssemblyFiles();
+            // Assert
+            var traces = testLoggerProvider.GetAllLogMessages();
+            Assert.True(traces.Any(m => m.FormattedMessage.Contains("Number of files read:")));
         }
     }
 }
