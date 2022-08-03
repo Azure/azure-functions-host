@@ -130,7 +130,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
 
         private CodePackageType GetPackageType(string filePath, RunFromPackageContext pkgContext)
         {
-            // cloud build always builds squashfs
+            // cloud build always builds squashfs.
             if (pkgContext.IsScmRunFromPackage() || pkgContext.IsRunFromLocalPackage())
             {
                 return CodePackageType.Squashfs;
