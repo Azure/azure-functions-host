@@ -38,13 +38,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             switch (status.Status)
             {
                 case StatusResult.Types.Status.Failure:
+                case StatusResult.Types.Status.Cancelled:
                     var rpcException = GetRpcException(status, enableUserCodeExceptionCapability);
                     tcs.SetException(rpcException);
-                    return false;
-
-                case StatusResult.Types.Status.Cancelled:
-                    var exception = new TaskCanceledException("Invocation cancelled");
-                    tcs.SetException(exception);
                     return false;
 
                 default:
