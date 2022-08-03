@@ -43,10 +43,5 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         {
             return consoleLog.Message.StartsWith(WorkerConstants.ToolingConsoleLogPrefix, StringComparison.OrdinalIgnoreCase);
         }
-
-        public static string RemoveToolingConsoleJsonLogPrefix(string msg)
-        {
-            return Regex.Replace(msg, WorkerConstants.ToolingConsoleLogPrefix, string.Empty, RegexOptions.IgnoreCase);
-        }
     }
 }
