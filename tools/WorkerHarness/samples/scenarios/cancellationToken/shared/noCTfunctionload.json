@@ -1,0 +1,40 @@
+{
+    "scenarioName": "load http-trigger function",
+    "actions": [
+        {
+            "actionType": "rpc",
+            "actionName": "load a http-trigger function where users don't handle cancellation token",
+            "messages": [
+                {
+                    "direction": "outgoing",
+                    "messageType": "FunctionLoadRequest",
+                    "payload": {
+                        "FunctionId": "noCtHttpFunctionId",
+                        "Metadata": {
+                            "scriptFile": "HttpTriggerWithCancellation.dll",
+                            "EntryPoint": "HttpTriggerWithCancellation.HttpTriggerWithNoCancellation.Run",
+                            "Name": "HttpTriggerWithNoCancellation",
+                            "Bindings": {
+                                "req": { "type": "httpTrigger" },
+                                "$return": { "type": "http", "direction": "out" }
+                            }
+                        }
+                    }
+                },
+                {
+                    "direction": "incoming",
+                    "messageType": "FunctionLoadResponse",
+                    "matchingCriteria": [{
+                        "query": "$.FunctionLoadResponse.FunctionId",
+                        "expected": "noCtHttpFunctionId"
+                    }],
+                    "validators": [{
+                        "type": "string",
+                        "query": "$.FunctionLoadResponse.Result.Status",
+                        "expected": "Success"
+                    }]
+                }
+            ]
+        }
+    ]
+}
