@@ -1,0 +1,48 @@
+{
+    "scenarioName": "user code throws",
+    "actions": [
+        {
+            "actionType": "rpc",
+            "actionName": "validate the worker's ability to handle a queue trigger when the customer code raises an exception.",
+            "messages": [
+                {
+                    "direction": "outgoing",
+                    "messageType": "InvocationRequest",
+                    "payload": {
+                        "InvocationId": "invocation2",
+                        "FunctionId": "QueueTriggerFunctionId",
+                        "InputData": [
+                            {
+                                "name": "myQueueItem",
+                                "data": {
+                                    "string": "exception"
+                                }
+                            }
+                        ],
+                        "TraceContext": {}
+                    }
+                },
+                {
+                    "direction": "incoming",
+                    "messageType": "InvocationResponse",
+                    "matchingCriteria": [{
+                        "query": "$.InvocationResponse.InvocationId",
+                        "expected": "invocation2"
+                    }],
+                    "validators": [
+                        {
+                            "type": "string",
+                            "query": "$.InvocationResponse.Result.Status",
+                            "expected": "Failure"
+                        },
+                        {
+                            "type": "string",
+                            "query": "$.InvocationResponse.Result.Exception.IsUserException",
+                            "expected": "true"
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}
