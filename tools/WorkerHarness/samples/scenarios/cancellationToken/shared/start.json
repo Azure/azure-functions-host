@@ -1,0 +1,50 @@
+{
+    "scenarioName": "confirm worker startup",
+    "actions": [
+        {
+            "actionType": "rpc",
+            "actionName": "validate StartStream message",
+            "timeout": 120000,
+            "messages": [
+                {
+                    "direction": "incoming",
+                    "messageType": "StartStream",
+                    "validators": [
+                        {
+                            "type": "regex",
+                            "query": "$.StartStream.WorkerId",
+                            "expected": ".+"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "actionType": "rpc",
+            "actionName": "validate that worker has HandlesInvocationCancelMessage capability",
+            "messages": [
+                {
+                    "direction": "outgoing",
+                    "messageType": "WorkerInitRequest",
+                    "payload": {}
+                },
+                {
+                    "direction": "incoming",
+                    "messageType": "WorkerInitResponse",
+                    "validators": [
+                        {
+                            "type": "string",
+                            "query": "$.WorkerInitResponse.Result.Status",
+                            "expected": "Success"
+                        },
+                        {
+                            "type": "string",
+                            "query": "$.WorkerInitResponse.Capabilities.HandlesInvocationCancelMessage",
+                            "expected": "True"
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

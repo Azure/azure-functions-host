@@ -1,0 +1,7 @@
+{
+    "scenarioFile": "userNotHandlesCt.json",
+    "languageExecutable": "C:\\Program Files\\dotnet\\dotnet.exe",
+    "workerPath": "C:\\temp\\HttpTriggerWithCancellation\\HttpTriggerWithCancellation\\bin\\Debug\\net6.0\\HttpTriggerWithCancellation.dll",
+    "functionAppDirectory": "C:\\temp\\HttpTriggerWithCancellation\\HttpTriggerWithCancellation\\bin\\Debug\\net6.0",
+    "DisplayVerboseError": true
+}

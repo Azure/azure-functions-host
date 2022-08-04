@@ -1,0 +1,72 @@
+{
+    "scenarioName": "Cancellation token: user does not handles cancellation token",
+    "actions": [
+        {
+            "actionType": "import",
+            "scenarioFile": "shared\\start.json"
+        },
+        {
+            "actionType": "import",
+            "scenarioFile": "shared\\noCTfunctionload.json"
+        },
+        {
+            "actionType": "rpc",
+            "actionName": "send the worker an invocation request for an http trigger",
+            "messages": [
+                {
+                    "direction": "outgoing",
+                    "messageType": "InvocationRequest",
+                    "payload": {
+                        "FunctionId": "noCtHttpFunctionId",
+                        "InputData": [
+                            {
+                              "name": "req",
+                              "data": {
+                                "http": {
+                                  "method": "GET",
+                                  "url": "http://localhost:7071/api/HttpTriggerWithNoCancellation"
+                                }
+                              }
+                            }
+                        ],
+                        "TraceContext": {}
+                    },
+                    "setVariables": {
+                        "invocationId": "$.InvocationRequest.InvocationId"
+                    }
+                }
+            ]
+        },
+        {
+            "actionType": "rpc",
+            "actionName": "send the worker an invocation cancel request after the token is cancel. Customer code does not handle token cancellation, so expect a status of Cancelled",
+            "timeout": 11000,
+            "messages": [
+                {
+                    "direction": "outgoing",
+                    "messageType": "InvocationCancel",
+                    "payload": {
+                        "InvocationId": "@{invocationId}"
+                    }
+                },
+                {
+                    "direction": "incoming",
+                    "messageType": "InvocationResponse",
+                    "matchingCriteria": [
+                        {
+                            "query": "$.InvocationResponse.InvocationId",
+                            "expected": "@{invocationId}"
+                        }
+                    ],
+                    "validators": [
+                        {
+                            "type": "string",
+                            "query": "$.InvocationResponse.Result.Status",
+                            "expected": "Cancelled"
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}
