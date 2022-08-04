@@ -30,14 +30,14 @@ namespace Microsoft.Azure.WebJobs.Script
         private bool _servicesReset = false;
         private ILogger _logger;
         private IOptions<ScriptJobHostOptions> _scriptOptions;
-        private IOptions<LanguageWorkerOptions> _languageWorkerOptions;
+        private IOptionsMonitor<LanguageWorkerOptions> _languageWorkerOptions;
         private ImmutableArray<FunctionMetadata> _functionMetadataArray;
         private Dictionary<string, ICollection<string>> _functionErrors = new Dictionary<string, ICollection<string>>();
         private ConcurrentDictionary<string, FunctionMetadata> _functionMetadataMap = new ConcurrentDictionary<string, FunctionMetadata>(StringComparer.OrdinalIgnoreCase);
 
         public FunctionMetadataManager(IOptions<ScriptJobHostOptions> scriptOptions, IFunctionMetadataProvider functionMetadataProvider,
             IOptions<HttpWorkerOptions> httpWorkerOptions, IScriptHostManager scriptHostManager, ILoggerFactory loggerFactory,
-            IOptions<LanguageWorkerOptions> languageWorkerOptions, IEnvironment environment)
+            IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions, IEnvironment environment)
         {
             _scriptOptions = scriptOptions;
             _languageWorkerOptions = languageWorkerOptions;
@@ -111,7 +111,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             _isHttpWorker = _serviceProvider.GetService<IOptions<HttpWorkerOptions>>()?.Value?.Description != null;
             _scriptOptions = _serviceProvider.GetService<IOptions<ScriptJobHostOptions>>();
-            _languageWorkerOptions = _serviceProvider.GetService<IOptions<LanguageWorkerOptions>>();
+            _languageWorkerOptions = _serviceProvider.GetService<IOptionsMonitor<LanguageWorkerOptions>>();
 
             // Resetting the logger switches the logger scope to Script Host level,
             // also making the logs available to Application Insights
@@ -130,7 +130,7 @@ namespace Microsoft.Azure.WebJobs.Script
             _logger.FunctionMetadataManagerLoadingFunctionsMetadata();
 
             ImmutableArray<FunctionMetadata> immutableFunctionMetadata;
-            var workerConfigs = _languageWorkerOptions.Value.WorkerConfigs;
+            var workerConfigs = _languageWorkerOptions.CurrentValue.WorkerConfigs;
 
             IFunctionMetadataProvider metadataProvider = new AggregateFunctionMetadataProvider(_loggerFactory.CreateLogger<AggregateFunctionMetadataProvider>(), dispatcher, _functionMetadataProvider, _scriptOptions);
 

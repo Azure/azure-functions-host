@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             workerProcess.ParseErrorMessageAndLog("LanguageWorkerConsoleLog[Test Worker Message No keyword]");
             workerProcess.ParseErrorMessageAndLog("LanguageWorkerConsoleLog[Test Worker Error Message]");
             workerProcess.ParseErrorMessageAndLog("LanguageWorkerConsoleLog[Test Worker Warning Message]");
-            workerProcess.ParseErrorMessageAndLog("azfuncjsonlog:Azure Functions .NET Worker (PID: 4) initialized in debug mode.");
+            workerProcess.ParseErrorMessageAndLog("azfuncjsonlog:{ 'name':'dotnet-worker-startup', 'workerProcessId' : 321 }");
 
             // Act
             _ = _workerConsoleLogService.ProcessLogs().ContinueWith(t => { });
@@ -73,14 +73,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             {
                 VerifyLogLevel(userLogs, "Test Message No keyword", LogLevel.Error);
                 VerifyLogLevel(systemLogs, "[Test Worker Message No keyword]", LogLevel.Error);
-                VerifyLogLevel(toolingConsoleLogs, "Azure Functions .NET Worker (PID: 4) initialized in debug mode.", LogLevel.Error);
+                VerifyLogLevel(toolingConsoleLogs, "azfuncjsonlog:{ 'name':'dotnet-worker-startup', 'workerProcessId' : 321 }", LogLevel.Error);
             }
             else
             {
                 VerifyLogLevel(userLogs, "Test Message No keyword", LogLevel.Information);
                 VerifyLogLevel(systemLogs, "[Test Worker Message No keyword]", LogLevel.Information);
-                VerifyLogLevel(toolingConsoleLogs, "Azure Functions .NET Worker (PID: 4) initialized in debug mode.", LogLevel.Information);
+                VerifyLogLevel(toolingConsoleLogs, "azfuncjsonlog:{ 'name':'dotnet-worker-startup', 'workerProcessId' : 321 }", LogLevel.Information);
             }
+
+            Assert.True(toolingConsoleLogs.All(l => l.FormattedMessage.StartsWith(WorkerConstants.ToolingConsoleLogPrefix)));
         }
 
         private static void VerifyLogLevel(IList<LogMessage> allLogs, string msg, LogLevel expectedLevel)
@@ -88,7 +90,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             var message = allLogs.FirstOrDefault(l => l.FormattedMessage.Contains(msg));
             Assert.NotNull(message);
             Assert.DoesNotContain(WorkerConstants.LanguageWorkerConsoleLogPrefix, message.FormattedMessage);
-            Assert.DoesNotContain(WorkerConstants.ToolingConsoleLogPrefix, message.FormattedMessage);
             Assert.Equal(expectedLevel, message.Level);
         }
     }

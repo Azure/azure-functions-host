@@ -104,6 +104,21 @@ namespace Microsoft.Azure.WebJobs.Script
                    !string.IsNullOrEmpty(environment.GetEnvironmentVariable(AzureFilesContentShare));
         }
 
+        public static string GetAzureWebsiteHomePath(this IEnvironment environment)
+        {
+            return environment.GetEnvironmentVariable(AzureWebsiteHomePath);
+        }
+
+        public static string GetSitePackagesPath(this IEnvironment environment)
+        {
+            return Path.Combine(environment.GetAzureWebsiteHomePath(), ScriptConstants.DataFolderName, ScriptConstants.SitePackagesFolderName);
+        }
+
+        public static string GetSitePackageNameTxtPath(this IEnvironment environment)
+        {
+            return Path.Combine(environment.GetSitePackagesPath(), ScriptConstants.SitePackageNameTxtFileName);
+        }
+
         public static bool IsCoreTools(this IEnvironment environment)
         {
             return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(CoreToolsEnvironment));

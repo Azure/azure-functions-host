@@ -11,6 +11,7 @@ using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -53,8 +54,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         internal Queue<string> ProcessStdErrDataQueue => _processStdErrDataQueue;
 
-        // for testing
-        internal Process Process { get; set; }
+        public Process Process { get; set; }
+
+        public TaskCompletionSource<bool> ProcessWaitingForTermination { get; set; } = new TaskCompletionSource<bool>();
 
         internal abstract Process CreateWorkerProcess();
 
@@ -78,7 +80,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                     Process.BeginOutputReadLine();
 
                     // Register process only after it starts
-                    _processRegistry?.Register(Process);
+                    _processRegistry?.Register(this);
 
                     RegisterWithProcessMonitor();
 
@@ -204,10 +206,18 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         internal abstract void HandleWorkerProcessRestart();
 
+        public void WaitForProcessExitInMilliSeconds(int waitTime)
+        {
+            Process.WaitForExit(waitTime);
+        }
+
         public void Dispose()
         {
             Disposing = true;
             // best effort process disposal
+
+            ProcessWaitingForTermination.SetResult(false);
+
             try
             {
                 _eventSubscription?.Dispose();
