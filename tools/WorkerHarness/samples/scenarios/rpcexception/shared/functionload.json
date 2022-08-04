@@ -1,0 +1,42 @@
+{
+    "scenarioName": "scenario to load function",
+    "actions": [
+        {
+            "actionType": "rpc",
+            "actionName": "validating the worker's ability to handle a FunctionLoadRequest",
+            "messages": [
+                {
+                    "direction": "outgoing",
+                    "messageType": "FunctionLoadRequest",
+                    "payload": {
+                        "FunctionId": "QueueTriggerFunctionId",
+                        "Metadata": {
+                            "scriptFile": "RpcExceptionApp.dll",
+                            "EntryPoint": "RpcExceptionApp.QueueTrigger.Run",
+                            "Name": "QueueTrigger",
+                            "Bindings": {
+                                "myQueueItem": {
+                                    "type": "queueTrigger",
+                                    "dataType": "string"
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "direction": "incoming",
+                    "messageType": "FunctionLoadResponse",
+                    "matchingCriteria": [{
+                        "query": "$.FunctionLoadResponse.FunctionId",
+                        "expected": "QueueTriggerFunctionId"
+                    }],
+                    "validators": [{
+                        "type": "string",
+                        "query": "$.FunctionLoadResponse.Result.Status",
+                        "expected": "Success"
+                    }]
+                }
+            ]
+        }
+    ]
+}

@@ -1,0 +1,41 @@
+{
+    "scenarioName": "use code does not throw",
+    "actions": [
+        {
+            "actionType": "rpc",
+            "actionName": "validate the worker's ability to handles a queue trigger when the customer code does not raise an exception.",
+            "messages": [
+                {
+                    "direction": "outgoing",
+                    "messageType": "InvocationRequest",
+                    "payload": {
+                        "InvocationId": "invocation1",
+                        "FunctionId": "QueueTriggerFunctionId",
+                        "InputData": [
+                            {
+                                "name": "myQueueItem",
+                                "data": {
+                                    "string": "foo"
+                                }
+                            }
+                        ],
+                        "TraceContext": {}
+                    }
+                },
+                {
+                    "direction": "incoming",
+                    "messageType": "InvocationResponse",
+                    "matchingCriteria": [{
+                        "query": "$.InvocationResponse.InvocationId",
+                        "expected": "invocation1"
+                    }],
+                    "validators": [{
+                        "type": "string",
+                        "query": "$.InvocationResponse.Result.Status",
+                        "expected": "Success"
+                    }]
+                }
+            ]
+        }
+    ]
+}

@@ -1,0 +1,25 @@
+{
+    "scenarioName": "test rpc exception in dotnet worker",
+    "actions": [
+        {
+            "actionType": "import",
+            "scenarioFile": "shared\\start.json"
+        },
+        {
+            "actionType": "import",
+            "scenarioFile": "shared\\functionload.json"
+        },
+        {
+            "actionType": "import",
+            "scenarioFile": "shared\\invokesuccess.json"
+        },
+        {
+            "actionType": "delay",
+            "delay": 1000
+        },
+        {
+            "actionType": "import",
+            "scenarioFile": "shared\\invokeexception.json"
+        }
+    ]
+}

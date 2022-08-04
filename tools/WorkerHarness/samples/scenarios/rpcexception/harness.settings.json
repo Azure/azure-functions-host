@@ -1,0 +1,7 @@
+{
+    "scenarioFile": "rpcexception.json",
+    "languageExecutable": "C:\\Program Files\\dotnet\\dotnet.exe",
+    "workerPath": "C:\\temp\\RpcExceptionApp\\RpcExceptionApp\\bin\\Debug\\net6.0\\RpcExceptionApp.dll",
+    "functionAppDirectory": "C:\\temp\\RpcExceptionApp\\RpcExceptionApp\\bin\\Debug\\net6.0",
+    "DisplayVerboseError": true
+}
