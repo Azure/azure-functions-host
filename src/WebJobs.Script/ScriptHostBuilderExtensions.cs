@@ -112,7 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 var extensionBundleOptions = GetExtensionBundleOptions(config);
                 var bundleManager = new ExtensionBundleManager(extensionBundleOptions, SystemEnvironment.Instance, loggerFactory);
                 var metadataServiceManager = applicationOptions.RootServiceProvider.GetService<IFunctionMetadataManager>();
-                var languageWorkerOptions = applicationOptions.RootServiceProvider.GetService<IOptions<LanguageWorkerOptions>>();
+                var languageWorkerOptions = applicationOptions.RootServiceProvider.GetService<IOptionsMonitor<LanguageWorkerOptions>>();
 
                 var locator = new ScriptStartupTypeLocator(applicationOptions.ScriptPath, loggerFactory.CreateLogger<ScriptStartupTypeLocator>(), bundleManager, metadataServiceManager, metricsLogger, languageWorkerOptions);
 

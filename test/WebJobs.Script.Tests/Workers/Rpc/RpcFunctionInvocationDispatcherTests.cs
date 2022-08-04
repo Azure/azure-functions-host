@@ -331,6 +331,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
+        public async Task InitializeAsync_Throws_When_Worker_Config_not_found()
+        {
+            // Our GetTestFunctionDispatcher return a dispatcher with 2 worker configs loaded(java, node)
+            RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher(runtime: "python");
+
+            Func<Task> task = () => functionDispatcher.InitializeAsync(new List<FunctionMetadata>());
+
+            InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(task);
+            Assert.Equal("WorkerConfig for runtime: python not found", exception.Message);
+        }
+
+        [Fact]
+        public async Task InitializeAsync_DoesNotThrow_ForDotNetIsolatedWithoutDeployedPayload()
+        {
+            RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher(runtime: RpcWorkerConstants.DotNetIsolatedLanguageWorkerName);
+
+            // Should not throw for dotnet-isolated runtime.
+            await functionDispatcher.InitializeAsync(new List<FunctionMetadata>());
+        }
+
+        [Fact]
         public async Task FunctionDispatcherState_Default_NoFunctions()
         {
             RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher(runtime: RpcWorkerConstants.NodeLanguageWorkerName);

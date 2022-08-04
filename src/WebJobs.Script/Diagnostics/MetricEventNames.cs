@@ -79,6 +79,8 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         public const string LinuxContainerSpecializationZipDownloadWarmup = "linux.container.specialization.zip.download.warmup";
         public const string LinuxContainerSpecializationZipWrite = "linux.container.specialization.zip.write";
         public const string LinuxContainerSpecializationZipWriteWarmup = "linux.container.specialization.zip.write.warmup";
+        public const string LinuxContainerSpecializationZipMountCopy = "linux.container.specialization.zip.mountcopy";
+        public const string LinuxContainerSpecializationZipMountCopyWarmup = "linux.container.specialization.zip.mountcopy.warmup";
         public const string LinuxContainerSpecializationZipHead = "linux.container.specialization.zip.head";
         public const string LinuxContainerSpecializationZipHeadWarmup = "linux.container.specialization.zip.head.warmup";
         public const string LinuxContainerSpecializationFuseMount = "linux.container.specialization.mount";

@@ -110,6 +110,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string FeatureFlagDisableDiagnosticEventLogging = "DisableDiagnosticEventLogging";
         public const string FeatureFlagDisableMergedWebHostScriptHostConfiguration = "DisableMergedConfiguration";
         public const string FeatureFlagEnableWorkerIndexing = "EnableWorkerIndexing";
+        public const string FeatureFlagEnableDebugTracing = "EnableDebugTracing";
+        public const string FeatureFlagEnableMultiLanguageWorker = "EnableMultiLanguageWorker";
 
         public const string AdminJwtValidAudienceFormat = "https://{0}.azurewebsites.net/azurefunctions";
         public const string AdminJwtValidIssuerFormat = "https://{0}.scm.azurewebsites.net";
@@ -184,6 +186,14 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string DiagnosticEventKey = "MS_DiagnosticEvent";
         public const string HelpLinkKey = "MS_HelpLink";
         public const string ErrorCodeKey = "MS_ErrorCode";
+
+        public const string DataFolderName = "data";
+        public const string SitePackagesFolderName = "SitePackages";
+        public const string SitePackageNameTxtFileName = "packagename.txt";
+        // Diagnostic sources
+        public const string HostDiagnosticSourcePrefix = "Microsoft.Azure.Functions.Host.";
+        public const string HostDiagnosticSourceDebugEventNamePrefix = "debug-";
+        public const string DiagnosticSourceAssemblyContext = HostDiagnosticSourcePrefix + "AssemblyContext";
 
         public static readonly ImmutableArray<string> HttpMethods = ImmutableArray.Create("get", "post", "delete", "head", "patch", "put", "options");
         public static readonly ImmutableArray<string> AssemblyFileTypes = ImmutableArray.Create(".dll", ".exe");

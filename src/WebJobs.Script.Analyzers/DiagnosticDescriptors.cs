@@ -30,5 +30,17 @@ namespace Microsoft.Azure.Functions.Analyzers
                 messageFormat: "Function name can't be '{0}'. It must start with a letter, be no longer than 128 characters, and contain only alphanumeric characters, underscores, or hyphens.",
                 category: Constants.DiagnosticsCategories.WebJobsBindings,
                 severity: DiagnosticSeverity.Error);
+
+        public static DiagnosticDescriptor BadBindingExpressionSyntax { get; }
+            = Create(id: "AZF0004", title: "Illegal binding expression syntax",
+                messageFormat: "{0} can't be value '{1}': {2}",
+                category: Constants.DiagnosticsCategories.WebJobsBindings,
+                severity: DiagnosticSeverity.Warning);
+
+        public static DiagnosticDescriptor FailedValidation { get; }
+            = Create(id: "AZF0005", title: "Illegal binding type",
+                messageFormat: "{0} can't be value '{1}': {2}",
+                category: Constants.DiagnosticsCategories.WebJobsBindings,
+                severity: DiagnosticSeverity.Warning);
     }
 }

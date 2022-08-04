@@ -66,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly string _instanceId;
         private readonly IEnvironment _environment;
         private readonly IFunctionDataCache _functionDataCache;
-        private readonly IOptions<LanguageWorkerOptions> _languageWorkerOptions;
+        private readonly IOptionsMonitor<LanguageWorkerOptions> _languageWorkerOptions;
         private static readonly int _processId = Process.GetCurrentProcess().Id;
 
         private ValueStopwatch _stopwatch;
@@ -106,7 +106,7 @@ namespace Microsoft.Azure.WebJobs.Script
             IApplicationLifetime applicationLifetime,
             IExtensionBundleManager extensionBundleManager,
             IFunctionDataCache functionDataCache,
-            IOptions<LanguageWorkerOptions> languageWorkerOptions,
+            IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions,
             ScriptSettingsManager settingsManager = null)
             : base(options, jobHostContextFactory)
         {
@@ -280,7 +280,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 _workerRuntime = _workerRuntime ?? _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
 
                 // get worker config information and check to see if worker should index or not
-                var workerConfigs = _languageWorkerOptions.Value.WorkerConfigs;
+                var workerConfigs = _languageWorkerOptions.CurrentValue.WorkerConfigs;
 
                 bool workerIndexing = Utility.CanWorkerIndex(workerConfigs, _environment);
 
@@ -297,7 +297,8 @@ namespace Microsoft.Azure.WebJobs.Script
                         // Windows Consumption as well.
                         string runtimeVersion = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName);
 
-                        if (!string.IsNullOrEmpty(runtimeVersion))
+                        // If the environment is multi language, we are running multiple language workers, and thus not honoring 'FUNCTIONS_WORKER_RUNTIME_VERSION'
+                        if (!string.IsNullOrEmpty(runtimeVersion) && !_environment.IsMultiLanguageRuntimeEnvironment())
                         {
                             runtimeStack = string.Concat(runtimeStack, "-", runtimeVersion);
                         }
@@ -543,6 +544,15 @@ namespace Microsoft.Azure.WebJobs.Script
                 _logger.AddingDescriptorProviderForLanguage(RpcWorkerConstants.DotNetLanguageWorkerName);
                 _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, _loggerFactory));
             }
+            else if (_environment.IsMultiLanguageRuntimeEnvironment())
+            {
+                _logger.AddingDescriptorProviderForLanguage("All (Multi Language)");
+
+                var workerOptions = _languageWorkerOptions.CurrentValue;
+
+                _descriptorProviders.Add(new MultiLanguageFunctionDescriptorProvider(this, workerOptions.WorkerConfigs, ScriptOptions, _bindingProviders,
+                    _functionDispatcher, _loggerFactory, _applicationLifetime, workerOptions.WorkerConfigs.Max(wc => wc.CountOptions.InitializationTimeout)));
+            }
             else if (_isHttpWorker)
             {
                 _logger.AddingDescriptorProviderForHttpWorker();
@@ -557,7 +567,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 _logger.AddingDescriptorProviderForLanguage(_workerRuntime);
 
-                var workerConfig = _languageWorkerOptions.Value.WorkerConfigs?.FirstOrDefault(c => c.Description.Language.Equals(_workerRuntime, StringComparison.OrdinalIgnoreCase));
+                var workerConfig = _languageWorkerOptions.CurrentValue.WorkerConfigs?.FirstOrDefault(c => c.Description.Language.Equals(_workerRuntime, StringComparison.OrdinalIgnoreCase));
 
                 // If there's no worker config, use the default (for legacy behavior; mostly for tests).
                 TimeSpan initializationTimeout = workerConfig?.CountOptions?.InitializationTimeout ?? WorkerProcessCountOptions.DefaultInitializationTimeout;
