@@ -1,0 +1,48 @@
+{
+    "scenarioName": "invoke http-trigger function",
+    "actions": [
+        {
+            "actionType": "rpc",
+            "actionName": "validate the worker's ability to handle a http invocation request",
+            "messages": [
+                {
+                    "direction": "outgoing",
+                    "messageType": "InvocationRequest",
+                    "payload": {
+                        "InvocationId": "HttpInvocationId",
+                        "FunctionId": "@{HttpTriggerFunctionId}",
+                        "InputData": [
+                            {
+                              "name": "req",
+                              "data": {
+                                "http": {
+                                  "method": "GET",
+                                  "url": "http://localhost:7071/api/HttpTrigger"
+                                }
+                              }
+                            }
+                        ],
+                        "TraceContext": {}
+                    }
+                },
+                {
+                    "direction": "incoming",
+                    "messageType": "InvocationResponse",
+                    "matchingCriteria": [
+                        {
+                            "query": "$.InvocationResponse.InvocationId",
+                            "expected": "HttpInvocationId"
+                        }
+                    ],
+                    "validators": [
+                        {
+                            "type": "string",
+                            "query": "$.InvocationResponse.Result.Status",
+                            "expected": "Success"
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}
