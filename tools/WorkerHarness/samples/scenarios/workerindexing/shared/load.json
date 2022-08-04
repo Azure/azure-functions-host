@@ -3,8 +3,16 @@
     "actions": [
         {
             "actionType": "rpc",
-            "actionName": "do function load",
+            "actionName": "validate the worker's ability to handle a FunctionLoadRequest message",
             "messages": [
+                {
+                    "direction": "outgoing",
+                    "messageType": "FunctionLoadRequest",
+                    "payload": {
+                        "FunctionId": "@{HttpTriggerFunctionId}",
+                        "Metadata": "${HttpTriggerFunctionMetadata}"
+                    }
+                },
                 {
                     "direction": "outgoing",
                     "messageType": "FunctionLoadRequest",
@@ -12,6 +20,23 @@
                         "FunctionId": "@{QueueTriggerFunctionId}",
                         "Metadata": "${QueueTriggerFunctionMetadata}"
                     }
+                },
+                {
+                    "direction": "incoming",
+                    "messageType": "FunctionLoadResponse",
+                    "matchingCriteria": [
+                        {
+                            "query": "$.FunctionLoadResponse.FunctionId",
+                            "expected": "@{HttpTriggerFunctionId}"
+                        }
+                    ],
+                    "validators": [
+                        {
+                            "type": "string",
+                            "query": "$.FunctionLoadResponse.Result.Status",
+                            "expected": "Success"
+                        }
+                    ]
                 },
                 {
                     "direction": "incoming",

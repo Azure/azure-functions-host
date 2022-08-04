@@ -1,0 +1,7 @@
+{
+    "scenarioFile": "scenario.json",
+    "languageExecutable": "C:\\Program Files\\dotnet\\dotnet.exe",
+    "workerPath": "C:\\temp\\TestApp1\\TestApp1\\bin\\Debug\\net6.0\\TestApp1.dll",
+    "functionAppDirectory": "C:\\temp\\TestApp1\\TestApp1\\bin\\Debug\\net6.0",
+    "DisplayVerboseError": false
+}
