@@ -354,27 +354,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
         }
 
         [Fact]
-        public async Task ShouldThrowExceptionIfSourcePakgeFileIsEmpty()
-        {
-            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath, HomePath);
-
-            var fileSystem = GetFileSystem();
-            fileSystem.Setup(x => x.Directory.Exists(_environment.GetSitePackagesPath())).Returns(true);
-            fileSystem.Setup(x => x.File.Exists(_environment.GetSitePackageNameTxtPath())).Returns(true);
-            fileSystem.Setup(x => x.File.ReadAllText(_environment.GetSitePackageNameTxtPath())).Returns(ZipFileName);
-            fileSystem.Setup(x => x.Path.Combine(_environment.GetSitePackagesPath(), ZipFileName)).Returns(PackagePath);
-            fileSystem.Setup(x => x.File.Exists(PackagePath)).Returns(true);
-            var fileInfo = new Mock<FileInfoBase>(MockBehavior.Strict);
-            fileInfo.SetupGet(f => f.Length).Returns(0);
-            fileSystem.Setup(f => f.FileInfo.FromFileName(PackagePath)).Returns(fileInfo.Object);
-
-            var downloader = new PackageDownloadHandler(_httpClient, _managedIdentityTokenProvider.Object,
-                _bashCmdHandlerMock.Object, _environment, fileSystem.Object, _logger, _metricsLogger);
-            var runFromPackageContext = new RunFromPackageContext(EnvironmentSettingNames.AzureWebsiteRunFromPackage, RunFromPackageOne, 0, false);
-            await Assert.ThrowsAsync<InvalidOperationException>(async () => await downloader.Download(runFromPackageContext));
-        }
-
-        [Fact]
         public async Task ShouldCopySourcePakgeToTempLocation()
         {
             var tempPath = "temp-path";

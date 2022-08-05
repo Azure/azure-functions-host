@@ -1218,7 +1218,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions() { ScriptPath = scriptPath });
 
-            var instanceManager = new InstanceManager(optionsFactory, _httpClientFactory, _scriptWebEnvironment, _environment,
+            var instanceManager = new InstanceManager(optionsFactory, _httpClient, _scriptWebEnvironment, _environment,
                 _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object,
                 runFromPackageHandler.Object, _packageDownloadHandler.Object);
 
