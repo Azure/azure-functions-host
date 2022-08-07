@@ -194,6 +194,10 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string HelpLinkKey = "MS_HelpLink";
         public const string ErrorCodeKey = "MS_ErrorCode";
 
+        public const string DataFolderName = "data";
+        public const string SitePackagesFolderName = "SitePackages";
+        public const string SitePackageNameTxtFileName = "packagename.txt";
+
         public static readonly ImmutableArray<string> HttpMethods = ImmutableArray.Create("get", "post", "delete", "head", "patch", "put", "options");
         public static readonly ImmutableArray<string> AssemblyFileTypes = ImmutableArray.Create(".dll", ".exe");
         public static readonly string HostUserAgent = $"azure-functions-host/{ScriptHost.Version}";

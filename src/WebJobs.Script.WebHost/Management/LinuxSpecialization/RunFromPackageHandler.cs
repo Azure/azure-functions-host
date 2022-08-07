@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public async Task<bool> ApplyBlobPackageContext(RunFromPackageContext pkgContext, string targetPath, bool azureFilesMounted, bool throwOnFailure = true)
+        public async Task<bool> ApplyRunFromPackageContext(RunFromPackageContext pkgContext, string targetPath, bool azureFilesMounted, bool throwOnFailure = true)
         {
             try
             {
@@ -51,8 +51,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
                         EnvironmentSettingNames.DefaultLocalSitePackagesPath)
                     : string.Empty;
 
-                // download zip and extract
-                var filePath = await _packageDownloadHandler.Download(pkgContext);
+                // download zip
+                string filePath = await _packageDownloadHandler.Download(pkgContext);
+
+                // extract zip
                 await UnpackPackage(filePath, targetPath, pkgContext, localSitePackagesPath);
 
                 string bundlePath = Path.Combine(targetPath, "worker-bundle");
@@ -65,7 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
             }
             catch (Exception e)
             {
-                _logger.LogDebug(e, nameof(ApplyBlobPackageContext));
+                _logger.LogDebug(e, nameof(ApplyRunFromPackageContext));
                 if (throwOnFailure)
                 {
                     throw;
@@ -129,7 +131,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
         private CodePackageType GetPackageType(string filePath, RunFromPackageContext pkgContext)
         {
             // cloud build always builds squashfs
-            if (pkgContext.IsScmRunFromPackage())
+            if (pkgContext.IsScmRunFromPackage() || pkgContext.IsRunFromLocalPackage())
             {
                 return CodePackageType.Squashfs;
             }
