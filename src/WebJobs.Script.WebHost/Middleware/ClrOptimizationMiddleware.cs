@@ -21,12 +21,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
         private readonly ILogger _logger;
         private readonly RequestDelegate _next;
         private readonly IScriptWebHostEnvironment _webHostEnvironment;
+        private readonly IEnvironment _environment;
         private RequestDelegate _invoke;
         private double _specialized = 0;
 
-        public ClrOptimizationMiddleware(RequestDelegate next, IScriptWebHostEnvironment webHostEnvironment, ILogger<SystemTraceMiddleware> logger)
+        public ClrOptimizationMiddleware(RequestDelegate next, IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment, ILogger<ClrOptimizationMiddleware> logger)
         {
             _webHostEnvironment = webHostEnvironment;
+            _environment = environment;
             _logger = logger;
             _next = next;
             _invoke = InvokeClrOptimizationCheck;
@@ -53,20 +55,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
         {
             try
             {
-                if (_webHostEnvironment.InStandbyMode)
+                // optimization not intended for single core VMs
+                if (_webHostEnvironment.InStandbyMode && _environment.GetEffectiveCoresCount() > 1)
                 {
-                    // This is just to make sure we do not enter NoGCRegion multiple times during standby mode.
-                    if (GCSettings.LatencyMode != GCLatencyMode.NoGCRegion)
+                    // If in placeholder mode and already in NoGCRegion, let's end it then start NoGCRegion again.
+                    // This may happen if there are multiple warmup calls(few minutes apart) during placeholder mode and before specialization.
+                    if (GCSettings.LatencyMode == GCLatencyMode.NoGCRegion)
                     {
-                        // In standby mode, we enforce a GC then enter NoGCRegion mode as best effort.
-                        // This is to try to avoid GC during cold start specialization.
-                        GC.Collect();
-                        if (!GC.TryStartNoGCRegion(AllocationBudgetForGCDuringSpecialization, disallowFullBlockingGC: false))
-                        {
-                            _logger.LogError($"CLR runtime failed to commit the requested amount of memory: {AllocationBudgetForGCDuringSpecialization}");
-                        }
-                        _logger.LogInformation($"Collection count for gen 0: {GC.CollectionCount(0)}, gen 1: {GC.CollectionCount(1)}, gen 2: {GC.CollectionCount(2)}");
+                        GC.EndNoGCRegion();
                     }
+
+                    // In standby mode, we enter NoGCRegion mode as best effort.
+                    // This is to try to avoid GC during cold start specialization.
+                    if (!GC.TryStartNoGCRegion(AllocationBudgetForGCDuringSpecialization, disallowFullBlockingGC: false))
+                    {
+                        _logger.LogError($"CLR runtime GC failed to commit the requested amount of memory: {AllocationBudgetForGCDuringSpecialization}");
+                    }
+                    _logger.LogInformation($"GC Collection count for gen 0: {GC.CollectionCount(0)}, gen 1: {GC.CollectionCount(1)}, gen 2: {GC.CollectionCount(2)}");
                 }
                 else
                 {
@@ -74,7 +79,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
                     if (GCSettings.LatencyMode == GCLatencyMode.NoGCRegion)
                     {
                         GC.EndNoGCRegion();
-                        _logger.LogInformation($"Collection count for gen 0: {GC.CollectionCount(0)}, gen 1: {GC.CollectionCount(1)}, gen 2: {GC.CollectionCount(2)}");
+                        _logger.LogInformation($"GC Collection count for gen 0: {GC.CollectionCount(0)}, gen 1: {GC.CollectionCount(1)}, gen 2: {GC.CollectionCount(2)}");
                     }
 
                     // This logic needs to run only once during specialization, so replacing the RequestDelegate after specialization
@@ -86,7 +91,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex.Message);
+                // Just logging it at informational.
+                _logger.LogInformation(ex, "GC optimization will not get applied.");
             }
         }
     }
