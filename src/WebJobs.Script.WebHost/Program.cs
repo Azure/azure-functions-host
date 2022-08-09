@@ -67,7 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     config.Add(new WebScriptHostConfigurationSource
                     {
                         IsAppServiceEnvironment = SystemEnvironment.Instance.IsAppService(),
-                        IsLinuxContainerEnvironment = SystemEnvironment.Instance.IsLinuxConsumption(),
+                        IsLinuxContainerEnvironment = SystemEnvironment.Instance.IsAnyLinuxConsumption(),
                         IsLinuxAppServiceEnvironment = SystemEnvironment.Instance.IsLinuxAppService()
                     });
                 })
@@ -87,7 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         /// </summary>
         private static void InitializeProcess()
         {
-            if (SystemEnvironment.Instance.IsLinuxConsumption())
+            if (SystemEnvironment.Instance.IsLinuxConsumptionV1() || SystemEnvironment.Instance.IsLinuxConsumptionV2())
             {
                 AppDomain.CurrentDomain.UnhandledException += CurrentDomainOnUnhandledExceptionInLinuxConsumption;
             }

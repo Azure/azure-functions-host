@@ -36,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             WebJobsRouteBuilder routesBuilder = _router.CreateBuilder(new ScriptRouteHandler(_loggerFactory, host, _environment, false), _httpOptions.Value.RoutePrefix);
 
             WebJobsRouteBuilder warmupRouteBuilder = null;
-            if (!_environment.IsLinuxConsumption() && !_environment.IsWindowsConsumption())
+            if (!_environment.IsAnyLinuxConsumption() && !_environment.IsWindowsConsumption())
             {
                 warmupRouteBuilder = _router.CreateBuilder(new ScriptRouteHandler(_loggerFactory, host, _environment, isWarmup: true), routePrefix: "admin");
             }

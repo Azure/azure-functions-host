@@ -37,9 +37,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
             _cancellationToken = cancellationToken;
 
             // The service should be registered in Linux Consumption only, but do additional check here.
-            if (_environment.IsLinuxConsumption())
+            if (_environment.IsLinuxConsumptionV1())
             {
                 await ApplyStartContextIfPresent();
+            }
+            else if (_environment.IsLinuxConsumptionV2())
+            {
+                _logger.LogInformation("Container has restarted. Waiting for re-specialization");
             }
         }
 

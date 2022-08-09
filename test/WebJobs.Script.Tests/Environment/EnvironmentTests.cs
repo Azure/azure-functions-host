@@ -222,12 +222,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData(null, "", false)]
         [InlineData("", null, false)]
         [InlineData(null, null, false)]
-        public void Returns_IsLinuxConsumption(string websiteInstanceId, string containerName, bool isLinuxConsumption)
+        public void Returns_IsLinuxConsumptionV1(string websiteInstanceId, string containerName, bool isLinuxConsumption)
         {
             var testEnvironment = new TestEnvironment();
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId, websiteInstanceId);
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, containerName);
-            Assert.Equal(isLinuxConsumption, testEnvironment.IsLinuxConsumption());
+            Assert.Equal(isLinuxConsumption, testEnvironment.IsAnyLinuxConsumption());
+            Assert.Equal(isLinuxConsumption, testEnvironment.IsLinuxConsumptionV1());
             Assert.Equal(isLinuxConsumption, testEnvironment.IsConsumptionSku());
             Assert.Equal(isLinuxConsumption, testEnvironment.IsDynamicSku());
         }

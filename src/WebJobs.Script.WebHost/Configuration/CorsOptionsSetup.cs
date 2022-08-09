@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
 
         public void Configure(CorsOptions options)
         {
-            if (_env.IsLinuxConsumption())
+            if (_env.IsAnyLinuxConsumption())
             {
                 string[] allowedOrigins = _hostCorsOptions.Value.AllowedOrigins?.ToArray() ?? Array.Empty<string>();
                 var policyBuilder = new CorsPolicyBuilder(allowedOrigins);

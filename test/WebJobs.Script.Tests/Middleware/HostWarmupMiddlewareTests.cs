@@ -1,11 +1,8 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
 using System.Linq;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Script.WebHost;
-using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
 using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
@@ -54,7 +51,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
 
             request = HttpTestHelpers.CreateHttpRequest("POST", "http://azure.com/api/warmup");
             environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, "TestContainer");
-            Assert.True(environment.IsLinuxConsumption());
+            Assert.True(environment.IsAnyLinuxConsumption());
+            Assert.True(environment.IsLinuxConsumptionV1());
             Assert.True(HostWarmupMiddleware.IsWarmUpRequest(request, hostEnvironment.InStandbyMode, environment));
         }
 

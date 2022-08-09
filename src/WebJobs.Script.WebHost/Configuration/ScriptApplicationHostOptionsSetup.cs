@@ -76,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
                 Utility.IsValidZipSetting(_environment.GetEnvironmentVariable(AzureWebsiteAltZipDeployment)) ||
                 Utility.IsValidZipSetting(_environment.GetEnvironmentVariable(AzureWebsiteRunFromPackage));
 
-            if (!_environment.IsLinuxConsumption())
+            if (!_environment.IsAnyLinuxConsumption())
             {
                 isScmRunFromPackage = false;
                 // This check is strong enough for SKUs other than Linux Consumption.

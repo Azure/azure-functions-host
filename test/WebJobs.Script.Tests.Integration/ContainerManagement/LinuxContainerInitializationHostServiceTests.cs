@@ -46,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ContainerManagement
         {
             _environment.SetEnvironmentVariable(ContainerName, null);
             _environment.SetEnvironmentVariable(AzureWebsiteInstanceId, null);
-            Assert.False(_environment.IsLinuxConsumption());
+            Assert.False(_environment.IsAnyLinuxConsumption());
 
             var initializationHostService = new LinuxContainerInitializationHostService(_environment, _instanceManagerMock.Object, NullLogger<LinuxContainerInitializationHostService>.Instance, _startupContextProvider);
             await initializationHostService.StartAsync(CancellationToken.None);

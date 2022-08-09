@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var environment = new TestEnvironment(vars);
 
-            Assert.True(environment.IsLinuxConsumption());
+            Assert.True(environment.IsLinuxConsumptionV1());
 
             await InitializeTestHostAsync("Linux", environment);
 
