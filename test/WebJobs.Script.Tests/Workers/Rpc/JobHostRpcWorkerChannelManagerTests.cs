@@ -204,6 +204,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.True(_jobHostRpcWorkerChannelManager.GetChannels("powershell").Contains(_workerChannelPs2.Object), "Job Manager doesn't contains 'ps2'");
             Assert.Equal(1, _jobHostRpcWorkerChannelManager.GetChannels("node").Count());
             Assert.True(_jobHostRpcWorkerChannelManager.GetChannels("node").Contains(_workerChannelJs1.Object), "Job Manager doesn't contains 'js2'");
+
+            // test case insensitivity
+            Assert.Equal(1, _jobHostRpcWorkerChannelManager.GetChannels("Java").Count());
         }
     }
 }
