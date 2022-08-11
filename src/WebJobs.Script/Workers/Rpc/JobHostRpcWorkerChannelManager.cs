@@ -14,7 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
     {
         private readonly object _getChannelLock = new object();
         private readonly ILogger _logger;
-        private ConcurrentDictionary<string, IRpcWorkerChannelDictionary> _channels = new ConcurrentDictionary<string, IRpcWorkerChannelDictionary>();
+        private ConcurrentDictionary<string, IRpcWorkerChannelDictionary> _channels = new ConcurrentDictionary<string, IRpcWorkerChannelDictionary>(StringComparer.OrdinalIgnoreCase);
 
         public JobHostRpcWorkerChannelManager(ILoggerFactory loggerFactory)
         {
