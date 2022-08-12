@@ -7796,3 +7796,4 @@ int64.ToString()~System.Int64,System.Private.CoreLib~0~0~ToString
 int64.TryFormat(Span`1<char>,int32&,ReadOnlySpan`1<char>,IFormatProvider)~System.Int64,System.Private.CoreLib~4~0~TryFormat
 string.Join(char,string[])~System.String,System.Private.CoreLib~2~0~Join
 string.Trim(char)~System.String,System.Private.CoreLib~1~0~Trim
+[Microsoft.Azure.WebJobs.Host]Microsoft.Azure.WebJobs.Host.InMemoryDistributedLockManager.RenewAsync(IDistributedLock,CancellationToken)~Microsoft.Azure.WebJobs.Host.InMemoryDistributedLockManager,Microsoft.Azure.WebJobs.Host~2~0~RenewAsync
