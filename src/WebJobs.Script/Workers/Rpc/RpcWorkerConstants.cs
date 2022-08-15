@@ -53,6 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public const string EnableUserCodeException = "EnableUserCodeException";
         public const string SupportsLoadResponseCollection = "SupportsLoadResponseCollection";
         public const string HandlesWorkerTerminateMessage = "HandlesWorkerTerminateMessage";
+        public const string HandlesInvocationCancelMessage = "HandlesInvocationCancelMessage";
 
         // Host Capabilities
         public const string V2Compatable = "V2Compatable";

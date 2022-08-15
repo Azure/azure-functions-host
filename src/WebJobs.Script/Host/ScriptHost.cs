@@ -317,7 +317,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     // Initialize worker function invocation dispatcher only for valid functions after creating function descriptors
                     // Dispatcher not needed for codeless function.
-                    // Disptacher needed for non-dotnet codeless functions
+                    // Dispatcher needed for non-dotnet codeless functions
                     var filteredFunctionMetadata = functionMetadataList.Where(m => !Utility.IsCodelessDotNetLanguageFunction(m));
                     await _functionDispatcher.InitializeAsync(Utility.GetValidFunctions(filteredFunctionMetadata, Functions), cancellationToken);
                 }
