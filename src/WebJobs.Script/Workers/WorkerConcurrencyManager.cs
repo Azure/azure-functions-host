@@ -308,7 +308,7 @@ LatencyHistory=({formattedLatencyHistory}), AvgLatency={latencyAvg}, MaxLatency=
             long currentMemoryConsumption = workerChanellSizes.Sum() + hostProcessSize;
             if (currentMemoryConsumption + maxWorkerSize > memoryLimit * 0.8)
             {
-                _logger.LogDebug($"Starting new language worker canceled: TotalMemory={memoryLimit}, MaxWorkerSize={maxWorkerSize}, currentMemoryConsumption={currentMemoryConsumption}");
+                _logger.LogDebug($"Starting new language worker canceled: TotalMemory={memoryLimit}, MaxWorkerSize={maxWorkerSize}, CurrentMemoryConsumption={currentMemoryConsumption}");
                 return false;
             }
             return true;
