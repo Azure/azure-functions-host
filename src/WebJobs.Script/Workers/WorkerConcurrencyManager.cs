@@ -3,10 +3,13 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -125,8 +128,17 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
                 if (NewWorkerIsRequired(workerStatuses, _addWorkerStopwatch.GetElapsedTime()))
                 {
-                    await _functionInvocationDispatcher.StartWorkerChannel();
-                    _addWorkerStopwatch = ValueStopwatch.StartNew();
+                    if (_functionInvocationDispatcher is RpcFunctionInvocationDispatcher rpcDispatcher)
+                    {
+                        // Check memory
+                        if (IsEnoughMemory(Process.GetCurrentProcess().PrivateMemorySize64,
+                            (await rpcDispatcher.GetAllWorkerChannelsAsync()).Select(x => x.Process.PrivateMemorySize64),
+                            AppServicesHostingUtility.GetMemoryLimitBytes()))
+                        {
+                            await _functionInvocationDispatcher.StartWorkerChannel();
+                            _addWorkerStopwatch = ValueStopwatch.StartNew();
+                        }
+                    }
                 }
             }
             catch (Exception ex)
@@ -282,6 +294,24 @@ LatencyHistory=({formattedLatencyHistory}), AvgLatency={latencyAvg}, MaxLatency=
         public void Dispose()
         {
             Dispose(true);
+        }
+
+        internal bool IsEnoughMemory(long hostProcessSize, IEnumerable<long> workerChanellSizes, long memoryLimit)
+        {
+            if (memoryLimit <= 0)
+            {
+                return true;
+            }
+
+            // Checking memory before adding a new worker
+            long maxWorkerSize = workerChanellSizes.Max();
+            long currentMemoryConsumption = workerChanellSizes.Sum() + hostProcessSize;
+            if (currentMemoryConsumption + maxWorkerSize > memoryLimit * 0.8)
+            {
+                _logger.LogDebug($"Starting new language worker canceled: TotalMemory={memoryLimit}, MaxWorkerSize={maxWorkerSize}, currentMemoryConsumption={currentMemoryConsumption}");
+                return false;
+            }
+            return true;
         }
 
         internal class WorkerStatusDetails
