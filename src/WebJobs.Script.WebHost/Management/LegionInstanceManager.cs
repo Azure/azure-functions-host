@@ -39,8 +39,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         public Task<string> SpecializeMSISidecar(HostAssignmentContext context)
         {
-            // Skip since Legion will take care of MSI Specialization
-            return null;
+            // Legion will take care of MSI Specialization
+            throw new NotImplementedException();
         }
 
         public bool StartAssignment(HostAssignmentContext context)
@@ -102,7 +102,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         public Task<string> ValidateContext(HostAssignmentContext assignmentContext)
         {
             // Don't need to validate RunFromPackageContext in Legion
-            return null;
+            throw new NotImplementedException();
         }
 
         private async Task Assign(HostAssignmentContext assignmentContext)
@@ -135,7 +135,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         public IDictionary<string, string> GetInstanceInfo()
         {
-            return null;
+            throw new NotImplementedException();
         }
 
         // for testing
