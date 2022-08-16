@@ -296,7 +296,7 @@ LatencyHistory=({formattedLatencyHistory}), AvgLatency={latencyAvg}, MaxLatency=
             Dispose(true);
         }
 
-        internal bool IsEnoughMemory(long hostProcessSize, IEnumerable<long> workerChanellSizes, long memoryLimit)
+        internal bool IsEnoughMemory(long hostProcessSize, IEnumerable<long> workerChannelSizes, long memoryLimit)
         {
             if (memoryLimit <= 0)
             {
@@ -304,8 +304,8 @@ LatencyHistory=({formattedLatencyHistory}), AvgLatency={latencyAvg}, MaxLatency=
             }
 
             // Checking memory before adding a new worker
-            long maxWorkerSize = workerChanellSizes.Max();
-            long currentMemoryConsumption = workerChanellSizes.Sum() + hostProcessSize;
+            long maxWorkerSize = workerChannelSizes.Max();
+            long currentMemoryConsumption = workerChannelSizes.Sum() + hostProcessSize;
             if (currentMemoryConsumption + maxWorkerSize > memoryLimit * 0.8)
             {
                 _logger.LogDebug($"Starting new language worker canceled: TotalMemory={memoryLimit}, MaxWorkerSize={maxWorkerSize}, CurrentMemoryConsumption={currentMemoryConsumption}");
