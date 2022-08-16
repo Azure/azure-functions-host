@@ -74,6 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private TimeSpan _functionLoadTimeout = TimeSpan.FromMinutes(1);
         private bool _isSharedMemoryDataTransferEnabled;
         private bool _cancelCapabilityEnabled;
+        private int _attemptCount;
 
         private object _syncLock = new object();
         private System.Timers.Timer _timer;
@@ -100,6 +101,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _workerChannelLogger = logger;
             _metricsLogger = metricsLogger;
             _environment = environment;
+            _attemptCount = attemptCount;
             _applicationHostOptions = applicationHostOptions;
             _sharedMemoryManager = sharedMemoryManager;
             _workerConcurrencyOptions = workerConcurrencyOptions;
@@ -682,6 +684,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _workerChannelLogger.LogDebug("InvocationResponse received for invocation id: '{invocationId}'", invokeResponse.InvocationId);
             // Check if the worker supports logging user-code-thrown exceptions to app insights
             bool capabilityEnabled = !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.EnableUserCodeException));
+
+            if (!invokeResponse.Result.IsFailure(out Exception ex))
+            {
+                _metricsLogger.LogEvent(MetricEventNames.WorkerInvocation, functionName: null, data: "workerId = " + Id + "attemptcount = " + _attemptCount + " testmetrics for failed invocation on worker");
+            }
 
             if (_executingInvocations.TryRemove(invokeResponse.InvocationId, out ScriptInvocationContext context)
                 && invokeResponse.Result.IsInvocationSuccess(context.ResultSource, capabilityEnabled))
