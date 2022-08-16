@@ -982,7 +982,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public static FunctionAppContentEditingState GetFunctionAppContentEditingState(IEnvironment environment, IOptions<ScriptApplicationHostOptions> applicationHostOptions)
         {
             // For now, host can determine with certainty if contents are editable only for Linux Consumption apps. Return unknown for other SKUs.
-            if (!environment.IsLinuxConsumption())
+            if (!environment.IsAnyLinuxConsumption())
             {
                 return FunctionAppContentEditingState.Unknown;
             }

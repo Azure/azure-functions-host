@@ -30,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static bool IsLinuxMetricsPublishingEnabled(this IEnvironment environment)
         {
-            return environment.IsLinuxConsumption() && string.IsNullOrEmpty(environment.GetEnvironmentVariable(ContainerStartContext));
+            return environment.IsLinuxConsumptionOnAtlas() && string.IsNullOrEmpty(environment.GetEnvironmentVariable(ContainerStartContext));
         }
 
         public static bool IsPlaceholderModeEnabled(this IEnvironment environment)
@@ -197,7 +197,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <returns><see cref="true"/> if running in a Windows or Linux Consumption App Service app; otherwise, false.</returns>
         public static bool IsConsumptionSku(this IEnvironment environment)
         {
-            return IsWindowsConsumption(environment) || IsLinuxConsumption(environment);
+            return IsWindowsConsumption(environment) || IsAnyLinuxConsumption(environment);
         }
 
         /// <summary>
@@ -254,9 +254,23 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         /// <param name="environment">The environment to verify</param>
         /// <returns><see cref="true"/> if running in a Linux Consumption App Service app; otherwise, false.</returns>
-        public static bool IsLinuxConsumption(this IEnvironment environment)
+        public static bool IsAnyLinuxConsumption(this IEnvironment environment)
         {
-            return !environment.IsAppService() && !string.IsNullOrEmpty(environment.GetEnvironmentVariable(ContainerName));
+            return environment.IsLinuxConsumptionOnAtlas() || environment.IsLinuxConsumptionOnLegion();
+        }
+
+        public static bool IsLinuxConsumptionOnAtlas(this IEnvironment environment)
+        {
+            return !environment.IsAppService() &&
+                   !string.IsNullOrEmpty(environment.GetEnvironmentVariable(ContainerName)) &&
+                   string.IsNullOrEmpty(environment.GetEnvironmentVariable(LegionServiceHost));
+        }
+
+        public static bool IsLinuxConsumptionOnLegion(this IEnvironment environment)
+        {
+            return !environment.IsAppService() &&
+                   !string.IsNullOrEmpty(environment.GetEnvironmentVariable(ContainerName)) &&
+                   !string.IsNullOrEmpty(environment.GetEnvironmentVariable(LegionServiceHost));
         }
 
         /// <summary>
@@ -278,7 +292,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <returns><see cref="true"/> if running in a Linux Azure managed hosting environment; otherwise, false.</returns>
         public static bool IsLinuxAzureManagedHosting(this IEnvironment environment)
         {
-            return environment.IsLinuxConsumption() || environment.IsLinuxAppService();
+            return environment.IsAnyLinuxConsumption() || environment.IsLinuxAppService();
         }
 
         /// <summary>
@@ -369,7 +383,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         public static string GetInstanceId(this IEnvironment environment)
         {
-            if (environment.IsLinuxConsumption())
+            if (environment.IsAnyLinuxConsumption())
             {
                 return environment.GetEnvironmentVariableOrDefault(ContainerName, string.Empty);
             }
