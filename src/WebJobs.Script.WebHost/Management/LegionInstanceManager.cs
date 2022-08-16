@@ -37,57 +37,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
         }
 
-        public async Task<string> SpecializeMSISidecar(HostAssignmentContext context)
+        public Task<string> SpecializeMSISidecar(HostAssignmentContext context)
         {
-            // No cold start optimization needed for side car scenarios
-            if (context.IsWarmupRequest)
-            {
-                return null;
-            }
-
-            var msiEnabled = context.IsMSIEnabled(out var endpoint);
-
-            _logger.LogInformation($"MSI enabled status: {msiEnabled}");
-
-            if (msiEnabled)
-            {
-                if (context.MSIContext == null)
-                {
-                    _logger.LogWarning("Skipping specialization of MSI sidecar since MSIContext was absent");
-                    await _meshServiceClient.NotifyHealthEvent(ContainerHealthEventType.Fatal, this.GetType(),
-                        "Could not specialize MSI sidecar since MSIContext was empty");
-                }
-                else
-                {
-                    using (_metricsLogger.LatencyEvent(MetricEventNames.LinuxContainerSpecializationMSIInit))
-                    {
-                        var uri = new Uri(endpoint);
-                        var address = $"http://{uri.Host}:{uri.Port}{ScriptConstants.LinuxMSISpecializationStem}";
-
-                        _logger.LogDebug($"Specializing sidecar at {address}");
-
-                        var requestMessage = new HttpRequestMessage(HttpMethod.Post, address)
-                        {
-                            Content = new StringContent(JsonConvert.SerializeObject(context.MSIContext),
-                                Encoding.UTF8, "application/json")
-                        };
-
-                        var response = await _client.SendAsync(requestMessage);
-
-                        _logger.LogInformation($"Specialize MSI sidecar returned {response.StatusCode}");
-
-                        if (!response.IsSuccessStatusCode)
-                        {
-                            var message = $"Specialize MSI sidecar call failed. StatusCode={response.StatusCode}";
-                            _logger.LogError(message);
-                            await _meshServiceClient.NotifyHealthEvent(ContainerHealthEventType.Fatal, this.GetType(),
-                                "Failed to specialize MSI sidecar");
-                            return message;
-                        }
-                    }
-                }
-            }
-
+            // Skip since Legion will take care of MSI Specialization
             return null;
         }
 
@@ -183,11 +135,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         public IDictionary<string, string> GetInstanceInfo()
         {
-            return new Dictionary<string, string>
-            {
-                { "FUNCTIONS_EXTENSION_VERSION", ScriptHost.Version },
-                { "WEBSITE_NODE_DEFAULT_VERSION", "8.5.0" }
-            };
+            return null;
         }
 
         // for testing
