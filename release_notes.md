@@ -3,6 +3,7 @@
 - My change description (#PR)
 -->
 - Update Python Worker Version to [4.5.0](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.5.0)
+- Update Python Worker Version to [4.5.0](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.5.0)
 
 - Host support for out-of-proc cancellation tokens ([#2153](https://github.com/Azure/azure-functions-host/issues/2152))
 - Update Python Worker Version to [4.4.0](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.4.0)
