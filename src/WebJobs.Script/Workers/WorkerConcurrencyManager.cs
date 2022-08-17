@@ -29,6 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         private readonly IEnvironment _environment;
         private readonly IFunctionsHostingConfiguration _functionsHostingConfigurations;
         private readonly IApplicationLifetime _applicationLifetime;
+        private readonly long _memoryLimit = AppServicesHostingUtility.GetMemoryLimitBytes();
 
         private IOptions<WorkerConcurrencyOptions> _workerConcurrencyOptions;
         private IFunctionInvocationDispatcher _functionInvocationDispatcher;
@@ -131,9 +132,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                     if (_functionInvocationDispatcher is RpcFunctionInvocationDispatcher rpcDispatcher)
                     {
                         // Check memory
+                        var currentCahannels = (await rpcDispatcher.GetAllWorkerChannelsAsync()).Select(x => x.Process.PrivateMemorySize64);
                         if (IsEnoughMemory(Process.GetCurrentProcess().PrivateMemorySize64,
-                            (await rpcDispatcher.GetAllWorkerChannelsAsync()).Select(x => x.Process.PrivateMemorySize64),
-                            AppServicesHostingUtility.GetMemoryLimitBytes()))
+                            currentCahannels,
+                            _memoryLimit))
                         {
                             await _functionInvocationDispatcher.StartWorkerChannel();
                             _addWorkerStopwatch = ValueStopwatch.StartNew();
