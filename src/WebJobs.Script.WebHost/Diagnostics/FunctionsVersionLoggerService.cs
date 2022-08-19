@@ -59,12 +59,12 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
             return Task.CompletedTask;
         }
 
-        private async void OnTimer(object state)
+        private void OnTimer(object state)
         {
-            await PublishLogsSamplesAsync();
+            PublishLogsSamples();
         }
 
-        private Task PublishLogs()
+        private void PublishLogs()
         {
             try
             {
@@ -72,19 +72,18 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
                 _logger.LogInformation("Framework : {0}", _environment.GetEnvironmentVariable(EnvironmentSettingNames.Framework));
                 _logger.LogInformation("FrameworkVersion : {0}", _environment.GetEnvironmentVariable(EnvironmentSettingNames.FrameworkVersion));
                 _logger.LogInformation("SlotName : {0}", _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSlotName));
-                return Task.CompletedTask;
             }
             catch (Exception exc) when (!exc.IsFatal())
             {
-                return null;
+                throw;
             }
         }
 
-        private async Task PublishLogsSamplesAsync()
+        private void PublishLogsSamples()
         {
             try
             {
-                await PublishLogs();
+                PublishLogs();
             }
             catch (Exception ex)
             {
@@ -103,7 +102,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
             {
                 try
                 {
-                    _timer.Change(dueTime, Timeout.Infinite);
+                    _timer.Change(0, dueTime);
                 }
                 catch (Exception)
                 {
