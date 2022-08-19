@@ -56,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             if (!_jitTraceHasRun)
             {
                 PreJitPrepare(WarmUpConstants.JitTraceFileName);
-                if (_environment.IsLinuxConsumption())
+                if (_environment.IsAnyLinuxConsumption())
                 {
                     PreJitPrepare(WarmUpConstants.LinuxJitTraceFileName);
                 }
@@ -146,7 +146,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
         public static bool IsWarmUpRequest(HttpRequest request, bool inStandbyMode, IEnvironment environment)
         {
             return inStandbyMode
-                && ((environment.IsAppService() && request.IsAppServiceInternalRequest(environment)) || environment.IsLinuxConsumption())
+                && ((environment.IsAppService() && request.IsAppServiceInternalRequest(environment)) || environment.IsAnyLinuxConsumption())
                 && (request.Path.StartsWithSegments(_warmupRoutePath) || request.Path.StartsWithSegments(_warmupRouteAlternatePath));
         }
     }

@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             builder.UseMiddleware<HttpRequestBodySizeMiddleware>();
             builder.UseMiddleware<SystemTraceMiddleware>();
             builder.UseMiddleware<HostnameFixupMiddleware>();
-            if (environment.IsLinuxConsumption())
+            if (environment.IsAnyLinuxConsumption())
             {
                 builder.UseMiddleware<EnvironmentReadyCheckMiddleware>();
             }
@@ -64,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // JobHost/ScriptHost scoped services.
             builder.UseMiddleware<ScriptHostRequestServiceProviderMiddleware>();
 
-            if (environment.IsLinuxConsumption())
+            if (environment.IsAnyLinuxConsumption())
             {
                 builder.UseMiddleware<AppServiceHeaderFixupMiddleware>();
             }
