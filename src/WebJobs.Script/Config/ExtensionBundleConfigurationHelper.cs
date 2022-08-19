@@ -34,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 
                 string homeDirectory = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath);
                 if ((_environment.IsAppService()
-                    || _environment.IsLinuxConsumption()
+                    || _environment.IsAnyLinuxConsumption()
                     || _environment.IsContainer())
                     && !string.IsNullOrEmpty(homeDirectory))
                 {
@@ -77,7 +77,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 
             var homeDirectory = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath);
             if ((_environment.IsLinuxAppService()
-                || _environment.IsLinuxConsumption()
+                || _environment.IsAnyLinuxConsumption()
                 || _environment.IsContainer())
                 && !string.IsNullOrEmpty(homeDirectory))
             {
