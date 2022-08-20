@@ -2,6 +2,7 @@
 <!-- Please add your release notes in the following format:
 - My change description (#PR)
 -->
+- Update Java Worker Version to [1.2.6-test](https://github.com/Azure/azure-functions-java-worker/releases/tag/1.2.6-test)
 - Update Python Worker Version to [4.5.0](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.5.0)
 
 - Host support for out-of-proc cancellation tokens ([#2153](https://github.com/Azure/azure-functions-host/issues/2152))
