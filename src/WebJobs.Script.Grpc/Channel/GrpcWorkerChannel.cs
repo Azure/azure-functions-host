@@ -687,8 +687,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             if (!invokeResponse.Result.IsFailure(out Exception ex))
             {
-                HandleWorkerInvocationError(ex);
                 _metricsLogger.LogEvent(MetricEventNames.WorkerInvocation, functionName: null, data: "workerId = " + Id + " attemptcount = " + _attemptCount + " testmetrics for failed invocation on worker. Exception = " + ex.ToString());
+               // HandleWorkerInvocationError(ex);
             }
 
             if (_executingInvocations.TryRemove(invokeResponse.InvocationId, out ScriptInvocationContext context)
