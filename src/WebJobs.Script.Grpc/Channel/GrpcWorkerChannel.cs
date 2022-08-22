@@ -125,7 +125,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 .Subscribe(msg => _eventManager.Publish(new HostRestartEvent())));
 
             _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.InvocationResponse)
-                .Subscribe(async (msg) => await InvokeResponse(msg.Message.InvocationResponse)));
+                .Subscribe(async (msg) => await InvokeResponse(msg.Message.InvocationResponse), HandleWorkerInvocationError));
 
             _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.WorkerStatusResponse)
                 .Subscribe((msg) => ReceiveWorkerStatusResponse(msg.Message.RequestId, msg.Message.WorkerStatusResponse));
@@ -687,7 +687,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             if (!invokeResponse.Result.IsFailure(out Exception ex))
             {
-                _metricsLogger.LogEvent(MetricEventNames.WorkerInvocation, functionName: null, data: "workerId = " + Id + "attemptcount = " + _attemptCount + " testmetrics for failed invocation on worker");
+                HandleWorkerInvocationError(ex);
+                _metricsLogger.LogEvent(MetricEventNames.WorkerInvocation, functionName: null, data: "workerId = " + Id + " attemptcount = " + _attemptCount + " testmetrics for failed invocation on worker. Exception = " + ex.ToString());
             }
 
             if (_executingInvocations.TryRemove(invokeResponse.InvocationId, out ScriptInvocationContext context)
@@ -852,6 +853,12 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         {
             _workerChannelLogger.LogError(exc, "Reloading environment variables failed");
             _reloadTask.SetException(exc);
+        }
+
+        internal void HandleWorkerInvocationError(Exception exc)
+        {
+            _workerChannelLogger.LogError(exc, "Function invocation failed");
+            PublishWorkerErrorEvent(exc);
         }
 
         internal void HandleWorkerInitError(Exception exc)
