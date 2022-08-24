@@ -16,29 +16,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 {
     public class ServerlessSecurityServiceOptionsTests : IDisposable
     {
-        private string traceloggerFilename;
-        private string localFilePath;
-        private string initialValueServerlessSecurityLogConfig;
-        private string verifyLog;
+        private string _traceloggerFilename;
+        private string _localFilePath;
+        private string _enableSlsecAgentLog;
+        private string _verifyLog;
 
         public ServerlessSecurityServiceOptionsTests()
         {
             //save original value to reset it to after test
-            initialValueServerlessSecurityLogConfig = Environment.GetEnvironmentVariable("SERVERLESS_SECURITY_LOG_CONFIG");
-            verifyLog = " message: Start up Serverless Security Agent Handler.";
-            traceloggerFilename = "\\tracelog.txt";
-            localFilePath = Directory.GetCurrentDirectory() + traceloggerFilename;
-            Environment.SetEnvironmentVariable("SERVERLESS_SECURITY_LOG_CONFIG", localFilePath);
-            File.Delete(localFilePath);
-            File.Create(localFilePath).Dispose();
+            _enableSlsecAgentLog = Environment.GetEnvironmentVariable("SERVERLESS_SECURITY_LOG_CONFIG");
+            _verifyLog = " message: Start up Serverless Security Agent Handler.";
+            _traceloggerFilename = "\\tracelog.txt";
+            _localFilePath = Directory.GetCurrentDirectory() + _traceloggerFilename;
+            Environment.SetEnvironmentVariable("SERVERLESS_SECURITY_LOG_CONFIG", _localFilePath);
+            File.Delete(_localFilePath);
+            File.Create(_localFilePath).Dispose();
         }
 
         public void Dispose()
         {
             //Delete tracelogger file that was created for the test
-            File.Delete(localFilePath);
+            File.Delete(_localFilePath);
             //Reset to initial config value
-            Environment.SetEnvironmentVariable("SERVERLESS_SECURITY_LOG_CONFIG", initialValueServerlessSecurityLogConfig);
+            Environment.SetEnvironmentVariable("SERVERLESS_SECURITY_LOG_CONFIG", _enableSlsecAgentLog);
         }
 
         [Fact]
@@ -70,22 +70,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             Assert.Equal(false, options.CurrentValue.EnableDefender);
             // Simulate specialization, which should refresh.
             token.SignalChange();
-            using (StreamReader streamReader = new StreamReader(localFilePath))
+            using (StreamReader streamReader = new StreamReader(_localFilePath))
             {
                 string[] b = streamReader.ReadToEnd().Split("\n");
                 //check the tracelogger file for the message to verify if StartAgent was invoked
-                bool logVerifyBool = false;
+                bool isSlsecAgentEnabled = false;
                 foreach (string line in b)
                 {
                     string[] lineArray = line.Split(",");
-                    if (lineArray.Length > 1 && lineArray[1].Equals(verifyLog))
+                    if (lineArray.Length > 1 && lineArray[1].Equals(_verifyLog))
                     {
-                        logVerifyBool = true;
+                        isSlsecAgentEnabled = true;
                         break;
                     }
                 }
                 //Assert that Agent Handler was recevied a request to StartAgent method
-                Assert.Equal(true, logVerifyBool);
+                Assert.Equal(true, isSlsecAgentEnabled);
             }
             //Assert that config value for enabling defender was changed to true
             Assert.Equal(true, options.CurrentValue.EnableDefender);
