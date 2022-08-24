@@ -857,8 +857,13 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         internal void HandleWorkerInvocationError(Exception exc)
         {
+            _workerChannelLogger.LogDebug("Function invocation failed error: " + exc.Message);
             _workerChannelLogger.LogError(exc, "Function invocation failed");
-            PublishWorkerErrorEvent(exc);
+            if (_disposing || _disposed)
+            {
+                return;
+            }
+            _eventManager.Publish(new WorkerErrorEvent(_runtime, Id, exc));
         }
 
         internal void HandleWorkerInitError(Exception exc)

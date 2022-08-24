@@ -621,6 +621,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 runtime = _workerRuntime;
             }
 
+            _logger.LogInformation($"_languageWorkerErrors.Count: {0}, ErrorEventsThreshold: {1}", _languageWorkerErrors.Count, ErrorEventsThreshold);
+
             if (_languageWorkerErrors.Count < ErrorEventsThreshold)
             {
                 try
@@ -668,6 +670,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 }
             }
             _languageWorkerErrors.Push(currentErrorEvent);
+
+            _logger.LogInformation($"AddOrUpdateErrorBucket _languageWorkerErrors.Count: {0}, ErrorEventsThreshold: {1}, _thresholdBetweenRestarts: {2}", _languageWorkerErrors.Count, ErrorEventsThreshold, _thresholdBetweenRestarts);
         }
 
         protected virtual void Dispose(bool disposing)
