@@ -13,3 +13,5 @@ build/python.props @vrdmr @gavin-aguiar @YunchuWang
 test/WebJobs.Script.Tests/Microsoft.Azure.WebJobs.Script.WebHost.deps.json @fabiocav @brettsam @mathewc
 
 tools/ExtensionsMetadataGenerator @fabiocav @brettsam
+
+src/WebJobs.Script.WebHost/PreJIT/* @vrdmr @pragnagopa @eliaslopezgt @VpOfEngineering 
