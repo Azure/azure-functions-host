@@ -47,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             _scriptOptions = scriptHostOptions.Value;
             _applicationLifetime = applicationLifetime;
             _eventManager = eventManager;
-            _logger = loggerFactory.CreateLogger<HttpFunctionInvocationDispatcher>();
+            _logger = loggerFactory.CreateLogger("Abc.HttpFunctionInvocationDispatcher");
             _httpWorkerChannelFactory = httpWorkerChannelFactory ?? throw new ArgumentNullException(nameof(httpWorkerChannelFactory));
 
             State = FunctionInvocationDispatcherState.Default;
@@ -145,6 +145,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         private async Task RestartWorkerChannel(string workerId)
         {
+            _logger.LogInformation($"RestartWorkerChannel: _invokerErrors.Count: {0},  ErrorEventsThreshold = {1}", _invokerErrors.Count, ErrorEventsThreshold);
             if (_invokerErrors.Count < ErrorEventsThreshold)
             {
                 _logger.LogDebug("Restarting http invoker channel");

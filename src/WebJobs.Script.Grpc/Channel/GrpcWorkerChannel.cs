@@ -861,6 +861,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _workerChannelLogger.LogError(exc, "Function invocation failed");
             if (_disposing || _disposed)
             {
+                _workerChannelLogger.LogDebug("Disposing in HandleWorkerInvocationError");
                 return;
             }
             _eventManager.Publish(new WorkerErrorEvent(_runtime, Id, exc));

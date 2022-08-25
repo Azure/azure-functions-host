@@ -75,7 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         public async Task StartWorkerProcessAsync(CancellationToken cancellationToken)
         {
-            _workerChannelLogger.LogDebug("Initiating Worker Process start up");
+            _workerChannelLogger.LogDebug("Initiating Worker Process start up. Process Id = " + _workerProcess.Id);
             await _workerProcess.StartProcessAsync();
             await DelayUntilWokerInitialized(cancellationToken);
         }
