@@ -409,6 +409,61 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
+        [Fact]
+        public async Task GetFunctionTargetAsync_CompilationError_ReportsResultsToScriptHostFunctionErrors()
+        {
+            // Create the compilation exception we expect to throw
+            var descriptor = new DiagnosticDescriptor(DotNetConstants.MissingFunctionEntryPointCompilationCode,
+                "Test compilation exception", "Test compilation error", "AzureFunctions", DiagnosticSeverity.Error, true);
+            var exception = new CompilationErrorException("Test compilation exception", ImmutableArray.Create(Diagnostic.Create(descriptor, Location.None)));
+
+            // Create the invoker dependencies and setup the appropriate method to throw the exception
+            RunDependencies dependencies = CreateDependencies();
+            dependencies.Compilation.Setup(c => c.GetEntryPointSignature(It.IsAny<IFunctionEntryPointResolver>(), It.IsAny<Assembly>()))
+                .Throws(exception);
+            dependencies.Compilation.Setup(c => c.EmitAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(DotNetCompilationResult.FromPath(typeof(DotNetFunctionInvokerTests).Assembly.Location));
+
+            string functionName = Guid.NewGuid().ToString();
+            string rootFunctionsFolder = Path.Combine(Path.GetTempPath(), functionName);
+            Directory.CreateDirectory(rootFunctionsFolder);
+
+            // Create a dummy file to represent our function
+            string filePath = Path.Combine(rootFunctionsFolder, Guid.NewGuid().ToString() + ".csx");
+            File.WriteAllText(filePath, string.Empty);
+
+            var metadata = new FunctionMetadata
+            {
+                ScriptFile = filePath,
+                FunctionDirectory = Path.GetDirectoryName(filePath),
+                Name = functionName,
+                Language = DotNetScriptTypes.CSharp
+            };
+
+            metadata.Bindings.Add(new BindingMetadata() { Name = "Test", Type = "ManualTrigger" });
+
+            var invoker = new DotNetFunctionInvoker(dependencies.Host, metadata, new Collection<FunctionBinding>(), new Collection<FunctionBinding>(),
+                dependencies.EntrypointResolver.Object, dependencies.CompilationServiceFactory.Object, dependencies.LoggerFactory, dependencies.MetricsLogger,
+                new Collection<IScriptBindingProvider>());
+
+            // Send file change notification to trigger a reload
+            var fileEventArgs = new FileSystemEventArgs(WatcherChangeTypes.Changed, Path.GetTempPath(), Path.Combine(Path.GetFileName(rootFunctionsFolder), Path.GetFileName(filePath)));
+            dependencies.Host.EventManager.Publish(new FileEvent(EventSources.ScriptFiles, fileEventArgs));
+
+            await Assert.ThrowsAsync<CompilationErrorException>(async () =>
+            {
+                await invoker.GetFunctionTargetAsync();
+            });
+
+            dependencies.Host.FunctionErrors.TryGetValue(functionName, out ICollection<string> functionErrors);
+            Console.WriteLine(functionErrors);
+            Assert.True(functionErrors.Any());
+            foreach (string error in functionErrors)
+            {
+                Assert.StartsWith("Microsoft.CodeAnalysis.Scripting.CompilationErrorException: Test compilation exception", error);
+            }
+        }
+
         // TODO: DI (FACAVAL) Use test helpers to create host and inject services
         private RunDependencies CreateDependencies(Action<IServiceCollection> configureServices = null)
         {
