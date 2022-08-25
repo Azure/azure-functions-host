@@ -102,11 +102,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         public Task InvokeAsync(ScriptInvocationContext invocationContext)
         {
+            _metricsLogger.LogEvent(MetricEventNames.WorkerInvocation, functionName: null, data: "InvokeAsync Function name = " + invocationContext.ExecutionContext.FunctionName + " attemptcount/_invokerErrors.Count = " + _invokerErrors.Count + " testmetrics for failed invocation on worker.");
             return _httpWorkerChannel.InvokeAsync(invocationContext);
         }
 
         public async void WorkerError(HttpWorkerErrorEvent workerError)
         {
+            _metricsLogger.LogEvent(MetricEventNames.WorkerInvocation, functionName: null, data: "WorkerError workerId = " + workerError.WorkerId + " attemptcount/_invokerErrors.Count = " + _invokerErrors.Count + " testmetrics for failed invocation on worker.");
+
             if (!_disposing)
             {
                 _logger.LogDebug("Handling WorkerErrorEvent for workerId:{workerId}. Failed with: {exception}", workerError.WorkerId, workerError.Exception);
@@ -117,6 +120,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         public async void WorkerRestart(HttpWorkerRestartEvent workerRestart)
         {
+            _metricsLogger.LogEvent(MetricEventNames.WorkerInvocation, functionName: null, data: "WorkerRestart workerId = " + workerRestart.WorkerId + " attemptcount/_invokerErrors.Count = " + _invokerErrors.Count + " testmetrics for failed invocation on worker.");
+
             if (!_disposing)
             {
                 _logger.LogDebug("Handling WorkerRestartEvent for workerId:{workerId}", workerRestart.WorkerId);

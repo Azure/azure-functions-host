@@ -20,6 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         private IWorkerProcess _workerProcess;
         private IHttpWorkerService _httpWorkerService;
         private IMetricsLogger _metricsLogger;
+        private int _attemptCount;
 
         internal HttpWorkerChannel(
            string workerId,
@@ -36,6 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             _workerChannelLogger = logger;
             _httpWorkerService = httpWorkerService;
             _metricsLogger = metricsLogger;
+            _attemptCount = attemptCount;
             _startLatencyMetric = metricsLogger?.LatencyEvent(string.Format(MetricEventNames.WorkerInitializeLatency, "HttpWorker", attemptCount));
         }
 
@@ -75,6 +77,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         public async Task StartWorkerProcessAsync(CancellationToken cancellationToken)
         {
+            _metricsLogger.LogEvent(MetricEventNames.WorkerInvocation, functionName: null, data: "httpworkerchannel workerId = " + Id + " attemptcount = " + _attemptCount + " testmetrics for failed invocation on worker.");
             _workerChannelLogger.LogDebug("Initiating Worker Process start up. Process Id = " + _workerProcess.Id);
             await _workerProcess.StartProcessAsync();
             await DelayUntilWokerInitialized(cancellationToken);
