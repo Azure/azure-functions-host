@@ -125,7 +125,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 .Subscribe(msg => _eventManager.Publish(new HostRestartEvent())));
 
             _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.InvocationResponse)
-                .Subscribe(async (msg) => await InvokeResponse(msg.Message.InvocationResponse), HandleWorkerInvocationError));
+                .Subscribe(async (msg) => await InvokeResponse(msg.Message.InvocationResponse, msg.WorkerId), HandleWorkerInvocationError));
 
             _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.WorkerStatusResponse)
                 .Subscribe((msg) => ReceiveWorkerStatusResponse(msg.Message.RequestId, msg.Message.WorkerStatusResponse));
@@ -155,7 +155,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 .Take(1)
                 .Subscribe(SendWorkerInitRequest, HandleWorkerStartStreamError);
 
-            _workerChannelLogger.LogDebug("Initiating Worker Process start up");
+            _workerChannelLogger.LogDebug("Initiating Worker Process start up.  RPCProcess Id = " + _rpcWorkerProcess.Id + " attempt - " + _attemptCount);
+            _metricsLogger.LogEvent(MetricEventNames.WorkerInvocation, functionName: null, data: "RPCProcess Id = " + _rpcWorkerProcess.Id + " attempt - " + _attemptCount);
+
             await _rpcWorkerProcess.StartProcessAsync();
             _state = _state | RpcWorkerChannelState.Initializing;
             await _workerInitTask.Task;
@@ -478,6 +480,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 _workerChannelLogger?.LogDebug($"Managed dependency successfully downloaded by the {_workerConfig.Description.Language} language worker");
             }
 
+            _workerChannelLogger.LogDebug("Sending InvocationReq for function: '{functionName}' with functionId: '{functionId}' and workerId: {_workerId}.", functionName, loadResponse.FunctionId, _workerId);
+
             // link the invocation inputs to the invoke call
             var invokeBlock = new ActionBlock<ScriptInvocationContext>(async ctx => await SendInvocationRequest(ctx));
             // associate the invocation input buffer with the function
@@ -679,9 +683,10 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             return outputMaps;
         }
 
-        internal async Task InvokeResponse(InvocationResponse invokeResponse)
+        internal async Task InvokeResponse(InvocationResponse invokeResponse, string workerId)
         {
-            _workerChannelLogger.LogDebug("InvocationResponse received for invocation id: '{invocationId}'", invokeResponse.InvocationId);
+            _workerChannelLogger.LogDebug($"InvocationResponse received for invocation id: {0} workerId {1}", invokeResponse.InvocationId, workerId);
+            _metricsLogger.LogEvent(MetricEventNames.WorkerInvocation, functionName: null, data: "top workerId = " + Id + " attemptcount = " + _attemptCount + " testmetrics for failed invocation on worker. Exception = " + ex.ToString());
             // Check if the worker supports logging user-code-thrown exceptions to app insights
             bool capabilityEnabled = !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.EnableUserCodeException));
 

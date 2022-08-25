@@ -132,12 +132,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal async Task InitializeJobhostLanguageWorkerChannelAsync(IEnumerable<string> languages = null)
         {
+            _logger.LogInformation($"InitializeJobhostLanguageWorkerChannelAsync");
+
             if (languages == null)
             {
+                _logger.LogInformation($"InitializeJobhostLanguageWorkerChannelAsync _workerRuntime");
                 await InitializeJobhostLanguageWorkerChannelAsync(0, _workerRuntime);
             }
             else
             {
+                _logger.LogInformation($"InitializeJobhostLanguageWorkerChannelAsync languages");
                 await InitializeJobhostLanguageWorkerChannelAsync(0, languages);
             }
         }
