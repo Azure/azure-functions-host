@@ -4,7 +4,7 @@
 -->
 - Update Python Worker Version to [4.6.0](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.6.0)
 - Update Python Worker Version to [4.5.0](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.5.0)
-
+- Update Node.js Worker Version to [3.5.0](https://github.com/Azure/azure-functions-nodejs-worker/releases/tag/v3.5.0)
 - Host support for out-of-proc cancellation tokens ([#2153](https://github.com/Azure/azure-functions-host/issues/2152))
 - Updated Java Worker Version to [2.4.0](https://github.com/Azure/azure-functions-java-worker/releases/tag/2.4.0)
 
