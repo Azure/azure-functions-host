@@ -778,6 +778,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         internal void Log(GrpcEvent msg)
         {
+            _workerChannelLogger.LogInformation("In grpcworkerchannel log");
             var rpcLog = msg.Message.RpcLog;
             LogLevel logLevel = (LogLevel)rpcLog.Level;
             if (_executingInvocations.TryGetValue(rpcLog.InvocationId, out ScriptInvocationContext context))
@@ -816,6 +817,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         internal void SystemLog(GrpcEvent msg)
         {
+            _workerChannelLogger.LogInformation("In grpcworkerchannel SystemLog");
+
             RpcLog systemLog = msg.Message.RpcLog;
             LogLevel logLevel = (LogLevel)systemLog.Level;
             switch (logLevel)
@@ -890,6 +893,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         private void PublishWorkerErrorEvent(Exception exc)
         {
+            _workerChannelLogger.LogError(exc, "PublishWorkerErrorEvent 1 init");
             _workerInitTask.SetException(exc);
             if (_disposing || _disposed)
             {
@@ -923,6 +927,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         protected virtual void Dispose(bool disposing)
         {
+            _workerChannelLogger.LogDebug($"dispose grpcworkerchannel");
             if (!_disposed)
             {
                 if (disposing)
@@ -958,6 +963,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         private void StopWorkerProcess()
         {
+            _workerChannelLogger.LogDebug($"Stopping process in dispose grpcworkerchannel");
             bool capabilityEnabled = !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.HandlesWorkerTerminateMessage));
             if (!capabilityEnabled)
             {
