@@ -155,8 +155,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 .Take(1)
                 .Subscribe(SendWorkerInitRequest, HandleWorkerStartStreamError);
 
-            _workerChannelLogger.LogDebug("Initiating Worker Process start up.  RPCProcess Id = " + _rpcWorkerProcess.Id + " attempt - " + _attemptCount);
-            _metricsLogger.LogEvent(MetricEventNames.WorkerInvocation, functionName: null, data: "RPCProcess Id = " + _rpcWorkerProcess.Id + " attempt - " + _attemptCount);
+            _workerChannelLogger.LogDebug("Initiating Worker Process start up. attempt - " + _attemptCount);
+            _metricsLogger.LogEvent(MetricEventNames.WorkerInvocation, functionName: null, data: "attempt - " + _attemptCount);
 
             await _rpcWorkerProcess.StartProcessAsync();
             _state = _state | RpcWorkerChannelState.Initializing;
