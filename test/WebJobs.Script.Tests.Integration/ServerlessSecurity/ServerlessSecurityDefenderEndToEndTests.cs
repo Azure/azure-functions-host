@@ -73,11 +73,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ServerlessSecurity
             Assert.Equal(false, options.CurrentValue.EnableDefender);
             // Simulate specialization, which should refresh.
             token.SignalChange();
+            await TestHelpers.Await(() => options.CurrentValue.EnableDefender);
+            await TestHelpers.Await(() => DefenderEnabled());
+            //Assert that config value for enabling defender was changed to true
+            
+            Assert.Equal(true, options.CurrentValue.EnableDefender);
+        }
+
+        private bool DefenderEnabled()
+        {
+            bool isSlsecAgentEnabled = false;
             using (StreamReader streamReader = new StreamReader(_localFilePath))
             {
                 string[] b = streamReader.ReadToEnd().Split("\n");
                 //check the tracelogger file for the message to verify if StartAgent was invoked
-                bool isSlsecAgentEnabled = false;
                 foreach (string line in b)
                 {
                     string[] lineArray = line.Split(",");
@@ -90,9 +99,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ServerlessSecurity
                 //Assert that Agent Handler was recevied a request to StartAgent method
                 Assert.Equal(true, isSlsecAgentEnabled);
             }
-            //Assert that config value for enabling defender was changed to true
-            await TestHelpers.Await(() => options.CurrentValue.EnableDefender);
-            Assert.Equal(true, options.CurrentValue.EnableDefender);
+            return isSlsecAgentEnabled;
         }
     }
 }
