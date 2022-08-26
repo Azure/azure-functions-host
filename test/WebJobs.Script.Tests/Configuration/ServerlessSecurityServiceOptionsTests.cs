@@ -60,12 +60,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             // Placeholder mode
             var options = host.Services.GetService<IOptionsMonitor<ServerlessSecurityDefenderOptions>>();
-            env.SetEnvironmentVariable("AZURE_FUNCTIONS_SECURITY_AGENT_ENABLED", null);
+            env.SetEnvironmentVariable(EnvironmentSettingNames.AzureFunctionsSecurityAgentEnabled, null);
             var serverlessSecurityHost = host.Services.GetService<ServerlessSecurityHost>();
             var cancToken = new System.Threading.CancellationToken(false);
             serverlessSecurityHost.StartAsync(cancToken);
             Assert.Equal(false, options.CurrentValue.EnableDefender);
-            env.SetEnvironmentVariable("AZURE_FUNCTIONS_SECURITY_AGENT_ENABLED", "1");
+            env.SetEnvironmentVariable(EnvironmentSettingNames.AzureFunctionsSecurityAgentEnabled, "1");
             // still in placeholder mode - should still have the old values.
             Assert.Equal(false, options.CurrentValue.EnableDefender);
             // Simulate specialization, which should refresh.
