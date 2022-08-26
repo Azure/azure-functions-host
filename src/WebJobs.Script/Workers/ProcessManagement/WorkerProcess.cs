@@ -244,6 +244,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         internal void OnHostStart(HostStartEvent evt)
         {
+            _workerProcessLogger.LogWarning($"Host starting event in worker process");
             if (!Disposing)
             {
                 RegisterWithProcessMonitor();

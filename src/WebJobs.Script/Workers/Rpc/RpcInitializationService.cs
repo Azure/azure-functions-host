@@ -46,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             // TODO: https://github.com/Azure/azure-functions-host/issues/4891
             try
             {
-                _logger.LogDebug("Starting Rpc Initialization Service.");
+                _logger.LogDebug("Starting Rpc Initialization Service." + new System.Diagnostics.StackTrace().ToString());
                 await InitializeRpcServerAsync();
                 await InitializeChannelsAsync();
                 _logger.LogDebug("Rpc Initialization Service started.");
