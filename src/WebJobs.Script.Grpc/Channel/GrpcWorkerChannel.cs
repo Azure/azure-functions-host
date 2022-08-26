@@ -125,7 +125,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 .Subscribe(msg => _eventManager.Publish(new HostRestartEvent())));
 
             _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.InvocationResponse)
-                .Subscribe(async (msg) => await InvokeResponse(msg.Message.InvocationResponse, msg.WorkerId), HandleWorkerInvocationError));
+                .Subscribe(async (msg) => await InvokeResponse(msg.Message.InvocationResponse, msg.WorkerId))); //HandleWorkerInvocationError
 
             _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.WorkerStatusResponse)
                 .Subscribe((msg) => ReceiveWorkerStatusResponse(msg.Message.RequestId, msg.Message.WorkerStatusResponse));
