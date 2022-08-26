@@ -2,7 +2,9 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics.Tracing;
 using System.IO;
+using System.Threading.Tasks;
 using Az.ServerlessSecurity.Platform;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost;
@@ -12,23 +14,24 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Xunit;
 
-namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
+namespace Microsoft.Azure.WebJobs.Script.Tests.ServerlessSecurity
 {
-    public class ServerlessSecurityServiceOptionsTests : IDisposable
+    public class ServerlessSecurityDefenderEndToEndTests : IDisposable
     {
         private string _traceloggerFilename;
         private string _localFilePath;
         private string _enableSlsecAgentLog;
         private string _verifyLog;
+        private const string LOG_CONFIG = "SERVERLESS_SECURITY_LOG_CONFIG";
 
-        public ServerlessSecurityServiceOptionsTests()
+        public ServerlessSecurityDefenderEndToEndTests()
         {
             //save original value to reset it to after test
-            _enableSlsecAgentLog = Environment.GetEnvironmentVariable("SERVERLESS_SECURITY_LOG_CONFIG");
+            _enableSlsecAgentLog = Environment.GetEnvironmentVariable(LOG_CONFIG);
             _verifyLog = " message: Start up Serverless Security Agent Handler.";
             _traceloggerFilename = "\\tracelog.txt";
             _localFilePath = Directory.GetCurrentDirectory() + _traceloggerFilename;
-            Environment.SetEnvironmentVariable("SERVERLESS_SECURITY_LOG_CONFIG", _localFilePath);
+            Environment.SetEnvironmentVariable(LOG_CONFIG, _localFilePath);
             File.Delete(_localFilePath);
             File.Create(_localFilePath).Dispose();
         }
@@ -38,11 +41,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             //Delete tracelogger file that was created for the test
             File.Delete(_localFilePath);
             //Reset to initial config value
-            Environment.SetEnvironmentVariable("SERVERLESS_SECURITY_LOG_CONFIG", _enableSlsecAgentLog);
+            Environment.SetEnvironmentVariable(LOG_CONFIG, _enableSlsecAgentLog);
         }
 
         [Fact]
-        public void ServerlessSecurityServiceOptions_ServerlessSecurityEnableSetup()
+        public async Task ServerlessSecurityServiceOptions_ServerlessSecurityEnableSetup()
         {
             var env = new TestEnvironment();
             var token = new TestChangeTokenSource<StandbyOptions>();
@@ -63,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             env.SetEnvironmentVariable(EnvironmentSettingNames.AzureFunctionsSecurityAgentEnabled, null);
             var serverlessSecurityHost = host.Services.GetService<ServerlessSecurityHost>();
             var cancToken = new System.Threading.CancellationToken(false);
-            serverlessSecurityHost.StartAsync(cancToken);
+            await serverlessSecurityHost.StartAsync(cancToken);
             Assert.Equal(false, options.CurrentValue.EnableDefender);
             env.SetEnvironmentVariable(EnvironmentSettingNames.AzureFunctionsSecurityAgentEnabled, "1");
             // still in placeholder mode - should still have the old values.
@@ -88,6 +91,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 Assert.Equal(true, isSlsecAgentEnabled);
             }
             //Assert that config value for enabling defender was changed to true
+            await TestHelpers.Await(() => options.CurrentValue.EnableDefender);
             Assert.Equal(true, options.CurrentValue.EnableDefender);
         }
     }
