@@ -673,9 +673,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     }
                 }
             }
-            _languageWorkerErrors.Push(currentErrorEvent);
-
             _logger.LogInformation($"AddOrUpdateErrorBucket _languageWorkerErrors.Count: {0}, ErrorEventsThreshold: {1}, _thresholdBetweenRestarts: {2}", _languageWorkerErrors.Count, ErrorEventsThreshold, _thresholdBetweenRestarts);
+
+            _languageWorkerErrors.Push(currentErrorEvent);
         }
 
         protected virtual void Dispose(bool disposing)

@@ -686,7 +686,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         internal async Task InvokeResponse(InvocationResponse invokeResponse, string workerId)
         {
             _workerChannelLogger.LogDebug($"InvocationResponse received for invocation id: {0} workerId {1}", invokeResponse.InvocationId, workerId);
-            _metricsLogger.LogEvent(MetricEventNames.WorkerInvocation, functionName: null, data: "top workerId = " + Id + " attemptcount = " + _attemptCount + " testmetrics for failed invocation on worker. Exception = " + ex.ToString());
+            _metricsLogger.LogEvent(MetricEventNames.WorkerInvocation, functionName: null, data: "top workerId = " + Id + " attemptcount = " + _attemptCount + " testmetrics for failed invocation on worker. Exception = ");
             // Check if the worker supports logging user-code-thrown exceptions to app insights
             bool capabilityEnabled = !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.EnableUserCodeException));
 
