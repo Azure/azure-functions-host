@@ -269,9 +269,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 // If we're in a non-transient error state or offline, skip host initialization
                 bool skipJobHostStartup = isOffline || hasNonTransientErrors;
                 bool skipHostJsonConfiguration = startupMode == JobHostStartupMode.HandlingConfigurationParsingError;
-
-                var functionsExtensionVersion = _environment.GetFunctionsExtensionVersion();
-
+                string functionsExtensionVersion = _environment.GetFunctionsExtensionVersion();
                 _logger.Building(functionsExtensionVersion, skipJobHostStartup, skipHostJsonConfiguration, activeOperation.Id);
 
                 using (_metricsLogger.LatencyEvent(MetricEventNames.ScriptHostManagerBuildScriptHost))
