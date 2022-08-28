@@ -683,7 +683,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             return outputMaps;
         }
 
-        internal async Task InvokeResponse(InvocationResponse invokeResponse, string workerId)
+        internal async Task InvokeResponse(InvocationResponse invokeResponse, string workerId = "default")
         {
             _workerChannelLogger.LogDebug($"InvocationResponse received for invocation id: {0} workerId {1}", invokeResponse.InvocationId, Id);
             _metricsLogger.LogEvent(MetricEventNames.WorkerInvocation, functionName: null, data: "top workerId = " + Id + " attemptcount = " + _attemptCount + " testmetrics for failed invocation on worker. Exception = ");
