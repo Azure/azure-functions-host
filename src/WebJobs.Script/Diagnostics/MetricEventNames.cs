@@ -39,6 +39,8 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         public const string FunctionLoadRequestResponse = "rpcworkerchannel.functionloadrequestresponse";
         public const string WorkerMetadata = "rpcworkerchannel.workerinitresponse.workermetadata";
         public const string WorkerInvocation = "rpcworkerchannel.workerinvocation.status";
+        public const string WorkerInvocationTotalStatus = "rpcworkerchannel.workerinvocation.workertotalstatus";
+        public const string WorkerInvocationFailedStatus = "rpcworkerchannel.workerinvocation.workerfailedstatus";
 
         // ScriptStartupTypeLocator events
         public const string ParseExtensions = "ScriptStartupTypeLocator.ParseExtensions";

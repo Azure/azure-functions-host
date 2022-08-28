@@ -54,6 +54,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private string _workerId;
         private RpcWorkerChannelState _state;
         private IDictionary<string, Exception> _functionLoadErrors = new Dictionary<string, Exception>();
+        private IDictionary<string, int> _functionInvokeErrors = new Dictionary<string, int>();
+        private IDictionary<string, int> _functionInvokeTotal = new Dictionary<string, int>();
         private IDictionary<string, Exception> _metadataRequestErrors = new Dictionary<string, Exception>();
         private ConcurrentDictionary<string, ScriptInvocationContext> _executingInvocations = new ConcurrentDictionary<string, ScriptInvocationContext>();
         private IDictionary<string, BufferBlock<ScriptInvocationContext>> _functionInputBuffers = new ConcurrentDictionary<string, BufferBlock<ScriptInvocationContext>>();
@@ -685,14 +687,22 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         internal async Task InvokeResponse(InvocationResponse invokeResponse, string workerId = "default")
         {
-            _workerChannelLogger.LogDebug($"InvocationResponse received for invocation id: {0} workerId {1}", invokeResponse.InvocationId, Id);
-            _metricsLogger.LogEvent(MetricEventNames.WorkerInvocation, functionName: null, data: "top workerId = " + Id + " attemptcount = " + _attemptCount + " testmetrics for failed invocation on worker. Exception = ");
+            _functionInvokeTotal.TryGetValue(Id, out var currentCount);
+            _functionInvokeTotal[Id] = currentCount + 1;
+
+            _workerChannelLogger.LogDebug("InvocationResponse received for invocation id: " + invokeResponse.InvocationId + " Total stats per worker: workerId = " + Id + " workerTotalInvokeCount = " + _functionInvokeTotal[Id]);
+            _metricsLogger.LogEvent(MetricEventNames.WorkerInvocationTotalStatus, functionName: null, data: "Total stats per worker: workerId = " + Id + " attemptcount = " + _attemptCount + " workerTotalInvokeCount = " + _functionInvokeTotal[Id]);
+
             // Check if the worker supports logging user-code-thrown exceptions to app insights
             bool capabilityEnabled = !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.EnableUserCodeException));
 
             if (invokeResponse.Result.IsFailure(out Exception ex))
             {
-                _metricsLogger.LogEvent(MetricEventNames.WorkerInvocation, functionName: null, data: "workerId = " + Id + " attemptcount = " + _attemptCount + " testmetrics for failed invocation on worker. Exception = " + ex);
+                _functionInvokeErrors.TryGetValue(Id, out var currentCount1);
+                _functionInvokeErrors[Id] = currentCount1 + 1;
+
+                _workerChannelLogger.LogDebug("InvocationError invocation id: " + invokeResponse.InvocationId + " Error stats per worker: workerId = " + Id + " workerErrorsCount = " + _functionInvokeErrors[Id] + "Exception = " + ex);
+                _metricsLogger.LogEvent(MetricEventNames.WorkerInvocationFailedStatus, functionName: null, data: " Error Stats per worker: workerId = " + Id + " attemptcount = " + _attemptCount + " workerErrorsCount = " + _functionInvokeErrors[Id]);
                // HandleWorkerInvocationError(ex);
             }
 
