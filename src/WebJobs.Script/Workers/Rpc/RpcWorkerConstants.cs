@@ -55,6 +55,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public const string HandlesWorkerTerminateMessage = "HandlesWorkerTerminateMessage";
         public const string HandlesInvocationCancelMessage = "HandlesInvocationCancelMessage";
 
+        /// <summary>
+        /// Indicates whether empty entries in the trigger message should be included when sending RpcInvocation data to OOP workers.
+        /// </summary>
+        public const string IncludeEmptyEntriesInMessagePayload = "IncludeEmptyEntriesInMessagePayload";
+
         // Host Capabilities
         public const string V2Compatable = "V2Compatable";
 

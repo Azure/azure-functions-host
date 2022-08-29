@@ -486,13 +486,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
-        public async Task ToRpc_Collection_String_IncludeEmptyEntries_for_TypedDataCollection()
+        public async Task ToRpc_Collection_String_IgnoreEmptyEntries_When_Capability_Is_Not_Present()
         {
             var logger = MockNullLoggerFactory.CreateLogger();
             var capabilities = new GrpcCapabilities(logger);
             capabilities.UpdateCapabilities(new MapField<string, string>
                 {
-                    { RpcWorkerConstants.TypedDataCollection, bool.TrueString }
+                    { RpcWorkerConstants.TypedDataCollection, bool.TrueString },
+                });
+
+            string[] arrString = { "element1", string.Empty, "element_2" };
+            TypedData actual = await arrString.ToRpc(logger, capabilities);
+
+            var expected = new RepeatedField<string> { "element1", "element_2" };
+            Assert.Equal(expected, actual.CollectionString.String);
+        }
+
+        [Fact]
+        public async Task ToRpc_Collection_String_IncludeEmptyEntries_When_Capability_Is_Present()
+        {
+            var logger = MockNullLoggerFactory.CreateLogger();
+            var capabilities = new GrpcCapabilities(logger);
+            capabilities.UpdateCapabilities(new MapField<string, string>
+                {
+                    { RpcWorkerConstants.TypedDataCollection, bool.TrueString },
+                    { RpcWorkerConstants.IncludeEmptyEntriesInMessagePayload, bool.TrueString }
                 });
 
             string[] arrString = { "element1", string.Empty, "element_2", null };
