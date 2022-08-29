@@ -73,10 +73,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ServerlessSecurity
             Assert.Equal(false, options.CurrentValue.EnableDefender);
             // Simulate specialization, which should refresh.
             token.SignalChange();
-            await TestHelpers.Await(() => options.CurrentValue.EnableDefender);
-            await TestHelpers.Await(() => DefenderEnabled());
+
             //Assert that config value for enabling defender was changed to true
-            
+            await TestHelpers.Await(() => DefenderEnabled());
             Assert.Equal(true, options.CurrentValue.EnableDefender);
         }
 

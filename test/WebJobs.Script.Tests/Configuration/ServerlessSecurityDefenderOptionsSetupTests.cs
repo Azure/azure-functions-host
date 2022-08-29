@@ -20,38 +20,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 {
     public class ServerlessSecurityDefenderOptionsSetupTests
     {
-        [Fact]
-        public void ServerlessSecurityServiceOptionsSetup_DefaulValues()
+        [Theory]
+        [InlineData(null, false)]
+        [InlineData("0", false)]
+        [InlineData("1", true)]
+        public void ServerlessSecurityServiceOptionsSetup_Values(string agentEnvValue, bool expectedValue)
         {
             var mockEnvironment = new Mock<IEnvironment>(MockBehavior.Strict);
-            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureFunctionsSecurityAgentEnabled)).Returns<string>(null);
+            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureFunctionsSecurityAgentEnabled)).Returns(agentEnvValue);
 
             var setup = new ServerlessSecurityDefenderOptionsSetup(mockEnvironment.Object);
             var options = new ServerlessSecurityDefenderOptions();
             setup.Configure(options);
 
-            Assert.False(options.EnableDefender);
-
-            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureFunctionsSecurityAgentEnabled)).Returns("0");
-
-            setup = new ServerlessSecurityDefenderOptionsSetup(mockEnvironment.Object);
-            options = new ServerlessSecurityDefenderOptions();
-            setup.Configure(options);
-
-            Assert.False(options.EnableDefender);
-        }
-
-        [Fact]
-        public void ServerlessSecurityServiceOptionsSetup_EnabledValues()
-        {
-            var mockEnvironment = new Mock<IEnvironment>(MockBehavior.Strict);
-            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureFunctionsSecurityAgentEnabled)).Returns("1");
-
-            var setup = new ServerlessSecurityDefenderOptionsSetup(mockEnvironment.Object);
-            var options = new ServerlessSecurityDefenderOptions();
-            setup.Configure(options);
-
-            Assert.True(options.EnableDefender);
+            Assert.Equal(expectedValue, options.EnableDefender);
         }
     }
 }
