@@ -28,6 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AppInsightsConnectionString = "APPLICATIONINSIGHTS_CONNECTION_STRING";
         public const string AppInsightsQuickPulseAuthApiKey = "APPINSIGHTS_QUICKPULSEAUTHAPIKEY";
         public const string AppInsightsAgent = "APPLICATIONINSIGHTS_ENABLE_AGENT";
+        public const string AzureFunctionsSecurityAgentEnabled = "AZURE_FUNCTIONS_SECURITY_AGENT_ENABLED";
         public const string FunctionsExtensionVersion = "FUNCTIONS_EXTENSION_VERSION";
         public const string FunctionWorkerRuntime = "FUNCTIONS_WORKER_RUNTIME";
         public const string ContainerName = "CONTAINER_NAME";

@@ -87,6 +87,14 @@
     <PackageReference Include="System.Net.NameResolution" Version="4.3.0" />
   </ItemGroup>
 
+  <ItemGroup Condition=" '$(RuntimeIdentifier)' == 'linux-x64' ">
+    <PackageReference Include="ServerlessSecuritylinux-x64" Version="0.2.20568" />
+  </ItemGroup>
+
+  <ItemGroup Condition=" '$(RuntimeIdentifier)' != 'linux-x64' ">
+    <PackageReference Include="ServerlessSecuritywin-x64" Version="0.2.20568" />
+  </ItemGroup>
+
   <ItemGroup>
     <EmbeddedResource Include="Home.html" />
     <EmbeddedResource Include="Resources\app_offline.htm" />

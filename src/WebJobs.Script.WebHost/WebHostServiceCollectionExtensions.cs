@@ -4,6 +4,7 @@
 using System.IO.Abstractions;
 using System.Net.Http;
 using System.Runtime.InteropServices;
+using Az.ServerlessSecurity.Platform;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host.Storage;
@@ -188,6 +189,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.ConfigureOptions<LanguageWorkerOptionsSetup>();
             services.ConfigureOptionsWithChangeTokenSource<AppServiceOptions, AppServiceOptionsSetup, SpecializationChangeTokenSource<AppServiceOptions>>();
             services.ConfigureOptionsWithChangeTokenSource<HttpBodyControlOptions, HttpBodyControlOptionsSetup, SpecializationChangeTokenSource<HttpBodyControlOptions>>();
+
+            //ServelessSecurityDefender
+            services.ConfigureOptionsWithChangeTokenSource<ServerlessSecurityDefenderOptions, ServerlessSecurityDefenderOptionsSetup, SpecializationChangeTokenSource<ServerlessSecurityDefenderOptions>>();
+            services.AddHostedService<ServerlessSecurityHost>();
 
             services.TryAddSingleton<IDependencyValidator, DependencyValidator>();
             services.TryAddSingleton<IJobHostMiddlewarePipeline>(s => DefaultMiddlewarePipeline.Empty);
