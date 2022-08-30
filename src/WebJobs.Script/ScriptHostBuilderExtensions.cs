@@ -160,7 +160,7 @@ namespace Microsoft.Azure.WebJobs.Script
                             // Validate the config for anything that needs the Scale Controller.
                             // Including Core Tools as a warning during development time.
                             if (environment.IsWindowsConsumption() ||
-                                environment.IsLinuxConsumption() ||
+                                environment.IsAnyLinuxConsumption() ||
                                 (environment.IsWindowsElasticPremium() && !environment.IsRuntimeScaleMonitoringEnabled()) ||
                                 environment.IsCoreTools())
                             {

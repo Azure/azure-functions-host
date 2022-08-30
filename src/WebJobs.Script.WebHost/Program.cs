@@ -67,7 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     config.Add(new WebScriptHostConfigurationSource
                     {
                         IsAppServiceEnvironment = SystemEnvironment.Instance.IsAppService(),
-                        IsLinuxContainerEnvironment = SystemEnvironment.Instance.IsLinuxConsumption(),
+                        IsLinuxContainerEnvironment = SystemEnvironment.Instance.IsAnyLinuxConsumption(),
                         IsLinuxAppServiceEnvironment = SystemEnvironment.Instance.IsLinuxAppService()
                     });
                 })
@@ -87,8 +87,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         /// </summary>
         private static void InitializeProcess()
         {
-            if (SystemEnvironment.Instance.IsLinuxConsumption())
+            if (SystemEnvironment.Instance.IsLinuxConsumptionOnAtlas())
             {
+                AppDomain.CurrentDomain.UnhandledException += CurrentDomainOnUnhandledExceptionInLinuxConsumption;
+            }
+            else if (SystemEnvironment.Instance.IsLinuxConsumptionOnLegion())
+            {
+                //todo: Replace with legion specific logger.
                 AppDomain.CurrentDomain.UnhandledException += CurrentDomainOnUnhandledExceptionInLinuxConsumption;
             }
             else if (SystemEnvironment.Instance.IsLinuxAppService())

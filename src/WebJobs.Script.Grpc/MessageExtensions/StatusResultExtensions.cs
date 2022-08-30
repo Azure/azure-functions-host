@@ -30,20 +30,17 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         }
 
         /// <summary>
-        /// This method is only hit on the invocation code path. enableUserCodeExceptionCapability = feature flag,
-        /// exposed as a capability that is set by the worker.
+        /// This method is only hit on the invocation code path.
+        /// enableUserCodeExceptionCapability = feature flag exposed as a capability that is set by the worker.
         /// </summary>
         public static bool IsInvocationSuccess<T>(this StatusResult status, TaskCompletionSource<T> tcs, bool enableUserCodeExceptionCapability = false)
         {
             switch (status.Status)
             {
                 case StatusResult.Types.Status.Failure:
+                case StatusResult.Types.Status.Cancelled:
                     var rpcException = GetRpcException(status, enableUserCodeExceptionCapability);
                     tcs.SetException(rpcException);
-                    return false;
-
-                case StatusResult.Types.Status.Cancelled:
-                    tcs.SetCanceled();
                     return false;
 
                 default:
@@ -65,6 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 {
                     return new Workers.Rpc.RpcException(status, ex.Message, ex.StackTrace, ex.Type, ex.IsUserException);
                 }
+
                 return new Workers.Rpc.RpcException(status, ex.Message, ex.StackTrace);
             }
             return new Workers.Rpc.RpcException(status, string.Empty, string.Empty);

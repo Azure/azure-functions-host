@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             WebJobsRouteBuilder proxiesRoutesBuilder = _router.CreateBuilder(new ScriptRouteHandler(_loggerFactory, host, _environment, true), routePrefix: null);
 
             WebJobsRouteBuilder warmupRouteBuilder = null;
-            if (!_environment.IsLinuxConsumption() && !_environment.IsWindowsConsumption())
+            if (!_environment.IsAnyLinuxConsumption() && !_environment.IsWindowsConsumption())
             {
                 warmupRouteBuilder = _router.CreateBuilder(new ScriptRouteHandler(_loggerFactory, host, _environment, isProxy: false, isWarmup: true), routePrefix: "admin");
             }
