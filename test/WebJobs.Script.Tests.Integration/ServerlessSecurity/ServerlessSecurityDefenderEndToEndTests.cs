@@ -76,7 +76,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ServerlessSecurity
             try
             {
                 var writer = new StreamWriter(Environment.GetEnvironmentVariable(LOG_CONFIG));
-            } catch
+                writer.Dispose();
+                Console.WriteLine("Test After 1W ===============");
+
+            }
+            catch
             {
                 Console.WriteLine("Test After 1A ===============");
             }
