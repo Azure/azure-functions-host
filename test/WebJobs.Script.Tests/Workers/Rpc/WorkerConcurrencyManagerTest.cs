@@ -380,7 +380,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             WorkerConcurrencyManager concurrancyManager = new WorkerConcurrencyManager(functionInvocationDispatcherFactory.Object, testEnvironment,
                 Options.Create(options), conf.Object, _applicationLifetime, _loggerFactory);
 
-            Assert.True(concurrancyManager.IsEnoughMemory(hostProcessSize, languageWorkerSizes, availableMemory) == result);
+            Assert.True(concurrancyManager.IsEnoughMemoryToScale(hostProcessSize, languageWorkerSizes, availableMemory) == result);
+            if (!result)
+            {
+                Assert.Contains(_loggerProvider.GetAllLogMessages().Select(x => x.FormattedMessage), x => x.StartsWith("Starting new language worke canceled:"));
+            }
         }
     }
 }

@@ -48,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
         public bool IsDisposed => _isDisposed;
 
-        public Process Process => null;
+        public IWorkerProcess WorkerProcess => null;
 
         public IDictionary<string, BufferBlock<ScriptInvocationContext>> FunctionInputBuffers => throw new NotImplementedException();
 

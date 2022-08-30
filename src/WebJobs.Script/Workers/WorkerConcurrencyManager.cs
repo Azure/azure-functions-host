@@ -132,9 +132,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                     if (_functionInvocationDispatcher is RpcFunctionInvocationDispatcher rpcDispatcher)
                     {
                         // Check memory
-                        var currentCahannels = (await rpcDispatcher.GetAllWorkerChannelsAsync()).Select(x => x.Process.PrivateMemorySize64);
-                        if (IsEnoughMemory(Process.GetCurrentProcess().PrivateMemorySize64,
-                            currentCahannels,
+                        var currentChannels = (await rpcDispatcher.GetAllWorkerChannelsAsync()).Select(x => x.WorkerProcess.Process.PrivateMemorySize64);
+                        if (IsEnoughMemoryToScale(Process.GetCurrentProcess().PrivateMemorySize64,
+                            currentChannels,
                             _memoryLimit))
                         {
                             await _functionInvocationDispatcher.StartWorkerChannel();
@@ -298,7 +298,7 @@ LatencyHistory=({formattedLatencyHistory}), AvgLatency={latencyAvg}, MaxLatency=
             Dispose(true);
         }
 
-        internal bool IsEnoughMemory(long hostProcessSize, IEnumerable<long> workerChannelSizes, long memoryLimit)
+        internal bool IsEnoughMemoryToScale(long hostProcessSize, IEnumerable<long> workerChannelSizes, long memoryLimit)
         {
             if (memoryLimit <= 0)
             {
@@ -306,11 +306,19 @@ LatencyHistory=({formattedLatencyHistory}), AvgLatency={latencyAvg}, MaxLatency=
             }
 
             // Checking memory before adding a new worker
+            // By adding `maxWorkerSize` to current memeory consumption we are predicting what will be overall memory consumption after adding a new worker.
+            // We do not want this value to be more then 80%.
             long maxWorkerSize = workerChannelSizes.Max();
             long currentMemoryConsumption = workerChannelSizes.Sum() + hostProcessSize;
             if (currentMemoryConsumption + maxWorkerSize > memoryLimit * 0.8)
             {
-                _logger.LogDebug($"Starting new language worker canceled: TotalMemory={memoryLimit}, MaxWorkerSize={maxWorkerSize}, CurrentMemoryConsumption={currentMemoryConsumption}");
+                var message = new
+                {
+                    TotalMemory = memoryLimit,
+                    MaxWorkerSize = maxWorkerSize,
+                    CurrentMemoryConsumption = currentMemoryConsumption
+                };
+                _logger.LogDebug("Starting new language worke canceled: {@message}", message);
                 return false;
             }
             return true;

@@ -15,8 +15,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
     {
         IDictionary<string, BufferBlock<ScriptInvocationContext>> FunctionInputBuffers { get; }
 
-        Process Process { get; }
-
         bool IsChannelReadyForInvocations();
 
         void SetupFunctionInvocationBuffers(IEnumerable<FunctionMetadata> functions);
