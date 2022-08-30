@@ -159,9 +159,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                         break;
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // TODO: log?
+                _workerChannelLogger.LogError(ex, "Error processing InboundGrpcEvent: " + ex.Message);
             }
         }
 
@@ -1006,7 +1006,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 {
                     try
                     {
-                        pending.GetAwaiter().GetResult(); // ensure observed, for IVTS reasons
+                        pending.GetAwaiter().GetResult(); // ensure observed to ensure the IValueTaskSource completed/result is consumed
                     }
                     catch
                     {
