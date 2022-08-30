@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             _environment = environment;
             _logger = logger;
             _next = next;
-            _invoke = InvokeClrOptimizationCheck;
+            _invoke = _environment.IsAnyLinuxConsumption() ? next : InvokeClrOptimizationCheck;
         }
 
         public Task Invoke(HttpContext context)
