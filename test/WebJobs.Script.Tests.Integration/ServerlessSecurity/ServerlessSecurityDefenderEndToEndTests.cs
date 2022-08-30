@@ -69,6 +69,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ServerlessSecurity
             env.SetEnvironmentVariable(EnvironmentSettingNames.AzureFunctionsSecurityAgentEnabled, null);
             var serverlessSecurityHost = host.Services.GetService<ServerlessSecurityHost>();
             var cancToken = new System.Threading.CancellationToken(false);
+
+            Console.WriteLine("Test Before 1A ===============");
+            Console.WriteLine(Environment.GetEnvironmentVariable(LOG_CONFIG));
+            Console.WriteLine("Test Before 1B ===============");
             await serverlessSecurityHost.StartAsync(cancToken);
             Assert.Equal(false, options.CurrentValue.EnableDefender);
             env.SetEnvironmentVariable(EnvironmentSettingNames.AzureFunctionsSecurityAgentEnabled, "1");
@@ -76,6 +80,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ServerlessSecurity
             Assert.Equal(false, options.CurrentValue.EnableDefender);
             // Simulate specialization, which should refresh.
             token.SignalChange();
+
+            Console.WriteLine("Test After 1A ===============");
+            Console.WriteLine(Environment.GetEnvironmentVariable(LOG_CONFIG));
+            Console.WriteLine("Test After 1B ===============");
 
             //Assert that config value for enabling defender was changed to true
             await TestHelpers.Await(() => DefenderEnabled(), timeout: 60000);
