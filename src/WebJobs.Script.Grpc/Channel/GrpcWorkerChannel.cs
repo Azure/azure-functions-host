@@ -34,6 +34,7 @@ using static Microsoft.Azure.WebJobs.Script.Grpc.Messages.RpcLog.Types;
 using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
 using MsgType = Microsoft.Azure.WebJobs.Script.Grpc.Messages.StreamingMessage.ContentOneofCase;
 using ParameterBindingType = Microsoft.Azure.WebJobs.Script.Grpc.Messages.ParameterBinding.RpcDataOneofCase;
+using RpcException = Microsoft.Azure.WebJobs.Script.Workers.Rpc.RpcException;
 
 namespace Microsoft.Azure.WebJobs.Script.Grpc
 {
@@ -110,12 +111,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             _workerCapabilities = new GrpcCapabilities(_workerChannelLogger);
 
-            if (_eventManager.TryGetGrpcChannels(workerId, out var inbound, out var outbound))
+            if (!_eventManager.TryGetGrpcChannels(workerId, out var inbound, out var outbound))
             {
-                _outbound = outbound.Writer;
-                _inbound = inbound.Reader;
-                // note: we don't start the read loop until StartWorkerProcessAsync is called
+                throw new InvalidOperationException("Could not get gRPC channels for worker ID: " + workerId);
             }
+
+            _outbound = outbound.Writer;
+            _inbound = inbound.Reader;
+            // note: we don't start the read loop until StartWorkerProcessAsync is called
 
             _eventSubscriptions.Add(_eventManager.OfType<FileEvent>()
                 .Where(msg => _workerConfig.Description.Extensions.Contains(Path.GetExtension(msg.FileChangeArguments.FullPath)))
@@ -984,20 +987,12 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         private ValueTask SendStreamingMessageAsync(StreamingMessage msg)
         {
-            if (_outbound is null)
-            {
-                return default;
-            }
             var evt = new OutboundGrpcEvent(_workerId, msg);
             return _outbound.TryWrite(evt) ? default : _outbound.WriteAsync(evt);
         }
 
         private void SendStreamingMessage(StreamingMessage msg)
         {
-            if (_outbound is null)
-            {
-                return;
-            }
             var evt = new OutboundGrpcEvent(_workerId, msg);
             if (!_outbound.TryWrite(evt))
             {
