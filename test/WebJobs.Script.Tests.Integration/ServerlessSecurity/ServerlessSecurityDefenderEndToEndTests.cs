@@ -18,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ServerlessSecurity
 {
     public class ServerlessSecurityDefenderEndToEndTests : IDisposable
     {
-        private string _traceloggerFilename;
+        //private string _traceloggerFilename;
         private string _localFilePath;
         private string _enableSlsecAgentLog;
         private string _verifyLog;
@@ -29,8 +29,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ServerlessSecurity
             //save original value to reset it to after test
             _enableSlsecAgentLog = Environment.GetEnvironmentVariable(LOG_CONFIG);
             _verifyLog = " message: Start up Serverless Security Agent Handler.";
-            _traceloggerFilename = "\\tracelog.txt";
-            _localFilePath = Directory.GetCurrentDirectory() + _traceloggerFilename;
+            //_traceloggerFilename = "\\tracelog.txt";
+            //_traceloggerFilename = Path.Combine(Directory.GetCurrentDirectory(), "tracelog.txt");
+            _localFilePath = Path.Combine(Directory.GetCurrentDirectory(), "tracelog.txt");
             Environment.SetEnvironmentVariable(LOG_CONFIG, _localFilePath);
             File.Delete(_localFilePath);
             File.Create(_localFilePath).Dispose();
