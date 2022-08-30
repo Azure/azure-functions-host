@@ -70,8 +70,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ServerlessSecurity
             await serverlessSecurityHost.StartAsync(cancToken);
             Assert.Equal(false, options.CurrentValue.EnableDefender);
             env.SetEnvironmentVariable(EnvironmentSettingNames.AzureFunctionsSecurityAgentEnabled, "1");
+            env.SetEnvironmentVariable(LOG_CONFIG, _localFilePath);
             // still in placeholder mode - should still have the old values.
             Assert.Equal(false, options.CurrentValue.EnableDefender);
+            try
+            {
+                var writer = new StreamWriter(Environment.GetEnvironmentVariable(LOG_CONFIG));
+            } catch
+            {
+                Console.WriteLine("Test After 1A ===============");
+            }
             // Simulate specialization, which should refresh.
             token.SignalChange();
 
