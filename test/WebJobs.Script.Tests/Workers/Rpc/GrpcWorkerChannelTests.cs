@@ -402,6 +402,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                     break;
                 }
             }
+            await Task.Delay(500);
 
             var traces = _logger.GetLogMessages();
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, expectedCancellationLog)));
