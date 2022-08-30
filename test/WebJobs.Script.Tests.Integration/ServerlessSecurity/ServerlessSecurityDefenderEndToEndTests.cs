@@ -48,6 +48,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ServerlessSecurity
         public async Task ServerlessSecurityServiceOptions_ServerlessSecurityEnableSetup()
         {
             var env = new TestEnvironment();
+            env.SetEnvironmentVariable(LOG_CONFIG, _localFilePath);
+
             var token = new TestChangeTokenSource<StandbyOptions>();
             // Wire up some options.
             var host = new HostBuilder()
@@ -64,7 +66,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ServerlessSecurity
             // Placeholder mode
             var options = host.Services.GetService<IOptionsMonitor<ServerlessSecurityDefenderOptions>>();
             env.SetEnvironmentVariable(EnvironmentSettingNames.AzureFunctionsSecurityAgentEnabled, null);
-            env.SetEnvironmentVariable(LOG_CONFIG, _localFilePath);
             var serverlessSecurityHost = host.Services.GetService<ServerlessSecurityHost>();
             var cancToken = new System.Threading.CancellationToken(false);
             await serverlessSecurityHost.StartAsync(cancToken);
