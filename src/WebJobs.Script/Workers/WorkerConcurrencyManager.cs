@@ -318,7 +318,7 @@ LatencyHistory=({formattedLatencyHistory}), AvgLatency={latencyAvg}, MaxLatency=
                     MaxWorkerSize = maxWorkerSize,
                     CurrentMemoryConsumption = currentMemoryConsumption
                 };
-                _logger.LogDebug("Starting new language worke canceled: {@message}", message);
+                _logger.LogDebug($"Starting new language worker canceled: TotalMemory={memoryLimit}, MaxWorkerSize={maxWorkerSize}, CurrentMemoryConsumption={currentMemoryConsumption}");
                 return false;
             }
             return true;

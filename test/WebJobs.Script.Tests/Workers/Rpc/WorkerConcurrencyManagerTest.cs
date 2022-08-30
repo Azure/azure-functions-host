@@ -383,7 +383,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             Assert.True(concurrancyManager.IsEnoughMemoryToScale(hostProcessSize, languageWorkerSizes, availableMemory) == result);
             if (!result)
             {
-                Assert.Contains(_loggerProvider.GetAllLogMessages().Select(x => x.FormattedMessage), x => x.StartsWith("Starting new language worke canceled:"));
+                Assert.Contains(_loggerProvider.GetAllLogMessages().Select(x => x.FormattedMessage), x => x.StartsWith("Starting new language worker canceled:"));
             }
         }
     }
