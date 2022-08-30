@@ -20,14 +20,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ServerlessSecurity
     {
         private string _localFilePath;
         private string _enableSlsecAgentLog;
-        private string _verifyLog;
+        private const string VERIFY_LOG = " message: Start up Serverless Security Agent Handler.";
         private const string LOG_CONFIG = "SERVERLESS_SECURITY_LOG_CONFIG";
 
         public ServerlessSecurityDefenderEndToEndTests()
         {
             //save original value to reset it to after test
             _enableSlsecAgentLog = Environment.GetEnvironmentVariable(LOG_CONFIG);
-            _verifyLog = " message: Start up Serverless Security Agent Handler.";
             _localFilePath = Path.Combine(Directory.GetCurrentDirectory(), "tracelog.txt");
             Environment.SetEnvironmentVariable(LOG_CONFIG, null); //_localFilePath
             File.Delete(_localFilePath);
@@ -87,7 +86,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ServerlessSecurity
                 foreach (string line in b)
                 {
                     string[] lineArray = line.Split(",");
-                    if (lineArray.Length > 1 && lineArray[1].Equals(_verifyLog))
+                    if (lineArray.Length > 1 && lineArray[1].Equals(VERIFY_LOG))
                     {
                         isSlsecAgentEnabled = true;
                         break;
