@@ -166,6 +166,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     {
                         await CreateStandbyWarmupFunctions();
 
+                        // Flag to indicate a function was initialized from placeholder mode
+                        _environment.SetEnvironmentVariable(EnvironmentSettingNames.InitializedFromPlaceholder, "true");
+
                         // start a background timer to identify when specialization happens
                         // specialization usually happens via an http request (e.g. scale controller
                         // ping) but this timer is started as well to handle cases where we

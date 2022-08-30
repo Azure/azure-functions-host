@@ -56,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             return _regex.IsMatch(value);
         }
 
-        // Validates if condition parametrs meet expected values, fail if they don't
+        // Validates if condition parameters meet expected values, fail if they don't
         private void Validate()
         {
             if (string.IsNullOrEmpty(Name))
