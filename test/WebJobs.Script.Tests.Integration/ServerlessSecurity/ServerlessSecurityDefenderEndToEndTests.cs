@@ -44,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ServerlessSecurity
             Environment.SetEnvironmentVariable(LOG_CONFIG, _enableSlsecAgentLog);
         }
 
-       // [Fact]
+        [Fact]
         public async Task ServerlessSecurityServiceOptions_ServerlessSecurityEnableSetup()
         {
             var env = new TestEnvironment();
