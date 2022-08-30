@@ -34,7 +34,6 @@ using static Microsoft.Azure.WebJobs.Script.Grpc.Messages.RpcLog.Types;
 using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
 using MsgType = Microsoft.Azure.WebJobs.Script.Grpc.Messages.StreamingMessage.ContentOneofCase;
 using ParameterBindingType = Microsoft.Azure.WebJobs.Script.Grpc.Messages.ParameterBinding.RpcDataOneofCase;
-using RpcException = Microsoft.Azure.WebJobs.Script.Workers.Rpc.RpcException;
 
 namespace Microsoft.Azure.WebJobs.Script.Grpc
 {
