@@ -88,11 +88,11 @@
   </ItemGroup>
 
   <ItemGroup Condition=" '$(RuntimeIdentifier)' == 'linux-x64' ">
-    <PackageReference Include="ServerlessSecuritylinux-x64" Version="0.2.20568" />
+    <PackageReference Include="ServerlessSecuritylinux-x64" Version="0.2.2067.279" />
   </ItemGroup>
 
   <ItemGroup Condition=" '$(RuntimeIdentifier)' != 'linux-x64' ">
-    <PackageReference Include="ServerlessSecuritywin-x64" Version="0.2.20568" />
+    <PackageReference Include="ServerlessSecuritywin-x64" Version="0.2.2067.279" />
   </ItemGroup>
 
   <ItemGroup>
