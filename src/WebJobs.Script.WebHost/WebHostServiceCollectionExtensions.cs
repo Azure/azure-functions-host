@@ -99,8 +99,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IEventGenerator>(p =>
             {
                 var environment = p.GetService<IEnvironment>();
-                if (environment.IsLinuxConsumption())
+                if (environment.IsLinuxConsumptionOnAtlas())
                 {
+                    return new LinuxContainerEventGenerator(environment);
+                }
+                else if (environment.IsLinuxConsumptionOnLegion())
+                {
+                    //todo: Replace with legion specific logger
                     return new LinuxContainerEventGenerator(environment);
                 }
                 else if (SystemEnvironment.Instance.IsLinuxAppService())
@@ -214,7 +219,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IHostedService>(s =>
             {
                 var environment = s.GetService<IEnvironment>();
-                if (environment.IsLinuxConsumption())
+                //todo: Replace with legion specific service
+                if (environment.IsAnyLinuxConsumption())
                 {
                     var instanceManager = s.GetService<IInstanceManager>();
                     var logger = s.GetService<ILogger<LinuxContainerInitializationHostService>>();
@@ -242,7 +248,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IMeshServiceClient>(s =>
             {
                 var environment = s.GetService<IEnvironment>();
-                if (environment.IsLinuxConsumption())
+                if (environment.IsAnyLinuxConsumption())
                 {
                     var httpClientFactory = s.GetService<IHttpClientFactory>();
                     var logger = s.GetService<ILogger<MeshServiceClient>>();
@@ -255,7 +261,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<LinuxContainerActivityPublisher>(s =>
             {
                 var environment = s.GetService<IEnvironment>();
-                if (environment.IsLinuxConsumption())
+                if (environment.IsAnyLinuxConsumption())
                 {
                     var logger = s.GetService<ILogger<LinuxContainerActivityPublisher>>();
                     var meshInitServiceClient = s.GetService<IMeshServiceClient>();
@@ -269,7 +275,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IHostedService>(s =>
             {
                 var environment = s.GetService<IEnvironment>();
-                if (environment.IsLinuxConsumption())
+                if (environment.IsAnyLinuxConsumption())
                 {
                     return s.GetRequiredService<LinuxContainerActivityPublisher>();
                 }
@@ -280,7 +286,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<ILinuxContainerActivityPublisher>(s =>
             {
                 var environment = s.GetService<IEnvironment>();
-                if (environment.IsLinuxConsumption())
+                if (environment.IsAnyLinuxConsumption())
                 {
                     return s.GetRequiredService<LinuxContainerActivityPublisher>();
                 }

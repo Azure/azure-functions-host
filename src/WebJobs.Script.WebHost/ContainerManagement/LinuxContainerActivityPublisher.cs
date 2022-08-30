@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
             IMeshServiceClient meshServiceClient, IEnvironment environment,
             ILogger<LinuxContainerActivityPublisher> logger, int flushIntervalMs = FlushIntervalMs, int initialFlushIntervalMs = InitialFlushIntervalMs)
         {
-            if (!environment.IsLinuxConsumption())
+            if (!environment.IsAnyLinuxConsumption())
             {
                 throw new NotSupportedException(
                     $"{nameof(LinuxContainerActivityPublisher)} is available in Linux consumption environment only");

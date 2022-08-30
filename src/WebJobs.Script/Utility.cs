@@ -541,10 +541,10 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             functionName = isFunctionShortName ? functionName : Utility.GetFunctionShortName(functionName);
 
-            ICollection<string> functionErrorCollection = new Collection<string>();
+            ICollection<string> functionErrorCollection = new HashSet<string>();
             if (!string.IsNullOrEmpty(functionName) && !functionErrors.TryGetValue(functionName, out functionErrorCollection))
             {
-                functionErrors[functionName] = functionErrorCollection = new Collection<string>();
+                functionErrors[functionName] = functionErrorCollection = new HashSet<string>();
             }
             functionErrorCollection.Add(error);
         }
@@ -982,7 +982,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public static FunctionAppContentEditingState GetFunctionAppContentEditingState(IEnvironment environment, IOptions<ScriptApplicationHostOptions> applicationHostOptions)
         {
             // For now, host can determine with certainty if contents are editable only for Linux Consumption apps. Return unknown for other SKUs.
-            if (!environment.IsLinuxConsumption())
+            if (!environment.IsAnyLinuxConsumption())
             {
                 return FunctionAppContentEditingState.Unknown;
             }
