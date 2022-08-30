@@ -16,7 +16,7 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.ServerlessSecurity
 {
-    public class ServerlessSecurityDefenderEndToEndTests : IDisposable
+    public class ServerlessSecurityDefenderEndToEndTests
     {
         //private string _traceloggerFilename;
         private string _localFilePath;
@@ -37,13 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ServerlessSecurity
             File.Create(_localFilePath).Dispose();
         }
 
-        public void Dispose()
-        {
-            //Delete tracelogger file that was created for the test
-            File.Delete(_localFilePath);
-            //Reset to initial config value
-            Environment.SetEnvironmentVariable(LOG_CONFIG, _enableSlsecAgentLog);
-        }
+        
 
         [Fact]
         public async Task ServerlessSecurityServiceOptions_ServerlessSecurityEnableSetup()
@@ -88,6 +82,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ServerlessSecurity
             //Assert that config value for enabling defender was changed to true
             await TestHelpers.Await(() => DefenderEnabled(), timeout: 60000);
             Assert.Equal(true, options.CurrentValue.EnableDefender);
+
+            //Delete tracelogger file that was created for the test
+            File.Delete(_localFilePath);
+            //Reset to initial config value
+            Environment.SetEnvironmentVariable(LOG_CONFIG, _enableSlsecAgentLog);
         }
 
         private bool DefenderEnabled()
