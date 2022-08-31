@@ -1,7 +1,10 @@
 {
   "profiles": {
     "WebJobs.Script.Tests.Integration": {
-      "commandName": "Project"
+      "commandName": "Project",
+      "environmentVariables": {
+        "AzureWebJobsSecretStorageType": "Files"
+      }
     }
   }
 }
