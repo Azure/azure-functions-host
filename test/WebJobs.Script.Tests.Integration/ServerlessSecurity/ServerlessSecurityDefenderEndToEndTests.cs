@@ -74,6 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ServerlessSecurity
             //Assert that config value for enabling defender was changed to true
             //await TestHelpers.Await(() => DefenderEnabled());
             Assert.Equal(true, options.CurrentValue.EnableDefender);
+            await serverlessSecurityHost.StopAsync(cancToken);
         }
 
         private bool DefenderEnabled()
