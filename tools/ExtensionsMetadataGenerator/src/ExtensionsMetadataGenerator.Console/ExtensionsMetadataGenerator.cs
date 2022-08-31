@@ -90,10 +90,10 @@ namespace ExtensionsMetadataGenerator
                     return true;
                 }
 
-                //if (currentAttributeType.FullName.StartsWith("System", StringComparison.OrdinalIgnoreCase))
-                //{
-                //    return false;
-                //}
+                if (currentAttributeType.FullName.StartsWith("System", StringComparison.OrdinalIgnoreCase))
+                {
+                    return false;
+                }
 
                 try
                 {
