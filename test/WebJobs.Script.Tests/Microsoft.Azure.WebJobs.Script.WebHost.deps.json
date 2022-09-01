@@ -1677,20 +1677,20 @@
       "ServerlessSecuritywin-x64/0.2.2069.296": {
         "runtime": {
           "lib/net6.0/EnvironmentHelper.dll": {
-            "assemblyVersion": "0.2.2069.296",
-            "fileVersion": "0.2.2069.296"
+            "assemblyVersion": "0.2.2069.299",
+            "fileVersion": "0.2.2069.299"
           },
           "lib/net6.0/Logger.dll": {
-            "assemblyVersion": "0.2.2069.296",
-            "fileVersion": "0.2.2069.296"
+            "assemblyVersion": "0.2.2069.299",
+            "fileVersion": "0.2.2069.299"
           },
           "lib/net6.0/ProcessManagement.dll": {
-            "assemblyVersion": "0.2.2069.296",
-            "fileVersion": "0.2.2069.296"
+            "assemblyVersion": "0.2.2069.299",
+            "fileVersion": "0.2.2069.299"
           },
           "lib/net6.0/ServerlessSecurityHost.dll": {
-            "assemblyVersion": "0.2.2069.296",
-            "fileVersion": "0.2.2069.296"
+            "assemblyVersion": "0.2.2069.299",
+            "fileVersion": "0.2.2069.299"
           }
         }
       },
