@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
@@ -46,6 +47,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public string Id => _workerId;
 
         public bool IsDisposed => _isDisposed;
+
+        public IWorkerProcess WorkerProcess => null;
 
         public IDictionary<string, BufferBlock<ScriptInvocationContext>> FunctionInputBuffers => throw new NotImplementedException();
 

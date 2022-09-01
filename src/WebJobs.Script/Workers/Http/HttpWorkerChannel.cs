@@ -42,6 +42,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         public string Id { get; }
 
+        public IWorkerProcess WorkerProcess => _workerProcess;
+
         public Task InvokeAsync(ScriptInvocationContext context)
         {
             return _httpWorkerService.InvokeAsync(context);
