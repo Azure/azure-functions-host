@@ -73,6 +73,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ServerlessSecurity
             Assert.Equal(false, options.CurrentValue.EnableDefender);
             await serverlessSecurityHost.StopAsync(cancToken);
 
+            await host.StopAsync();
+            host.Dispose();
             //Delete tracelogger file that was created for the test
             File.Delete(_localFilePath);
             //Reset to initial config value
