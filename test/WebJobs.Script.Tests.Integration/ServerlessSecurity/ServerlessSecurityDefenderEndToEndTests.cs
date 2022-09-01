@@ -72,6 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ServerlessSecurity
             File.Delete(_localFilePath);
             //Reset to initial config value
             Environment.SetEnvironmentVariable(LOG_CONFIG, _enableSlsecAgentLog);
+            host.Dispose();
         }
 
         private bool DefenderEnabled()
