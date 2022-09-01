@@ -41,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ServerlessSecurity
             Environment.SetEnvironmentVariable(LogConfig, _enableSlsecAgentLog);
         }*/
 
-       // [Fact]
+        [Fact]
         public void ServerlessSecurityServiceOptions_ServerlessSecurityEnableSetup()
         {
             var env = new TestEnvironment();
@@ -54,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ServerlessSecurity
                     s.ConfigureOptions<ServerlessSecurityDefenderOptionsSetup>();
                     s.AddSingleton<IOptionsChangeTokenSource<ServerlessSecurityDefenderOptions>, SpecializationChangeTokenSource<ServerlessSecurityDefenderOptions>>();
                     s.AddSingleton<IOptionsChangeTokenSource<StandbyOptions>>(token);
-                    s.AddSingleton<ServerlessSecurityHost>();
+                    //s.AddSingleton<ServerlessSecurityHost>();
                 })
                 .Build();
 
