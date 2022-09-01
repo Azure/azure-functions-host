@@ -137,7 +137,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         public IDictionary<string, BufferBlock<ScriptInvocationContext>> FunctionInputBuffers => _functionInputBuffers;
 
-        internal IWorkerProcess WorkerProcess => _rpcWorkerProcess;
+        public IWorkerProcess WorkerProcess => _rpcWorkerProcess;
 
         internal RpcWorkerConfig Config => _workerConfig;
 
