@@ -27,8 +27,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ServerlessSecurity
         {
             //save original value to reset it to after test
             _enableSlsecAgentLog = Environment.GetEnvironmentVariable(LogConfig);
-            _localFilePath = Path.Combine(Directory.GetCurrentDirectory(), null); // "tracelog.txt"
-            Environment.SetEnvironmentVariable(LogConfig, _localFilePath);
+            _localFilePath = Path.Combine(Directory.GetCurrentDirectory(), "tracelog.txt");
+            Environment.SetEnvironmentVariable(LogConfig, null); //_localFilePath
             File.Delete(_localFilePath);
             File.Create(_localFilePath).Dispose();
         }
