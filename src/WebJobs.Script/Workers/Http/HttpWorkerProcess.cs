@@ -60,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             workerContext.EnvironmentVariables.Add(HttpWorkerConstants.CustomHandlerWorkerIdEnvVarName, _workerId);
             workerContext.EnvironmentVariables.Add(HttpWorkerConstants.FunctionAppRootVarName, _scriptRootPath);
             Process workerProcess = _processFactory.CreateWorkerProcess(workerContext);
-            if (_environment.IsLinuxConsumption())
+            if (_environment.IsAnyLinuxConsumption())
             {
                 AssignUserExecutePermissionsIfNotExists(workerProcess.StartInfo.FileName);
             }

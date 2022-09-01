@@ -55,7 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         private readonly IFunctionDataCache _functionDataCache;
         private readonly IOptions<WorkerConcurrencyOptions> _workerConcurrencyOptions;
         private GrpcWorkerChannel _workerChannel;
-        private GrpcWorkerChannel _workerChannelwithMockEventManager;
+        private GrpcWorkerChannel _workerChannelWithMockEventManager;
 
         public GrpcWorkerChannelTests()
         {
@@ -110,7 +110,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _workerConcurrencyOptions);
 
             _eventManagerMock.Setup(proxy => proxy.Publish(It.IsAny<OutboundGrpcEvent>())).Verifiable();
-            _workerChannelwithMockEventManager = new GrpcWorkerChannel(
+            _workerChannelWithMockEventManager = new GrpcWorkerChannel(
                _workerId,
                _eventManagerMock.Object,
                _testWorkerConfig,
@@ -359,6 +359,138 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             await _workerChannel.SendInvocationRequest(scriptInvocationContext);
             var traces = _logger.GetLogMessages();
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, _expectedLogMsg)));
+        }
+
+        [Fact]
+        public async Task SendInvocationRequest_SignalCancellation_WithCapability_SendsInvocationCancelRequest()
+        {
+            var cancellationWaitTimeMs = 3000;
+            var invocationId = Guid.NewGuid();
+            var expectedCancellationLog = $"Sending invocation cancel request for InvocationId {invocationId.ToString()}";
+
+            IDictionary<string, string> capabilities = new Dictionary<string, string>()
+            {
+                { RpcWorkerConstants.HandlesInvocationCancelMessage, "1" }
+            };
+
+            var cts = new CancellationTokenSource();
+            cts.CancelAfter(cancellationWaitTimeMs);
+            var token = cts.Token;
+
+            var initTask = _workerChannel.StartWorkerProcessAsync(CancellationToken.None);
+            _testFunctionRpcService.PublishStartStreamEvent(_workerId);
+            _testFunctionRpcService.PublishWorkerInitResponseEvent(capabilities);
+            await initTask;
+            var scriptInvocationContext = GetTestScriptInvocationContext(invocationId, null, token);
+            await _workerChannel.SendInvocationRequest(scriptInvocationContext);
+
+            while (!token.IsCancellationRequested)
+            {
+                await Task.Delay(1000);
+                if (token.IsCancellationRequested)
+                {
+                    break;
+                }
+            }
+
+            var traces = _logger.GetLogMessages();
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, expectedCancellationLog)));
+        }
+
+        [Fact]
+        public async Task SendInvocationRequest_SignalCancellation_WithoutCapability_NoAction()
+        {
+            var cancellationWaitTimeMs = 3000;
+            var invocationId = Guid.NewGuid();
+            var expectedCancellationLog = $"Sending invocation cancel request for InvocationId {invocationId.ToString()}";
+
+            var cts = new CancellationTokenSource();
+            cts.CancelAfter(cancellationWaitTimeMs);
+            var token = cts.Token;
+
+            var initTask = _workerChannel.StartWorkerProcessAsync(CancellationToken.None);
+            _testFunctionRpcService.PublishStartStreamEvent(_workerId);
+            _testFunctionRpcService.PublishWorkerInitResponseEvent();
+            await initTask;
+            var scriptInvocationContext = GetTestScriptInvocationContext(invocationId, null, token);
+            await _workerChannel.SendInvocationRequest(scriptInvocationContext);
+
+            while (!token.IsCancellationRequested)
+            {
+                await Task.Delay(1000);
+                if (token.IsCancellationRequested)
+                {
+                    break;
+                }
+            }
+
+            var traces = _logger.GetLogMessages();
+            Assert.False(traces.Any(m => string.Equals(m.FormattedMessage, expectedCancellationLog)));
+        }
+
+        [Fact]
+        public async Task SendInvocationRequest_CancellationAlreadyRequested_ResultSourceCancelled()
+        {
+            var cancellationWaitTimeMs = 3000;
+            var invocationId = Guid.NewGuid();
+            var expectedCancellationLog = "Cancellation has been requested, cancelling invocation request";
+
+            IDictionary<string, string> capabilities = new Dictionary<string, string>()
+            {
+                { RpcWorkerConstants.HandlesInvocationCancelMessage, "1" }
+            };
+
+            var cts = new CancellationTokenSource();
+            cts.CancelAfter(cancellationWaitTimeMs);
+            var token = cts.Token;
+
+            var initTask = _workerChannel.StartWorkerProcessAsync(CancellationToken.None);
+            _testFunctionRpcService.PublishStartStreamEvent(_workerId);
+            _testFunctionRpcService.PublishWorkerInitResponseEvent(capabilities);
+            await initTask;
+
+            while (!token.IsCancellationRequested)
+            {
+                await Task.Delay(1000);
+                if (token.IsCancellationRequested)
+                {
+                    break;
+                }
+            }
+
+            var resultSource = new TaskCompletionSource<ScriptInvocationResult>();
+            var scriptInvocationContext = GetTestScriptInvocationContext(invocationId, resultSource, token);
+            await _workerChannel.SendInvocationRequest(scriptInvocationContext);
+
+            var traces = _logger.GetLogMessages();
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, expectedCancellationLog)));
+            Assert.Equal(TaskStatus.Canceled, resultSource.Task.Status);
+        }
+
+        [Fact]
+        public async Task SendInvocationCancelRequest_PublishesOutboundEvent()
+        {
+            var invocationId = Guid.NewGuid();
+            var expectedCancellationLog = $"Sending invocation cancel request for InvocationId {invocationId.ToString()}";
+
+            IDictionary<string, string> capabilities = new Dictionary<string, string>()
+            {
+                { RpcWorkerConstants.HandlesInvocationCancelMessage, "1" }
+            };
+
+            var initTask = _workerChannel.StartWorkerProcessAsync(CancellationToken.None);
+            _testFunctionRpcService.PublishStartStreamEvent(_workerId);
+            _testFunctionRpcService.PublishWorkerInitResponseEvent(capabilities);
+            await initTask;
+
+            var scriptInvocationContext = GetTestScriptInvocationContext(invocationId, null);
+            _workerChannel.SendInvocationCancel(invocationId.ToString());
+
+            var traces = _logger.GetLogMessages();
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, expectedCancellationLog)));
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, _expectedLogMsg)));
+            // The outbound log should happen twice: once for worker init request and once for the invocation cancel request
+            Assert.Equal(traces.Where(m => m.FormattedMessage.Equals(_expectedLogMsg)).Count(), 2);
         }
 
         [Fact]
@@ -868,7 +1000,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public async Task SendInvocationRequest_ValidateTraceContext()
         {
             ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(Guid.NewGuid(), null);
-            await _workerChannelwithMockEventManager.SendInvocationRequest(scriptInvocationContext);
+            await _workerChannelWithMockEventManager.SendInvocationRequest(scriptInvocationContext);
             if (_testEnvironment.IsApplicationInsightsAgentEnabled())
             {
                 _eventManagerMock.Verify(proxy => proxy.Publish(It.Is<OutboundGrpcEvent>(
@@ -895,7 +1027,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             activity.AddBaggage(ScriptConstants.LiveLogsSessionAIKey, sessionId);
             activity.Start();
             ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(Guid.NewGuid(), null);
-            await _workerChannelwithMockEventManager.SendInvocationRequest(scriptInvocationContext);
+            await _workerChannelWithMockEventManager.SendInvocationRequest(scriptInvocationContext);
             activity.Stop();
             _eventManagerMock.Verify(p => p.Publish(It.Is<OutboundGrpcEvent>(grpcEvent => ValidateInvocationRequest(grpcEvent, sessionId))));
         }
@@ -942,7 +1074,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             };
         }
 
-        private ScriptInvocationContext GetTestScriptInvocationContext(Guid invocationId, TaskCompletionSource<ScriptInvocationResult> resultSource)
+        private ScriptInvocationContext GetTestScriptInvocationContext(Guid invocationId, TaskCompletionSource<ScriptInvocationResult> resultSource, CancellationToken? token = null)
         {
             return new ScriptInvocationContext()
             {
@@ -956,7 +1088,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 },
                 BindingData = new Dictionary<string, object>(),
                 Inputs = new List<(string name, DataType type, object val)>(),
-                ResultSource = resultSource
+                ResultSource = resultSource,
+                CancellationToken = token == null ? CancellationToken.None : (CancellationToken)token
             };
         }
 
