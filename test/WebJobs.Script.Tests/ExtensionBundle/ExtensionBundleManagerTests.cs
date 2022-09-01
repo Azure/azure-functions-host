@@ -47,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
         [Fact]
         public void TryLocateExtensionBundle_BundleDoesNotMatch_ReturnsFalse()
         {
-            var options = GetTestExtensionBundleOptions(BundleId, "[2.*, 3.0.0)");
+            var options = GetTestExtensionBundleOptions(BundleId, "[3.*, 4.0.0)");
             var fileSystemTuple = CreateFileSystem();
             var directoryBase = fileSystemTuple.Item2;
 
@@ -64,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
         [Fact]
         public async Task GetExtensionBundleDetails_InvalidBundle_ReturnsVersionAsNull()
         {
-            var options = GetTestExtensionBundleOptions("InvalidBundleId", "[2.*, 3.0.0)");
+            var options = GetTestExtensionBundleOptions("InvalidBundleId", "[3.*, 4.0.0)");
             var fileSystemTuple = CreateFileSystem();
             var directoryBase = fileSystemTuple.Item2;
 
@@ -82,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
         [Fact]
         public void TryLocateExtensionBundle_BundleNotPersent_ReturnsFalse()
         {
-            var options = GetTestExtensionBundleOptions(BundleId, "[2.*, 3.0.0)");
+            var options = GetTestExtensionBundleOptions(BundleId, "[3.*, 4.0.0)");
             var fileSystemTuple = CreateFileSystem();
             FileUtility.Instance = fileSystemTuple.Item1.Object;
             var manager = GetExtensionBundleManager(options, GetTestAppServiceEnvironment());
@@ -92,7 +92,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
 
         [Theory]
         [InlineData(BundleId, "[1.*, 2.0.0)", true)]
-        [InlineData(BundleId, "[2.*, 3.0.0)", false)]
+        [InlineData(BundleId, "[3.*, 4.0.0)", false)]
         [InlineData(BundleId, "[2.0.0, 3.0.0)", false)]
         [InlineData("TestBundleId", "[1.*, 2.0.0)", false)]
         public void IsLegacyExtensionBundle_LegacyBundleConfig_ReturnsExpectedResult(string bundleId, string bundleVersion, bool isLegacyExtensionBundle)
@@ -103,7 +103,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
         }
 
         [Theory]
-        [InlineData("[2.*, 3.0.0)")]
+        [InlineData("[3.*, 4.0.0)")]
         [InlineData("[2.0.0, 3.0.0)")]
         public async Task GetExtensionBundleDetails_BundlePresentAtProbingLocation_ExpectedValue(string versionRange)
         {
@@ -136,7 +136,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
         }
 
         [Theory]
-        [InlineData("[2.*, 3.0.0)")]
+        [InlineData("[3.*, 4.0.0)")]
         [InlineData("[2.0.0, 3.0.0)")]
         public async Task GetExtensionBundle_BundlePresentAtProbingLocation_ReturnsTrue(string versionRange)
         {
@@ -173,7 +173,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
         [InlineData(false, true, true)]
         public async Task GetExtensionBundleBinPath_ReturnsCorrectLocation(bool readyToRunPathExists, bool defaultPathExists, bool expectDefaultBinPath)
         {
-            var options = GetTestExtensionBundleOptions(BundleId, "[2.*, 3.0.0)");
+            var options = GetTestExtensionBundleOptions(BundleId, "[3.*, 4.0.0)");
             string firstDefaultProbingPath = options.ProbingPaths.ElementAt(0);
             string defaultPath = Path.Combine(firstDefaultProbingPath, "2.0.2");
 
@@ -203,7 +203,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
         [Fact]
         public async Task GetExtensionBundleBinPath_NoBinaries_ReturnsNull()
         {
-            var options = GetTestExtensionBundleOptions(BundleId, "[2.*, 3.0.0)");
+            var options = GetTestExtensionBundleOptions(BundleId, "[3.*, 4.0.0)");
             string firstDefaultProbingPath = options.ProbingPaths.ElementAt(0);
             string defaultPath = Path.Combine(firstDefaultProbingPath, "2.0.2");
 
@@ -245,7 +245,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
         [Fact]
         public async Task GetExtensionBundleDetails_BundlePresentAtDownloadLocation_ReturnsCorrectPathAync()
         {
-            var options = GetTestExtensionBundleOptions(BundleId, "[2.*, 3.0.0)");
+            var options = GetTestExtensionBundleOptions(BundleId, "[3.*, 4.0.0)");
             var fileSystemTuple = CreateFileSystem();
             var directoryBase = fileSystemTuple.Item2;
             var fileBase = fileSystemTuple.Item3;
@@ -278,7 +278,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
         [Fact]
         public async Task GetExtensionBundle_BundlePresentAtDownloadLocation_ReturnsCorrectPathAync()
         {
-            var options = GetTestExtensionBundleOptions(BundleId, "[2.*, 3.0.0)");
+            var options = GetTestExtensionBundleOptions(BundleId, "[3.*, 4.0.0)");
             var fileSystemTuple = CreateFileSystem();
             var directoryBase = fileSystemTuple.Item2;
             var fileBase = fileSystemTuple.Item3;
@@ -302,7 +302,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
         [Fact]
         public async Task GetExtensionBundle_PartialBundlePresentAtDownloadLocation_ReturnsNullPath()
         {
-            var options = GetTestExtensionBundleOptions(BundleId, "[2.*, 3.0.0)");
+            var options = GetTestExtensionBundleOptions(BundleId, "[3.*, 4.0.0)");
             var fileSystemTuple = CreateFileSystem();
             var directoryBase = fileSystemTuple.Item2;
             var fileBase = fileSystemTuple.Item3;
@@ -326,7 +326,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
         [Fact]
         public async Task GetExtensionBundle_DownloadsMatchingVersion_ReturnsTrueAsync()
         {
-            var options = GetTestExtensionBundleOptions(BundleId, "[2.*, 3.0.0)");
+            var options = GetTestExtensionBundleOptions(BundleId, "[3.*, 4.0.0)");
             var manager = GetExtensionBundleManager(options, GetTestAppServiceEnvironment());
             var httpclient = new HttpClient(new MockHttpHandler(statusCodeForIndexJson: HttpStatusCode.OK, statusCodeForZipFile: HttpStatusCode.OK, "2.0.1"));
             var path = await manager.GetExtensionBundlePath(httpclient);
@@ -347,7 +347,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
             Assert.Equal(bundleDirectory, path);
 
             var newOptions = options;
-            newOptions.Version = VersionRange.Parse("[2.*, 3.0.0)", true);
+            newOptions.Version = VersionRange.Parse("[3.*, 4.0.0)", true);
             newOptions.EnsureLatest = true;
             manager = GetExtensionBundleManager(newOptions, GetTestAppServiceEnvironment());
             httpclient = new HttpClient(new MockHttpHandler(statusCodeForIndexJson: HttpStatusCode.OK, statusCodeForZipFile: HttpStatusCode.OK, "2.0.1"));
@@ -369,7 +369,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
         [Fact]
         public async Task GetExtensionBundle_CannotReachIndexEndpoint_ReturnsNullAsync()
         {
-            var options = GetTestExtensionBundleOptions(BundleId, "[2.*, 3.0.0)");
+            var options = GetTestExtensionBundleOptions(BundleId, "[3.*, 4.0.0)");
             var httpClient = new HttpClient(new MockHttpHandler(statusCodeForIndexJson: HttpStatusCode.NotFound, statusCodeForZipFile: HttpStatusCode.OK));
             var manager = GetExtensionBundleManager(options, GetTestAppServiceEnvironment());
             Assert.Null(await manager.GetExtensionBundlePath(httpClient));
@@ -378,7 +378,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
         [Fact]
         public async Task GetExtensionBundle_CannotReachZipEndpoint_ReturnsFalseAsync()
         {
-            var options = GetTestExtensionBundleOptions(BundleId, "[2.*, 3.0.0)");
+            var options = GetTestExtensionBundleOptions(BundleId, "[3.*, 4.0.0)");
             var httpClient = new HttpClient(new MockHttpHandler(statusCodeForIndexJson: HttpStatusCode.OK, statusCodeForZipFile: HttpStatusCode.NotFound));
             var manager = GetExtensionBundleManager(options, GetTestAppServiceEnvironment());
             Assert.Null(await manager.GetExtensionBundlePath(httpClient));

@@ -55,7 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                     'version': '2.0',
                     'extensionBundle': {
                         'id': 'Microsoft.Azure.Functions.ExtensionBundle',
-                        'version': '[2.*, 3.0.0)'
+                        'version': '[3.*, 4.0.0)'
                         }
                     }")]
         public void MissingOrValidExtenstionConfig_DoesNotThrowException(string hostJsonContent)
@@ -76,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                     'version': '2.0',
                     'extensionBundle': {
                         'id': 'Microsoft.Azure.Functions.ExtensionBundle',
-                        'version': '[2.*, 3.0.0)'
+                        'version': '[3.*, 4.0.0)'
                         }
                     }";
             File.WriteAllText(_hostJsonFile, hostJsonContent);
@@ -101,7 +101,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                     'version': '2.0',
                     'extensionBundle': {
                         'id': 'Microsoft.Azure.Functions.ExtensionBundle',
-                        'version': '[2.*, 3.0.0)'
+                        'version': '[3.*, 4.0.0)'
                         }
                     }";
             File.WriteAllText(_hostJsonFile, hostJsonContent);
@@ -132,7 +132,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                     'version': '2.0',
                     'extensionBundle': {
                         'id': 'Microsoft.Azure.Functions.ExtensionBundle',
-                        'version': '[2.*, 3.0.0)'
+                        'version': '[3.*, 4.0.0)'
                         }
                     }";
             File.WriteAllText(_hostJsonFile, hostJsonContent);
@@ -143,7 +143,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             setup.Configure(options);
 
             Assert.Equal(options.Id, "Microsoft.Azure.Functions.ExtensionBundle");
-            Assert.Equal(options.Version.OriginalString, "[2.*, 3.0.0)");
+            Assert.Equal(options.Version.OriginalString, "[3.*, 4.0.0)");
             Assert.True(string.IsNullOrEmpty(options.DownloadPath));
             Assert.Equal(options.ProbingPaths.Count, 0);
         }
