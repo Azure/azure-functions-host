@@ -16,7 +16,7 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.ServerlessSecurity
 {
-    public class ServerlessSecurityDefenderEndToEndTests : IDisposable
+    public class ServerlessSecurityDefenderEndToEndTests //: IDisposable
     {
         private const string LogConfig = "SERVERLESS_SECURITY_LOG_CONFIG";
         private const string VerifyLog = " message: Start up Serverless Security Agent Handler.";
@@ -61,8 +61,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ServerlessSecurity
             // Placeholder mode
             var options = host.Services.GetService<IOptionsMonitor<ServerlessSecurityDefenderOptions>>();
             env.SetEnvironmentVariable(EnvironmentSettingNames.AzureFunctionsSecurityAgentEnabled, null);
-            var serverlessSecurityHost = host.Services.GetService<ServerlessSecurityHost>();
-            var cancToken = new System.Threading.CancellationToken(false);
+            //var serverlessSecurityHost = host.Services.GetService<ServerlessSecurityHost>();
+            //var cancToken = new System.Threading.CancellationToken(false);
             //await serverlessSecurityHost.StartAsync(cancToken);
             Assert.Equal(false, options.CurrentValue.EnableDefender);
             env.SetEnvironmentVariable(EnvironmentSettingNames.AzureFunctionsSecurityAgentEnabled, "1");
