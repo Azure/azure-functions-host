@@ -138,7 +138,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                             _memoryLimit))
                         {
                             await _functionInvocationDispatcher.StartWorkerChannel();
-                            _addWorkerStopwatch = ValueStopwatch.StartNew();
+                            _addWorkerStopwatch.Restart();
                         }
                     }
                 }
