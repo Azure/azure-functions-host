@@ -33,13 +33,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ServerlessSecurity
             File.Create(_localFilePath).Dispose();
         }
 
-        public void Dispose()
+        /*public void Dispose()
         {
             //Delete tracelogger file that was created for the test
             File.Delete(_localFilePath);
             //Reset to initial config value
             Environment.SetEnvironmentVariable(LogConfig, _enableSlsecAgentLog);
-        }
+        }*/
 
         [Fact]
         public void ServerlessSecurityServiceOptions_ServerlessSecurityEnableSetup()
