@@ -1209,7 +1209,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 // Don't allow background execptions to escape
                 // E.g. when a rpc channel is shutting down we can process exceptions
             }
-            _timer.Start();
+            try
+            {
+                _timer.Start();
+            }
+            catch (ObjectDisposedException)
+            {
+                // Specifically ignore this race - we're exiting and that's okay
+            }
         }
 
         private void AddSample<T>(List<T> samples, T sample)
