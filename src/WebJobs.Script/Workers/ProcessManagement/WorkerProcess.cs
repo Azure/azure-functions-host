@@ -53,8 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         internal Queue<string> ProcessStdErrDataQueue => _processStdErrDataQueue;
 
-        // for testing
-        internal Process Process { get; set; }
+        public Process Process { get; set; }
 
         internal abstract Process CreateWorkerProcess();
 
