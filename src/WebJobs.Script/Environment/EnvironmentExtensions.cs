@@ -566,5 +566,14 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             isMultiLanguageEnabled = null;
         }
+
+        /// <summary>
+        /// Gets a value indicated in the variable FUNCTIONS_EXTENSION_VERSION
+        /// </summary>
+        /// <returns>Value of FUNCTIONS_EXTENSION_VERSION variable</returns>
+        public static string GetFunctionsExtensionVersion(this IEnvironment environment)
+        {
+            return environment.GetEnvironmentVariableOrDefault(FunctionsExtensionVersion, string.Empty);
+        }
     }
 }
