@@ -62,6 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         // Host Capabilities
         public const string V2Compatable = "V2Compatable";
+        public const string MultiStream = nameof(MultiStream);
 
         // dotnet executable file path components
         public const string DotNetExecutableName = "dotnet";

@@ -2,46 +2,138 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Linq;
-using System.Reactive.Linq;
-using System.Runtime.InteropServices;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
-using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
-using Microsoft.Azure.WebJobs.Script.Workers;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
-using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
-using Moq;
-using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 {
     public class TestFunctionRpcService
     {
-        private IScriptEventManager _eventManager;
         private ILogger _logger;
         private string _workerId;
         private IDictionary<string, IDisposable> _outboundEventSubscriptions = new Dictionary<string, IDisposable>();
+        private ChannelWriter<InboundGrpcEvent> _inboundWriter;
+        private ConcurrentDictionary<StreamingMessage.ContentOneofCase, Action<OutboundGrpcEvent>> _handlers = new ConcurrentDictionary<StreamingMessage.ContentOneofCase, Action<OutboundGrpcEvent>>();
 
         public TestFunctionRpcService(IScriptEventManager eventManager, string workerId, TestLogger logger, string expectedLogMsg = "")
         {
-            _eventManager = eventManager;
             _logger = logger;
             _workerId = workerId;
-            _outboundEventSubscriptions.Add(workerId, _eventManager.OfType<OutboundGrpcEvent>()
-                        .Where(evt => evt.WorkerId == workerId)
-                        .Subscribe(evt =>
-                        {
-                            _logger.LogInformation(expectedLogMsg);
-                        }));
+            if (eventManager.TryGetGrpcChannels(workerId, out var inbound, out var outbound))
+            {
+                _ = ListenAsync(outbound.Reader, expectedLogMsg);
+                _inboundWriter = inbound.Writer;
+
+                PublishStartStreamEvent(); // simulate the start-stream immediately
+            }
+        }
+
+        public void OnMessage(StreamingMessage.ContentOneofCase messageType, Action<OutboundGrpcEvent> callback)
+            => _handlers.AddOrUpdate(messageType, callback, (messageType, oldValue) => oldValue + callback);
+
+        public void AutoReply(StreamingMessage.ContentOneofCase messageType)
+        {
+            // apply standard default responses
+            Action<OutboundGrpcEvent> callback = messageType switch
+            {
+                StreamingMessage.ContentOneofCase.FunctionEnvironmentReloadRequest => _ => PublishFunctionEnvironmentReloadResponseEvent(),
+                _ => null,
+            };
+            if (callback is not null)
+            {
+                OnMessage(messageType, callback);
+            }
+        }
+
+        private void OnMessage(OutboundGrpcEvent message)
+        {
+            if (_handlers.TryRemove(message.MessageType, out var action))
+            {
+                try
+                {
+                    _logger.LogDebug("[service] invoking auto-reply for {0}, {1}: {2}", _workerId, message.MessageType, action?.Method?.Name);
+                    action?.Invoke(message);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex.Message);
+                }
+            }
+        }
+
+        private async Task ListenAsync(ChannelReader<OutboundGrpcEvent> source, string expectedLogMsg)
+        {
+            await Task.Yield(); // free up caller
+            try
+            {
+                while (await source.WaitToReadAsync())
+                {
+                    while (source.TryRead(out var evt))
+                    {
+                        _logger.LogDebug("[service] received {0}, {1}", evt.WorkerId, evt.MessageType);
+                        _logger.LogInformation(expectedLogMsg);
+
+                        OnMessage(evt);
+                    }
+                }
+            }
+            catch
+            {
+            }
+        }
+
+        private ValueTask WriteAsync(StreamingMessage message)
+            => _inboundWriter is null ? default
+            : _inboundWriter.WriteAsync(new InboundGrpcEvent(_workerId, message));
+
+        private void Write(StreamingMessage message)
+        {
+            if (_inboundWriter is null)
+            {
+                _logger.LogDebug("[service] no writer for {0}, {1}", _workerId, message.ContentCase);
+                return;
+            }
+            var evt = new InboundGrpcEvent(_workerId, message);
+            _logger.LogDebug("[service] sending {0}, {1}", evt.WorkerId, evt.MessageType);
+            if (_inboundWriter.TryWrite(evt))
+            {
+                return;
+            }
+            var vt = _inboundWriter.WriteAsync(evt);
+            if (vt.IsCompleted)
+            {
+                try
+                {
+                    vt.GetAwaiter().GetResult();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex.Message);
+                }
+            }
+            else
+            {
+                _ = ObserveEventually(vt, _logger);
+            }
+            static async Task ObserveEventually(ValueTask valueTask, ILogger logger)
+            {
+                try
+                {
+                    await valueTask;
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex.Message);
+                }
+            }
         }
 
         public void PublishFunctionLoadResponseEvent(string functionId)
@@ -59,7 +151,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 FunctionLoadResponse = functionLoadResponse
             };
-            _eventManager.Publish(new InboundGrpcEvent(_workerId, responseMessage));
+            Write(responseMessage);
         }
 
         public void PublishFunctionLoadResponsesEvent(List<string> functionIds, StatusResult statusResult)
@@ -81,7 +173,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 FunctionLoadResponseCollection = functionLoadResponseCollection
             };
-            _eventManager.Publish(new InboundGrpcEvent(_workerId, responseMessage));
+            Write(responseMessage);
         }
 
         public void PublishFunctionEnvironmentReloadResponseEvent()
@@ -91,7 +183,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 FunctionEnvironmentReloadResponse = relaodEnvResponse
             };
-            _eventManager.Publish(new InboundGrpcEvent(_workerId, responseMessage));
+            Write(responseMessage);
         }
 
         public void PublishWorkerInitResponseEvent(IDictionary<string, string> capabilities = null, WorkerMetadata workerMetadata = null)
@@ -121,10 +213,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 WorkerInitResponse = initResponse
             };
 
-            _eventManager.Publish(new InboundGrpcEvent(_workerId, responseMessage));
+            Write(responseMessage);
         }
 
-        public void PublishWorkerInitResponseEventWithSharedMemoryDataTransferCapability()
+        private void PublishWorkerInitResponseEventWithSharedMemoryDataTransferCapability()
         {
             StatusResult statusResult = new StatusResult()
             {
@@ -138,7 +230,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 WorkerInitResponse = initResponse
             };
-            _eventManager.Publish(new InboundGrpcEvent(_workerId, responseMessage));
+            Write(responseMessage);
         }
 
         public void PublishSystemLogEvent(RpcLog.Types.Level inputLevel)
@@ -154,7 +246,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 RpcLog = rpcLog
             };
-            _eventManager.Publish(new InboundGrpcEvent(_workerId, logMessage));
+            Write(logMessage);
         }
 
         public static FunctionEnvironmentReloadResponse GetTestFunctionEnvReloadResponse()
@@ -185,10 +277,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 InvocationResponse = invocationResponse
             };
-            _eventManager.Publish(new InboundGrpcEvent(_workerId, responseMessage));
+            Write(responseMessage);
         }
 
-        public void PublishStartStreamEvent(string workerId)
+        private void PublishStartStreamEvent()
         {
             StatusResult statusResult = new StatusResult()
             {
@@ -196,13 +288,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             };
             StartStream startStream = new StartStream()
             {
-                WorkerId = workerId
+                WorkerId = _workerId
             };
             StreamingMessage responseMessage = new StreamingMessage()
             {
                 StartStream = startStream
             };
-            _eventManager.Publish(new InboundGrpcEvent(_workerId, responseMessage));
+            Write(responseMessage);
         }
 
         public void PublishWorkerMetadataResponse(string workerId, string functionId, IEnumerable<FunctionMetadata> functionMetadata, bool successful, bool useDefaultMetadataIndexing = false, bool overallStatus = true)
@@ -245,7 +337,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 FunctionMetadataResponse = overallResponse
             };
-            _eventManager.Publish(new InboundGrpcEvent(_workerId, responseMessage));
+            Write(responseMessage);
         }
     }
 }

@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 }
             });
 
-            Assert.True(inboundEvent.IsLogOfCategory(categoryToTest));
+            Assert.True(inboundEvent.Message.RpcLog.LogCategory == categoryToTest);
         }
     }
 }
