@@ -2,6 +2,7 @@
 <!-- Please add your release notes in the following format:
 - My change description (#PR)
 -->
+- Update Python Worker Version to [4.7.0](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.7.0)
 - Update Python Worker Version to [4.6.0](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.6.0)
 - Update Python Worker Version to [4.5.0](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.5.0)
 
