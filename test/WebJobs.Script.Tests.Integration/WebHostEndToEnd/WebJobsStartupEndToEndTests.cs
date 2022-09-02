@@ -47,6 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
         public async Task ExternalStartup_InvalidOverwrite_StopsHost()
         {
             _envVars["Cron"] = "* * * * * *";
+            _envVars[EnvironmentSettingNames.FunctionsExtensionVersion] = "~4";
 
             // We need different fixture setup for each test.
             var fixture = new CSharpPrecompiledEndToEndTestFixture(_projectName, _envVars); // Startup.cs will change this.
@@ -66,8 +67,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
 
                 // Check that one startup began successfully, then the restart was suppressed.
                 var logMessages = fixture.Host.GetWebHostLogMessages();
-                Assert.Single(logMessages, p => p.FormattedMessage != null && p.FormattedMessage.Contains("Building host: startup suppressed: 'True'"));
-                Assert.Single(logMessages, p => p.FormattedMessage != null && p.FormattedMessage.Contains("Building host: startup suppressed: 'False'"));
+                Assert.Single(logMessages, p => p.FormattedMessage != null && p.FormattedMessage.Contains("Building host: version spec: ~4, startup suppressed: 'True'"));
+                Assert.Single(logMessages, p => p.FormattedMessage != null && p.FormattedMessage.Contains("Building host: version spec: ~4, startup suppressed: 'False'"));
             }
             finally
             {

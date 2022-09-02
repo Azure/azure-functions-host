@@ -209,6 +209,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         }
 
         [Theory]
+        [InlineData("~1", "~1")]
+        [InlineData("~2", "~2")]
+        [InlineData("~3", "~3")]
+        [InlineData("~4", "~4")]
+        [InlineData(null, "")]
+        [InlineData("", "")]
+        public void Returns_FunctionsExtensionVersion(string functionsExtensionVersion, string functionsExtensionVersionExpected)
+        {
+            var enviroment = new TestEnvironment();
+            enviroment.SetEnvironmentVariable(FunctionsExtensionVersion, functionsExtensionVersion);
+            Assert.Equal(functionsExtensionVersionExpected, enviroment.GetFunctionsExtensionVersion());
+        }
+
+        [Theory]
         [InlineData(RpcWorkerConstants.PowerShellLanguageWorkerName, true, false, true)]
         [InlineData(RpcWorkerConstants.PowerShellLanguageWorkerName, false, true, true)]
         [InlineData(RpcWorkerConstants.PowerShellLanguageWorkerName, false, false, true)]
