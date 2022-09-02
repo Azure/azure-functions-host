@@ -90,11 +90,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions
                 new EventId(512, nameof(Restarted)),
                 "Host restarted.");
 
-        private static readonly Action<ILogger, bool, bool, Guid, Exception> _building =
-            LoggerMessage.Define<bool, bool, Guid>(
+        private static readonly Action<ILogger, string, bool, bool, Guid, Exception> _building =
+            LoggerMessage.Define<string, bool, bool, Guid>(
                 LogLevel.Information,
                 new EventId(513, nameof(Building)),
-                "Building host: startup suppressed: '{skipHostStartup}', configuration suppressed: '{skipHostJsonConfiguration}', startup operation id: '{operationId}'");
+                "Building host: version spec: {functionsExtensionVersion}, startup suppressed: '{skipHostStartup}', configuration suppressed: '{skipHostJsonConfiguration}', startup operation id: '{operationId}'");
 
         private static readonly Action<ILogger, Guid, Exception> _startupOperationWasCanceled =
             LoggerMessage.Define<Guid>(
@@ -264,9 +264,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions
             _restarted(logger, null);
         }
 
-        public static void Building(this ILogger logger, bool skipHostStartup, bool skipHostJsonConfiguration, Guid operationId)
+        public static void Building(this ILogger logger, string functionExtensionVersion, bool skipHostStartup, bool skipHostJsonConfiguration, Guid operationId)
         {
-            _building(logger, skipHostStartup, skipHostJsonConfiguration, operationId, null);
+            _building(logger, functionExtensionVersion, skipHostStartup, skipHostJsonConfiguration, operationId, null);
         }
 
         public static void StartupOperationWasCanceled(this ILogger logger, Guid operationId)
