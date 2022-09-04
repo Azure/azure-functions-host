@@ -42,8 +42,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             get
             {
-                return _primaryHostStateProvider.IsPrimary &&
+                var shouldSyncTrigger = _primaryHostStateProvider.IsPrimary &&
                        (_scriptHostManager.State == ScriptHostState.Running);
+                _logger.LogDebug("ShouldSyncTriggers: '{shouldSyncTrigger}',PrimaryHostStateProvider.IsPrimary: '{primaryHostStateProvider.IsPrimary}',ScriptHostState: '{scriptHostManager.State}'", shouldSyncTrigger, _primaryHostStateProvider.IsPrimary, _scriptHostManager.State);
+                return shouldSyncTrigger;
             }
         }
 
