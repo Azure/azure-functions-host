@@ -10,7 +10,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
     {
         Task<bool> MountAzureFileShare(HostAssignmentContext assignmentContext);
 
-        Task<bool> ApplyBlobPackageContext(RunFromPackageContext pkgContext, string targetPath, bool azureFilesMounted,
+        Task<bool> ApplyRunFromPackageContext(RunFromPackageContext pkgContext, string targetPath, bool azureFilesMounted,
             bool throwOnFailure = true);
     }
 }

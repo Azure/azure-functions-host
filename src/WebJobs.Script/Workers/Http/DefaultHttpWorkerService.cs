@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         private readonly bool _enableRequestTracing;
 
         public DefaultHttpWorkerService(IOptions<HttpWorkerOptions> httpWorkerOptions, ILoggerFactory loggerFactory, IEnvironment environment, IOptions<ScriptJobHostOptions> scriptHostOptions)
-            : this(new HttpClient(), httpWorkerOptions, loggerFactory.CreateLogger<DefaultHttpWorkerService>(), environment, scriptHostOptions)
+            : this(CreateHttpClient(httpWorkerOptions), httpWorkerOptions, loggerFactory.CreateLogger<DefaultHttpWorkerService>(), environment, scriptHostOptions)
         {
         }
 
@@ -47,6 +47,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 // Set 1 minute greater than FunctionTimeout to ensure invoction failure due to timeout is raised before httpClient raises operation cancelled exception
                 _httpClient.Timeout = scriptHostOptions.Value.FunctionTimeout.Value.Add(TimeSpan.FromMinutes(1));
             }
+        }
+
+        private static HttpClient CreateHttpClient(IOptions<HttpWorkerOptions> httpWorkerOptions)
+        {
+            HttpClientHandler handler = new ();
+            handler.AllowAutoRedirect = !httpWorkerOptions.Value.EnableForwardingHttpRequest;
+            return new (handler);
         }
 
         public Task InvokeAsync(ScriptInvocationContext scriptInvocationContext)

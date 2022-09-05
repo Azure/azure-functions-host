@@ -46,7 +46,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ContainerManagement
         {
             _environment.SetEnvironmentVariable(ContainerName, null);
             _environment.SetEnvironmentVariable(AzureWebsiteInstanceId, null);
-            Assert.False(_environment.IsLinuxConsumption());
+            Assert.False(_environment.IsAnyLinuxConsumption());
+
+            var initializationHostService = new LinuxContainerInitializationHostService(_environment, _instanceManagerMock.Object, NullLogger<LinuxContainerInitializationHostService>.Instance, _startupContextProvider);
+            await initializationHostService.StartAsync(CancellationToken.None);
+        }
+
+        [Fact]
+        public async Task Does_Not_Run_In_Linux_Container_On_Legion()
+        {
+            _environment.SetEnvironmentVariable(ContainerName, "abcd");
+            _environment.SetEnvironmentVariable(LegionServiceHost, "1");
+            Assert.True(_environment.IsAnyLinuxConsumption());
+            Assert.False(_environment.IsLinuxConsumptionOnAtlas());
+            Assert.True(_environment.IsLinuxConsumptionOnLegion());
 
             var initializationHostService = new LinuxContainerInitializationHostService(_environment, _instanceManagerMock.Object, NullLogger<LinuxContainerInitializationHostService>.Instance, _startupContextProvider);
             await initializationHostService.StartAsync(CancellationToken.None);

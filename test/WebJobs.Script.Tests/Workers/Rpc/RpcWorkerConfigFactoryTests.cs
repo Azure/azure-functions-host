@@ -92,6 +92,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public void JavaPath_FromEnvVars()
         {
+            var javaHome = Environment.GetEnvironmentVariable("JAVA_HOME");
+            if (string.IsNullOrWhiteSpace(javaHome))
+            {
+                // if the var doesn't exist, set something temporary to make it at least work
+                Environment.SetEnvironmentVariable("JAVA_HOME", Path.GetTempPath());
+            }
             var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder();
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);

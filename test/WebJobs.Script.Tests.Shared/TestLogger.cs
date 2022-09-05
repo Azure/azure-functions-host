@@ -6,19 +6,28 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using Microsoft.Extensions.Logging;
+using Xunit.Abstractions;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
+    [DebuggerDisplay("{DebuggerDisplay,nq}")]
+    public class TestLogger<T> : TestLogger, ILogger<T>
+    {
+        public TestLogger() : base(typeof(T).Name) { }
+    }
+
     [DebuggerDisplay("{DebuggerDisplay,nq}")]
     public class TestLogger : ILogger
     {
         private readonly object _syncLock = new object();
         private readonly IExternalScopeProvider _scopeProvider;
-        private IList<LogMessage> _logMessages = new List<LogMessage>();
+        private readonly IList<LogMessage> _logMessages = new List<LogMessage>();
+        private readonly ITestOutputHelper _testOutput; // optionally write direct to the test output
 
-        public TestLogger(string category)
+        public TestLogger(string category, ITestOutputHelper testOutput = null)
             : this(category, new LoggerExternalScopeProvider())
         {
+            _testOutput = testOutput;
         }
 
         public TestLogger(string category, IExternalScopeProvider scopeProvider)
@@ -72,6 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 _logMessages.Add(logMessage);
             }
+            _testOutput?.WriteLine($"{logLevel}: {formatter(state, exception)}");
         }
     }
 

@@ -34,6 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         private readonly Mock<IWorkerProcess> _rpcWorkerProcess;
         private readonly TestLogger _testLogger;
         private readonly IConfiguration _emptyConfig;
+        private readonly TestSystemRuntimeInformation _testSysRuntimeInfo = new TestSystemRuntimeInformation();
 
         private WebHostRpcWorkerChannelManager _rpcWorkerChannelManager;
 
@@ -85,6 +86,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.NotNull(initializedChannel);
             Assert.Equal(javaWorkerChannel.Id, initializedChannel.Id);
             Assert.Equal(_rpcWorkerChannelManager.GetChannels(RpcWorkerConstants.JavaLanguageWorkerName).Count(), 2);
+
+            // test case insensitivity
+            Assert.Equal(_rpcWorkerChannelManager.GetChannels("Java").Count(), 2);
         }
 
         [Fact]
@@ -298,7 +302,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var config = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string>
                 {
-                   [$"{RpcWorkerConstants.LanguageWorkersSectionName}:{languageWorkerName}:{WorkerConstants.WorkerDescriptionArguments}"] = argument
+                    [$"{RpcWorkerConstants.LanguageWorkersSectionName}:{languageWorkerName}:{WorkerConstants.WorkerDescriptionArguments}"] = argument
                 })
                 .Build();
             _rpcWorkerChannelManager = new WebHostRpcWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, _rpcWorkerChannelFactory, _optionsMonitor, testMetricsLogger, _workerOptionsMonitor, config);

@@ -37,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             if (assembly == null)
             {
-                _logger.AssemblyDynamiclyResolutionFailure(assemblyName.FullName, _functionMetadata.Name);
+                _logger.AssemblyDynamicallyResolutionFailure(assemblyName.FullName, _functionMetadata.Name);
             }
 
             return assembly;
@@ -61,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             assembly = _metadataResolver?.ResolveAssembly(assemblyName, this);
             if (assembly == null)
             {
-                _logger.AssemblyDynamiclyResolved(assemblyName.FullName, _functionMetadata.Name);
+                _logger.AssemblyDynamicallyResolved(assemblyName.FullName, _functionMetadata.Name);
             }
 
             return assembly;

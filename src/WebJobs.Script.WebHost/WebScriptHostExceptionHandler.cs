@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             if (timeoutException?.Task != null)
             {
-                // We may double the timeoutGracePeriod here by first waiting to see if the iniital
+                // We may double the timeoutGracePeriod here by first waiting to see if the initial
                 // function task that started the exception has completed.
                 Task completedTask = await Task.WhenAny(timeoutException.Task, Task.Delay(timeoutGracePeriod));
 

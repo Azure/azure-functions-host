@@ -63,8 +63,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 await DelayUntilFunctionDispatcherInitializedOrShutdown();
             }
 
+            var triggerParameterIndex = 0;
+            var cancellationTokenParameterIndex = 4;
             var bindingData = context.Binder.BindingData;
-            object triggerValue = TransformInput(parameters[0], bindingData);
+            object triggerValue = TransformInput(parameters[triggerParameterIndex], bindingData);
             var triggerInput = (_bindingMetadata.Name, _bindingMetadata.DataType ?? DataType.String, triggerValue);
             IEnumerable<(string, DataType, object)> inputs = new[] { triggerInput };
             if (_inputBindings.Count > 1)
@@ -84,9 +86,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 Traceparent = Activity.Current?.Id,
                 Tracestate = Activity.Current?.TraceStateString,
                 Attributes = Activity.Current?.Tags,
-
-                // TODO: link up cancellation token to parameter descriptors
-                CancellationToken = CancellationToken.None,
+                CancellationToken = HandleCancellationTokenParameter(parameters[cancellationTokenParameterIndex]),
                 Logger = context.Logger
             };
 
@@ -185,6 +185,16 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             // TODO: investigate moving POCO style binding addition to sdk
             Utility.ApplyBindingData(input, bindingData);
             return input;
+        }
+
+        private CancellationToken HandleCancellationTokenParameter(object input)
+        {
+            if (input == null)
+            {
+                return CancellationToken.None;
+            }
+
+            return (CancellationToken)input;
         }
 
         private void HandleReturnParameter(ScriptInvocationResult result)

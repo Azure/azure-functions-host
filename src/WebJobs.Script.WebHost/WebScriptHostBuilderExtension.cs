@@ -90,7 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         loggingBuilder.Services.AddSingleton<ILoggerProvider, AzureMonitorDiagnosticLoggerProvider>();
                     }
 
-                    if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableDiagnosticEventLogging))
+                    if (!FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagDisableDiagnosticEventLogging))
                     {
                         loggingBuilder.Services.AddSingleton<ILoggerProvider, DiagnosticEventLoggerProvider>();
                         loggingBuilder.Services.TryAddSingleton<IDiagnosticEventRepository, DiagnosticEventTableStorageRepository>();
@@ -123,7 +123,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     services.TryAddSingleton<IJobHostMiddlewarePipeline, DefaultMiddlewarePipeline>();
                     services.TryAddEnumerable(ServiceDescriptor.Singleton<IJobHostHttpMiddleware, CustomHttpHeadersMiddleware>());
                     services.TryAddEnumerable(ServiceDescriptor.Singleton<IJobHostHttpMiddleware, HstsConfigurationMiddleware>());
-                    if (environment.IsLinuxConsumption())
+                    if (environment.IsAnyLinuxConsumption())
                     {
                         services.AddSingleton<ICorsMiddlewareFactory, CorsMiddlewareFactory>();
                         services.TryAddEnumerable(ServiceDescriptor.Singleton<IJobHostHttpMiddleware, JobHostCorsMiddleware>());
@@ -151,6 +151,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     // Hosted services
                     services.AddSingleton<IFileMonitoringService, FileMonitoringService>();
                     services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, IFileMonitoringService>(p => p.GetService<IFileMonitoringService>()));
+
+                    if (environment.IsKubernetesManagedHosting())
+                    {
+                        services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, FunctionsVersionLoggerService>());
+                    }
 
                     ConfigureRegisteredBuilders(services, rootServiceProvider);
                 });

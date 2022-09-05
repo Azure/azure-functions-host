@@ -33,6 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string LogPropertyIsSystemLogKey = "MS_IsSystemLog";
         public const string LogPropertyFunctionInvocationIdKey = "MS_FunctionInvocationId";
         public const string LogPropertyHostInstanceIdKey = "HostInstanceId";
+        public const string LogPropertyProcessIdKey = "ProcessId";
         public const string LogPropertyActivityIdKey = "MS_ActivityId";
 
         public const string TraceSourceSecretManagement = "SecretManagement";
@@ -65,6 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string SystemReturnParameterBindingName = "$return";
         public const string SystemReturnParameterName = "_return";
         public const string SystemLoggerParameterName = "_logger";
+        public const string SystemCancellationTokenParameterName = "_cancellationToken";
 
         public const string DebugSentinelFileName = "debug_sentinel";
         public const string DiagnosticSentinelFileName = "diagnostic_sentinel";
@@ -93,6 +95,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AntaresColdStartHeaderName = "X-MS-COLDSTART";
         public const string SiteTokenHeaderName = "x-ms-site-restricted-token";
         public const string EasyAuthIdentityHeader = "x-ms-client-principal";
+        public const string AntaresPlatformInternal = "x-ms-platform-internal";
         public const string AzureVersionHeader = "x-ms-version";
         public const string XIdentityHeader = "X-IDENTITY-HEADER";
         public const string DynamicSku = "Dynamic";
@@ -105,8 +108,11 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string FeatureFlagAllowSynchronousIO = "AllowSynchronousIO";
         public const string FeatureFlagRelaxedAssemblyUnification = "RelaxedAssemblyUnification";
         public const string FeatureFlagEnableDiagnosticEventLogging = "EnableDiagnosticEventLogging";
+        public const string FeatureFlagDisableDiagnosticEventLogging = "DisableDiagnosticEventLogging";
         public const string FeatureFlagDisableMergedWebHostScriptHostConfiguration = "DisableMergedConfiguration";
         public const string FeatureFlagEnableWorkerIndexing = "EnableWorkerIndexing";
+        public const string FeatureFlagEnableDebugTracing = "EnableDebugTracing";
+        public const string FeatureFlagEnableMultiLanguageWorker = "EnableMultiLanguageWorker";
 
         public const string AdminJwtValidAudienceFormat = "https://{0}.azurewebsites.net/azurefunctions";
         public const string AdminJwtValidIssuerFormat = "https://{0}.scm.azurewebsites.net";
@@ -181,6 +187,14 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string DiagnosticEventKey = "MS_DiagnosticEvent";
         public const string HelpLinkKey = "MS_HelpLink";
         public const string ErrorCodeKey = "MS_ErrorCode";
+
+        public const string DataFolderName = "data";
+        public const string SitePackagesFolderName = "SitePackages";
+        public const string SitePackageNameTxtFileName = "packagename.txt";
+        // Diagnostic sources
+        public const string HostDiagnosticSourcePrefix = "Microsoft.Azure.Functions.Host.";
+        public const string HostDiagnosticSourceDebugEventNamePrefix = "debug-";
+        public const string DiagnosticSourceAssemblyContext = HostDiagnosticSourcePrefix + "AssemblyContext";
 
         public static readonly ImmutableArray<string> HttpMethods = ImmutableArray.Create("get", "post", "delete", "head", "patch", "put", "options");
         public static readonly ImmutableArray<string> AssemblyFileTypes = ImmutableArray.Create(".dll", ".exe");

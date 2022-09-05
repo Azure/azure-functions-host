@@ -27,6 +27,7 @@ using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
+using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Configuration;
@@ -111,7 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 var extensionBundleOptions = GetExtensionBundleOptions(config);
                 var bundleManager = new ExtensionBundleManager(extensionBundleOptions, SystemEnvironment.Instance, loggerFactory);
                 var metadataServiceManager = applicationOptions.RootServiceProvider.GetService<IFunctionMetadataManager>();
-                var languageWorkerOptions = applicationOptions.RootServiceProvider.GetService<IOptions<LanguageWorkerOptions>>();
+                var languageWorkerOptions = applicationOptions.RootServiceProvider.GetService<IOptionsMonitor<LanguageWorkerOptions>>();
 
                 var locator = new ScriptStartupTypeLocator(applicationOptions.ScriptPath, loggerFactory.CreateLogger<ScriptStartupTypeLocator>(), bundleManager, metadataServiceManager, metricsLogger, languageWorkerOptions);
 
@@ -162,7 +163,7 @@ namespace Microsoft.Azure.WebJobs.Script
                             // Validate the config for anything that needs the Scale Controller.
                             // Including Core Tools as a warning during development time.
                             if (environment.IsWindowsConsumption() ||
-                                environment.IsLinuxConsumption() ||
+                                environment.IsAnyLinuxConsumption() ||
                                 (environment.IsWindowsElasticPremium() && !environment.IsRuntimeScaleMonitoringEnabled()) ||
                                 environment.IsCoreTools())
                             {
@@ -386,7 +387,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     o.InstrumentationKey = appInsightsInstrumentationKey;
                     o.ConnectionString = appInsightsConnectionString;
-                });
+                }, t => t.TelemetryProcessorChainBuilder.Use(next => new ScriptTelemetryProcessor(next)));
 
                 builder.Services.ConfigureOptions<ApplicationInsightsLoggerOptionsSetup>();
 

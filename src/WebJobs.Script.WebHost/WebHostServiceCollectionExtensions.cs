@@ -99,8 +99,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IEventGenerator>(p =>
             {
                 var environment = p.GetService<IEnvironment>();
-                if (environment.IsLinuxConsumption())
+                if (environment.IsLinuxConsumptionOnAtlas())
                 {
+                    return new LinuxContainerEventGenerator(environment);
+                }
+                else if (environment.IsLinuxConsumptionOnLegion())
+                {
+                    //todo: Replace with legion specific logger
                     return new LinuxContainerEventGenerator(environment);
                 }
                 else if (SystemEnvironment.Instance.IsLinuxAppService())
@@ -162,13 +167,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // Performs function assembly analysis to generete log use of unoptimized assemblies.
             services.AddSingleton<IHostedService, AssemblyAnalyzer.AssemblyAnalysisService>();
 
+            // Manages a diagnostic listener that subscribes to diagnostic sources setup in the host
+            // and persists events in the logging infrastructure.
+            services.AddSingleton<IHostedService, DiagnosticListenerService>();
+
             // Handles shutdown of services that need to happen after StopAsync() of all services of type IHostedService are complete.
             // Order is important.
             // All other IHostedService injections need to go before this.
             services.AddSingleton<IHostedService, HostedServiceManager>();
 
             // Configuration
+
+            // ScriptApplicationHostOptions are special in that they need to be reset on specialization, but the reset
+            // must happen after the StandbyOptions have reset. For this reason, we have a special ChangeTokenSource that
+            // will reset the ScriptApplicationHostOptions only after StandbyOptions have been reset.
             services.ConfigureOptions<ScriptApplicationHostOptionsSetup>();
+            services.AddSingleton<IOptionsChangeTokenSource<ScriptApplicationHostOptions>, ScriptApplicationHostOptionsChangeTokenSource>();
+
             services.ConfigureOptions<StandbyOptionsSetup>();
             services.ConfigureOptions<LanguageWorkerOptionsSetup>();
             services.ConfigureOptionsWithChangeTokenSource<AppServiceOptions, AppServiceOptionsSetup, SpecializationChangeTokenSource<AppServiceOptions>>();
@@ -204,7 +219,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IHostedService>(s =>
             {
                 var environment = s.GetService<IEnvironment>();
-                if (environment.IsLinuxConsumption())
+                //todo: Replace with legion specific service
+                if (environment.IsAnyLinuxConsumption())
                 {
                     var instanceManager = s.GetService<IInstanceManager>();
                     var logger = s.GetService<ILogger<LinuxContainerInitializationHostService>>();
@@ -232,7 +248,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IMeshServiceClient>(s =>
             {
                 var environment = s.GetService<IEnvironment>();
-                if (environment.IsLinuxConsumption())
+                if (environment.IsAnyLinuxConsumption())
                 {
                     var httpClientFactory = s.GetService<IHttpClientFactory>();
                     var logger = s.GetService<ILogger<MeshServiceClient>>();
@@ -245,7 +261,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<LinuxContainerActivityPublisher>(s =>
             {
                 var environment = s.GetService<IEnvironment>();
-                if (environment.IsLinuxConsumption())
+                if (environment.IsAnyLinuxConsumption())
                 {
                     var logger = s.GetService<ILogger<LinuxContainerActivityPublisher>>();
                     var meshInitServiceClient = s.GetService<IMeshServiceClient>();
@@ -259,7 +275,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IHostedService>(s =>
             {
                 var environment = s.GetService<IEnvironment>();
-                if (environment.IsLinuxConsumption())
+                if (environment.IsAnyLinuxConsumption())
                 {
                     return s.GetRequiredService<LinuxContainerActivityPublisher>();
                 }
@@ -270,7 +286,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<ILinuxContainerActivityPublisher>(s =>
             {
                 var environment = s.GetService<IEnvironment>();
-                if (environment.IsLinuxConsumption())
+                if (environment.IsAnyLinuxConsumption())
                 {
                     return s.GetRequiredService<LinuxContainerActivityPublisher>();
                 }

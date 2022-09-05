@@ -27,9 +27,11 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AppInsightsInstrumentationKey = "APPINSIGHTS_INSTRUMENTATIONKEY";
         public const string AppInsightsConnectionString = "APPLICATIONINSIGHTS_CONNECTION_STRING";
         public const string AppInsightsQuickPulseAuthApiKey = "APPINSIGHTS_QUICKPULSEAUTHAPIKEY";
+        public const string AppInsightsAgent = "APPLICATIONINSIGHTS_ENABLE_AGENT";
         public const string FunctionsExtensionVersion = "FUNCTIONS_EXTENSION_VERSION";
         public const string FunctionWorkerRuntime = "FUNCTIONS_WORKER_RUNTIME";
         public const string ContainerName = "CONTAINER_NAME";
+        public const string LegionServiceHost = "LEGION_SERVICE_HOST";
         public const string WebSiteHomeStampName = "WEBSITE_HOME_STAMPNAME";
         public const string WebSiteStampDeploymentId = "WEBSITE_STAMP_DEPLOYMENT_ID";
         public const string WebSiteAuthEncryptionKey = "WEBSITE_AUTH_ENCRYPTION_KEY";
@@ -55,6 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureFilesContentShare = "WEBSITE_CONTENTSHARE";
         public const string AzureWebsiteRuntimeSiteName = "WEBSITE_DEPLOYMENT_ID";
         public const string FunctionsRuntimeScaleMonitoringEnabled = "FUNCTIONS_RUNTIME_SCALE_MONITORING_ENABLED";
+        public const string FunctionsAdminIsolationEnabled = "FUNCTIONS_ADMIN_ISOLATION_ENABLED";
         public const string AzureWebsiteStartupContextCache = "WEBSITE_FUNCTIONS_STARTUPCONTEXT_CACHE";
         public const string AzureWebJobsFeatureFlags = "AzureWebJobsFeatureFlags";
         public const string CloudName = "WEBSITE_CLOUD_NAME";
@@ -130,5 +133,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AppKind = "APP_KIND";
 
         public const string DrainOnApplicationStopping = "FUNCTIONS_ENABLE_DRAIN_ON_APP_STOPPING";
+        public const string Framework = "FRAMEWORK";
+        public const string FrameworkVersion = "FRAMEWORK_VERSION";
     }
 }

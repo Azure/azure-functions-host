@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Extensions.Configuration;
@@ -11,17 +12,26 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
     internal class LanguageWorkerOptionsSetup : IConfigureOptions<LanguageWorkerOptions>
     {
-        private IConfiguration _configuration;
-        private ILogger _logger;
-        private IEnvironment _environment;
-        private IMetricsLogger _metricsLogger;
+        private readonly IConfiguration _configuration;
+        private readonly ILogger _logger;
+        private readonly IEnvironment _environment;
+        private readonly IMetricsLogger _metricsLogger;
 
-        public LanguageWorkerOptionsSetup(IConfiguration configuration, ILoggerFactory loggerFactory, IEnvironment environment, IMetricsLogger metricsLogger)
+        public LanguageWorkerOptionsSetup(IConfiguration configuration,
+                                          ILoggerFactory loggerFactory,
+                                          IEnvironment environment,
+                                          IMetricsLogger metricsLogger)
         {
-            _configuration = configuration;
+            if (loggerFactory is null)
+            {
+                throw new ArgumentNullException(nameof(loggerFactory));
+            }
+
+            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+            _environment = environment ?? throw new ArgumentNullException(nameof(environment));
+            _metricsLogger = metricsLogger ?? throw new ArgumentNullException(nameof(metricsLogger));
+
             _logger = loggerFactory.CreateLogger("Host.LanguageWorkerConfig");
-            _environment = environment;
-            _metricsLogger = metricsLogger;
         }
 
         public void Configure(LanguageWorkerOptions options)
@@ -33,8 +43,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 options.WorkerConfigs = new List<RpcWorkerConfig>();
                 return;
             }
-            ISystemRuntimeInformation systemRuntimeInfo = new SystemRuntimeInformation();
-            var configFactory = new RpcWorkerConfigFactory(_configuration, _logger, systemRuntimeInfo, _environment, _metricsLogger);
+
+            var configFactory = new RpcWorkerConfigFactory(_configuration, _logger, SystemRuntimeInformation.Instance, _environment, _metricsLogger);
             options.WorkerConfigs = configFactory.GetConfigs();
         }
     }
