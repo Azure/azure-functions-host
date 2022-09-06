@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             _environment = environment;
             _logger = logger;
             _next = next;
-            _invoke = InvokeClrOptimizationCheck;
+            _invoke = _environment.IsLinuxConsumption() ? next : InvokeClrOptimizationCheck;
         }
 
         public Task Invoke(HttpContext context)
@@ -56,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             try
             {
                 // optimization not intended for single core VMs
-                if (_webHostEnvironment.InStandbyMode && _environment.GetEffectiveCoresCount() > 1)
+                if (_webHostEnvironment.InStandbyMode && _environment.GetEffectiveCoresCount() > 1 && !_environment.IsLinuxConsumption())
                 {
                     // If in placeholder mode and already in NoGCRegion, let's end it then start NoGCRegion again.
                     // This may happen if there are multiple warmup calls(few minutes apart) during placeholder mode and before specialization.
