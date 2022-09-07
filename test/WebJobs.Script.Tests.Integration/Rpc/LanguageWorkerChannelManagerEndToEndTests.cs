@@ -32,6 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             public TestFixture() : base(@"TestScripts\ProxiesOnly", "proxiesOnly", string.Empty,
                 startHost: true)
             {
+                ProxyEndToEndTests.EnableProxiesOnSystemEnvironment();
             }
 
             protected override Task CreateTestStorageEntities()

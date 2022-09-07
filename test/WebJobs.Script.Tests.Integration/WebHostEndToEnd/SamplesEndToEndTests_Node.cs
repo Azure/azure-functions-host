@@ -364,6 +364,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             public TestFixture()
                 : base(Path.Combine(Environment.CurrentDirectory, "..", "..", "..", "..", "..", "sample", "node"), "samples", RpcWorkerConstants.NodeLanguageWorkerName)
             {
+                ProxyEndToEndTests.EnableProxiesOnSystemEnvironment();
             }
 
             protected override ExtensionPackageReference[] GetExtensionsToInstall()

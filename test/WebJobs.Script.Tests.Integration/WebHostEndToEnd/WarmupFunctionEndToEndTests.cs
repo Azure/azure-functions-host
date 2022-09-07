@@ -81,6 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             public TestFixture()
             {
+                ProxyEndToEndTests.EnableProxiesOnSystemEnvironment();
                 // copy test files to temp directory, since accessing the metadata APIs will result
                 // in file creations (for test data files)
                 var scriptSource = Path.Combine(Environment.CurrentDirectory, "..", "..", "..", "TestScripts", "WarmupFunction");

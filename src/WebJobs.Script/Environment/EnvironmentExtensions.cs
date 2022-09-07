@@ -74,6 +74,14 @@ namespace Microsoft.Azure.WebJobs.Script
             return categories.Contains(ScriptConstants.AzureMonitorTraceCategory);
         }
 
+        /// <summary>
+        /// Gets if <a href="https://docs.microsoft.com/azure/azure-functions/functions-proxies">proxies.json support</a> is enabled.
+        /// </summary>
+        public static bool IsProxiesEnabled(this IEnvironment environment)
+        {
+            return FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableProxies, environment);
+        }
+
         public static bool IsRunningAsHostedSiteExtension(this IEnvironment environment)
         {
             if (environment.IsAppService())

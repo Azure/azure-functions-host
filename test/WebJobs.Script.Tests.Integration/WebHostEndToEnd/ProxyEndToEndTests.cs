@@ -368,6 +368,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(response.Headers.Contains("Test"));
         }
 
+        // sets the shared environment variable to enable proxies
+        public static void EnableProxiesOnSystemEnvironment()
+        {
+            // the common code pattern here uses SystemEnvironment, not IEnvironment - so it can't really be nicely injected
+            if (!SystemEnvironment.Instance.IsProxiesEnabled()) // only need to do this once (multiple fixtures might need it independently)
+            {
+                var oldValue = SystemEnvironment.Instance.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags);
+                var newValue = string.IsNullOrWhiteSpace(oldValue) ? ScriptConstants.FeatureFlagEnableProxies : $"{oldValue},{ScriptConstants.FeatureFlagEnableProxies}";
+                SystemEnvironment.Instance.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, newValue);
+                System.Diagnostics.Debug.Assert(SystemEnvironment.Instance.IsProxiesEnabled(), "proxies should now be enabled");
+            }
+        }
 
         public class TestFixture : IDisposable
         {
@@ -375,6 +387,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             public TestFixture()
             {
+                EnableProxiesOnSystemEnvironment();
                 // copy test files to temp directory, since accessing the metadata APIs will result
                 // in file creations (for test data files)
                 var scriptSource = Path.Combine(Environment.CurrentDirectory, @"..\..\..\TestScripts\Proxies");
