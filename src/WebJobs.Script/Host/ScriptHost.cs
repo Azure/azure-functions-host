@@ -354,7 +354,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             string extensionVersion = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsExtensionVersion);
             string hostId = await _hostIdProvider.GetHostIdAsync(CancellationToken.None);
-            _logger.StartingHost(hostId, InstanceId, Version, _processId, AppDomain.CurrentDomain.Id, InDebugMode, InDiagnosticMode, extensionVersion);
+            _logger.StartingHost(hostId, InstanceId, Version, _processId, AppDomain.CurrentDomain.Id, InDebugMode, InDiagnosticMode, extensionVersion, _primaryHostStateProvider.IsPrimary);
         }
 
         private void LogHostFunctionErrors()

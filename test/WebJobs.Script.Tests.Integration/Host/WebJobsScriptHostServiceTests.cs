@@ -165,7 +165,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             {
                 @"Information Generating 2 job function\(s\)",
                 "Host initialization: ConsecutiveErrors=0, StartupCount=1",
-                @"Information Starting Host \(HostId=(.*), InstanceId=(.*), Version=(.+), ProcessId=[0-9]+, AppDomainId=[0-9]+, InDebugMode=False, InDiagnosticMode=False, FunctionsExtensionVersion=\(null\)\)",
+                @"Information Starting Host \(HostId=(.*), InstanceId=(.*), Version=(.+), ProcessId=[0-9]+, AppDomainId=[0-9]+, InDebugMode=False, InDiagnosticMode=False, FunctionsExtensionVersion=\(null\), IsPrimaryHostInstance=False\)",
                 "Information Found the following functions:",
                 "Information Job host started",
             };
