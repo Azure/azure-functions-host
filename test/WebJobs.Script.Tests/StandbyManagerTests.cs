@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
@@ -131,7 +132,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await manager.InitializeAsync().ContinueWith(t => { }); // Ignore errors.
 
             // Ensure InitializedFromPlaceholder environment variable is set to true
-            Assert.Equal("true", _testEnvironment.GetEnvironmentVariable(EnvironmentSettingNames.InitializedFromPlaceholder));
+            Assert.Equal(bool.TrueString, _testEnvironment.GetEnvironmentVariable(EnvironmentSettingNames.InitializedFromPlaceholder));
         }
 
         private bool AreExpectedMetricsGenerated(TestMetricsLogger metricsLogger)

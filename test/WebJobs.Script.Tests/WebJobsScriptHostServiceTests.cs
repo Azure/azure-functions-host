@@ -113,9 +113,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // add general post startup validations here
             mockEventManager.Verify(_ => _.Publish(It.IsAny<HostStartEvent>()), Times.Once());
-
-            // InitializedFromPlaceholder should not be set if we don't specialize
-            Assert.Empty(Environment.GetEnvironmentVariable(EnvironmentSettingNames.InitializedFromPlaceholder));
         }
 
         [Fact]
@@ -183,9 +180,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var logMessages = _webHostLoggerProvider.GetAllLogMessages().Where(m => m.FormattedMessage.Contains("Restarting host."));
             Assert.Equal(2, logMessages.Count());
-
-            // InitializedFromPlaceholder should be set after specialization
-            Assert.Equal("true", Environment.GetEnvironmentVariable(EnvironmentSettingNames.InitializedFromPlaceholder));
         }
 
         [Fact]
