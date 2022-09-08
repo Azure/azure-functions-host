@@ -92,9 +92,9 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
                 // this can happen if the host is offline
             }
 
-            var agregatedVote = GetAggregateScaleVote(votes, context, _logger);
+            var aggregatedVote = GetAggregateScaleVote(votes, context, _logger);
 
-            return agregatedVote;
+            return aggregatedVote;
         }
 
         internal static int GetAggregateScaleVote(List<int> votes, ScaleStatusContext context, ILogger logger)
