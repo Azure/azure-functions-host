@@ -38,9 +38,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
         }
 
         [Theory]
-        [InlineData(0, ScaleVote.None)]
-        [InlineData(1, ScaleVote.ScaleIn)]
-        public async Task GetScaleStatus_NoMonitors_ReturnsExpectedStatus(int workerCount, ScaleVote expected)
+        [InlineData(0, 0)]
+        [InlineData(1, -1)]
+        public async Task GetScaleStatus_NoMonitors_ReturnsExpectedStatus(int workerCount, int expected)
         {
             var context = new ScaleStatusContext
             {
@@ -48,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
             };
             var status = await _scaleManager.GetScaleStatusAsync(context);
 
-            Assert.Equal(expected, status.Vote);
+            Assert.Equal(expected, status);
         }
 
         [Fact]
@@ -89,11 +89,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
             var logs = _loggerProvider.GetAllLogMessages();
             Assert.Equal("Computing scale status (WorkerCount=3)", logs[0].FormattedMessage);
             Assert.Equal("3 scale monitors to sample", logs[1].FormattedMessage);
-            Assert.Equal("Monitor 'testscalemonitor1' voted 'ScaleIn'", logs[2].FormattedMessage);
-            Assert.Equal("Monitor 'testscalemonitor2' voted 'ScaleOut'", logs[3].FormattedMessage);
-            Assert.Equal("Monitor 'testscalemonitor3' voted 'ScaleIn'", logs[4].FormattedMessage);
+            Assert.Equal("Monitor 'testscalemonitor1' voted '-1'", logs[2].FormattedMessage);
+            Assert.Equal("Monitor 'testscalemonitor2' voted '1'", logs[3].FormattedMessage);
+            Assert.Equal("Monitor 'testscalemonitor3' voted '-1'", logs[4].FormattedMessage);
 
-            Assert.Equal(ScaleVote.ScaleOut, status.Vote);
+            Assert.Equal(1, status);
         }
 
         [Fact]
@@ -135,37 +135,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
             var logs = _loggerProvider.GetAllLogMessages();
             Assert.Equal("Computing scale status (WorkerCount=3)", logs[0].FormattedMessage);
             Assert.Equal("3 scale monitors to sample", logs[1].FormattedMessage);
-            Assert.Equal("Monitor 'testscalemonitor1' voted 'ScaleIn'", logs[2].FormattedMessage);
+            Assert.Equal("Monitor 'testscalemonitor1' voted '-1'", logs[2].FormattedMessage);
             Assert.Equal("Failed to query scale status for monitor 'testscalemonitor2'.", logs[3].FormattedMessage);
             Assert.Same(exception, logs[3].Exception);
-            Assert.Equal("Monitor 'testscalemonitor3' voted 'ScaleIn'", logs[4].FormattedMessage);
+            Assert.Equal("Monitor 'testscalemonitor3' voted '-1'", logs[4].FormattedMessage);
 
-            Assert.Equal(ScaleVote.ScaleIn, status.Vote);
+            Assert.Equal(-1, status);
         }
 
         [Theory]
-        [InlineData(0, 0, 0, ScaleVote.None)]
-        [InlineData(1, 0, 0, ScaleVote.ScaleIn)]
-        [InlineData(1, 1, 3, ScaleVote.ScaleOut)]
-        [InlineData(0, 0, 1, ScaleVote.None)]
-        [InlineData(1, 0, 1, ScaleVote.ScaleIn)]
-        [InlineData(5, 0, 3, ScaleVote.ScaleIn)]
-        public void GetAggregateScaleVote_ReturnsExpectedResult(int workerCount, int numScaleOutVotes, int numScaleInVotes, ScaleVote expected)
+        [InlineData(0, new int[] { },  0)]
+        [InlineData(1, new int[] { }, -1)]
+        [InlineData(1, new int[] { 1, -1, -1, -1 }, 1)]
+        [InlineData(0, new int[] { -1 }, 0)]
+        [InlineData(1, new int[] { -1 }, -1)]
+        [InlineData(5, new int[] { -1, -1, -1 }, -1)]
+        [InlineData(2, new int[] { -1, 6, -1 }, 6)]
+        [InlineData(3, new int[] { -1, -6, -2 }, -1)]
+        [InlineData(0, new int[] { -1, -6, -2 }, 0)]
+        public void GetAggregateScaleVote_ReturnsExpectedResult(int workerCount, int[] votes, int expected)
         {
             var context = new ScaleStatusContext
             {
                 WorkerCount = workerCount
             };
-            List<ScaleVote> votes = new List<ScaleVote>();
-            for (int i = 0; i < numScaleOutVotes; i++)
-            {
-                votes.Add(ScaleVote.ScaleOut);
-            }
-            for (int i = 0; i < numScaleInVotes; i++)
-            {
-                votes.Add(ScaleVote.ScaleIn);
-            }
-            var vote = FunctionsScaleManager.GetAggregateScaleVote(votes, context, _testLogger);
+            var vote = FunctionsScaleManager.GetAggregateScaleVote(new List<int>(votes), context, _testLogger);
             Assert.Equal(expected, vote);
         }
     }

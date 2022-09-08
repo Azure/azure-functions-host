@@ -37,11 +37,11 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
         /// </summary>
         /// <param name="context">The context to use for the scale decision.</param>
         /// <returns>The scale vote.</returns>
-        public virtual async Task<ScaleStatusResult> GetScaleStatusAsync(ScaleStatusContext context)
+        public virtual async Task<int> GetScaleStatusAsync(ScaleStatusContext context)
         {
             var monitors = _monitorManager.GetMonitors();
 
-            List<ScaleVote> votes = new List<ScaleVote>();
+            List<int> votes = new List<int>();
             if (monitors.Any())
             {
                 // get the collection of current metrics for each monitor
@@ -66,10 +66,18 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
                             WorkerCount = context.WorkerCount,
                             Metrics = metrics
                         };
-                        var result = monitor.GetScaleStatus(scaleStatusContext);
-
-                        _logger.LogDebug($"Monitor '{monitor.Descriptor.Id}' voted '{result.Vote.ToString()}'");
-                        votes.Add(result.Vote);
+                        var scaleStatus = monitor.GetScaleStatus(scaleStatusContext);
+                        int vote = 0;
+                        if (scaleStatus.TargetWorkerCount.HasValue)
+                        {
+                            vote = scaleStatus.TargetWorkerCount.Value;
+                        }
+                        else
+                        {
+                            vote = Convert.ToInt32(scaleStatus.Vote);
+                        }
+                        _logger.LogDebug($"Monitor '{monitor.Descriptor.Id}' voted '{vote}'");
+                        votes.Add(vote);
                     }
                     catch (Exception exc) when (!exc.IsFatal())
                     {
@@ -84,38 +92,36 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
                 // this can happen if the host is offline
             }
 
-            var vote = GetAggregateScaleVote(votes, context, _logger);
+            var agregatedVote = GetAggregateScaleVote(votes, context, _logger);
 
-            return new ScaleStatusResult
-            {
-                Vote = vote
-            };
+            return agregatedVote;
         }
 
-        internal static ScaleVote GetAggregateScaleVote(List<ScaleVote> votes, ScaleStatusContext context, ILogger logger)
+        internal static int GetAggregateScaleVote(List<int> votes, ScaleStatusContext context, ILogger logger)
         {
-            ScaleVote vote = ScaleVote.None;
+            int vote = 0;
+
             if (votes.Any())
             {
                 // aggregate all the votes into a single vote
-                if (votes.Any(p => p == ScaleVote.ScaleOut))
+                if (votes.Any(p => p > 0))
                 {
                     // scale out if at least 1 monitor requires it
                     logger.LogDebug("Scaling out based on votes");
-                    vote = ScaleVote.ScaleOut;
+                    vote = votes.Max(); // scale out on max vote
                 }
-                else if (context.WorkerCount > 0 && votes.All(p => p == ScaleVote.ScaleIn))
+                else if (context.WorkerCount > 0 && votes.All(p => p < 0))
                 {
                     // scale in only if all monitors vote scale in
                     logger.LogDebug("Scaling in based on votes");
-                    vote = ScaleVote.ScaleIn;
+                    vote = votes.Where(x => x != 0).Max(); // scale in on max vote
                 }
             }
             else if (context.WorkerCount > 0)
             {
                 // if no functions exist or are enabled we'll scale in
                 logger.LogDebug("No enabled functions or scale votes so scaling in");
-                vote = ScaleVote.ScaleIn;
+                vote = -1;
             }
 
             return vote;

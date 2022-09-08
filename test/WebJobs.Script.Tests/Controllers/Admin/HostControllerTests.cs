@@ -149,13 +149,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 WorkerCount = 5
             };
             var scaleManagerMock = new Mock<FunctionsScaleManager>(MockBehavior.Strict);
-            var scaleStatusResult = new ScaleStatusResult { Vote = ScaleVote.ScaleOut };
-            scaleManagerMock.Setup(p => p.GetScaleStatusAsync(context)).ReturnsAsync(scaleStatusResult);
+            scaleManagerMock.Setup(p => p.GetScaleStatusAsync(context)).ReturnsAsync(1);
             var scriptHostManagerMock = new Mock<IScriptHostManager>(MockBehavior.Strict);
             var serviceProviderMock = scriptHostManagerMock.As<IServiceProvider>();
             serviceProviderMock.Setup(p => p.GetService(typeof(FunctionsScaleManager))).Returns(scaleManagerMock.Object);
             var result = (ObjectResult)(await _hostController.GetScaleStatus(context, scriptHostManagerMock.Object));
-            Assert.Same(result.Value, scaleStatusResult);
+            Assert.Equal(result.Value, 1);
         }
 
         [Fact]
