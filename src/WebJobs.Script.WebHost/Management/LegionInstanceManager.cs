@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         public Task<string> SpecializeMSISidecar(HostAssignmentContext context)
         {
             // Legion will take care of MSI Specialization
-            return null;
+            return Task.FromResult((string)null);
         }
 
         public bool StartAssignment(HostAssignmentContext context)
@@ -64,41 +64,41 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 return true;
             }
 
-            if (_assignmentContext == null)
+            if (_assignmentContext != null)
             {
-                lock (_assignmentLock)
-                {
-                    if (_assignmentContext != null)
-                    {
-                        return _assignmentContext.Equals(context);
-                    }
-                    _assignmentContext = context;
-                }
-
-                _logger.LogInformation($"Starting Assignment. Cloud Name: {_environment.GetCloudName()}");
-
-                // set a flag which will cause any incoming http requests to buffer
-                // until specialization is complete
-                // the host is guaranteed not to receive any requests until AFTER assign
-                // has been initiated, so setting this flag here is sufficient to ensure
-                // that any subsequent incoming requests while the assign is in progress
-                // will be delayed until complete
-                _webHostEnvironment.DelayRequests();
-
-                // start the specialization process in the background
-                Task.Run(async () => await Assign(context));
-
-                return true;
+                // No lock needed here since _assignmentContext is not null when we are here
+                return _assignmentContext.Equals(context);
             }
 
-            // No lock needed here since _assignmentContext is not null when we are here
-            return _assignmentContext.Equals(context);
+            lock (_assignmentLock)
+            {
+                if (_assignmentContext != null)
+                {
+                    return _assignmentContext.Equals(context);
+                }
+                _assignmentContext = context;
+            }
+
+            _logger.LogInformation("Starting Assignment. Cloud Name: {cloudName}", _environment.GetCloudName());
+
+            // set a flag which will cause any incoming http requests to buffer
+            // until specialization is complete
+            // the host is guaranteed not to receive any requests until AFTER assign
+            // has been initiated, so setting this flag here is sufficient to ensure
+            // that any subsequent incoming requests while the assign is in progress
+            // will be delayed until complete
+            _webHostEnvironment.DelayRequests();
+
+            // start the specialization process in the background
+            Task.Run(async () => await Assign(context));
+
+            return true;
         }
 
         public Task<string> ValidateContext(HostAssignmentContext assignmentContext)
         {
             // Don't need to validate RunFromPackageContext in Legion
-            return null;
+            return Task.FromResult((string)null);
         }
 
         private async Task Assign(HostAssignmentContext assignmentContext)
@@ -107,7 +107,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             {
                 // first make all environment and file system changes required for
                 // the host to be specialized
-                _logger.LogInformation("Applying {count} app setting(s)", assignmentContext.Environment.Count);
+                _logger.LogInformation("Applying {environmentCount} app setting(s)", assignmentContext.Environment.Count);
                 assignmentContext.ApplyAppSettings(_environment, _logger);
             }
             catch (Exception ex)
@@ -132,8 +132,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         {
             return new Dictionary<string, string>
             {
-                { "FUNCTIONS_EXTENSION_VERSION", ScriptHost.Version },
-                { "WEBSITE_NODE_DEFAULT_VERSION", "8.5.0" }
+                { EnvironmentSettingNames.FunctionsExtensionVersion, ScriptHost.Version },
+                { EnvironmentSettingNames.WebsiteNodeDefaultVersion, "8.5.0" }
             };
         }
 
