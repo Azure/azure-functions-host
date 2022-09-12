@@ -32,8 +32,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             _client = httpClientFactory?.CreateClient() ?? throw new ArgumentNullException(nameof(httpClientFactory));
             _webHostEnvironment = webHostEnvironment ?? throw new ArgumentNullException(nameof(webHostEnvironment));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _metricsLogger = metricsLogger;
-            _meshServiceClient = meshServiceClient;
+            _metricsLogger = metricsLogger ?? throw new ArgumentNullException(nameof(metricsLogger));
+            _meshServiceClient = meshServiceClient ?? throw new ArgumentNullException(nameof(meshServiceClient));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
         }
 
@@ -66,7 +66,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 // No need to download since file already exists
                 return true;
             }
-            else if (_assignmentContext == null)
+
+            if (_assignmentContext == null)
             {
                 lock (_assignmentLock)
                 {
@@ -92,11 +93,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
                 return true;
             }
-            else
-            {
-                // No lock needed here since _assignmentContext is not null when we are here
-                return _assignmentContext.Equals(context);
-            }
+
+            // No lock needed here since _assignmentContext is not null when we are here
+            return _assignmentContext.Equals(context);
         }
 
         public Task<string> ValidateContext(HostAssignmentContext assignmentContext)
@@ -111,7 +110,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             {
                 // first make all environment and file system changes required for
                 // the host to be specialized
-                _logger.LogInformation($"Applying {assignmentContext.Environment.Count} app setting(s)");
+                _logger.LogInformation("Applying {count} app setting(s)", assignmentContext.Environment.Count);
                 assignmentContext.ApplyAppSettings(_environment, _logger);
             }
             catch (Exception ex)
@@ -128,7 +127,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 // leave placeholder mode
                 _logger.LogInformation("Triggering specialization");
                 _webHostEnvironment.FlagAsSpecializedAndReady();
-
                 _webHostEnvironment.ResumeRequests();
             }
         }
