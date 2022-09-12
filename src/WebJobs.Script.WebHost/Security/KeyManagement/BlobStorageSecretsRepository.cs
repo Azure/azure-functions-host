@@ -5,9 +5,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
-using Azure.Storage.Blobs.Specialized;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions;
 using Microsoft.Extensions.Logging;
 
@@ -187,11 +187,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private async Task WriteToBlobAsync(string blobPath, string secretsContent)
         {
-            BlockBlobClient secretBlobClient = Container.GetBlockBlobClient(blobPath);
-            using (StreamWriter writer = new StreamWriter(await secretBlobClient.OpenWriteAsync(true)))
+            BlobClient secretBlobClient = Container.GetBlobClient(blobPath);
+            BlobUploadOptions uploadOptions = new BlobUploadOptions();
+
+            if (await secretBlobClient.ExistsAsync())
             {
-                await writer.WriteAsync(secretsContent);
+                // Return a 412 if another write beats us to updating the file.
+                BlobProperties properties = await secretBlobClient.GetPropertiesAsync();
+                uploadOptions.Conditions = new BlobRequestConditions { IfMatch = properties.ETag };
             }
+            else
+            {
+                // Return a 409 if another write beats us to creating the file.
+                uploadOptions.Conditions = new BlobRequestConditions { IfNoneMatch = ETag.All };
+            }
+
+            await secretBlobClient.UploadAsync(BinaryData.FromString(secretsContent), uploadOptions);
         }
 
         protected virtual void LogErrorMessage(string operation)
