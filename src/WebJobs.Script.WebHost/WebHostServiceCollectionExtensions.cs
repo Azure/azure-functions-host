@@ -129,18 +129,33 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IFunctionMetadataManager, FunctionMetadataManager>();
             services.AddSingleton<IWebFunctionsManager, WebFunctionsManager>();
             services.AddHttpClient();
+            services.AddSingleton<InstanceManager>();
+            services.AddSingleton<LegionInstanceManager>();
             services.AddSingleton<StartupContextProvider>();
             services.AddSingleton<IFileSystem>(_ => FileUtility.Instance);
             services.AddTransient<VirtualFileSystem>();
             services.AddTransient<VirtualFileSystemMiddleware>();
             services.AddSingleton<IInstanceManager>(s =>
             {
+                var httpClientFactory = s.GetService<IHttpClientFactory>();
+                var scriptWebHostEnvironment = s.GetService<IScriptWebHostEnvironment>();
+                var metricsLogger = s.GetService<IMetricsLogger>();
+                var meshServiceClient = s.GetService<IMeshServiceClient>();
+
                 var environment = s.GetService<IEnvironment>();
+
                 if (environment.IsLinuxConsumptionOnLegion())
                 {
-                    return s.GetRequiredService<LegionInstanceManager>();
+                    var legionLogger = s.GetService<ILogger<LegionInstanceManager>>();
+                    return new LegionInstanceManager(httpClientFactory, scriptWebHostEnvironment, environment, legionLogger, metricsLogger, meshServiceClient);
                 }
-                return s.GetRequiredService<InstanceManager>();
+
+                var optionsFactory = s.GetService<IOptionsFactory<ScriptApplicationHostOptions>>();
+                var logger = s.GetService<ILogger<InstanceManager>>();
+                var runFromPackageHandler = s.GetService<IRunFromPackageHandler>();
+                var packageDownloadHandler = s.GetService<IPackageDownloadHandler>();
+
+                return new InstanceManager(optionsFactory, httpClientFactory, scriptWebHostEnvironment, environment, logger, metricsLogger, meshServiceClient, runFromPackageHandler, packageDownloadHandler);
             });
 
             // Logging and diagnostics
@@ -314,8 +329,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                 return NullLinuxContainerActivityPublisher.Instance;
             });
-
-            
 
             services.AddSingleton<IRunFromPackageHandler, RunFromPackageHandler>();
             services.AddSingleton<IPackageDownloadHandler, PackageDownloadHandler>();
