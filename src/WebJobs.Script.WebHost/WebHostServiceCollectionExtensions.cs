@@ -128,12 +128,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IFunctionsSyncManager, FunctionsSyncManager>();
             services.AddSingleton<IFunctionMetadataManager, FunctionMetadataManager>();
             services.AddSingleton<IWebFunctionsManager, WebFunctionsManager>();
-            services.AddSingleton<IInstanceManager, InstanceManager>();
             services.AddHttpClient();
             services.AddSingleton<StartupContextProvider>();
             services.AddSingleton<IFileSystem>(_ => FileUtility.Instance);
             services.AddTransient<VirtualFileSystem>();
             services.AddTransient<VirtualFileSystemMiddleware>();
+            services.AddSingleton<IInstanceManager>(s =>
+            {
+                var environment = s.GetService<IEnvironment>();
+                if (environment.IsLinuxConsumptionOnLegion())
+                {
+                    return s.GetRequiredService<LegionInstanceManager>();
+                }
+                return s.GetRequiredService<InstanceManager>();
+            });
 
             // Logging and diagnostics
             services.AddSingleton<IMetricsLogger, WebHostMetricsLogger>();
@@ -306,6 +314,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                 return NullLinuxContainerActivityPublisher.Instance;
             });
+
+            
 
             services.AddSingleton<IRunFromPackageHandler, RunFromPackageHandler>();
             services.AddSingleton<IPackageDownloadHandler, PackageDownloadHandler>();
