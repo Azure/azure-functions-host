@@ -22,6 +22,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public class TableStorageScaleMetricsRepository : IScaleMetricsRepository
     {
+        // from https://docs.microsoft.com/en-us/dotnet/api/microsoft.azure.cosmos.table.tablebatchoperation
+        internal const int MaxTableOperationBatchCount = 100;
+
         internal const string TableNamePrefix = "AzureFunctionsScaleMetrics";
         internal const string MonitorIdPropertyName = "MonitorId";
         private const string SampleTimestampPropertyName = "SampleTimestamp";
@@ -148,13 +151,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             try
             {
-                var batch = new TableBatchOperation();
-                foreach (var pair in monitorMetrics)
+                // Page through all the metrics and persist them in batches, ensuring we stay below
+                // the max operation count for each batch.
+                int skip = 0;
+                var currMetricsBatch = monitorMetrics.Take(MaxTableOperationBatchCount).ToArray();
+                while (currMetricsBatch.Length > 0)
                 {
-                    await AccumulateMetricsBatchAsync(batch, pair.Key, new ScaleMetrics[] { pair.Value });
-                }
+                    var batch = new TableBatchOperation();
+                    foreach (var pair in currMetricsBatch)
+                    {
+                        await AccumulateMetricsBatchAsync(batch, pair.Key, new ScaleMetrics[] { pair.Value });
+                    }
 
-                await ExecuteBatchSafeAsync(batch);
+                    await ExecuteBatchSafeAsync(batch);
+
+                    skip += currMetricsBatch.Length;
+                    currMetricsBatch = monitorMetrics.Skip(skip).Take(MaxTableOperationBatchCount).ToArray();
+                }
             }
             catch (StorageException e)
             {
