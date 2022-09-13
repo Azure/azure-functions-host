@@ -23,6 +23,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
+using Xunit.Abstractions;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -113,6 +114,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                         error += " " + userMessageCallback();
                     }
                     throw new ApplicationException(error);
+                }
+            }
+        }
+
+        public static async Task RetryFailedTest(Func<Task> test, int retries, ITestOutputHelper output = null)
+        {
+            for (int i = 0; i < retries; i++)
+            {
+                try
+                {
+                    await test();
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    if (i == retries - 1)
+                    {
+                        throw;
+                    }
+                    else
+                    {
+                        output.WriteLine($"Test failed attempt {i + 1} of {retries}. Retrying. Exception message: {ex.ToString()}");
+                    }
                 }
             }
         }
