@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
@@ -118,6 +119,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // Ensure metric is generated
             Assert.True(metricsLogger.EventsBegan.Contains(MetricEventNames.SpecializationStandbyManagerInitialize) && metricsLogger.EventsEnded.Contains(MetricEventNames.SpecializationStandbyManagerInitialize));
+        }
+
+        [Fact]
+        public async Task Specialize_StandbyManagerInitialize_SetsInitializedFromPlaceholderFlag()
+        {
+            TestMetricsLogger metricsLogger = new TestMetricsLogger();
+            _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName, "placeholder.azurewebsites.net");
+
+            var hostNameProvider = new HostNameProvider(_testEnvironment);
+            var manager = new StandbyManager(_mockHostManager.Object, _mockLanguageWorkerChannelManager.Object, _mockConfiguration.Object, _mockWebHostEnvironment.Object, _testEnvironment, _mockOptionsMonitor.Object, NullLogger<StandbyManager>.Instance, hostNameProvider, _mockApplicationLifetime.Object, metricsLogger);
+            await manager.InitializeAsync().ContinueWith(t => { }); // Ignore errors.
+
+            // Ensure InitializedFromPlaceholder environment variable is set to true
+            Assert.Equal(bool.TrueString, _testEnvironment.GetEnvironmentVariable(EnvironmentSettingNames.InitializedFromPlaceholder));
         }
 
         private bool AreExpectedMetricsGenerated(TestMetricsLogger metricsLogger)

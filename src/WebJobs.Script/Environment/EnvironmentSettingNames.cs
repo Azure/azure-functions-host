@@ -15,6 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureWebsiteSku = "WEBSITE_SKU";
         public const string RemoteDebuggingPort = "REMOTEDEBUGGINGPORT";
         public const string AzureWebsitePlaceholderMode = "WEBSITE_PLACEHOLDER_MODE";
+        public const string InitializedFromPlaceholder = "INITIALIZED_FROM_PLACEHOLDER";
         public const string AzureWebsiteHomePath = "HOME";
         public const string AzureWebJobsScriptRoot = "AzureWebJobsScriptRoot";
         public const string CompilationReleaseMode = "AzureWebJobsDotNetReleaseCompilation";

@@ -7,6 +7,7 @@ using System.Linq;
 using System.Reactive.Linq;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Grpc.Eventing;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
@@ -47,6 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 throw new InvalidOperationException($"WorkerCofig for runtime: {runtime} not found");
             }
             string workerId = Guid.NewGuid().ToString();
+            _eventManager.AddGrpcChannels(workerId); // prepare the inbound/outbound dedicated channels
             ILogger workerLogger = _loggerFactory.CreateLogger($"Worker.LanguageWorkerChannel.{runtime}.{workerId}");
             IWorkerProcess rpcWorkerProcess = _rpcWorkerProcessFactory.Create(workerId, runtime, scriptRootPath, languageWorkerConfig);
             return new GrpcWorkerChannel(
