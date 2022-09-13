@@ -90,7 +90,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             _webHostEnvironment.DelayRequests();
 
             // start the specialization process in the background
-            Task.Run(async () => await Assign(context));
+            //Task.Run(async () => await Assign(context));
+            Task.Run(() => Assign(context));
 
             return true;
         }
