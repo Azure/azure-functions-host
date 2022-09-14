@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IEnvironment _environment;
         private readonly ILogger _logger;
         private readonly IDisposable _fileChangeSubscription;
-        private Dictionary<string, ICollection<string>> _functionErrors = new Dictionary<string, ICollection<string>>();
+        private ImmutableDictionary<string, ImmutableArray<string>> _functionErrors;
         private Lazy<ImmutableArray<FunctionMetadata>> _metadata;
         private bool _disposed = false;
 
@@ -46,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script
                        .Subscribe(e => HandleProxyFileChange());
         }
 
-        public ImmutableDictionary<string, ImmutableArray<string>> FunctionErrors => _functionErrors.ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray());
+        public ImmutableDictionary<string, ImmutableArray<string>> FunctionErrors => _functionErrors;
 
         public Task<ImmutableArray<FunctionMetadata>> GetFunctionMetadataAsync()
         {
@@ -88,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 metadata = proxies.ToImmutableArray<FunctionMetadata>();
             }
 
-            _functionErrors = functionErrors;
+            _functionErrors = functionErrors.ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray());
             return metadata;
         }
 
@@ -126,7 +126,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 client = new ProxyClientExecutor(rawProxyClient);
             }
 
-            if (client == null)
+            if (client is null)
             {
                 return proxies;
             }

@@ -21,9 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected override async Task<object> InvokeCore(object[] parameters, FunctionInvocationContext context)
         {
-            HttpRequest requestObj = parameters?.FirstOrDefault() as HttpRequest;
-
-            if (requestObj == null)
+            if (parameters?.FirstOrDefault() is not HttpRequest requestObj)
             {
                 throw new Exception("Could not find parameter of type HttpRequest while executing a Proxy Request");
             }

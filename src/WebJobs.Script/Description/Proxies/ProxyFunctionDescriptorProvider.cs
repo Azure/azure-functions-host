@@ -13,6 +13,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 {
     internal sealed class ProxyFunctionDescriptorProvider : FunctionDescriptorProvider
     {
+        private static readonly Task<(bool, FunctionDescriptor)> NilCreateFunctionInvokerResult = Task.FromResult<(bool, FunctionDescriptor)>((false, null));
+
         private readonly ILoggerFactory _loggerFactory;
 
         public ProxyFunctionDescriptorProvider(ScriptHost host, ScriptJobHostOptions config, ICollection<IScriptBindingProvider> bindingProviders,
@@ -34,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 return base.TryCreate(functionMetadata);
             }
 
-            return Task.FromResult<(bool, FunctionDescriptor)>((false, null));
+            return NilCreateFunctionInvokerResult;
         }
 
         protected override IFunctionInvoker CreateFunctionInvoker(string scriptFilePath, BindingMetadata triggerMetadata, FunctionMetadata functionMetadata, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
