@@ -33,9 +33,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             yield return new object[] { LogLevel.Information, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty };
         }
 
-        public static IEnumerable<object[]> GetFunctionExecutionEvents()
-        {
-            yield return new object[] { "testexecution", "testSite", 1, "testFunction", "testInvocation", "testStage", 1, true };
-        }
+        // public static IEnumerable<object[]> GetFunctionExecutionEvents()
+        // {
+        //     yield return new object[] { "testexecution", "testSite", 1, "testFunction", "testInvocation", "testStage", 1, true };
+        // }
     }
 }
