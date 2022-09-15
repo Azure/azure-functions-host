@@ -35,7 +35,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
 
         public static IEnumerable<object[]> GetFunctionExecutionEvents()
         {
-            yield return new object[] { "testexecution", "testSite", 1, "testFunction", "testInvocation", "testStage", 1, true };
+            yield return new object[] { "testexecution", "testSite", 1, "testFunction", "testInvocation", "testStage", 1, true, true };
+            yield return new object[] { "testexecution", "testSite", 1, "testFunction", "testInvocation", "testStage", 1, true, false };
         }
     }
 }
