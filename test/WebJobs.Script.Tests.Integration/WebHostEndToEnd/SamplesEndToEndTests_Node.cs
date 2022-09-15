@@ -388,7 +388,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 {
                     o.Functions = new[]
                     {
-                        "HttpTrigger"
+                        "EventHubTrigger",
+                        "HttpTrigger",
+                        "HttpTrigger-CustomRoute-Get",
+                        "HttpTrigger-Disabled",
+                        "HttpTrigger-Identities",
+                        "ManualTrigger",
+                        "proxyroute"
                     };
                 });
             }
