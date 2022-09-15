@@ -2,8 +2,8 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using Microsoft.Extensions.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
@@ -72,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             string log = currentUtcTime;
             if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableLinuxEPExecutionCount))
             {
-                string log = string.Join(",", executionId, siteName, concurrency.ToString(), functionName, invocationId, executionStage, executionTimeSpan.ToString(), success.ToString(), currentUtcTime);
+                log = string.Join(",", executionId, siteName, concurrency.ToString(), functionName, invocationId, executionStage, executionTimeSpan.ToString(), success.ToString(), currentUtcTime);
             }
             WriteEvent(logger, log);
         }
