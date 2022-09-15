@@ -182,37 +182,45 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             string executionStage, long executionTimeSpan, bool success, bool featureFlagEnabled)
         {
             TestScopedEnvironmentVariable featureFlags = null;
-            if (featureFlagEnabled)
+            try
             {
-                featureFlags = new TestScopedEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, FeatureFlagEnableLinuxEPExecutionCount);
-            }
-            _generator.LogFunctionExecutionEvent(executionId, siteName, concurrency, functionName, invocationId, executionStage, executionTimeSpan, success);
-            string evt = _loggers[LinuxEventGenerator.FunctionsExecutionEventsCategory].Events.Single();
+                if (featureFlagEnabled)
+                {
+                    featureFlags = new TestScopedEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, FeatureFlagEnableLinuxEPExecutionCount);
+                }
+                _generator.LogFunctionExecutionEvent(executionId, siteName, concurrency, functionName, invocationId, executionStage, executionTimeSpan, success);
+                string evt = _loggers[LinuxEventGenerator.FunctionsExecutionEventsCategory].Events.Single();
 
-            if (featureFlagEnabled)
+                if (featureFlagEnabled)
+                {
+                    Regex regex = new Regex(LinuxAppServiceEventGenerator.ExecutionEventRegex);
+                    var match = regex.Match(evt);
+
+                    Assert.True(match.Success);
+                    Assert.Equal(10, match.Groups.Count);
+
+                    var groupMatches = match.Groups.Cast<Group>().Select(p => p.Value).Skip(1).ToArray();
+                    Assert.Collection(groupMatches,
+                        p => Assert.Equal(executionId, p),
+                        p => Assert.Equal(siteName, p),
+                        p => Assert.Equal(concurrency.ToString(), p),
+                        p => Assert.Equal(functionName, p),
+                        p => Assert.Equal(invocationId, p),
+                        p => Assert.Equal(executionStage, p),
+                        p => Assert.Equal(executionTimeSpan.ToString(), p),
+                        p => Assert.True(Convert.ToBoolean(p)),
+                        p => Assert.True(DateTime.TryParse(p, out DateTime dt)));
+                }
+                else
+                {
+                    Assert.True(DateTime.TryParse(evt, out DateTime dt));
+                }
+            }
+            finally
             {
-                Regex regex = new Regex(LinuxAppServiceEventGenerator.ExecutionEventRegex);
-                var match = regex.Match(evt);
-
-                Assert.True(match.Success);
-                Assert.Equal(10, match.Groups.Count);
-
-                var groupMatches = match.Groups.Cast<Group>().Select(p => p.Value).Skip(1).ToArray();
-                Assert.Collection(groupMatches,
-                    p => Assert.Equal(executionId, p),
-                    p => Assert.Equal(siteName, p),
-                    p => Assert.Equal(concurrency.ToString(), p),
-                    p => Assert.Equal(functionName, p),
-                    p => Assert.Equal(invocationId, p),
-                    p => Assert.Equal(executionStage, p),
-                    p => Assert.Equal(executionTimeSpan.ToString(), p),
-                    p => Assert.True(Convert.ToBoolean(p)),
-                    p => Assert.True(DateTime.TryParse(p, out DateTime dt)));
+                featureFlags?.Dispose();
             }
-            else
-            {
-                Assert.True(DateTime.TryParse(evt, out DateTime dt));
-            }
+            
         }
     }
 }
