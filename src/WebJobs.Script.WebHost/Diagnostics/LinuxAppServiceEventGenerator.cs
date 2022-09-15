@@ -71,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             string currentUtcTime = DateTime.UtcNow.ToString();
             if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableLinuxEPExecutionCount))
             {
-                log = string.Join(",", executionId, siteName, concurrency.ToString(), functionName, invocationId, executionStage, executionTimeSpan.ToString(), success.ToString(), currentUtcTime);
+                string log = string.Join(",", executionId, siteName, concurrency.ToString(), functionName, invocationId, executionStage, executionTimeSpan.ToString(), success.ToString(), currentUtcTime);
                 WriteEvent(logger, log);
             }
             else
