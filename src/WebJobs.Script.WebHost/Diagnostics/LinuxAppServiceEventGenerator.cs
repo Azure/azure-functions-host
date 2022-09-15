@@ -3,6 +3,7 @@
 
 using System;
 using Microsoft.Extensions.Logging;
+using Microsoft.Azure.WebJobs.Script.Config;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
@@ -68,13 +69,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         {
             var logger = _loggerFactory.GetOrCreate(FunctionsExecutionEventsCategory);
             string currentUtcTime = DateTime.UtcNow.ToString();
-            if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableLinuxEPExecutionCount)) 
+            string log = currentUtcTime;
+            if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableLinuxEPExecutionCount))
             {
                 string log = string.Join(",", executionId, siteName, concurrency.ToString(), functionName, invocationId, executionStage, executionTimeSpan.ToString(), success.ToString(), currentUtcTime);
-            }
-            else 
-            {
-                string log = currentUtcTime;
             }
             WriteEvent(logger, log);
         }
