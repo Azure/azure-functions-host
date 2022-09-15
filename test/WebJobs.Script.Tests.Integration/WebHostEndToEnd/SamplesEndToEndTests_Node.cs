@@ -13,13 +13,13 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.EventHubs;
+using Microsoft.Azure.Storage.Blob;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.WebJobs.Script.Tests;
-using Microsoft.Azure.Storage.Blob;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -242,7 +242,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         [Fact(Skip = "http://github.com/Azure/azure-functions-host/issues/2812")]
         public async Task HttpTrigger_CustomRoute_Post_ReturnsExpectedResponse()
         {
-
             string id = Guid.NewGuid().ToString();
             string functionKey = await _fixture.Host.GetFunctionSecretAsync("HttpTrigger-CustomRoute-Post");
             string uri = $"api/node/products/housewares/{id}?code={functionKey}";
@@ -311,6 +310,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             response = await _fixture.Host.HttpClient.SendAsync(request);
             timestamp = response.Headers.GetValues("Shared-Module").First();
             Assert.Equal(initialTimestamp, timestamp);
+
+            // Prevent errors when host is disposed during startup.
+            await TestHelpers.Await(_fixture.Host.IsHostStarted, userMessageCallback: _fixture.Host.GetLog);
         }
 
         [Fact]
