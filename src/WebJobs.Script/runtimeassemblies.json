@@ -1072,6 +1072,10 @@
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
+      "name": "System.IO.Hashing",
+      "resolutionPolicy": "private"
+    },
+    {
       "name": "System.IO.IsolatedStorage",
       "resolutionPolicy": "minorMatchOrLower"
     },
