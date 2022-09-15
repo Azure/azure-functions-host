@@ -398,7 +398,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 string token = GenerateAdminJwtToken();
                 request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
             }
-            
+
             HttpResponseMessage response = await HttpClient.SendAsync(request);
             response.EnsureSuccessStatusCode();
             return await response.Content.ReadAsAsync<HostStatus>();
@@ -441,7 +441,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        private async Task<bool> IsHostStarted()
+        public async Task<bool> IsHostStarted()
         {
             HostStatus status = await GetHostStatusAsync();
             return status.State == $"{ScriptHostState.Running}" || status.State == $"{ScriptHostState.Error}";
