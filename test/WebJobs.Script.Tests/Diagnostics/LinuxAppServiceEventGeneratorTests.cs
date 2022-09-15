@@ -220,7 +220,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             {
                 featureFlags?.Dispose();
             }
-            
         }
     }
 }
