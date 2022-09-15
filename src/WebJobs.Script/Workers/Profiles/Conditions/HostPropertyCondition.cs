@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Profiles
             Validate();
         }
 
-        public enum HostProperty
+        private enum HostProperty
         {
             Sku,
             Platform,

@@ -187,7 +187,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                         _logger.LogDebug("Added WorkerConfig for language: {language}", workerDescription.Language);
                     }
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (!ex.IsFatal())
                 {
                     _logger.LogError(ex, "Failed to initialize worker provider for: {workerDir}", workerDir);
                 }
@@ -311,14 +311,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 }
 
                 // After specialization only create worker provider for the language set by FUNCTIONS_WORKER_RUNTIME env variable
-                _logger.LogInformation("{RpcWorkerConstants.FunctionWorkerRuntimeSettingName} set to {workerRuntime}. Skipping WorkerConfig for language: {}", RpcWorkerConstants.FunctionWorkerRuntimeSettingName, _workerRuntime, workerDescriptionLanguage);
+                _logger.LogInformation("{FUNCTIONS_WORKER_RUNTIME} set to {workerRuntime}. Skipping WorkerConfig for language: {workerDescriptionLanguage}", RpcWorkerConstants.FunctionWorkerRuntimeSettingName, _workerRuntime, workerDescriptionLanguage);
                 return false;
             }
 
             return true;
         }
 
-        internal void ReadLanguageWorkerFile(string workerPath)
+        private void ReadLanguageWorkerFile(string workerPath)
         {
             if (_environment.IsPlaceholderModeEnabled()
                 && !string.IsNullOrEmpty(_workerRuntime)
