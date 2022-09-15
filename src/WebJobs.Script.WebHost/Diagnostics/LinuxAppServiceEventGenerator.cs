@@ -68,7 +68,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         {
             var logger = _loggerFactory.GetOrCreate(FunctionsExecutionEventsCategory);
             string currentUtcTime = DateTime.UtcNow.ToString();
-            string log = string.Join(",", executionId, siteName, concurrency.ToString(), functionName, invocationId, executionStage, executionTimeSpan.ToString(), success.ToString(), currentUtcTime);
+            if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableLinuxEPExecutionCount)) 
+            {
+                string log = string.Join(",", executionId, siteName, concurrency.ToString(), functionName, invocationId, executionStage, executionTimeSpan.ToString(), success.ToString(), currentUtcTime);
+            }
+            else 
+            {
+                string log = currentUtcTime;
+            }
             WriteEvent(logger, log);
         }
 
