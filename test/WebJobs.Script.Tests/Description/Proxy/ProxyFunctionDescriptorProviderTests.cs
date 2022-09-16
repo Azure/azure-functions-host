@@ -190,7 +190,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
             var jobHostOptionsWrapped = new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions);
             var nullLogger = new NullLoggerFactory();
-            var proxyMetadataProvider = new ProxyFunctionProvider(jobHostOptionsWrapped, new Mock<IEnvironment>().Object, new Mock<IScriptEventManager>().Object, nullLogger);
+            var env = new TestEnvironment(new Dictionary<string, string>
+            {
+                { EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableProxies },
+            });
+            var proxyMetadataProvider = new ProxyFunctionProvider(jobHostOptionsWrapped, env, new Mock<IScriptEventManager>().Object, nullLogger);
             var functionMetadataManager = TestFunctionMetadataManager.GetFunctionMetadataManager(jobHostOptionsWrapped, new Mock<IFunctionMetadataProvider>().Object,
                 new List<IFunctionProvider>() { proxyMetadataProvider }, new OptionsWrapper<HttpWorkerOptions>(new HttpWorkerOptions()), nullLogger, new TestOptionsMonitor<LanguageWorkerOptions>(TestHelpers.GetTestLanguageWorkerOptions()));
 

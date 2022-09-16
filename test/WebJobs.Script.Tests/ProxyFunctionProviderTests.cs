@@ -30,7 +30,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     RootScriptPath = tempDirectory.Path
                 });
 
-                var environment = new TestEnvironment();
+                var environment = new TestEnvironment(new Dictionary<string, string>
+                {
+                    { EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableProxies },
+                });
                 var eventManager = new ScriptEventManager();
 
                 var provider = new ProxyFunctionProvider(options, environment, eventManager, NullLoggerFactory.Instance);
@@ -51,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 ImmutableArray<FunctionMetadata> proxyMetadata3 = await provider.GetFunctionMetadataAsync();
 
-                var proxyClient = (proxyMetadata3.FirstOrDefault() as ProxyFunctionMetadata).ProxyClient;
+                var proxyClient = ((ProxyFunctionMetadata)proxyMetadata3.First()).ProxyClient;
 
                 Assert.True(proxyMetadata3.Select(p => (p as ProxyFunctionMetadata).ProxyClient).All(c => c.Equals(proxyClient)));
                 Assert.Equal(20, proxyMetadata3.Length);
