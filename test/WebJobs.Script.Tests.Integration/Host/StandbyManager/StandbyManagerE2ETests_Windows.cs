@@ -36,7 +36,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 { EnvironmentSettingNames.AzureWebsiteHomePath, null },
                 { "AzureWebEncryptionKey", "0F75CA46E7EBDD39E4CA6B074D1F9A5972B849A55F91A248" },
                 { EnvironmentSettingNames.AzureWebsiteRunFromPackage, null },
-                { EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableProxies },
              };
         }
 
@@ -80,10 +79,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             host.Dispose();
         }
 
-        [Fact]
-        public async Task StandbyModeE2E_Dotnet()
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async Task StandbyModeE2E_Dotnet(bool enableProxies)
         {
             _settings.Add(EnvironmentSettingNames.AzureWebsiteInstanceId, Guid.NewGuid().ToString());
+            if (enableProxies)
+            {
+                _settings.Add(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableProxies);
+            }
             var environment = new TestEnvironment(_settings);
             await InitializeTestHostAsync("Windows", environment);
 
@@ -119,12 +124,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(1, logLines.Count(p => p.Contains("Starting language worker channel specialization")));
             Assert.Equal(3, logLines.Count(p => p.Contains($"Starting Host (HostId={_expectedHostId}")));
             Assert.Equal(6, logLines.Count(p => p.Contains($"Loading functions metadata")));
-            Assert.Equal(2, logLines.Count(p => p.Contains($"1 functions loaded")));
+            Assert.Equal(enableProxies ? 2 : 4, logLines.Count(p => p.Contains($"1 functions loaded")));
             Assert.Equal(2, logLines.Count(p => p.Contains($"0 functions loaded")));
-            Assert.Equal(3, logLines.Count(p => p.Contains($"Loading proxies metadata")));
-            Assert.Equal(3, logLines.Count(p => p.Contains("Initializing Azure Function proxies")));
-            Assert.Equal(2, logLines.Count(p => p.Contains($"1 proxies loaded")));
-            Assert.Equal(1, logLines.Count(p => p.Contains($"0 proxies loaded")));
+            Assert.Equal(enableProxies ? 3 : 0, logLines.Count(p => p.Contains($"Loading proxies metadata")));
+            Assert.Equal(enableProxies ? 3 : 0, logLines.Count(p => p.Contains("Initializing Azure Function proxies")));
+            Assert.Equal(enableProxies ? 2 : 0, logLines.Count(p => p.Contains($"1 proxies loaded")));
+            Assert.Equal(enableProxies ? 1 : 0, logLines.Count(p => p.Contains($"0 proxies loaded")));
             Assert.Contains("Generating 0 job function(s)", logLines);
 
             // Verify that the internal cache has reset
