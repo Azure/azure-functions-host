@@ -29,10 +29,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private Dictionary<string, RpcWorkerConfig> _workerDescriptionDictionary = new Dictionary<string, RpcWorkerConfig>();
 
         public RpcWorkerConfigFactory(IConfiguration config,
-                                      ILogger logger,
-                                      ISystemRuntimeInformation systemRuntimeInfo,
-                                      IEnvironment environment,
-                                      IMetricsLogger metricsLogger)
+                                        ILogger logger,
+                                        ISystemRuntimeInformation systemRuntimeInfo,
+                                        IEnvironment environment,
+                                        IMetricsLogger metricsLogger)
         {
             _config = config ?? throw new ArgumentNullException(nameof(config));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -40,18 +40,21 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _metricsLogger = metricsLogger;
             _workerRuntime = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
-            string assemblyLocalPath = Path.GetDirectoryName(new Uri(typeof(RpcWorkerConfigFactory).Assembly.CodeBase).LocalPath);
-            WorkersDirPath = GetDefaultWorkersDirectory(Directory.Exists);
-            var workersDirectorySection = _config.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}:{WorkerConstants.WorkersDirectorySectionName}");
-            if (!string.IsNullOrEmpty(workersDirectorySection.Value))
-            {
-                WorkersDirPath = workersDirectorySection.Value;
-            }
+
             var conditionProviders = new List<IWorkerProfileConditionProvider>
             {
                 new WorkerProfileConditionProvider(_logger, _environment)
             };
+
             _profileManager = new WorkerProfileManager(_logger, conditionProviders);
+
+            WorkersDirPath = GetDefaultWorkersDirectory(Directory.Exists);
+            var workersDirectorySection = _config.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}:{WorkerConstants.WorkersDirectorySectionName}");
+
+            if (!string.IsNullOrEmpty(workersDirectorySection.Value))
+            {
+                WorkersDirPath = workersDirectorySection.Value;
+            }
         }
 
         public string WorkersDirPath { get; }
@@ -85,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal void AddProviders()
         {
-            _logger.LogDebug($"Workers Directory set to: {WorkersDirPath}");
+            _logger.LogDebug("Workers Directory set to: {WorkersDirPath}", WorkersDirPath);
 
             foreach (var workerDir in Directory.EnumerateDirectories(WorkersDirPath))
             {
@@ -118,13 +121,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 try
                 {
                     string workerConfigPath = Path.Combine(workerDir, RpcWorkerConstants.WorkerConfigFileName);
+
                     if (!File.Exists(workerConfigPath))
                     {
-                        _logger.LogDebug($"Did not find worker config file at: {workerConfigPath}");
+                        _logger.LogDebug("Did not find worker config file at: {workerConfigPath}", workerConfigPath);
                         return;
                     }
+
+                    _logger.LogDebug("Found worker config: {workerConfigPath}", workerConfigPath);
+
                     // Parse worker config file
-                    _logger.LogDebug($"Found worker config: {workerConfigPath}");
                     string json = File.ReadAllText(workerConfigPath);
                     JObject workerConfig = JObject.Parse(json);
                     RpcWorkerDescription workerDescription = workerConfig.Property(WorkerConstants.WorkerDescription).Value.ToObject<RpcWorkerDescription>();
@@ -142,7 +148,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                         }
                     }
 
-                    // Check if any appsettings are provided for that langauge
+                    // Check if any app settings are provided for that language
                     var languageSection = _config.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}:{workerDescription.Language}");
                     workerDescription.Arguments = workerDescription.Arguments ?? new List<string>();
                     GetWorkerDescriptionFromAppSettings(workerDescription, languageSection);
@@ -165,21 +171,25 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                             ExecutablePath = workerDescription.DefaultExecutablePath,
                             WorkerPath = workerDescription.DefaultWorkerPath
                         };
+
                         arguments.ExecutableArguments.AddRange(workerDescription.Arguments);
+
                         var rpcWorkerConfig = new RpcWorkerConfig()
                         {
                             Description = workerDescription,
                             Arguments = arguments,
                             CountOptions = workerProcessCount,
                         };
+
                         _workerDescriptionDictionary[workerDescription.Language] = rpcWorkerConfig;
                         ReadLanguageWorkerFile(arguments.WorkerPath);
-                        _logger.LogDebug($"Added WorkerConfig for language: {workerDescription.Language}");
+
+                        _logger.LogDebug("Added WorkerConfig for language: {language}", workerDescription.Language);
                     }
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (!ex.IsFatal())
                 {
-                    _logger?.LogError(ex, $"Failed to initialize worker provider for: {workerDir}");
+                    _logger.LogError(ex, "Failed to initialize worker provider for: {workerDir}", workerDir);
                 }
             }
         }
@@ -194,6 +204,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
 
             var descriptionProfiles = new List<WorkerDescriptionProfile>(profiles.Count);
+
             try
             {
                 foreach (var profile in profiles)
@@ -205,7 +216,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                         if (!_profileManager.TryCreateWorkerProfileCondition(descriptor, out IWorkerProfileCondition condition))
                         {
                             // Failed to resolve condition. This profile will be disabled using a mock false condition
-                            _logger?.LogInformation($"Profile {profile.ProfileName} is disabled. Cannot resolve the profile condition {descriptor.Type}");
+                            _logger.LogInformation("Profile {name} is disabled. Cannot resolve the profile condition {condition}", profile.ProfileName, descriptor.Type);
                             condition = new FalseCondition();
                         }
 
@@ -219,6 +230,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             {
                 throw new FormatException("Failed to parse profiles in worker config.");
             }
+
             return descriptionProfiles;
         }
 
@@ -286,31 +298,33 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             if (_environment.IsMultiLanguageRuntimeEnvironment())
             {
-                _logger.LogInformation($"Found multi-language runtime environment. Starting WorkerConfig for language: {workerDescriptionLanguage}");
+                _logger.LogInformation("Found multi-language runtime environment. Starting WorkerConfig for language: {workerDescriptionLanguage}", workerDescriptionLanguage);
                 return true;
             }
 
             if (!string.IsNullOrEmpty(_workerRuntime))
             {
-                _logger.LogDebug($"EnvironmentVariable {RpcWorkerConstants.FunctionWorkerRuntimeSettingName}: {_workerRuntime}");
+                _logger.LogDebug("EnvironmentVariable {functionWorkerRuntimeSettingName}: {workerRuntime}", RpcWorkerConstants.FunctionWorkerRuntimeSettingName, _workerRuntime);
                 if (_workerRuntime.Equals(workerDescriptionLanguage, StringComparison.OrdinalIgnoreCase))
                 {
                     return true;
                 }
+
                 // After specialization only create worker provider for the language set by FUNCTIONS_WORKER_RUNTIME env variable
-                _logger.LogInformation($"{RpcWorkerConstants.FunctionWorkerRuntimeSettingName} set to {_workerRuntime}. Skipping WorkerConfig for language:{workerDescriptionLanguage}");
+                _logger.LogInformation("{FUNCTIONS_WORKER_RUNTIME} set to {workerRuntime}. Skipping WorkerConfig for language: {workerDescriptionLanguage}", RpcWorkerConstants.FunctionWorkerRuntimeSettingName, _workerRuntime, workerDescriptionLanguage);
                 return false;
             }
+
             return true;
         }
 
-        internal void ReadLanguageWorkerFile(string workerPath)
+        private void ReadLanguageWorkerFile(string workerPath)
         {
-            if (_environment.IsPlaceholderModeEnabled() &&
-                 !string.IsNullOrEmpty(_workerRuntime) &&
-                 File.Exists(workerPath))
+            if (_environment.IsPlaceholderModeEnabled()
+                && !string.IsNullOrEmpty(_workerRuntime)
+                && File.Exists(workerPath))
             {
-                // Read lanaguage worker file to avoid disk reads during specialization. This is only to page-in bytes.
+                // Read language worker file to avoid disk reads during specialization. This is only to page-in bytes.
                 File.ReadAllBytes(workerPath);
             }
         }

@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 
-namespace Microsoft.Azure.WebJobs.Script.Workers
+namespace Microsoft.Azure.WebJobs.Script.Workers.Profiles
 {
     /// <summary>
     /// Class that holds data of a profile

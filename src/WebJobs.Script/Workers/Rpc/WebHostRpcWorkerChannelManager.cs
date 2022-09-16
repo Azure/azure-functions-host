@@ -144,34 +144,36 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         private bool UsePlaceholderChannel(string workerRuntime)
         {
-            if (!string.IsNullOrEmpty(workerRuntime))
+            if (string.IsNullOrEmpty(workerRuntime))
             {
-                // Restart worker process if custom languageWorkers:[runtime]:arguments are passed in
-                var workerArguments = _config.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}:{workerRuntime}:{WorkerConstants.WorkerDescriptionArguments}").Value;
-                if (!string.IsNullOrEmpty(workerArguments))
-                {
-                    return false;
-                }
-
-                // If a profile evaluates to true and was not previously loaded, restart worker process
-                if (!_profileManager.IsCorrectProfileLoaded(workerRuntime))
-                {
-                    return false;
-                }
-
-                // Special case: node and PowerShell apps must be read-only to use the placeholder mode channel
-                // Also cannot use placeholder worker that is targeting ~3 but has backwards compatibility with V2 enabled
-                // TODO: Remove special casing when resolving https://github.com/Azure/azure-functions-host/issues/4534
-                if (string.Equals(workerRuntime, RpcWorkerConstants.NodeLanguageWorkerName, StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(workerRuntime, RpcWorkerConstants.PowerShellLanguageWorkerName, StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(workerRuntime, RpcWorkerConstants.PythonLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
-                {
-                    // Use if readonly and not v2 compatible on ~3 extension
-                    return _applicationHostOptions.CurrentValue.IsFileSystemReadOnly && !_environment.IsV2CompatibileOnV3Extension();
-                }
-                return true;
+                return false;
             }
-            return false;
+
+            // Restart worker process if custom languageWorkers:[runtime]:arguments are passed in
+            var workerArguments = _config.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}:{workerRuntime}:{WorkerConstants.WorkerDescriptionArguments}").Value;
+            if (!string.IsNullOrEmpty(workerArguments))
+            {
+                return false;
+            }
+
+            // Special case: node and PowerShell apps must be read-only to use the placeholder mode channel
+            // Also cannot use placeholder worker that is targeting ~3 but has backwards compatibility with V2 enabled
+            // TODO: Remove special casing when resolving https://github.com/Azure/azure-functions-host/issues/4534
+            if (workerRuntime.ToLowerInvariant() is RpcWorkerConstants.NodeLanguageWorkerName
+                or RpcWorkerConstants.PowerShellLanguageWorkerName
+                or RpcWorkerConstants.PythonLanguageWorkerName)
+            {
+                // Use if readonly and not v2 compatible on ~3 extension
+                return _applicationHostOptions.CurrentValue.IsFileSystemReadOnly && !_environment.IsV2CompatibleOnV3Extension();
+            }
+
+            // If a profile evaluates to true and was not previously loaded, restart worker process
+            if (!_profileManager.IsCorrectProfileLoaded(workerRuntime))
+            {
+                return false;
+            }
+
+            return true;
         }
 
         public Task<bool> ShutdownChannelIfExistsAsync(string language, string workerId, Exception workerException = null)

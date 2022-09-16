@@ -125,9 +125,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(1, logLines.Count(p => p.Contains("Validating host assignment context")));
             Assert.Equal(1, logLines.Count(p => p.Contains("Starting Assignment")));
             Assert.Equal(1, logLines.Count(p => p.Contains("Applying 3 app setting(s)")));
-            Assert.Equal(1, logLines.Count(p => p.Contains($"Skipping WorkerConfig for language:python")));
-            Assert.Equal(1, logLines.Count(p => p.Contains($"Skipping WorkerConfig for language:powershell")));
-            Assert.Equal(1, logLines.Count(p => p.Contains($"Skipping WorkerConfig for language:java")));
+            Assert.Equal(1, logLines.Count(p => p.Contains("Skipping WorkerConfig for language: python")));
+            Assert.Equal(1, logLines.Count(p => p.Contains("Skipping WorkerConfig for language: powershell")));
+            Assert.Equal(1, logLines.Count(p => p.Contains("Skipping WorkerConfig for language: java")));
             Assert.Equal(1, logLines.Count(p => p.Contains($"Extracting files to '{_expectedScriptPath}'")));
             Assert.Equal(1, logLines.Count(p => p.Contains("Zip extraction complete")));
             Assert.Equal(1, logLines.Count(p => p.Contains("Triggering specialization")));
@@ -155,10 +155,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private async Task Assign(string encryptionKey)
         {
             // create a zip package
-            var contentRoot = Path.Combine(Path.GetTempPath(), @"FunctionsTest");
-            var sourcePath = Path.Combine(Directory.GetCurrentDirectory(), @"TestScripts\Node\HttpTrigger");
+            var testFunctionPath = Path.Combine("TestScripts", "Node", "HttpTrigger");
+            var contentRoot = Path.Combine(Path.GetTempPath(), "FunctionsTest");
+            var sourcePath = Path.Combine(Directory.GetCurrentDirectory(), testFunctionPath);
             var zipFilePath = Path.Combine(contentRoot, "content.zip");
-            await TestHelpers.CreateContentZip(contentRoot, zipFilePath, @"TestScripts\Node\HttpTrigger");
+            await TestHelpers.CreateContentZip(contentRoot, zipFilePath, testFunctionPath);
 
             // upload the blob and get a SAS uri
             var configuration = _httpServer.Host.Services.GetService<IConfiguration>();
