@@ -47,9 +47,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [HttpGet]
         [Route("admin/functions")]
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
-        public async Task<IActionResult> List()
+        public async Task<IActionResult> List(bool includeProxies = false)
         {
-            var result = await _functionsManager.GetFunctionsMetadata();
+            var result = await _functionsManager.GetFunctionsMetadata(includeProxies);
             return Ok(result);
         }
 
@@ -178,7 +178,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             {
                 // if we don't have any errors registered, make sure the function exists
                 // before returning empty errors
-                var result = await _functionsManager.GetFunctionsMetadata();
+                var result = await _functionsManager.GetFunctionsMetadata(includeProxies: true);
                 var function = result.FirstOrDefault(p => string.Equals(p.Name, name, System.StringComparison.InvariantCultureIgnoreCase));
                 if (function == null)
                 {

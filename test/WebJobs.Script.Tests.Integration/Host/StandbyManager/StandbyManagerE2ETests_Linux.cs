@@ -46,6 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 { EnvironmentSettingNames.AzureWebsiteContainerReady, null },
                 { EnvironmentSettingNames.AzureWebsiteSku, "Dynamic" },
                 { EnvironmentSettingNames.AzureWebsiteZipDeployment, null },
+                { EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableProxies },
                 { "AzureWebEncryptionKey", "0F75CA46E7EBDD39E4CA6B074D1F9A5972B849A55F91A248" }
             };
 
@@ -132,6 +133,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(1, logLines.Count(p => p.Contains("Triggering specialization")));
             Assert.Equal(1, logLines.Count(p => p.Contains("Starting host specialization")));
             Assert.Equal(3, logLines.Count(p => p.Contains($"Starting Host (HostId={hostId}")));
+            Assert.Equal(3, logLines.Count(p => p.Contains($"Loading proxies metadata")));
+            Assert.Equal(3, logLines.Count(p => p.Contains("Initializing Azure Function proxies")));
+            Assert.Equal(2, logLines.Count(p => p.Contains($"1 proxies loaded")));
+            Assert.Equal(1, logLines.Count(p => p.Contains($"0 proxies loaded")));
             Assert.Contains("Node.js HttpTrigger function invoked.", logLines);
 
             // verify cold start log entry

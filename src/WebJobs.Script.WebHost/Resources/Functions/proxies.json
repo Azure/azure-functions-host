@@ -1,0 +1,22 @@
+﻿{
+  "proxies": {
+    "PlaceholderProxyWarmupTest": {
+      "matchCondition": {
+        "methods": [
+          "GET"
+        ],
+        "route": "/placeholderwarmuptest"
+      },
+      "backendUri": "https://localhost/api/warmup",
+      "requestOverrides": {
+        "backend.request.headers.accept": "text/plain"
+      },
+      "responseOverrides": {
+        "response.headers.Content-Type": "text/plain",
+        "response.body": "Root"
+      }
+    }
+  }
+}
+
+  

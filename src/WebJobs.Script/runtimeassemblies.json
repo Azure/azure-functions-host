@@ -4,6 +4,10 @@
 {
   "runtimeAssemblies": [
     {
+      "name": "Autofac",
+      "resolutionPolicy": "private"
+    },
+    {
       "name": "Azure.Core",
       "resolutionPolicy": "private"
     },
@@ -316,6 +320,14 @@
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
+      "name": "Microsoft.AspNetCore.Mvc.Razor.Extensions",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Microsoft.AspNetCore.Mvc.Razor.Language",
+      "resolutionPolicy": "private"
+    },
+    {
       "name": "Microsoft.AspNetCore.Mvc.TagHelpers",
       "resolutionPolicy": "minorMatchOrLower"
     },
@@ -436,6 +448,18 @@
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
+      "name": "Microsoft.Azure.AppService.Proxy.Client",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Microsoft.Azure.AppService.Proxy.Common",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Microsoft.Azure.AppService.Proxy.Runtime",
+      "resolutionPolicy": "private"
+    },
+    {
       "name": "Microsoft.Azure.Cosmos.Table",
       "resolutionPolicy": "private"
     },
@@ -525,6 +549,10 @@
     },
     {
       "name": "Microsoft.CodeAnalysis.CSharp.Scripting",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Microsoft.CodeAnalysis.Razor",
       "resolutionPolicy": "private"
     },
     {
@@ -1501,6 +1529,10 @@
     },
     {
       "name": "Microsoft.Security.Utilities",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "protobuf-net",
       "resolutionPolicy": "private"
     },
     {

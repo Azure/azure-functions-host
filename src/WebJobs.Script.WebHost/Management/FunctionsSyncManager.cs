@@ -306,7 +306,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         public async Task<SyncTriggersPayload> GetSyncTriggersPayload()
         {
             var hostOptions = _applicationHostOptions.CurrentValue.ToHostOptions();
-            var functionsMetadata = _functionMetadataManager.GetFunctionMetadata();
+            var functionsMetadata = _functionMetadataManager.GetFunctionMetadata().Where(m => !m.IsProxy());
 
             // trigger information used by the ScaleController
             var triggers = await GetFunctionTriggers(functionsMetadata, hostOptions);
@@ -367,7 +367,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     };
 
                     // add function secrets
-                    var httpFunctions = functionsMetadata.Where(p => p.InputBindings.Any(q => q.IsTrigger && string.Equals(q.Type, "httptrigger", StringComparison.OrdinalIgnoreCase))).Select(p => p.Name).ToArray();
+                    var httpFunctions = functionsMetadata.Where(p => !p.IsProxy() && p.InputBindings.Any(q => q.IsTrigger && string.Equals(q.Type, "httptrigger", StringComparison.OrdinalIgnoreCase))).Select(p => p.Name).ToArray();
                     functionAppSecrets.Function = new FunctionAppSecrets.FunctionSecrets[httpFunctions.Length];
                     for (int i = 0; i < httpFunctions.Length; i++)
                     {
@@ -442,6 +442,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         internal async Task<IEnumerable<JObject>> GetFunctionTriggers(IEnumerable<FunctionMetadata> functionsMetadata, ScriptJobHostOptions hostOptions)
         {
             var triggers = (await functionsMetadata
+                .Where(f => !f.IsProxy())
                 .Select(f => f.ToFunctionTrigger(hostOptions))
                 .WhenAll())
                 .Where(t => t != null);
@@ -454,6 +455,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 {
                     triggers = triggers.Select(t => UpdateDurableFunctionConfig(t, durableTaskConfig));
                 }
+            }
+
+            if (FileUtility.FileExists(Path.Combine(hostOptions.RootScriptPath, ScriptConstants.ProxyMetadataFileName)))
+            {
+                // This is because we still need to scale function apps that are proxies only
+                triggers = triggers.Append(JObject.FromObject(new { type = "routingTrigger" }));
             }
 
             return triggers;
