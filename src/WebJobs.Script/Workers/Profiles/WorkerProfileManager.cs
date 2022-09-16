@@ -14,17 +14,30 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
     /// </summary>
     internal class WorkerProfileManager : IWorkerProfileManager
     {
-        private readonly ILogger _logger;
-        private readonly IEnumerable<IWorkerProfileConditionProvider> _conditionProviders;
-        private Dictionary<string, List<WorkerDescriptionProfile>> _profiles;
-        private string _activeProfile;
+        private const string LogCategory = "Host.WorkerProfiles";
 
-        public WorkerProfileManager(ILogger logger, IEnumerable<IWorkerProfileConditionProvider> conditionProviders)
+        private readonly ILogger _logger;
+        private readonly IEnvironment _environment;
+        private readonly IEnumerable<IWorkerProfileConditionProvider> _conditionProviders;
+
+        private string _activeProfile = string.Empty;
+        private Dictionary<string, List<WorkerDescriptionProfile>> _profiles;
+
+        public WorkerProfileManager(ILoggerFactory loggerFactory, IEnvironment environment)
         {
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _conditionProviders = conditionProviders ?? throw new ArgumentNullException(nameof(conditionProviders));
+            if (loggerFactory is null)
+            {
+                throw new ArgumentNullException(nameof(loggerFactory));
+            }
+
+            _environment = environment ?? throw new ArgumentNullException(nameof(environment));
+
+            _logger = loggerFactory.CreateLogger(LogCategory);
             _profiles = new Dictionary<string, List<WorkerDescriptionProfile>>();
-            _activeProfile = string.Empty;
+            _conditionProviders = new List<IWorkerProfileConditionProvider>
+            {
+                new WorkerProfileConditionProvider(_logger, _environment)
+            };
         }
 
         /// <inheritdoc />
@@ -87,7 +100,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             var profileId = string.Empty;
             if (GetEvaluatedProfile(workerRuntime, out WorkerDescriptionProfile profile))
             {
-               profileId = profile.ProfileId;
+                profileId = profile.ProfileId;
             }
             return _activeProfile.Equals(profileId);
         }
