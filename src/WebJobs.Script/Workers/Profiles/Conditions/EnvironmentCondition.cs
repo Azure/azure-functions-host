@@ -4,10 +4,9 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.Text.RegularExpressions;
-using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Extensions.Logging;
 
-namespace Microsoft.Azure.WebJobs.Script.Workers
+namespace Microsoft.Azure.WebJobs.Script.Workers.Profiles
 {
     /// <summary>
     /// An implementation of an <see cref="IWorkerProfileCondition"/> that checks if
@@ -51,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 return false;
             }
 
-            _logger.LogDebug($"Evaluating EnvironmentCondition with name: '{Name}', value: '{value}' and expression: '{Expression}'");
+            _logger.LogDebug("Evaluating EnvironmentCondition with name: '{name}', value: '{value}' and expression: '{expression}'", Name, value, Expression);
 
             return _regex.IsMatch(value);
         }
