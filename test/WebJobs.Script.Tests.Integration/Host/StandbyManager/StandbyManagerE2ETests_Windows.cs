@@ -25,6 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     public class StandbyManagerE2ETests_Windows : StandbyManagerE2ETestBase
     {
         private static IDictionary<string, string> _settings;
+
         public StandbyManagerE2ETests_Windows()
         {
             _settings = new Dictionary<string, string>()
@@ -34,7 +35,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 { EnvironmentSettingNames.AzureWebsiteSku, "Dynamic" },
                 { EnvironmentSettingNames.AzureWebsiteHomePath, null },
                 { "AzureWebEncryptionKey", "0F75CA46E7EBDD39E4CA6B074D1F9A5972B849A55F91A248" },
-                { EnvironmentSettingNames.AzureWebsiteRunFromPackage, null }
+                { EnvironmentSettingNames.AzureWebsiteRunFromPackage, null },
+                { EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableProxies },
              };
         }
 
@@ -119,10 +121,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(6, logLines.Count(p => p.Contains($"Loading functions metadata")));
             Assert.Equal(2, logLines.Count(p => p.Contains($"1 functions loaded")));
             Assert.Equal(2, logLines.Count(p => p.Contains($"0 functions loaded")));
-            //Assert.Equal(3, logLines.Count(p => p.Contains($"Loading proxies metadata")));
-            //Assert.Equal(3, logLines.Count(p => p.Contains("Initializing Azure Function proxies")));
-            //Assert.Equal(2, logLines.Count(p => p.Contains($"1 proxies loaded")));
-            //Assert.Equal(1, logLines.Count(p => p.Contains($"0 proxies loaded")));
+            Assert.Equal(3, logLines.Count(p => p.Contains($"Loading proxies metadata")));
+            Assert.Equal(3, logLines.Count(p => p.Contains("Initializing Azure Function proxies")));
+            Assert.Equal(2, logLines.Count(p => p.Contains($"1 proxies loaded")));
+            Assert.Equal(1, logLines.Count(p => p.Contains($"0 proxies loaded")));
             Assert.Contains("Generating 0 job function(s)", logLines);
 
             // Verify that the internal cache has reset

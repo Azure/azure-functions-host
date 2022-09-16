@@ -247,10 +247,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 services.AddSingleton<IFunctionInvocationDispatcherFactory, FunctionInvocationDispatcherFactory>();
                 services.AddSingleton<IScriptJobHost>(p => p.GetRequiredService<ScriptHost>());
                 services.AddSingleton<IJobHost>(p => p.GetRequiredService<ScriptHost>());
-                if (SystemEnvironment.Instance.IsProxiesEnabled())
-                {
-                    services.AddSingleton<IFunctionProvider, ProxyFunctionProvider>();
-                }
+                services.AddSingleton<IFunctionProvider, ProxyFunctionProvider>();
                 services.AddSingleton<IHostedService, WorkerConcurrencyManager>();
 
                 services.AddSingleton<ITypeLocator, ScriptTypeLocator>();

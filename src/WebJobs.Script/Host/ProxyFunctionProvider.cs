@@ -24,6 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script
     public class ProxyFunctionProvider : IFunctionProvider, IDisposable
     {
         private static readonly Regex ProxyNameValidationRegex = new Regex(@"[^a-zA-Z0-9_-]", RegexOptions.IgnoreCase);
+        private static readonly Task<ImmutableArray<FunctionMetadata>> EmptyMetadataResponse = Task.FromResult(ImmutableArray<FunctionMetadata>.Empty);
         private readonly ReaderWriterLockSlim _metadataLock = new ReaderWriterLockSlim();
         private readonly IOptions<ScriptJobHostOptions> _scriptOptions;
         private readonly IEnvironment _environment;
@@ -38,18 +39,29 @@ namespace Microsoft.Azure.WebJobs.Script
             _scriptOptions = scriptOptions;
             _environment = environment;
             _logger = loggerFactory.CreateLogger(LogCategories.Startup);
-            _metadata = new Lazy<ImmutableArray<FunctionMetadata>>(LoadFunctionMetadata);
+            if (_environment.IsProxiesEnabled())
+            {
+                // note these are both null-checked; if they're left null (disabled) - that's fine
+                _metadata = new Lazy<ImmutableArray<FunctionMetadata>>(LoadFunctionMetadata);
 
-            _fileChangeSubscription = eventManager.OfType<FileEvent>()
-                       .Where(f => string.Equals(f.Source, EventSources.ScriptFiles, StringComparison.Ordinal) &&
-                       string.Equals(Path.GetFileName(f.FileChangeArguments.Name), ScriptConstants.ProxyMetadataFileName, StringComparison.OrdinalIgnoreCase))
-                       .Subscribe(e => HandleProxyFileChange());
+                _fileChangeSubscription = eventManager.OfType<FileEvent>()
+                           .Where(f => string.Equals(f.Source, EventSources.ScriptFiles, StringComparison.Ordinal) &&
+                           string.Equals(Path.GetFileName(f.FileChangeArguments.Name), ScriptConstants.ProxyMetadataFileName, StringComparison.OrdinalIgnoreCase))
+                           .Subscribe(e => HandleProxyFileChange());
+            }
         }
 
         public ImmutableDictionary<string, ImmutableArray<string>> FunctionErrors => _functionErrors;
 
         public Task<ImmutableArray<FunctionMetadata>> GetFunctionMetadataAsync()
         {
+            if (_metadata is null)
+            {
+                // proxies feature is disabled
+                // (this field would have been assigned in the constructor otherwise)
+                return EmptyMetadataResponse;
+            }
+
             _metadataLock.EnterReadLock();
             try
             {
