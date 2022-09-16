@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script
             _debugModeEvent = eventManager.OfType<DebugNotification>()
                 .Subscribe(evt => LastDebugNotify = evt.NotificationTime);
             _diagnosticModeEvent = eventManager.OfType<DiagnosticNotification>()
-               .Subscribe(evt => LastDiagnosticNotify = evt.NotificationTime);
+                .Subscribe(evt => LastDiagnosticNotify = evt.NotificationTime);
 
             _scriptOptions = scriptOptions;
             _scriptOptions.OnChange(_ => InitializeLastNotificationTimes());
