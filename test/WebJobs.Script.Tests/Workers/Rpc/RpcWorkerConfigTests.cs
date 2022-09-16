@@ -681,7 +681,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
                 var scriptHostOptions = new ScriptJobHostOptions();
                 var scriptSettingsManager = new ScriptSettingsManager(config);
-                var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, testMetricsLogger);
+                var workerProfileManager = new Mock<IWorkerProfileManager>();
+                var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, testMetricsLogger, workerProfileManager.Object);
+
                 if (appSvcEnv)
                 {
                     var testEnvVariables = new Dictionary<string, string>
@@ -694,6 +696,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                         return configFactory.GetConfigs();
                     }
                 }
+
                 configFactory.BuildWorkerProviderDictionary();
                 return configFactory.GetConfigs();
             }
