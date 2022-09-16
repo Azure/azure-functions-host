@@ -7,4 +7,4 @@
 - Update PowerShell Worker 7.2 to 4.0.2304 [Release Note](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.2304)
 
 **Release sprint:** Sprint 130
-[ [bugs](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+129%22+label%3Abug+is%3Aclosed) | [features](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+129%22+label%3Afeature+is%3Aclosed) ]
+[ [bugs](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+130%22+label%3Abug+is%3Aclosed) | [features](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+130%22+label%3Afeature+is%3Aclosed) ]
