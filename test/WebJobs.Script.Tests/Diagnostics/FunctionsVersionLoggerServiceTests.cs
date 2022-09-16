@@ -64,13 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         {
             switch (msg)
             {
-                case "FunctionsExtensionVersion : ~4":
-                    return msg;
-                case "Framework : dotnet":
-                    return msg;
-                case "FrameworkVersion : 6":
-                    return msg;
-                case "SlotName : development":
+                case "FunctionsExtensionVersion = ~4,  Framework = dotnet, FrameworkVersion = 6, SlotName = development":
                     return msg;
             }
             return "IncorrectMessage";

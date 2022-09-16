@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
     public class FunctionsVersionLoggerService : IHostedService, IDisposable
     {
         private const double IntervalInSecondsDev = 1;    // interval for dev unit testing (1 s) in which the logs would be dumped
-        private readonly ILogger<FunctionsVersionLoggerService> _logger;
+        private readonly ILogger _logger;
         private readonly Timer _timer;
         private readonly TimeSpan _interval;
         private readonly IEnvironment _environment;
@@ -68,10 +68,12 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         {
             try
             {
-                _logger.LogInformation("FunctionsExtensionVersion : {0}", _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsExtensionVersion));
-                _logger.LogInformation("Framework : {0}", _environment.GetEnvironmentVariable(EnvironmentSettingNames.Framework));
-                _logger.LogInformation("FrameworkVersion : {0}", _environment.GetEnvironmentVariable(EnvironmentSettingNames.FrameworkVersion));
-                _logger.LogInformation("SlotName : {0}", _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSlotName));
+                _logger.LogInformation(
+                    "FunctionsExtensionVersion = {FunctionsExtensionVersion},  Framework = {Framework}, FrameworkVersion = {FrameworkVersion}, SlotName = {SlotName}",
+                    _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsExtensionVersion),
+                    _environment.GetEnvironmentVariable(EnvironmentSettingNames.Framework),
+                    _environment.GetEnvironmentVariable(EnvironmentSettingNames.FrameworkVersion),
+                    _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSlotName));
             }
             catch (Exception exc) when (!exc.IsFatal())
             {
