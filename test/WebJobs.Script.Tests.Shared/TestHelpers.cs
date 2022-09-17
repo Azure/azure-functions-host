@@ -24,8 +24,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
-using Microsoft.WebJobs.Script.Tests;
 using Moq;
+using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -281,6 +281,52 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 return await sr.ReadToEndAsync();
             }
+        }
+
+        public static JObject GetTestWorkerConfigJObject(string language = "dotnet",
+                                                        string extension = ".dll",
+                                                        string defaultExecutablePath = "dotnet/executable",
+                                                        string defaultWorkerPath = "FunctionApp.dll")
+        {
+            string json = $@"{{
+            ""description"": {{
+                ""language"": ""{language}"",
+                ""extensions"": [ ""{extension}"" ],
+                ""defaultExecutablePath"": ""{defaultExecutablePath}"",
+                ""defaultWorkerPath"": ""{defaultWorkerPath}""
+            }},
+            ""profiles"":
+            [
+                {{
+                    ""profileName"": ""TestProfileA"",
+                    ""conditions"": [
+                        {{
+                            ""conditionType"": ""environment"",
+                            ""conditionName"": ""PROFILE_TEST_ENVIRONMENT_VARIABLE"",
+                            ""conditionExpression"": ""true""
+                        }}
+                    ],
+                    ""description"": {{
+                        ""arguments"": [ ""testarg1"" ]
+                    }}
+                }},
+                {{
+                    ""profileName"": ""TestProfileB"",
+                    ""conditions"": [
+                        {{
+                            ""conditionType"": ""environment"",
+                            ""conditionName"": ""PROFILE_TEST_ENVIRONMENT_VARIABLE"",
+                            ""conditionExpression"": ""false""
+                        }}
+                    ],
+                    ""description"": {{
+                        ""arguments"": [ ""testarg2"" ]
+                    }}
+                }}
+            ]}}";
+
+            var workerConfig = JObject.Parse(json);
+            return workerConfig;
         }
 
         public static IList<RpcWorkerConfig> GetTestWorkerConfigs(bool includeDllWorker = false, int processCountValue = 1,
