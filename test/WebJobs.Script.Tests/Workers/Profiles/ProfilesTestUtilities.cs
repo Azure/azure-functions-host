@@ -1,11 +1,9 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
-using System.Collections.Generic;
-using Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Profiles
@@ -27,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Profiles
             return condition.ToObject<WorkerProfileConditionDescriptor>();
         }
 
-        public static EnvironmentCondition GetTestEnvironmentCondition(TestLogger logger, TestEnvironment testEnvironment, string name, string expression)
+        public static EnvironmentCondition GetTestEnvironmentCondition(ILogger logger, TestEnvironment testEnvironment, string name, string expression)
         {
             var descriptor = new WorkerProfileConditionDescriptor();
             descriptor.Type = WorkerConstants.WorkerDescriptionProfileEnvironmentCondition;
@@ -37,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Profiles
             return new EnvironmentCondition(logger, testEnvironment, descriptor);
         }
 
-        public static HostPropertyCondition GetTestHostPropertyCondition(TestLogger logger, TestSystemRuntimeInformation testSystemRuntimeInfo, string name, string expression)
+        public static HostPropertyCondition GetTestHostPropertyCondition(ILogger logger, TestSystemRuntimeInformation testSystemRuntimeInfo, string name, string expression)
         {
             var descriptor = new WorkerProfileConditionDescriptor();
             descriptor.Type = WorkerConstants.WorkerDescriptionProfileHostPropertyCondition;
