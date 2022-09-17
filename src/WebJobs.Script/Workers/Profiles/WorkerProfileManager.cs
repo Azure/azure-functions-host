@@ -1,5 +1,5 @@
 // Copyright (c) .NET Foundation. All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+// Licensed under the MIT License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
 using System.Collections.Generic;
@@ -72,9 +72,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 _logger?.LogInformation($"Worker initialized with profile - {profile.Name}, Profile ID {profile.ProfileId} from worker config.");
                 _activeProfile = profile.ProfileId;
                 workerDescription = profile.ApplyProfile(defaultWorkerDescription);
-                return;
             }
-            workerDescription = defaultWorkerDescription;
+            else
+            {
+                workerDescription = defaultWorkerDescription;
+            }
         }
 
         /// <inheritdoc />
