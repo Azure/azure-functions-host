@@ -61,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
 
         private void OnTimer(object state)
         {
-            PublishLogsSamples();
+            PublishLogs();
         }
 
         private void PublishLogs()
@@ -75,21 +75,9 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
                     _environment.GetEnvironmentVariable(EnvironmentSettingNames.FrameworkVersion),
                     _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSlotName));
             }
-            catch (Exception exc) when (!exc.IsFatal())
+            catch (Exception exc)
             {
-                throw;
-            }
-        }
-
-        private void PublishLogsSamples()
-        {
-            try
-            {
-                PublishLogs();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to publish function version logs");
+                _logger.LogWarning(exc, "Failed to publish function version logs");
             }
         }
 

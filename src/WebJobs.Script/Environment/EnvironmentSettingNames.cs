@@ -133,6 +133,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AppKind = "APP_KIND";
 
         public const string DrainOnApplicationStopping = "FUNCTIONS_ENABLE_DRAIN_ON_APP_STOPPING";
+
+        // Constants only used for logging environment variables for kubernetes scenario
         public const string Framework = "FRAMEWORK";
         public const string FrameworkVersion = "FRAMEWORK_VERSION";
     }
