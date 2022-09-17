@@ -2,8 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
-using System.Collections.Immutable;
-using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
@@ -18,7 +16,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Profiles
     {
         private static LoggerFactory _testLoggerFactory = new LoggerFactory();
         private static TestEnvironment _testEnvironment = new TestEnvironment();
-        private static TestSystemRuntimeInformation _testSystemRuntimeInfo = new TestSystemRuntimeInformation();
 
         [Fact]
         public void LoadWorkerDescriptionFromProfiles_ConditionsMet_ReturnsDescriptionWithChanges()
@@ -47,8 +44,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Profiles
             var profileDescription = RpcWorkerConfigTestUtilities.GetTestDefaultWorkerDescription("java", argumentListB);
             var profiles = WorkerDescriptionProfileData("java", profileDescription);
 
-            _testEnvironment.Clear();
-
             WorkerProfileManager profileManager = new (_testLoggerFactory, _testEnvironment);
             profileManager.SetWorkerDescriptionProfiles(profiles, "java");
             profileManager.LoadWorkerDescriptionFromProfiles(defaultDescription, out var evaluatedDescription);
@@ -59,13 +54,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Profiles
         [Fact]
         public void TryCreateWorkerProfileCondition_ValidCondition_ReturnsTrue()
         {
-            var workerConfig = TestHelpers.GetTestWorkerConfigJObject();
-            JToken profilesJToken = workerConfig.GetValue(WorkerConstants.WorkerDescriptionProfiles);
-            var profiles = profilesJToken.ToObject<IList<WorkerProfileDescriptor>>();
-            var testCondition = profiles.FirstOrDefault().Conditions.FirstOrDefault();
+            var conditionJObject = new JObject();
+            conditionJObject[WorkerConstants.WorkerDescriptionProfileConditionType] = "environment";
+            conditionJObject[WorkerConstants.WorkerDescriptionProfileConditionName] = "PROFILE_TEST_ENVIRONMENT_VARIABLE";
+            conditionJObject[WorkerConstants.WorkerDescriptionProfileConditionExpression] = "true";
+            var conditionDescriptor = conditionJObject.ToObject<WorkerProfileConditionDescriptor>();
 
             WorkerProfileManager profileManager = new (_testLoggerFactory, _testEnvironment);
-            var result = profileManager.TryCreateWorkerProfileCondition(testCondition, out var condition);
+            var result = profileManager.TryCreateWorkerProfileCondition(conditionDescriptor, out var condition);
 
             Assert.True(result);
         }
@@ -73,15 +69,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Profiles
         [Fact]
         public void TryCreateWorkerProfileCondition_InvalidCondition_ReturnsFalse()
         {
-            var workerConfig = TestHelpers.GetTestWorkerConfigJObject();
-            JToken profilesJToken = workerConfig.GetValue(WorkerConstants.WorkerDescriptionProfiles);
-            var profiles = profilesJToken.ToObject<IList<WorkerProfileDescriptor>>();
-            var testCondition = profiles.FirstOrDefault().Conditions.FirstOrDefault();
-
-            testCondition.Type = "fakeconditiontype";
+            var conditionJObject = new JObject();
+            conditionJObject[WorkerConstants.WorkerDescriptionProfileConditionType] = "faketype";
+            conditionJObject[WorkerConstants.WorkerDescriptionProfileConditionName] = "PROFILE_TEST_ENVIRONMENT_VARIABLE";
+            conditionJObject[WorkerConstants.WorkerDescriptionProfileConditionExpression] = "true";
+            var conditionDescriptor = conditionJObject.ToObject<WorkerProfileConditionDescriptor>();
 
             WorkerProfileManager profileManager = new (_testLoggerFactory, _testEnvironment);
-            var result = profileManager.TryCreateWorkerProfileCondition(testCondition, out var condition);
+            var result = profileManager.TryCreateWorkerProfileCondition(conditionDescriptor, out var condition);
 
             Assert.False(result);
         }
@@ -139,6 +134,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Profiles
             profilesList.Add(profileB);
 
             return profilesList;
+        }
+
+        public void Dispose()
+        {
+            _testEnvironment.Clear();
         }
     }
 }
