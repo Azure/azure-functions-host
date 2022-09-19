@@ -60,7 +60,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 WorkerConfigs = TestHelpers.GetTestWorkerConfigs()
             };
 
-            _workerProfileManager = new WorkerProfileManager(_loggerFactory, _testEnvironment);
+            var workerProfileLogger = new TestLogger<WorkerProfileManager>();
+            _workerProfileManager = new WorkerProfileManager(workerProfileLogger, _testEnvironment);
 
             var applicationHostOptions = new ScriptApplicationHostOptions
             {
