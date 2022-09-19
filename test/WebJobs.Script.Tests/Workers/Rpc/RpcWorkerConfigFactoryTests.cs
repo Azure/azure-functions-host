@@ -10,7 +10,6 @@ using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
@@ -25,8 +24,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public RpcWorkerConfigFactoryTests()
         {
             _testEnvironment = new TestEnvironment();
-            var loggerFactory = new LoggerFactory();
-            _testWorkerProfileManager = new WorkerProfileManager(loggerFactory, _testEnvironment);
+            var workerProfileLogger = new TestLogger<WorkerProfileManager>();
+            _testWorkerProfileManager = new WorkerProfileManager(workerProfileLogger, _testEnvironment);
         }
 
         public void Dispose()

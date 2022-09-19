@@ -14,8 +14,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
     /// </summary>
     internal class WorkerProfileManager : IWorkerProfileManager
     {
-        private const string LogCategory = "Host.WorkerProfiles";
-
         private readonly ILogger _logger;
         private readonly IEnvironment _environment;
         private readonly IEnumerable<IWorkerProfileConditionProvider> _conditionProviders;
@@ -23,16 +21,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         private string _activeProfile = string.Empty;
         private Dictionary<string, List<WorkerDescriptionProfile>> _profiles;
 
-        public WorkerProfileManager(ILoggerFactory loggerFactory, IEnvironment environment)
+        public WorkerProfileManager(ILogger<WorkerProfileManager> logger, IEnvironment environment)
         {
-            if (loggerFactory is null)
-            {
-                throw new ArgumentNullException(nameof(loggerFactory));
-            }
-
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
-            _logger = loggerFactory.CreateLogger(LogCategory);
             _profiles = new Dictionary<string, List<WorkerDescriptionProfile>>();
             _conditionProviders = new List<IWorkerProfileConditionProvider>
             {

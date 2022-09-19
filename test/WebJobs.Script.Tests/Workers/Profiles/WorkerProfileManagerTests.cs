@@ -6,7 +6,6 @@ using Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
-using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
@@ -14,8 +13,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Profiles
 {
     public class WorkerProfileManagerTests
     {
-        private static LoggerFactory _testLoggerFactory = new LoggerFactory();
-        private static TestEnvironment _testEnvironment = new TestEnvironment();
+        private static TestLogger<WorkerProfileManager> _testLogger = new ();
+        private static TestEnvironment _testEnvironment = new ();
 
         [Fact]
         public void LoadWorkerDescriptionFromProfiles_ConditionsMet_ReturnsDescriptionWithChanges()
@@ -28,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Profiles
 
             _testEnvironment.SetEnvironmentVariable("APPLICATIONINSIGHTS_ENABLE_AGENT", "true");
 
-            WorkerProfileManager profileManager = new (_testLoggerFactory, _testEnvironment);
+            WorkerProfileManager profileManager = new (_testLogger, _testEnvironment);
             profileManager.SetWorkerDescriptionProfiles(profiles, "java");
             profileManager.LoadWorkerDescriptionFromProfiles(defaultDescription, out var evaluatedDescription);
 
@@ -44,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Profiles
             var profileDescription = RpcWorkerConfigTestUtilities.GetTestDefaultWorkerDescription("java", argumentListB);
             var profiles = WorkerDescriptionProfileData("java", profileDescription);
 
-            WorkerProfileManager profileManager = new (_testLoggerFactory, _testEnvironment);
+            WorkerProfileManager profileManager = new (_testLogger, _testEnvironment);
             profileManager.SetWorkerDescriptionProfiles(profiles, "java");
             profileManager.LoadWorkerDescriptionFromProfiles(defaultDescription, out var evaluatedDescription);
 
@@ -60,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Profiles
             conditionJObject[WorkerConstants.WorkerDescriptionProfileConditionExpression] = "true";
             var conditionDescriptor = conditionJObject.ToObject<WorkerProfileConditionDescriptor>();
 
-            WorkerProfileManager profileManager = new (_testLoggerFactory, _testEnvironment);
+            WorkerProfileManager profileManager = new (_testLogger, _testEnvironment);
             var result = profileManager.TryCreateWorkerProfileCondition(conditionDescriptor, out var condition);
 
             Assert.True(result);
@@ -75,7 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Profiles
             conditionJObject[WorkerConstants.WorkerDescriptionProfileConditionExpression] = "true";
             var conditionDescriptor = conditionJObject.ToObject<WorkerProfileConditionDescriptor>();
 
-            WorkerProfileManager profileManager = new (_testLoggerFactory, _testEnvironment);
+            WorkerProfileManager profileManager = new (_testLogger, _testEnvironment);
             var result = profileManager.TryCreateWorkerProfileCondition(conditionDescriptor, out var condition);
 
             Assert.False(result);
@@ -90,7 +89,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Profiles
 
             _testEnvironment.SetEnvironmentVariable("APPLICATIONINSIGHTS_ENABLE_AGENT", "true");
 
-            WorkerProfileManager profileManager = new (_testLoggerFactory, _testEnvironment);
+            WorkerProfileManager profileManager = new (_testLogger, _testEnvironment);
             profileManager.SetWorkerDescriptionProfiles(profiles, "java");
             profileManager.LoadWorkerDescriptionFromProfiles(description, out var workerDescription);
 
@@ -107,7 +106,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Profiles
 
             _testEnvironment.SetEnvironmentVariable("APPLICATIONINSIGHTS_ENABLE_AGENT", "true");
 
-            WorkerProfileManager profileManager = new (_testLoggerFactory, _testEnvironment);
+            WorkerProfileManager profileManager = new (_testLogger, _testEnvironment);
             profileManager.SetWorkerDescriptionProfiles(profiles, "java");
             profileManager.LoadWorkerDescriptionFromProfiles(description, out var workerDescription);
 
@@ -119,15 +118,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Profiles
 
         public static List<WorkerDescriptionProfile> WorkerDescriptionProfileData(string language,  RpcWorkerDescription description)
         {
-            var logger = _testLoggerFactory.CreateLogger("WorkerProfileManagerTests");
+            var conditionLogger = new TestLogger("ConditionLogger");
             var profilesList = new List<WorkerDescriptionProfile>();
 
             var conditionListA = new List<IWorkerProfileCondition>();
-            conditionListA.Add(ProfilesTestUtilities.GetTestEnvironmentCondition(logger, _testEnvironment, "APPLICATIONINSIGHTS_ENABLE_AGENT", "true"));
+            conditionListA.Add(ProfilesTestUtilities.GetTestEnvironmentCondition(conditionLogger, _testEnvironment, "APPLICATIONINSIGHTS_ENABLE_AGENT", "true"));
             var profileA = new WorkerDescriptionProfile("profileA", conditionListA, description);
 
             var conditionListB = new List<IWorkerProfileCondition>();
-            conditionListB.Add(ProfilesTestUtilities.GetTestEnvironmentCondition(logger, _testEnvironment, "APPLICATIONINSIGHTS_ENABLE_AGENT", "false"));
+            conditionListB.Add(ProfilesTestUtilities.GetTestEnvironmentCondition(conditionLogger, _testEnvironment, "APPLICATIONINSIGHTS_ENABLE_AGENT", "false"));
             var profileB = new WorkerDescriptionProfile("profileB", conditionListB, description);
 
             profilesList.Add(profileA);
