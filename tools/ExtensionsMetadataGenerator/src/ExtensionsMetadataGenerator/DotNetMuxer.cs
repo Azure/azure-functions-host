@@ -1,5 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
-// Licensed under the MIT License. See License.txt in the project root for license information.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+
+// Originally from: https://github.com/aspnet/Common/blob/04e2b857352b74e3edad5f36abe1ec3abd114a08/shared/Microsoft.Extensions.CommandLineUtils.Sources/Utilities/DotNetMuxer.cs
 
 using System;
 using System.Collections.Generic;
@@ -8,8 +10,6 @@ using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
-
-// Originally from: https://github.com/aspnet/Common/blob/04e2b857352b74e3edad5f36abe1ec3abd114a08/shared/Microsoft.Extensions.CommandLineUtils.Sources/Utilities/DotNetMuxer.cs
 
 namespace Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator
 {
