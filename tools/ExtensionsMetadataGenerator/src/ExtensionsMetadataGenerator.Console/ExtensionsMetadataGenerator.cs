@@ -207,7 +207,6 @@ namespace ExtensionsMetadataGenerator
                 // with type forwarders as well.
                 if (_trustedPlatformAssemblies.Contains(assemblyDef.MainModule.FileName))
                 {
-                    System.Console.WriteLine("TPA found: " + assemblyDef.FullName);
                     return null;
                 }
 
