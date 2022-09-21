@@ -2,6 +2,7 @@
 <!-- Please add your release notes in the following format:
 - My change description (#PR)
 -->
+- Update Java Worker Version to [2.5.0](https://github.com/Azure/azure-functions-java-worker/releases/tag/2.5.0)
 
 - Update Node.js Worker Version to [3.5.0](https://github.com/Azure/azure-functions-nodejs-worker/releases/tag/v3.5.0)
 - Update PowerShell Worker 7.2 to 4.0.2258 [Release Note](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.2258)
