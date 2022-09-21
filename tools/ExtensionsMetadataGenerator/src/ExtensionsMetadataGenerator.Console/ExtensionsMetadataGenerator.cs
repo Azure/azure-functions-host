@@ -190,13 +190,16 @@ namespace ExtensionsMetadataGenerator
 
             private static HashSet<string> GetTrustedPlatformAssemblies()
             {
-                var tpas = new HashSet<string>();
                 var data = AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES");
-                foreach (var tpa in data.ToString().Split(";"))
+                var tpaArr = data.ToString().Split(Path.PathSeparator);
+                var tpaHash = new HashSet<string>(tpaArr.Length, StringComparer.OrdinalIgnoreCase);
+
+                foreach (var tpa in tpaArr)
                 {
-                    tpas.Add(tpa);
+                    tpaHash.Add(tpa);
                 }
-                return tpas;
+
+                return tpaHash;
             }
 
             public override AssemblyDefinition Resolve(AssemblyNameReference name)
