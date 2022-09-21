@@ -111,7 +111,7 @@ namespace ExtensionsMetadataGenerator
 
         public static IEnumerable<ExtensionReference> GenerateExtensionReferences(string fileName, ConsoleLogger logger)
         {
-            BaseAssemblyResolver resolver = new DefaultAssemblyResolver();
+            var resolver = new FunctionsAssemblyResolver();
             resolver.AddSearchDirectory(Path.GetDirectoryName(fileName));
 
             ReaderParameters readerParams = new ReaderParameters { AssemblyResolver = resolver };
@@ -182,6 +182,37 @@ namespace ExtensionsMetadataGenerator
         public static string GetReflectionFullName(TypeReference typeRef)
         {
             return typeRef.FullName.Replace("/", "+");
+        }
+
+        public class FunctionsAssemblyResolver : DefaultAssemblyResolver
+        {
+            private static HashSet<string> _trustedPlatformAssemblies = GetTrustedPlatformAssemblies();
+
+            private static HashSet<string> GetTrustedPlatformAssemblies()
+            {
+                var tpas = new HashSet<string>();
+                var data = AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES");
+                foreach (var tpa in data.ToString().Split(";"))
+                {
+                    tpas.Add(tpa);
+                }
+                return tpas;
+            }
+
+            public override AssemblyDefinition Resolve(AssemblyNameReference name)
+            {
+                var assemblyDef = base.Resolve(name);
+
+                // As soon as we get to a TPA we can stop. This helps prevent the odd circular reference
+                // with type forwarders as well.
+                if (_trustedPlatformAssemblies.Contains(assemblyDef.MainModule.FileName))
+                {
+                    System.Console.WriteLine("TPA found: " + assemblyDef.FullName);
+                    return null;
+                }
+
+                return assemblyDef;
+            }
         }
     }
 }
