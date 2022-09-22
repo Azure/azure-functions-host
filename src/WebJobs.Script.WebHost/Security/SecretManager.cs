@@ -95,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         // so we read the secrets running them through the appropriate readers
                         hostSecrets = ReadHostSecrets(hostSecrets);
                     }
-                    catch (CryptographicException)
+                    catch (CryptographicException ex) when (!ex.InnerException.IsFatal())
                     {
                         _traceWriter.Verbose(Resources.TraceNonDecryptedHostSecretRefresh);
                         await PersistSecretsAsync(hostSecrets, null, true);
@@ -161,7 +161,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     // Read all secrets, which will run the keys through the appropriate readers
                     secrets.Keys = secrets.Keys.Select(k => _keyValueConverterFactory.ReadKey(k)).ToList();
                 }
-                catch (CryptographicException)
+                catch (CryptographicException ex) when (!ex.InnerException.IsFatal())
                 {
                     string messageNonDecrypted = string.Format(Resources.TraceNonDecryptedFunctionSecretRefresh, functionName);
                     _traceWriter.Info(messageNonDecrypted, traceProperties);
