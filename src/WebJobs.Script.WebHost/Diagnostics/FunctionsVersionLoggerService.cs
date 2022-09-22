@@ -23,18 +23,18 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
     {
         private const double IntervalInSecondsDev = 1;    // interval for dev unit testing (1 s) in which the logs would be dumped
         private readonly ILogger _logger;
+        private readonly IEnvironment _environment;
         private readonly Timer _timer;
         private readonly TimeSpan _interval;
-        private readonly IEnvironment _environment;
         private bool _disposed;
         private double intervalInSecondsProd = 3600;      // default interval (1 hour) in which the logs would be dumped
 
         public FunctionsVersionLoggerService(ILogger<FunctionsVersionLoggerService> logger, IEnvironment environment)
         {
-            _timer = new Timer(OnTimer, null, Timeout.Infinite, Timeout.Infinite);
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
+            _timer = new Timer(OnTimer, null, Timeout.Infinite, Timeout.Infinite);
             _interval = TimeSpan.FromSeconds(this.Interval);
-            _logger = logger;
         }
 
         public virtual double Interval
@@ -47,7 +47,6 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         {
             // start the timer by setting the due time
             SetTimerInterval((int)_interval.TotalMilliseconds);
-
             return Task.CompletedTask;
         }
 
@@ -55,7 +54,6 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         {
             // stop the timer if it has been started
             _timer?.Change(Timeout.Infinite, Timeout.Infinite);
-
             return Task.CompletedTask;
         }
 
@@ -83,22 +81,19 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
 
         private void SetTimerInterval(int dueTime)
         {
-            if (_disposed)
+            if (_disposed || _timer is null)
             {
                 return;
             }
 
-            if (_timer != null)
+            try
             {
-                try
-                {
-                    _timer.Change(0, dueTime);
-                }
-                catch (Exception)
-                {
-                    // might race with dispose
-                    _logger.LogWarning("Exception : timer disposed, so unable to set timer interval");
-                }
+                _timer.Change(0, dueTime);
+            }
+            catch (Exception exc)
+            {
+                // might race with dispose
+                _logger.LogWarning(exc, "Unable to set timer interval");
             }
         }
 
