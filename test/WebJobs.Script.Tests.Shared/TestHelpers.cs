@@ -25,8 +25,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Moq;
-using Xunit.Abstractions;
 using Newtonsoft.Json.Linq;
+using Xunit.Abstractions;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
