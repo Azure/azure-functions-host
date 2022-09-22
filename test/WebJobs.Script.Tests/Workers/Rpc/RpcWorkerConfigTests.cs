@@ -10,6 +10,7 @@ using System.Runtime.InteropServices;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Workers;
+using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -681,7 +682,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
                 var scriptHostOptions = new ScriptJobHostOptions();
                 var scriptSettingsManager = new ScriptSettingsManager(config);
-                var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, testMetricsLogger);
+                var workerProfileManager = new Mock<IWorkerProfileManager>();
+                var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, testMetricsLogger, workerProfileManager.Object);
+
                 if (appSvcEnv)
                 {
                     var testEnvVariables = new Dictionary<string, string>
@@ -694,6 +697,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                         return configFactory.GetConfigs();
                     }
                 }
+
                 configFactory.BuildWorkerProviderDictionary();
                 return configFactory.GetConfigs();
             }

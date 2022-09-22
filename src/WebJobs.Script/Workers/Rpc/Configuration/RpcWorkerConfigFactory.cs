@@ -10,7 +10,6 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
@@ -32,21 +31,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                                         ILogger logger,
                                         ISystemRuntimeInformation systemRuntimeInfo,
                                         IEnvironment environment,
-                                        IMetricsLogger metricsLogger)
+                                        IMetricsLogger metricsLogger,
+                                        IWorkerProfileManager workerProfileManager)
         {
             _config = config ?? throw new ArgumentNullException(nameof(config));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _systemRuntimeInformation = systemRuntimeInfo ?? throw new ArgumentNullException(nameof(systemRuntimeInfo));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
-            _metricsLogger = metricsLogger;
+            _metricsLogger = metricsLogger ?? throw new ArgumentNullException(nameof(metricsLogger));
+            _profileManager = workerProfileManager ?? throw new ArgumentNullException(nameof(workerProfileManager));
             _workerRuntime = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
-
-            var conditionProviders = new List<IWorkerProfileConditionProvider>
-            {
-                new WorkerProfileConditionProvider(_logger, _environment)
-            };
-
-            _profileManager = new WorkerProfileManager(_logger, conditionProviders);
 
             WorkersDirPath = GetDefaultWorkersDirectory(Directory.Exists);
             var workersDirectorySection = _config.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}:{WorkerConstants.WorkersDirectorySectionName}");

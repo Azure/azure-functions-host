@@ -340,6 +340,7 @@ namespace Microsoft.Azure.WebJobs.Script
             services.AddSingleton<HostIdValidator>();
             services.AddSingleton<IHostIdProvider, ScriptHostIdProvider>();
             services.TryAddSingleton<IScriptEventManager, ScriptEventManager>();
+            services.AddSingleton<IWorkerProfileManager, WorkerProfileManager>();
 
             // Add Language Worker Service
             // Need to maintain the order: Add RpcInitializationService before core script host services
