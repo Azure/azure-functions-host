@@ -52,6 +52,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private readonly Dictionary<MsgType, Queue<PendingItem>> _pendingActions = new ();
         private readonly ChannelWriter<OutboundGrpcEvent> _outbound;
         private readonly ChannelReader<InboundGrpcEvent> _inbound;
+        private IDictionary<string, WorkerInvocationParameters> _invocationParametersPerWorkerId = new Dictionary<string, WorkerInvocationParameters>();
+        private int _attemptCount = 0;
+        private ValueStopwatch workerInvocationStopWatch;
 
         private IDisposable _functionLoadRequestResponseEvent;
         private bool _disposed;
@@ -107,6 +110,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _sharedMemoryManager = sharedMemoryManager;
             _workerConcurrencyOptions = workerConcurrencyOptions;
             _processInbound = state => ProcessItem((InboundGrpcEvent)state);
+            _attemptCount = attemptCount;
 
             _workerCapabilities = new GrpcCapabilities(_workerChannelLogger);
 
@@ -632,6 +636,13 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     context.CancellationToken.Register(() => SendInvocationCancel(invocationRequest.InvocationId));
                 }
 
+                _invocationParametersPerWorkerId.TryGetValue(Id, out WorkerInvocationParameters workerInvocationParameters);
+                workerInvocationParameters.TotalInvocations = workerInvocationParameters.TotalInvocations + 1;
+                _invocationParametersPerWorkerId[Id] = workerInvocationParameters;
+                _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvoked, Id), functionName: null, data: string.Format("Total Invocation Per WorkerId", _invocationParametersPerWorkerId[Id].TotalInvocations));
+
+                workerInvocationStopWatch = ValueStopwatch.StartNew();
+
                 await SendStreamingMessageAsync(new StreamingMessage
                 {
                     InvocationRequest = invocationRequest
@@ -787,6 +798,18 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             if (_executingInvocations.TryRemove(invokeResponse.InvocationId, out ScriptInvocationContext context)
                 && invokeResponse.Result.IsInvocationSuccess(context.ResultSource, capabilityEnabled))
             {
+                _invocationParametersPerWorkerId.TryGetValue(Id, out WorkerInvocationParameters workerInvocationParameters);
+                workerInvocationParameters.SuccessfulInvocations = workerInvocationParameters.SuccessfulInvocations + 1;
+                _invocationParametersPerWorkerId[Id] = workerInvocationParameters;
+
+                string data = string.Format("_invocationParametersPerWorkerId", _invocationParametersPerWorkerId[Id].TotalInvocations, _invocationParametersPerWorkerId[Id].SuccessfulInvocations, _invocationParametersPerWorkerId[Id].AverageInvocationLatency);
+                //"Error Stats per worker: workerId = " + Id + " attemptcount = " + _attemptCount + " workerTotalInvocationsCount = " + _invocationParametersPerWorkerId[Id].TotalInvocations + " workerSuccessfulInvocationsCount = " + _invocationParametersPerWorkerId[Id].SuccessfulInvocations
+                _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvocationStatus, Id), functionName: null, data: data);
+                _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvokeSucceeded, Id), functionName: null, data: data);
+
+                var elapsed = workerInvocationStopWatch.GetElapsedTime();
+                _workerChannelLogger.LogDebug($"[HostMonitor] Worker {Id} invocation request took {elapsed.TotalMilliseconds}ms");
+
                 try
                 {
                     StringBuilder logBuilder = new StringBuilder();
@@ -1199,6 +1222,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 return;
             }
 
+            CheckAndRecycleFaultyLanguageWorker();
+
             try
             {
                 WorkerStatus workerStatus = await GetWorkerStatusAsync();
@@ -1216,6 +1241,17 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             catch (ObjectDisposedException)
             {
                 // Specifically ignore this race - we're exiting and that's okay
+            }
+        }
+
+        internal void CheckAndRecycleFaultyLanguageWorker()
+        {
+            foreach (var item in _invocationParametersPerWorkerId)
+            {
+                // find out failure rate of each worker
+                // find worker with max failure rate
+                // recycle it
+                // logging + metrics
             }
         }
 
