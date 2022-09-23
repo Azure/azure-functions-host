@@ -186,7 +186,7 @@ namespace ExtensionsMetadataGenerator
 
         public class FunctionsAssemblyResolver : DefaultAssemblyResolver
         {
-            private static HashSet<string> _trustedPlatformAssemblies = GetTrustedPlatformAssemblies();
+            private static readonly HashSet<string> _trustedPlatformAssemblies = GetTrustedPlatformAssemblies();
 
             private static HashSet<string> GetTrustedPlatformAssemblies()
             {
