@@ -3,9 +3,11 @@
 
 using System;
 using Microsoft.Azure.WebJobs.Script.Workers;
+using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
+using Moq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
@@ -21,17 +23,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         {
             var runtimeInfo = new TestSystemRuntimeInformation();
             var testEnvironment = new TestEnvironment();
+            var testMetricLogger = new TestMetricsLogger();
             var configurationBuilder = new ConfigurationBuilder()
                 .Add(new ScriptEnvironmentVariablesConfigurationSource());
-
             var configuration = configurationBuilder.Build();
+            var testProfileManager = new Mock<IWorkerProfileManager>();
+
             if (!string.IsNullOrEmpty(workerRuntime))
             {
                 testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, workerRuntime);
             }
-            LanguageWorkerOptionsSetup setup = new LanguageWorkerOptionsSetup(configuration, NullLoggerFactory.Instance, testEnvironment, new TestMetricsLogger());
+
+            LanguageWorkerOptionsSetup setup = new LanguageWorkerOptionsSetup(configuration, NullLoggerFactory.Instance, testEnvironment, testMetricLogger, testProfileManager.Object);
             LanguageWorkerOptions options = new LanguageWorkerOptions();
+
             setup.Configure(options);
+
             if (string.IsNullOrEmpty(workerRuntime))
             {
                 Assert.Equal(4, options.WorkerConfigs.Count);
