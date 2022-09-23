@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -16,11 +17,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly ILogger _logger;
         private readonly IEnvironment _environment;
         private readonly IMetricsLogger _metricsLogger;
+        private readonly IWorkerProfileManager _workerProfileManager;
 
         public LanguageWorkerOptionsSetup(IConfiguration configuration,
                                           ILoggerFactory loggerFactory,
                                           IEnvironment environment,
-                                          IMetricsLogger metricsLogger)
+                                          IMetricsLogger metricsLogger,
+                                          IWorkerProfileManager workerProfileManager)
         {
             if (loggerFactory is null)
             {
@@ -30,6 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _metricsLogger = metricsLogger ?? throw new ArgumentNullException(nameof(metricsLogger));
+            _workerProfileManager = workerProfileManager ?? throw new ArgumentNullException(nameof(workerProfileManager));
 
             _logger = loggerFactory.CreateLogger("Host.LanguageWorkerConfig");
         }
@@ -44,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 return;
             }
 
-            var configFactory = new RpcWorkerConfigFactory(_configuration, _logger, SystemRuntimeInformation.Instance, _environment, _metricsLogger);
+            var configFactory = new RpcWorkerConfigFactory(_configuration, _logger, SystemRuntimeInformation.Instance, _environment, _metricsLogger, _workerProfileManager);
             options.WorkerConfigs = configFactory.GetConfigs();
         }
     }
