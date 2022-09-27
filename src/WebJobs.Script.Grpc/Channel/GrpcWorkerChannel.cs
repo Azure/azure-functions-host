@@ -798,17 +798,18 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             if (_executingInvocations.TryRemove(invokeResponse.InvocationId, out ScriptInvocationContext context)
                 && invokeResponse.Result.IsInvocationSuccess(context.ResultSource, capabilityEnabled))
             {
+                var elapsed = workerInvocationStopWatch.GetElapsedTime();
+                _workerChannelLogger.LogDebug($"[HostMonitor] Worker {Id} invocation request took {elapsed.TotalMilliseconds}ms");
+
                 _invocationParametersPerWorkerId.TryGetValue(Id, out WorkerInvocationParameters workerInvocationParameters);
                 workerInvocationParameters.SuccessfulInvocations = workerInvocationParameters.SuccessfulInvocations + 1;
+                workerInvocationParameters.AverageInvocationLatency = ((workerInvocationParameters.AverageInvocationLatency * (workerInvocationParameters.TotalInvocations - 1)) + elapsed.TotalMilliseconds) / workerInvocationParameters.TotalInvocations;
                 _invocationParametersPerWorkerId[Id] = workerInvocationParameters;
 
                 string data = string.Format("_invocationParametersPerWorkerId", _invocationParametersPerWorkerId[Id].TotalInvocations, _invocationParametersPerWorkerId[Id].SuccessfulInvocations, _invocationParametersPerWorkerId[Id].AverageInvocationLatency);
                 //"Error Stats per worker: workerId = " + Id + " attemptcount = " + _attemptCount + " workerTotalInvocationsCount = " + _invocationParametersPerWorkerId[Id].TotalInvocations + " workerSuccessfulInvocationsCount = " + _invocationParametersPerWorkerId[Id].SuccessfulInvocations
                 _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvocationStatus, Id), functionName: null, data: data);
                 _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvokeSucceeded, Id), functionName: null, data: data);
-
-                var elapsed = workerInvocationStopWatch.GetElapsedTime();
-                _workerChannelLogger.LogDebug($"[HostMonitor] Worker {Id} invocation request took {elapsed.TotalMilliseconds}ms");
 
                 try
                 {
@@ -1246,13 +1247,39 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         internal void CheckAndRecycleFaultyLanguageWorker()
         {
+            Dictionary<string, int> failureRatePerWorkerId = new Dictionary<string, int>();
+
+            // ToDo: Need to move this constant once finalized
+            var failureThreshold = 30;
+
             foreach (var item in _invocationParametersPerWorkerId)
             {
-                // find out failure rate of each worker
-                // find worker with max failure rate
-                // recycle it
-                // logging + metrics
+                int failureRateOfWorker = 0;
+
+                if (item.Value.TotalInvocations > 0)
+                {
+                    failureRateOfWorker = (item.Value.TotalInvocations - item.Value.SuccessfulInvocations) * 100 / item.Value.TotalInvocations;
+                }
+
+                failureRatePerWorkerId[item.Key] = failureRateOfWorker;
             }
+
+            var sortedFailureRatePerWorkerId = from item in failureRatePerWorkerId orderby item.Value descending select item;
+
+            var workerIdToRecycle = sortedFailureRatePerWorkerId.First().Key;
+            var failureRate = failureRatePerWorkerId[workerIdToRecycle];
+
+            if (failureRate > failureThreshold)
+            {
+                // ToDo: in next iteration of this feature => recycle the workerId in variable: workerIdToRecycle
+                // ToDo: Other criteria for recycle => if invocation latency is too high
+
+                _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerRecycled, Id), functionName: null, data: string.Format("WorkerId recycled", workerIdToRecycle));
+                _workerChannelLogger.LogDebug($"WorkerId Recycled: {workerIdToRecycle}, Failure rate: {failureRate}");
+            }
+
+            // Reseting the dictionary
+            _invocationParametersPerWorkerId = new Dictionary<string, WorkerInvocationParameters>();
         }
 
         private void AddSample<T>(List<T> samples, T sample)

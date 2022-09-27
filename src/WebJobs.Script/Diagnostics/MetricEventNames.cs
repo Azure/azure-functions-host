@@ -29,6 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         public const string WorkerInvocationStatus = "rpcworkerchannel.{0}workerinvocation.status";
         public const string WorkerInvokeSucceeded = "{0}worker.invoke.succeeded";
         public const string WorkerInvoked = "{0}worker.invoke";
+        public const string WorkerRecycled = "{0}worker.recycled";
 
         // FunctionMetadataprovider events
         public const string ReadFunctionsMetadata = "functionmetadataprovider.readfunctionsmetadata";
