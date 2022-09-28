@@ -112,6 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         private async Task<int> GetMaxProcessCount()
         {
+            _logger.LogCritical($"Log2: workerRuntime={_workerRuntime}, IsMultiLanguageRuntimeEnvironment={_environment.IsMultiLanguageRuntimeEnvironment()}, MultiLanguageDefaultProcessCount={MultiLanguageDefaultProcessCount}");
             if (_environment.IsMultiLanguageRuntimeEnvironment())
             {
                 return MultiLanguageDefaultProcessCount;
@@ -123,10 +124,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                                                 .FirstOrDefault();
                 if (workerConfig != null)
                 {
+                    _logger.LogCritical($"Log3: workerConfig.CountOptions.ProcessCount={workerConfig.CountOptions.ProcessCount}");
                     return workerConfig.CountOptions.ProcessCount;
                 }
             }
 
+            int count = (await GetAllWorkerChannelsAsync()).Count();
+            _logger.LogCritical($"Log4: workerConfig.CountOptions.ProcessCount={count}");
             return (await GetAllWorkerChannelsAsync()).Count();
         }
 
@@ -219,6 +223,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 for (var count = startIndex; count < (await _maxProcessCount.Value)
                     && !_processStartCancellationToken.IsCancellationRequested; count++)
                 {
+                    _logger.LogCritical($"Log5: count={count}, IsWorkerDynamicConcurrencyEnabled={_environment.IsWorkerDynamicConcurrencyEnabled()}, functionLanguages={functionLanguages.Count()}");
                     if (_environment.IsWorkerDynamicConcurrencyEnabled() && count > 0)
                     {
                         // Make sure only one worker is started if concurrency is enabled
@@ -226,6 +231,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     }
                     try
                     {
+                        _logger.LogCritical($"Log6");
                         await startAction(functionLanguages);
 
                         // It is necessary that webhostLanguageWorkerChannel.Any() happens in this thread since 'startAction()' above modifies this collection.
@@ -351,6 +357,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                             }
                         }
                     }
+                    _logger.LogCritical($"Log1: countOfReadyChannels={countOfReadyChannels}, workerRuntime={_workerRuntime} ");
                     StartWorkerProcesses(countOfReadyChannels, InitializeWebhostLanguageWorkerChannel, true, _webHostLanguageWorkerChannelManager.GetChannels(_workerRuntime));
                 }
                 else
