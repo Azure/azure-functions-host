@@ -49,10 +49,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 StatusCode = HttpStatusCode.OK
             });
 
-            var instanceManager = new InstanceManager(_optionsFactory, TestHelpers.CreateHttpClientFactory(handlerMock.Object),
-                scriptWebEnvironment, environment, loggerFactory.CreateLogger<InstanceManager>(),
-                new TestMetricsLogger(), null, new Mock<IRunFromPackageHandler>().Object,
-                new Mock<IPackageDownloadHandler>(MockBehavior.Strict).Object);
+            var assignmentHandler = new AtlasAssignmentHandler(_optionsFactory, environment, new Mock<IRunFromPackageHandler>().Object, new Mock<IPackageDownloadHandler>(MockBehavior.Strict).Object,
+                  TestHelpers.CreateHttpClientFactory(handlerMock.Object), new Mock<IMeshServiceClient>(MockBehavior.Strict).Object, new TestMetricsLogger(), loggerFactory.CreateLogger<AtlasAssignmentHandler>());
+
+            var instanceManager = new InstanceManager(scriptWebEnvironment, environment, loggerFactory.CreateLogger<InstanceManager>(), new Mock<IMeshServiceClient>(MockBehavior.Strict).Object,
+                assignmentHandler);
             var startupContextProvider = new StartupContextProvider(environment, loggerFactory.CreateLogger<StartupContextProvider>());
 
             InstanceManager.Reset();
@@ -107,10 +108,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 StatusCode = HttpStatusCode.OK
             });
 
-            var instanceManager = new InstanceManager(_optionsFactory, TestHelpers.CreateHttpClientFactory(handlerMock.Object),
-                scriptWebEnvironment, environment, loggerFactory.CreateLogger<InstanceManager>(),
-                new TestMetricsLogger(), null, new Mock<IRunFromPackageHandler>().Object,
-                new Mock<IPackageDownloadHandler>(MockBehavior.Strict).Object);
+            var assignmentHandler = new AtlasAssignmentHandler(_optionsFactory, environment, new Mock<IRunFromPackageHandler>().Object, new Mock<IPackageDownloadHandler>(MockBehavior.Strict).Object,
+                  TestHelpers.CreateHttpClientFactory(handlerMock.Object), new Mock<IMeshServiceClient>(MockBehavior.Strict).Object, new TestMetricsLogger(), loggerFactory.CreateLogger<AtlasAssignmentHandler>());
+
+            var instanceManager = new InstanceManager(scriptWebEnvironment, environment, loggerFactory.CreateLogger<InstanceManager>(), new Mock<IMeshServiceClient>(MockBehavior.Strict).Object,
+                assignmentHandler);
             var startupContextProvider = new StartupContextProvider(environment, loggerFactory.CreateLogger<StartupContextProvider>());
 
             InstanceManager.Reset();

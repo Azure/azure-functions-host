@@ -58,11 +58,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var meshServiceClient = new Mock<IMeshServiceClient>(MockBehavior.Strict);
             meshServiceClient.Setup(c => c.NotifyHealthEvent(ContainerHealthEventType.Fatal,
-                It.Is<Type>(t => t == typeof(InstanceManager)), "Failed to specialize MSI sidecar")).Returns(Task.CompletedTask);
+                It.Is<Type>(t => t == typeof(AtlasAssignmentHandler)), "Failed to specialize MSI sidecar")).Returns(Task.CompletedTask);
 
-            var instanceManager = new InstanceManager(_optionsFactory, TestHelpers.CreateHttpClientFactory(handlerMock.Object),
-                scriptWebEnvironment, environment, loggerFactory.CreateLogger<InstanceManager>(),
-                new TestMetricsLogger(), meshServiceClient.Object, _runFromPackageHandler.Object, new Mock<IPackageDownloadHandler>(MockBehavior.Strict).Object);
+            var assignmentHandler = new AtlasAssignmentHandler(_optionsFactory, environment, _runFromPackageHandler.Object, new Mock<IPackageDownloadHandler>(MockBehavior.Strict).Object, 
+                   TestHelpers.CreateHttpClientFactory(handlerMock.Object), meshServiceClient.Object, new TestMetricsLogger(), loggerFactory.CreateLogger<AtlasAssignmentHandler>());
+
+            var instanceManager = new InstanceManager(scriptWebEnvironment, environment, loggerFactory.CreateLogger<InstanceManager>(), meshServiceClient.Object, assignmentHandler);
             var startupContextProvider = new StartupContextProvider(environment, loggerFactory.CreateLogger<StartupContextProvider>());
 
             InstanceManager.Reset();
@@ -96,7 +97,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.Equal(objectResult.Value, "Specialize MSI sidecar call failed. StatusCode=BadRequest");
 
             meshServiceClient.Verify(c => c.NotifyHealthEvent(ContainerHealthEventType.Fatal,
-                It.Is<Type>(t => t == typeof(InstanceManager)), "Failed to specialize MSI sidecar"), Times.Once);
+                It.Is<Type>(t => t == typeof(AtlasAssignmentHandler)), "Failed to specialize MSI sidecar"), Times.Once);
         }
 
         [Fact]
@@ -129,6 +130,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
 
+            var meshServiceClient = new Mock<IMeshServiceClient>(MockBehavior.Strict);
+
             handlerMock.Protected().Setup<Task<HttpResponseMessage>>("SendAsync",
             ItExpr.IsAny<HttpRequestMessage>(),
             ItExpr.IsAny<CancellationToken>()).ReturnsAsync(new HttpResponseMessage
@@ -136,9 +139,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 StatusCode = HttpStatusCode.OK
             });
 
-            var instanceManager = new InstanceManager(_optionsFactory, TestHelpers.CreateHttpClientFactory(handlerMock.Object),
-                scriptWebEnvironment, environment, loggerFactory.CreateLogger<InstanceManager>(),
-                new TestMetricsLogger(), null, _runFromPackageHandler.Object, new Mock<IPackageDownloadHandler>(MockBehavior.Strict).Object);
+            var assignmentHandler = new AtlasAssignmentHandler(_optionsFactory, environment, _runFromPackageHandler.Object, new Mock<IPackageDownloadHandler>(MockBehavior.Strict).Object,
+                   TestHelpers.CreateHttpClientFactory(handlerMock.Object), meshServiceClient.Object, new TestMetricsLogger(), loggerFactory.CreateLogger<AtlasAssignmentHandler>());
+
+            var instanceManager = new InstanceManager(scriptWebEnvironment, environment, loggerFactory.CreateLogger<InstanceManager>(), meshServiceClient.Object, assignmentHandler);
             var startupContextProvider = new StartupContextProvider(environment, loggerFactory.CreateLogger<StartupContextProvider>());
 
             InstanceManager.Reset();
@@ -181,6 +185,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var loggerProvider = new TestLoggerProvider();
             loggerFactory.AddProvider(loggerProvider);
 
+            var meshServiceClient = new Mock<IMeshServiceClient>(MockBehavior.Strict);
+
             var handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
 
             handlerMock.Protected().Setup<Task<HttpResponseMessage>>("SendAsync",
@@ -190,9 +196,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             StatusCode = HttpStatusCode.OK
             });
 
-            var instanceManager = new InstanceManager(_optionsFactory, TestHelpers.CreateHttpClientFactory(handlerMock.Object),
-                scriptWebEnvironment, environment, loggerFactory.CreateLogger<InstanceManager>(),
-                new TestMetricsLogger(), null, _runFromPackageHandler.Object, new Mock<IPackageDownloadHandler>(MockBehavior.Strict).Object);
+            var assignmentHandler = new AtlasAssignmentHandler(_optionsFactory, environment, _runFromPackageHandler.Object, new Mock<IPackageDownloadHandler>(MockBehavior.Strict).Object,
+                   TestHelpers.CreateHttpClientFactory(handlerMock.Object), meshServiceClient.Object, new TestMetricsLogger(), loggerFactory.CreateLogger<AtlasAssignmentHandler>());
+
+            var instanceManager = new InstanceManager(scriptWebEnvironment, environment, loggerFactory.CreateLogger<InstanceManager>(), meshServiceClient.Object, assignmentHandler);
             var startupContextProvider = new StartupContextProvider(environment, loggerFactory.CreateLogger<StartupContextProvider>());
 
             InstanceManager.Reset();

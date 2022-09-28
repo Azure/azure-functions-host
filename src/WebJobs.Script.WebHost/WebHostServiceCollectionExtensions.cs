@@ -135,6 +135,32 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddTransient<VirtualFileSystem>();
             services.AddTransient<VirtualFileSystemMiddleware>();
 
+            services.AddSingleton<IAssignmentHandler>(p =>
+            {
+                if (SystemEnvironment.Instance.IsLinuxConsumptionOnAtlas())
+                {
+                    var optionsFactory = p.GetService<IOptionsFactory<ScriptApplicationHostOptions>>();
+                    var environment = p.GetService<IEnvironment>();
+                    var runFromPackageHandler = p.GetService<IRunFromPackageHandler>();
+                    var packageDownloadHandler = p.GetService<IPackageDownloadHandler>();
+                    var httpClientFactory = p.GetService<IHttpClientFactory>();
+                    var meshServiceClient = p.GetService<IMeshServiceClient>();
+                    var metricsLogger = p.GetService<IMetricsLogger>();
+                    var logger = p.GetService<ILogger<AtlasAssignmentHandler>>();
+
+                    return new AtlasAssignmentHandler(optionsFactory, environment, runFromPackageHandler,
+                        packageDownloadHandler, httpClientFactory, meshServiceClient, metricsLogger, logger);
+                }
+
+                if (SystemEnvironment.Instance.IsLinuxConsumptionOnLegion())
+                {
+                    var logger = p.GetService<ILogger<LegionAssignmentHandler>>();
+                    return new LegionAssignmentHandler(logger);
+                }
+
+                return null;
+            });
+
             // Logging and diagnostics
             services.AddSingleton<IMetricsLogger, WebHostMetricsLogger>();
 

@@ -21,7 +21,6 @@ using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Moq.Protected;
@@ -220,12 +219,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             _packageDownloadHandler.Setup(p => p.Download(It.IsAny<RunFromPackageContext>()))
                 .Returns(Task.FromResult(string.Empty));
 
-            var assignmentHandler = new AtlasAssignmentHandler(optionsFactory, _environment, _runFromPackageHandler, _packageDownloadHandler.Object,
-                  _httpClientFactory, _meshServiceClientMock.Object, new TestMetricsLogger(), _loggerFactory.CreateLogger<AtlasAssignmentHandler>());
-
             var instanceManager = new InstanceManager(_scriptWebEnvironment,
                 _environment, _loggerFactory.CreateLogger<InstanceManager>(),
-                _meshServiceClientMock.Object, assignmentHandler);
+                _meshServiceClientMock.Object, _assignmentHandler);
 
             bool result = instanceManager.StartAssignment(context);
             Assert.True(result);
@@ -309,13 +305,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 IsScmRunFromPackage = false
             };
             var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(options);
-
-            var assignmentHandler = new AtlasAssignmentHandler(optionsFactory, _environment, _runFromPackageHandler, _packageDownloadHandler.Object,
-                  _httpClientFactory, _meshServiceClientMock.Object, new TestMetricsLogger(), _loggerFactory.CreateLogger<AtlasAssignmentHandler>());
-
             var instanceManager = new InstanceManager(_scriptWebEnvironment,
                 _environment, _loggerFactory.CreateLogger<InstanceManager>(),
-                _meshServiceClientMock.Object, assignmentHandler);
+                _meshServiceClientMock.Object, null);
 
             bool result = instanceManager.StartAssignment(context);
             Assert.True(result);
@@ -389,10 +381,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 StatusCode = HttpStatusCode.NotFound
             });
 
-            var assignmentHandler = new AtlasAssignmentHandler(_optionsFactory, _environment, _runFromPackageHandler, _packageDownloadHandler.Object,
-                  _httpClientFactory, _meshServiceClientMock.Object, new TestMetricsLogger(), loggerFactory.CreateLogger<AtlasAssignmentHandler>());
-
-            var instanceManager = new InstanceManager(scriptWebEnvironment, environment, loggerFactory.CreateLogger<InstanceManager>(), _meshServiceClientMock.Object, assignmentHandler);
+            var instanceManager = new InstanceManager(scriptWebEnvironment, environment, loggerFactory.CreateLogger<InstanceManager>(), null, null);
 
             var assignmentContext = new HostAssignmentContext
             {
@@ -616,7 +605,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 MSIContext = new MSIContext()
             };
 
-            var instanceManager = GetInstanceManagerForMSISpecialization(assignmentContext, HttpStatusCode.OK, _meshServiceClientMock.Object);
+            var instanceManager = GetInstanceManagerForMSISpecialization(assignmentContext, HttpStatusCode.OK, null);
 
             string error = await instanceManager.SpecializeMSISidecar(assignmentContext);
             Assert.Null(error);
@@ -644,7 +633,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 IsWarmupRequest = true
             };
 
-            var instanceManager = GetInstanceManagerForMSISpecialization(assignmentContext, HttpStatusCode.OK, _meshServiceClientMock.Object);
+            var instanceManager = GetInstanceManagerForMSISpecialization(assignmentContext, HttpStatusCode.OK, null);
 
             string error = await instanceManager.SpecializeMSISidecar(assignmentContext);
             Assert.Null(error);
@@ -771,11 +760,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             meshInitServiceClient.Setup(client =>
                 client.MountBlob(Utility.BuildStorageConnectionString(account3, accessKey3, CloudConstants.AzureStorageSuffix), share3, targetPath3)).Returns(Task.FromResult(true));
 
-            var assignmentHandler = new AtlasAssignmentHandler(_optionsFactory, _environment, _runFromPackageHandler, _packageDownloadHandler.Object,
-                  _httpClientFactory, meshInitServiceClient.Object, new TestMetricsLogger(), _loggerFactory.CreateLogger<AtlasAssignmentHandler>());
-
             var instanceManager = new InstanceManager(_scriptWebEnvironment, _environment,
-                _loggerFactory.CreateLogger<InstanceManager>(), meshInitServiceClient.Object, assignmentHandler);
+                _loggerFactory.CreateLogger<InstanceManager>(), meshInitServiceClient.Object, null);
 
             instanceManager.StartAssignment(hostAssignmentContext);
 
@@ -884,12 +870,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                     false)).ReturnsAsync(true);
 
             var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions() { ScriptPath = scriptPath });
-            
-            var assignmentHandler = new AtlasAssignmentHandler(optionsFactory, _environment, runFromPackageHandler.Object, _packageDownloadHandler.Object,
-                  _httpClientFactory, _meshServiceClientMock.Object, new TestMetricsLogger(), _loggerFactory.CreateLogger<AtlasAssignmentHandler>());
 
             var instanceManager = new InstanceManager(_scriptWebEnvironment, _environment,
-                _loggerFactory.CreateLogger<InstanceManager>(), _meshServiceClientMock.Object, assignmentHandler);
+                _loggerFactory.CreateLogger<InstanceManager>(), _meshServiceClientMock.Object, null);
 
             bool result = instanceManager.StartAssignment(context);
             Assert.True(result);
@@ -952,12 +935,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                     false)).ReturnsAsync(true);
 
             var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions() { ScriptPath = scriptPath });
-            
-            var assignmentHandler = new AtlasAssignmentHandler(optionsFactory, _environment, runFromPackageHandler.Object, _packageDownloadHandler.Object,
-                  _httpClientFactory, _meshServiceClientMock.Object, new TestMetricsLogger(), _loggerFactory.CreateLogger<AtlasAssignmentHandler>());
 
             var instanceManager = new InstanceManager(_scriptWebEnvironment, _environment,
-                _loggerFactory.CreateLogger<InstanceManager>(), _meshServiceClientMock.Object, assignmentHandler);
+                _loggerFactory.CreateLogger<InstanceManager>(), _meshServiceClientMock.Object, null);
 
             bool result = instanceManager.StartAssignment(context);
             Assert.True(result);
@@ -1068,11 +1048,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions() { ScriptPath = scriptPath });
 
-            var assignmentHandler = new AtlasAssignmentHandler(optionsFactory, _environment, runFromPackageHandler.Object, _packageDownloadHandler.Object,
-                  _httpClientFactory, _meshServiceClientMock.Object, new TestMetricsLogger(), _loggerFactory.CreateLogger<AtlasAssignmentHandler>());
-
             var instanceManager = new InstanceManager(_scriptWebEnvironment, _environment,
-                _loggerFactory.CreateLogger<InstanceManager>(), _meshServiceClientMock.Object, assignmentHandler);
+                _loggerFactory.CreateLogger<InstanceManager>(), _meshServiceClientMock.Object, null);
 
             bool result = instanceManager.StartAssignment(context);
             Assert.True(result);
@@ -1121,11 +1098,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions() { ScriptPath = scriptPath });
 
-            var assignmentHandler = new AtlasAssignmentHandler(optionsFactory, _environment, runFromPackageHandler.Object, _packageDownloadHandler.Object,
-                  _httpClientFactory, _meshServiceClientMock.Object, new TestMetricsLogger(), _loggerFactory.CreateLogger<AtlasAssignmentHandler>());
-
             var instanceManager = new InstanceManager(_scriptWebEnvironment, _environment,
-                _loggerFactory.CreateLogger<InstanceManager>(), _meshServiceClientMock.Object, assignmentHandler);
+                _loggerFactory.CreateLogger<InstanceManager>(), _meshServiceClientMock.Object, null);
 
             bool result = instanceManager.StartAssignment(context);
             Assert.True(result);
@@ -1177,11 +1151,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions() { ScriptPath = scriptPath });
 
-            var assignmentHandler = new AtlasAssignmentHandler(optionsFactory, _environment, runFromPackageHandler.Object, _packageDownloadHandler.Object,
-                  _httpClientFactory, _meshServiceClientMock.Object, new TestMetricsLogger(), _loggerFactory.CreateLogger<AtlasAssignmentHandler>());
-
             var instanceManager = new InstanceManager(_scriptWebEnvironment, _environment,
-                _loggerFactory.CreateLogger<InstanceManager>(), _meshServiceClientMock.Object, assignmentHandler);
+                _loggerFactory.CreateLogger<InstanceManager>(), _meshServiceClientMock.Object, null);
 
             bool result = instanceManager.StartAssignment(context);
             Assert.True(result);
@@ -1247,11 +1218,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions() { ScriptPath = scriptPath });
 
-            var assignmentHandler = new AtlasAssignmentHandler(optionsFactory, _environment, runFromPackageHandler.Object, _packageDownloadHandler.Object,
-                  _httpClientFactory, _meshServiceClientMock.Object, new TestMetricsLogger(), _loggerFactory.CreateLogger<AtlasAssignmentHandler>());
-
             var instanceManager = new InstanceManager(_scriptWebEnvironment, _environment,
-                _loggerFactory.CreateLogger<InstanceManager>(), _meshServiceClientMock.Object, assignmentHandler);
+                _loggerFactory.CreateLogger<InstanceManager>(), _meshServiceClientMock.Object, null);
 
 
             bool result = instanceManager.StartAssignment(context);
