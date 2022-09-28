@@ -636,10 +636,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     context.CancellationToken.Register(() => SendInvocationCancel(invocationRequest.InvocationId));
                 }
 
-                _invocationParametersPerWorkerId.TryGetValue(Id, out WorkerInvocationParameters workerInvocationParameters);
-                workerInvocationParameters.TotalInvocations = workerInvocationParameters.TotalInvocations + 1;
-                _invocationParametersPerWorkerId[Id] = workerInvocationParameters;
-                _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvoked, Id), functionName: null, data: string.Format("Total Invocation Per WorkerId", _invocationParametersPerWorkerId[Id].TotalInvocations));
+                var totalInvocations = IncrementTotalInvocationsOfWorker();
+                _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvoked, Id), functionName: null, data: string.Format("Total Invocation Per WorkerId", totalInvocations));
 
                 workerInvocationStopWatch = ValueStopwatch.StartNew();
 
@@ -798,16 +796,10 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             if (_executingInvocations.TryRemove(invokeResponse.InvocationId, out ScriptInvocationContext context)
                 && invokeResponse.Result.IsInvocationSuccess(context.ResultSource, capabilityEnabled))
             {
-                var elapsed = workerInvocationStopWatch.GetElapsedTime();
-                _workerChannelLogger.LogDebug($"[HostMonitor] Worker {Id} invocation request took {elapsed.TotalMilliseconds}ms");
-
-                _invocationParametersPerWorkerId.TryGetValue(Id, out WorkerInvocationParameters workerInvocationParameters);
-                workerInvocationParameters.SuccessfulInvocations = workerInvocationParameters.SuccessfulInvocations + 1;
-                workerInvocationParameters.AverageInvocationLatency = ((workerInvocationParameters.AverageInvocationLatency * (workerInvocationParameters.TotalInvocations - 1)) + elapsed.TotalMilliseconds) / workerInvocationParameters.TotalInvocations;
-                _invocationParametersPerWorkerId[Id] = workerInvocationParameters;
+                IncrementSuccessfulInvocationsOfWorker();
+                UpdateAverageInvocationLatency();
 
                 string data = string.Format("_invocationParametersPerWorkerId", _invocationParametersPerWorkerId[Id].TotalInvocations, _invocationParametersPerWorkerId[Id].SuccessfulInvocations, _invocationParametersPerWorkerId[Id].AverageInvocationLatency);
-                //"Error Stats per worker: workerId = " + Id + " attemptcount = " + _attemptCount + " workerTotalInvocationsCount = " + _invocationParametersPerWorkerId[Id].TotalInvocations + " workerSuccessfulInvocationsCount = " + _invocationParametersPerWorkerId[Id].SuccessfulInvocations
                 _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvocationStatus, Id), functionName: null, data: data);
                 _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvokeSucceeded, Id), functionName: null, data: data);
 
@@ -1262,10 +1254,12 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 }
 
                 failureRatePerWorkerId[item.Key] = failureRateOfWorker;
+
+                // To be removed
+                _workerChannelLogger.LogInformation($"WorkerId: {item.Key}, Failure rate: {failureRateOfWorker}");
             }
 
             var sortedFailureRatePerWorkerId = from item in failureRatePerWorkerId orderby item.Value descending select item;
-
             var workerIdToRecycle = sortedFailureRatePerWorkerId.First().Key;
             var failureRate = failureRatePerWorkerId[workerIdToRecycle];
 
@@ -1314,6 +1308,50 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     attributes[ScriptConstants.LiveLogsSessionAIKey] = sessionid;
                 }
             }
+        }
+
+        private int IncrementTotalInvocationsOfWorker()
+        {
+            _invocationParametersPerWorkerId.TryGetValue(Id, out WorkerInvocationParameters workerInvocationParameters);
+
+            if (workerInvocationParameters == null)
+            {
+                workerInvocationParameters = new WorkerInvocationParameters();
+            }
+
+            workerInvocationParameters.TotalInvocations = workerInvocationParameters.TotalInvocations + 1;
+            _invocationParametersPerWorkerId[Id] = workerInvocationParameters;
+
+            return workerInvocationParameters.TotalInvocations;
+        }
+
+        private void IncrementSuccessfulInvocationsOfWorker()
+        {
+            _invocationParametersPerWorkerId.TryGetValue(Id, out WorkerInvocationParameters workerInvocationParameters);
+
+            if (workerInvocationParameters == null)
+            {
+                workerInvocationParameters = new WorkerInvocationParameters();
+            }
+
+            workerInvocationParameters.SuccessfulInvocations = workerInvocationParameters.SuccessfulInvocations + 1;
+            _invocationParametersPerWorkerId[Id] = workerInvocationParameters;
+        }
+
+        private void UpdateAverageInvocationLatency()
+        {
+            _invocationParametersPerWorkerId.TryGetValue(Id, out WorkerInvocationParameters workerInvocationParameters);
+
+            if (workerInvocationParameters == null)
+            {
+                workerInvocationParameters = new WorkerInvocationParameters();
+            }
+
+            var currentInvocationLatency = workerInvocationStopWatch.GetElapsedTime();
+            _workerChannelLogger.LogDebug($"[HostMonitor] Worker {Id} invocation request took {currentInvocationLatency.TotalMilliseconds}ms");
+
+            workerInvocationParameters.AverageInvocationLatency = ((workerInvocationParameters.AverageInvocationLatency * (workerInvocationParameters.TotalInvocations - 1)) + currentInvocationLatency.TotalMilliseconds) / workerInvocationParameters.TotalInvocations;
+            _invocationParametersPerWorkerId[Id] = workerInvocationParameters;
         }
 
         private sealed class PendingItem

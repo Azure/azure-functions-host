@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
 
         // language worker level events
         public const string WorkerInitializeLatency = "host.startup.outofproc.{0}worker.initialize.attempt{1}.latency";
-        public const string WorkerInvocationLatency = "host.startup.outofproc.{0}worker.invocation.latency";
+        public const string WorkerInvocationLatency = "rpcworkerchannel.{0}workerinvocation.latency";
         public const string WorkerInvocationStatus = "rpcworkerchannel.{0}workerinvocation.status";
         public const string WorkerInvokeSucceeded = "{0}worker.invoke.succeeded";
         public const string WorkerInvoked = "{0}worker.invoke";
