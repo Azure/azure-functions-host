@@ -1,0 +1,1 @@
+﻿public static string Run(HttpRequestMessage req) => "Pong";

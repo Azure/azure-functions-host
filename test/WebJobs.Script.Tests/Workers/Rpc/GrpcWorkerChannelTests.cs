@@ -909,6 +909,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             var functionLoadRequest = _workerChannel.GetFunctionLoadRequest(metadata, null);
             Assert.False(functionLoadRequest.Metadata.IsProxy);
+            ProxyFunctionMetadata proxyMetadata = new ProxyFunctionMetadata(null)
+            {
+                Language = "node",
+                Name = "js1"
+            };
+
+            metadata.SetFunctionId("TestFunctionId1");
+
+            var proxyFunctionLoadRequest = _workerChannel.GetFunctionLoadRequest(proxyMetadata, null);
+            Assert.True(proxyFunctionLoadRequest.Metadata.IsProxy);
         }
 
         /// <summary>

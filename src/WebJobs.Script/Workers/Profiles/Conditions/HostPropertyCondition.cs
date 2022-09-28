@@ -6,10 +6,9 @@ using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Microsoft.Azure.WebJobs.Script.Config;
-using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Extensions.Logging;
 
-namespace Microsoft.Azure.WebJobs.Script.Workers
+namespace Microsoft.Azure.WebJobs.Script.Workers.Profiles
 {
     /// <summary>
     /// An implementation of an <see cref="IWorkerProfileCondition"/> that checks if different host properties
@@ -39,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             Validate();
         }
 
-        public enum HostProperty
+        private enum HostProperty
         {
             Sku,
             Platform,
@@ -68,27 +67,27 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 return false;
             }
 
-            _logger.LogDebug($"Evaluating HostPropertyCondition with name: {Name}, value: {value} and expression {Expression}");
+            _logger.LogDebug("Evaluating HostPropertyCondition with name: {name}, value: {value} and expression {expression}", Name, value, Expression);
 
             return _regex.IsMatch(value);
         }
 
-        // Validates if condition parametrs meet expected values, fail if they don't
+        // Validates if condition parameters meet expected values, fail if they don't
         private void Validate()
         {
             if (string.IsNullOrEmpty(Name))
             {
-               throw new ValidationException($"HostPropertyCondition {nameof(Name)} cannot be empty.");
+                throw new ValidationException($"HostPropertyCondition {nameof(Name)} cannot be empty.");
             }
 
             if (!Enum.GetNames(typeof(HostProperty)).Any(x => x.ToLower().Contains(Name.ToLower())))
             {
-               throw new ValidationException($"HostPropertyCondition {nameof(Name)} is not a valid host property name.");
+                throw new ValidationException($"HostPropertyCondition {nameof(Name)} is not a valid host property name.");
             }
 
             if (string.IsNullOrEmpty(Expression))
             {
-               throw new ValidationException($"HostPropertyCondition {nameof(Expression)} cannot be empty.");
+                throw new ValidationException($"HostPropertyCondition {nameof(Expression)} cannot be empty.");
             }
 
             try
@@ -97,7 +96,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             }
             catch
             {
-              throw new ValidationException($"HostPropertyCondition {nameof(Expression)} must be a valid regular expression.");
+                throw new ValidationException($"HostPropertyCondition {nameof(Expression)} must be a valid regular expression.");
             }
         }
     }

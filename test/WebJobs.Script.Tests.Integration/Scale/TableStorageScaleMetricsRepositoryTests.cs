@@ -12,6 +12,7 @@ using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Helpers;
 using Microsoft.Azure.WebJobs.Script.WebHost.Storage;
+using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -446,6 +447,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale
             Assert.True(errorLog.FormattedMessage.Contains("Element 0 in the batch returned an unexpected response code"));
             Assert.True(errorLog.FormattedMessage.Contains("StatusMessage:0:The table specified does not exist."));
             Assert.True(errorLog.FormattedMessage.Contains("ErrorMessage:0:The table specified does not exist."));
+        }
+
+        [Fact]
+        public async Task WriteMetricsAsync_PersistsMultipleBatchesCorrectly()
+        {
+            // add monitors in excess of the table storage max batch count of 100
+            int metricsCount = 225;
+            List<IScaleMonitor> monitors = new List<IScaleMonitor>();
+            for (int i = 0; i < metricsCount; i++)
+            {
+                monitors.Add(new TestScaleMonitor1());
+            }
+
+            var result = await _repository.ReadMetricsAsync(monitors);
+            Assert.Equal(metricsCount, result.Count);
+
+            Dictionary<IScaleMonitor, ScaleMetrics> metricsMap = new Dictionary<IScaleMonitor, ScaleMetrics>();
+            foreach (var monitor in monitors)
+            {
+                metricsMap.Add(monitor, new TestScaleMetrics1 { Count = 123 });
+            }
+
+            await _repository.WriteMetricsAsync(metricsMap);
+
+            // read the metrics back
+            result = await _repository.ReadMetricsAsync(monitors);
+            Assert.Equal(metricsCount, result.Count);
         }
 
         private async Task EmptyMetricsTableAsync()

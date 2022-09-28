@@ -5,7 +5,7 @@ using System;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Extensions.Logging;
 
-namespace Microsoft.Azure.WebJobs.Script.Workers
+namespace Microsoft.Azure.WebJobs.Script.Workers.Profiles
 {
     internal sealed class WorkerProfileConditionProvider : IWorkerProfileConditionProvider
     {

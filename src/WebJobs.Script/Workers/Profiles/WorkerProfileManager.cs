@@ -1,5 +1,5 @@
 // Copyright (c) .NET Foundation. All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+// Licensed under the MIT License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
 using System.Collections.Generic;
@@ -15,16 +15,22 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
     internal class WorkerProfileManager : IWorkerProfileManager
     {
         private readonly ILogger _logger;
+        private readonly IEnvironment _environment;
         private readonly IEnumerable<IWorkerProfileConditionProvider> _conditionProviders;
-        private Dictionary<string, List<WorkerDescriptionProfile>> _profiles;
-        private string _activeProfile;
 
-        public WorkerProfileManager(ILogger logger, IEnumerable<IWorkerProfileConditionProvider> conditionProviders)
+        private string _activeProfile = string.Empty;
+        private Dictionary<string, List<WorkerDescriptionProfile>> _profiles;
+
+        public WorkerProfileManager(ILogger<WorkerProfileManager> logger, IEnvironment environment)
         {
+            _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _conditionProviders = conditionProviders ?? throw new ArgumentNullException(nameof(conditionProviders));
+
             _profiles = new Dictionary<string, List<WorkerDescriptionProfile>>();
-            _activeProfile = string.Empty;
+            _conditionProviders = new List<IWorkerProfileConditionProvider>
+            {
+                new WorkerProfileConditionProvider(_logger, _environment)
+            };
         }
 
         /// <inheritdoc />
@@ -59,9 +65,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 _logger?.LogInformation($"Worker initialized with profile - {profile.Name}, Profile ID {profile.ProfileId} from worker config.");
                 _activeProfile = profile.ProfileId;
                 workerDescription = profile.ApplyProfile(defaultWorkerDescription);
-                return;
             }
-            workerDescription = defaultWorkerDescription;
+            else
+            {
+                workerDescription = defaultWorkerDescription;
+            }
         }
 
         /// <inheritdoc />
@@ -87,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             var profileId = string.Empty;
             if (GetEvaluatedProfile(workerRuntime, out WorkerDescriptionProfile profile))
             {
-               profileId = profile.ProfileId;
+                profileId = profile.ProfileId;
             }
             return _activeProfile.Equals(profileId);
         }

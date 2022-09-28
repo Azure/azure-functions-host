@@ -34,6 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             // Add the default files we need to watch
             options.WatchFiles.Add(ScriptConstants.HostMetadataFileName);
             options.WatchFiles.Add(ScriptConstants.FunctionMetadataFileName);
+            options.WatchFiles.Add(ScriptConstants.ProxyMetadataFileName);
 
             // Set default logging mode
             options.FileLoggingMode = FileLoggingMode.DebugOnly;

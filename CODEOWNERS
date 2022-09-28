@@ -5,11 +5,12 @@
 # https://git-scm.com/docs/gitignore#_pattern_format
 #
 
-
 # Adding codeowner for Python specific files such that GitHub automatically adds python folks as a reviewer.
 build/python.props @vrdmr @gavin-aguiar @YunchuWang
 
 # Deps.json validation file
-test/WebJobs.Script.Tests/Microsoft.Azure.WebJobs.Script.WebHost.deps.json @fabiocav @brettsam @mathewc
+test/WebJobs.Script.Tests/Microsoft.Azure.WebJobs.Script.WebHost.deps.json @fabiocav @brettsam @mathewc @madelinegordon @soninaren @kashimiz @liliankasem @kshyju @surgupta-msft @satvu @jviau
 
-tools/ExtensionsMetadataGenerator @fabiocav @brettsam
+tools/ExtensionsMetadataGenerator @fabiocav @brettsam @madelinegordon @soninaren @kashimiz @liliankasem @kshyju @surgupta-msft @satvu @jviau
+
+src/WebJobs.Script.WebHost/PreJIT/* @vrdmr @pragnagopa @eliaslopezgt @VpOfEngineering @fabiocav @brettsam @madelinegordon @soninaren @kashimiz @liliankasem @kshyju @surgupta-msft @satvu @jviau

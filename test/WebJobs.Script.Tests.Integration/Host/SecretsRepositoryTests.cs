@@ -10,7 +10,6 @@ using System.Threading.Tasks;
 using Azure;
 using Azure.Identity;
 using Azure.Security.KeyVault.Secrets;
-using Microsoft.Azure.Services.AppAuthentication;
 using Microsoft.Azure.Storage;
 using Microsoft.Azure.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.Storage;
@@ -21,6 +20,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.WebJobs.Script.Tests;
 using WebJobs.Script.Tests;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -30,10 +30,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly string functionName = "Test_test";
         public static string KeyName = "Te!@#st!1-te_st";
 
-        public SecretsRepositoryTests(SecretsRepositoryTests.Fixture fixture)
+        private ITestOutputHelper _output;
+
+        public SecretsRepositoryTests(SecretsRepositoryTests.Fixture fixture, ITestOutputHelper outputHelper)
         {
             Utility.ColdStartDelayMS = 50;
             _fixture = fixture;
+            _output = outputHelper;
         }
 
         public enum SecretsRepositoryType
@@ -370,6 +373,157 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
+        [Theory]
+        [InlineData(SecretsRepositoryType.BlobStorage)]
+        [InlineData(SecretsRepositoryType.BlobStorageSas)]
+        public async Task BlobRepository_WriteAsync_DoesNot_ClearBlobContents(SecretsRepositoryType repositoryType)
+        {
+            using (var directory = new TempDirectory())
+            {
+                await _fixture.TestInitialize(repositoryType, directory.Path);
+                string testFunctionName = "host";
+                var target = _fixture.GetNewSecretRepository();
+
+                async Task RunTest()
+                {
+                    HostSecrets testSecrets = new HostSecrets()
+                    {
+                        MasterKey = new Key("master", "test"),
+                        FunctionKeys = new List<Key>(),
+                        SystemKeys = new List<Key>() { new Key(KeyName, "test") }
+                    };
+
+                    // make the payload larger to guarantee the race condition
+                    for (int i = 0; i < 1000; i++)
+                    {
+                        testSecrets.FunctionKeys.Add(new Key(KeyName + i, "test"));
+                    }
+                    // Set up initial secrets.
+                    await _fixture.WriteSecret(testFunctionName, testSecrets);
+
+                    // Perform a write and read similtaneously. Previously, our usage of OpenWriteAsync
+                    // would erase the content of the blob while writing, resulting in null secrets from the
+                    // read.
+                    Task writeTask = target.WriteAsync(ScriptSecretsType.Host, testFunctionName, testSecrets);
+                    HostSecrets secretsContent = await target.ReadAsync(ScriptSecretsType.Host, testFunctionName) as HostSecrets;
+
+                    await writeTask;
+
+                    Assert.NotNull(secretsContent);
+                }
+
+                // this is a race so it may not fire every time; try several times
+                await TestHelpers.RetryFailedTest(RunTest, 10, _output);
+            }
+        }
+
+        [Theory]
+        [InlineData(SecretsRepositoryType.BlobStorage)]
+        [InlineData(SecretsRepositoryType.BlobStorageSas)]
+        public async Task BlobRepository_SimultaneousWrites_Throws_PreconditionFailed(SecretsRepositoryType repositoryType)
+        {
+            using (var directory = new TempDirectory())
+            {
+                await _fixture.TestInitialize(repositoryType, directory.Path);
+                var target = _fixture.GetNewSecretRepository();
+                string testFunctionName = "host";
+
+                async Task RunTest()
+                {
+                    HostSecrets testSecrets = new HostSecrets()
+                    {
+                        MasterKey = new Key("master", "test"),
+                        FunctionKeys = new List<Key>(),
+                        SystemKeys = new List<Key>() { new Key(KeyName, "test") }
+                    };
+
+                    // make the payload larger to guarantee the race condition
+                    for (int i = 0; i < 1000; i++)
+                    {
+                        testSecrets.FunctionKeys.Add(new Key(KeyName + i, "test"));
+                    }
+
+                    // Set up initial secrets.
+                    await _fixture.WriteSecret(testFunctionName, testSecrets);
+                    HostSecrets secretsContent = await target.ReadAsync(ScriptSecretsType.Host, testFunctionName) as HostSecrets;
+                    Assert.Equal("test", secretsContent.FunctionKeys.First().Value);
+
+                    testSecrets.FunctionKeys.First().Value = "changed";
+
+                    // Simultaneous writes will result in one of the writes being discarded due to
+                    // non-matching ETag.
+                    Task writeTask1 = target.WriteAsync(ScriptSecretsType.Host, testFunctionName, testSecrets);
+                    Task writeTask2 = target.WriteAsync(ScriptSecretsType.Host, testFunctionName, testSecrets);
+
+                    var ex = await Assert.ThrowsAsync<RequestFailedException>(() => Task.WhenAll(writeTask1, writeTask2));
+
+                    // Ensure the write went through.
+                    secretsContent = await target.ReadAsync(ScriptSecretsType.Host, testFunctionName) as HostSecrets;
+                    Assert.Equal("changed", secretsContent.FunctionKeys.First().Value);
+
+                    Assert.Equal("ConditionNotMet", ex.ErrorCode);
+                    Assert.Equal(412, ex.Status);
+                    Assert.True(writeTask1.IsCompletedSuccessfully || writeTask2.IsCompletedSuccessfully,
+                        "One of the write operations should have completed successfully.");
+                }
+
+                // this is a race so it may not fire every time; try several times
+                await TestHelpers.RetryFailedTest(RunTest, 10, _output);
+            }
+        }
+
+        [Theory]
+        [InlineData(SecretsRepositoryType.BlobStorage)]
+        [InlineData(SecretsRepositoryType.BlobStorageSas)]
+        public async Task BlobRepository_SimultaneousCreates_Throws_Conflict(SecretsRepositoryType repositoryType)
+        {
+            using (var directory = new TempDirectory())
+            {
+                await _fixture.TestInitialize(repositoryType, directory.Path);
+                string testFunctionName = "host";
+                var target = _fixture.GetNewSecretRepository();
+
+                async Task RunTest()
+                {
+                    HostSecrets testSecrets = new HostSecrets()
+                    {
+                        MasterKey = new Key("master", "test"),
+                        FunctionKeys = new List<Key>(),
+                        SystemKeys = new List<Key>() { new Key(KeyName, "test") }
+                    };
+
+                    // make the payload larger to guarantee the race condition
+                    for (int i = 0; i < 1000; i++)
+                    {
+                        testSecrets.FunctionKeys.Add(new Key(KeyName + i, "test"));
+                    }
+
+                    // Ensure nothing is there.                
+                    HostSecrets secretsContent = await target.ReadAsync(ScriptSecretsType.Host, testFunctionName) as HostSecrets;
+                    Assert.Null(secretsContent);
+
+                    // Simultaneous creates will result in one of the writes being discarded due to
+                    // non-matching ETag.
+                    Task writeTask1 = target.WriteAsync(ScriptSecretsType.Host, testFunctionName, testSecrets);
+                    Task writeTask2 = target.WriteAsync(ScriptSecretsType.Host, testFunctionName, testSecrets);
+
+                    var ex = await Assert.ThrowsAsync<RequestFailedException>(() => Task.WhenAll(writeTask1, writeTask2));
+
+                    // Ensure the write went through.
+                    secretsContent = await target.ReadAsync(ScriptSecretsType.Host, testFunctionName) as HostSecrets;
+                    Assert.Equal("test", secretsContent.FunctionKeys.First().Value);
+
+                    Assert.Equal("BlobAlreadyExists", ex.ErrorCode);
+                    Assert.Equal(409, ex.Status);
+                    Assert.True(writeTask1.IsCompletedSuccessfully || writeTask2.IsCompletedSuccessfully,
+                        "One of the write operations should have completed successfully.");
+                }
+
+                // this is a race so it may not fire every time; try several times
+                await TestHelpers.RetryFailedTest(RunTest, 10, _output);
+            }
+        }
+
         public class Fixture : IDisposable
         {
             public Fixture()
@@ -384,8 +538,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 KeyVaultClientSecret = configuration.GetWebJobsConnectionString(EnvironmentSettingNames.AzureWebJobsSecretStorageKeyVaultClientSecret);
                 KeyVaultTenantId = configuration.GetWebJobsConnectionString(EnvironmentSettingNames.AzureWebJobsSecretStorageKeyVaultTenantId);
 
-                var credential = new ClientSecretCredential(KeyVaultTenantId, KeyVaultClientId, KeyVaultClientSecret);
-                SecretClient = new SecretClient(new Uri(KeyVaultUri), credential);
+                if (KeyVaultTenantId is not null && KeyVaultClientId is not null &&
+                    KeyVaultClientSecret is not null && KeyVaultUri is not null)
+                {
+                    // These will fail later if required; but sometimes when testing locally you don't care about KeyVault
+                    var credential = new ClientSecretCredential(KeyVaultTenantId, KeyVaultClientId, KeyVaultClientSecret);
+                    SecretClient = new SecretClient(new Uri(KeyVaultUri), credential);
+                }
+
                 AzureBlobStorageProvider = TestHelpers.GetAzureBlobStorageProvider(configuration);
             }
 
@@ -438,7 +598,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 await ClearAllBlobSecrets();
                 ClearAllFileSecrets();
-                await ClearAllKeyVaultSecrets();
+
+                if (SecretClient is not null)
+                {
+                    await ClearAllKeyVaultSecrets();
+                }
 
                 LoggerProvider = new TestLoggerProvider();
                 var loggerFactory = new LoggerFactory();

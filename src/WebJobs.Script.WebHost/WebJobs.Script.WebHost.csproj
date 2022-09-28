@@ -35,6 +35,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Content Remove="Resources\Functions\host.json" />
+    <Content Remove="Resources\Functions\proxies.json" />
     <Content Remove="Resources\Functions\WarmUp\function.json" />
   </ItemGroup>
   <ItemGroup>
@@ -72,6 +73,7 @@
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="6.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="6.0.0" />
     <PackageReference Include="Microsoft.Azure.AppService.Middleware.Functions" Version="1.4.17" />
+    <PackageReference Include="Microsoft.Azure.AppService.Proxy.Client" Version="2.2.20220831.41" />
     <PackageReference Include="Microsoft.Azure.Cosmos.Table" Version="1.0.8" />
     <PackageReference Include="Microsoft.Azure.Storage.File" Version="11.1.7" />
 
@@ -91,6 +93,7 @@
     <EmbeddedResource Include="Home.html" />
     <EmbeddedResource Include="Resources\app_offline.htm" />
     <EmbeddedResource Include="Resources\Functions\host.json" />
+    <EmbeddedResource Include="Resources\Functions\proxies.json" />
     <EmbeddedResource Include="Resources\Functions\WarmUp\function.json" />
     <EmbeddedResource Include="Resources\Functions\WarmUp\run.csx" />
   </ItemGroup>

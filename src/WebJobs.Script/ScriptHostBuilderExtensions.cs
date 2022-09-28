@@ -7,8 +7,6 @@ using System.Runtime.InteropServices;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
-using Microsoft.Azure.WebJobs.Host.Scale;
-using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Hosting;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
@@ -17,6 +15,7 @@ using Microsoft.Azure.WebJobs.Script.BindingExtensions;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.DependencyInjection;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
@@ -29,7 +28,6 @@ using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
-using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -250,6 +248,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 services.AddSingleton<IFunctionInvocationDispatcherFactory, FunctionInvocationDispatcherFactory>();
                 services.AddSingleton<IScriptJobHost>(p => p.GetRequiredService<ScriptHost>());
                 services.AddSingleton<IJobHost>(p => p.GetRequiredService<ScriptHost>());
+                services.AddSingleton<IFunctionProvider, ProxyFunctionProvider>();
                 services.AddSingleton<IHostedService, WorkerConcurrencyManager>();
 
                 services.AddSingleton<ITypeLocator, ScriptTypeLocator>();
@@ -328,6 +327,7 @@ namespace Microsoft.Azure.WebJobs.Script
             services.AddSingleton<HostIdValidator>();
             services.AddSingleton<IHostIdProvider, ScriptHostIdProvider>();
             services.TryAddSingleton<IScriptEventManager, ScriptEventManager>();
+            services.AddSingleton<IWorkerProfileManager, WorkerProfileManager>();
 
             // Add Language Worker Service
             // Need to maintain the order: Add RpcInitializationService before core script host services

@@ -43,6 +43,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Middleware
             bool result = FunctionInvocationMiddleware.RequiresAuthz(request, function.Object);
             Assert.True(result);
 
+            // Proxies don't require authz
+            metadata = new ProxyFunctionMetadata(null);
+            function = new Mock<FunctionDescriptor>(MockBehavior.Strict, "test", null, metadata, null, null, null, null);
+            attribute = new HttpTriggerAttribute(AuthorizationLevel.Function, "get")
+            {
+                Route = "test"
+            };
+            function.SetupGet(p => p.HttpTriggerAttribute).Returns(() => attribute);
+            result = FunctionInvocationMiddleware.RequiresAuthz(request, function.Object);
+            Assert.False(result);
+
             // Anonymous functions don't require authz
             metadata = new FunctionMetadata();
             function = new Mock<FunctionDescriptor>(MockBehavior.Strict, "test", null, metadata, null, null, null, null);

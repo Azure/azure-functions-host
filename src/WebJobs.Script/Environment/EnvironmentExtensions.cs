@@ -74,6 +74,14 @@ namespace Microsoft.Azure.WebJobs.Script
             return categories.Contains(ScriptConstants.AzureMonitorTraceCategory);
         }
 
+        /// <summary>
+        /// Gets if <a href="https://docs.microsoft.com/azure/azure-functions/functions-proxies">proxies.json support</a> is enabled.
+        /// </summary>
+        public static bool IsProxiesEnabled(this IEnvironment environment)
+        {
+            return FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableProxies, environment);
+        }
+
         public static bool IsRunningAsHostedSiteExtension(this IEnvironment environment)
         {
             if (environment.IsAppService())
@@ -135,7 +143,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return isFunctionsV2CompatibilityMode || isV2ExtensionVersion;
         }
 
-        public static bool IsV2CompatibileOnV3Extension(this IEnvironment environment)
+        public static bool IsV2CompatibleOnV3Extension(this IEnvironment environment)
         {
             string compatModeString = environment.GetEnvironmentVariable(FunctionsV2CompatibilityModeKey);
             bool.TryParse(compatModeString, out bool isFunctionsV2CompatibilityMode);
