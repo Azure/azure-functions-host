@@ -20,6 +20,7 @@ using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
+using Microsoft.Azure.WebJobs.Script.WebHost.Security;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.WebJobs.Script.Tests;
@@ -41,6 +42,49 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         {
             _fixture = fixture;
             _settingsManager = ScriptSettingsManager.Instance;
+        }
+
+        [Fact]
+        public async Task InvokeAdminLevelFunction_WithoutMasterKey_ReturnsUnauthorized()
+        {
+            // no key presented
+            string uri = $"api/httptrigger-adminlevel?name=Mathew";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
+            HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+
+            // function level key when admin is required
+            request = new HttpRequestMessage(HttpMethod.Get, uri);
+            string key = await _fixture.Host.GetFunctionSecretAsync("httptrigger-adminlevel");
+            request.Headers.Add(AuthenticationLevelHandler.FunctionsKeyHeaderName, key);
+            response = await _fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+
+            // required master key supplied
+            request = new HttpRequestMessage(HttpMethod.Get, uri);
+            key = await _fixture.Host.GetMasterKeyAsync();
+            request.Headers.Add(AuthenticationLevelHandler.FunctionsKeyHeaderName, key);
+            response = await _fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            // verify that even though a site token grants admin level access to
+            // host APIs, it can't be used to invoke user functions
+            using (new TestScopedEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey, TestHelpers.GenerateKeyHexString()))
+            {
+                string token = SimpleWebTokenHelper.CreateToken(DateTime.UtcNow.AddMinutes(2));
+
+                // verify the token is valid by invoking an admin API
+                request = new HttpRequestMessage(HttpMethod.Get, "admin/host/status");
+                request.Headers.Add(ScriptConstants.SiteTokenHeaderName, token);
+                response = await _fixture.Host.HttpClient.SendAsync(request);
+                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+                // verify it can't be used to invoke user functions
+                request = new HttpRequestMessage(HttpMethod.Get, uri);
+                request.Headers.Add(ScriptConstants.SiteTokenHeaderName, token);
+                response = await _fixture.Host.HttpClient.SendAsync(request);
+                Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+            }
         }
 
         [Fact]
@@ -433,10 +477,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         [Fact]
         public async Task HostStatus_AdminLevel_Succeeds()
         {
-            string uri = "admin/host/status";
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
-            request.Headers.Add(AuthenticationLevelHandler.FunctionsKeyHeaderName, await _fixture.Host.GetMasterKeyAsync());
-
             HttpResponseMessage response = await GetHostStatusAsync();
 
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -457,7 +497,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal((string)jsonContent["computerName"], "RD281878FCB8E7");
 
             // Now ensure XML content works
-            request = new HttpRequestMessage(HttpMethod.Get, uri);
+            string uri = "admin/host/status";
+            var request = new HttpRequestMessage(HttpMethod.Get, uri);
             request.Headers.Add(AuthenticationLevelHandler.FunctionsKeyHeaderName, await _fixture.Host.GetMasterKeyAsync());
             request.Headers.Add("Accept", "text/xml");
 
