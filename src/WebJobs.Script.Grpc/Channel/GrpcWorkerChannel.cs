@@ -799,7 +799,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 IncrementSuccessfulInvocationsOfWorker();
                 UpdateAverageInvocationLatency();
 
-                string data = string.Format("_invocationParametersPerWorkerId", _invocationParametersPerWorkerId[Id].TotalInvocations, _invocationParametersPerWorkerId[Id].SuccessfulInvocations, _invocationParametersPerWorkerId[Id].AverageInvocationLatency);
+                string data = $"TotalInvocations : {_invocationParametersPerWorkerId[Id].TotalInvocations}, SuccessfulInvocations : {_invocationParametersPerWorkerId[Id].SuccessfulInvocations}, AverageInvocationLatency : {_invocationParametersPerWorkerId[Id].AverageInvocationLatency}";
                 _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvocationStatus, Id), functionName: null, data: data);
                 _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvokeSucceeded, Id), functionName: null, data: data);
 
@@ -856,6 +856,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                         SendCloseSharedMemoryResourcesForInvocationRequest(outputMaps);
                     }
                 }
+
+                // ToDo: Find the correct place for calling this method
+                CheckAndRecycleFaultyLanguageWorker();
             }
         }
 
@@ -1268,7 +1271,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 // ToDo: in next iteration of this feature => recycle the workerId in variable: workerIdToRecycle
                 // ToDo: Other criteria for recycle => if invocation latency is too high
 
-                _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerRecycled, Id), functionName: null, data: string.Format("WorkerId recycled", workerIdToRecycle));
+                _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerRecycled, Id), functionName: null, data: $"WorkerId recycled: {workerIdToRecycle}");
                 _workerChannelLogger.LogDebug($"WorkerId Recycled: {workerIdToRecycle}, Failure rate: {failureRate}");
             }
 
