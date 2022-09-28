@@ -319,6 +319,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     // Dispatcher not needed for codeless function.
                     // Dispatcher needed for non-dotnet codeless functions
                     var filteredFunctionMetadata = functionMetadataList.Where(m => m.IsProxy() || !Utility.IsCodelessDotNetLanguageFunction(m));
+                    _logger.LogDebug("Log0: calling InitializeAsync from ScriptHost");
                     await _functionDispatcher.InitializeAsync(Utility.GetValidFunctions(filteredFunctionMetadata, Functions), cancellationToken);
                 }
 
