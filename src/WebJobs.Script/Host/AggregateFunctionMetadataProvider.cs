@@ -62,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     }
 
                     // start up GRPC channels
-                    _logger.LogDebug("Log0: calling InitializeAsync from AggregateFunctionMetadataProvider");
+                    _logger.LogCritical("Log0: calling InitializeAsync from AggregateFunctionMetadataProvider");
                     await _dispatcher.InitializeAsync(new List<FunctionMetadata>());
 
                     // get function metadata from worker, then validate it
