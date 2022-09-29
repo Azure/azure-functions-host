@@ -82,6 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private bool _isSharedMemoryDataTransferEnabled;
         private bool _cancelCapabilityEnabled;
 
+        private System.Timers.Timer _invocationTimer;
         private System.Timers.Timer _timer;
 
         internal GrpcWorkerChannel(
@@ -131,6 +132,18 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _startLatencyMetric = metricsLogger?.LatencyEvent(string.Format(MetricEventNames.WorkerInitializeLatency, workerConfig.Description.Language, attemptCount));
 
             _state = RpcWorkerChannelState.Default;
+
+            if (_invocationTimer == null)
+            {
+                _invocationTimer = new System.Timers.Timer()
+                {
+                    AutoReset = false,
+                    Interval = 5000,
+                };
+
+                _invocationTimer.Elapsed += OnInvocationTimer;
+                _invocationTimer.Start();
+            }
         }
 
         public string Id => _workerId;
@@ -602,6 +615,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         internal async Task SendInvocationRequest(ScriptInvocationContext context)
         {
+            // ToDo: Find the correct place for below call
+            CheckAndRecycleFaultyLanguageWorker();
+
             try
             {
                 // do not send invocation requests for functions that failed to load or could not be indexed by the worker
@@ -856,9 +872,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                         SendCloseSharedMemoryResourcesForInvocationRequest(outputMaps);
                     }
                 }
-
-                // ToDo: Find the correct place for calling this method
-                CheckAndRecycleFaultyLanguageWorker();
             }
         }
 
@@ -1061,6 +1074,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     _startLatencyMetric?.Dispose();
                     _workerInitTask?.TrySetCanceled();
                     _timer?.Dispose();
+                    _invocationTimer?.Dispose();
 
                     // unlink function inputs
                     foreach (var link in _inputLinks)
@@ -1218,8 +1232,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 return;
             }
 
-            CheckAndRecycleFaultyLanguageWorker();
-
             try
             {
                 WorkerStatus workerStatus = await GetWorkerStatusAsync();
@@ -1240,8 +1252,37 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
         }
 
+        internal void OnInvocationTimer(object sender, System.Timers.ElapsedEventArgs e)
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            try
+            {
+                _workerChannelLogger.LogInformation("Evaluating faulty workers");
+                CheckAndRecycleFaultyLanguageWorker();
+            }
+            catch
+            {
+                // Don't allow background execptions to escape
+                // E.g. when a rpc channel is shutting down we can process exceptions
+            }
+            try
+            {
+                _timer.Start();
+            }
+            catch (ObjectDisposedException)
+            {
+                // Specifically ignore this race - we're exiting and that's okay
+            }
+        }
+
         internal void CheckAndRecycleFaultyLanguageWorker()
         {
+            _workerChannelLogger.LogInformation("CheckAndRecycleFaultyLanguageWorker");
+
             Dictionary<string, int> failureRatePerWorkerId = new Dictionary<string, int>();
 
             // ToDo: Need to move this constant once finalized
