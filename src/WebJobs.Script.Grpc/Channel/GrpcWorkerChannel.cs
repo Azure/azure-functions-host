@@ -637,7 +637,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 }
 
                 var totalInvocations = IncrementTotalInvocationsOfWorker();
-                _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvoked, Id), functionName: null, data: string.Format("Total Invocation Per WorkerId", totalInvocations));
+                _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvoked, Id), functionName: null, data: $"Total invocations of Worker {Id} : {totalInvocations}");
 
                 workerInvocationStopWatch = ValueStopwatch.StartNew();
 
