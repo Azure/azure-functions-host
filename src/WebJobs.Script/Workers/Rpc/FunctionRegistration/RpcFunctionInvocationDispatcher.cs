@@ -131,7 +131,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             int count = (await GetAllWorkerChannelsAsync()).Count();
             _logger.LogCritical($"Log4: workerConfig.CountOptions.ProcessCount={count}");
-            return (await GetAllWorkerChannelsAsync()).Count();
+            return count;
         }
 
         internal async Task InitializeJobhostLanguageWorkerChannelAsync(IEnumerable<string> languages = null)
@@ -341,7 +341,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                             try
                             {
                                 IRpcWorkerChannel initializedLanguageWorkerChannel = await initializedLanguageWorkerChannelTask.Task;
-
                                 // if worker is not indexing, then _functions is populated and we can set up invocation buffers and send load requests
                                 if (!_workerIndexing)
                                 {
