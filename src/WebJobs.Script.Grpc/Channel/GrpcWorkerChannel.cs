@@ -280,8 +280,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         {
             var workerStatus = new WorkerStatus();
 
-            _workerChannelLogger.LogInformation("GetWorkerStatusAsync");
-
             if (!string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.WorkerStatus)))
             {
                 // get the worker's current status
@@ -640,18 +638,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     context.CancellationToken.Register(() => SendInvocationCancel(invocationRequest.InvocationId));
                 }
 
-                if (_invocationTimer == null)
-                {
-                    _invocationTimer = new System.Timers.Timer()
-                    {
-                        AutoReset = false,
-                        Interval = 300000,
-                    };
-
-                    _invocationTimer.Elapsed += OnInvocationTimer;
-                    _invocationTimer.Start();
-                }
-
                 var totalInvocations = IncrementTotalInvocationsOfWorker();
                 _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvoked, Id), functionName: null, data: $"Total invocations of Worker {Id} : {totalInvocations}");
 
@@ -815,7 +801,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 IncrementSuccessfulInvocationsOfWorker();
                 UpdateAverageInvocationLatency();
 
-                string data = $"TotalInvocations : {_invocationParametersPerWorkerId[Id].TotalInvocations}, SuccessfulInvocations : {_invocationParametersPerWorkerId[Id].SuccessfulInvocations}, AverageInvocationLatency : {_invocationParametersPerWorkerId[Id].AverageInvocationLatency}";
+                string data = $"WorkerId: {Id}, TotalInvocations : {_invocationParametersPerWorkerId[Id].TotalInvocations}, SuccessfulInvocations : {_invocationParametersPerWorkerId[Id].SuccessfulInvocations}, AverageInvocationLatency : {_invocationParametersPerWorkerId[Id].AverageInvocationLatency}";
                 _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvocationStatus, Id), functionName: null, data: data);
                 _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvokeSucceeded, Id), functionName: null, data: data);
 
@@ -872,6 +858,18 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                         SendCloseSharedMemoryResourcesForInvocationRequest(outputMaps);
                     }
                 }
+            }
+
+            if (_invocationTimer == null)
+            {
+                _invocationTimer = new System.Timers.Timer()
+                {
+                    AutoReset = false,
+                    Interval = 300000,
+                };
+
+                _invocationTimer.Elapsed += OnInvocationTimer;
+                _invocationTimer.Start();
             }
         }
 
@@ -1261,7 +1259,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             try
             {
-                _workerChannelLogger.LogInformation("OnInvocationTimer Evaluating faulty workers");
                 CheckAndRecycleFaultyLanguageWorker();
             }
             catch
@@ -1281,7 +1278,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         internal void CheckAndRecycleFaultyLanguageWorker()
         {
-            _workerChannelLogger.LogInformation("CheckAndRecycleFaultyLanguageWorker");
+            _workerChannelLogger.LogInformation("Checking and recycling faulty language workers");
 
             Dictionary<string, int> failureRatePerWorkerId = new Dictionary<string, int>();
 
