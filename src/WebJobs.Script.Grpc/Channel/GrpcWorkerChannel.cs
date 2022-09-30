@@ -615,9 +615,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         internal async Task SendInvocationRequest(ScriptInvocationContext context)
         {
-            // ToDo: Find the correct place for below call
-            CheckAndRecycleFaultyLanguageWorker();
-
             try
             {
                 // do not send invocation requests for functions that failed to load or could not be indexed by the worker
