@@ -528,9 +528,10 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         internal FunctionLoadRequest GetFunctionLoadRequest(FunctionMetadata metadata, ManagedDependencyOptions managedDependencyOptions)
         {
+            var functionId = metadata.GetFunctionId();
             FunctionLoadRequest request = new FunctionLoadRequest()
             {
-                FunctionId = metadata.GetFunctionId(),
+                FunctionId = functionId,
                 Metadata = new RpcFunctionMetadata()
                 {
                     Name = metadata.Name,
@@ -553,6 +554,15 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
                 request.Metadata.Bindings.Add(binding.Name, bindingInfo);
             }
+
+            foreach (var property in metadata.Properties)
+            {
+                // worker properties are expected to be string values
+                request.Metadata.Properties.Add(property.Key, property.Value.ToString());
+            }
+
+            _workerChannelLogger?.LogDebug($"Adding {request.Metadata.Properties.Count} worker properties for {functionId}");
+
             return request;
         }
 
@@ -720,6 +730,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     };
 
                     functionMetadata.SetFunctionId(metadata.FunctionId);
+
+                    foreach (var property in metadata.Properties)
+                    {
+                        functionMetadata.Properties.TryAdd(property.Key, property.Value.ToString());
+                    }
 
                     var bindings = new List<string>();
                     foreach (string binding in metadata.RawBindings)

@@ -606,6 +606,60 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
+        public async Task GetFunctionMetadata_IncludesMetadataProperties()
+        {
+            await CreateDefaultWorkerChannel();
+
+            var functionMetadata = GetTestFunctionsList("python", true);
+            var functionId = "id123";
+            _testFunctionRpcService.OnMessage(StreamingMessage.ContentOneofCase.FunctionsMetadataRequest,
+               _ => _testFunctionRpcService.PublishWorkerMetadataResponse(_workerId, functionId, functionMetadata, successful: true, useDefaultMetadataIndexing: false));
+
+            var functions = await _workerChannel.GetFunctionMetadata();
+
+            Assert.Equal(functions[0].Metadata.Properties.Count, 4);
+            Assert.Equal(functions[0].Metadata.Properties["worker.functionId"], "fn1");
+        }
+
+        [Fact]
+        public async Task SendLoadRequests_IncludesMetadataProperties()
+        {
+            await CreateDefaultWorkerChannel();
+
+            var functionMetadata = GetTestFunctionsList("python", true);
+            var functionId = "id123";
+            _testFunctionRpcService.OnMessage(StreamingMessage.ContentOneofCase.FunctionsMetadataRequest,
+               _ => _testFunctionRpcService.PublishWorkerMetadataResponse(_workerId, functionId, functionMetadata, successful: true, useDefaultMetadataIndexing: false));
+
+            var functions = await _workerChannel.GetFunctionMetadata();
+
+            functionMetadata = functions.Select(f => f.Metadata);
+            _workerChannel.SetupFunctionInvocationBuffers(functionMetadata);
+            _workerChannel.SendFunctionLoadRequests(null, null);
+
+            await Task.Delay(500);
+            var traces = _logger.GetLogMessages();
+            ShowOutput(traces);
+
+            string expectedLogMessage = "Adding 1 worker properties";
+            var functionLoadLogs = traces.Where(m => m.FormattedMessage?.Contains(expectedLogMessage) ?? false);
+
+            Assert.Equal(2, functionLoadLogs.Count());
+        }
+
+        [Fact]
+        public async Task GetFunctionLoadRequest_IncludesWorkerProperties()
+        {
+            await CreateDefaultWorkerChannel();
+
+            var functionMetadata = GetTestFunctionsList("python", true);
+            _workerChannel.SetupFunctionInvocationBuffers(functionMetadata);
+            var loadRequest = _workerChannel.GetFunctionLoadRequest(functionMetadata.ElementAt(0), null);
+
+            Assert.Equal(loadRequest.Metadata.Properties["worker.functionId"], "fn1");
+        }
+
+        [Fact]
         public async Task SendLoadRequests_DoesNotTimeout_FunctionTimeoutNotSet()
         {
             await CreateDefaultWorkerChannel();
@@ -1136,7 +1190,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             }
         }
 
-        private IEnumerable<FunctionMetadata> GetTestFunctionsList(string runtime)
+        private IEnumerable<FunctionMetadata> GetTestFunctionsList(string runtime, bool addWorkerProperties = false)
         {
             var metadata1 = new FunctionMetadata()
             {
@@ -1147,6 +1201,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             metadata1.SetFunctionId("TestFunctionId1");
             metadata1.Properties.Add(LogConstants.CategoryNameKey, "testcat1");
             metadata1.Properties.Add(ScriptConstants.LogPropertyHostInstanceIdKey, "testhostId1");
+
+            if (addWorkerProperties)
+            {
+                metadata1.Properties.Add("worker.functionId", "fn1");
+            }
+
             var metadata2 = new FunctionMetadata()
             {
                 Language = runtime,
@@ -1156,6 +1216,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             metadata2.SetFunctionId("TestFunctionId2");
             metadata2.Properties.Add(LogConstants.CategoryNameKey, "testcat2");
             metadata2.Properties.Add(ScriptConstants.LogPropertyHostInstanceIdKey, "testhostId2");
+
+            if (addWorkerProperties)
+            {
+                metadata2.Properties.Add("WORKER.functionId", "fn2");
+            }
+
             return new List<FunctionMetadata>()
             {
                 metadata1,
