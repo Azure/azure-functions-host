@@ -553,6 +553,17 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
                 request.Metadata.Bindings.Add(binding.Name, bindingInfo);
             }
+
+            foreach (var property in metadata.Properties)
+            {
+                // Only add worker properties
+                if (property.Key.StartsWith("worker.", StringComparison.CurrentCultureIgnoreCase))
+                {
+                    // worker properties are expected to be string values
+                    request.Metadata.Properties.Add(property.Key, property.Value.ToString());
+                }
+            }
+
             return request;
         }
 

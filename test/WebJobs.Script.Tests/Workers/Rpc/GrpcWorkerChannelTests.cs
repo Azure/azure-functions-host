@@ -603,6 +603,34 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
+        public async Task SendLoadRequests_IncludesMetadata()
+        {
+            await CreateDefaultWorkerChannel();
+
+            // Make sure disabled func is input as first
+            //Assert.True(functions.First().Name == funcName);
+            var functionMetadata = GetTestFunctionsList("python");
+            var functionId = "id123";
+            _testFunctionRpcService.OnMessage(StreamingMessage.ContentOneofCase.FunctionsMetadataRequest,
+               _ => _testFunctionRpcService.PublishWorkerMetadataResponse(_workerId, functionId, functionMetadata, false, useDefaultMetadataIndexing: false));
+            var functions = _workerChannel.GetFunctionMetadata();
+
+            await Task.Delay(500);
+            var traces = _logger.GetLogMessages();
+            ShowOutput(traces);
+
+            _workerChannel.SendFunctionLoadRequests(null, null);
+
+            //var functionLoadLogs = traces.Where(m => m.FormattedMessage?.Contains(_expectedLoadMsgPartial) ?? false);
+            //var t = functionLoadLogs.Last<LogMessage>().FormattedMessage;
+
+            //// Make sure that disabled func shows up last
+            //Assert.True(functionLoadLogs.Last<LogMessage>().FormattedMessage.Contains(funcName));
+            //Assert.False(functionLoadLogs.First<LogMessage>().FormattedMessage.Contains(funcName));
+            //Assert.Equal(3, functionLoadLogs.Count());
+        }
+
+        [Fact]
         public async Task SendLoadRequests_DoesNotTimeout_FunctionTimeoutNotSet()
         {
             await CreateDefaultWorkerChannel();
