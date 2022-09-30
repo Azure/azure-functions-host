@@ -4,8 +4,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Scale;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Scale
@@ -17,6 +19,10 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
     {
         private readonly IScaleMonitorManager _monitorManager;
         private readonly IScaleMetricsRepository _metricsRepository;
+        private readonly ITargetScalerManager _targetScalerManager;
+        private readonly IConcurrencyStatusRepository _concurrencyStatusRepository;
+        private readonly IFunctionsHostingConfiguration _functionsHostingConfiguration;
+        private readonly IEnvironment _environment;
         private readonly ILogger _logger;
 
         // for mock testing only
@@ -24,10 +30,21 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
         {
         }
 
-        public FunctionsScaleManager(IScaleMonitorManager monitorManager, IScaleMetricsRepository metricsRepository, ILoggerFactory loggerFactory)
+        public FunctionsScaleManager(
+            IScaleMonitorManager monitorManager,
+            IScaleMetricsRepository metricsRepository,
+            ITargetScalerManager targetScalerManager,
+            IConcurrencyStatusRepository concurrencyStatusRepository,
+            IFunctionsHostingConfiguration functionsHostingConfiguration,
+            IEnvironment environment,
+            ILoggerFactory loggerFactory)
         {
             _monitorManager = monitorManager;
             _metricsRepository = metricsRepository;
+            _targetScalerManager = targetScalerManager;
+            _concurrencyStatusRepository = concurrencyStatusRepository;
+            _functionsHostingConfiguration = functionsHostingConfiguration;
+            _environment = environment;
             _logger = loggerFactory.CreateLogger<FunctionsScaleManager>();
         }
 
@@ -39,13 +56,17 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
         /// <returns>The scale vote.</returns>
         public virtual async Task<ScaleStatusResult> GetScaleStatusAsync(ScaleStatusContext context)
         {
-            var monitors = _monitorManager.GetMonitors();
+            var scaleMonitors = _monitorManager.GetMonitors();
+            var targetScalers = _targetScalerManager.GetTargetScalers();
+
+            Utility.GetScaleInstancesToProcess(_environment, _functionsHostingConfiguration, scaleMonitors, targetScalers,
+                out List<IScaleMonitor> scaleMonitorsToProcess, out List<ITargetScaler> targetScalersToProcess);
 
             List<ScaleVote> votes = new List<ScaleVote>();
-            if (monitors.Any())
+            if (scaleMonitorsToProcess.Any())
             {
                 // get the collection of current metrics for each monitor
-                var monitorMetrics = await _metricsRepository.ReadMetricsAsync(monitors);
+                var monitorMetrics = await _metricsRepository.ReadMetricsAsync(scaleMonitorsToProcess);
 
                 _logger.LogDebug($"Computing scale status (WorkerCount={context.WorkerCount})");
                 _logger.LogDebug($"{monitorMetrics.Count} scale monitors to sample");
@@ -84,11 +105,52 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
                 // this can happen if the host is offline
             }
 
-            var vote = GetAggregateScaleVote(votes, context, _logger);
+            List<int> targetScaleVotes = new List<int>();
 
+            if (targetScalersToProcess.Any())
+            {
+                _logger.LogDebug($"{targetScalersToProcess.Count()} target scalers to sample");
+                HostConcurrencySnapshot snapshot = null;
+                try
+                {
+                    snapshot = await _concurrencyStatusRepository.ReadAsync(CancellationToken.None);
+                }
+                catch (Exception exc) when (!exc.IsFatal())
+                {
+                    _logger.LogError(exc, $"Failed to read concurrency status repository");
+                }
+
+                foreach (var targetScaler in targetScalersToProcess)
+                {
+                    try
+                    {
+                        TargetScalerContext targetScaleStatusContext = new TargetScalerContext();
+                        if (snapshot != null)
+                        {
+                            if (snapshot.FunctionSnapshots.TryGetValue(targetScaler.TargetScalerDescriptor.FunctionId, out var functionSnapshot))
+                            {
+                                targetScaleStatusContext.InstanceConcurrency = functionSnapshot.Concurrency;
+                                _logger.LogDebug($"Snapshot dynamic concurrency for target scaler '{targetScaler.TargetScalerDescriptor.FunctionId}' is '{functionSnapshot.Concurrency}'");
+                            }
+                        }
+                        TargetScalerResult result = await targetScaler.GetScaleResultAsync(targetScaleStatusContext);
+                        _logger.LogDebug($"Target worker count for '{targetScaler.TargetScalerDescriptor.FunctionId}' is '{result.TargetWorkerCount}'");
+                        targetScaleVotes.Add(result.TargetWorkerCount);
+                    }
+                    catch (Exception exc) when (!exc.IsFatal())
+                    {
+                        // if a particular target scaler fails, log and continue
+                        _logger.LogError(exc, $"Failed to query scale result for target scaler '{targetScaler.TargetScalerDescriptor.FunctionId}'.");
+                    }
+                }
+            }
+
+            var vote = GetAggregateScaleVote(votes, context, _logger);
+            int? targetWorkerCount = targetScaleVotes.Any() ? targetScaleVotes.Max() : null;
             return new ScaleStatusResult
             {
-                Vote = vote
+                Vote = vote,
+                TargetWorkerCount = targetWorkerCount
             };
         }
 

@@ -11,11 +11,14 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
@@ -926,6 +929,63 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(expected, workerShouldIndex);
         }
 
+        [Theory]
+        [InlineData("", 2, 0)]
+        [InlineData(null, 2, 0)]
+        [InlineData("0", 2, 0)]
+        [InlineData("1", 1, 2)]
+        public void GetScaleInstancesToProcess_Returns_Expected(string targetBaseScalingEnabled, int expectedScaleMonitorCount, int expectedTargetScalerCount)
+        {
+            List<IScaleMonitor> scaleMonitors = new List<IScaleMonitor>
+            {
+                new ScaleMonitor()
+                {
+                    Descriptor = new ScaleMonitorDescriptor("func0-test-test")
+                },
+                new ScaleMonitor()
+                {
+                    Descriptor = new ScaleMonitorDescriptor("func2-test-test")
+                }
+            };
+            List<ITargetScaler> targetScalers = new List<ITargetScaler>
+            {
+                new TargetScaler()
+                {
+                    TargetScalerDescriptor = new TargetScalerDescriptor("func1")
+                    {
+                        ConfigurationKeyName = "enabled"
+                    }
+                },
+                new TargetScaler()
+                {
+                    TargetScalerDescriptor = new TargetScalerDescriptor("func2")
+                    {
+                        ConfigurationKeyName = "enabled"
+                    }
+                },
+                new TargetScaler()
+                {
+                    TargetScalerDescriptor = new TargetScalerDescriptor("func3")
+                    {
+                        ConfigurationKeyName = "notenabled"
+                    }
+                }
+            };
+
+            Mock<IFunctionsHostingConfiguration> functionsHostingConfigurationMock = new Mock<IFunctionsHostingConfiguration>(MockBehavior.Strict);
+            functionsHostingConfigurationMock.Setup(p => p.GetValue(It.Is<string>(x => x == "enabled"), It.IsAny<string>())).Returns("1");
+            functionsHostingConfigurationMock.Setup(p => p.GetValue(It.Is<string>(x => x == "notenabled"), It.IsAny<string>())).Returns<string>(null);
+
+            Mock<IEnvironment> envMock = new Mock<IEnvironment>();
+            envMock.Setup(p => p.GetEnvironmentVariable(It.Is<string>(x => x == EnvironmentSettingNames.TargetBaseScalingEnabled))).Returns(targetBaseScalingEnabled);
+
+            Utility.GetScaleInstancesToProcess(envMock.Object, functionsHostingConfigurationMock.Object, scaleMonitors, targetScalers,
+                out List<IScaleMonitor> scaleMonitorsToProcess, out List<ITargetScaler> targetScalesToProcess);
+
+            Assert.Equal(scaleMonitorsToProcess.Count(), expectedScaleMonitorCount);
+            Assert.Equal(targetScalesToProcess.Count(), expectedTargetScalerCount);
+        }
+
         private static void VerifyLogLevel(IList<LogMessage> allLogs, string msg, LogLevel expectedLevel)
         {
             var message = allLogs.Where(l => l.FormattedMessage.Contains(msg)).FirstOrDefault();
@@ -938,6 +998,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string tempDirectory = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
             FileUtility.EnsureDirectoryExists(tempDirectory);
             return tempDirectory;
+        }
+
+        internal class ScaleMonitor : IScaleMonitor
+        {
+            public ScaleMonitorDescriptor Descriptor { get; set; }
+
+            public Task<ScaleMetrics> GetMetricsAsync()
+            {
+                throw new NotImplementedException();
+            }
+
+            public ScaleStatus GetScaleStatus(ScaleStatusContext context)
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+        internal class TargetScaler : ITargetScaler
+        {
+            public TargetScalerDescriptor TargetScalerDescriptor { get; set; }
+
+            public Task<TargetScalerResult> GetScaleResultAsync(TargetScalerContext context)
+            {
+                throw new NotImplementedException();
+            }
         }
     }
 }

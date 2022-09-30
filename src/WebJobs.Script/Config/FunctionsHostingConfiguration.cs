@@ -77,10 +77,6 @@ namespace Microsoft.Azure.WebJobs.Script.Config
                             _configs = configs;
                             _logger.LogDebug($"Updaiting FunctionsHostingConfigurations '{settings}'");
                         }
-                        else
-                        {
-                            throw new InvalidOperationException("FunctionsHostingConfigurations does not exists");
-                        }
                     }
                 }
             }

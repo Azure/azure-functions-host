@@ -18,6 +18,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -993,6 +994,52 @@ namespace Microsoft.Azure.WebJobs.Script
             else
             {
                 return FunctionAppContentEditingState.NotAllowed;
+            }
+        }
+
+        public static void GetScaleInstancesToProcess(
+            IEnvironment environment,
+            IFunctionsHostingConfiguration hostingConfiguration,
+            IEnumerable<IScaleMonitor> scaleMonitors,
+            IEnumerable<ITargetScaler> targetScalers,
+            out List<IScaleMonitor> scaleMonitrsToProcess,
+            out List<ITargetScaler> targetScalersToProcess)
+        {
+            scaleMonitrsToProcess = new List<IScaleMonitor>();
+            targetScalersToProcess = new List<ITargetScaler>();
+
+            string value = environment.GetEnvironmentVariableOrDefault(EnvironmentSettingNames.TargetBaseScalingEnabled, "0");
+
+            // Check if TBS enabled on stamp level
+            if (value == "1")
+            {
+                foreach (var scaler in targetScalers)
+                {
+                    if (hostingConfiguration.GetValue(scaler.TargetScalerDescriptor.ConfigurationKeyName) == "1")
+                    {
+                        targetScalersToProcess.Add(scaler);
+                    }
+                }
+
+                foreach (var monitor in scaleMonitors)
+                {
+                    // we made the assumption that if a listener implements both IScaleMonitor and ITargetScaler
+                    // IScaleMonitor.Descriptor.Id must start with "{functionId}-". For example: "{functionId}-QueueTrigger-{queueName}"
+                    var array = monitor.Descriptor.Id.Split("-");
+                    string functionId = array.Length > 0 ? array[0] : null;
+                    if (!string.IsNullOrEmpty(functionId))
+                    {
+                        ITargetScaler scaler = targetScalersToProcess.SingleOrDefault(x => x.TargetScalerDescriptor.FunctionId == functionId);
+                        if (scaler == null)
+                        {
+                            scaleMonitrsToProcess.Add(monitor);
+                        }
+                    }
+                }
+            }
+            else
+            {
+                scaleMonitrsToProcess = new List<IScaleMonitor>(scaleMonitors);
             }
         }
 

@@ -16,5 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
     public class ScaleStatusResult
     {
         public ScaleVote Vote { get; set; }
+
+        public int? TargetWorkerCount { get; set; }
     }
 }

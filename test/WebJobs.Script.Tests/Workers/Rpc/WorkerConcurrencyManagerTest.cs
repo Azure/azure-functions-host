@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.PythonLanguageWorkerName);
             _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.NodeLanguageWorkerName);
             Mock<IFunctionsHostingConfiguration> conf = new Mock<IFunctionsHostingConfiguration>();
-            conf.Setup(x => x.FunctionsWorkerDynamicConcurrencyEnabled).Returns(false);
+            conf.Setup(x => x.GetValue(It.Is<string>(s => s == RpcWorkerConstants.FunctionsWorkerDynamicConcurrencyEnabled), It.IsAny<string>())).Returns("false");
             _functionsHostingConfigurations = conf.Object;
             Mock<IApplicationLifetime> applicationLifetime = new Mock<IApplicationLifetime>();
             applicationLifetime.Setup(x => x.StopApplication()).Verifiable();
@@ -386,5 +386,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
                 Assert.Contains(_loggerProvider.GetAllLogMessages().Select(x => x.FormattedMessage), x => x.StartsWith("Starting new language worker canceled:"));
             }
         }
+
+        //[Theory]
+        //[InlineData("", "", false)]
+        //[InlineData("stamp1", "app1", false)]
+        //[InlineData("stamp1 app1", "app", false)]
+        //[InlineData("stamp", "app", true)]
+        //[InlineData("stamp  app1", "app", true)]
+        //[InlineData("stamp1 app", "app", true)]
+        //public void FunctionsWorkerDynamicConcurrencyEnabled_ReturnsExpected(string configValue, string appName, bool expected)
+        //{
+        //    Mock<IFunctionsHostingConfiguration> confMock = new Mock<IFunctionsHostingConfiguration>();
+        //    confMock.Setup(m => m.GetValue(It.Is<string>(x => x == RpcWorkerConstants.FunctionsWorkerDynamicConcurrencyEnabled))).Returns(configValue);
+
+        //    Mock<IEnvironment> envMock = new Mock<IEnvironment>();
+        //    envMock.Setup(m => m.GetEnvironmentVariable(It.Is<string>(x => x == EnvironmentSettingNames.AzureWebsiteName))).Returns(appName);
+
+        //    Assert.Equal(WorkerConcurrencyManager.FunctionsWorkerDynamicConcurrencyEnabled(confMock.Object, envMock.Object), expected);
+        //}
     }
 }

@@ -43,30 +43,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         }
 
         [Fact]
-        public void FunctionsWorkerDynamicConcurrencyEnabled_Throws_InvalidOperationException()
-        {
-            FunctionsHostingConfiguration conf = new FunctionsHostingConfiguration(_environment, _loggerFactory, Path.Combine("C:\\", "test.txt"), DateTime.Now.AddMilliseconds(1), TimeSpan.FromMinutes(5));
-            Assert.Throws<InvalidOperationException>(() => conf.FunctionsWorkerDynamicConcurrencyEnabled);
-        }
-
-        [Fact]
-        public async Task FunctionsWorkerDynamicConcurrencyEnabled_UpdatesSettings()
+        public async Task GetValue_UpdatesSettings()
         {
             using (TempDirectory tempDir = new TempDirectory())
             {
+                string testKey = "test_key";
                 string fileName = Path.Combine(tempDir.Path, "settings.txt");
-                File.WriteAllText(fileName, $"key1=value1,{RpcWorkerConstants.FunctionsWorkerDynamicConcurrencyEnabled}=value2");
+                File.WriteAllText(fileName, $"key1=value1,{testKey}=value2");
 
                 FunctionsHostingConfiguration conf = new FunctionsHostingConfiguration(_environment, _loggerFactory, fileName, DateTime.Now.AddMilliseconds(100), TimeSpan.FromMilliseconds(100));
-                Assert.False(conf.FunctionsWorkerDynamicConcurrencyEnabled);
+                Assert.Equal(conf.GetValue(testKey), "value2");
 
-                File.WriteAllText(fileName, $"key1=value1,{RpcWorkerConstants.FunctionsWorkerDynamicConcurrencyEnabled}=stamp");
+                File.WriteAllText(fileName, $"key1=value1,{testKey}=stamp");
                 await Task.Delay(500);
-                Assert.True(conf.FunctionsWorkerDynamicConcurrencyEnabled);
+                Assert.Equal(conf.GetValue(testKey), "stamp");
 
                 File.WriteAllText(fileName, "key1=value1");
                 await Task.Delay(500);
-                Assert.False(conf.FunctionsWorkerDynamicConcurrencyEnabled);
+                Assert.Equal(conf.GetValue(testKey), null);
 
                 Assert.True(_loggerProvider.GetAllLogMessages().Where(x => x.FormattedMessage.StartsWith("Updaiting FunctionsHostingConfigurations")).Count() == 3);
             }
