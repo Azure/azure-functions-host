@@ -132,18 +132,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _startLatencyMetric = metricsLogger?.LatencyEvent(string.Format(MetricEventNames.WorkerInitializeLatency, workerConfig.Description.Language, attemptCount));
 
             _state = RpcWorkerChannelState.Default;
-
-            if (_invocationTimer == null)
-            {
-                _invocationTimer = new System.Timers.Timer()
-                {
-                    AutoReset = false,
-                    Interval = 5000,
-                };
-
-                _invocationTimer.Elapsed += OnInvocationTimer;
-                _invocationTimer.Start();
-            }
         }
 
         public string Id => _workerId;
@@ -292,6 +280,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         {
             var workerStatus = new WorkerStatus();
 
+            _workerChannelLogger.LogInformation("GetWorkerStatusAsync");
+
             if (!string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.WorkerStatus)))
             {
                 // get the worker's current status
@@ -433,7 +423,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         {
             if (_functions != null)
             {
-                // Load Request is also sent for disabled function as it is invocable using the portal and admin endpoints
+                // Load Request is also sent for disabled function as it is invocable using the portal and
+                // endpoints
                 // Loading disabled functions at the end avoids unnecessary performance issues. Refer PR #5072 and commit #38b57883be28524fa6ee67a457fa47e96663094c
                 _functions = _functions.OrderBy(metadata => metadata.IsDisabled());
 
@@ -647,6 +638,18 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 if (_cancelCapabilityEnabled)
                 {
                     context.CancellationToken.Register(() => SendInvocationCancel(invocationRequest.InvocationId));
+                }
+
+                if (_invocationTimer == null)
+                {
+                    _invocationTimer = new System.Timers.Timer()
+                    {
+                        AutoReset = false,
+                        Interval = 300000,
+                    };
+
+                    _invocationTimer.Elapsed += OnInvocationTimer;
+                    _invocationTimer.Start();
                 }
 
                 var totalInvocations = IncrementTotalInvocationsOfWorker();
@@ -1258,7 +1261,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             try
             {
-                _workerChannelLogger.LogInformation("Evaluating faulty workers");
+                _workerChannelLogger.LogInformation("OnInvocationTimer Evaluating faulty workers");
                 CheckAndRecycleFaultyLanguageWorker();
             }
             catch
