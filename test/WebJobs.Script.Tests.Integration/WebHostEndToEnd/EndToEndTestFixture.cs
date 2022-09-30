@@ -129,6 +129,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, _functionsWorkerRuntimeVersion);
             }
+            Environment.SetEnvironmentVariable(EnvironmentSettingNames.CloudName, CloudConstants.AzureCloudName);
 
             FunctionsSyncManagerMock = new Mock<IFunctionsSyncManager>(MockBehavior.Strict);
             FunctionsSyncManagerMock.Setup(p => p.TrySyncTriggersAsync(It.IsAny<bool>())).ReturnsAsync(new SyncTriggersResult { Success = true });

@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script
                         string websiteName = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName);
                         if (!string.IsNullOrEmpty(websiteName))
                         {
-                            _hostName = $"{websiteName}.azurewebsites.net";
+                            _hostName = $"{websiteName}{_environment.GetDnsSuffixWithDotPrefix()}";
                         }
                     }
                 }

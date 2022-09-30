@@ -150,20 +150,36 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
-        [InlineData("Azure", CloudName.Azure)]
-        [InlineData("azuRe", CloudName.Azure)]
-        [InlineData("", CloudName.Azure)]
-        [InlineData(null, CloudName.Azure)]
-        [InlineData("Blackforest", CloudName.Blackforest)]
-        [InlineData("Fairfax", CloudName.Fairfax)]
-        [InlineData("Mooncake", CloudName.Mooncake)]
-        [InlineData("USNat", CloudName.USNat)]
-        [InlineData("USSec", CloudName.USSec)]
-        public void GetCloudName_Returns_RightCloud(string cloudNameSetting, CloudName cloudName)
+        [InlineData("Azure", CloudName.Azure, true, false)]
+        [InlineData("Azure", CloudName.Azure, false, false)]
+        [InlineData("azuRe", CloudName.Azure, true, false)]
+        [InlineData("azuRe", CloudName.Azure, false, false)]
+        [InlineData("", CloudName.Azure, true, true)]
+        [InlineData("", CloudName.Azure, false, false)]
+        [InlineData(null, CloudName.Azure, true, true)]
+        [InlineData(null, CloudName.Azure, false, false)]
+        [InlineData("Blackforest", CloudName.Blackforest, true, false)]
+        [InlineData("Blackforest", CloudName.Blackforest, false, false)]
+        [InlineData("Fairfax", CloudName.Fairfax, true, false)]
+        [InlineData("Fairfax", CloudName.Fairfax, false, false)]
+        [InlineData("Mooncake", CloudName.Mooncake, true, false)]
+        [InlineData("Mooncake", CloudName.Mooncake, false, false)]
+        [InlineData("USNat", CloudName.USNat, true, false)]
+        [InlineData("USNat", CloudName.USNat, false, false)]
+        [InlineData("USSec", CloudName.USSec, true, false)]
+        [InlineData("USSec", CloudName.USSec, false, false)]
+        public void GetCloudName_Returns_RightCloud(string cloudNameSetting, CloudName cloudName, bool throwOnError, bool exceptionExpected)
         {
             var testEnvironment = new TestEnvironment();
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.CloudName, cloudNameSetting);
-            Assert.Equal(cloudName, testEnvironment.GetCloudName());
+            if (exceptionExpected)
+            {
+                Assert.Throws<ArgumentException>(() => testEnvironment.GetCloudName(throwOnError));
+            }
+            else
+            {
+                Assert.Equal(cloudName, testEnvironment.GetCloudName(throwOnError));
+            }
         }
 
         [Theory]
@@ -196,6 +212,30 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var testEnvironment = new TestEnvironment();
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.CloudName, cloudNameSetting);
             Assert.Equal(suffix, testEnvironment.GetVaultSuffix());
+        }
+
+        [Theory]
+        [InlineData("Azure", CloudConstants.AzureDnsSuffixWithDotPrefix, false)]
+        [InlineData("azuRe", CloudConstants.AzureDnsSuffixWithDotPrefix, false)]
+        [InlineData("", CloudConstants.AzureVaultSuffix, true)]
+        [InlineData(null, CloudConstants.AzureVaultSuffix, true)]
+        [InlineData("Blackforest", CloudConstants.BlackforestDnsSuffixWithDotPrefix, false)]
+        [InlineData("Fairfax", CloudConstants.FairfaxDnsSuffixWithDotPrefix, false)]
+        [InlineData("Mooncake", CloudConstants.MooncakeDnsSuffixWithDotPrefix, false)]
+        [InlineData("USNAT", CloudConstants.USNatDnsSuffixWithDotPrefix, false)]
+        [InlineData("UsSec", CloudConstants.USSecDnsSuffixWithDotPrefix, false)]
+        public void GetDnsSuffix_Returns_Suffix_Based_On_CloudType(string cloudNameSetting, string suffix, bool throwsException)
+        {
+            var testEnvironment = new TestEnvironment();
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.CloudName, cloudNameSetting);
+            if (throwsException)
+            {
+                Assert.Throws<ArgumentException>(() => testEnvironment.GetDnsSuffixWithDotPrefix());
+            }
+            else
+            {
+                Assert.Equal(suffix, testEnvironment.GetDnsSuffixWithDotPrefix());
+            }
         }
 
         [Theory]

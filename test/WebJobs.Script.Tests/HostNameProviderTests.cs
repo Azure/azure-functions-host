@@ -1,11 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
-using System.Collections.Generic;
-using System.Text;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
@@ -39,9 +35,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData("", "", "")]
         public void GetValue_ReturnsExpectedResult(string hostName, string siteName, string expected)
         {
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.CloudName)).Returns("Azure");
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName)).Returns(hostName);
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName)).Returns(siteName);
 
+            Assert.Equal(expected, _hostNameProvider.Value);
+        }
+
+        [Theory]
+        [InlineData("Azure", "test", "test.azurewebsites.net")]
+        [InlineData("fairfax", "test", "test.azurewebsites.us")]
+        [InlineData("blackforest", "test", "test.azurewebsites.de")]
+        [InlineData("MoonCake", "test", "test.chinacloudsites.cn")]
+        [InlineData("USNat", "test", "test.appservice.eaglex.ic.gov")]
+        [InlineData("USSEC", "test", "test.appservice.microsoft.scloud")]
+        public void ReturnsHostNameFromSiteNameBasedOnCloud(string cloud, string siteName, string expected)
+        {
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.CloudName))
+                .Returns(cloud);
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName))
+                .Returns((string)null);
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName)).Returns(siteName);
             Assert.Equal(expected, _hostNameProvider.Value);
         }
 

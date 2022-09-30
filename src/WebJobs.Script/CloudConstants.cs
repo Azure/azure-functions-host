@@ -5,6 +5,8 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public static class CloudConstants
     {
+        public const string AzureCloudName = "Azure";
+
         public const string AzureStorageSuffix = "core.windows.net";
         public const string BlackforestStorageSuffix = "core.cloudapi.de";
         public const string FairfaxStorageSuffix = "core.usgovcloudapi.net";
@@ -17,5 +19,12 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string MooncakeVaultSuffix = ".vault.azure.cn";
         public const string FairfaxVaultSuffix = ".vault.usgovcloudapi.net";
         public const string BlackforestVaultSuffix = ".vault.microsoftazure.de";
+
+        public const string AzureDnsSuffixWithDotPrefix = ".azurewebsites.net";
+        public const string BlackforestDnsSuffixWithDotPrefix = ".azurewebsites.de";
+        public const string FairfaxDnsSuffixWithDotPrefix = ".azurewebsites.us";
+        public const string MooncakeDnsSuffixWithDotPrefix = ".chinacloudsites.cn";
+        public const string USNatDnsSuffixWithDotPrefix = ".appservice.eaglex.ic.gov";
+        public const string USSecDnsSuffixWithDotPrefix = ".appservice.microsoft.scloud";
     }
 }

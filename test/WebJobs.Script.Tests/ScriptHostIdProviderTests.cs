@@ -74,7 +74,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData("TEST-FUNCTIONS--", "123123", "test-functions", false)]
         [InlineData("TEST-FUNCTIONS-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", "123123", "test-functions-xxxxxxxxxxxxxxxxx", true)]
         [InlineData("TEST-FUNCTIONS-XXXXXXXXXXXXXXXX-XXXX", "123123", "test-functions-xxxxxxxxxxxxxxxx", true)] /* 32nd character is a '-' */
-        [InlineData("TEST-FUNCTIONS-XXXXXXXXXXXXXXXX-XXXX", null, "testsite", false)] // Linux consumption scenario where host id will be derived from the host name.
         [InlineData(null, "123123", null, false)]
         public void GetDefaultHostId_AzureHost_ReturnsExpectedResult(string siteName, string azureWebsiteInstanceId, string expected, bool expectedTruncation)
         {
@@ -92,6 +91,54 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(expected, result.HostId);
             Assert.Equal(expectedTruncation, result.IsTruncated);
             Assert.False(result.IsLocal);
+        }
+
+        [Theory]
+        [InlineData("Azure", "TEST-FUNCTIONS-XXXXXXXXXXXXXXXX-XXXX", "testsite.azurewebsites.net", null, "testsite", false)] // Linux consumption scenario where host id will be derived from the host name.
+        [InlineData("Blackforest", "TEST-FUNCTIONS-XXXXXXXXXXXXXXXX-XXXX", "testsite.azurewebsites.de", null, "testsite", false)]
+        [InlineData("Fairfax", "TEST-FUNCTIONS-XXXXXXXXXXXXXXXX-XXXX", "testsite.azurewebsites.us", null, "testsite", false)]
+        [InlineData("Mooncake", "TEST-FUNCTIONS-XXXXXXXXXXXXXXXX-XXXX", "testsite.chinacloudsites.cn", null, "testsite", false)]
+        [InlineData("USNat", "TEST-FUNCTIONS-XXXXXXXXXXXXXXXX-XXXX", "testsite.appservice.eaglex.ic.gov", null, "testsite", false)]
+        [InlineData("USSeC", "TEST-FUNCTIONS-XXXXXXXXXXXXXXXX-XXXX", "testsite.appservice.microsoft.scloud", null, "testsite", false)]
+        public void GetDefaultHostId_AzureHost_ReturnsExpectedResult_ForLinuxConsumption(string cloudName, string siteName, string hostName,
+            string azureWebsiteInstanceId, string expected, bool expectedTruncation)
+        {
+            var options = new ScriptApplicationHostOptions
+            {
+                ScriptPath = @"c:\testscripts"
+            };
+
+            var environment = new TestEnvironment();
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.CloudName, cloudName);
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId, azureWebsiteInstanceId);
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName, siteName);
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, "testContainer");
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName, hostName);
+            var result = ScriptHostIdProvider.GetDefaultHostId(environment, options);
+            Assert.Equal(expected, result.HostId);
+            Assert.Equal(expectedTruncation, result.IsTruncated);
+            Assert.False(result.IsLocal);
+        }
+
+        [Theory]
+        [InlineData("Blackrest", "TEST-FUNCTIONS-XXXXXXXXXXXXXXXX-XXXX", "testsite.azurewebsites.de", null)]
+        [InlineData("", "TEST-FUNCTIONS-XXXXXXXXXXXXXXXX-XXXX", "testsite.appservice.eaglex.ic.gov", null)]
+        [InlineData(null, "TEST-FUNCTIONS-XXXXXXXXXXXXXXXX-XXXX", "testsite.appservice.microsoft.scloud", null)]
+        public void GetDefaultHostId_AzureHost_Fails_ForUnknownClouds_InLinuxConsumption(string cloudName, string siteName, string hostName,
+            string azureWebsiteInstanceId)
+        {
+            var options = new ScriptApplicationHostOptions
+            {
+                ScriptPath = @"c:\testscripts"
+            };
+
+            var environment = new TestEnvironment();
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.CloudName, cloudName);
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId, azureWebsiteInstanceId);
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName, siteName);
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, "testContainer");
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName, hostName);
+            Assert.Throws<ArgumentException>(() => ScriptHostIdProvider.GetDefaultHostId(environment, options));
         }
 
         [Fact]

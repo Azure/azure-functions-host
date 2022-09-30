@@ -470,7 +470,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 || string.IsNullOrEmpty(environment.GetEnvironmentVariable(MeshInitURI));
         }
 
-        public static CloudName GetCloudName(this IEnvironment environment)
+        public static CloudName GetCloudName(this IEnvironment environment, bool throwOnError = false)
         {
             var cloudName = environment.GetEnvironmentVariable(EnvironmentSettingNames.CloudName);
             if (Enum.TryParse(cloudName, true, out CloudName cloud))
@@ -478,6 +478,10 @@ namespace Microsoft.Azure.WebJobs.Script
                 return cloud;
             }
 
+            if (throwOnError)
+            {
+                throw new ArgumentException(nameof(GetCloudName), cloudName);
+            }
             return CloudName.Azure;
         }
 
@@ -499,6 +503,28 @@ namespace Microsoft.Azure.WebJobs.Script
                     return CloudConstants.USSecStorageSuffix;
                 default:
                     return CloudConstants.AzureStorageSuffix;
+            }
+        }
+
+        public static string GetDnsSuffixWithDotPrefix(this IEnvironment environment)
+        {
+            var cloudName = GetCloudName(environment, true);
+            switch (cloudName)
+            {
+                case CloudName.Azure:
+                    return CloudConstants.AzureDnsSuffixWithDotPrefix;
+                case CloudName.Blackforest:
+                    return CloudConstants.BlackforestDnsSuffixWithDotPrefix;
+                case CloudName.Fairfax:
+                    return CloudConstants.FairfaxDnsSuffixWithDotPrefix;
+                case CloudName.Mooncake:
+                    return CloudConstants.MooncakeDnsSuffixWithDotPrefix;
+                case CloudName.USNat:
+                    return CloudConstants.USNatDnsSuffixWithDotPrefix;
+                case CloudName.USSec:
+                    return CloudConstants.USSecDnsSuffixWithDotPrefix;
+                default:
+                    throw new ArgumentException(nameof(GetDnsSuffixWithDotPrefix), cloudName.ToString());
             }
         }
 

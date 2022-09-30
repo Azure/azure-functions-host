@@ -180,6 +180,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         {
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName)).Returns(hostName);
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName)).Returns(siteName);
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.CloudName)).Returns(CloudConstants.AzureCloudName);
             Assert.Equal(expected, _webFunctionsManager.GetBaseUrl());
         }
 
