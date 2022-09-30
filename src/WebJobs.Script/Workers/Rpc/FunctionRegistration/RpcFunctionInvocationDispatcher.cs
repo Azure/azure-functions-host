@@ -312,7 +312,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>> webhostLanguageWorkerChannels = _webHostLanguageWorkerChannelManager.GetChannels(_workerRuntime);
                 if (webhostLanguageWorkerChannels != null)
                 {
-                    int countOfReadyChannels = 0;
+                    int workerProcessCount = 0;
                     foreach (string workerId in webhostLanguageWorkerChannels.Keys.ToList())
                     {
                         if (webhostLanguageWorkerChannels.TryGetValue(workerId, out TaskCompletionSource<IRpcWorkerChannel> initializedLanguageWorkerChannelTask))
@@ -327,8 +327,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                                 {
                                     initializedLanguageWorkerChannel.SetupFunctionInvocationBuffers(_functions);
                                     initializedLanguageWorkerChannel.SendFunctionLoadRequests(_managedDependencyOptions.Value, _scriptOptions.FunctionTimeout);
-                                    ++countOfReadyChannels;
                                 }
+
+                                ++workerProcessCount;
                             }
                             catch (Exception ex)
                             {
@@ -337,7 +338,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                             }
                         }
                     }
-                    StartWorkerProcesses(countOfReadyChannels, InitializeWebhostLanguageWorkerChannel, true, _webHostLanguageWorkerChannelManager.GetChannels(_workerRuntime));
+                    StartWorkerProcesses(workerProcessCount, InitializeWebhostLanguageWorkerChannel, true, _webHostLanguageWorkerChannelManager.GetChannels(_workerRuntime));
                 }
                 else
                 {
