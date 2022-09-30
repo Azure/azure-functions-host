@@ -112,10 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
             {
                 TargetWorkerCount = 2
             });
-            mockTargetScaler1.SetupGet(p => p.TargetScalerDescriptor).Returns(new TargetScalerDescriptor("func1")
-            {
-                ConfigurationKeyName = "enabled"
-            });
+            mockTargetScaler1.SetupGet(p => p.TargetScalerDescriptor).Returns(new TargetScalerDescriptor("func1"));
             List<ITargetScaler> targetScaler = new List<ITargetScaler>
             {
                 mockTargetScaler1.Object
@@ -123,7 +120,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
             _targetScalerManagerMock.Setup(p => p.GetTargetScalers()).Returns(targetScaler);
 
             _environmentMock.Setup(p => p.GetEnvironmentVariable(It.Is<string>(x => x == EnvironmentSettingNames.TargetBaseScalingEnabled))).Returns("1");
-            _functionsHostingConfigurationMock.Setup(p => p.GetValue(It.Is<string>(x => x == "enabled"), It.IsAny<string>())).Returns("1");
+            _functionsHostingConfigurationMock.Setup(p => p.GetValue(It.Is<string>(x => x == ScriptConstants.ScaleControllerFeatureFlags), It.IsAny<string>())).Returns("itargetscalerproxy,test");
 
             var status = await _scaleManager.GetScaleStatusAsync(context);
 
@@ -200,15 +197,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
             {
                 TargetWorkerCount = 3
             });
-            mockTargetScaler1.SetupGet(p => p.TargetScalerDescriptor).Returns(new TargetScalerDescriptor("func1")
-            {
-                ConfigurationKeyName = "enabled"
-            });
+            mockTargetScaler1.SetupGet(p => p.TargetScalerDescriptor).Returns(new TargetScalerDescriptor("func1"));
             var mockTargetScaler2 = new Mock<ITargetScaler>(MockBehavior.Strict);
-            mockTargetScaler2.SetupGet(p => p.TargetScalerDescriptor).Returns(new TargetScalerDescriptor("func2")
-            {
-                ConfigurationKeyName = "enabled"
-            });
+            mockTargetScaler2.SetupGet(p => p.TargetScalerDescriptor).Returns(new TargetScalerDescriptor("func2"));
             var exception = new Exception("Kaboom!");
             mockTargetScaler2.Setup(p => p.GetScaleResultAsync(It.IsAny<TargetScalerContext>())).Throws(exception);
             var mockTargetScaler3 = new Mock<ITargetScaler>(MockBehavior.Strict);
@@ -216,10 +207,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
             {
                 TargetWorkerCount = -3
             });
-            mockTargetScaler3.SetupGet(p => p.TargetScalerDescriptor).Returns(new TargetScalerDescriptor("func3")
-            {
-                ConfigurationKeyName = "enabled"
-            });
+            mockTargetScaler3.SetupGet(p => p.TargetScalerDescriptor).Returns(new TargetScalerDescriptor("func3"));
             List<ITargetScaler> targetScalers = new List<ITargetScaler>
             {
                 mockTargetScaler1.Object,
@@ -229,7 +217,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
             _targetScalerManagerMock.Setup(p => p.GetTargetScalers()).Returns(targetScalers);
 
             _environmentMock.Setup(p => p.GetEnvironmentVariable(It.Is<string>(x => x == EnvironmentSettingNames.TargetBaseScalingEnabled))).Returns("1");
-            _functionsHostingConfigurationMock.Setup(p => p.GetValue(It.Is<string>(x => x == "enabled"), It.IsAny<string>())).Returns("1");
+            _functionsHostingConfigurationMock.Setup(p => p.GetValue(It.Is<string>(x => x == ScriptConstants.ScaleControllerFeatureFlags), It.IsAny<string>())).Returns("itargetscalerproxy,test");
 
             var status = await _scaleManager.GetScaleStatusAsync(context);
 

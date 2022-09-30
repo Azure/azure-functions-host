@@ -1013,11 +1013,15 @@ namespace Microsoft.Azure.WebJobs.Script
             // Check if TBS enabled on stamp level
             if (value == "1")
             {
-                foreach (var scaler in targetScalers)
+                string flags = hostingConfiguration.GetValue(ScriptConstants.ScaleControllerFeatureFlags, null).ToLower();
+                if (!string.IsNullOrEmpty(flags))
                 {
-                    if (hostingConfiguration.GetValue(scaler.TargetScalerDescriptor.ConfigurationKeyName) == "1")
+                    foreach (var scaler in targetScalers)
                     {
-                        targetScalersToProcess.Add(scaler);
+                        if (flags.Contains(scaler.GetType().Name.ToLower()))
+                        {
+                            targetScalersToProcess.Add(scaler);
+                        }
                     }
                 }
 

@@ -938,43 +938,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             List<IScaleMonitor> scaleMonitors = new List<IScaleMonitor>
             {
-                new ScaleMonitor()
-                {
-                    Descriptor = new ScaleMonitorDescriptor("func0-test-test")
-                },
-                new ScaleMonitor()
-                {
-                    Descriptor = new ScaleMonitorDescriptor("func2-test-test")
-                }
+                new TestScaleMonitor<ScaleMetrics>("func0-test-test"),
+                new TestScaleMonitor<ScaleMetrics>("func2-test-test"),
             };
             List<ITargetScaler> targetScalers = new List<ITargetScaler>
             {
-                new TargetScaler()
+                new TestTargetScaler()
                 {
                     TargetScalerDescriptor = new TargetScalerDescriptor("func1")
-                    {
-                        ConfigurationKeyName = "enabled"
-                    }
                 },
-                new TargetScaler()
+                new TestTargetScaler()
                 {
                     TargetScalerDescriptor = new TargetScalerDescriptor("func2")
-                    {
-                        ConfigurationKeyName = "enabled"
-                    }
                 },
-                new TargetScaler()
+                new TestTargetScaler1()
                 {
                     TargetScalerDescriptor = new TargetScalerDescriptor("func3")
-                    {
-                        ConfigurationKeyName = "notenabled"
-                    }
                 }
             };
 
             Mock<IFunctionsHostingConfiguration> functionsHostingConfigurationMock = new Mock<IFunctionsHostingConfiguration>(MockBehavior.Strict);
-            functionsHostingConfigurationMock.Setup(p => p.GetValue(It.Is<string>(x => x == "enabled"), It.IsAny<string>())).Returns("1");
-            functionsHostingConfigurationMock.Setup(p => p.GetValue(It.Is<string>(x => x == "notenabled"), It.IsAny<string>())).Returns<string>(null);
+            functionsHostingConfigurationMock.Setup(p => p.GetValue(It.Is<string>(x => x == ScriptConstants.ScaleControllerFeatureFlags), It.IsAny<string>())).Returns("TestTargetScaler");
 
             Mock<IEnvironment> envMock = new Mock<IEnvironment>();
             envMock.Setup(p => p.GetEnvironmentVariable(It.Is<string>(x => x == EnvironmentSettingNames.TargetBaseScalingEnabled))).Returns(targetBaseScalingEnabled);
@@ -998,31 +982,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string tempDirectory = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
             FileUtility.EnsureDirectoryExists(tempDirectory);
             return tempDirectory;
-        }
-
-        internal class ScaleMonitor : IScaleMonitor
-        {
-            public ScaleMonitorDescriptor Descriptor { get; set; }
-
-            public Task<ScaleMetrics> GetMetricsAsync()
-            {
-                throw new NotImplementedException();
-            }
-
-            public ScaleStatus GetScaleStatus(ScaleStatusContext context)
-            {
-                throw new NotImplementedException();
-            }
-        }
-
-        internal class TargetScaler : ITargetScaler
-        {
-            public TargetScalerDescriptor TargetScalerDescriptor { get; set; }
-
-            public Task<TargetScalerResult> GetScaleResultAsync(TargetScalerContext context)
-            {
-                throw new NotImplementedException();
-            }
         }
     }
 }

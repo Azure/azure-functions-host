@@ -213,14 +213,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
             _monitors.Add(monitor.Object);
 
             Mock<ITargetScaler> scaler = new Mock<ITargetScaler>(MockBehavior.Strict);
-            scaler.SetupGet(p => p.TargetScalerDescriptor).Returns(new TargetScalerDescriptor("test_id")
-            {
-                ConfigurationKeyName = "enabled"
-            });
+            scaler.SetupGet(p => p.TargetScalerDescriptor).Returns(new TargetScalerDescriptor("test_id"));
             _scalers.Add(scaler.Object);
 
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.TargetBaseScalingEnabled, "1");
-            _functionsHostingConfigurationMock.Setup(p => p.GetValue(It.Is<string>(x => x == "enabled"), It.IsAny<string>())).Returns("1");
+            _functionsHostingConfigurationMock.Setup(p => p.GetValue(It.Is<string>(x => x == ScriptConstants.ScaleControllerFeatureFlags), It.IsAny<string>())).Returns("itargetscalerproxy,test");
             await _monitor.TakeMetricsSamplesAsync();
 
             var logs = _loggerProvider.GetAllLogMessages().ToArray();
