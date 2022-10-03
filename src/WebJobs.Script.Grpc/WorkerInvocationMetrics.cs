@@ -58,6 +58,5 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             return workerInvocationParameters.AverageInvocationLatency;
         }
-
     }
 }
