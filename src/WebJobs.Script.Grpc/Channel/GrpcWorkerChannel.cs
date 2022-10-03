@@ -53,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private readonly ChannelWriter<OutboundGrpcEvent> _outbound;
         private readonly ChannelReader<InboundGrpcEvent> _inbound;
         private IDictionary<string, WorkerInvocationMetrics> _invocationMetricsPerWorkerId = new Dictionary<string, WorkerInvocationMetrics>();
-        private ValueStopwatch workerInvocationStopWatch;
+        private ValueStopwatch _workerInvocationStopWatch;
 
         private IDisposable _functionLoadRequestResponseEvent;
         private bool _disposed;
@@ -638,7 +638,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 var totalInvocations = WorkerInvocationMetrics.IncrementTotalInvocationsOfWorker(Id, _invocationMetricsPerWorkerId);
                 _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvoked, Id), functionName: context.FunctionMetadata.Name, data: $"Total invocations of Worker {Id} : {totalInvocations}");
 
-                workerInvocationStopWatch = ValueStopwatch.StartNew();
+                _workerInvocationStopWatch = ValueStopwatch.StartNew();
 
                 await SendStreamingMessageAsync(new StreamingMessage
                 {
@@ -795,14 +795,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             if (_executingInvocations.TryRemove(invokeResponse.InvocationId, out ScriptInvocationContext context)
                 && invokeResponse.Result.IsInvocationSuccess(context.ResultSource, capabilityEnabled))
             {
-                var currentInvocationLatency = workerInvocationStopWatch.GetElapsedTime();
+                var currentInvocationLatency = _workerInvocationStopWatch.GetElapsedTime();
                 _workerChannelLogger.LogDebug($"[HostMonitor] Worker {Id} invocation request took {currentInvocationLatency.TotalMilliseconds}ms");
 
                 int successfulInvocations = WorkerInvocationMetrics.IncrementSuccessfulInvocationsOfWorker(Id, _invocationMetricsPerWorkerId);
                 double averageInvocationLatency = WorkerInvocationMetrics.UpdateAverageInvocationLatency(Id, _invocationMetricsPerWorkerId, currentInvocationLatency);
 
                 string successData = $"WorkerId: {Id}, TotalInvocations : {_invocationMetricsPerWorkerId[Id].TotalInvocations}, SuccessfulInvocations : {successfulInvocations}, AverageInvocationLatency : {averageInvocationLatency}";
-                _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvokeSucceeded, Id), functionName: null, data: successData);
+                _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvokeSucceeded, Id), data: successData);
 
                 try
                 {
@@ -859,7 +859,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 }
 
                 string data = $"WorkerId: {Id}, TotalInvocations : {_invocationMetricsPerWorkerId[Id].TotalInvocations}, SuccessfulInvocations : {_invocationMetricsPerWorkerId[Id].SuccessfulInvocations}, AverageInvocationLatency : {_invocationMetricsPerWorkerId[Id].AverageInvocationLatency}";
-                _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvocationStatus, Id), functionName: null, data: data);
+                _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvocationStatus, Id), data: data);
             }
 
             if (_invocationTimer == null)
@@ -1283,19 +1283,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _workerChannelLogger.LogInformation("Checking and recycling faulty language workers");
 
             Dictionary<string, int> failureRatePerWorkerId = new Dictionary<string, int>();
-
-            // ToDo: Need to move this constant once finalized
-            var failureThreshold = 30;
+            var failureThreshold = 30; // ToDo: Moving this constant once finalized
 
             foreach (var item in _invocationMetricsPerWorkerId)
             {
-                int failureRateOfWorker = 0;
-
-                if (item.Value.TotalInvocations > 0)
-                {
-                    failureRateOfWorker = (item.Value.TotalInvocations - item.Value.SuccessfulInvocations) * 100 / item.Value.TotalInvocations;
-                }
-
+                int failureRateOfWorker = item.Value.TotalInvocations > 0 ? (item.Value.TotalInvocations - item.Value.SuccessfulInvocations) * 100 / item.Value.TotalInvocations : 0;
                 failureRatePerWorkerId[item.Key] = failureRateOfWorker;
 
                 // To be removed
@@ -1311,8 +1303,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 // ToDo: in next iteration of this feature => recycle the workerId in variable: workerIdToRecycle
                 // ToDo: Other criteria for recycle => if invocation latency is too high
 
-                _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerRecycled, Id), functionName: null, data: $"WorkerId recycled: {workerIdToRecycle}");
-                _workerChannelLogger.LogDebug($"WorkerId Recycled: {workerIdToRecycle}, Failure rate: {failureRate}");
+                _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerRecycled, Id), data: $"WorkerId to be recycled: {workerIdToRecycle}");
+                _workerChannelLogger.LogDebug($"WorkerId to be Recycled: {workerIdToRecycle}, Failure rate: {failureRate}");
             }
 
             // Reseting the dictionary
