@@ -46,7 +46,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         public int MaxFileSizeMb { get; set; } = 10;
 
         // Maximum time between successive flushes (seconds)
-        public int FlushFrequencySeconds { get; set; } = 30;
+        public int MaxFlushFrequencySeconds { get; set; } = 30;
+
+        // Start flush frequency low to quickly get Function Execution Events for scaling
+        public int CurrentFlushFrequencySeconds { get; set; } = 1;
 
         public virtual void Log(string message)
         {
@@ -87,7 +90,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             while (!_cancellationTokenSource.IsCancellationRequested)
             {
                 await InternalProcessLogQueue();
-                await Task.Delay(TimeSpan.FromSeconds(FlushFrequencySeconds), _cancellationTokenSource.Token).ContinueWith(task => { });
+                await Task.Delay(TimeSpan.FromSeconds(CurrentFlushFrequencySeconds), _cancellationTokenSource.Token).ContinueWith(task => { });
+                if ( CurrentFlushFrequencySeconds < MaxFlushFrequencySeconds)
+                {
+                    CurrentFlushFrequencySeconds++;
+                }
             }
             // ReSharper disable once FunctionNeverReturns
         }
