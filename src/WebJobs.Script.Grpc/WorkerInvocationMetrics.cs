@@ -16,47 +16,35 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         public static int IncrementTotalInvocationsOfWorker(string workerId, IDictionary<string, WorkerInvocationMetrics> invocationMetricsPerWorkerId)
         {
-            invocationMetricsPerWorkerId.TryGetValue(workerId, out WorkerInvocationMetrics workerInvocationParameters);
+            invocationMetricsPerWorkerId.TryGetValue(workerId, out WorkerInvocationMetrics workerInvocationMetrics);
+            workerInvocationMetrics = workerInvocationMetrics ?? new WorkerInvocationMetrics();
 
-            if (workerInvocationParameters == null)
-            {
-                workerInvocationParameters = new WorkerInvocationMetrics();
-            }
+            workerInvocationMetrics.TotalInvocations = workerInvocationMetrics.TotalInvocations + 1;
+            invocationMetricsPerWorkerId[workerId] = workerInvocationMetrics;
 
-            workerInvocationParameters.TotalInvocations = workerInvocationParameters.TotalInvocations + 1;
-            invocationMetricsPerWorkerId[workerId] = workerInvocationParameters;
-
-            return workerInvocationParameters.TotalInvocations;
+            return workerInvocationMetrics.TotalInvocations;
         }
 
         public static int IncrementSuccessfulInvocationsOfWorker(string workerId, IDictionary<string, WorkerInvocationMetrics> invocationMetricsPerWorkerId)
         {
-            invocationMetricsPerWorkerId.TryGetValue(workerId, out WorkerInvocationMetrics workerInvocationParameters);
+            invocationMetricsPerWorkerId.TryGetValue(workerId, out WorkerInvocationMetrics workerInvocationMetrics);
+            workerInvocationMetrics = workerInvocationMetrics ?? new WorkerInvocationMetrics();
 
-            if (workerInvocationParameters == null)
-            {
-                workerInvocationParameters = new WorkerInvocationMetrics();
-            }
+            workerInvocationMetrics.SuccessfulInvocations = workerInvocationMetrics.SuccessfulInvocations + 1;
+            invocationMetricsPerWorkerId[workerId] = workerInvocationMetrics;
 
-            workerInvocationParameters.SuccessfulInvocations = workerInvocationParameters.SuccessfulInvocations + 1;
-            invocationMetricsPerWorkerId[workerId] = workerInvocationParameters;
-
-            return workerInvocationParameters.SuccessfulInvocations;
+            return workerInvocationMetrics.SuccessfulInvocations;
         }
 
         public static double UpdateAverageInvocationLatency(string workerId, IDictionary<string, WorkerInvocationMetrics> invocationMetricsPerWorkerId, TimeSpan currentInvocationLatency)
         {
-            invocationMetricsPerWorkerId.TryGetValue(workerId, out WorkerInvocationMetrics workerInvocationParameters);
+            invocationMetricsPerWorkerId.TryGetValue(workerId, out WorkerInvocationMetrics workerInvocationMetrics);
+            workerInvocationMetrics = workerInvocationMetrics ?? new WorkerInvocationMetrics();
 
-            if (workerInvocationParameters == null)
-            {
-                workerInvocationParameters = new WorkerInvocationMetrics();
-            }
+            workerInvocationMetrics.AverageInvocationLatency = ((workerInvocationMetrics.AverageInvocationLatency * (workerInvocationMetrics.TotalInvocations - 1)) + currentInvocationLatency.TotalMilliseconds) / workerInvocationMetrics.TotalInvocations;
+            invocationMetricsPerWorkerId[workerId] = workerInvocationMetrics;
 
-            workerInvocationParameters.AverageInvocationLatency = ((workerInvocationParameters.AverageInvocationLatency * (workerInvocationParameters.TotalInvocations - 1)) + currentInvocationLatency.TotalMilliseconds) / workerInvocationParameters.TotalInvocations;
-            invocationMetricsPerWorkerId[workerId] = workerInvocationParameters;
-
-            return workerInvocationParameters.AverageInvocationLatency;
+            return workerInvocationMetrics.AverageInvocationLatency;
         }
     }
 }
