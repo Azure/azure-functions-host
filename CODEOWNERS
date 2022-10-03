@@ -9,8 +9,8 @@
 build/python.props @vrdmr @gavin-aguiar @YunchuWang
 
 # Deps.json validation file
-test/WebJobs.Script.Tests/Microsoft.Azure.WebJobs.Script.WebHost.deps.json @fabiocav @brettsam @mathewc @madelinegordon @soninaren @kashimiz @liliankasem @kshyju @surgupta-msft @satvu @jviau
+test/WebJobs.Script.Tests/Microsoft.Azure.WebJobs.Script.WebHost.deps.json @fabiocav @brettsam @mathewc
 
-tools/ExtensionsMetadataGenerator @fabiocav @brettsam @madelinegordon @soninaren @kashimiz @liliankasem @kshyju @surgupta-msft @satvu @jviau
+src/WebJobs.Script.WebHost/PreJIT/* @vrdmr @pragnagopa @eliaslopezgt @VpOfEngineering @azure/azure-functions-core
 
-src/WebJobs.Script.WebHost/PreJIT/* @vrdmr @pragnagopa @eliaslopezgt @VpOfEngineering @fabiocav @brettsam @madelinegordon @soninaren @kashimiz @liliankasem @kshyju @surgupta-msft @satvu @jviau
+* @azure/azure-functions-core
