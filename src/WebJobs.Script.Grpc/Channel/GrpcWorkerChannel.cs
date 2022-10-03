@@ -1268,7 +1268,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
             try
             {
-                _timer.Start();
+                _invocationTimer.Start();
             }
             catch (ObjectDisposedException)
             {
