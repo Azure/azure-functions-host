@@ -32,7 +32,7 @@ message StreamingMessage {
     WorkerInitRequest worker_init_request = 17;
     // Worker responds after initializing with its capabilities & status
     WorkerInitResponse worker_init_response = 16;
-    
+
     // Worker periodically sends empty heartbeat message to host
     WorkerHeartbeat worker_heartbeat = 15;
 
@@ -429,6 +429,7 @@ message TypedData {
     CollectionString collection_string = 9;
     CollectionDouble collection_double = 10;
     CollectionSInt64 collection_sint64 = 11;
+    BindingData bindingData = 12;
   }
 }
 
@@ -509,6 +510,7 @@ message BindingInfo {
       string = 1;
       binary = 2;
       stream = 3;
+      reference = 4;
     }
 
   // Type of binding (e.g. HttpTrigger)
@@ -582,13 +584,13 @@ message RpcException {
   // Textual message describing the exception
   string message = 2;
 
-  // Worker specifies whether exception is a user exception, 
-  // for purpose of application insights logging. Defaults to false. 
+  // Worker specifies whether exception is a user exception,
+  // for purpose of application insights logging. Defaults to false.
   bool is_user_exception = 4;
 
   // Type of exception. If it's a user exception, the type is passed along to app insights.
   // Otherwise, it's ignored for now.
-  string type = 5; 
+  string type = 5;
 }
 
 // Http cookie type. Note that only name and value are used for Http requests
@@ -646,4 +648,12 @@ message RpcHttp {
   map<string,NullableString> nullable_headers = 20;
   map<string,NullableString> nullable_params = 21;
   map<string,NullableString> nullable_query = 22;
+}
+
+message BindingData
+{
+    string Version = 1;
+    string ContentType = 2;
+    string Source = 3;
+    string Content = 4;
 }
