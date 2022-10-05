@@ -1268,6 +1268,10 @@
       "resolutionPolicy": "private"
     },
     {
+      "name": "System.Reactive.Core",
+      "resolutionPolicy": "private"
+    },
+    {
       "name": "System.Reactive.Linq",
       "resolutionPolicy": "private"
     },

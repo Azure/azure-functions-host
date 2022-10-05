@@ -60,7 +60,6 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.9.4" />
     <PackageReference Include="Moq" Version="4.9.0" />
     <PackageReference Include="StyleCop.Analyzers" Version="1.1.0-beta004" />
-    <PackageReference Include="System.Reactive.Core" Version="5.0.0" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Storage" Version="4.0.5-11874" />
     <PackageReference Include="System.IO.Abstractions.TestingHelpers" Version="2.1.0.227">
     </PackageReference>
@@ -158,7 +157,7 @@
     <EmbeddedResource Include="Resources\FileProvisioning\PowerShell\requirements_PSGalleryOffline.psd1" />
     <EmbeddedResource Include="Resources\FileProvisioning\PowerShell\requirements_PSGalleryOnline.psd1" />
     <EmbeddedResource Include="Resources\FileProvisioning\PowerShell\profile.ps1">
-    <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </EmbeddedResource>
   </ItemGroup>
 
