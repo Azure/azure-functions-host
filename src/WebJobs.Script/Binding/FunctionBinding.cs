@@ -147,6 +147,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             IEnumerable values = ReadAsEnumerable(context.Value);
 
             // convert values as necessary and add to the collector
+            List<Task> tasks = new List<Task>();
             foreach (var value in values)
             {
                 object converted = null;
@@ -196,8 +197,10 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     throw new ArgumentException("Unsupported collection type.");
                 }
 
-                await collector.AddAsync((T)converted);
+                tasks.Add(collector.AddAsync((T)converted));
             }
+
+            await Task.WhenAll(tasks);
         }
 
         internal static async Task BindJTokenAsync<T>(BindingContext context, FileAccess access)
