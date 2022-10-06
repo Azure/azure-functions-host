@@ -85,6 +85,9 @@ message StreamingMessage {
 
     // Host gets the list of function load responses
     FunctionLoadResponseCollection function_load_response_collection = 32;
+
+    HostTelemetryEventRequest host_telemetry_event_request = 33;
+    HostTelemetryEventResponse host_telemetry_event_response = 34;
   }
 }
 
@@ -646,4 +649,16 @@ message RpcHttp {
   map<string,NullableString> nullable_headers = 20;
   map<string,NullableString> nullable_params = 21;
   map<string,NullableString> nullable_query = 22;
+}
+
+message HostTelemetryEventRequest {
+    string id = 1;
+    string eventName = 2;
+    string invocationId = 3;
+    string functionName = 4;
+    map<string,string> payload = 5;
+}
+
+message HostTelemetryEventResponse {
+    string id = 1;
 }

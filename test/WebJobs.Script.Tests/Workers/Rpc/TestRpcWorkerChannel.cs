@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
@@ -11,7 +10,6 @@ using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
-using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
@@ -161,6 +159,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public Task<List<RawFunctionMetadata>> GetFunctionMetadata()
         {
             return null;
+        }
+
+        public ValueTask RaiseTelemetryEventAsync(FunctionsHostTelemetry telemetry)
+        {
+            throw new NotImplementedException();
         }
     }
 }

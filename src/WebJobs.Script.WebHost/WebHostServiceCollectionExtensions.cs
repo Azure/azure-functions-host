@@ -34,6 +34,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using OpenTelemetry.Trace;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -194,6 +195,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             // Add AzureBlobStorageProvider to WebHost (also needed for ScriptHost)
             services.AddAzureBlobStorageProvider();
+
+            // Instead of AppInsights, use OpenTelemetry
+            services.AddOpenTelemetryTracing(tcb =>
+            {
+                // Adds Activity tracking for incoming requests
+                tcb.AddAspNetCoreInstrumentation();
+            });
         }
 
         private static void AddStandbyServices(this IServiceCollection services)

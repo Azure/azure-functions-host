@@ -89,7 +89,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 loggingBuilder.AddConsoleIfEnabled(context);
 
-                ConfigureApplicationInsights(context, loggingBuilder);
+                // Host knows nothing about App Insights now...
+                // ConfigureApplicationInsights(context, loggingBuilder);
             })
             .ConfigureAppConfiguration((context, configBuilder) =>
             {

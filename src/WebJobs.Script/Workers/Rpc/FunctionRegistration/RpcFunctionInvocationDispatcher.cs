@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Threading;
@@ -36,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly IOptions<WorkerConcurrencyOptions> _workerConcurrencyOptions;
         private readonly IEnumerable<RpcWorkerConfig> _workerConfigs;
         private readonly Lazy<Task<int>> _maxProcessCount;
-
+        private readonly ActivityListener _activityListener;
         private IScriptEventManager _eventManager;
         private IWebHostRpcWorkerChannelManager _webHostLanguageWorkerChannelManager;
         private IJobHostRpcWorkerChannelManager _jobHostLanguageWorkerChannelManager;
@@ -96,6 +97,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _shutdownStandbyWorkerChannels = _shutdownStandbyWorkerChannels.Debounce(milliseconds: 5000);
 
             _maxProcessCount = new Lazy<Task<int>>(GetMaxProcessCount);
+
+            _activityListener = InitializeWebJobsActivityListener();
         }
 
         internal Task<int> MaxProcessCount => _maxProcessCount.Value;
@@ -109,6 +112,67 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         internal ConcurrentStack<WorkerErrorEvent> LanguageWorkerErrors => _languageWorkerErrors;
 
         internal IWebHostRpcWorkerChannelManager WebHostLanguageWorkerChannelManager => _webHostLanguageWorkerChannelManager;
+
+        private ActivityListener InitializeWebJobsActivityListener()
+        {
+            var listener = new ActivityListener
+            {
+                ShouldListenTo = source => source.Name.StartsWith("Microsoft.Azure.WebJobs.FunctionExecutor"),
+                ActivityStarted = activity =>
+                {
+                    switch (activity.OperationName)
+                    {
+                        case "Invoke":
+                            CreateAndSendFunctionHostTelemetry("function.start", activity).GetAwaiter().GetResult();
+                            break;
+                        case "InputBindings":
+                            CreateAndSendFunctionHostTelemetry("input.start", activity).GetAwaiter().GetResult();
+                            break;
+                        case "OutputBindings":
+                            CreateAndSendFunctionHostTelemetry("output.start", activity).GetAwaiter().GetResult();
+                            break;
+                        default:
+                            break;
+                    }
+                },
+                ActivityStopped = activity =>
+                {
+                    switch (activity.OperationName)
+                    {
+                        case "Invoke":
+                            CreateAndSendFunctionHostTelemetry("function.end", activity).GetAwaiter().GetResult();
+                            break;
+                        case "InputBindings":
+                            CreateAndSendFunctionHostTelemetry("input.end", activity).GetAwaiter().GetResult();
+                            break;
+                        case "OutputBindings":
+                            CreateAndSendFunctionHostTelemetry("output.end", activity).GetAwaiter().GetResult();
+                            break;
+                        default:
+                            break;
+                    }
+                },
+                Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
+                SampleUsingParentId = (ref ActivityCreationOptions<string> _) => ActivitySamplingResult.AllData
+            };
+
+            ActivitySource.AddActivityListener(listener);
+            return listener;
+        }
+
+        private async Task CreateAndSendFunctionHostTelemetry(string eventName, Activity activity)
+        {
+            var telemetry = new FunctionsHostTelemetry(activity.TagObjects);
+            telemetry.Properties.Add("EventName", eventName);
+            telemetry.Properties.Add("Traceparent", activity.Id);
+
+            FunctionMetadata function = _functions.SingleOrDefault(p => p.Name == telemetry.Properties["FunctionName"]);
+
+            // This could throw if no initialized workers are found. Shut down instance and retry.
+            IEnumerable<IRpcWorkerChannel> workerChannels = await GetInitializedWorkerChannelsAsync(function.Language ?? _workerRuntime);
+            var rpcWorkerChannel = _functionDispatcherLoadBalancer.GetLanguageWorkerChannel(workerChannels);
+            await rpcWorkerChannel.RaiseTelemetryEventAsync(telemetry);
+        }
 
         private async Task<int> GetMaxProcessCount()
         {
@@ -689,6 +753,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     _processStartCancellationToken.Cancel();
                     _processStartCancellationToken.Dispose();
                     _jobHostLanguageWorkerChannelManager.ShutdownChannels();
+
+                    _activityListener?.Dispose();
                 }
 
                 State = FunctionInvocationDispatcherState.Disposed;

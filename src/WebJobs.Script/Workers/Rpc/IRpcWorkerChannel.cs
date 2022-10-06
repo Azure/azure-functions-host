@@ -14,6 +14,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
     {
         IDictionary<string, BufferBlock<ScriptInvocationContext>> FunctionInputBuffers { get; }
 
+        ValueTask RaiseTelemetryEventAsync(FunctionsHostTelemetry telemetry);
+
         bool IsChannelReadyForInvocations();
 
         void SetupFunctionInvocationBuffers(IEnumerable<FunctionMetadata> functions);
@@ -29,5 +31,18 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         bool IsExecutingInvocation(string invocationId);
 
         bool TryFailExecutions(Exception workerException);
+    }
+
+    public class FunctionsHostTelemetry
+    {
+        public FunctionsHostTelemetry(IEnumerable<KeyValuePair<string, object>> tags)
+        {
+            foreach (KeyValuePair<string, object> tag in tags)
+            {
+                Properties.Add(tag.Key, tag.Value.ToString());
+            }
+        }
+
+        public IDictionary<string, string> Properties { get; } = new Dictionary<string, string>();
     }
 }

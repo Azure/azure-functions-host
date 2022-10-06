@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private readonly IOptions<WorkerConcurrencyOptions> _workerConcurrencyOptions;
         private readonly WaitCallback _processInbound;
         private readonly object _syncLock = new object();
-        private readonly Dictionary<MsgType, Queue<PendingItem>> _pendingActions = new ();
+        private readonly Dictionary<MsgType, Queue<PendingItem>> _pendingActions = new Dictionary<MsgType, Queue<PendingItem>>();
         private readonly ChannelWriter<OutboundGrpcEvent> _outbound;
         private readonly ChannelReader<InboundGrpcEvent> _inbound;
 
@@ -64,6 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private ConcurrentDictionary<string, ScriptInvocationContext> _executingInvocations = new ConcurrentDictionary<string, ScriptInvocationContext>();
         private IDictionary<string, BufferBlock<ScriptInvocationContext>> _functionInputBuffers = new ConcurrentDictionary<string, BufferBlock<ScriptInvocationContext>>();
         private ConcurrentDictionary<string, TaskCompletionSource<bool>> _workerStatusRequests = new ConcurrentDictionary<string, TaskCompletionSource<bool>>();
+        private Dictionary<string, TaskCompletionSource<bool>> _telemetryRequests = new Dictionary<string, TaskCompletionSource<bool>>();
         private List<IDisposable> _inputLinks = new List<IDisposable>();
         private List<IDisposable> _eventSubscriptions = new List<IDisposable>();
         private IDisposable _startLatencyMetric;
@@ -155,6 +156,10 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                         break;
                     case MsgType.InvocationResponse:
                         _ = InvokeResponse(msg.Message.InvocationResponse);
+                        break;
+                    case MsgType.HostTelemetryEventResponse:
+                        _telemetryRequests.Remove(msg.Message.HostTelemetryEventResponse.Id, out var complete);
+                        complete.SetResult(true);
                         break;
                     default:
                         ProcessRegisteredGrpcCallbacks(msg);
@@ -1252,6 +1257,28 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     attributes[ScriptConstants.LiveLogsSessionAIKey] = sessionid;
                 }
             }
+        }
+
+        public async ValueTask RaiseTelemetryEventAsync(Workers.Rpc.FunctionsHostTelemetry telemetry)
+        {
+            var rpcTelemetry = new HostTelemetryEventRequest
+            {
+                Id = Guid.NewGuid().ToString(),
+                InvocationId = telemetry.Properties["FunctionInvocationId"],
+                FunctionName = telemetry.Properties["FunctionName"],
+                EventName = telemetry.Properties["EventName"]
+            };
+            rpcTelemetry.Payload.AddRange(new System.Collections.ObjectModel.ReadOnlyDictionary<string, string>(telemetry.Properties));
+
+            var complete = new TaskCompletionSource<bool>();
+            _telemetryRequests[rpcTelemetry.Id] = complete;
+
+            await SendStreamingMessageAsync(new StreamingMessage
+            {
+                HostTelemetryEventRequest = rpcTelemetry
+            });
+
+            await complete.Task;
         }
 
         private sealed class PendingItem
