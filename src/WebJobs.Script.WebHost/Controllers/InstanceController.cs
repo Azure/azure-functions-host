@@ -20,11 +20,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
     public class InstanceController : Controller
     {
         private readonly IEnvironment _environment;
-        private readonly IInstanceManager _instanceManager;
+        private readonly LinuxInstanceManager _instanceManager;
         private readonly ILogger _logger;
         private readonly StartupContextProvider _startupContextProvider;
 
-        public InstanceController(IEnvironment environment, IInstanceManager instanceManager, ILoggerFactory loggerFactory, StartupContextProvider startupContextProvider)
+        public InstanceController(IEnvironment environment, LinuxInstanceManager instanceManager, ILoggerFactory loggerFactory, StartupContextProvider startupContextProvider)
         {
             _environment = environment;
             _instanceManager = instanceManager;

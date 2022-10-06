@@ -133,28 +133,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IFileSystem>(_ => FileUtility.Instance);
             services.AddTransient<VirtualFileSystem>();
             services.AddTransient<VirtualFileSystemMiddleware>();
-            services.AddSingleton<IInstanceManager>(s =>
+
+            if (SystemEnvironment.Instance.IsLinuxConsumptionOnAtlas())
             {
-                var httpClientFactory = s.GetService<IHttpClientFactory>();
-                var scriptWebHostEnvironment = s.GetService<IScriptWebHostEnvironment>();
-                var metricsLogger = s.GetService<IMetricsLogger>();
-                var meshServiceClient = s.GetService<IMeshServiceClient>();
-
-                var environment = s.GetService<IEnvironment>();
-
-                if (environment.IsLinuxConsumptionOnLegion())
-                {
-                    var legionLogger = s.GetService<ILogger<LegionInstanceManager>>();
-                    return new LegionInstanceManager(httpClientFactory, scriptWebHostEnvironment, environment, legionLogger, metricsLogger, meshServiceClient);
-                }
-
-                var optionsFactory = s.GetService<IOptionsFactory<ScriptApplicationHostOptions>>();
-                var logger = s.GetService<ILogger<InstanceManager>>();
-                var runFromPackageHandler = s.GetService<IRunFromPackageHandler>();
-                var packageDownloadHandler = s.GetService<IPackageDownloadHandler>();
-
-                return new InstanceManager(optionsFactory, httpClientFactory, scriptWebHostEnvironment, environment, logger, metricsLogger, meshServiceClient, runFromPackageHandler, packageDownloadHandler);
-            });
+                System.Console.WriteLine("[TEST] Atlas Linux Consumption");
+                services.AddSingleton<LinuxInstanceManager, InstanceManager>();
+            }
+            else if (SystemEnvironment.Instance.IsLinuxConsumptionOnLegion())
+            {
+                System.Console.WriteLine("[TEST] Legion Linux Consumption");
+                services.AddSingleton<LinuxInstanceManager, LegionInstanceManager>();
+            }
+            else
+            {
+                System.Console.WriteLine("[TEST] Else");
+            }
 
             // Logging and diagnostics
             services.AddSingleton<IMetricsLogger, WebHostMetricsLogger>();
@@ -256,7 +249,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 //todo: Replace with legion specific service
                 if (environment.IsAnyLinuxConsumption())
                 {
-                    var instanceManager = s.GetService<IInstanceManager>();
+                    var instanceManager = s.GetService<LinuxInstanceManager>();
                     var logger = s.GetService<ILogger<LinuxContainerInitializationHostService>>();
                     var startupContextProvider = s.GetService<StartupContextProvider>();
                     return new LinuxContainerInitializationHostService(environment, instanceManager, logger, startupContextProvider);
