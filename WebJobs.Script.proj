@@ -183,19 +183,14 @@
     <xunit Assemblies="@(IntegrationTestAssemblies)" ExcludeTraits="$(ExcludedTestTraits)" />
   </Target>
 
-  <PropertyGroup Condition=" '$(APPVEYOR_API_URL)' != '' ">
-    <AppveyorModules>mocha-appveyor-reporter</AppveyorModules>
-    <AppveyorReporter>--reporter mocha-appveyor-reporter</AppveyorReporter>
-  </PropertyGroup>
-
   <PropertyGroup>
     <BuildConfiguration>Debug</BuildConfiguration>
     <BuildConfiguration Condition=" $(Configuration) != '' ">$(Configuration)</BuildConfiguration>
   </PropertyGroup>
 
   <Target Name="MochaTest" DependsOnTargets="TestBuild" AfterTargets="UnitTest">
-    <Exec Command="npm i mocha@5.2.0 chai@4.2.0 $(AppveyorModules)@0.4.2" />
-    <Exec Command=".\node_modules\.bin\mocha .\test\WebJobs.Script.Tests.Integration\TestScripts\Node\*.tests.js $(AppveyorReporter) --config=$(BuildConfiguration)" />
+    <Exec Command="npm i mocha@5.2.0 chai@4.2.0 mocha-junit-reporter@1.23.3" />
+    <Exec Command=".\node_modules\.bin\mocha .\test\WebJobs.Script.Tests.Integration\TestScripts\Node\*.tests.js --reporter=mocha-junit-reporter --config=$(BuildConfiguration)" />
   </Target>
 
   <Target Name="Clean" DependsOnTargets="GetBinplace">
