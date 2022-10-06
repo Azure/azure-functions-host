@@ -1,0 +1,106 @@
+variables:
+- group: 'Functions Host V1 Testing'
+- name: build_number
+  value: $[ counter('constant', 131400) ]
+- name: includeBuildNumberInVersion
+  value: ${{ 1 }}
+- name: configuration
+  value: Release
+- name: publish_path
+  value: bin
+- name: DOTNET_SKIP_FIRST_TIME_EXPERIENCE
+  value: ${{ true }}
+- name: test_results_path
+  value: '$(System.DefaultWorkingDirectory)\test-results'
+- name: xunit_results_path
+  value: '$(test_results_path)\xunit'
+- name: junit_results_path
+  value: '$(test_results_path)\junit'
+
+pr:
+  branches:
+    include:
+    - v1.x
+    - release/1.*
+
+trigger:
+  branches:
+    include:
+    - v1.x
+    - release/1.*
+
+jobs:
+- job: BuildAndTest
+  pool:
+    name: '1ES-Hosted-AzFunc'
+    demands:
+      - ImageOverride -equals MMS2019TLS
+
+  steps:
+  - task: 1ESHostedPoolValidation@1
+
+  - task: NodeTool@0
+    displayName: "Install Node 6.11.2"
+    inputs:
+      versionSpec: '6.11.2'
+
+  - task: MSBuild@1
+    inputs:
+      solution: 'WebJobs.Script.proj'
+      msbuildArguments: '/target:EnableSkipStrongNames;PackageScriptHost;PackageWebHost;TestBuild /property:BuildNumber=$(build_number);Configuration=$(configuration);PublishPath=$(publish_path)'
+      logFileVerbosity: minimal
+
+  - task: ManifestGeneratorTask@0
+    displayName: "SBOM Generation"
+    inputs:
+      buildDropPath: '$(System.DefaultWorkingDirectory)\$(publish_path)\Packages'
+      verbosity: 'Information'
+
+  - pwsh: .\runtests.ps1 -ResultsPath $(xunit_results_path) -Configuration $(configuration)
+    displayName: "Run tests"
+    env:
+      AzureWebJobsStorage: $(Storage)
+      AzureWebJobsDashboard: $(Storage)
+      AzureWebJobsServiceBus: $(ServiceBus)
+      AzureWebJobsDocumentDBConnectionString: $(CosmosDB)
+      AzureWebJobsMobileAppUri: $(MobileUri)
+      AzureWebJobs_TestMobileUri: $(MobileUri)
+      AzureWebJobsDropBox: 'UseLocalFileSystem=true;Path=%TEMP%\DropBox'
+      AzureWebJobsEventHubSender: $(EventHub)
+      AzureWebJobsEventHubReceiver: $(EventHub)
+      AzureWebJobsEventHubPath: 'testhub'
+      AzureWebJobsNotificationHubsConnectionString: $(NotificationHub)
+      AzureWebJobsNotificationHubName: 'testhub'
+      AzureWebJobsEnv: 'Development'
+      FILES_ACCOUNT_NAME: $(FilesAccountName)
+      FILES_ACCOUNT_KEY: $(FilesAccountKey)
+      AzureWebJobsScriptRoot: '$(System.DefaultWorkingDirectory)\test\WebJobs.Script.Tests.Integration\TestScripts\Empty'
+      AzureWebJobsCosmosDBConnectionString: $(CosmosDB)
+      ConnectionStrings__CosmosDB: $(CosmosDB2)
+      AzureWebJobsSecretStorageKeyVaultName: $(KeyVaultName)
+      AzureWebJobsSecretStorageKeyVaultConnectionString: $(KeyVaultConnectionString)
+      TMP: $(Agent.TempDirectory)
+      MOCHA_FILE: '$(junit_results_path)\junit-test-results.xml'
+
+  - task: PublishTestResults@2
+    displayName: "Publish XUnit test results"
+    inputs:
+      testResultsFormat: 'XUnit'
+      testResultsFiles: '$(xunit_results_path)\xunit-*.xml'
+      mergeTestResults: true
+      buildConfiguration: $(configuration)
+      testRunTitle: 'XUnit Tests'
+    condition: always()
+
+  - task: PublishTestResults@2
+    displayName: "Publish JUnit test results"
+    inputs:
+      testResultsFormat: 'JUnit'
+      testResultsFiles: '$(junit_results_path)\junit-*.xml'
+      mergeTestResults: true
+      buildConfiguration: $(configuration)
+      testRunTitle: 'JUnit Tests'
+    condition: always()
+
+  - publish: '$(System.DefaultWorkingDirectory)\$(publish_path)\Packages'
+    artifact: drop
