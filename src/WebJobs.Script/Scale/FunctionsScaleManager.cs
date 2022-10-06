@@ -62,6 +62,17 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
             Utility.GetScaleInstancesToProcess(_environment, _functionsHostingConfiguration, scaleMonitors, targetScalers,
                 out List<IScaleMonitor> scaleMonitorsToProcess, out List<ITargetScaler> targetScalersToProcess);
 
+            var targetScalerVotes = await GetTargetScalersResult(context, targetScalersToProcess);
+
+            return new ScaleStatusResult
+            {
+                Vote = await GetScaleMonitorsResult(context, scaleMonitorsToProcess, targetScalerVotes.Select(x => x.Vote)),
+                TargetWorkerCount = targetScalerVotes.Any() ? targetScalerVotes.Select(x => x.TargetWorkerCount).Max() : null
+            };
+        }
+
+        private async Task<ScaleVote> GetScaleMonitorsResult(ScaleStatusContext context, IEnumerable<IScaleMonitor> scaleMonitorsToProcess, IEnumerable<ScaleVote> targetScaleVotes)
+        {
             List<ScaleVote> votes = new List<ScaleVote>();
             if (scaleMonitorsToProcess.Any())
             {
@@ -105,7 +116,13 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
                 // this can happen if the host is offline
             }
 
-            List<int> targetScaleVotes = new List<int>();
+            ScaleVote vote = GetAggregateScaleVote(votes.Union(targetScaleVotes), context, _logger);
+            return vote;
+        }
+
+        private async Task<IEnumerable<TargetScalerVote>> GetTargetScalersResult(ScaleStatusContext context, IEnumerable<ITargetScaler> targetScalersToProcess)
+        {
+            List<TargetScalerVote> targetScaleVotes = new List<TargetScalerVote>();
 
             if (targetScalersToProcess.Any())
             {
@@ -135,7 +152,20 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
                         }
                         TargetScalerResult result = await targetScaler.GetScaleResultAsync(targetScaleStatusContext);
                         _logger.LogDebug($"Target worker count for '{targetScaler.TargetScalerDescriptor.FunctionId}' is '{result.TargetWorkerCount}'");
-                        targetScaleVotes.Add(result.TargetWorkerCount);
+                        ScaleVote vote = ScaleVote.None;
+                        if (context.WorkerCount > result.TargetWorkerCount)
+                        {
+                            vote = ScaleVote.ScaleIn;
+                        }
+                        else if (context.WorkerCount < result.TargetWorkerCount)
+                        {
+                            vote = ScaleVote.ScaleOut;
+                        }
+                        targetScaleVotes.Add(new TargetScalerVote
+                        {
+                            TargetWorkerCount = result.TargetWorkerCount,
+                            Vote = vote
+                        });
                     }
                     catch (Exception exc) when (!exc.IsFatal())
                     {
@@ -144,17 +174,11 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
                     }
                 }
             }
-
-            var vote = GetAggregateScaleVote(votes, context, _logger);
-            int? targetWorkerCount = targetScaleVotes.Any() ? targetScaleVotes.Max() : null;
-            return new ScaleStatusResult
-            {
-                Vote = vote,
-                TargetWorkerCount = targetWorkerCount
-            };
+            //int? targetWorkerCount = targetScaleVotes.Any() ? targetScaleVotes.Max() : null;
+            return targetScaleVotes;
         }
 
-        internal static ScaleVote GetAggregateScaleVote(List<ScaleVote> votes, ScaleStatusContext context, ILogger logger)
+        internal static ScaleVote GetAggregateScaleVote(IEnumerable<ScaleVote> votes, ScaleStatusContext context, ILogger logger)
         {
             ScaleVote vote = ScaleVote.None;
             if (votes.Any())

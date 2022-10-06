@@ -997,53 +997,56 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
+        /// <summary>
+        /// Returns scale monitors and target scalers we want to use based on the configuration.
+        /// Scaler monitor will be ignored if a target scaler is defined in the same extensions assembly and TBS is enabled.
+        /// </summary>
+        /// <param name="environment">Environment variables.</param>
+        /// <param name="hostingConfiguration">Housing configuration.This is used to enable TDS on stamp level for specific triggers.</param>
+        /// <param name="scaleMonitors">Registered scale monitors.</param>
+        /// <param name="targetScalers">Registered target scalers.</param>
+        /// <param name="scaleMonitorsToProcess">Scale monitor to process.</param>
+        /// <param name="targetScalersToProcess">Target scaler to process.</param>
         public static void GetScaleInstancesToProcess(
             IEnvironment environment,
             IFunctionsHostingConfiguration hostingConfiguration,
             IEnumerable<IScaleMonitor> scaleMonitors,
             IEnumerable<ITargetScaler> targetScalers,
-            out List<IScaleMonitor> scaleMonitrsToProcess,
+            out List<IScaleMonitor> scaleMonitorsToProcess,
             out List<ITargetScaler> targetScalersToProcess)
         {
-            scaleMonitrsToProcess = new List<IScaleMonitor>();
+            scaleMonitorsToProcess = new List<IScaleMonitor>();
             targetScalersToProcess = new List<ITargetScaler>();
 
             string value = environment.GetEnvironmentVariableOrDefault(EnvironmentSettingNames.TargetBaseScalingEnabled, "0");
 
-            // Check if TBS enabled on stamp level
+            // Check if TBS enabled on app level
             if (value == "1")
             {
-                string flags = hostingConfiguration.GetValue(ScriptConstants.ScaleControllerFeatureFlags, null).ToLower();
-                if (!string.IsNullOrEmpty(flags))
+                foreach (var scaler in targetScalers)
                 {
-                    foreach (var scaler in targetScalers)
+                    string flag = hostingConfiguration.GetValue(scaler.GetType().Name, null);
+                    if (flag == "1")
                     {
-                        if (flags.Contains(scaler.GetType().Name.ToLower()))
-                        {
-                            targetScalersToProcess.Add(scaler);
-                        }
+                        targetScalersToProcess.Add(scaler);
                     }
                 }
 
                 foreach (var monitor in scaleMonitors)
                 {
-                    // we made the assumption that if a listener implements both IScaleMonitor and ITargetScaler
-                    // IScaleMonitor.Descriptor.Id must start with "{functionId}-". For example: "{functionId}-QueueTrigger-{queueName}"
-                    var array = monitor.Descriptor.Id.Split("-");
-                    string functionId = array.Length > 0 ? array[0] : null;
-                    if (!string.IsNullOrEmpty(functionId))
+                    string monitorAssemblyName = monitor.GetType().Assembly.FullName;
+                    // Check if there are scale monitor and target scaler defined in the same assembly
+                    ITargetScaler scaler = targetScalersToProcess.FirstOrDefault(x => x.GetType().Assembly.FullName == monitorAssemblyName);
+
+                    if (scaler == null)
                     {
-                        ITargetScaler scaler = targetScalersToProcess.SingleOrDefault(x => x.TargetScalerDescriptor.FunctionId == functionId);
-                        if (scaler == null)
-                        {
-                            scaleMonitrsToProcess.Add(monitor);
-                        }
+                        scaleMonitorsToProcess.Add(monitor);
                     }
                 }
             }
             else
             {
-                scaleMonitrsToProcess = new List<IScaleMonitor>(scaleMonitors);
+                scaleMonitorsToProcess = new List<IScaleMonitor>(scaleMonitors);
             }
         }
 

@@ -4,10 +4,8 @@
 using System;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -105,6 +103,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 Assert.Equal("1", conf.GetValue("ENABLE_FEATUREX"));
                 Assert.Equal("B", conf.GetValue("A"));
                 Assert.Equal("123", conf.GetValue("TimeOut"));
+                Assert.Equal("123", conf.GetValue("timeout")); // check case insensitive search
             }
         }
 
@@ -127,6 +126,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 conf.GetValue("test"); // to run Parse
                 Assert.True(conf.Config.Count == configCount);
             }
+        }
+
+        [Fact]
+        public void GetValue_ConfigurationFileDoesNotExists()
+        {
+            FunctionsHostingConfiguration conf = new FunctionsHostingConfiguration(_environment, _loggerFactory, "test.txt", DateTime.Now.AddMilliseconds(1), TimeSpan.FromMilliseconds(100));
+            Assert.DoesNotContain("FunctionsHostingConfigurations file does not exist", _loggerProvider.GetAllLogMessages().Select(x => x.FormattedMessage));
         }
     }
 }

@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Scale;
+using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
@@ -74,67 +75,83 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
             Assert.Equal(expected, status.Vote);
         }
 
-        [Fact]
-        public async Task GetScaleStatus_ReturnsExpectedResult()
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async Task GetScaleStatus_ReturnsExpectedResult(bool tbsEnabled)
         {
             var context = new ScaleStatusContext
             {
                 WorkerCount = 3
             };
 
-            var mockMonitor1 = new Mock<IScaleMonitor>(MockBehavior.Strict);
-            mockMonitor1.Setup(p => p.GetScaleStatus(It.Is<ScaleStatusContext>(q => q.WorkerCount == context.WorkerCount))).Returns(new ScaleStatus { Vote = ScaleVote.ScaleIn });
-            mockMonitor1.SetupGet(p => p.Descriptor).Returns(new ScaleMonitorDescriptor("testscalemonitor1"));
-            var mockMonitor2 = new Mock<IScaleMonitor>(MockBehavior.Strict);
-            mockMonitor2.Setup(p => p.GetScaleStatus(It.Is<ScaleStatusContext>(q => q.WorkerCount == context.WorkerCount))).Returns(new ScaleStatus { Vote = ScaleVote.ScaleOut });
-            mockMonitor2.SetupGet(p => p.Descriptor).Returns(new ScaleMonitorDescriptor("testscalemonitor2"));
-            var mockMonitor3 = new Mock<IScaleMonitor>(MockBehavior.Strict);
-            mockMonitor3.Setup(p => p.GetScaleStatus(It.Is<ScaleStatusContext>(q => q.WorkerCount == context.WorkerCount))).Returns(new ScaleStatus { Vote = ScaleVote.ScaleIn });
-            mockMonitor3.SetupGet(p => p.Descriptor).Returns(new ScaleMonitorDescriptor("testscalemonitor3"));
+            var monitor1 = new TestScaleMonitor1();
+            monitor1.Status = new ScaleStatus
+            {
+                Vote = ScaleVote.ScaleIn
+            };
+            var monitor2 = new TestScaleMonitor1();
+            monitor2.Status = new ScaleStatus
+            {
+                Vote = ScaleVote.ScaleOut
+            };
+            var monitor3 = new TestScaleMonitor1();
+            monitor3.Status = new ScaleStatus
+            {
+                Vote = ScaleVote.ScaleIn
+            };
+
             List<IScaleMonitor> monitors = new List<IScaleMonitor>
             {
-                mockMonitor1.Object,
-                mockMonitor2.Object,
-                mockMonitor3.Object
+                monitor1,
+                monitor2,
+                monitor3
             };
             _monitorManagerMock.Setup(p => p.GetMonitors()).Returns(monitors);
 
             var monitorMetrics = new Dictionary<IScaleMonitor, IList<ScaleMetrics>>
             {
-                { mockMonitor1.Object, new List<ScaleMetrics>() },
-                { mockMonitor2.Object, new List<ScaleMetrics>() },
-                { mockMonitor3.Object, new List<ScaleMetrics>() }
+                { monitor1, new List<ScaleMetrics>() },
+                { monitor2, new List<ScaleMetrics>() },
+                { monitor3, new List<ScaleMetrics>() }
             };
             _metricsRepositoryMock.Setup(p => p.ReadMetricsAsync(It.IsAny<IEnumerable<IScaleMonitor>>())).ReturnsAsync(monitorMetrics);
 
-            var mockTargetScaler1 = new Mock<ITargetScaler>(MockBehavior.Strict);
-            mockTargetScaler1.Setup(p => p.GetScaleResultAsync(It.IsAny<TargetScalerContext>())).ReturnsAsync(new TargetScalerResult
+            var targetScaler1 = new TestTargetScaler()
             {
-                TargetWorkerCount = 2
-            });
-            mockTargetScaler1.SetupGet(p => p.TargetScalerDescriptor).Returns(new TargetScalerDescriptor("func1"));
-            List<ITargetScaler> targetScaler = new List<ITargetScaler>
-            {
-                mockTargetScaler1.Object
+                Result = new TargetScalerResult()
+                {
+                    TargetWorkerCount = 2
+                },
+                TargetScalerDescriptor = new TargetScalerDescriptor("func1")
             };
-            _targetScalerManagerMock.Setup(p => p.GetTargetScalers()).Returns(targetScaler);
 
-            _environmentMock.Setup(p => p.GetEnvironmentVariable(It.Is<string>(x => x == EnvironmentSettingNames.TargetBaseScalingEnabled))).Returns("1");
-            _functionsHostingConfigurationMock.Setup(p => p.GetValue(It.Is<string>(x => x == ScriptConstants.ScaleControllerFeatureFlags), It.IsAny<string>())).Returns("itargetscalerproxy,test");
+            _targetScalerManagerMock.Setup(p => p.GetTargetScalers()).Returns(new List<ITargetScaler> { targetScaler1 });
+
+            _environmentMock.Setup(p => p.GetEnvironmentVariable(It.Is<string>(x => x == EnvironmentSettingNames.TargetBaseScalingEnabled))).Returns(tbsEnabled ? "1" : null);
+            _functionsHostingConfigurationMock.Setup(p => p.GetValue(It.Is<string>(x => x == nameof(TestTargetScaler)), It.IsAny<string>())).Returns("1");
 
             var status = await _scaleManager.GetScaleStatusAsync(context);
 
             var logs = _loggerProvider.GetAllLogMessages();
-            Assert.Equal("Computing scale status (WorkerCount=3)", logs[0].FormattedMessage);
-            Assert.Equal("3 scale monitors to sample", logs[1].FormattedMessage);
-            Assert.Equal("Monitor 'testscalemonitor1' voted 'ScaleIn'", logs[2].FormattedMessage);
-            Assert.Equal("Monitor 'testscalemonitor2' voted 'ScaleOut'", logs[3].FormattedMessage);
-            Assert.Equal("Monitor 'testscalemonitor3' voted 'ScaleIn'", logs[4].FormattedMessage);
-            Assert.Equal("1 target scalers to sample", logs[5].FormattedMessage);
-            Assert.Equal($"Snapshot dynamic concurrency for target scaler 'func1' is '1'", logs[6].FormattedMessage);
-            Assert.Equal("Target worker count for 'func1' is '2'", logs[7].FormattedMessage);
-
-            Assert.Equal(ScaleVote.ScaleOut, status.Vote);
+            if (!tbsEnabled)
+            {
+                Assert.Equal("Computing scale status (WorkerCount=3)", logs[0].FormattedMessage);
+                Assert.Equal("3 scale monitors to sample", logs[1].FormattedMessage);
+                Assert.Equal("Monitor 'testscalemonitor1' voted 'ScaleIn'", logs[2].FormattedMessage);
+                Assert.Equal("Monitor 'testscalemonitor1' voted 'ScaleOut'", logs[3].FormattedMessage);
+                Assert.Equal("Monitor 'testscalemonitor1' voted 'ScaleIn'", logs[4].FormattedMessage);
+                Assert.Equal(ScaleVote.ScaleOut, status.Vote);
+                Assert.Equal(null, status.TargetWorkerCount);
+            }
+            else
+            {
+                Assert.Equal("1 target scalers to sample", logs[0].FormattedMessage);
+                Assert.Equal("Snapshot dynamic concurrency for target scaler 'func1' is '1'", logs[1].FormattedMessage);
+                Assert.Equal("Target worker count for 'func1' is '2'", logs[2].FormattedMessage);
+                Assert.Equal(ScaleVote.ScaleIn, status.Vote);
+                Assert.Equal(2, status.TargetWorkerCount);
+            }
         }
 
         [Fact]
@@ -181,6 +198,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
             Assert.Same(exception, logs[3].Exception);
             Assert.Equal("Monitor 'testscalemonitor3' voted 'ScaleIn'", logs[4].FormattedMessage);
 
+            Assert.Equal(null, status.TargetWorkerCount);
             Assert.Equal(ScaleVote.ScaleIn, status.Vote);
         }
 
@@ -192,32 +210,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
                 WorkerCount = 3
             };
 
-            var mockTargetScaler1 = new Mock<ITargetScaler>(MockBehavior.Strict);
-            mockTargetScaler1.Setup(p => p.GetScaleResultAsync(It.IsAny<TargetScalerContext>())).ReturnsAsync(new TargetScalerResult
-            {
-                TargetWorkerCount = 3
-            });
-            mockTargetScaler1.SetupGet(p => p.TargetScalerDescriptor).Returns(new TargetScalerDescriptor("func1"));
-            var mockTargetScaler2 = new Mock<ITargetScaler>(MockBehavior.Strict);
-            mockTargetScaler2.SetupGet(p => p.TargetScalerDescriptor).Returns(new TargetScalerDescriptor("func2"));
-            var exception = new Exception("Kaboom!");
-            mockTargetScaler2.Setup(p => p.GetScaleResultAsync(It.IsAny<TargetScalerContext>())).Throws(exception);
-            var mockTargetScaler3 = new Mock<ITargetScaler>(MockBehavior.Strict);
-            mockTargetScaler3.Setup(p => p.GetScaleResultAsync(It.IsAny<TargetScalerContext>())).ReturnsAsync(new TargetScalerResult
-            {
-                TargetWorkerCount = -3
-            });
-            mockTargetScaler3.SetupGet(p => p.TargetScalerDescriptor).Returns(new TargetScalerDescriptor("func3"));
+            var targetScaler1 = new TestTargetScaler { Result = new TargetScalerResult { TargetWorkerCount = 3 }, TargetScalerDescriptor = new TargetScalerDescriptor("func1") };
+            var targetScaler2 = new TestTargetScaler2 { Result = new TargetScalerResult { TargetWorkerCount = 1 }, TargetScalerDescriptor = new TargetScalerDescriptor("func2") };
+            var targetScaler3 = new TestTargetScaler { Result = new TargetScalerResult { TargetWorkerCount = -3 }, TargetScalerDescriptor = new TargetScalerDescriptor("func3") };
             List<ITargetScaler> targetScalers = new List<ITargetScaler>
             {
-                mockTargetScaler1.Object,
-                mockTargetScaler2.Object,
-                mockTargetScaler3.Object
+                targetScaler1,
+                targetScaler2,
+                targetScaler3
             };
             _targetScalerManagerMock.Setup(p => p.GetTargetScalers()).Returns(targetScalers);
 
             _environmentMock.Setup(p => p.GetEnvironmentVariable(It.Is<string>(x => x == EnvironmentSettingNames.TargetBaseScalingEnabled))).Returns("1");
-            _functionsHostingConfigurationMock.Setup(p => p.GetValue(It.Is<string>(x => x == ScriptConstants.ScaleControllerFeatureFlags), It.IsAny<string>())).Returns("itargetscalerproxy,test");
+            _functionsHostingConfigurationMock.Setup(p => p.GetValue(It.Is<string>(x => x == nameof(TestTargetScaler)), It.IsAny<string>())).Returns("1");
+            _functionsHostingConfigurationMock.Setup(p => p.GetValue(It.Is<string>(x => x == nameof(TestTargetScaler2)), It.IsAny<string>())).Returns("1");
 
             var status = await _scaleManager.GetScaleStatusAsync(context);
 
@@ -226,10 +232,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
             Assert.Equal($"Snapshot dynamic concurrency for target scaler 'func1' is '1'", logs[1].FormattedMessage);
             Assert.Equal("Target worker count for 'func1' is '3'", logs[2].FormattedMessage);
             Assert.Equal("Failed to query scale result for target scaler 'func2'.", logs[3].FormattedMessage);
-            Assert.Same(exception, logs[3].Exception);
+            Assert.Same("test", logs[3].Exception.Message);
             Assert.Equal("Target worker count for 'func3' is '-3'", logs[4].FormattedMessage);
 
             Assert.Equal(3, status.TargetWorkerCount);
+            Assert.Equal(ScaleVote.None, status.Vote);
         }
 
         [Theory]

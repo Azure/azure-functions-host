@@ -206,18 +206,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
         }
 
         [Fact]
-        public async Task TakeMetricsSamplesAsync_Skips_TakingMertrics()
+        public async Task TakeMetricsSamplesAsync_CancelsTaking_IfTBSEbabled()
         {
-            Mock<IScaleMonitor> monitor = new Mock<IScaleMonitor>(MockBehavior.Strict);
-            monitor.SetupGet(p => p.Descriptor).Returns(new ScaleMonitorDescriptor("test_id-test-test"));
-            _monitors.Add(monitor.Object);
+            TestScaleMonitor1 monitor = new TestScaleMonitor1();
+            _monitors.Add(monitor);
 
-            Mock<ITargetScaler> scaler = new Mock<ITargetScaler>(MockBehavior.Strict);
-            scaler.SetupGet(p => p.TargetScalerDescriptor).Returns(new TargetScalerDescriptor("test_id"));
-            _scalers.Add(scaler.Object);
+            TestTargetScaler scaler = new TestTargetScaler();
+            _scalers.Add(scaler);
 
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.TargetBaseScalingEnabled, "1");
-            _functionsHostingConfigurationMock.Setup(p => p.GetValue(It.Is<string>(x => x == ScriptConstants.ScaleControllerFeatureFlags), It.IsAny<string>())).Returns("itargetscalerproxy,test");
+            _functionsHostingConfigurationMock.Setup(p => p.GetValue(It.Is<string>(x => x == nameof(TestTargetScaler)), It.IsAny<string>())).Returns("1");
             await _monitor.TakeMetricsSamplesAsync();
 
             var logs = _loggerProvider.GetAllLogMessages().ToArray();

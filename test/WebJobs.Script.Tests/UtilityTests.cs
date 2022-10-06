@@ -930,35 +930,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
-        [InlineData("", 2, 0)]
-        [InlineData(null, 2, 0)]
-        [InlineData("0", 2, 0)]
-        [InlineData("1", 1, 2)]
-        public void GetScaleInstancesToProcess_Returns_Expected(string targetBaseScalingEnabled, int expectedScaleMonitorCount, int expectedTargetScalerCount)
+        [InlineData("", true, 1, 0)]
+        [InlineData(null, true, 1, 0)]
+        [InlineData("0", true, 1, 0)]
+        [InlineData("1", false, 1, 0)]
+        [InlineData("1", true, 0, 1)]
+        public void GetScaleInstancesToProcess_Returns_Expected(string targetBaseScalingEnabled, bool triggerEabled, int expectedScaleMonitorCount, int expectedTargetScalerCount)
         {
             List<IScaleMonitor> scaleMonitors = new List<IScaleMonitor>
             {
-                new TestScaleMonitor<ScaleMetrics>("func0-test-test"),
-                new TestScaleMonitor<ScaleMetrics>("func2-test-test"),
+                new TestScaleMonitor<ScaleMetrics>("func1-test-test"),
             };
             List<ITargetScaler> targetScalers = new List<ITargetScaler>
             {
                 new TestTargetScaler()
                 {
                     TargetScalerDescriptor = new TargetScalerDescriptor("func1")
-                },
-                new TestTargetScaler()
-                {
-                    TargetScalerDescriptor = new TargetScalerDescriptor("func2")
-                },
-                new TestTargetScaler1()
-                {
-                    TargetScalerDescriptor = new TargetScalerDescriptor("func3")
                 }
             };
 
             Mock<IFunctionsHostingConfiguration> functionsHostingConfigurationMock = new Mock<IFunctionsHostingConfiguration>(MockBehavior.Strict);
-            functionsHostingConfigurationMock.Setup(p => p.GetValue(It.Is<string>(x => x == ScriptConstants.ScaleControllerFeatureFlags), It.IsAny<string>())).Returns("TestTargetScaler");
+            functionsHostingConfigurationMock.Setup(p => p.GetValue(It.Is<string>(x => x == nameof(TestTargetScaler)), It.IsAny<string>())).Returns(triggerEabled ? "1" : null);
 
             Mock<IEnvironment> envMock = new Mock<IEnvironment>();
             envMock.Setup(p => p.GetEnvironmentVariable(It.Is<string>(x => x == EnvironmentSettingNames.TargetBaseScalingEnabled))).Returns(targetBaseScalingEnabled);

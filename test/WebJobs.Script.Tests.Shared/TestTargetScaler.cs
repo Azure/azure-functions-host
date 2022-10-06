@@ -11,13 +11,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     {
         public TargetScalerDescriptor TargetScalerDescriptor { get; set; }
 
-        public Task<TargetScalerResult> GetScaleResultAsync(TargetScalerContext context)
+        public TargetScalerResult Result { get; set; }
+
+        public virtual Task<TargetScalerResult> GetScaleResultAsync(TargetScalerContext context)
         {
-            throw new NotImplementedException();
+            return Task.FromResult(Result);
         }
     }
 
-    internal class TestTargetScaler1 : TestTargetScaler
+    internal class TestTargetScaler2 : TestTargetScaler
     {
+        public override Task<TargetScalerResult> GetScaleResultAsync(TargetScalerContext context)
+        {
+            throw new Exception("test");
+        }
     }
 }
