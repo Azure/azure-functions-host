@@ -248,7 +248,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 //todo: Replace with legion specific service
                 if (environment.IsAnyLinuxConsumption())
                 {
-                    var instanceManager = s.GetService<LinuxInstanceManager>();
+                    var instanceManager = s.GetService<IInstanceManager>();
                     var logger = s.GetService<ILogger<LinuxContainerInitializationHostService>>();
                     var startupContextProvider = s.GetService<StartupContextProvider>();
                     return new LinuxContainerInitializationHostService(environment, instanceManager, logger, startupContextProvider);
