@@ -89,7 +89,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 _webHostEnvironment.DelayRequests();
 
                 // start the specialization process in the background
-                Task.Run(async () => await Assign(context));
+                Task.Run(async () => await AssignAsync(context));
 
                 return true;
             }
@@ -102,7 +102,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         public abstract Task<string> ValidateContext(HostAssignmentContext assignmentContext);
 
-        private async Task Assign(HostAssignmentContext assignmentContext)
+        private async Task AssignAsync(HostAssignmentContext assignmentContext)
         {
             try
             {
@@ -110,7 +110,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 // the host to be specialized
                 _logger.LogInformation("Applying {environmentCount} app setting(s)", assignmentContext.Environment.Count);
                 assignmentContext.ApplyAppSettings(_environment, _logger);
-                await ApplyContext(assignmentContext);
+                await ApplyContextAsync(assignmentContext);
             }
             catch (Exception ex)
             {
@@ -131,9 +131,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
         }
 
-        protected abstract Task ApplyContext(HostAssignmentContext assignmentContext);
+        protected abstract Task ApplyContextAsync(HostAssignmentContext assignmentContext);
 
-        protected abstract Task<string> DownloadWarmupAsync(RunFromPackageContext context);
+        protected abstract Task<string> WarmupAsync(RunFromPackageContext context);
 
         public IDictionary<string, string> GetInstanceInfo()
         {

@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             return Task.FromResult((string)null);
         }
 
-        protected override Task<string> DownloadWarmupAsync(RunFromPackageContext context)
+        protected override Task<string> WarmupAsync(RunFromPackageContext context)
         {
             return Task.FromResult((string)null);
         }
@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             return Task.FromResult((string)null);
         }
 
-        protected override Task ApplyContext(HostAssignmentContext assignmentContext)
+        protected override Task ApplyContextAsync(HostAssignmentContext assignmentContext)
         {
             return null;
         }

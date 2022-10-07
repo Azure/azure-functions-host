@@ -136,17 +136,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             if (SystemEnvironment.Instance.IsLinuxConsumptionOnAtlas())
             {
-                System.Console.WriteLine("[TEST] Atlas Linux Consumption");
-                services.AddSingleton<LinuxInstanceManager, InstanceManager>();
+                services.AddSingleton<IInstanceManager, AtlasInstanceManager>();
             }
             else if (SystemEnvironment.Instance.IsLinuxConsumptionOnLegion())
             {
-                System.Console.WriteLine("[TEST] Legion Linux Consumption");
-                services.AddSingleton<LinuxInstanceManager, LegionInstanceManager>();
+                services.AddSingleton<IInstanceManager, LegionInstanceManager>();
             }
             else
             {
-                System.Console.WriteLine("[TEST] Else");
+                // Default IInstanceManager
+                services.AddSingleton<IInstanceManager, AtlasInstanceManager>();
             }
 
             // Logging and diagnostics

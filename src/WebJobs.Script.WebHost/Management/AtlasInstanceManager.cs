@@ -19,7 +19,7 @@ using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 {
-    public class InstanceManager : LinuxInstanceManager
+    public class AtlasInstanceManager : LinuxInstanceManager
     {
         private static readonly object _assignmentLock = new object();
 
@@ -33,8 +33,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private readonly HttpClient _client;
         private readonly IScriptWebHostEnvironment _webHostEnvironment;
 
-        public InstanceManager(IOptionsFactory<ScriptApplicationHostOptions> optionsFactory, IHttpClientFactory httpClientFactory, IScriptWebHostEnvironment webHostEnvironment,
-            IEnvironment environment, ILogger<InstanceManager> logger, IMetricsLogger metricsLogger, IMeshServiceClient meshServiceClient, IRunFromPackageHandler runFromPackageHandler,
+        public AtlasInstanceManager(IOptionsFactory<ScriptApplicationHostOptions> optionsFactory, IHttpClientFactory httpClientFactory, IScriptWebHostEnvironment webHostEnvironment,
+            IEnvironment environment, ILogger<AtlasInstanceManager> logger, IMetricsLogger metricsLogger, IMeshServiceClient meshServiceClient, IRunFromPackageHandler runFromPackageHandler,
             IPackageDownloadHandler packageDownloadHandler) : base(httpClientFactory, webHostEnvironment,
             environment, logger, metricsLogger, meshServiceClient)
         {
@@ -156,7 +156,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
         }
 
-        protected override async Task<string> DownloadWarmupAsync(RunFromPackageContext context)
+        protected override async Task<string> WarmupAsync(RunFromPackageContext context)
         {
             return await _packageDownloadHandler.Download(context);
         }
@@ -224,7 +224,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
         }
 
-        protected override async Task ApplyContext(HostAssignmentContext assignmentContext)
+        protected override async Task ApplyContextAsync(HostAssignmentContext assignmentContext)
         {
             // We need to get the non-PlaceholderMode script Path so we can unzip to the correct location.
             // This asks the factory to skip the PlaceholderMode check when configuring options.
