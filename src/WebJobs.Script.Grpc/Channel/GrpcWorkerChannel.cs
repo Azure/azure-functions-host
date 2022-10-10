@@ -889,9 +889,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                         // If this invocation was using any shared memory maps produced by the worker, close them to free memory
                         SendCloseSharedMemoryResourcesForInvocationRequest(outputMaps);
                     }
-                }
 
-                _workerChannelLogger.LogInformation("WorkerId: {workerId}, TotalInvocations : {totalInvocations}, SuccessfulInvocations : {successfulInvocations}, AverageInvocationLatency : {averageInvocationLatency}", Id, _invocationMetricsPerWorkerId[Id].TotalInvocations, _invocationMetricsPerWorkerId[Id].SuccessfulInvocations, _invocationMetricsPerWorkerId[Id].AverageInvocationLatency);
+                    _workerChannelLogger.LogInformation("WorkerId: {workerId}, TotalInvocations : {totalInvocations}, SuccessfulInvocations : {successfulInvocations}, AverageInvocationLatency : {averageInvocationLatency}", Id, _invocationMetricsPerWorkerId[Id].TotalInvocations, _invocationMetricsPerWorkerId[Id].SuccessfulInvocations, _invocationMetricsPerWorkerId[Id].AverageInvocationLatency);
+                }
             }
         }
 
