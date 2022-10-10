@@ -21,6 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 {
     public abstract class LinuxInstanceManager : IInstanceManager
     {
+        // TODO: Change static fields to instance fields
         private static readonly object _assignmentLock = new object();
         private static HostAssignmentContext _assignmentContext;
 
