@@ -993,7 +993,10 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         internal IEnumerable<TimeSpan> GetLatencies()
         {
             EnsureTimerStarted();
-            return _workerStatusLatencyHistory;
+            lock (_syncLock)
+            {
+                return _workerStatusLatencyHistory.ToArray();
+            }
         }
 
         internal async void OnTimer(object sender, System.Timers.ElapsedEventArgs e)
