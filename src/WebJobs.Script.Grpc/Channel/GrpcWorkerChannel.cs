@@ -53,8 +53,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private readonly ChannelWriter<OutboundGrpcEvent> _outbound;
         private readonly ChannelReader<InboundGrpcEvent> _inbound;
         private ConcurrentDictionary<string, WorkerInvocationMetrics> _invocationMetricsPerWorkerId = new ();
-        private ValueStopwatch _workerInvocationStopWatch;
-
         private IDisposable _functionLoadRequestResponseEvent;
         private bool _disposed;
         private bool _disposing;
@@ -648,9 +646,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 }
 
                 var totalInvocations = WorkerInvocationMetrics.IncrementTotalInvocationsOfWorker(Id, _invocationMetricsPerWorkerId);
-                _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvoked, Id), functionName: context.FunctionMetadata.Name, data: $"Total invocations of Worker {Id} : {totalInvocations}");
-
-                _workerInvocationStopWatch = ValueStopwatch.StartNew();
+                _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvoked, Id), functionName: context.FunctionMetadata.Name);
+                _workerChannelLogger.LogInformation("Sending invocation request with invocationId: {invocationId} on workerId: {workerId} for function: {functionName}", invocationRequest.InvocationId, Id, context.FunctionMetadata.Name);
 
                 await SendStreamingMessageAsync(new StreamingMessage
                 {
@@ -807,13 +804,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             if (_executingInvocations.TryRemove(invokeResponse.InvocationId, out ScriptInvocationContext context)
                 && invokeResponse.Result.IsInvocationSuccess(context.ResultSource, capabilityEnabled))
             {
-                var currentInvocationLatency = _workerInvocationStopWatch.GetElapsedTime();
-
                 int successfulInvocations = WorkerInvocationMetrics.IncrementSuccessfulInvocationsOfWorker(Id, _invocationMetricsPerWorkerId);
-                double averageInvocationLatency = WorkerInvocationMetrics.UpdateAverageInvocationLatency(Id, _invocationMetricsPerWorkerId, currentInvocationLatency);
-
-                string successData = $"WorkerId: {Id}, TotalInvocations : {_invocationMetricsPerWorkerId[Id].TotalInvocations}, SuccessfulInvocations : {successfulInvocations}, AverageInvocationLatency : {averageInvocationLatency}";
-                _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvokeSucceeded, Id), data: successData);
+                _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvokeSucceeded, Id));
+                _workerChannelLogger.LogInformation("Received successful invocation response for invocationId: {invocationId} and workerId: {workerId}", invokeResponse.InvocationId, Id);
 
                 try
                 {
@@ -869,8 +862,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     }
                 }
 
-                string data = $"WorkerId: {Id}, TotalInvocations : {_invocationMetricsPerWorkerId[Id].TotalInvocations}, SuccessfulInvocations : {_invocationMetricsPerWorkerId[Id].SuccessfulInvocations}, AverageInvocationLatency : {_invocationMetricsPerWorkerId[Id].AverageInvocationLatency}";
-                _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvocationStatus, Id), data: data);
+                _workerChannelLogger.LogInformation("WorkerId: {workerId}, TotalInvocations : {totalInvocations}, SuccessfulInvocations : {successfulInvocations}, AverageInvocationLatency : {averageInvocationLatency}", Id, _invocationMetricsPerWorkerId[Id].TotalInvocations, _invocationMetricsPerWorkerId[Id].SuccessfulInvocations, _invocationMetricsPerWorkerId[Id].AverageInvocationLatency);
             }
         }
 
@@ -1260,12 +1252,13 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             try
             {
-                CheckAndRecycleFaultyLanguageWorker();
+                IdentifyFaultyLanguageWorker();
             }
-            catch
+            catch (Exception ex) when (!ex.IsFatal())
             {
-                // Don't allow background execptions to escape
+                // Don't allow background exceptions to escape
                 // E.g. when a rpc channel is shutting down we can process exceptions
+                _workerChannelLogger.LogError(ex, "Exception while identifying faulty language workers");
             }
             try
             {
@@ -1277,7 +1270,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
         }
 
-        internal void CheckAndRecycleFaultyLanguageWorker()
+        internal void IdentifyFaultyLanguageWorker()
         {
             _workerChannelLogger.LogInformation("Checking and recycling faulty language workers");
 
@@ -1290,7 +1283,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 failureRatePerWorkerId[item.Key] = failureRateOfWorker;
 
                 // To be removed
-                _workerChannelLogger.LogInformation($"WorkerId: {item.Key}, Failure rate: {failureRateOfWorker}");
+                _workerChannelLogger.LogInformation("WorkerId: {workerId}, Failure rate: {failureRateOfWorker}", item.Key, failureRateOfWorker);
             }
 
             var sortedFailureRatePerWorkerId = from item in failureRatePerWorkerId orderby item.Value descending select item;
@@ -1302,8 +1295,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 // ToDo: in next iteration of this feature => recycle the workerId in variable: workerIdToRecycle
                 // ToDo: Other criteria for recycle => if invocation latency is too high
 
-                _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerRecycled, Id), data: $"WorkerId to be recycled: {workerIdToRecycle}");
-                _workerChannelLogger.LogDebug($"WorkerId to be Recycled: {workerIdToRecycle}, Failure rate: {failureRate}");
+                _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerRecycled, Id));
+                _workerChannelLogger.LogDebug("WorkerId to be Recycled: {workerIdToRecycle}, Failure rate: {failureRate}", workerIdToRecycle, failureRate);
             }
 
             // Reseting the dictionary

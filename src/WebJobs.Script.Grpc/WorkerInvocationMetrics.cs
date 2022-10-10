@@ -36,16 +36,5 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             return workerInvocationMetrics.SuccessfulInvocations;
         }
-
-        public static double UpdateAverageInvocationLatency(string workerId, ConcurrentDictionary<string, WorkerInvocationMetrics> invocationMetricsPerWorkerId, TimeSpan currentInvocationLatency)
-        {
-            invocationMetricsPerWorkerId.TryGetValue(workerId, out WorkerInvocationMetrics workerInvocationMetrics);
-            workerInvocationMetrics = workerInvocationMetrics ?? new WorkerInvocationMetrics();
-
-            workerInvocationMetrics.AverageInvocationLatency = ((workerInvocationMetrics.AverageInvocationLatency * (workerInvocationMetrics.TotalInvocations - 1)) + currentInvocationLatency.TotalMilliseconds) / workerInvocationMetrics.TotalInvocations;
-            invocationMetricsPerWorkerId[workerId] = workerInvocationMetrics;
-
-            return workerInvocationMetrics.AverageInvocationLatency;
-        }
     }
 }
