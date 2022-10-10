@@ -39,9 +39,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             return Task.FromResult((string)null);
         }
 
-        protected override Task ApplyContextAsync(HostAssignmentContext assignmentContext)
+        protected override Task<string> ApplyContextAsync(HostAssignmentContext assignmentContext)
         {
-            return null;
+            return Task.FromResult((string)null);
         }
     }
 }

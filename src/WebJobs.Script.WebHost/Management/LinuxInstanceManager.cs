@@ -36,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             _client = httpClientFactory?.CreateClient() ?? throw new ArgumentNullException(nameof(httpClientFactory));
             _webHostEnvironment = webHostEnvironment ?? throw new ArgumentNullException(nameof(webHostEnvironment));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _meshServiceClient = meshServiceClient ?? throw new ArgumentNullException(nameof(meshServiceClient));
+            _meshServiceClient = meshServiceClient;
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
         }
 

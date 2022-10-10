@@ -1267,7 +1267,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                     StatusCode = httpStatusCode
                 });
 
-            AtlasInstanceManager.Reset();
+            LinuxInstanceManager.Reset();
 
             return new AtlasInstanceManager(_optionsFactory, TestHelpers.CreateHttpClientFactory(handlerMock.Object), _scriptWebEnvironment,
                 _environment, _loggerFactory.CreateLogger<AtlasInstanceManager>(), new TestMetricsLogger(),
