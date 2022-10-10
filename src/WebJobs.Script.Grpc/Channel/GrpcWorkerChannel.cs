@@ -6,6 +6,7 @@ using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
@@ -82,6 +83,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private System.Timers.Timer _invocationTimer;
         private System.Timers.Timer _timer;
 
+        private static readonly Meter WorkerInvocationMeter = new Meter("WorkerInvocationMeter", "1.0.0");
+        private static readonly Counter<int> WorkerInvocationCounter = WorkerInvocationMeter.CreateCounter<int>(name: "worker-total-invocations", unit: "TotalInvocations", description: "Total Invocations of Worker");
+        private static readonly Meter WorkerInvocationSucceededMeter = new Meter("WorkerInvocationSucceededMeter", "1.0.0");
+        private static readonly Counter<int> WorkerSucessfulInvocationCounter = WorkerInvocationSucceededMeter.CreateCounter<int>(name: "worker-successful-invocations", unit: "SuccessfulInvocations", description: "Successful invocations of Worker");
+
         internal GrpcWorkerChannel(
             string workerId,
             IScriptEventManager eventManager,
@@ -134,12 +140,28 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 _invocationTimer = new System.Timers.Timer()
                 {
                     AutoReset = false,
-                    Interval = 300000, // once every 5 minutes. ToDo - moving constant once finalized
+                    Interval = 600000, // once every 10 minutes. ToDo - moving constant once finalized
                 };
 
                 _invocationTimer.Elapsed += OnInvocationTimer;
                 _invocationTimer.Start();
             }
+
+            using MeterListener meterListener = new MeterListener();
+            meterListener.InstrumentPublished = (instrument, listener) =>
+            {
+                if (instrument.Meter.Name == "WorkerInvocationMeter")
+                {
+                    listener.EnableMeasurementEvents(instrument);
+                }
+
+                if (instrument.Meter.Name == "WorkerInvocationSucceededMeter")
+                {
+                    listener.EnableMeasurementEvents(instrument);
+                }
+            };
+            meterListener.SetMeasurementEventCallback<int>(OnMeasurementRecorded);
+            meterListener.Start();
         }
 
         public string Id => _workerId;
@@ -149,6 +171,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         public IWorkerProcess WorkerProcess => _rpcWorkerProcess;
 
         internal RpcWorkerConfig Config => _workerConfig;
+
+        public void OnMeasurementRecorded<T>(Instrument instrument, T measurement, ReadOnlySpan<KeyValuePair<string, object>> tags, object state)
+        {
+            _workerChannelLogger.LogInformation($"{instrument.Name} recorded measurement {measurement}");
+        }
 
         private void ProcessItem(InboundGrpcEvent msg)
         {
@@ -648,6 +675,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 var totalInvocations = WorkerInvocationMetrics.IncrementTotalInvocationsOfWorker(Id, _invocationMetricsPerWorkerId);
                 _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvoked, Id), functionName: context.FunctionMetadata.Name);
                 _workerChannelLogger.LogInformation("Sending invocation request with invocationId: {invocationId} on workerId: {workerId} for function: {functionName}", invocationRequest.InvocationId, Id, context.FunctionMetadata.Name);
+                WorkerInvocationCounter.Add(1);
 
                 await SendStreamingMessageAsync(new StreamingMessage
                 {
@@ -807,6 +835,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 int successfulInvocations = WorkerInvocationMetrics.IncrementSuccessfulInvocationsOfWorker(Id, _invocationMetricsPerWorkerId);
                 _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvokeSucceeded, Id));
                 _workerChannelLogger.LogInformation("Received successful invocation response for invocationId: {invocationId} and workerId: {workerId}", invokeResponse.InvocationId, Id);
+                WorkerSucessfulInvocationCounter.Add(1);
 
                 try
                 {
