@@ -390,10 +390,9 @@ namespace Microsoft.Azure.WebJobs.Script
                 }, t => t.TelemetryProcessorChainBuilder.Use(next => new ScriptTelemetryProcessor(next)));
 
                 builder.Services.ConfigureOptions<ApplicationInsightsLoggerOptionsSetup>();
-
                 builder.Services.AddSingleton<ISdkVersionProvider, FunctionsSdkVersionProvider>();
-
                 builder.Services.AddSingleton<ITelemetryInitializer, ScriptTelemetryInitializer>();
+                builder.Services.AddSingleton<ITelemetryModule, TransmissionStatusTelemetryModule>();
 
                 if (SystemEnvironment.Instance.IsPlaceholderModeEnabled())
                 {
