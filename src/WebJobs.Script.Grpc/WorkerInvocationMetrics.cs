@@ -2,11 +2,12 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 
 namespace Microsoft.Azure.WebJobs.Script.Grpc
 {
-    public class WorkerInvocationMetrics
+    internal class WorkerInvocationMetrics
     {
         public int TotalInvocations { get; set; }
 
@@ -14,7 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         public double AverageInvocationLatency { get; set; }
 
-        public static int IncrementTotalInvocationsOfWorker(string workerId, IDictionary<string, WorkerInvocationMetrics> invocationMetricsPerWorkerId)
+        public static int IncrementTotalInvocationsOfWorker(string workerId, ConcurrentDictionary<string, WorkerInvocationMetrics> invocationMetricsPerWorkerId)
         {
             invocationMetricsPerWorkerId.TryGetValue(workerId, out WorkerInvocationMetrics workerInvocationMetrics);
             workerInvocationMetrics = workerInvocationMetrics ?? new WorkerInvocationMetrics();
@@ -25,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             return workerInvocationMetrics.TotalInvocations;
         }
 
-        public static int IncrementSuccessfulInvocationsOfWorker(string workerId, IDictionary<string, WorkerInvocationMetrics> invocationMetricsPerWorkerId)
+        public static int IncrementSuccessfulInvocationsOfWorker(string workerId, ConcurrentDictionary<string, WorkerInvocationMetrics> invocationMetricsPerWorkerId)
         {
             invocationMetricsPerWorkerId.TryGetValue(workerId, out WorkerInvocationMetrics workerInvocationMetrics);
             workerInvocationMetrics = workerInvocationMetrics ?? new WorkerInvocationMetrics();
@@ -36,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             return workerInvocationMetrics.SuccessfulInvocations;
         }
 
-        public static double UpdateAverageInvocationLatency(string workerId, IDictionary<string, WorkerInvocationMetrics> invocationMetricsPerWorkerId, TimeSpan currentInvocationLatency)
+        public static double UpdateAverageInvocationLatency(string workerId, ConcurrentDictionary<string, WorkerInvocationMetrics> invocationMetricsPerWorkerId, TimeSpan currentInvocationLatency)
         {
             invocationMetricsPerWorkerId.TryGetValue(workerId, out WorkerInvocationMetrics workerInvocationMetrics);
             workerInvocationMetrics = workerInvocationMetrics ?? new WorkerInvocationMetrics();

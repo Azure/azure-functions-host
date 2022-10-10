@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private readonly Dictionary<MsgType, Queue<PendingItem>> _pendingActions = new ();
         private readonly ChannelWriter<OutboundGrpcEvent> _outbound;
         private readonly ChannelReader<InboundGrpcEvent> _inbound;
-        private IDictionary<string, WorkerInvocationMetrics> _invocationMetricsPerWorkerId = new Dictionary<string, WorkerInvocationMetrics>();
+        private ConcurrentDictionary<string, WorkerInvocationMetrics> _invocationMetricsPerWorkerId = new ();
         private ValueStopwatch _workerInvocationStopWatch;
 
         private IDisposable _functionLoadRequestResponseEvent;
@@ -130,6 +130,18 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _startLatencyMetric = metricsLogger?.LatencyEvent(string.Format(MetricEventNames.WorkerInitializeLatency, workerConfig.Description.Language, attemptCount));
 
             _state = RpcWorkerChannelState.Default;
+
+            if (_invocationTimer == null)
+            {
+                _invocationTimer = new System.Timers.Timer()
+                {
+                    AutoReset = false,
+                    Interval = 300000, // once every 5 minutes. ToDo - moving constant once finalized
+                };
+
+                _invocationTimer.Elapsed += OnInvocationTimer;
+                _invocationTimer.Start();
+            }
         }
 
         public string Id => _workerId;
@@ -796,7 +808,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 && invokeResponse.Result.IsInvocationSuccess(context.ResultSource, capabilityEnabled))
             {
                 var currentInvocationLatency = _workerInvocationStopWatch.GetElapsedTime();
-                _workerChannelLogger.LogDebug($"[HostMonitor] Worker {Id} invocation request took {currentInvocationLatency.TotalMilliseconds}ms");
 
                 int successfulInvocations = WorkerInvocationMetrics.IncrementSuccessfulInvocationsOfWorker(Id, _invocationMetricsPerWorkerId);
                 double averageInvocationLatency = WorkerInvocationMetrics.UpdateAverageInvocationLatency(Id, _invocationMetricsPerWorkerId, currentInvocationLatency);
@@ -860,18 +871,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
                 string data = $"WorkerId: {Id}, TotalInvocations : {_invocationMetricsPerWorkerId[Id].TotalInvocations}, SuccessfulInvocations : {_invocationMetricsPerWorkerId[Id].SuccessfulInvocations}, AverageInvocationLatency : {_invocationMetricsPerWorkerId[Id].AverageInvocationLatency}";
                 _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvocationStatus, Id), data: data);
-            }
-
-            if (_invocationTimer == null)
-            {
-                _invocationTimer = new System.Timers.Timer()
-                {
-                    AutoReset = false,
-                    Interval = 300000, // once every 5 minutes. ToDo - moving constant once finalized
-                };
-
-                _invocationTimer.Elapsed += OnInvocationTimer;
-                _invocationTimer.Start();
             }
         }
 
@@ -1308,7 +1307,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
 
             // Reseting the dictionary
-            _invocationMetricsPerWorkerId = new Dictionary<string, WorkerInvocationMetrics>();
+            _invocationMetricsPerWorkerId = new ConcurrentDictionary<string, WorkerInvocationMetrics>();
         }
 
         private void AddSample<T>(List<T> samples, T sample)
