@@ -156,7 +156,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
         }
 
-        protected override async Task<string> WarmupAsync(RunFromPackageContext context)
+        protected override async Task<string> DownloadWarmupAsync(RunFromPackageContext context)
         {
             return await _packageDownloadHandler.Download(context);
         }

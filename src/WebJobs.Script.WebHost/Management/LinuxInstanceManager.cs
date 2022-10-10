@@ -133,7 +133,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         protected abstract Task ApplyContextAsync(HostAssignmentContext assignmentContext);
 
-        protected abstract Task<string> WarmupAsync(RunFromPackageContext context);
+        protected abstract Task<string> DownloadWarmupAsync(RunFromPackageContext context);
 
         public IDictionary<string, string> GetInstanceInfo()
         {
