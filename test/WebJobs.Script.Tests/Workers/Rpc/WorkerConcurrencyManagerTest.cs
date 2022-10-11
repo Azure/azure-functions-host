@@ -386,23 +386,5 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
                 Assert.Contains(_loggerProvider.GetAllLogMessages().Select(x => x.FormattedMessage), x => x.StartsWith("Starting new language worker canceled:"));
             }
         }
-
-        //[Theory]
-        //[InlineData("", "", false)]
-        //[InlineData("stamp1", "app1", false)]
-        //[InlineData("stamp1 app1", "app", false)]
-        //[InlineData("stamp", "app", true)]
-        //[InlineData("stamp  app1", "app", true)]
-        //[InlineData("stamp1 app", "app", true)]
-        //public void FunctionsWorkerDynamicConcurrencyEnabled_ReturnsExpected(string configValue, string appName, bool expected)
-        //{
-        //    Mock<IFunctionsHostingConfiguration> confMock = new Mock<IFunctionsHostingConfiguration>();
-        //    confMock.Setup(m => m.GetValue(It.Is<string>(x => x == RpcWorkerConstants.FunctionsWorkerDynamicConcurrencyEnabled))).Returns(configValue);
-
-        //    Mock<IEnvironment> envMock = new Mock<IEnvironment>();
-        //    envMock.Setup(m => m.GetEnvironmentVariable(It.Is<string>(x => x == EnvironmentSettingNames.AzureWebsiteName))).Returns(appName);
-
-        //    Assert.Equal(WorkerConcurrencyManager.FunctionsWorkerDynamicConcurrencyEnabled(confMock.Object, envMock.Object), expected);
-        //}
     }
 }

@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
 
         private DateTime _configTTL;
         private Dictionary<string, string> _configs;
-        private bool isConfigurationFileExists = true;
+        private bool _configurationFileExists = true;
 
         public FunctionsHostingConfiguration(IEnvironment environment, ILoggerFactory loggerFactory)
         {
@@ -63,7 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         public string GetValue(string key, string defaultValue = null)
         {
             // the config file will be parsed after functionn host restart
-            if (!isConfigurationFileExists)
+            if (!_configurationFileExists)
             {
                 return defaultValue;
             }
@@ -87,7 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
                         else
                         {
                             // if config file does not exists we want to stop trying getting the value and return default value
-                            isConfigurationFileExists = false;
+                            _configurationFileExists = false;
                             _logger.LogDebug($"FunctionsHostingConfigurations file does not exist");
                         }
                     }

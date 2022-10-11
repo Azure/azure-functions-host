@@ -8,6 +8,7 @@ using System.Dynamic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -930,12 +931,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
-        [InlineData("", true, 1, 0)]
-        [InlineData(null, true, 1, 0)]
-        [InlineData("0", true, 1, 0)]
-        [InlineData("1", false, 1, 0)]
-        [InlineData("1", true, 0, 1)]
-        public void GetScaleInstancesToProcess_Returns_Expected(string targetBaseScalingEnabled, bool triggerEabled, int expectedScaleMonitorCount, int expectedTargetScalerCount)
+        [InlineData(false, true, 1, 0)]
+        [InlineData(true, false, 1, 0)]
+        [InlineData(true, true, 0, 1)]
+        public void GetScaleInstancesToProcess_Returns_Expected(bool targetBaseScalingEnabled, bool triggerEabled, int expectedScaleMonitorCount, int expectedTargetScalerCount)
         {
             List<IScaleMonitor> scaleMonitors = new List<IScaleMonitor>
             {
@@ -950,12 +949,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
 
             Mock<IFunctionsHostingConfiguration> functionsHostingConfigurationMock = new Mock<IFunctionsHostingConfiguration>(MockBehavior.Strict);
-            functionsHostingConfigurationMock.Setup(p => p.GetValue(It.Is<string>(x => x == nameof(TestTargetScaler)), It.IsAny<string>())).Returns(triggerEabled ? "1" : null);
+            string assemblyName = Assembly.GetExecutingAssembly().GetName().Name;
+            functionsHostingConfigurationMock.Setup(p => p.GetValue(assemblyName, It.IsAny<string>())).Returns(triggerEabled ? "1" : null);
 
-            Mock<IEnvironment> envMock = new Mock<IEnvironment>();
-            envMock.Setup(p => p.GetEnvironmentVariable(It.Is<string>(x => x == EnvironmentSettingNames.TargetBaseScalingEnabled))).Returns(targetBaseScalingEnabled);
+            TestEnvironment env = new TestEnvironment();
+            if (targetBaseScalingEnabled)
+            {
+                env.SetEnvironmentVariable(EnvironmentSettingNames.TargetBaseScalingEnabled, "1");
+            }
 
-            Utility.GetScaleInstancesToProcess(envMock.Object, functionsHostingConfigurationMock.Object, scaleMonitors, targetScalers,
+            Utility.GetScalersToSample(env, functionsHostingConfigurationMock.Object, scaleMonitors, targetScalers,
                 out List<IScaleMonitor> scaleMonitorsToProcess, out List<ITargetScaler> targetScalesToProcess);
 
             Assert.Equal(scaleMonitorsToProcess.Count(), expectedScaleMonitorCount);

@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Scale;
@@ -27,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
         private readonly List<IScaleMonitor> _monitors;
         private readonly List<ITargetScaler> _targetScalers;
         private readonly Mock<IFunctionsHostingConfiguration> _functionsHostingConfigurationMock;
-        private readonly Mock<IEnvironment> _environmentMock;
+        private readonly TestEnvironment _environment;
         private readonly ILogger _testLogger;
 
         public FunctionsScaleManagerTests()
@@ -55,10 +56,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
                 });
 
             _functionsHostingConfigurationMock = new Mock<IFunctionsHostingConfiguration>(MockBehavior.Strict);
-            _environmentMock = new Mock<IEnvironment>();
-            _environmentMock.Setup(p => p.GetEnvironmentVariable(It.IsAny<string>())).Returns("0");
+            _environment = new TestEnvironment();
 
-            _scaleManager = new FunctionsScaleManager(_monitorManagerMock.Object, _metricsRepositoryMock.Object, _targetScalerManagerMock.Object, _concurrencyStatusRepositoryMock.Object, _functionsHostingConfigurationMock.Object, _environmentMock.Object, loggerFactory);
+            _scaleManager = new FunctionsScaleManager(_monitorManagerMock.Object, _metricsRepositoryMock.Object, _targetScalerManagerMock.Object, _concurrencyStatusRepositoryMock.Object, _functionsHostingConfigurationMock.Object, _environment, loggerFactory);
         }
 
         [Theory]
@@ -128,8 +128,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
 
             _targetScalerManagerMock.Setup(p => p.GetTargetScalers()).Returns(new List<ITargetScaler> { targetScaler1 });
 
-            _environmentMock.Setup(p => p.GetEnvironmentVariable(It.Is<string>(x => x == EnvironmentSettingNames.TargetBaseScalingEnabled))).Returns(tbsEnabled ? "1" : null);
-            _functionsHostingConfigurationMock.Setup(p => p.GetValue(It.Is<string>(x => x == nameof(TestTargetScaler)), It.IsAny<string>())).Returns("1");
+            if (tbsEnabled)
+            {
+                _environment.SetEnvironmentVariable(EnvironmentSettingNames.TargetBaseScalingEnabled, "1");
+            }
+
+            string assemblyName = Assembly.GetExecutingAssembly().GetName().Name;
+            _functionsHostingConfigurationMock.Setup(p => p.GetValue(assemblyName, It.IsAny<string>())).Returns("1");
 
             var status = await _scaleManager.GetScaleStatusAsync(context);
 
@@ -178,6 +183,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
                 mockMonitor2.Object,
                 mockMonitor3.Object
             };
+
             _monitorManagerMock.Setup(p => p.GetMonitors()).Returns(monitors);
 
             var monitorMetrics = new Dictionary<IScaleMonitor, IList<ScaleMetrics>>
@@ -221,9 +227,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
             };
             _targetScalerManagerMock.Setup(p => p.GetTargetScalers()).Returns(targetScalers);
 
-            _environmentMock.Setup(p => p.GetEnvironmentVariable(It.Is<string>(x => x == EnvironmentSettingNames.TargetBaseScalingEnabled))).Returns("1");
-            _functionsHostingConfigurationMock.Setup(p => p.GetValue(It.Is<string>(x => x == nameof(TestTargetScaler)), It.IsAny<string>())).Returns("1");
-            _functionsHostingConfigurationMock.Setup(p => p.GetValue(It.Is<string>(x => x == nameof(TestTargetScaler2)), It.IsAny<string>())).Returns("1");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.TargetBaseScalingEnabled, "1");
+
+            string assemblyName = Assembly.GetExecutingAssembly().GetName().Name;
+            _functionsHostingConfigurationMock.Setup(p => p.GetValue(assemblyName, It.IsAny<string>())).Returns("1");
 
             var status = await _scaleManager.GetScaleStatusAsync(context);
 

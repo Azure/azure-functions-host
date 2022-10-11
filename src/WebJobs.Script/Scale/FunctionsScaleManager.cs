@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.AppService.Proxy.Client;
 using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.Logging;
@@ -56,22 +57,22 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
         /// <returns>The scale vote.</returns>
         public virtual async Task<ScaleStatusResult> GetScaleStatusAsync(ScaleStatusContext context)
         {
-            var scaleMonitors = _monitorManager.GetMonitors();
-            var targetScalers = _targetScalerManager.GetTargetScalers();
+            GetScaleStatusProviders(_monitorManager, _targetScalerManager, out IEnumerable<IScaleMonitor> scaleMonitors, out IEnumerable<ITargetScaler> targetScalers);
 
-            Utility.GetScaleInstancesToProcess(_environment, _functionsHostingConfiguration, scaleMonitors, targetScalers,
+            Utility.GetScalersToSample(_environment, _functionsHostingConfiguration, scaleMonitors, targetScalers,
                 out List<IScaleMonitor> scaleMonitorsToProcess, out List<ITargetScaler> targetScalersToProcess);
 
-            var targetScalerVotes = await GetTargetScalersResult(context, targetScalersToProcess);
+            var scaleMonitorVotes = await GetScaleMonitorsResultAsync(context, scaleMonitorsToProcess);
+            var targetScalerVotes = await GetTargetScalersResultAsync(context, targetScalersToProcess);
 
             return new ScaleStatusResult
             {
-                Vote = await GetScaleMonitorsResult(context, scaleMonitorsToProcess, targetScalerVotes.Select(x => x.Vote)),
-                TargetWorkerCount = targetScalerVotes.Any() ? targetScalerVotes.Select(x => x.TargetWorkerCount).Max() : null
+                Vote = GetAggregateScaleVote(scaleMonitorVotes.Union(targetScalerVotes.Select(x => x.Vote)), context, _logger),
+                TargetWorkerCount = targetScalerVotes.Any() ? targetScalerVotes.Max(x => x.TargetWorkerCount) : null
             };
         }
 
-        private async Task<ScaleVote> GetScaleMonitorsResult(ScaleStatusContext context, IEnumerable<IScaleMonitor> scaleMonitorsToProcess, IEnumerable<ScaleVote> targetScaleVotes)
+        private async Task<IEnumerable<ScaleVote>> GetScaleMonitorsResultAsync(ScaleStatusContext context, IEnumerable<IScaleMonitor> scaleMonitorsToProcess)
         {
             List<ScaleVote> votes = new List<ScaleVote>();
             if (scaleMonitorsToProcess.Any())
@@ -116,11 +117,10 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
                 // this can happen if the host is offline
             }
 
-            ScaleVote vote = GetAggregateScaleVote(votes.Union(targetScaleVotes), context, _logger);
-            return vote;
+            return votes;
         }
 
-        private async Task<IEnumerable<TargetScalerVote>> GetTargetScalersResult(ScaleStatusContext context, IEnumerable<ITargetScaler> targetScalersToProcess)
+        private async Task<IEnumerable<TargetScalerVote>> GetTargetScalersResultAsync(ScaleStatusContext context, IEnumerable<ITargetScaler> targetScalersToProcess)
         {
             List<TargetScalerVote> targetScaleVotes = new List<TargetScalerVote>();
 
@@ -150,8 +150,10 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
                                 _logger.LogDebug($"Snapshot dynamic concurrency for target scaler '{targetScaler.TargetScalerDescriptor.FunctionId}' is '{functionSnapshot.Concurrency}'");
                             }
                         }
+
                         TargetScalerResult result = await targetScaler.GetScaleResultAsync(targetScaleStatusContext);
                         _logger.LogDebug($"Target worker count for '{targetScaler.TargetScalerDescriptor.FunctionId}' is '{result.TargetWorkerCount}'");
+
                         ScaleVote vote = ScaleVote.None;
                         if (context.WorkerCount > result.TargetWorkerCount)
                         {
@@ -161,6 +163,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
                         {
                             vote = ScaleVote.ScaleOut;
                         }
+
                         targetScaleVotes.Add(new TargetScalerVote
                         {
                             TargetWorkerCount = result.TargetWorkerCount,
@@ -174,8 +177,17 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
                     }
                 }
             }
-            //int? targetWorkerCount = targetScaleVotes.Any() ? targetScaleVotes.Max() : null;
             return targetScaleVotes;
+        }
+
+        internal static void GetScaleStatusProviders(
+            IScaleMonitorManager scaleMonitorManager,
+            ITargetScalerManager targetScalerManager,
+            out IEnumerable<IScaleMonitor> scaleMonitors,
+            out IEnumerable<ITargetScaler> targetScalers)
+        {
+            scaleMonitors = scaleMonitorManager.GetMonitors();
+            targetScalers = targetScalerManager.GetTargetScalers();
         }
 
         internal static ScaleVote GetAggregateScaleVote(IEnumerable<ScaleVote> votes, ScaleStatusContext context, ILogger logger)

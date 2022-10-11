@@ -215,7 +215,5 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static readonly string FunctionMetadataDirectTypeKey = "DirectType";
         public static readonly string LiveLogsSessionAIKey = "#AzFuncLiveLogsSessionId";
-
-        public static readonly string ScaleControllerFeatureFlags = "ScaleControllerFeatureFlags";
     }
 }

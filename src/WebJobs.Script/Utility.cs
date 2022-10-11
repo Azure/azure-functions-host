@@ -1002,51 +1002,50 @@ namespace Microsoft.Azure.WebJobs.Script
         /// Scaler monitor will be ignored if a target scaler is defined in the same extensions assembly and TBS is enabled.
         /// </summary>
         /// <param name="environment">Environment variables.</param>
-        /// <param name="hostingConfiguration">Housing configuration.This is used to enable TDS on stamp level for specific triggers.</param>
+        /// <param name="hostingConfiguration">Hosting configuration.This is used to enable TDS on stamp level for specific triggers.</param>
         /// <param name="scaleMonitors">Registered scale monitors.</param>
         /// <param name="targetScalers">Registered target scalers.</param>
-        /// <param name="scaleMonitorsToProcess">Scale monitor to process.</param>
-        /// <param name="targetScalersToProcess">Target scaler to process.</param>
-        public static void GetScaleInstancesToProcess(
+        /// <param name="scaleMonitorsToSample">Scale monitor to process.</param>
+        /// <param name="targetScalersToSample">Target scaler to process.</param>
+        public static void GetScalersToSample(
             IEnvironment environment,
             IFunctionsHostingConfiguration hostingConfiguration,
             IEnumerable<IScaleMonitor> scaleMonitors,
             IEnumerable<ITargetScaler> targetScalers,
-            out List<IScaleMonitor> scaleMonitorsToProcess,
-            out List<ITargetScaler> targetScalersToProcess)
+            out List<IScaleMonitor> scaleMonitorsToSample,
+            out List<ITargetScaler> targetScalersToSample)
         {
-            scaleMonitorsToProcess = new List<IScaleMonitor>();
-            targetScalersToProcess = new List<ITargetScaler>();
-
-            string value = environment.GetEnvironmentVariableOrDefault(EnvironmentSettingNames.TargetBaseScalingEnabled, "0");
+            scaleMonitorsToSample = new List<IScaleMonitor>();
+            targetScalersToSample = new List<ITargetScaler>();
 
             // Check if TBS enabled on app level
-            if (value == "1")
+            if (environment.IsTargetBasedScalingEnabled())
             {
+                HashSet<string> targetScalerAssemblies = new HashSet<string>();
                 foreach (var scaler in targetScalers)
                 {
-                    string flag = hostingConfiguration.GetValue(scaler.GetType().Name, null);
+                    string assemblyName = scaler.GetType().Assembly.GetName().Name;
+                    string flag = hostingConfiguration.GetValue(assemblyName, null);
                     if (flag == "1")
                     {
-                        targetScalersToProcess.Add(scaler);
+                        targetScalersToSample.Add(scaler);
+                        targetScalerAssemblies.Add(assemblyName);
                     }
                 }
 
                 foreach (var monitor in scaleMonitors)
                 {
-                    string monitorAssemblyName = monitor.GetType().Assembly.FullName;
+                    string monitorAssemblyName = monitor.GetType().Assembly.GetName().Name;
                     // Check if there are scale monitor and target scaler defined in the same assembly
-                    ITargetScaler scaler = targetScalersToProcess.FirstOrDefault(x => x.GetType().Assembly.FullName == monitorAssemblyName);
-
-                    if (scaler == null)
+                    if (!targetScalerAssemblies.Contains(monitorAssemblyName))
                     {
-                        scaleMonitorsToProcess.Add(monitor);
+                        scaleMonitorsToSample.Add(monitor);
                     }
                 }
             }
             else
             {
-                scaleMonitorsToProcess = new List<IScaleMonitor>(scaleMonitors);
+                scaleMonitorsToSample.AddRange(scaleMonitors);
             }
         }
 

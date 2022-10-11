@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions.Events;
@@ -215,7 +216,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
             _scalers.Add(scaler);
 
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.TargetBaseScalingEnabled, "1");
-            _functionsHostingConfigurationMock.Setup(p => p.GetValue(It.Is<string>(x => x == nameof(TestTargetScaler)), It.IsAny<string>())).Returns("1");
+            string assemblyName = Assembly.GetExecutingAssembly().GetName().Name;
+            _functionsHostingConfigurationMock.Setup(p => p.GetValue(assemblyName, It.IsAny<string>())).Returns("1");
             await _monitor.TakeMetricsSamplesAsync();
 
             var logs = _loggerProvider.GetAllLogMessages().ToArray();
