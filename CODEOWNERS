@@ -5,6 +5,8 @@
 # https://git-scm.com/docs/gitignore#_pattern_format
 #
 
+* @azure/azure-functions-core
+
 # Adding codeowner for Python specific files such that GitHub automatically adds python folks as a reviewer.
 build/python.props @vrdmr @gavin-aguiar @YunchuWang
 
