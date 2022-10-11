@@ -1022,7 +1022,7 @@ namespace Microsoft.Azure.WebJobs.Script
             if (environment.IsTargetBasedScalingEnabled())
             {
                 HashSet<string> targetScalerAssemblies = new HashSet<string>();
-                foreach (var scaler in targetScalers)
+                foreach (var scaler in targetScalers.Where(x => x != null))
                 {
                     string assemblyName = scaler.GetType().Assembly.GetName().Name;
                     string flag = hostingConfiguration.GetValue(assemblyName, null);
@@ -1033,7 +1033,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     }
                 }
 
-                foreach (var monitor in scaleMonitors)
+                foreach (var monitor in scaleMonitors.Where(x => x != null))
                 {
                     string monitorAssemblyName = monitor.GetType().Assembly.GetName().Name;
                     // Check if there are scale monitor and target scaler defined in the same assembly
