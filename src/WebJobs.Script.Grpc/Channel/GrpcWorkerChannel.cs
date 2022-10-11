@@ -53,6 +53,10 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private readonly Dictionary<MsgType, Queue<PendingItem>> _pendingActions = new ();
         private readonly ChannelWriter<OutboundGrpcEvent> _outbound;
         private readonly ChannelReader<InboundGrpcEvent> _inbound;
+        private Meter _workerInvocationMeter = new Meter("WorkerInvocationMeter", "1.0.0");
+        private Meter _workerInvocationSucceededMeter = new Meter("WorkerInvocationSucceededMeter", "1.0.0");
+        private Counter<int> _workerInvocationCounter;
+        private Counter<int> _workerSucessfulInvocationCounter;
         private ConcurrentDictionary<string, WorkerInvocationMetrics> _invocationMetricsPerWorkerId = new ();
         private IDisposable _functionLoadRequestResponseEvent;
         private bool _disposed;
@@ -82,11 +86,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         private System.Timers.Timer _invocationTimer;
         private System.Timers.Timer _timer;
-
-        private static readonly Meter WorkerInvocationMeter = new Meter("WorkerInvocationMeter", "1.0.0");
-        private static readonly Counter<int> WorkerInvocationCounter = WorkerInvocationMeter.CreateCounter<int>(name: "worker-total-invocations", unit: "TotalInvocations", description: "Total Invocations of Worker");
-        private static readonly Meter WorkerInvocationSucceededMeter = new Meter("WorkerInvocationSucceededMeter", "1.0.0");
-        private static readonly Counter<int> WorkerSucessfulInvocationCounter = WorkerInvocationSucceededMeter.CreateCounter<int>(name: "worker-successful-invocations", unit: "SuccessfulInvocations", description: "Successful invocations of Worker");
 
         internal GrpcWorkerChannel(
             string workerId,
@@ -147,15 +146,13 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 _invocationTimer.Start();
             }
 
+            _workerInvocationCounter = _workerInvocationMeter.CreateCounter<int>(name: "worker-total-invocations", unit: "TotalInvocations", description: "Total Invocations of Worker");
+            _workerSucessfulInvocationCounter = _workerInvocationSucceededMeter.CreateCounter<int>(name: "worker-successful-invocations", unit: "SuccessfulInvocations", description: "Successful invocations of Worker");
+
             using MeterListener meterListener = new MeterListener();
             meterListener.InstrumentPublished = (instrument, listener) =>
             {
-                if (instrument.Meter.Name == "WorkerInvocationMeter")
-                {
-                    listener.EnableMeasurementEvents(instrument);
-                }
-
-                if (instrument.Meter.Name == "WorkerInvocationSucceededMeter")
+                if (instrument.Meter.Name == "WorkerInvocationMeter" || instrument.Meter.Name == "WorkerInvocationSucceededMeter")
                 {
                     listener.EnableMeasurementEvents(instrument);
                 }
@@ -675,7 +672,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 var totalInvocations = WorkerInvocationMetrics.IncrementTotalInvocationsOfWorker(Id, _invocationMetricsPerWorkerId);
                 _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvoked, Id), functionName: context.FunctionMetadata.Name);
                 _workerChannelLogger.LogInformation("Sending invocation request with invocationId: {invocationId} on workerId: {workerId} for function: {functionName}", invocationRequest.InvocationId, Id, context.FunctionMetadata.Name);
-                WorkerInvocationCounter.Add(1);
+                _workerInvocationCounter.Add(1);
 
                 await SendStreamingMessageAsync(new StreamingMessage
                 {
@@ -835,7 +832,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 int successfulInvocations = WorkerInvocationMetrics.IncrementSuccessfulInvocationsOfWorker(Id, _invocationMetricsPerWorkerId);
                 _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvokeSucceeded, Id));
                 _workerChannelLogger.LogInformation("Received successful invocation response for invocationId: {invocationId} and workerId: {workerId}", invokeResponse.InvocationId, Id);
-                WorkerSucessfulInvocationCounter.Add(1);
+                _workerSucessfulInvocationCounter.Add(1);
 
                 try
                 {
@@ -889,8 +886,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                         // If this invocation was using any shared memory maps produced by the worker, close them to free memory
                         SendCloseSharedMemoryResourcesForInvocationRequest(outputMaps);
                     }
-
-                    _workerChannelLogger.LogInformation("WorkerId: {workerId}, TotalInvocations : {totalInvocations}, SuccessfulInvocations : {successfulInvocations}, AverageInvocationLatency : {averageInvocationLatency}", Id, _invocationMetricsPerWorkerId[Id].TotalInvocations, _invocationMetricsPerWorkerId[Id].SuccessfulInvocations, _invocationMetricsPerWorkerId[Id].AverageInvocationLatency);
                 }
             }
         }
@@ -1301,8 +1296,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         internal void IdentifyFaultyLanguageWorker()
         {
-            _workerChannelLogger.LogInformation("Checking and recycling faulty language workers");
-
             Dictionary<string, int> failureRatePerWorkerId = new Dictionary<string, int>();
             var failureThreshold = 30; // ToDo: Moving this constant once finalized
 
@@ -1312,7 +1305,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 failureRatePerWorkerId[item.Key] = failureRateOfWorker;
 
                 // To be removed
-                _workerChannelLogger.LogInformation("WorkerId: {workerId}, Failure rate: {failureRateOfWorker}", item.Key, failureRateOfWorker);
+                _workerChannelLogger.LogInformation(
+                    "WorkerId: {workerId}, Failure rate: {failureRateOfWorker}, TotalInvocations : {totalInvocations}, SuccessfulInvocations : {successfulInvocations}, AverageInvocationLatency : {averageInvocationLatency}",
+                    item.Key, failureRateOfWorker, item.Value.TotalInvocations, item.Value.SuccessfulInvocations, item.Value.AverageInvocationLatency);
             }
 
             var sortedFailureRatePerWorkerId = from item in failureRatePerWorkerId orderby item.Value descending select item;
