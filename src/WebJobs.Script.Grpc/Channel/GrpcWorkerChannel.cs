@@ -53,10 +53,10 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private readonly Dictionary<MsgType, Queue<PendingItem>> _pendingActions = new ();
         private readonly ChannelWriter<OutboundGrpcEvent> _outbound;
         private readonly ChannelReader<InboundGrpcEvent> _inbound;
-        private Meter _workerInvocationMeter = new Meter("WorkerInvocationMeter", "1.0.0");
-        private Meter _workerInvocationSucceededMeter = new Meter("WorkerInvocationSucceededMeter", "1.0.0");
+        private Meter _workerInvocationMeter;
+        private Meter _workerInvocationSucceededMeter;
         private Counter<int> _workerInvocationCounter;
-        private Counter<int> _workerSucessfulInvocationCounter;
+        private Counter<int> _workerSuccessfulInvocationCounter;
         private ConcurrentDictionary<string, WorkerInvocationMetrics> _invocationMetricsPerWorkerId = new ();
         private IDisposable _functionLoadRequestResponseEvent;
         private bool _disposed;
@@ -146,13 +146,17 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 _invocationTimer.Start();
             }
 
-            _workerInvocationCounter = _workerInvocationMeter.CreateCounter<int>(name: "worker-total-invocations", unit: "TotalInvocations", description: "Total Invocations of Worker");
-            _workerSucessfulInvocationCounter = _workerInvocationSucceededMeter.CreateCounter<int>(name: "worker-successful-invocations", unit: "SuccessfulInvocations", description: "Successful invocations of Worker");
+            string workerTotalInvocationMetric = string.Format(MetricEventNames.WorkerInvoked, Id);
+            string workerSuccessfulInvocationMetric = string.Format(MetricEventNames.WorkerInvokeSucceeded, Id);
+            _workerInvocationMeter = new Meter(workerTotalInvocationMetric, "1.0.0");
+            _workerInvocationCounter = _workerInvocationMeter.CreateCounter<int>(name: workerTotalInvocationMetric, Id);
+            _workerInvocationSucceededMeter = new Meter(workerSuccessfulInvocationMetric, "1.0.0");
+            _workerSuccessfulInvocationCounter = _workerInvocationSucceededMeter.CreateCounter<int>(name: workerSuccessfulInvocationMetric);
 
             using MeterListener meterListener = new MeterListener();
             meterListener.InstrumentPublished = (instrument, listener) =>
             {
-                if (instrument.Meter.Name == "WorkerInvocationMeter" || instrument.Meter.Name == "WorkerInvocationSucceededMeter")
+                if (instrument.Meter.Name == workerTotalInvocationMetric || instrument.Meter.Name == workerSuccessfulInvocationMetric)
                 {
                     listener.EnableMeasurementEvents(instrument);
                 }
@@ -169,9 +173,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         internal RpcWorkerConfig Config => _workerConfig;
 
-        public void OnMeasurementRecorded<T>(Instrument instrument, T measurement, ReadOnlySpan<KeyValuePair<string, object>> tags, object state)
+        private void OnMeasurementRecorded<T>(Instrument instrument, T measurement, ReadOnlySpan<KeyValuePair<string, object>> tags, object state)
         {
-            _workerChannelLogger.LogInformation($"{instrument.Name} recorded measurement {measurement}");
+            _metricsLogger.LogEvent(instrument.Name);
         }
 
         private void ProcessItem(InboundGrpcEvent msg)
@@ -670,7 +674,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 }
 
                 var totalInvocations = WorkerInvocationMetrics.IncrementTotalInvocationsOfWorker(Id, _invocationMetricsPerWorkerId);
-                _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvoked, Id), functionName: context.FunctionMetadata.Name);
                 _workerChannelLogger.LogInformation("Sending invocation request with invocationId: {invocationId} on workerId: {workerId} for function: {functionName}", invocationRequest.InvocationId, Id, context.FunctionMetadata.Name);
                 _workerInvocationCounter.Add(1);
 
@@ -830,9 +833,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 && invokeResponse.Result.IsInvocationSuccess(context.ResultSource, capabilityEnabled))
             {
                 int successfulInvocations = WorkerInvocationMetrics.IncrementSuccessfulInvocationsOfWorker(Id, _invocationMetricsPerWorkerId);
-                _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvokeSucceeded, Id));
                 _workerChannelLogger.LogInformation("Received successful invocation response for invocationId: {invocationId} and workerId: {workerId}", invokeResponse.InvocationId, Id);
-                _workerSucessfulInvocationCounter.Add(1);
+                _workerSuccessfulInvocationCounter.Add(1);
 
                 try
                 {

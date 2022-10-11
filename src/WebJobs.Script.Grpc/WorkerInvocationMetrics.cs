@@ -1,9 +1,8 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
+using System.Threading;
 
 namespace Microsoft.Azure.WebJobs.Script.Grpc
 {
@@ -17,24 +16,35 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         public static int IncrementTotalInvocationsOfWorker(string workerId, ConcurrentDictionary<string, WorkerInvocationMetrics> invocationMetricsPerWorkerId)
         {
+            WorkerInvocationMetrics newObj = new ();
+            invocationMetricsPerWorkerId.AddOrUpdate(workerId, newObj.IncrementTotalInvocations(), (k, v) => v.IncrementTotalInvocations());
             invocationMetricsPerWorkerId.TryGetValue(workerId, out WorkerInvocationMetrics workerInvocationMetrics);
-            workerInvocationMetrics = workerInvocationMetrics ?? new WorkerInvocationMetrics();
-
-            workerInvocationMetrics.TotalInvocations = workerInvocationMetrics.TotalInvocations + 1;
-            invocationMetricsPerWorkerId[workerId] = workerInvocationMetrics;
-
             return workerInvocationMetrics.TotalInvocations;
         }
 
         public static int IncrementSuccessfulInvocationsOfWorker(string workerId, ConcurrentDictionary<string, WorkerInvocationMetrics> invocationMetricsPerWorkerId)
         {
+            WorkerInvocationMetrics newObj = new ();
+            invocationMetricsPerWorkerId.AddOrUpdate(workerId, newObj.IncrementSuccessfulInvocations(), (k, v) => v.IncrementSuccessfulInvocations());
             invocationMetricsPerWorkerId.TryGetValue(workerId, out WorkerInvocationMetrics workerInvocationMetrics);
-            workerInvocationMetrics = workerInvocationMetrics ?? new WorkerInvocationMetrics();
-
-            workerInvocationMetrics.SuccessfulInvocations = workerInvocationMetrics.SuccessfulInvocations + 1;
-            invocationMetricsPerWorkerId[workerId] = workerInvocationMetrics;
-
             return workerInvocationMetrics.SuccessfulInvocations;
+        }
+    }
+
+    internal static class WorkerInvocationMetricsExtensions
+    {
+        public static WorkerInvocationMetrics IncrementTotalInvocations(this WorkerInvocationMetrics obj)
+        {
+            int currentCount = obj.TotalInvocations;
+            obj.TotalInvocations = Interlocked.Increment(ref currentCount);
+            return obj;
+        }
+
+        public static WorkerInvocationMetrics IncrementSuccessfulInvocations(this WorkerInvocationMetrics obj)
+        {
+            int currentCount = obj.SuccessfulInvocations;
+            obj.SuccessfulInvocations = Interlocked.Increment(ref currentCount);
+            return obj;
         }
     }
 }
