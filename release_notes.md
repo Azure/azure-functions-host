@@ -2,6 +2,7 @@
 <!-- Please add your release notes in the following format:
 - My change description (#PR)
 -->
+- Update Python Worker Version to [4.8.0](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.8.0)
 - Update Java Worker Version to [2.7.0](https://github.com/Azure/azure-functions-java-worker/releases/tag/2.7.0)
 - Update Node.js Worker Version to [3.5.1](https://github.com/Azure/azure-functions-nodejs-worker/releases/tag/v3.5.1)
 
