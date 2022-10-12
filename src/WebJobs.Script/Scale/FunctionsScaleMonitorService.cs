@@ -85,9 +85,10 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
             {
                 // get the monitors
                 // if the host is offline, no monitors will be returned
-                FunctionsScaleManager.GetScaleStatusProviders(_monitorManager, _targetScalerManager, out IEnumerable<IScaleMonitor> scaleMonitors, out IEnumerable<ITargetScaler> targetScalers);
+                var scaleMonitors = _monitorManager.GetMonitors();
+                var targetScalers = _targetScalerManager.GetTargetScalers();
 
-                Utility.GetScalersToSample(_environment, _functionsHostingConfiguration, scaleMonitors, targetScalers,
+                FunctionsScaleManager.GetScalersToSample(_environment, _functionsHostingConfiguration, scaleMonitors, targetScalers,
                     out List<IScaleMonitor> scaleMonitorsToProcess, out List<ITargetScaler> targetScalersToProcess);
 
                 if (scaleMonitorsToProcess.Any())

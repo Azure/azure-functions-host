@@ -930,41 +930,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(expected, workerShouldIndex);
         }
 
-        [Theory]
-        [InlineData(false, true, 1, 0)]
-        [InlineData(true, false, 1, 0)]
-        [InlineData(true, true, 0, 1)]
-        public void GetScaleInstancesToProcess_Returns_Expected(bool targetBaseScalingEnabled, bool triggerEabled, int expectedScaleMonitorCount, int expectedTargetScalerCount)
-        {
-            List<IScaleMonitor> scaleMonitors = new List<IScaleMonitor>
-            {
-                new TestScaleMonitor<ScaleMetrics>("func1-test-test"),
-            };
-            List<ITargetScaler> targetScalers = new List<ITargetScaler>
-            {
-                new TestTargetScaler()
-                {
-                    TargetScalerDescriptor = new TargetScalerDescriptor("func1")
-                }
-            };
-
-            Mock<IFunctionsHostingConfiguration> functionsHostingConfigurationMock = new Mock<IFunctionsHostingConfiguration>(MockBehavior.Strict);
-            string assemblyName = Assembly.GetExecutingAssembly().GetName().Name;
-            functionsHostingConfigurationMock.Setup(p => p.GetValue(assemblyName, It.IsAny<string>())).Returns(triggerEabled ? "1" : null);
-
-            TestEnvironment env = new TestEnvironment();
-            if (targetBaseScalingEnabled)
-            {
-                env.SetEnvironmentVariable(EnvironmentSettingNames.TargetBaseScalingEnabled, "1");
-            }
-
-            Utility.GetScalersToSample(env, functionsHostingConfigurationMock.Object, scaleMonitors, targetScalers,
-                out List<IScaleMonitor> scaleMonitorsToProcess, out List<ITargetScaler> targetScalesToProcess);
-
-            Assert.Equal(scaleMonitorsToProcess.Count(), expectedScaleMonitorCount);
-            Assert.Equal(targetScalesToProcess.Count(), expectedTargetScalerCount);
-        }
-
         private static void VerifyLogLevel(IList<LogMessage> allLogs, string msg, LogLevel expectedLevel)
         {
             var message = allLogs.Where(l => l.FormattedMessage.Contains(msg)).FirstOrDefault();

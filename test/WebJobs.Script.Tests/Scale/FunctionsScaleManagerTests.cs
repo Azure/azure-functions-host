@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
@@ -270,6 +271,41 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
             }
             var vote = FunctionsScaleManager.GetAggregateScaleVote(votes, context, _testLogger);
             Assert.Equal(expected, vote);
+        }
+
+        [Theory]
+        [InlineData(false, true, 1, 0)]
+        [InlineData(true, false, 1, 0)]
+        [InlineData(true, true, 0, 1)]
+        public void GetScaleInstancesToProcess_Returns_Expected(bool targetBaseScalingEnabled, bool triggerEabled, int expectedScaleMonitorCount, int expectedTargetScalerCount)
+        {
+            List<IScaleMonitor> scaleMonitors = new List<IScaleMonitor>
+            {
+                new TestScaleMonitor<ScaleMetrics>("func1-test-test"),
+            };
+            List<ITargetScaler> targetScalers = new List<ITargetScaler>
+            {
+                new TestTargetScaler()
+                {
+                    TargetScalerDescriptor = new TargetScalerDescriptor("func1")
+                }
+            };
+
+            Mock<IFunctionsHostingConfiguration> functionsHostingConfigurationMock = new Mock<IFunctionsHostingConfiguration>(MockBehavior.Strict);
+            string assemblyName = Assembly.GetExecutingAssembly().GetName().Name;
+            functionsHostingConfigurationMock.Setup(p => p.GetValue(assemblyName, It.IsAny<string>())).Returns(triggerEabled ? "1" : null);
+
+            TestEnvironment env = new TestEnvironment();
+            if (targetBaseScalingEnabled)
+            {
+                env.SetEnvironmentVariable(EnvironmentSettingNames.TargetBaseScalingEnabled, "1");
+            }
+
+            FunctionsScaleManager.GetScalersToSample(env, functionsHostingConfigurationMock.Object, scaleMonitors, targetScalers,
+                out List<IScaleMonitor> scaleMonitorsToProcess, out List<ITargetScaler> targetScalesToProcess);
+
+            Assert.Equal(scaleMonitorsToProcess.Count(), expectedScaleMonitorCount);
+            Assert.Equal(targetScalesToProcess.Count(), expectedTargetScalerCount);
         }
     }
 }

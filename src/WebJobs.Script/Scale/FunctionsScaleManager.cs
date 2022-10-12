@@ -57,9 +57,10 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
         /// <returns>The scale vote.</returns>
         public virtual async Task<ScaleStatusResult> GetScaleStatusAsync(ScaleStatusContext context)
         {
-            GetScaleStatusProviders(_monitorManager, _targetScalerManager, out IEnumerable<IScaleMonitor> scaleMonitors, out IEnumerable<ITargetScaler> targetScalers);
+            var scaleMonitors = _monitorManager.GetMonitors();
+            var targetScalers = _targetScalerManager.GetTargetScalers();
 
-            Utility.GetScalersToSample(_environment, _functionsHostingConfiguration, scaleMonitors, targetScalers,
+            GetScalersToSample(_environment, _functionsHostingConfiguration, scaleMonitors, targetScalers,
                 out List<IScaleMonitor> scaleMonitorsToProcess, out List<ITargetScaler> targetScalersToProcess);
 
             var scaleMonitorVotes = await GetScaleMonitorsResultAsync(context, scaleMonitorsToProcess);
@@ -180,16 +181,6 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
             return targetScaleVotes;
         }
 
-        internal static void GetScaleStatusProviders(
-            IScaleMonitorManager scaleMonitorManager,
-            ITargetScalerManager targetScalerManager,
-            out IEnumerable<IScaleMonitor> scaleMonitors,
-            out IEnumerable<ITargetScaler> targetScalers)
-        {
-            scaleMonitors = scaleMonitorManager.GetMonitors();
-            targetScalers = targetScalerManager.GetTargetScalers();
-        }
-
         internal static ScaleVote GetAggregateScaleVote(IEnumerable<ScaleVote> votes, ScaleStatusContext context, ILogger logger)
         {
             ScaleVote vote = ScaleVote.None;
@@ -217,6 +208,58 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
             }
 
             return vote;
+        }
+
+        /// <summary>
+        /// Returns scale monitors and target scalers we want to use based on the configuration.
+        /// Scaler monitor will be ignored if a target scaler is defined in the same extensions assembly and TBS is enabled.
+        /// </summary>
+        /// <param name="environment">Environment variables.</param>
+        /// <param name="hostingConfiguration">Hosting configuration.This is used to enable TDS on stamp level for specific triggers.</param>
+        /// <param name="scaleMonitors">Registered scale monitors.</param>
+        /// <param name="targetScalers">Registered target scalers.</param>
+        /// <param name="scaleMonitorsToSample">Scale monitor to process.</param>
+        /// <param name="targetScalersToSample">Target scaler to process.</param>
+        internal static void GetScalersToSample(
+            IEnvironment environment,
+            IFunctionsHostingConfiguration hostingConfiguration,
+            IEnumerable<IScaleMonitor> scaleMonitors,
+            IEnumerable<ITargetScaler> targetScalers,
+            out List<IScaleMonitor> scaleMonitorsToSample,
+            out List<ITargetScaler> targetScalersToSample)
+        {
+            scaleMonitorsToSample = new List<IScaleMonitor>();
+            targetScalersToSample = new List<ITargetScaler>();
+
+            // Check if TBS enabled on app level
+            if (environment.IsTargetBasedScalingEnabled())
+            {
+                HashSet<string> targetScalerAssemblies = new HashSet<string>();
+                foreach (var scaler in targetScalers)
+                {
+                    string assemblyName = scaler.GetType().Assembly.GetName().Name;
+                    string flag = hostingConfiguration.GetValue(assemblyName, null);
+                    if (flag == "1")
+                    {
+                        targetScalersToSample.Add(scaler);
+                        targetScalerAssemblies.Add(assemblyName);
+                    }
+                }
+
+                foreach (var monitor in scaleMonitors)
+                {
+                    string monitorAssemblyName = monitor.GetType().Assembly.GetName().Name;
+                    // Check if there are scale monitor and target scaler defined in the same assembly
+                    if (!targetScalerAssemblies.Contains(monitorAssemblyName))
+                    {
+                        scaleMonitorsToSample.Add(monitor);
+                    }
+                }
+            }
+            else
+            {
+                scaleMonitorsToSample.AddRange(scaleMonitors);
+            }
         }
     }
 }

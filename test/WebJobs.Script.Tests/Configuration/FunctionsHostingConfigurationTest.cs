@@ -41,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         }
 
         [Fact]
-        public async Task GetValue_UpdatesSettings()
+        public async Task GetValue_ReloadsConfig_OnUpdate()
         {
             using (TempDirectory tempDir = new TempDirectory())
             {
