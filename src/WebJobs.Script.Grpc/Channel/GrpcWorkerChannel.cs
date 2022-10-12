@@ -139,7 +139,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 _invocationTimer = new System.Timers.Timer()
                 {
                     AutoReset = false,
-                    Interval = 600000, // once every 10 minutes. ToDo - moving constant once finalized
+                    Interval = TimeSpan.FromMinutes(10).TotalMilliseconds
                 };
 
                 _invocationTimer.Elapsed += OnInvocationTimer;
@@ -673,7 +673,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     context.CancellationToken.Register(() => SendInvocationCancel(invocationRequest.InvocationId));
                 }
 
-                var totalInvocations = WorkerInvocationMetrics.IncrementTotalInvocationsOfWorker(Id, _invocationMetricsPerWorkerId);
+                WorkerInvocationMetrics.IncrementTotalInvocationsOfWorker(Id, _invocationMetricsPerWorkerId);
                 _workerChannelLogger.LogInformation("Sending invocation request with invocationId: {invocationId} on workerId: {workerId} for function: {functionName}", invocationRequest.InvocationId, Id, context.FunctionMetadata.Name);
                 _workerInvocationCounter.Add(1);
 
@@ -832,7 +832,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             if (_executingInvocations.TryRemove(invokeResponse.InvocationId, out ScriptInvocationContext context)
                 && invokeResponse.Result.IsInvocationSuccess(context.ResultSource, capabilityEnabled))
             {
-                int successfulInvocations = WorkerInvocationMetrics.IncrementSuccessfulInvocationsOfWorker(Id, _invocationMetricsPerWorkerId);
+                WorkerInvocationMetrics.IncrementSuccessfulInvocationsOfWorker(Id, _invocationMetricsPerWorkerId);
                 _workerChannelLogger.LogInformation("Received successful invocation response for invocationId: {invocationId} and workerId: {workerId}", invokeResponse.InvocationId, Id);
                 _workerSuccessfulInvocationCounter.Add(1);
 
@@ -1298,15 +1298,15 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         internal void IdentifyFaultyLanguageWorker()
         {
-            Dictionary<string, int> failureRatePerWorkerId = new Dictionary<string, int>();
-            var failureThreshold = 30; // ToDo: Moving this constant once finalized
+            const int failureThreshold = 30;
+
+            ConcurrentDictionary<string, int> failureRatePerWorkerId = new ConcurrentDictionary<string, int>();
 
             foreach (var item in _invocationMetricsPerWorkerId)
             {
                 int failureRateOfWorker = item.Value.TotalInvocations > 0 ? (item.Value.TotalInvocations - item.Value.SuccessfulInvocations) * 100 / item.Value.TotalInvocations : 0;
                 failureRatePerWorkerId[item.Key] = failureRateOfWorker;
 
-                // To be removed
                 _workerChannelLogger.LogInformation(
                     "WorkerId: {workerId}, Failure rate: {failureRateOfWorker}, TotalInvocations : {totalInvocations}, SuccessfulInvocations : {successfulInvocations}, AverageInvocationLatency : {averageInvocationLatency}",
                     item.Key, failureRateOfWorker, item.Value.TotalInvocations, item.Value.SuccessfulInvocations, item.Value.AverageInvocationLatency);
@@ -1318,11 +1318,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             if (failureRate > failureThreshold)
             {
-                // ToDo: in next iteration of this feature => recycle the workerId in variable: workerIdToRecycle
-                // ToDo: Other criteria for recycle => if invocation latency is too high
-
                 _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerRecycled, Id));
-                _workerChannelLogger.LogDebug("WorkerId to be Recycled: {workerIdToRecycle}, Failure rate: {failureRate}", workerIdToRecycle, failureRate);
+                _workerChannelLogger.LogDebug("Faulty WorkerId to be Recycled: {workerIdToRecycle}, Failure rate: {failureRate}", workerIdToRecycle, failureRate);
             }
 
             // Reseting the dictionary

@@ -19,8 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var workerInvocationMetrics = new WorkerInvocationMetrics();
             workerInvocationMetrics.TotalInvocations = 1;
             invocationMetricsPerWorkerId.TryAdd(workerId, workerInvocationMetrics);
-            int totalInvocations = WorkerInvocationMetrics.IncrementTotalInvocationsOfWorker(workerId, invocationMetricsPerWorkerId);
-            Assert.Equal(2, totalInvocations);
+            WorkerInvocationMetrics.IncrementTotalInvocationsOfWorker(workerId, invocationMetricsPerWorkerId);
             Assert.Equal(2, invocationMetricsPerWorkerId[workerId].TotalInvocations);
         }
 
@@ -32,8 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var workerInvocationMetrics = new WorkerInvocationMetrics();
             workerInvocationMetrics.SuccessfulInvocations = 1;
             invocationMetricsPerWorkerId.TryAdd(workerId, workerInvocationMetrics);
-            int successfulInvocations = WorkerInvocationMetrics.IncrementSuccessfulInvocationsOfWorker(workerId, invocationMetricsPerWorkerId);
-            Assert.Equal(2, successfulInvocations);
+            WorkerInvocationMetrics.IncrementSuccessfulInvocationsOfWorker(workerId, invocationMetricsPerWorkerId);
             Assert.Equal(2, invocationMetricsPerWorkerId[workerId].SuccessfulInvocations);
         }
     }

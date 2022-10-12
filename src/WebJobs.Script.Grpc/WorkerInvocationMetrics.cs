@@ -14,20 +14,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         public double AverageInvocationLatency { get; set; }
 
-        public static int IncrementTotalInvocationsOfWorker(string workerId, ConcurrentDictionary<string, WorkerInvocationMetrics> invocationMetricsPerWorkerId)
+        public static void IncrementTotalInvocationsOfWorker(string workerId, ConcurrentDictionary<string, WorkerInvocationMetrics> invocationMetricsPerWorkerId)
         {
-            WorkerInvocationMetrics newObj = new ();
-            invocationMetricsPerWorkerId.AddOrUpdate(workerId, newObj.IncrementTotalInvocations(), (k, v) => v.IncrementTotalInvocations());
-            invocationMetricsPerWorkerId.TryGetValue(workerId, out WorkerInvocationMetrics workerInvocationMetrics);
-            return workerInvocationMetrics.TotalInvocations;
+            invocationMetricsPerWorkerId.AddOrUpdate(workerId, new WorkerInvocationMetrics().IncrementTotalInvocations(), (k, v) => v.IncrementTotalInvocations());
         }
 
-        public static int IncrementSuccessfulInvocationsOfWorker(string workerId, ConcurrentDictionary<string, WorkerInvocationMetrics> invocationMetricsPerWorkerId)
+        public static void IncrementSuccessfulInvocationsOfWorker(string workerId, ConcurrentDictionary<string, WorkerInvocationMetrics> invocationMetricsPerWorkerId)
         {
-            WorkerInvocationMetrics newObj = new ();
-            invocationMetricsPerWorkerId.AddOrUpdate(workerId, newObj.IncrementSuccessfulInvocations(), (k, v) => v.IncrementSuccessfulInvocations());
-            invocationMetricsPerWorkerId.TryGetValue(workerId, out WorkerInvocationMetrics workerInvocationMetrics);
-            return workerInvocationMetrics.SuccessfulInvocations;
+            invocationMetricsPerWorkerId.AddOrUpdate(workerId, new WorkerInvocationMetrics().IncrementSuccessfulInvocations(), (k, v) => v.IncrementSuccessfulInvocations());
         }
     }
 
