@@ -129,10 +129,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         }
 
         [Fact]
-        public void GetValue_ConfigurationFileDoesNotExists()
+        public void GetValue_ConfigurationFileDoesNotExists_Logs()
         {
             FunctionsHostingConfiguration conf = new FunctionsHostingConfiguration(_environment, _loggerFactory, "test.txt", DateTime.Now.AddMilliseconds(1), TimeSpan.FromMilliseconds(100));
-            Assert.DoesNotContain("FunctionsHostingConfigurations file does not exist", _loggerProvider.GetAllLogMessages().Select(x => x.FormattedMessage));
+            Assert.Null(conf.GetValue("test"));
+            Assert.Contains("FunctionsHostingConfigurations file does not exist", _loggerProvider.GetAllLogMessages().Select(x => x.FormattedMessage));
+        }
+
+        [Fact]
+        public void GetValue_ReturnsExpected()
+        {
+            using (TempDirectory tempDir = new TempDirectory())
+            {
+                string fileName = Path.Combine(tempDir.Path, "settings.txt");
+                File.WriteAllText(fileName, "flag1=value1,flag2=value2,flag3=value3");
+                FunctionsHostingConfiguration conf = new FunctionsHostingConfiguration(_environment, _loggerFactory, fileName, DateTime.Now.AddMilliseconds(1), TimeSpan.FromMilliseconds(100));
+                Assert.Equal(conf.GetValue("flag2"), "value2");
+                Assert.DoesNotContain("FunctionsHostingConfigurations file does not exist", _loggerProvider.GetAllLogMessages().Select(x => x.FormattedMessage));
+            }
         }
     }
 }
