@@ -55,11 +55,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             // We only want to run our JIT traces on the first warmup call.
             if (!_jitTraceHasRun)
             {
+                Console.WriteLine("Starting WarmupInvoke method for JIT Trace.");
                 PreJitPrepare(WarmUpConstants.JitTraceFileName);
                 if (_environment.IsAnyLinuxConsumption())
                 {
                     PreJitPrepare(WarmUpConstants.LinuxJitTraceFileName);
                 }
+                Console.WriteLine("Finishing WarmupInvoke method for JIT Trace.");
                 _jitTraceHasRun = true;
             }
 
