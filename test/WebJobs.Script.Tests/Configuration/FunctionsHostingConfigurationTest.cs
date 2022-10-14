@@ -4,10 +4,8 @@
 using System;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -43,30 +41,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         }
 
         [Fact]
-        public void FunctionsWorkerDynamicConcurrencyEnabled_Throws_InvalidOperationException()
-        {
-            FunctionsHostingConfiguration conf = new FunctionsHostingConfiguration(_environment, _loggerFactory, Path.Combine("C:\\", "test.txt"), DateTime.Now.AddMilliseconds(1), TimeSpan.FromMinutes(5));
-            Assert.Throws<InvalidOperationException>(() => conf.FunctionsWorkerDynamicConcurrencyEnabled);
-        }
-
-        [Fact]
-        public async Task FunctionsWorkerDynamicConcurrencyEnabled_UpdatesSettings()
+        public async Task GetValue_ReloadsConfig_OnUpdate()
         {
             using (TempDirectory tempDir = new TempDirectory())
             {
+                string testKey = "test_key";
                 string fileName = Path.Combine(tempDir.Path, "settings.txt");
-                File.WriteAllText(fileName, $"key1=value1,{RpcWorkerConstants.FunctionsWorkerDynamicConcurrencyEnabled}=value2");
+                File.WriteAllText(fileName, $"key1=value1,{testKey}=value2");
 
                 FunctionsHostingConfiguration conf = new FunctionsHostingConfiguration(_environment, _loggerFactory, fileName, DateTime.Now.AddMilliseconds(100), TimeSpan.FromMilliseconds(100));
-                Assert.False(conf.FunctionsWorkerDynamicConcurrencyEnabled);
+                Assert.Equal(conf.GetValue(testKey), "value2");
 
-                File.WriteAllText(fileName, $"key1=value1,{RpcWorkerConstants.FunctionsWorkerDynamicConcurrencyEnabled}=stamp");
+                File.WriteAllText(fileName, $"key1=value1,{testKey}=stamp");
                 await Task.Delay(500);
-                Assert.True(conf.FunctionsWorkerDynamicConcurrencyEnabled);
+                Assert.Equal(conf.GetValue(testKey), "stamp");
 
                 File.WriteAllText(fileName, "key1=value1");
                 await Task.Delay(500);
-                Assert.False(conf.FunctionsWorkerDynamicConcurrencyEnabled);
+                Assert.Equal(conf.GetValue(testKey), null);
 
                 Assert.True(_loggerProvider.GetAllLogMessages().Where(x => x.FormattedMessage.StartsWith("Updaiting FunctionsHostingConfigurations")).Count() == 3);
             }
@@ -111,6 +103,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 Assert.Equal("1", conf.GetValue("ENABLE_FEATUREX"));
                 Assert.Equal("B", conf.GetValue("A"));
                 Assert.Equal("123", conf.GetValue("TimeOut"));
+                Assert.Equal("123", conf.GetValue("timeout")); // check case insensitive search
             }
         }
 
@@ -132,6 +125,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 FunctionsHostingConfiguration conf = new FunctionsHostingConfiguration(_environment, _loggerFactory, fileName, DateTime.Now.AddMilliseconds(1), TimeSpan.FromMilliseconds(100));
                 conf.GetValue("test"); // to run Parse
                 Assert.True(conf.Config.Count == configCount);
+            }
+        }
+
+        [Fact]
+        public void GetValue_ConfigurationFileDoesNotExists_Logs()
+        {
+            FunctionsHostingConfiguration conf = new FunctionsHostingConfiguration(_environment, _loggerFactory, "test.txt", DateTime.Now.AddMilliseconds(1), TimeSpan.FromMilliseconds(100));
+            Assert.Null(conf.GetValue("test"));
+            Assert.Contains("FunctionsHostingConfigurations file does not exist", _loggerProvider.GetAllLogMessages().Select(x => x.FormattedMessage));
+        }
+
+        [Fact]
+        public void GetValue_ReturnsExpected()
+        {
+            using (TempDirectory tempDir = new TempDirectory())
+            {
+                string fileName = Path.Combine(tempDir.Path, "settings.txt");
+                File.WriteAllText(fileName, "flag1=value1,flag2=value2,flag3=value3");
+                FunctionsHostingConfiguration conf = new FunctionsHostingConfiguration(_environment, _loggerFactory, fileName, DateTime.Now.AddMilliseconds(1), TimeSpan.FromMilliseconds(100));
+                Assert.Equal(conf.GetValue("flag2"), "value2");
+                Assert.DoesNotContain("FunctionsHostingConfigurations file does not exist", _loggerProvider.GetAllLogMessages().Select(x => x.FormattedMessage));
             }
         }
     }

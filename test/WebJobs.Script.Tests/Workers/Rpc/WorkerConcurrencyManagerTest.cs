@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.PythonLanguageWorkerName);
             _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.NodeLanguageWorkerName);
             Mock<IFunctionsHostingConfiguration> conf = new Mock<IFunctionsHostingConfiguration>();
-            conf.Setup(x => x.FunctionsWorkerDynamicConcurrencyEnabled).Returns(false);
+            conf.Setup(x => x.GetValue(It.Is<string>(s => s == RpcWorkerConstants.FunctionsWorkerDynamicConcurrencyEnabled), It.IsAny<string>())).Returns("false");
             _functionsHostingConfigurations = conf.Object;
             Mock<IApplicationLifetime> applicationLifetime = new Mock<IApplicationLifetime>();
             applicationLifetime.Setup(x => x.StopApplication()).Verifiable();
