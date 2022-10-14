@@ -57,11 +57,6 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.Azure.WebJobs.Script.Benchmarks", "benchmarks\WebJobs.Script.Benchmarks\Microsoft.Azure.WebJobs.Script.Benchmarks.csproj", "{766DE3D5-4FB1-4602-9BB5-3779EECC232D}"
 EndProject
 Global
-	GlobalSection(SharedMSBuildProjectFiles) = preSolution
-		test\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems*{35c9ccb7-d8b6-4161-bb0d-bcfa7c6dcffb}*SharedItemsImports = 13
-		test\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems*{3ba93614-3a4a-49b0-bfbc-7831e2c02bb7}*SharedItemsImports = 5
-		test\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems*{edddaed1-0e37-4ed7-a595-63f686dee90a}*SharedItemsImports = 5
-	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
@@ -119,5 +114,10 @@ Global
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {85400884-5FFD-4C27-A571-58CB3C8CAAC5}
+	EndGlobalSection
+	GlobalSection(SharedMSBuildProjectFiles) = preSolution
+		test\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems*{35c9ccb7-d8b6-4161-bb0d-bcfa7c6dcffb}*SharedItemsImports = 13
+		test\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems*{3ba93614-3a4a-49b0-bfbc-7831e2c02bb7}*SharedItemsImports = 5
+		test\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems*{edddaed1-0e37-4ed7-a595-63f686dee90a}*SharedItemsImports = 5
 	EndGlobalSection
 EndGlobal
