@@ -12,7 +12,7 @@ using JsonSerializer = System.Text.Json.JsonSerializer;
 namespace Microsoft.Azure.WebJobs.Script.Config
 {
     /// <summary>
-    /// Transmission Status Telemetry HNDLWE
+    /// Transmission Status Event Handler
     /// </summary>
     internal class TransmissionStatusHandler : IDisposable
     {
