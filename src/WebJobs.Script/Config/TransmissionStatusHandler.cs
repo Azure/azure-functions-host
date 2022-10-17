@@ -16,9 +16,9 @@ namespace Microsoft.Azure.WebJobs.Script.Config
     /// </summary>
     internal class TransmissionStatusHandler : IDisposable
     {
-        private readonly DiagnosticListener _source = new (ScriptConstants.HostDiagnosticSourcePrefix + "ApplicationInsights");
+        private static readonly DiagnosticListener _source = new (ScriptConstants.HostDiagnosticSourcePrefix + "ApplicationInsights");
 
-        internal void Handler(object sender, TransmissionStatusEventArgs args)
+        internal static void Handler(object sender, TransmissionStatusEventArgs args)
         {
             if (args == null)
             {
@@ -33,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
             }
         }
 
-        internal string FormattedLog(object sender, TransmissionStatusEventArgs args)
+        internal static string FormattedLog(object sender, TransmissionStatusEventArgs args)
         {
             var transmission = sender as Transmission;
             var items = transmission?.TelemetryItems.GroupBy(n => n.GetEnvelopeName())

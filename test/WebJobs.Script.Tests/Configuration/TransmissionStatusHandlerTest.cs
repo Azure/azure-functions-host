@@ -23,7 +23,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         [Fact]
         public void FormattedLog_Failure()
         {
-            TransmissionStatusHandler handler = new ();
             Transmission transmission = new (new Uri("https://test"), new List<ITelemetry>() { new RequestTelemetry(), new EventTelemetry() }, new TimeSpan(500));
             HttpWebResponseWrapper response = new ()
             {
@@ -33,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             };
 
             TransmissionStatusEventArgs args = new (response, 100);
-            JObject log = JsonConvert.DeserializeObject<JObject>(handler.FormattedLog(transmission, args));
+            JObject log = JsonConvert.DeserializeObject<JObject>(TransmissionStatusHandler.FormattedLog(transmission, args));
 
             Assert.Equal(400, log.Value<int>("statusCode"));
             Assert.Equal("Invalid IKey", log.Value<string>("statusDescription"));
@@ -64,7 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             };
 
             TransmissionStatusEventArgs args = new (response, 100);
-            JObject log = JsonConvert.DeserializeObject<JObject>(handler.FormattedLog(transmission, args));
+            JObject log = JsonConvert.DeserializeObject<JObject>(TransmissionStatusHandler.FormattedLog(transmission, args));
 
             Assert.Equal(206, log.Value<int>("statusCode"));
             Assert.Equal("Invalid IKey", log.Value<string>("statusDescription"));
@@ -95,7 +94,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             };
 
             TransmissionStatusEventArgs args = new (response, 100);
-            JObject log = JsonConvert.DeserializeObject<JObject>(handler.FormattedLog(transmission, args));
+            JObject log = JsonConvert.DeserializeObject<JObject>(TransmissionStatusHandler.FormattedLog(transmission, args));
 
             Assert.Equal(200, log.Value<int>("statusCode"));
             Assert.Equal("ok", log.Value<string>("statusDescription"));

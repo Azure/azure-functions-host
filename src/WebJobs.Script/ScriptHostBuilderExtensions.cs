@@ -392,7 +392,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     if (t.TelemetryChannel is ServerTelemetryChannel channel)
                     {
-                        channel.TransmissionStatusEvent += new TransmissionStatusHandler().Handler;
+                        channel.TransmissionStatusEvent += TransmissionStatusHandler.Handler;
                     }
 
                     t.TelemetryProcessorChainBuilder.Use(next => new ScriptTelemetryProcessor(next));
