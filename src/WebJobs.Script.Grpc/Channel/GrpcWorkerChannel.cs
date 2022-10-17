@@ -14,6 +14,7 @@ using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
+using Azure.Core;
 using Google.Protobuf.Collections;
 using Google.Protobuf.WellKnownTypes;
 using Microsoft.Azure.WebJobs.Logging;
@@ -492,6 +493,20 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             SendStreamingMessage(new StreamingMessage
             {
                 FunctionEnvironmentReloadRequest = request
+            });
+
+            return _reloadTask.Task;
+        }
+
+        public Task SendFunctionWarmupRequest()
+        {
+            _workerChannelLogger.LogDebug("Sending SendFunctionWarmupRequest to WorkerProcess with Pid: '{0}'", _rpcWorkerProcess.Id);
+
+            FunctionWarmupRequest request = new FunctionWarmupRequest();
+
+            SendStreamingMessage(new StreamingMessage
+            {
+                FunctionWarmupRequest = request
             });
 
             return _reloadTask.Task;

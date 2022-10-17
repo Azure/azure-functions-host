@@ -85,6 +85,11 @@ message StreamingMessage {
 
     // Host gets the list of function load responses
     FunctionLoadResponseCollection function_load_response_collection = 32;
+
+    FunctionWarmupRequest function_warmup_request = 33;
+    
+    FunctionWarmupResponse function_warmup_response = 34;
+
   }
 }
 
@@ -285,6 +290,14 @@ message FunctionLoadResponse {
 
   // Result of load operation
   bool is_dependency_downloaded = 3;
+}
+
+message FunctionWarmupRequest {
+
+}
+
+message FunctionWarmupResponse {
+  StatusResult result = 3;
 }
 
 // Information on how a Function should be loaded and its bindings
