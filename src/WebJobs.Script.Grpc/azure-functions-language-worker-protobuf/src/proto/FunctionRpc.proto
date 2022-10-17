@@ -293,7 +293,8 @@ message FunctionLoadResponse {
 }
 
 message FunctionWarmupRequest {
-
+  // Full path of worker.config.json location
+  string worker_directory = 4;
 }
 
 message FunctionWarmupResponse {

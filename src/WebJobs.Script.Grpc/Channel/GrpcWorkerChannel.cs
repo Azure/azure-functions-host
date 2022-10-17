@@ -502,7 +502,10 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         {
             _workerChannelLogger.LogDebug("Sending SendFunctionWarmupRequest to WorkerProcess with Pid: '{0}'", _rpcWorkerProcess.Id);
 
-            FunctionWarmupRequest request = new FunctionWarmupRequest();
+            FunctionWarmupRequest request = new FunctionWarmupRequest()
+            {
+                WorkerDirectory = _workerConfig.Description.WorkerDirectory,
+            };
 
             SendStreamingMessage(new StreamingMessage
             {
