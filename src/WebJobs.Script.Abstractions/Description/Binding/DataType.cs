@@ -11,6 +11,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         Undefined,
         String,
         Binary,
-        Stream
+        Stream,
+        BindingData
     }
 }
