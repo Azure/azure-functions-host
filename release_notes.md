@@ -10,6 +10,7 @@
 - Support model-type bindings for out-of-proc workers (#8815)
 - Fix the duplicate log issue with Java ApplicationInsights agent
 - Update Node.js Worker Version to [3.5.2](https://github.com/Azure/azure-functions-nodejs-worker/releases/tag/v3.5.2)
+- Making feature flag for worker indexing opt-out instead of opt-in (#8864)
 
 
 **Release sprint:** Sprint 132

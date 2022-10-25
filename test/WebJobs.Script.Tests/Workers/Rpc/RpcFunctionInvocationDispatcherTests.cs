@@ -646,9 +646,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 testEnv.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, runtime);
             }
-            if (workerIndexing)
+            if (!workerIndexing)
             {
-                testEnv.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing);
+                testEnv.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagDisableWorkerIndexing);
             }
             if (placeholder)
             {
