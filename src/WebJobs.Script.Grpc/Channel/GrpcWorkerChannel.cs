@@ -6,7 +6,6 @@ using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Diagnostics.Metrics;
 using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
@@ -53,11 +52,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private readonly Dictionary<MsgType, Queue<PendingItem>> _pendingActions = new ();
         private readonly ChannelWriter<OutboundGrpcEvent> _outbound;
         private readonly ChannelReader<InboundGrpcEvent> _inbound;
-        private Meter _workerInvocationMeter;
-        private Meter _workerInvocationSucceededMeter;
-        private Counter<int> _workerInvocationCounter;
-        private Counter<int> _workerSuccessfulInvocationCounter;
-        private ConcurrentDictionary<string, WorkerInvocationMetrics> _invocationMetricsPerWorkerId = new ();
         private IDisposable _functionLoadRequestResponseEvent;
         private bool _disposed;
         private bool _disposing;
@@ -84,7 +78,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private bool _isSharedMemoryDataTransferEnabled;
         private bool _cancelCapabilityEnabled;
 
-        private System.Timers.Timer _invocationTimer;
         private System.Timers.Timer _timer;
 
         internal GrpcWorkerChannel(
@@ -133,36 +126,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _startLatencyMetric = metricsLogger?.LatencyEvent(string.Format(MetricEventNames.WorkerInitializeLatency, workerConfig.Description.Language, attemptCount));
 
             _state = RpcWorkerChannelState.Default;
-
-            if (_invocationTimer == null)
-            {
-                _invocationTimer = new System.Timers.Timer()
-                {
-                    AutoReset = false,
-                    Interval = TimeSpan.FromMinutes(10).TotalMilliseconds
-                };
-
-                _invocationTimer.Elapsed += OnInvocationTimer;
-                _invocationTimer.Start();
-            }
-
-            string workerTotalInvocationMetric = string.Format(MetricEventNames.WorkerInvoked, Id);
-            string workerSuccessfulInvocationMetric = string.Format(MetricEventNames.WorkerInvokeSucceeded, Id);
-            _workerInvocationMeter = new Meter(workerTotalInvocationMetric, "1.0.0");
-            _workerInvocationCounter = _workerInvocationMeter.CreateCounter<int>(name: workerTotalInvocationMetric, Id);
-            _workerInvocationSucceededMeter = new Meter(workerSuccessfulInvocationMetric, "1.0.0");
-            _workerSuccessfulInvocationCounter = _workerInvocationSucceededMeter.CreateCounter<int>(name: workerSuccessfulInvocationMetric);
-
-            using MeterListener meterListener = new MeterListener();
-            meterListener.InstrumentPublished = (instrument, listener) =>
-            {
-                if (instrument.Meter.Name == workerTotalInvocationMetric || instrument.Meter.Name == workerSuccessfulInvocationMetric)
-                {
-                    listener.EnableMeasurementEvents(instrument);
-                }
-            };
-            meterListener.SetMeasurementEventCallback<int>(OnMeasurementRecorded);
-            meterListener.Start();
         }
 
         public string Id => _workerId;
@@ -172,11 +135,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         public IWorkerProcess WorkerProcess => _rpcWorkerProcess;
 
         internal RpcWorkerConfig Config => _workerConfig;
-
-        private void OnMeasurementRecorded<T>(Instrument instrument, T measurement, ReadOnlySpan<KeyValuePair<string, object>> tags, object state)
-        {
-            _metricsLogger.LogEvent(instrument.Name);
-        }
 
         private void ProcessItem(InboundGrpcEvent msg)
         {
@@ -673,9 +631,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     context.CancellationToken.Register(() => SendInvocationCancel(invocationRequest.InvocationId));
                 }
 
-                WorkerInvocationMetrics.IncrementTotalInvocationsOfWorker(Id, _invocationMetricsPerWorkerId);
+                _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvoked, Id), functionName: context.FunctionMetadata.Name);
                 _workerChannelLogger.LogInformation("Sending invocation request with invocationId: {invocationId} on workerId: {workerId} for function: {functionName}", invocationRequest.InvocationId, Id, context.FunctionMetadata.Name);
-                _workerInvocationCounter.Add(1);
 
                 await SendStreamingMessageAsync(new StreamingMessage
                 {
@@ -832,9 +789,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             if (_executingInvocations.TryRemove(invokeResponse.InvocationId, out ScriptInvocationContext context)
                 && invokeResponse.Result.IsInvocationSuccess(context.ResultSource, capabilityEnabled))
             {
-                WorkerInvocationMetrics.IncrementSuccessfulInvocationsOfWorker(Id, _invocationMetricsPerWorkerId);
+                _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvokeSucceeded, Id));
                 _workerChannelLogger.LogInformation("Received successful invocation response for invocationId: {invocationId} and workerId: {workerId}", invokeResponse.InvocationId, Id);
-                _workerSuccessfulInvocationCounter.Add(1);
 
                 try
                 {
@@ -1091,7 +1047,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     _startLatencyMetric?.Dispose();
                     _workerInitTask?.TrySetCanceled();
                     _timer?.Dispose();
-                    _invocationTimer?.Dispose();
 
                     // unlink function inputs
                     foreach (var link in _inputLinks)
@@ -1267,63 +1222,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             {
                 // Specifically ignore this race - we're exiting and that's okay
             }
-        }
-
-        internal void OnInvocationTimer(object sender, System.Timers.ElapsedEventArgs e)
-        {
-            if (_disposed)
-            {
-                return;
-            }
-
-            try
-            {
-                IdentifyFaultyLanguageWorker();
-            }
-            catch (Exception ex) when (!ex.IsFatal())
-            {
-                // Don't allow background exceptions to escape
-                // E.g. when a rpc channel is shutting down we can process exceptions
-                _workerChannelLogger.LogError(ex, "Exception while identifying faulty language workers");
-            }
-            try
-            {
-                _invocationTimer.Start();
-            }
-            catch (ObjectDisposedException)
-            {
-                // Specifically ignore this race - we're exiting and that's okay
-            }
-        }
-
-        internal void IdentifyFaultyLanguageWorker()
-        {
-            const int failureThreshold = 30;
-
-            ConcurrentDictionary<string, int> failureRatePerWorkerId = new ConcurrentDictionary<string, int>();
-
-            foreach (var item in _invocationMetricsPerWorkerId)
-            {
-                int failureRateOfWorker = item.Value.TotalInvocations > 0 ? (item.Value.TotalInvocations - item.Value.SuccessfulInvocations) * 100 / item.Value.TotalInvocations : 0;
-                failureRatePerWorkerId[item.Key] = failureRateOfWorker;
-
-                _workerChannelLogger.LogInformation(
-                    "WorkerId: {workerId}, Failure rate: {failureRateOfWorker}, TotalInvocations : {totalInvocations}, SuccessfulInvocations : {successfulInvocations}, AverageInvocationLatency : {averageInvocationLatency}",
-                    item.Key, failureRateOfWorker, item.Value.TotalInvocations, item.Value.SuccessfulInvocations, item.Value.AverageInvocationLatency);
-            }
-
-            var sortedFailureRatePerWorkerId = from item in failureRatePerWorkerId orderby item.Value descending select item;
-            var workerIdToRecycle = sortedFailureRatePerWorkerId.First().Key;
-            var failureRate = failureRatePerWorkerId[workerIdToRecycle];
-
-            if (failureRate > failureThreshold)
-            {
-                _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerRecycled, Id));
-                _workerChannelLogger.LogDebug("Faulty WorkerId to be Recycled: {workerIdToRecycle}, Failure rate: {failureRate}", workerIdToRecycle, failureRate);
-            }
-
-            // Reseting the dictionary
-            _invocationMetricsPerWorkerId = new ConcurrentDictionary<string, WorkerInvocationMetrics>();
         }
 
         private void AddSample<T>(List<T> samples, T sample)

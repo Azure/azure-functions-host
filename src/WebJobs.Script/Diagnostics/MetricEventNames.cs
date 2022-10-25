@@ -27,7 +27,6 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         public const string WorkerInitializeLatency = "host.startup.outofproc.{0}worker.initialize.attempt{1}.latency";
         public const string WorkerInvoked = "{0}worker.invoke";
         public const string WorkerInvokeSucceeded = "{0}worker.invoke.succeeded";
-        public const string WorkerRecycled = "{0}worker.recycle";
 
         // FunctionMetadataprovider events
         public const string ReadFunctionsMetadata = "functionmetadataprovider.readfunctionsmetadata";
