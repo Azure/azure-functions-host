@@ -911,7 +911,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static bool CanWorkerIndex(IEnumerable<RpcWorkerConfig> workerConfigs, IEnvironment environment)
         {
-            if (!FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableWorkerIndexing, environment))
+            if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagDisableWorkerIndexing, environment))
             {
                 return false;
             }
