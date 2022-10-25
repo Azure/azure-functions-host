@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Hosting;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -28,9 +29,11 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
         private readonly Timer _timer;
         private readonly TimeSpan _interval;
         private readonly ScaleOptions _scaleOptions;
+        private readonly ITargetScalerManager _targetScalerManager;
+        private readonly IFunctionsHostingConfiguration _functionsHostingConfiguration;
         private bool _disposed;
 
-        public FunctionsScaleMonitorService(IScaleMonitorManager monitorManager, IScaleMetricsRepository metricsRepository, IPrimaryHostStateProvider primaryHostStateProvider, IEnvironment environment, ILoggerFactory loggerFactory, IOptions<ScaleOptions> scaleOptions)
+        public FunctionsScaleMonitorService(IScaleMonitorManager monitorManager, ITargetScalerManager targetScalerManager, IScaleMetricsRepository metricsRepository, IPrimaryHostStateProvider primaryHostStateProvider, IEnvironment environment, ILoggerFactory loggerFactory, IOptions<ScaleOptions> scaleOptions, IFunctionsHostingConfiguration functionsHostingConfiguration)
         {
             _monitorManager = monitorManager;
             _metricsRepository = metricsRepository;
@@ -41,6 +44,8 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
 
             _interval = _scaleOptions.ScaleMetricsSampleInterval;
             _timer = new Timer(OnTimer, null, Timeout.Infinite, Timeout.Infinite);
+            _targetScalerManager = targetScalerManager;
+            _functionsHostingConfiguration = functionsHostingConfiguration;
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
@@ -74,20 +79,24 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
             SetTimerInterval((int)_interval.TotalMilliseconds);
         }
 
-        private async Task TakeMetricsSamplesAsync()
+        internal async Task TakeMetricsSamplesAsync()
         {
             try
             {
                 // get the monitors
                 // if the host is offline, no monitors will be returned
-                var monitors = _monitorManager.GetMonitors();
+                var scaleMonitors = _monitorManager.GetMonitors();
+                var targetScalers = _targetScalerManager.GetTargetScalers();
 
-                if (monitors.Any())
+                FunctionsScaleManager.GetScalersToSample(_environment, _functionsHostingConfiguration, scaleMonitors, targetScalers,
+                    out List<IScaleMonitor> scaleMonitorsToProcess, out List<ITargetScaler> targetScalersToProcess);
+
+                if (scaleMonitorsToProcess.Any())
                 {
-                    _logger.LogDebug($"Taking metrics samples for {monitors.Count()} monitor(s).");
+                    _logger.LogDebug($"Taking metrics samples for {scaleMonitorsToProcess.Count()} monitor(s).");
 
                     var metricsMap = new Dictionary<IScaleMonitor, ScaleMetrics>();
-                    foreach (var monitor in monitors)
+                    foreach (var monitor in scaleMonitorsToProcess)
                     {
                         ScaleMetrics metrics = null;
                         try
