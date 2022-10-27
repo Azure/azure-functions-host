@@ -133,6 +133,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 {
                     BindingContext bindingContext = new BindingContext
                     {
+                        BindingMetadata = binding.Metadata,
                         Binder = binder,
                         BindingData = binder.BindingData,
                         DataType = binding.Metadata.DataType ?? DataType.String,
@@ -162,6 +163,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 {
                     BindingContext bindingContext = new BindingContext
                     {
+                        BindingMetadata = binding.Metadata,
                         TriggerValue = input,
                         Binder = binder,
                         BindingData = binder.BindingData,

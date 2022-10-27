@@ -39,6 +39,8 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         /// </summary>
         public object Value { get; set; }
 
+        public BindingMetadata BindingMetadata { get; set; }
+
         /// <summary>
         /// Gets or sets the collection of binding data for this invocation.
         /// </summary>

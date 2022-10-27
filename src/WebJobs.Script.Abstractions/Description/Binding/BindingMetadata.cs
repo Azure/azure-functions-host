@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
@@ -45,6 +46,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         [JsonConverter(typeof(StringEnumConverter))]
         public Cardinality? Cardinality { get; set; }
+
+        /// <summary>
+        /// Gets all the properties tagged to this instance.
+        /// </summary>
+        public IDictionary<string, object> Properties { get; }
 
         /// <summary>
         /// Gets a value indicating whether this binding is a trigger binding.

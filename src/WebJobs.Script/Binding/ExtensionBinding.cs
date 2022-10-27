@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Description;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
+using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Newtonsoft.Json.Linq;
 
@@ -75,7 +76,11 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         {
             context.Attributes = Attributes.ToArray();
 
-            if (_binding.DefaultType == typeof(IAsyncCollector<byte[]>))
+            if (context.BindingMetadata.SupportsDeferredBinding())
+            {
+                await BindDeferred(context);
+            }
+            else if (_binding.DefaultType == typeof(IAsyncCollector<byte[]>))
             {
                 await BindAsyncCollectorAsync<byte[]>(context);
             }
