@@ -71,6 +71,9 @@ namespace Microsoft.Azure.WebJobs.Script
                     {
                         _logger.LogDebug("Fallback to host indexing as worker denied indexing");
                         functions = await _hostFunctionMetadataProvider.GetFunctionMetadataAsync(workerConfigs, environment, forceRefresh);
+                        workerIndexing = false;
+                        string flags = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags);
+                        Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, $"{flags}, {ScriptConstants.FeatureFlagDisableWorkerIndexing}");
                     }
                     else if (!IsNullOrEmpty(rawFunctions))
                     {
