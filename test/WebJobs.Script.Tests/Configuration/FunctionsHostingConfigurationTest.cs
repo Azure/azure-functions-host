@@ -60,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 await Task.Delay(500);
                 Assert.Equal(conf.GetValue(testKey), null);
 
-                Assert.True(_loggerProvider.GetAllLogMessages().Where(x => x.FormattedMessage.StartsWith("Updaiting FunctionsHostingConfigurations")).Count() == 3);
+                Assert.True(_loggerProvider.GetAllLogMessages().Where(x => x.FormattedMessage.StartsWith("Updating FunctionsHostingConfigurations")).Count() == 3);
             }
         }
 
