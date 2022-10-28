@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
@@ -33,6 +34,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         /// Gets or sets the type of the binding.
         /// </summary>
         public string Type { get; set; }
+
+        /// <summary>
+        /// Gets or sets the binding properties.
+        /// </summary>
+        public IDictionary<string, object> Properties { get; set; }
 
         /// <summary>
         /// Gets or sets the direction of the binding.
@@ -81,6 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             string bindingDirectionValue = (string)raw["direction"];
             string connection = (string)raw["connection"];
             string bindingType = (string)raw["type"];
+            var properties = raw["properties"].ToObject<IDictionary<string, object>>();
             BindingDirection bindingDirection = default(BindingDirection);
 
             if (!string.IsNullOrEmpty(bindingDirectionValue) &&
@@ -94,6 +101,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             bindingMetadata.Direction = bindingDirection;
             bindingMetadata.Connection = connection;
             bindingMetadata.Raw = raw;
+            bindingMetadata.Properties = properties;
 
             return bindingMetadata;
         }
