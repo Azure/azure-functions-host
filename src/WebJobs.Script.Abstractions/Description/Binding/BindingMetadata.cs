@@ -87,7 +87,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             string bindingDirectionValue = (string)raw["direction"];
             string connection = (string)raw["connection"];
             string bindingType = (string)raw["type"];
-            var properties = raw["properties"].ToObject<IDictionary<string, object>>();
+            var properties = raw["properties"] != null
+                                ? raw["properties"].ToObject<IDictionary<string, object>>()
+                                : new Dictionary<string, object>();
+
             BindingDirection bindingDirection = default(BindingDirection);
 
             if (!string.IsNullOrEmpty(bindingDirectionValue) &&
