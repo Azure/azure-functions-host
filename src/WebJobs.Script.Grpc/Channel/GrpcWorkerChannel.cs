@@ -634,7 +634,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 }
 
                 _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvoked, Id), functionName: context.FunctionMetadata.Name);
-                _workerChannelLogger.LogInformation("Sending invocation request with invocationId: {invocationId} on workerId: {workerId} for function: {functionName}", invocationRequest.InvocationId, Id, context.FunctionMetadata.Name);
 
                 await SendStreamingMessageAsync(new StreamingMessage
                 {
@@ -792,7 +791,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 && invokeResponse.Result.IsInvocationSuccess(context.ResultSource, capabilityEnabled))
             {
                 _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvokeSucceeded, Id));
-                _workerChannelLogger.LogInformation("Received successful invocation response for invocationId: {invocationId} and workerId: {workerId}", invokeResponse.InvocationId, Id);
 
                 try
                 {
