@@ -846,6 +846,10 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     }
                 }
             }
+            else
+            {
+                _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvokeFailed, Id));
+            }
         }
 
         /// <summary>
