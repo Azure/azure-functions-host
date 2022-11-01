@@ -129,6 +129,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     JObject workerConfig = JObject.Parse(json);
                     RpcWorkerDescription workerDescription = workerConfig.Property(WorkerConstants.WorkerDescription).Value.ToObject<RpcWorkerDescription>();
                     workerDescription.WorkerDirectory = workerDir;
+                    _environment.SetEnvironmentVariable(WorkerConstants.FunctionsWorkerDirectorySettingName, workerDir);
 
                     //Read the profiles from worker description and load the profile for which the conditions match
                     JToken profiles = workerConfig.GetValue(WorkerConstants.WorkerDescriptionProfiles);
