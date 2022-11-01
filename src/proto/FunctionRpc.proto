@@ -188,7 +188,7 @@ message WorkerTerminate {
 message FileChangeEventRequest {
   // Types of File change operations (See link for more info: https://msdn.microsoft.com/en-us/library/t6xf43e0(v=vs.110).aspx)
   enum Type {
-	  Unknown = 0;
+    Unknown = 0;
     Created = 1;
     Deleted = 2;
     Changed = 4;
@@ -370,14 +370,14 @@ message InvocationRequest {
 
 // Host sends ActivityId, traceStateString and Tags from host
 message RpcTraceContext {
-	// This corresponds to Activity.Current?.Id
-	string trace_parent = 1;
+  // This corresponds to Activity.Current?.Id
+  string trace_parent = 1;
 
-	// This corresponds to Activity.Current?.TraceStateString
-	string trace_state = 2;
+  // This corresponds to Activity.Current?.TraceStateString
+  string trace_state = 2;
 
-	// This corresponds to Activity.Current?.Tags
-	map<string, string> attributes = 3;
+  // This corresponds to Activity.Current?.Tags
+  map<string, string> attributes = 3;
 }
 
 // Host sends retry context for a function invocation
@@ -430,6 +430,7 @@ message TypedData {
     CollectionString collection_string = 9;
     CollectionDouble collection_double = 10;
     CollectionSInt64 collection_sint64 = 11;
+    ModelBindingData model_binding_data = 12;
   }
 }
 
@@ -497,20 +498,20 @@ message ParameterBinding {
 
 // Used to describe a given binding on load
 message BindingInfo {
-    // Indicates whether it is an input or output binding (or a fancy inout binding)
-    enum Direction {
-      in = 0;
-      out = 1;
-      inout = 2;
-    }
+  // Indicates whether it is an input or output binding (or a fancy inout binding)
+  enum Direction {
+    in = 0;
+    out = 1;
+    inout = 2;
+  }
 
-    // Indicates the type of the data for the binding
-    enum DataType {
-      undefined = 0;
-      string = 1;
-      binary = 2;
-      stream = 3;
-    }
+  // Indicates the type of the data for the binding
+  enum DataType {
+    undefined = 0;
+    string = 1;
+    binary = 2;
+    stream = 3;
+  }
 
   // Type of binding (e.g. HttpTrigger)
   string type = 2;
@@ -519,6 +520,9 @@ message BindingInfo {
   Direction direction = 3;
 
   DataType data_type = 4;
+
+  // Properties for binding metadata
+  map<string, string> properties = 5;
 }
 
 // Used to send logs back to the Host
@@ -583,13 +587,13 @@ message RpcException {
   // Textual message describing the exception
   string message = 2;
 
-  // Worker specifies whether exception is a user exception, 
-  // for purpose of application insights logging. Defaults to false. 
+  // Worker specifies whether exception is a user exception,
+  // for purpose of application insights logging. Defaults to false.
   bool is_user_exception = 4;
 
   // Type of exception. If it's a user exception, the type is passed along to app insights.
   // Otherwise, it's ignored for now.
-  string type = 5; 
+  string type = 5;
 }
 
 // Http cookie type. Note that only name and value are used for Http requests
@@ -647,4 +651,21 @@ message RpcHttp {
   map<string,NullableString> nullable_headers = 20;
   map<string,NullableString> nullable_params = 21;
   map<string,NullableString> nullable_query = 22;
+}
+
+// Message representing Microsoft.Azure.WebJobs.ParameterBindingData
+// Used for hydrating SDK-type bindings in out-of-proc workers
+message ModelBindingData
+{
+    // The version of the binding data content
+    string version = 1;
+
+    // The extension source of the binding data
+    string source = 2;
+
+    // The content type of the binding data content
+    string content_type = 3;
+
+    // The binding data content
+    bytes content = 4;
 }
