@@ -633,6 +633,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     context.CancellationToken.Register(() => SendInvocationCancel(invocationRequest.InvocationId));
                 }
 
+                _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvoked, Id), functionName: context.FunctionMetadata.Name);
+
                 await SendStreamingMessageAsync(new StreamingMessage
                 {
                     InvocationRequest = invocationRequest
@@ -785,61 +787,69 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             // Check if the worker supports logging user-code-thrown exceptions to app insights
             bool capabilityEnabled = !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.EnableUserCodeException));
 
-            if (_executingInvocations.TryRemove(invokeResponse.InvocationId, out ScriptInvocationContext context)
-                && invokeResponse.Result.IsInvocationSuccess(context.ResultSource, capabilityEnabled))
+            if (_executingInvocations.TryRemove(invokeResponse.InvocationId, out ScriptInvocationContext context))
             {
-                try
+                if (invokeResponse.Result.IsInvocationSuccess(context.ResultSource, capabilityEnabled))
                 {
-                    StringBuilder logBuilder = new StringBuilder();
-                    bool usedSharedMemory = false;
+                    _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvokeSucceeded, Id));
 
-                    foreach (ParameterBinding binding in invokeResponse.OutputData)
+                    try
                     {
-                        switch (binding.RpcDataCase)
+                        StringBuilder logBuilder = new StringBuilder();
+                        bool usedSharedMemory = false;
+
+                        foreach (ParameterBinding binding in invokeResponse.OutputData)
                         {
-                            case ParameterBindingType.RpcSharedMemory:
-                                logBuilder.AppendFormat("{0}:{1},", binding.Name, binding.RpcSharedMemory.Count);
-                                usedSharedMemory = true;
-                                break;
-                            default:
-                                break;
+                            switch (binding.RpcDataCase)
+                            {
+                                case ParameterBindingType.RpcSharedMemory:
+                                    logBuilder.AppendFormat("{0}:{1},", binding.Name, binding.RpcSharedMemory.Count);
+                                    usedSharedMemory = true;
+                                    break;
+                                default:
+                                    break;
+                            }
+                        }
+
+                        if (usedSharedMemory)
+                        {
+                            _workerChannelLogger.LogDebug("Shared memory usage for response of invocation Id: {Id} is {SharedMemoryUsage}", invokeResponse.InvocationId, logBuilder.ToString());
+                        }
+
+                        IDictionary<string, object> bindingsDictionary = await invokeResponse.OutputData
+                            .ToDictionaryAsync(binding => binding.Name, binding => GetBindingDataAsync(binding, invokeResponse.InvocationId));
+
+                        var result = new ScriptInvocationResult()
+                        {
+                            Outputs = bindingsDictionary,
+                            Return = invokeResponse?.ReturnValue?.ToObject()
+                        };
+                        context.ResultSource.SetResult(result);
+                    }
+                    catch (Exception responseEx)
+                    {
+                        context.ResultSource.TrySetException(responseEx);
+                    }
+                    finally
+                    {
+                        // Free memory allocated by the host (for input bindings) which was needed only for the duration of this invocation
+                        if (!_sharedMemoryManager.TryFreeSharedMemoryMapsForInvocation(invokeResponse.InvocationId))
+                        {
+                            _workerChannelLogger.LogWarning($"Cannot free all shared memory resources for invocation: {invokeResponse.InvocationId}");
+                        }
+
+                        // List of shared memory maps that were produced by the worker (for output bindings)
+                        IList<string> outputMaps = GetOutputMaps(invokeResponse.OutputData);
+                        if (outputMaps.Count > 0)
+                        {
+                            // If this invocation was using any shared memory maps produced by the worker, close them to free memory
+                            SendCloseSharedMemoryResourcesForInvocationRequest(outputMaps);
                         }
                     }
-
-                    if (usedSharedMemory)
-                    {
-                        _workerChannelLogger.LogDebug("Shared memory usage for response of invocation Id: {Id} is {SharedMemoryUsage}", invokeResponse.InvocationId, logBuilder.ToString());
-                    }
-
-                    IDictionary<string, object> bindingsDictionary = await invokeResponse.OutputData
-                        .ToDictionaryAsync(binding => binding.Name, binding => GetBindingDataAsync(binding, invokeResponse.InvocationId));
-
-                    var result = new ScriptInvocationResult()
-                    {
-                        Outputs = bindingsDictionary,
-                        Return = invokeResponse?.ReturnValue?.ToObject()
-                    };
-                    context.ResultSource.SetResult(result);
                 }
-                catch (Exception responseEx)
+                else
                 {
-                    context.ResultSource.TrySetException(responseEx);
-                }
-                finally
-                {
-                    // Free memory allocated by the host (for input bindings) which was needed only for the duration of this invocation
-                    if (!_sharedMemoryManager.TryFreeSharedMemoryMapsForInvocation(invokeResponse.InvocationId))
-                    {
-                        _workerChannelLogger.LogWarning($"Cannot free all shared memory resources for invocation: {invokeResponse.InvocationId}");
-                    }
-
-                    // List of shared memory maps that were produced by the worker (for output bindings)
-                    IList<string> outputMaps = GetOutputMaps(invokeResponse.OutputData);
-                    if (outputMaps.Count > 0)
-                    {
-                        // If this invocation was using any shared memory maps produced by the worker, close them to free memory
-                        SendCloseSharedMemoryResourcesForInvocationRequest(outputMaps);
-                    }
+                    _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvokeFailed, Id));
                 }
             }
         }
