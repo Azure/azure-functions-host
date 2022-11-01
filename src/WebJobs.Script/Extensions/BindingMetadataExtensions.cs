@@ -10,12 +10,9 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
 {
     public static class BindingMetadataExtensions
     {
-        internal const string SupportsDeferredBindingKey = "SupportsDeferredBinding";
-        internal const string SkipDeferredBindingKey = "SkipDeferredBinding";
+        public static bool SupportsDeferredBinding(this BindingMetadata metadata) => GetBoolProperty(metadata.Properties, ScriptConstants.SupportsDeferredBindingKey);
 
-        public static bool SupportsDeferredBinding(this BindingMetadata metadata) => GetBoolProperty(metadata.Properties, SupportsDeferredBindingKey);
-
-        public static bool SkipDeferredBinding(this BindingMetadata metadata) => GetBoolProperty(metadata.Properties, SkipDeferredBindingKey);
+        public static bool SkipDeferredBinding(this BindingMetadata metadata) => GetBoolProperty(metadata.Properties, ScriptConstants.SkipDeferredBindingKey);
 
         private static bool GetBoolProperty(IDictionary<string, object> properties, string propertyKey)
         {

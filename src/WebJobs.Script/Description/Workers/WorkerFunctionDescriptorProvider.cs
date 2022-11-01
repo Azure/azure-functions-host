@@ -71,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 bool skipDeferredBinding = BindingAttributeContainsExpression(bindings);
                 if (skipDeferredBinding)
                 {
-                    triggerMetadata.Properties.Add(BindingMetadataExtensions.SkipDeferredBindingKey, true);
+                    triggerMetadata.Properties.Add(ScriptConstants.SkipDeferredBindingKey, true);
                 }
             }
 

@@ -46,7 +46,8 @@ namespace Microsoft.Azure.WebJobs.Script.Extensibility
                             : new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
 
             IsTrigger = Type.EndsWith("trigger", StringComparison.OrdinalIgnoreCase);
-            SupportsDeferredBinding = Properties.TryGetValue("supportsDeferredBinding", out var _);
+            SupportsDeferredBinding = Properties.TryGetValue(ScriptConstants.SupportsDeferredBindingKey, out bool supportsDeferredBinding)
+                                        ? supportsDeferredBinding : false;
         }
 
         /// <summary>
@@ -92,7 +93,7 @@ namespace Microsoft.Azure.WebJobs.Script.Extensibility
         /// <summary>
         /// Gets a value indicating whether deferred binding is supported.
         /// </summary>
-        public bool SupportsDeferredBinding { get; set; } = false;
+        public bool SupportsDeferredBinding { get; private set; }
 
         /// <summary>
         /// Helper method for retrieving information from <see cref="Metadata"/>.
