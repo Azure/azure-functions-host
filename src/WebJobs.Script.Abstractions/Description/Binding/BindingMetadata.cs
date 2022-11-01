@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public BindingMetadata()
         {
-            Properties = new Dictionary<string, object>();
+            Properties = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
         }
 
         /// <summary>
