@@ -117,13 +117,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         internal bool BindingAttributeContainsExpression(IEnumerable<FunctionBinding> bindings)
         {
-            BindingFlags flags = BindingFlags.Instance | BindingFlags.Public;
-
-            if (bindings.Count() <= 0)
-            {
-                return false;
-            }
-
             foreach (ExtensionBinding binding in bindings)
             {
                 if (binding.Metadata.IsTrigger)
@@ -135,7 +128,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 foreach (var attribute in binding.Attributes)
                 {
                     return attribute.GetType()
-                                    .GetProperties(flags)
+                                    .GetProperties(BindingFlags.Instance | BindingFlags.Public)
                                     .Any(prop => prop.PropertyType == typeof(string) && _expressionRegex.IsMatch((string)prop.GetValue(attribute)));
                 }
             }
