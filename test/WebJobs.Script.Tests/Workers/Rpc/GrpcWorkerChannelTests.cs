@@ -689,6 +689,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
+        public async Task SendInvocationRequest_PublishesOutboundEvent_ReceiveInvocationResponse()
+        {
+            await CreateDefaultWorkerChannel();
+            _metricsLogger.ClearCollections();
+            var invocationid = Guid.NewGuid();
+            ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(invocationid, new TaskCompletionSource<ScriptInvocationResult>());
+            await _workerChannel.SendInvocationRequest(scriptInvocationContext);
+            _testFunctionRpcService.PublishInvocationResponseEvent(invocationid.ToString());
+            await Task.Delay(500);
+            var testWorkerId = _workerId.ToLowerInvariant();
+            var traces = _logger.GetLogMessages();
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"InvocationResponse received for invocation id: '{invocationid}'")));
+            Assert.False(string.IsNullOrEmpty(_metricsLogger.LoggedEvents.FirstOrDefault(e => e.Contains($"{string.Format(MetricEventNames.WorkerInvoked, testWorkerId)}_{scriptInvocationContext.FunctionMetadata.Name}"))));
+            Assert.False(string.IsNullOrEmpty(_metricsLogger.LoggedEvents.FirstOrDefault(e => e.Contains(string.Format(MetricEventNames.WorkerInvokeSucceeded, testWorkerId)))));
+            Assert.True(string.IsNullOrEmpty(_metricsLogger.LoggedEvents.FirstOrDefault(e => e.Contains(string.Format(MetricEventNames.WorkerInvokeFailed, testWorkerId)))));
+        }
+
+        [Fact]
         public async Task ReceivesInboundEvent_InvocationResponse()
         {
             await CreateDefaultWorkerChannel();
