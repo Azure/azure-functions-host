@@ -352,7 +352,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             await Task.Delay(500);
             var traces = _logger.GetLogMessages();
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, _expectedLogMsg)));
-            Assert.False(string.IsNullOrEmpty(_metricsLogger.LoggedEvents.FirstOrDefault(e => e.Contains($"{_workerId}{MetricEventNames.WorkerInvoked}{scriptInvocationContext.FunctionMetadata.Name}"))));
+            Assert.False(string.IsNullOrEmpty(_metricsLogger.LoggedEvents.FirstOrDefault(e => e.Contains("testworkeridworker.invoke_js1"))));
         }
 
         [Fact]
