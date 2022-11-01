@@ -134,7 +134,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     BindingContext bindingContext = new BindingContext
                     {
                         Binder = binder,
-                        BindingData = binder.BindingData,
+                        BindingMetadata = binding.Metadata,
                         DataType = binding.Metadata.DataType ?? DataType.String,
                         Cardinality = binding.Metadata.Cardinality ?? Cardinality.One
                     };
@@ -164,7 +164,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     {
                         TriggerValue = input,
                         Binder = binder,
-                        BindingData = binder.BindingData,
+                        BindingMetadata = binding.Metadata,
                         Value = value
                     };
                     await binding.BindAsync(bindingContext).ConfigureAwait(false);

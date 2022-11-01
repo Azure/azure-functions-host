@@ -12,6 +12,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
+using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 
@@ -127,7 +128,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected virtual ParameterDescriptor CreateTriggerParameter(BindingMetadata triggerMetadata, Type parameterType = null)
         {
-            if (TryParseTriggerParameter(triggerMetadata.Raw, out ParameterDescriptor triggerParameter, parameterType))
+            if (TryParseTriggerParameter(triggerMetadata, out ParameterDescriptor triggerParameter, parameterType))
             {
                 triggerParameter.IsTrigger = true;
             }
@@ -140,11 +141,17 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return triggerParameter;
         }
 
-        private bool TryParseTriggerParameter(JObject metadata, out ParameterDescriptor parameterDescriptor, Type parameterType = null)
+        private bool TryParseTriggerParameter(BindingMetadata metadata, out ParameterDescriptor parameterDescriptor, Type parameterType = null)
         {
             parameterDescriptor = null;
 
-            ScriptBindingContext bindingContext = new ScriptBindingContext(metadata);
+            ScriptBindingContext bindingContext = new ScriptBindingContext(metadata.Raw);
+
+            if (bindingContext.SupportsDeferredBinding && metadata.SkipDeferredBinding())
+            {
+                bindingContext.SupportsDeferredBinding = false;
+            }
+
             ScriptBinding binding = null;
             foreach (var provider in BindingProviders)
             {

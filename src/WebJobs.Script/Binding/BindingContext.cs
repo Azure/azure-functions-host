@@ -40,8 +40,8 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         public object Value { get; set; }
 
         /// <summary>
-        /// Gets or sets the collection of binding data for this invocation.
+        /// Gets or sets the binding metadata.
         /// </summary>
-        public IReadOnlyDictionary<string, object> BindingData { get; set; }
+        public BindingMetadata BindingMetadata { get; set; }
     }
 }
