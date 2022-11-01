@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Extensibility
             Cardinality = GetMetadataValue<string>("cardinality");
             Properties = Metadata.TryGetValue("properties", StringComparison.OrdinalIgnoreCase, out JToken value)
                             ? new Dictionary<string, object>(value.ToObject<IDictionary<string, object>>(), StringComparer.OrdinalIgnoreCase)
-                            : ImmutableDictionary<string, object>.Empty;
+                            : new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
 
             IsTrigger = Type.EndsWith("trigger", StringComparison.OrdinalIgnoreCase);
             SupportsDeferredBinding = Properties.TryGetValue("supportsDeferredBinding", out var _);
