@@ -18,6 +18,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     {
         private const string _systemReturnParameterBindingName = "$return";
 
+        public BindingMetadata()
+        {
+            Properties = new Dictionary<string, object>();
+        }
+
         /// <summary>
         /// Gets or sets the name of the binding.
         /// </summary>
@@ -39,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         /// <summary>
         /// Gets or sets the binding properties.
         /// </summary>
-        public IDictionary<string, object> Properties { get; set; }
+        public IDictionary<string, object> Properties { get; private set; }
 
         /// <summary>
         /// Gets or sets the direction of the binding.
@@ -88,9 +93,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             string bindingDirectionValue = (string)raw["direction"];
             string connection = (string)raw["connection"];
             string bindingType = (string)raw["type"];
-            IDictionary<string, object> properties = raw.TryGetValue("properties", StringComparison.OrdinalIgnoreCase, out JToken value)
-                            ? new Dictionary<string, object>(value.ToObject<IDictionary<string, object>>(), StringComparer.OrdinalIgnoreCase)
-                            : ImmutableDictionary<string, object>.Empty;
 
             BindingDirection bindingDirection = default(BindingDirection);
 
@@ -105,7 +107,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             bindingMetadata.Direction = bindingDirection;
             bindingMetadata.Connection = connection;
             bindingMetadata.Raw = raw;
-            bindingMetadata.Properties = properties;
+
+            if (raw.TryGetValue("properties", StringComparison.OrdinalIgnoreCase, out JToken value))
+            {
+                bindingMetadata.Properties = new Dictionary<string, object>(value.ToObject<IDictionary<string, object>>(), StringComparer.OrdinalIgnoreCase);
+            }
 
             return bindingMetadata;
         }
