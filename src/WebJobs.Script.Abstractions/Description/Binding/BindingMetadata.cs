@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Globalization;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
@@ -87,9 +88,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             string bindingDirectionValue = (string)raw["direction"];
             string connection = (string)raw["connection"];
             string bindingType = (string)raw["type"];
-            var properties = raw["properties"] != null
-                                ? raw["properties"].ToObject<IDictionary<string, object>>()
-                                : new Dictionary<string, object>();
+            IDictionary<string, object> properties = raw.TryGetValue("properties", StringComparison.OrdinalIgnoreCase, out JToken value)
+                            ? new Dictionary<string, object>(value.ToObject<IDictionary<string, object>>(), StringComparer.OrdinalIgnoreCase)
+                            : ImmutableDictionary<string, object>.Empty;
 
             BindingDirection bindingDirection = default(BindingDirection);
 
