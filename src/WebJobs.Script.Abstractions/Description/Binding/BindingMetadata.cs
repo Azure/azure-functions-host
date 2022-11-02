@@ -17,7 +17,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     {
         private const string _systemReturnParameterBindingName = "$return";
 
-        public BindingMetadata() : this(new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)) { }
+        public BindingMetadata() : this(new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase))
+        {
+        }
 
         [JsonConstructor]
         private BindingMetadata(Dictionary<string, object> properties)
@@ -110,10 +112,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 if (!string.IsNullOrEmpty(bindingDirectionValue) &&
                     !Enum.TryParse<BindingDirection>(bindingDirectionValue, true, out BindingDirection bindingDirection))
                 {
-                    throw new FormatException(string.Format(CultureInfo.InvariantCulture, "'{0}' is not a valid binding direction.", bindingDirectionValue));
+                    throw new FormatException(string.Format(CultureInfo.InvariantCulture, "'{0}' is not a valid binding direction.", bindingDirectionValue), ex);
                 }
 
-                throw ex;
+                throw;
             }
         }
     }
