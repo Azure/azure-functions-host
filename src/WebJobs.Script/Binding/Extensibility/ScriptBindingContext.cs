@@ -93,7 +93,7 @@ namespace Microsoft.Azure.WebJobs.Script.Extensibility
         /// <summary>
         /// Gets a value indicating whether deferred binding is supported.
         /// </summary>
-        public bool SupportsDeferredBinding { get; private set; }
+        public bool SupportsDeferredBinding { get; set; }
 
         /// <summary>
         /// Helper method for retrieving information from <see cref="Metadata"/>.
