@@ -74,7 +74,6 @@
     <ProjectReference Include="..\..\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj" />
     <ProjectReference Include="..\..\src\WebJobs.Script\WebJobs.Script.csproj" />
     <ProjectReference Include="..\..\src\WebJobs.Script.Grpc\WebJobs.Script.Grpc.csproj" />
-    <ProjectReference Include="..\..\src\WebJobs.Script.Abstractions\WebJobs.Script.Abstractions.csproj" />
   </ItemGroup>
 
   <ItemGroup>
