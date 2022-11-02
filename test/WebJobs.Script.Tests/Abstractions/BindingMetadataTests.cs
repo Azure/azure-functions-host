@@ -76,5 +76,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             FormatException exception = Assert.Throws<FormatException>(act);
             Assert.Equal("'hi' is not a valid binding direction.", exception.Message);
         }
+
+        [Fact]
+        public void BindingMetadata_Create_PropertiesIsNull_CreatesEmptyDict()
+        {
+            JObject inputBinding = JObject.Parse("{\"name\":\"myBlob\",\"direction\":\"In\",\"type\":\"blob\",\"blobPath\":\"input-container//hello.txt\",\"connection\":\"AzureWebJobsStorage\"}");
+            var result = BindingMetadata.Create(inputBinding);
+            Assert.Empty(result.Properties);
+        }
     }
 }

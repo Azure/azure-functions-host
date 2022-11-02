@@ -24,7 +24,16 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         [JsonConstructor]
         private BindingMetadata(Dictionary<string, object> properties)
         {
-            Properties = new Dictionary<string, object>(properties, StringComparer.OrdinalIgnoreCase);
+            if (properties is null)
+            {
+                Properties = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+            }
+            else
+            {
+                Properties = properties.Count > 0
+                                ? new Dictionary<string, object>(properties, StringComparer.OrdinalIgnoreCase)
+                                : properties;
+            }
         }
 
         /// <summary>
