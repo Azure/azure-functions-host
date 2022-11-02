@@ -61,7 +61,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-
         public void BindingMetadata_Create_NullJObject_Throws()
         {
             Action act = () => BindingMetadata.Create(null);
