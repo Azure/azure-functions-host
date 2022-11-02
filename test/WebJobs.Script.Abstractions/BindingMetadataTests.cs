@@ -21,8 +21,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("AzureWebJobsStorage", result.Connection);
             Assert.Equal(triggerBinding, result.Raw);
             Assert.Equal(BindingDirection.In, result.Direction);
-            Assert.True(result.Properties.TryGetValue("SupportsDeferredBinding", out bool supportsDeferredBinding));
-            Assert.False(supportsDeferredBinding);
+            Assert.True(result.Properties.TryGetValue("SupportsDeferredBinding", out var supportsDeferredBinding));
+            Assert.False((bool)supportsDeferredBinding);
             Assert.True(result.IsTrigger);
             Assert.False(result.IsReturn);
         }
@@ -38,8 +38,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("AzureWebJobsStorage", result.Connection);
             Assert.Equal(inputBinding, result.Raw);
             Assert.Equal(BindingDirection.In, result.Direction);
-            Assert.True(result.Properties.TryGetValue("SupportsDeferredBinding", out bool supportsDeferredBinding));
-            Assert.True(supportsDeferredBinding);
+            Assert.True(result.Properties.TryGetValue("SupportsDeferredBinding", out var supportsDeferredBinding));
+            Assert.True((bool)supportsDeferredBinding);
             Assert.False(result.IsTrigger);
             Assert.False(result.IsReturn);
         }
