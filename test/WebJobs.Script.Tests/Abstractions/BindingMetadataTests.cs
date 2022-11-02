@@ -61,6 +61,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+
+        public void BindingMetadata_Create_NullJObject_Throws()
+        {
+            Action act = () => BindingMetadata.Create(null);
+            ArgumentNullException exception = Assert.Throws<ArgumentNullException>(act);
+            Assert.Equal("Value cannot be null. (Parameter 'raw')", exception.Message);
+        }
+
+        [Fact]
         public void BindingMetadata_Create_InvalidDirectionFormat_Throws()
         {
             JObject outputBinding = JObject.Parse("{\"name\":\"$return\",\"direction\":\"hi\",\"type\":\"blob\",\"blobPath\":\"output-container//output.txt\",\"connection\":\"AzureWebJobsStorage\",\"properties\":{}}");

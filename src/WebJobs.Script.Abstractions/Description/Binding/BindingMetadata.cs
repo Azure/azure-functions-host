@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Globalization;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
@@ -18,9 +17,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     {
         private const string _systemReturnParameterBindingName = "$return";
 
-        public BindingMetadata()
+        public BindingMetadata() : this(new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)) { }
+
+        [JsonConstructor]
+        private BindingMetadata(Dictionary<string, object> properties)
         {
-            Properties = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+            Properties = new Dictionary<string, object>(properties, StringComparer.OrdinalIgnoreCase);
         }
 
         /// <summary>
@@ -44,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         /// <summary>
         /// Gets or sets the binding properties.
         /// </summary>
-        public IDictionary<string, object> Properties { get; private set; }
+        public IDictionary<string, object> Properties { get; }
 
         /// <summary>
         /// Gets or sets the direction of the binding.
@@ -90,30 +92,29 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         /// <returns>The new <see cref="BindingMetadata"/> instance.</returns>
         public static BindingMetadata Create(JObject raw)
         {
-            string bindingDirectionValue = (string)raw["direction"];
-            string connection = (string)raw["connection"];
-            string bindingType = (string)raw["type"];
-
-            BindingDirection bindingDirection = default(BindingDirection);
-
-            if (!string.IsNullOrEmpty(bindingDirectionValue) &&
-                !Enum.TryParse<BindingDirection>(bindingDirectionValue, true, out bindingDirection))
+            if (raw is null)
             {
-                throw new FormatException(string.Format(CultureInfo.InvariantCulture, "'{0}' is not a valid binding direction.", bindingDirectionValue));
+                throw new ArgumentNullException(nameof(raw));
             }
 
-            BindingMetadata bindingMetadata = raw.ToObject<BindingMetadata>();
-            bindingMetadata.Type = bindingType;
-            bindingMetadata.Direction = bindingDirection;
-            bindingMetadata.Connection = connection;
-            bindingMetadata.Raw = raw;
-
-            if (raw.TryGetValue("properties", StringComparison.OrdinalIgnoreCase, out JToken value))
+            try
             {
-                bindingMetadata.Properties = new Dictionary<string, object>(value.ToObject<IDictionary<string, object>>(), StringComparer.OrdinalIgnoreCase);
-            }
+                BindingMetadata bindingMetadata = raw.ToObject<BindingMetadata>();
+                bindingMetadata.Raw = raw;
 
-            return bindingMetadata;
+                return bindingMetadata;
+            }
+            catch (Exception ex)
+            {
+                string bindingDirectionValue = (string)raw["direction"];
+                if (!string.IsNullOrEmpty(bindingDirectionValue) &&
+                    !Enum.TryParse<BindingDirection>(bindingDirectionValue, true, out BindingDirection bindingDirection))
+                {
+                    throw new FormatException(string.Format(CultureInfo.InvariantCulture, "'{0}' is not a valid binding direction.", bindingDirectionValue));
+                }
+
+                throw ex;
+            }
         }
     }
 }
