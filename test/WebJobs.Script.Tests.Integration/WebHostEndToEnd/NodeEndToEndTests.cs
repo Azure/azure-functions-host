@@ -111,7 +111,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             // verify the cached error for the invalid function
             FunctionStatus status = await Fixture.Host.GetFunctionStatusAsync("Invalid");
             string error = status.Errors.Single();
-            Assert.Equal("'invalid' is not a valid binding direction.", error);
+            Assert.Contains("'invalid' is not a valid binding direction.", error);
         }
 
         [Fact]
@@ -892,7 +892,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 #endif
         public class TestFixture : EndToEndTestFixture
         {
-            public TestFixture() : base(@"TestScripts\Node", "node", RpcWorkerConstants.NodeLanguageWorkerName)
+            private static string rootPath = Path.Combine("TestScripts", "Node");
+
+            public TestFixture() : base(rootPath, "node", RpcWorkerConstants.NodeLanguageWorkerName)
             {
             }
 
