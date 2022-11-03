@@ -46,8 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Extensibility
                             : new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
 
             IsTrigger = Type.EndsWith("trigger", StringComparison.OrdinalIgnoreCase);
-            SupportsDeferredBinding = Properties.TryGetValue(ScriptConstants.SupportsDeferredBindingKey, out bool supportsDeferredBinding)
-                                        ? supportsDeferredBinding : false;
+            SupportsDeferredBinding = BoolUtility.TryReadAsBool(Properties, ScriptConstants.SupportsDeferredBindingKey);
         }
 
         /// <summary>

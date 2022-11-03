@@ -53,13 +53,13 @@ namespace Microsoft.Azure.WebJobs.Script
             metadata is ProxyFunctionMetadata;
 
         public static bool IsDirect(this FunctionMetadata metadata) =>
-            GetBoolProperty(metadata.Properties, IsDirectKey);
+            BoolUtility.TryReadAsBool(metadata.Properties, IsDirectKey);
 
         public static bool IsDisabled(this FunctionMetadata metadata) =>
-            GetBoolProperty(metadata.Properties, IsDisabledKey);
+            BoolUtility.TryReadAsBool(metadata.Properties, IsDisabledKey);
 
         public static bool IsCodeless(this FunctionMetadata metadata) =>
-            GetBoolProperty(metadata.Properties, IsCodelessKey);
+            BoolUtility.TryReadAsBool(metadata.Properties, IsCodelessKey);
 
         public static bool IsCodelessSet(this FunctionMetadata metadata) =>
             metadata.Properties.ContainsKey(IsCodelessKey);
@@ -88,12 +88,5 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         public static void SetIsCodeless(this FunctionMetadata metadata, bool value) =>
             metadata.Properties[IsCodelessKey] = value;
-
-        private static bool GetBoolProperty(IDictionary<string, object> properties, string propertyKey)
-        {
-            return properties.TryGetValue(propertyKey, out object valObj)
-                && valObj is bool valBool
-                && valBool;
-        }
     }
 }
