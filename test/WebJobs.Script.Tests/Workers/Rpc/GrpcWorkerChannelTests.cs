@@ -10,6 +10,7 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -55,6 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         private readonly IFunctionDataCache _functionDataCache;
         private readonly IOptions<WorkerConcurrencyOptions> _workerConcurrencyOptions;
         private readonly ITestOutputHelper _testOutput;
+        private readonly IFunctionsHostingConfiguration _functionsHostingConfiguration;
         private GrpcWorkerChannel _workerChannel;
 
         public GrpcWorkerChannelTests(ITestOutputHelper testOutput)
@@ -98,6 +100,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _hostOptionsMonitor = TestHelpers.CreateOptionsMonitor(hostOptions);
 
             _testEnvironment.SetEnvironmentVariable("APPLICATIONINSIGHTS_ENABLE_AGENT", "true");
+
+            _functionsHostingConfiguration = new FunctionsHostingConfiguration(_testEnvironment, _loggerFactory);
         }
 
         private Task CreateDefaultWorkerChannel(bool autoStart = true, IDictionary<string, string> capabilities = null)
@@ -114,7 +118,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _hostOptionsMonitor,
                _sharedMemoryManager,
                _functionDataCache,
-               _workerConcurrencyOptions);
+               _workerConcurrencyOptions,
+               _functionsHostingConfiguration);
 
             if (autoStart)
             {
@@ -280,7 +285,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _hostOptionsMonitor,
                _sharedMemoryManager,
                _functionDataCache,
-               _workerConcurrencyOptions);
+               _workerConcurrencyOptions,
+               _functionsHostingConfiguration);
             await Assert.ThrowsAsync<FileNotFoundException>(async () => await _workerChannel.StartWorkerProcessAsync(CancellationToken.None));
         }
 
@@ -503,7 +509,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _hostOptionsMonitor,
                _sharedMemoryManager,
                _functionDataCache,
-               _workerConcurrencyOptions);
+               _workerConcurrencyOptions,
+               _functionsHostingConfiguration);
             channel.SetupFunctionInvocationBuffers(GetTestFunctionsList("node"));
             ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(invocationId, resultSource);
             await channel.SendInvocationRequest(scriptInvocationContext);
@@ -662,10 +669,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 { "TestNull", null },
                 { "TestEmpty", string.Empty },
-                { "TestValid", "TestValue" }
+                { "TestValid", "TestValue" },
+                { "TestEnvVariable", "TestEnvVariableValue1" }
             };
+            var hostingConfig = new Dictionary<string, string>();
 
-            FunctionEnvironmentReloadRequest envReloadRequest = _workerChannel.GetFunctionEnvironmentReloadRequest(environmentVariables);
+            FunctionEnvironmentReloadRequest envReloadRequest = _workerChannel.GetFunctionEnvironmentReloadRequest(environmentVariables, hostingConfig);
             Assert.False(envReloadRequest.EnvironmentVariables.ContainsKey("TestNull"));
             Assert.False(envReloadRequest.EnvironmentVariables.ContainsKey("TestEmpty"));
             Assert.True(envReloadRequest.EnvironmentVariables.ContainsKey("TestValid"));
@@ -682,10 +691,32 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 { "TestValid", "TestValue" }
             };
+            var hostingConfig = new Dictionary<string, string>();
 
-            FunctionEnvironmentReloadRequest envReloadRequest = _workerChannel.GetFunctionEnvironmentReloadRequest(environmentVariables);
+            FunctionEnvironmentReloadRequest envReloadRequest = _workerChannel.GetFunctionEnvironmentReloadRequest(environmentVariables, hostingConfig);
             Assert.True(envReloadRequest.EnvironmentVariables["TestValid"] == "TestValue");
             Assert.True(envReloadRequest.FunctionAppDirectory == _scriptRootPath);
+        }
+
+        [Fact]
+        public void SendFunctionEnvironmentReloadRequest_AddsHostingConfig()
+        {
+            CreateDefaultWorkerChannel();
+            var environmentVariables = new Dictionary<string, string>()
+            {
+                { "TestValid", "TestValue" },
+                { "TestEnvVariable", "TestEnvVariableValue1" }
+            };
+            var hostingConfig = new Dictionary<string, string>()
+            {
+                { "TestFeature", "TestFeatureValue" },
+                { "TestEnvVariable", "TestEnvVariableValue2" }
+            };
+
+            FunctionEnvironmentReloadRequest envReloadRequest = _workerChannel.GetFunctionEnvironmentReloadRequest(environmentVariables, hostingConfig);
+            Assert.True(envReloadRequest.EnvironmentVariables["TestValid"] == "TestValue");
+            Assert.True(envReloadRequest.EnvironmentVariables["TestFeature"] == "TestFeatureValue");
+            Assert.True(envReloadRequest.EnvironmentVariables["TestEnvVariable"] == "TestEnvVariableValue2");
         }
 
         [Fact]
@@ -993,7 +1024,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _hostOptionsMonitor,
                _sharedMemoryManager,
                _functionDataCache,
-               _workerConcurrencyOptions);
+               _workerConcurrencyOptions,
+               _functionsHostingConfiguration);
 
             IEnumerable<TimeSpan> latencyHistory = null;
 
@@ -1032,7 +1064,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _hostOptionsMonitor,
                _sharedMemoryManager,
                _functionDataCache,
-               _workerConcurrencyOptions);
+               _workerConcurrencyOptions,
+               _functionsHostingConfiguration);
 
             // wait 10 seconds
             await Task.Delay(10000);

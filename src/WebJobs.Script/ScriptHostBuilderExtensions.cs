@@ -287,7 +287,6 @@ namespace Microsoft.Azure.WebJobs.Script
                          .GetSection(ConfigurationSectionNames.Scale)
                          .Bind(o);
                     });
-                services.AddSingleton<IFunctionsHostingConfiguration, FunctionsHostingConfiguration>();
 
                 services.AddSingleton<IFileLoggingStatusManager, FileLoggingStatusManager>();
 
@@ -341,6 +340,7 @@ namespace Microsoft.Azure.WebJobs.Script
             services.TryAddSingleton<IEnvironment>(SystemEnvironment.Instance);
             services.TryAddSingleton<HostPerformanceManager>();
             services.ConfigureOptions<HostHealthMonitorOptionsSetup>();
+            services.TryAddSingleton<IFunctionsHostingConfiguration, FunctionsHostingConfiguration>();
 
             AddProcessRegistry(services);
         }

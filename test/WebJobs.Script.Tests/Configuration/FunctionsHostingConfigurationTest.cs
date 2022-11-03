@@ -4,7 +4,6 @@
 using System;
 using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -41,69 +40,60 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         }
 
         [Fact]
-        public async Task GetValue_ReloadsConfig_OnUpdate()
+        public void Initialization_ConfigurationFileDoesNotExists()
+        {
+            TestEnvironment environment = new TestEnvironment();
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsPlatformConfigFilePath, "unknown.txt");
+            FunctionsHostingConfiguration conf = new FunctionsHostingConfiguration(environment, _loggerFactory/*"test.txt"/*, DateTime.Now.AddMilliseconds(1), TimeSpan.FromMilliseconds(100)*/);
+            TestHelpers.Await(() =>
+            {
+                return conf.IsInitialized;
+            });
+            Assert.Contains("FunctionsHostingConfiguration file does not exist.", _loggerProvider.GetAllLogMessages().Select(x => x.FormattedMessage));
+        }
+
+        public void Initialized_Fires()
         {
             using (TempDirectory tempDir = new TempDirectory())
             {
-                string testKey = "test_key";
                 string fileName = Path.Combine(tempDir.Path, "settings.txt");
-                File.WriteAllText(fileName, $"key1=value1,{testKey}=value2");
-
-                FunctionsHostingConfiguration conf = new FunctionsHostingConfiguration(_environment, _loggerFactory, fileName, DateTime.Now.AddMilliseconds(100), TimeSpan.FromMilliseconds(100));
-                Assert.Equal(conf.GetValue(testKey), "value2");
-
-                File.WriteAllText(fileName, $"key1=value1,{testKey}=stamp");
-                await Task.Delay(500);
-                Assert.Equal(conf.GetValue(testKey), "stamp");
-
-                File.WriteAllText(fileName, "key1=value1");
-                await Task.Delay(500);
-                Assert.Equal(conf.GetValue(testKey), null);
-
-                Assert.True(_loggerProvider.GetAllLogMessages().Where(x => x.FormattedMessage.StartsWith("Updaiting FunctionsHostingConfigurations")).Count() == 3);
+                TestEnvironment environment = new TestEnvironment();
+                environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsPlatformConfigFilePath, fileName);
+                File.WriteAllText(fileName, "feature1=1");
+                FunctionsHostingConfiguration conf = new FunctionsHostingConfiguration(environment, _loggerFactory, fileName);
+                bool fires = false;
+                conf.Initialized += (s, e) =>
+                {
+                    fires = true;
+                };
+                TestHelpers.Await(() =>
+                {
+                    return fires;
+                });
+                Assert.True(conf.IsInitialized);
             }
         }
 
-        [Theory]
-        [InlineData("", "", false)]
-        [InlineData("flag1=value1,FUNCTIONS_WORKER_DYNAMIC_CONCURRENCY_ENABLED=stamp,flag2=value2", "", true)]
-        [InlineData("flag1=value1,FUNCTIONS_WORKER_DYNAMIC_CONCURRENCY_ENABLED=stamp app1,flag2=value2", "", true)]
-        [InlineData("flag1=value1,FUNCTIONS_WORKER_DYNAMIC_CONCURRENCY_ENABLED=app1 stamp,flag2=value2", "", true)]
-        [InlineData("flag1=value1,FUNCTIONS_WORKER_DYNAMIC_CONCURRENCY_ENABLED=app1,flag2=value2", "app1", true)]
-        [InlineData("flag1=value1,FUNCTIONS_WORKER_DYNAMIC_CONCURRENCY_ENABLED=app1 app2,flag2=value2", "app1", true)]
-        [InlineData("flag1=value1,FUNCTIONS_WORKER_DYNAMIC_CONCURRENCY_ENABLED=app1 app2,flag2=value2", "app2", true)]
-        [InlineData("flag1=value1,FUNCTIONS_WORKER_DYNAMIC_CONCURRENCY_ENABLED=app1 app2,flag2=value2", "app3", false)]
-        public void FunctionsWorkerDynamicConcurrencyEnabled_ReturnsExpected(string config, string siteName, bool isEnabled)
+        private void Conf_Initialized(object sender, EventArgs e)
         {
-            TestEnvironment environment = new TestEnvironment();
-            if (!string.IsNullOrEmpty(siteName))
-            {
-                environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName, siteName);
-            }
-            using (TempDirectory tempDir = new TempDirectory())
-            {
-                string fileName = Path.Combine(tempDir.Path, "settings.txt");
-                File.WriteAllText(fileName, config);
-                FunctionsHostingConfiguration conf = new FunctionsHostingConfiguration(environment, _loggerFactory, fileName, DateTime.Now.AddMilliseconds(1), TimeSpan.FromMilliseconds(100));
-                conf.GetValue("test"); // to run Parse
-                Assert.Equal(conf.FunctionsWorkerDynamicConcurrencyEnabled, isEnabled);
-            }
+            throw new NotImplementedException();
         }
 
         [Fact]
-        public void ParsesConfig()
+        public void GetValue_LogsError_IfNotInitialized()
         {
             using (TempDirectory tempDir = new TempDirectory())
             {
                 string fileName = Path.Combine(tempDir.Path, "settings.txt");
-                File.WriteAllText(fileName, "ENABLE_FEATUREX=1,A=B,TimeOut=123");
-                FunctionsHostingConfiguration conf = new FunctionsHostingConfiguration(_environment, _loggerFactory, fileName, DateTime.Now.AddMilliseconds(1), TimeSpan.FromMilliseconds(100));
-                conf.GetValue("test"); // to run Parse
-                Assert.Equal(3, conf.Config.Count);
-                Assert.Equal("1", conf.GetValue("ENABLE_FEATUREX"));
-                Assert.Equal("B", conf.GetValue("A"));
-                Assert.Equal("123", conf.GetValue("TimeOut"));
-                Assert.Equal("123", conf.GetValue("timeout")); // check case insensitive search
+                TestEnvironment environment = new TestEnvironment();
+                environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsPlatformConfigFilePath, fileName);
+                environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, ScriptConstants.DynamicSku);
+                File.WriteAllText(fileName, "feature1=1");
+                FunctionsHostingConfiguration conf = new FunctionsHostingConfiguration(environment, _loggerFactory, fileName);
+
+                Assert.Null(conf.GetFeatureFlag("feature1"));
+                Assert.Contains("FunctionsHostingConfigurations haven't initialized on getting 'feature1'",
+                    _loggerProvider.GetAllLogMessages().Select(x => x.FormattedMessage));
             }
         }
 
@@ -112,39 +102,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         [InlineData(null, 0)]
         [InlineData(" ", 0)]
         [InlineData("flag1=value1", 1)]
-        [InlineData("x=y,", 1)]
-        [InlineData("x=y,a=", 1)]
+        [InlineData("flag1=value1,", 1)]
+        [InlineData("flag1=value1,a=", 1)]
         [InlineData("abcd", 0)]
-        [InlineData("flag1=test1;test2,flag2=test2", 2)]
-        public void ReturnsExpectedConfig(string config, int configCount)
+        [InlineData("flag1=value1;test2,flag2=value2", 2)]
+        public void GetValue_ReturnsExpected(string config, int expectedCount)
         {
             using (TempDirectory tempDir = new TempDirectory())
             {
                 string fileName = Path.Combine(tempDir.Path, "settings.txt");
+                TestEnvironment environment = new TestEnvironment();
+                environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsPlatformConfigFilePath, fileName);
                 File.WriteAllText(fileName, config);
-                FunctionsHostingConfiguration conf = new FunctionsHostingConfiguration(_environment, _loggerFactory, fileName, DateTime.Now.AddMilliseconds(1), TimeSpan.FromMilliseconds(100));
-                conf.GetValue("test"); // to run Parse
-                Assert.True(conf.Config.Count == configCount);
-            }
-        }
+                FunctionsHostingConfiguration conf = new FunctionsHostingConfiguration(environment, _loggerFactory, fileName);
+                TestHelpers.Await(() =>
+                {
+                    return conf.IsInitialized;
+                });
 
-        [Fact]
-        public void GetValue_ConfigurationFileDoesNotExists_Logs()
-        {
-            FunctionsHostingConfiguration conf = new FunctionsHostingConfiguration(_environment, _loggerFactory, "test.txt", DateTime.Now.AddMilliseconds(1), TimeSpan.FromMilliseconds(100));
-            Assert.Null(conf.GetValue("test"));
-            Assert.Contains("FunctionsHostingConfigurations file does not exist", _loggerProvider.GetAllLogMessages().Select(x => x.FormattedMessage));
-        }
-
-        [Fact]
-        public void GetValue_ReturnsExpected()
-        {
-            using (TempDirectory tempDir = new TempDirectory())
-            {
-                string fileName = Path.Combine(tempDir.Path, "settings.txt");
-                File.WriteAllText(fileName, "flag1=value1,flag2=value2,flag3=value3");
-                FunctionsHostingConfiguration conf = new FunctionsHostingConfiguration(_environment, _loggerFactory, fileName, DateTime.Now.AddMilliseconds(1), TimeSpan.FromMilliseconds(100));
-                Assert.Equal(conf.GetValue("flag2"), "value2");
+                Assert.True(conf.GetFeatureFlags().Count == expectedCount);
+                var value = conf.GetFeatureFlag("flag1");
+                if (value != null)
+                {
+                    Assert.Equal(value, "value1");
+                    Assert.Equal(conf.GetFeatureFlag("FLAG1"), "value1"); // check case insensitiveness
+                }
                 Assert.DoesNotContain("FunctionsHostingConfigurations file does not exist", _loggerProvider.GetAllLogMessages().Select(x => x.FormattedMessage));
             }
         }

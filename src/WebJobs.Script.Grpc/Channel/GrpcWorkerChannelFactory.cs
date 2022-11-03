@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Linq;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc.Eventing;
@@ -26,9 +27,10 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private readonly ISharedMemoryManager _sharedMemoryManager = null;
         private readonly IFunctionDataCache _functionDataCache = null;
         private readonly IOptions<WorkerConcurrencyOptions> _workerConcurrencyOptions;
+        private readonly IFunctionsHostingConfiguration _functionsHostingConfiguration;
 
         public GrpcWorkerChannelFactory(IScriptEventManager eventManager, IEnvironment environment, IRpcServer rpcServer, ILoggerFactory loggerFactory, IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions,
-            IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IRpcWorkerProcessFactory rpcWorkerProcessManager, ISharedMemoryManager sharedMemoryManager, IFunctionDataCache functionDataCache, IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions)
+            IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IRpcWorkerProcessFactory rpcWorkerProcessManager, ISharedMemoryManager sharedMemoryManager, IFunctionDataCache functionDataCache, IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions, IFunctionsHostingConfiguration functionsHostingConfiguration)
         {
             _eventManager = eventManager;
             _loggerFactory = loggerFactory;
@@ -38,6 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _sharedMemoryManager = sharedMemoryManager;
             _functionDataCache = functionDataCache;
             _workerConcurrencyOptions = workerConcurrencyOptions;
+            _functionsHostingConfiguration = functionsHostingConfiguration;
         }
 
         public IRpcWorkerChannel Create(string scriptRootPath, string runtime, IMetricsLogger metricsLogger, int attemptCount, IEnumerable<RpcWorkerConfig> workerConfigs)
@@ -63,7 +66,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                          _applicationHostOptions,
                          _sharedMemoryManager,
                          _functionDataCache,
-                         _workerConcurrencyOptions);
+                         _workerConcurrencyOptions,
+                         _functionsHostingConfiguration);
         }
     }
 }

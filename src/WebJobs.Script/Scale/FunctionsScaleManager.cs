@@ -238,7 +238,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
                 foreach (var scaler in targetScalers)
                 {
                     string assemblyName = scaler.GetType().Assembly.GetName().Name;
-                    string flag = hostingConfiguration.GetValue(assemblyName, null);
+                    string flag = hostingConfiguration.GetFeatureFlag(assemblyName);
                     if (flag == "1")
                     {
                         targetScalersToSample.Add(scaler);

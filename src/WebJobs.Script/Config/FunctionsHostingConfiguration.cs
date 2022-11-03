@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -12,14 +13,11 @@ namespace Microsoft.Azure.WebJobs.Script.Config
 {
     internal class FunctionsHostingConfiguration : IFunctionsHostingConfiguration
     {
-        private readonly TimeSpan _updateInterval = TimeSpan.FromMinutes(10);
         private readonly IEnvironment _environment;
         private readonly ILogger _logger;
         private readonly string _configFilePath;
-
-        private DateTime _configTTL;
+        private bool _isInitialized = false;
         private Dictionary<string, string> _configs;
-        private bool _configurationFileExists = true;
 
         public FunctionsHostingConfiguration(IEnvironment environment, ILoggerFactory loggerFactory)
         {
@@ -30,71 +28,63 @@ namespace Microsoft.Azure.WebJobs.Script.Config
             {
                 _configFilePath = Environment.ExpandEnvironmentVariables(Path.Combine("%ProgramFiles(x86)%", "SiteExtensions", "kudu", "ScmHostingConfigurations.txt"));
             }
-        }
 
-        // For tests
-        internal FunctionsHostingConfiguration(IEnvironment environment, ILoggerFactory loggerFactory, string configsFile, DateTime configsTTL, TimeSpan updateInterval)
-            : this(environment, loggerFactory)
-        {
-            _configFilePath = configsFile;
-            _configTTL = configsTTL;
-            _updateInterval = updateInterval;
-        }
-
-        // for tests
-        internal Dictionary<string, string> Config => _configs;
-
-        public bool FunctionsWorkerDynamicConcurrencyEnabled
-        {
-            get
-            {
-                // Worker concurrecy feature can be enabled per a stamp or an app.
-                string value = GetValue(RpcWorkerConstants.FunctionsWorkerDynamicConcurrencyEnabled, null);
-                if (!string.IsNullOrEmpty(value))
-                {
-                    var values = value.Split(" ").Select(x => x.ToLower());
-                    string siteName = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName);
-                    return values.Contains("stamp") || values.Contains(siteName);
-                }
-                return false;
-            }
-        }
-
-        public string GetValue(string key, string defaultValue = null)
-        {
-            // the config file will be parsed after functionn host restart
-            if (!_configurationFileExists)
-            {
-                return defaultValue;
-            }
-
-            var configs = _configs;
-            if (configs == null || DateTime.UtcNow > _configTTL)
+            Utility.ExecuteAfterColdStartDelay(_environment, () =>
             {
                 lock (_configFilePath)
                 {
-                    if (configs == null || DateTime.UtcNow > _configTTL)
+                    if (!_isInitialized)
                     {
-                        _configTTL = DateTime.UtcNow.Add(_updateInterval);
-
                         if (FileUtility.FileExists(_configFilePath))
                         {
                             var settings = FileUtility.ReadAllText(_configFilePath);
-                            configs = Parse(settings);
-                            _configs = configs;
-                            _logger.LogDebug($"Updaiting FunctionsHostingConfigurations '{settings}'");
+                            _configs = Parse(settings);
+                            _logger.LogDebug($"Loading FunctionsHostingConfiguration '{settings}'.");
                         }
                         else
                         {
-                            // if config file does not exists we want to stop trying getting the value and return default value
-                            _configurationFileExists = false;
-                            _logger.LogDebug($"FunctionsHostingConfigurations file does not exist");
+                            _configs = new Dictionary<string, string>();
+                            _logger.LogDebug($"FunctionsHostingConfiguration file does not exist.");
                         }
+                        _isInitialized = true;
+                        Initialized?.Invoke(this, EventArgs.Empty);
                     }
                 }
+            });
+        }
+
+        // For tests
+        internal FunctionsHostingConfiguration(IEnvironment environment, ILoggerFactory loggerFactory, string configsFile)
+            : this(environment, loggerFactory)
+        {
+            _configFilePath = configsFile;
+        }
+
+        public event EventHandler Initialized;
+
+        public bool IsInitialized => _isInitialized;
+
+        public IDictionary<string, string> GetFeatureFlags()
+        {
+            if (!_isInitialized)
+            {
+                _logger.LogWarning($"FunctionsHostingConfigurations haven't initialized initialized");
+                return null;
             }
 
-            return (configs == null || !configs.TryGetValue(key, out string value)) ? defaultValue : value;
+            return new Dictionary<string, string>(_configs);
+        }
+
+        public string GetFeatureFlag(string key)
+        {
+            if (!_isInitialized)
+            {
+                _logger.LogWarning($"FunctionsHostingConfigurations haven't initialized on getting '{key}'");
+                return null;
+            }
+
+            _configs.TryGetValue(key, out string value);
+            return value;
         }
 
         private static Dictionary<string, string> Parse(string settings)

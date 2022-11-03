@@ -135,7 +135,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
             }
 
             string assemblyName = Assembly.GetExecutingAssembly().GetName().Name;
-            _functionsHostingConfigurationMock.Setup(p => p.GetValue(assemblyName, It.IsAny<string>())).Returns("1");
+            _functionsHostingConfigurationMock.Setup(p => p.GetFeatureFlag(assemblyName)).Returns("1");
 
             var status = await _scaleManager.GetScaleStatusAsync(context);
 
@@ -231,7 +231,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.TargetBaseScalingEnabled, "1");
 
             string assemblyName = Assembly.GetExecutingAssembly().GetName().Name;
-            _functionsHostingConfigurationMock.Setup(p => p.GetValue(assemblyName, It.IsAny<string>())).Returns("1");
+            _functionsHostingConfigurationMock.Setup(p => p.GetFeatureFlag(assemblyName)).Returns("1");
 
             var status = await _scaleManager.GetScaleStatusAsync(context);
 
@@ -293,7 +293,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
 
             Mock<IFunctionsHostingConfiguration> functionsHostingConfigurationMock = new Mock<IFunctionsHostingConfiguration>(MockBehavior.Strict);
             string assemblyName = Assembly.GetExecutingAssembly().GetName().Name;
-            functionsHostingConfigurationMock.Setup(p => p.GetValue(assemblyName, It.IsAny<string>())).Returns(triggerEabled ? "1" : null);
+            functionsHostingConfigurationMock.Setup(p => p.GetFeatureFlag(assemblyName)).Returns(triggerEabled ? "1" : null);
 
             TestEnvironment env = new TestEnvironment();
             if (targetBaseScalingEnabled)

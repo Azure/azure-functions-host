@@ -58,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
             _targetScaleManager.Setup(p => p.GetTargetScalers()).Returns(_scalers);
 
             _functionsHostingConfigurationMock = new Mock<IFunctionsHostingConfiguration>(MockBehavior.Strict);
-            _functionsHostingConfigurationMock.Setup(p => p.GetValue(It.IsAny<string>(), It.IsAny<string>())).Returns<string>(null);
+            _functionsHostingConfigurationMock.Setup(p => p.GetFeatureFlag(It.IsAny<string>())).Returns<string>(null);
 
             _monitor = new FunctionsScaleMonitorService(_monitorManagerMock.Object, _targetScaleManager.Object, _metricsRepository, _primaryHostStateProviderMock.Object, _environment, loggerFactory, options, _functionsHostingConfigurationMock.Object);
         }
@@ -217,7 +217,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
 
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.TargetBaseScalingEnabled, "1");
             string assemblyName = Assembly.GetExecutingAssembly().GetName().Name;
-            _functionsHostingConfigurationMock.Setup(p => p.GetValue(assemblyName, It.IsAny<string>())).Returns("1");
+            _functionsHostingConfigurationMock.Setup(p => p.GetFeatureFlag(assemblyName)).Returns("1");
             await _monitor.TakeMetricsSamplesAsync();
 
             var logs = _loggerProvider.GetAllLogMessages().ToArray();

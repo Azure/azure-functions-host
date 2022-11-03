@@ -17,6 +17,7 @@ using System.Threading.Tasks.Dataflow;
 using Google.Protobuf.Collections;
 using Google.Protobuf.WellKnownTypes;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -52,6 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private readonly Dictionary<MsgType, Queue<PendingItem>> _pendingActions = new ();
         private readonly ChannelWriter<OutboundGrpcEvent> _outbound;
         private readonly ChannelReader<InboundGrpcEvent> _inbound;
+        private readonly IFunctionsHostingConfiguration _functionsHostingConfiguration;
 
         private IDisposable _functionLoadRequestResponseEvent;
         private bool _disposed;
@@ -93,7 +95,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions,
             ISharedMemoryManager sharedMemoryManager,
             IFunctionDataCache functionDataCache,
-            IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions)
+            IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions,
+            IFunctionsHostingConfiguration functionsHostingConfiguration)
         {
             _workerId = workerId;
             _eventManager = eventManager;
@@ -106,6 +109,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _applicationHostOptions = applicationHostOptions;
             _sharedMemoryManager = sharedMemoryManager;
             _workerConcurrencyOptions = workerConcurrencyOptions;
+            _functionsHostingConfiguration = functionsHostingConfiguration;
             _processInbound = state => ProcessItem((InboundGrpcEvent)state);
 
             _workerCapabilities = new GrpcCapabilities(_workerChannelLogger);
@@ -487,7 +491,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             IDictionary processEnv = Environment.GetEnvironmentVariables();
 
-            FunctionEnvironmentReloadRequest request = GetFunctionEnvironmentReloadRequest(processEnv);
+            FunctionEnvironmentReloadRequest request = GetFunctionEnvironmentReloadRequest(processEnv, _functionsHostingConfiguration.GetFeatureFlags());
 
             SendStreamingMessage(new StreamingMessage
             {
@@ -497,8 +501,13 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             return _reloadTask.Task;
         }
 
-        internal FunctionEnvironmentReloadRequest GetFunctionEnvironmentReloadRequest(IDictionary processEnv)
+        internal FunctionEnvironmentReloadRequest GetFunctionEnvironmentReloadRequest(IDictionary processEnv, IDictionary<string, string> hostingConfig)
         {
+            // Override environment variable by feature flags
+            foreach (var pair in hostingConfig)
+            {
+                processEnv[pair.Key] = pair.Value;
+            }
             FunctionEnvironmentReloadRequest request = new FunctionEnvironmentReloadRequest();
             foreach (DictionaryEntry entry in processEnv)
             {

@@ -9,7 +9,6 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
-using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -17,7 +16,6 @@ using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using IApplicationLifetime = Microsoft.AspNetCore.Hosting.IApplicationLifetime;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers
 {
@@ -28,16 +26,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         private readonly IFunctionInvocationDispatcherFactory _functionInvocationDispatcherFactory;
         private readonly IEnvironment _environment;
         private readonly IFunctionsHostingConfiguration _functionsHostingConfigurations;
-        private readonly IApplicationLifetime _applicationLifetime;
         private readonly long _memoryLimit = AppServicesHostingUtility.GetMemoryLimitBytes();
 
         private IOptions<WorkerConcurrencyOptions> _workerConcurrencyOptions;
         private IFunctionInvocationDispatcher _functionInvocationDispatcher;
         private System.Timers.Timer _timer;
-        private System.Timers.Timer _activationTimer;
         private ValueStopwatch _addWorkerStopwatch = ValueStopwatch.StartNew();
         private ValueStopwatch _logStateStopWatch = ValueStopwatch.StartNew();
-        private TimeSpan _activationTimerInterval = TimeSpan.FromMinutes(5);
         private bool _disposed = false;
 
         public WorkerConcurrencyManager(
@@ -45,22 +40,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             IEnvironment environment,
             IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions,
             IFunctionsHostingConfiguration functionsHostingConfigurations,
-            IApplicationLifetime applicationLifetime,
             ILoggerFactory loggerFactory)
         {
             _functionInvocationDispatcherFactory = functionInvocationDispatcherFactory ?? throw new ArgumentNullException(nameof(functionInvocationDispatcherFactory));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _workerConcurrencyOptions = workerConcurrencyOptions;
             _functionsHostingConfigurations = functionsHostingConfigurations;
-            _applicationLifetime = applicationLifetime;
             _logger = loggerFactory?.CreateLogger(LogCategories.Concurrency);
-        }
-
-        // For tests
-        public TimeSpan ActivationTimerInterval
-        {
-            get => _activationTimerInterval;
-            set => _activationTimerInterval = value;
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
@@ -91,19 +77,22 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                     }
                     else
                     {
-                        // The worker concurreny feature can be activated once FunctionsHostingConfigurations is updated
-                        _activationTimer = new System.Timers.Timer()
-                        {
-                            AutoReset = false,
-                            Interval = _activationTimerInterval.TotalMilliseconds
-                        };
-                        _activationTimer.Elapsed += OnActivationTimer;
-                        _activationTimer.Start();
+                        _functionsHostingConfigurations.Initialized += FunctionsHostingConfigurations_Initialized;
                     }
                 }
             }
 
             return Task.CompletedTask;
+        }
+
+        internal void FunctionsHostingConfigurations_Initialized(object sender, EventArgs e)
+        {
+            if (_functionsHostingConfigurations.GetFeatureFlag(RpcWorkerConstants.FunctionsWorkerDynamicConcurrencyEnabled) == "1")
+            {
+                Activate();
+                _environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerDynamicConcurrencyEnabled, "true");
+                _logger.LogDebug($"Dynamic worker concurrency monitoring was activated by hosting configuration feature flag.");
+            }
         }
 
         public Task StopAsync(CancellationToken cancellationToken)
@@ -148,42 +137,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 _logger.LogError(ex, "Error monitoring worker concurrency");
             }
             _timer.Start();
-        }
-
-        private void OnActivationTimer(object sender, System.Timers.ElapsedEventArgs e)
-        {
-            if (_disposed)
-            {
-                return;
-            }
-
-            try
-            {
-                if (_timer == null && _functionsHostingConfigurations.FunctionsWorkerDynamicConcurrencyEnabled)
-                {
-                    // if the feature is not active and FunctionsHostingConfiguration has the flag
-                    Activate();
-                    _environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerDynamicConcurrencyEnabled, "true");
-                    _logger.LogDebug($"Dynamic worker concurrency monitoring was started by activation timer.");
-                }
-                else if (_timer != null && !_functionsHostingConfigurations.FunctionsWorkerDynamicConcurrencyEnabled)
-                {
-                    // if the feature was activated by FunctionsHostingConfiguration and then disabled - shutdown the host
-                    _logger.LogDebug($"Dynamic worker concurrency monitoring is disabled after activation. Shutting down Functions Host.");
-                    _functionInvocationDispatcher.ShutdownAsync();
-                    _applicationLifetime.StopApplication();
-                    return;
-                }
-            }
-            catch (Exception ex)
-            {
-                // Best effort
-                // return and do not start the activation timmer again
-                _logger.LogError(ex, "Error activating worker concurrency");
-                return;
-            }
-
-            _activationTimer.Start();
         }
 
         private void Activate()
@@ -286,7 +239,7 @@ LatencyHistory=({formattedLatencyHistory}), AvgLatency={latencyAvg}, MaxLatency=
                 if (disposing)
                 {
                     _timer?.Dispose();
-                    _activationTimer?.Dispose();
+                    _functionsHostingConfigurations.Initialized -= FunctionsHostingConfigurations_Initialized;
                 }
 
                 _disposed = true;
