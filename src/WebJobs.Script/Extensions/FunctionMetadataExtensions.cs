@@ -54,19 +54,19 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static bool IsDirect(this FunctionMetadata metadata)
         {
-            BoolUtility.TryReadAsBool(metadata.Properties, IsDirectKey, out bool result);
+            Utility.TryReadAsBool(metadata.Properties, IsDirectKey, out bool result);
             return result;
         }
 
         public static bool IsDisabled(this FunctionMetadata metadata)
         {
-            BoolUtility.TryReadAsBool(metadata.Properties, IsDisabledKey, out bool result);
+            Utility.TryReadAsBool(metadata.Properties, IsDisabledKey, out bool result);
             return result;
         }
 
         public static bool IsCodeless(this FunctionMetadata metadata)
         {
-            BoolUtility.TryReadAsBool(metadata.Properties, IsCodelessKey, out bool result);
+            Utility.TryReadAsBool(metadata.Properties, IsCodelessKey, out bool result);
             return result;
         }
 
