@@ -7,12 +7,14 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Description;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
+using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.Logging;
 
@@ -24,6 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly IFunctionInvocationDispatcher _dispatcher;
         private readonly IApplicationLifetime _applicationLifetime;
         private readonly TimeSpan _workerInitializationTimeout;
+        private readonly Regex _expressionRegex;
 
         public WorkerFunctionDescriptorProvider(ScriptHost host, ScriptJobHostOptions config, ICollection<IScriptBindingProvider> bindingProviders,
             IFunctionInvocationDispatcher dispatcher, ILoggerFactory loggerFactory, IApplicationLifetime applicationLifetime, TimeSpan workerInitializationTimeout)
@@ -33,6 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _loggerFactory = loggerFactory;
             _applicationLifetime = applicationLifetime;
             _workerInitializationTimeout = workerInitializationTimeout;
+            _expressionRegex = new Regex(@"{(.*?)\}", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         }
 
         public override async Task<(bool, FunctionDescriptor)> TryCreate(FunctionMetadata functionMetadata)
@@ -59,12 +63,22 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         protected override async Task<Collection<ParameterDescriptor>> GetFunctionParametersAsync(IFunctionInvoker functionInvoker, FunctionMetadata functionMetadata,
             BindingMetadata triggerMetadata, Collection<CustomAttributeBuilder> methodAttributes, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
         {
+            var bindings = inputBindings.Union(outputBindings);
+
+            // If an input or output binding uses expressions, we do not want to use ParameterBindingData for the trigger bindings
+            if (triggerMetadata.SupportsDeferredBinding())
+            {
+                bool skipDeferredBinding = BindingAttributeContainsExpression(bindings);
+                if (skipDeferredBinding)
+                {
+                    triggerMetadata.Properties.Add(ScriptConstants.SkipDeferredBindingKey, true);
+                }
+            }
+
             var parameters = await base.GetFunctionParametersAsync(functionInvoker, functionMetadata, triggerMetadata, methodAttributes, inputBindings, outputBindings);
 
             // Add cancellation token
             parameters.Add(new ParameterDescriptor(ScriptConstants.SystemCancellationTokenParameterName, typeof(CancellationToken)));
-
-            var bindings = inputBindings.Union(outputBindings);
 
             try
             {
@@ -99,6 +113,27 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
 
             return parameters;
+        }
+
+        internal bool BindingAttributeContainsExpression(IEnumerable<FunctionBinding> bindings)
+        {
+            foreach (ExtensionBinding binding in bindings)
+            {
+                if (binding.Metadata.IsTrigger)
+                {
+                    // skip triggers, we only care if input and output bindings contain expressions
+                    continue;
+                }
+
+                foreach (var attribute in binding.Attributes)
+                {
+                    return attribute.GetType()
+                                    .GetProperties(BindingFlags.Instance | BindingFlags.Public)
+                                    .Any(prop => prop.PropertyType == typeof(string) && _expressionRegex.IsMatch((string)prop.GetValue(attribute)));
+                }
+            }
+
+            return false;
         }
     }
 }

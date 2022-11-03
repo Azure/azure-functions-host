@@ -60,6 +60,9 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string SkipHostJsonConfigurationKey = "MS_SkipHostJsonConfiguration";
         public const string SkipHostInitializationKey = "MS_SkipHostInitialization";
 
+        public const string SupportsDeferredBindingKey = "SupportsDeferredBinding";
+        public const string SkipDeferredBindingKey = "SkipDeferredBinding";
+
         // Define all system parameters we inject with a prefix to avoid collisions
         // with user parameters
         public const string SystemTriggerParameterName = "_triggerValue";

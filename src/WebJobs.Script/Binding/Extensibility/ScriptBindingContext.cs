@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Newtonsoft.Json.Linq;
@@ -39,7 +40,13 @@ namespace Microsoft.Azure.WebJobs.Script.Extensibility
             Type = GetMetadataValue<string>("type");
             DataType = GetMetadataValue<string>("datatype");
             Cardinality = GetMetadataValue<string>("cardinality");
+            Properties = Metadata.TryGetValue("properties", StringComparison.OrdinalIgnoreCase, out JToken value)
+                            ? new Dictionary<string, object>(value.ToObject<IDictionary<string, object>>(), StringComparer.OrdinalIgnoreCase)
+                            : new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+
             IsTrigger = Type.EndsWith("trigger", StringComparison.OrdinalIgnoreCase);
+            SupportsDeferredBinding = BoolUtility.TryReadAsBool(Properties, ScriptConstants.SupportsDeferredBindingKey, out bool supportsDeferredBinding)
+                                        ? supportsDeferredBinding : false;
         }
 
         /// <summary>
@@ -68,6 +75,11 @@ namespace Microsoft.Azure.WebJobs.Script.Extensibility
         public string Cardinality { get; private set; }
 
         /// <summary>
+        /// Gets all the binding properties.
+        /// </summary>
+        public IDictionary<string, object> Properties { get; }
+
+        /// <summary>
         /// Gets the <see cref="FileAccess"/> for this binding.
         /// </summary>
         public FileAccess Access { get; private set; }
@@ -76,6 +88,11 @@ namespace Microsoft.Azure.WebJobs.Script.Extensibility
         /// Gets a value indicating whether this binding is a trigger binding.
         /// </summary>
         public bool IsTrigger { get; private set; }
+
+        /// <summary>
+        /// Gets a value indicating whether deferred binding is supported.
+        /// </summary>
+        public bool SupportsDeferredBinding { get; set; }
 
         /// <summary>
         /// Helper method for retrieving information from <see cref="Metadata"/>.
