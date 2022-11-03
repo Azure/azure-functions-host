@@ -52,14 +52,23 @@ namespace Microsoft.Azure.WebJobs.Script
         public static bool IsProxy(this FunctionMetadata metadata) =>
             metadata is ProxyFunctionMetadata;
 
-        public static bool IsDirect(this FunctionMetadata metadata) =>
-            BoolUtility.TryReadAsBool(metadata.Properties, IsDirectKey);
+        public static bool IsDirect(this FunctionMetadata metadata)
+        {
+            BoolUtility.TryReadAsBool(metadata.Properties, IsDirectKey, out bool result);
+            return result;
+        }
 
-        public static bool IsDisabled(this FunctionMetadata metadata) =>
-            BoolUtility.TryReadAsBool(metadata.Properties, IsDisabledKey);
+        public static bool IsDisabled(this FunctionMetadata metadata)
+        {
+            BoolUtility.TryReadAsBool(metadata.Properties, IsDisabledKey, out bool result);
+            return result;
+        }
 
-        public static bool IsCodeless(this FunctionMetadata metadata) =>
-            BoolUtility.TryReadAsBool(metadata.Properties, IsCodelessKey);
+        public static bool IsCodeless(this FunctionMetadata metadata)
+        {
+            BoolUtility.TryReadAsBool(metadata.Properties, IsCodelessKey, out bool result);
+            return result;
+        }
 
         public static bool IsCodelessSet(this FunctionMetadata metadata) =>
             metadata.Properties.ContainsKey(IsCodelessKey);

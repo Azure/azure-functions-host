@@ -1,33 +1,27 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
 using System.Collections.Generic;
-using System.IO;
-using System.IO.Abstractions;
-using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
     public static class BoolUtility
     {
-        public static bool TryReadAsBool(IDictionary<string, object> properties, string propertyKey)
+        public static bool TryReadAsBool(IDictionary<string, object> properties, string propertyKey, out bool result)
         {
-            if (properties.TryGetValue(propertyKey, out object valObj))
+            if (properties.TryGetValue(propertyKey, out object valueObject))
             {
-                if (valObj is bool)
+                if (valueObject is bool boolValue)
                 {
-                    return (bool)valObj;
+                    return result = boolValue;
                 }
-                else
+                else if (valueObject is string stringValue)
                 {
-                    return bool.TryParse(valObj as string, out bool valBool) ? valBool : false;
+                    return bool.TryParse(stringValue, out result);
                 }
             }
 
-            return false;
+            return result = false;
         }
     }
 }

@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using Newtonsoft.Json.Linq;
@@ -46,7 +45,8 @@ namespace Microsoft.Azure.WebJobs.Script.Extensibility
                             : new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
 
             IsTrigger = Type.EndsWith("trigger", StringComparison.OrdinalIgnoreCase);
-            SupportsDeferredBinding = BoolUtility.TryReadAsBool(Properties, ScriptConstants.SupportsDeferredBindingKey);
+            SupportsDeferredBinding = BoolUtility.TryReadAsBool(Properties, ScriptConstants.SupportsDeferredBindingKey, out bool supportsDeferredBinding)
+                                        ? supportsDeferredBinding : false;
         }
 
         /// <summary>

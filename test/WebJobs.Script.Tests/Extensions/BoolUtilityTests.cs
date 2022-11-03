@@ -17,10 +17,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             properties.Add("MyValueC", true);
             properties.Add("MyValueD", false);
 
-            Assert.True(BoolUtility.TryReadAsBool(properties, "MyValueA"));
-            Assert.False(BoolUtility.TryReadAsBool(properties, "MyValueB"));
-            Assert.True(BoolUtility.TryReadAsBool(properties, "MyValueC"));
-            Assert.False(BoolUtility.TryReadAsBool(properties, "MyValueD"));
+            BoolUtility.TryReadAsBool(properties, "MyValueA", out bool resultValueA);
+            BoolUtility.TryReadAsBool(properties, "MyValueB", out bool resultValueB);
+            BoolUtility.TryReadAsBool(properties, "MyValueC", out bool resultValueC);
+            BoolUtility.TryReadAsBool(properties, "MyValueD", out bool resultValueD);
+
+            Assert.True(resultValueA);
+            Assert.False(resultValueB);
+            Assert.True(resultValueC);
+            Assert.False(resultValueD);
         }
 
         [Fact]
@@ -29,7 +34,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             var properties = new Dictionary<string, object>();
             properties.Add("MyValueA", "blah");
 
-            Assert.False(BoolUtility.TryReadAsBool(properties, "MyValueA"));
+            BoolUtility.TryReadAsBool(properties, "MyValueA", out bool resultValueA);
+
+            Assert.False(resultValueA);
         }
 
         [Fact]
@@ -38,7 +45,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             var properties = new Dictionary<string, object>();
             properties.Add("MyValueA", null);
 
-            Assert.False(BoolUtility.TryReadAsBool(properties, "MyValueA"));
+            BoolUtility.TryReadAsBool(properties, "MyValueA", out bool resultValueA);
+
+            Assert.False(resultValueA);
         }
     }
 }
