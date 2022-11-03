@@ -9,13 +9,13 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
     {
         public static bool SupportsDeferredBinding(this BindingMetadata metadata)
         {
-            BoolUtility.TryReadAsBool(metadata.Properties, ScriptConstants.SupportsDeferredBindingKey, out bool result);
+            Utility.TryReadAsBool(metadata.Properties, ScriptConstants.SupportsDeferredBindingKey, out bool result);
             return result;
         }
 
         public static bool SkipDeferredBinding(this BindingMetadata metadata)
         {
-            BoolUtility.TryReadAsBool(metadata.Properties, ScriptConstants.SkipDeferredBindingKey, out bool result);
+            Utility.TryReadAsBool(metadata.Properties, ScriptConstants.SkipDeferredBindingKey, out bool result);
             return result;
         }
     }

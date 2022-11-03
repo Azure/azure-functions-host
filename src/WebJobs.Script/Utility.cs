@@ -995,6 +995,24 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
+        public static bool TryReadAsBool(IDictionary<string, object> properties, string propertyKey, out bool result)
+        {
+            if (properties.TryGetValue(propertyKey, out object valueObject))
+            {
+                if (valueObject is bool boolValue)
+                {
+                    result = boolValue;
+                    return true;
+                }
+                else if (valueObject is string stringValue)
+                {
+                    return bool.TryParse(stringValue, out result);
+                }
+            }
+
+            return result = false;
+        }
+
         private class FilteredExpandoObjectConverter : ExpandoObjectConverter
         {
             public override bool CanWrite => true;
