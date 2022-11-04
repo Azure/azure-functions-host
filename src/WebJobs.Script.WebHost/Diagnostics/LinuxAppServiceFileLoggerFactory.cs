@@ -17,10 +17,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _logRootPath = Environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsLogsMountPath);
         }
 
-        public virtual LinuxAppServiceFileLogger GetOrCreate(string category)
+        public virtual LinuxAppServiceFileLogger GetOrCreate(string category, bool linuxFastLogEnabled = false)
         {
             return Loggers.GetOrAdd(category,
-                static (c, path) => new Lazy<LinuxAppServiceFileLogger>(() => new LinuxAppServiceFileLogger(c, path, new FileSystem())), _logRootPath).Value;
+                static (c, path) => new Lazy<LinuxAppServiceFileLogger>(() => new LinuxAppServiceFileLogger(c, path, new FileSystem())), _logRootPath, linuxFastLog:linuxFastLogEnabled ).Value;
         }
     }
 }

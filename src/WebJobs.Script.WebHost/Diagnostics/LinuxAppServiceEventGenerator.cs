@@ -12,12 +12,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly Action<string> _writeEvent;
         private readonly LinuxAppServiceFileLoggerFactory _loggerFactory;
         private readonly HostNameProvider _hostNameProvider;
+        private readonly IFunctionsHostingConfiguration _functionsHostingConfiguration;
 
-        public LinuxAppServiceEventGenerator(LinuxAppServiceFileLoggerFactory loggerFactory, HostNameProvider hostNameProvider, Action<string> writeEvent = null)
+        public LinuxAppServiceEventGenerator(LinuxAppServiceFileLoggerFactory loggerFactory, HostNameProvider hostNameProvider, Action<string> writeEvent = null, FunctionsHostingConfiguration functionsHostingConfiguration)
         {
             _writeEvent = writeEvent ?? WriteEvent;
             _loggerFactory = loggerFactory;
             _hostNameProvider = hostNameProvider ?? throw new ArgumentNullException(nameof(hostNameProvider));
+            _functionsHostingConfiguration = functionsHostingConfiguration;
         }
 
         public static string TraceEventRegex { get; } = "(?<Level>[0-6]),(?<SubscriptionId>[^,]*),(?<HostName>[^,]*),(?<AppName>[^,]*),(?<FunctionName>[^,]*),(?<EventName>[^,]*),(?<Source>[^,]*),\"(?<Details>.*)\",\"(?<Summary>.*)\",(?<HostVersion>[^,]*),(?<EventTimestamp>[^,]+),(?<ExceptionType>[^,]*),\"(?<ExceptionMessage>.*)\",(?<FunctionInvocationId>[^,]*),(?<HostInstanceId>[^,]*),(?<ActivityId>[^,\"]*)";
@@ -67,9 +69,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         public override void LogFunctionExecutionEvent(string executionId, string siteName, int concurrency, string functionName,
             string invocationId, string executionStage, long executionTimeSpan, bool success)
         {
-            var logger = _loggerFactory.GetOrCreate(FunctionsExecutionEventsCategory);
+            bool fastLinuxLoggingEnabled = !string.IsNullOrEmpty(_functionsHostingConfiguration.GetValue(ScriptConstants.HostingConfigEnableLinuxEPFastLog));
+            var logger = _loggerFactory.GetOrCreate(FunctionsExecutionEventsCategory, fastLinuxLoggingEnabled);
             string currentUtcTime = DateTime.UtcNow.ToString();
-            if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableLinuxEPExecutionCount))
+            bool executionCountMetricEnabled = !string.IsNullOrEmpty(_functionsHostingConfiguration.GetValue(ScriptConstants.HostingConfigEnableLinuxEPExecutionCount));
+            if (executionCountMetricEnabled)
             {
                 string log = string.Join(",", executionId, siteName, concurrency.ToString(), functionName, invocationId, executionStage, executionTimeSpan.ToString(), success.ToString(), currentUtcTime);
                 WriteEvent(logger, log);
