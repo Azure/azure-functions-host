@@ -14,7 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly HostNameProvider _hostNameProvider;
         private readonly IFunctionsHostingConfiguration _functionsHostingConfiguration;
 
-        public LinuxAppServiceEventGenerator(LinuxAppServiceFileLoggerFactory loggerFactory, HostNameProvider hostNameProvider, Action<string> writeEvent = null, FunctionsHostingConfiguration functionsHostingConfiguration)
+        public LinuxAppServiceEventGenerator(LinuxAppServiceFileLoggerFactory loggerFactory, HostNameProvider hostNameProvider, Action<string> writeEvent = null, IFunctionsHostingConfiguration functionsHostingConfiguration)
         {
             _writeEvent = writeEvent ?? WriteEvent;
             _loggerFactory = loggerFactory;
@@ -69,10 +69,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         public override void LogFunctionExecutionEvent(string executionId, string siteName, int concurrency, string functionName,
             string invocationId, string executionStage, long executionTimeSpan, bool success)
         {
-            bool fastLinuxLoggingEnabled = !string.IsNullOrEmpty(_functionsHostingConfiguration.GetValue(ScriptConstants.HostingConfigEnableLinuxEPFastLog));
-            var logger = _loggerFactory.GetOrCreate(FunctionsExecutionEventsCategory, fastLinuxLoggingEnabled);
+            bool logBackoffEnabled = !string.IsNullOrEmpty(_functionsHostingConfiguration.GetValue(ScriptConstants.HostingConfigEnableLinuxLogBackoff));
+            var logger = _loggerFactory.GetOrCreate(FunctionsExecutionEventsCategory, logBackoffEnabled);
             string currentUtcTime = DateTime.UtcNow.ToString();
-            bool executionCountMetricEnabled = !string.IsNullOrEmpty(_functionsHostingConfiguration.GetValue(ScriptConstants.HostingConfigEnableLinuxEPExecutionCount));
+            bool executionCountMetricEnabled = !string.IsNullOrEmpty(_functionsHostingConfiguration.GetValue(ScriptConstants.HostingConfigEnableLinuxAppServiceExecutionCount));
             if (executionCountMetricEnabled)
             {
                 string log = string.Join(",", executionId, siteName, concurrency.ToString(), functionName, invocationId, executionStage, executionTimeSpan.ToString(), success.ToString(), currentUtcTime);
