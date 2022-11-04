@@ -22,13 +22,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly IFileSystem _fileSystem;
         private readonly CancellationTokenSource _cancellationTokenSource;
         private Task _outputTask;
+        private int _currentFlushFrequencySeconds;
 
-        public LinuxAppServiceFileLogger(string logFileName, string logFileDirectory, IFileSystem fileSystem, bool startOnCreate = true)
+        public LinuxAppServiceFileLogger(string logFileName, string logFileDirectory, IFileSystem fileSystem, bool startOnCreate = true, bool linuxFastLog = false)
         {
             _logFileName = logFileName;
             _logFileDirectory = logFileDirectory;
             _logFilePath = Path.Combine(_logFileDirectory, _logFileName + ".log");
             _buffer = new BlockingCollection<string>(new ConcurrentQueue<string>());
+            _currentFlushFrequencySeconds = linuxFastLog ? 1 : 30;
             _currentBatch = new List<string>();
             _fileSystem = fileSystem;
             _cancellationTokenSource = new CancellationTokenSource();
@@ -46,7 +48,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         public int MaxFileSizeMb { get; set; } = 10;
 
         // Maximum time between successive flushes (seconds)
-        public int FlushFrequencySeconds { get; set; } = 30;
+         public int MaxFlushFrequencySeconds { get; set; } = 30;
+
+        // Flush Frequency Growth Factor
+        public int FlushFrequencyGrowthFactor { get; set; } = 2;
 
         public virtual void Log(string message)
         {
@@ -87,7 +92,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             while (!_cancellationTokenSource.IsCancellationRequested)
             {
                 await InternalProcessLogQueue();
-                await Task.Delay(TimeSpan.FromSeconds(FlushFrequencySeconds), _cancellationTokenSource.Token).ContinueWith(task => { });
+                await Task.Delay(TimeSpan.FromSeconds(_flushFrequencySeconds), _cancellationTokenSource.Token).ContinueWith(task => { });
+                if ( _currentFlushFrequencySeconds < MaxFlushFrequencySeconds)
+                {
+                    _currentFlushFrequencySeconds *= FlushFrequencyGrowthFactor;
+                }
             }
             // ReSharper disable once FunctionNeverReturns
         }
