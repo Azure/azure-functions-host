@@ -8,21 +8,21 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
 {
-    public class MockLinuxAppServiceFileLogger : LinuxAppServiceFileLogger
+    public class MockLinuxAppServiceFileLogger : ILinuxAppServiceFileLogger
     {
-        public MockLinuxAppServiceFileLogger(string category, string logFileDirectory, IFileSystem fileSystem) : base(category, logFileDirectory, fileSystem)
+        public MockLinuxAppServiceFileLogger()
         {
             Events = new List<string>();
         }
 
         public List<string> Events { get; }
 
-        public override void Log(string evt)
+        public void Log(string evt)
         {
             Events.Add(evt);
         }
 
-        public override Task ProcessLogQueue(object state)
+        public Task ProcessLogQueue(object state)
         {
             return Task.CompletedTask;
         }

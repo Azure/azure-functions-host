@@ -43,6 +43,33 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         }
 
         /// <summary>
+        /// Gets a value indicating whether Linux Log Backoff is disabled in the hosting config.
+        /// </summary>
+        public bool DisableLinuxAppServiceLogBackoff
+        {
+            get
+            {
+                return GetFeature(ScriptConstants.HostingConfigDisableLinuxAppServiceExecutionEventLogBackoff) == "1";
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether Linux Appservice/EP Detailed Execution Event is disabled in the hosting config.
+        /// </summary>
+        public bool DisableLinuxAppServiceExecutionDetails
+        {
+            get
+            {
+                return GetFeature(ScriptConstants.HostingConfigDisableLinuxAppServiceDetailedExecutionEvents) == "1";
+            }
+
+            set
+            {
+               _features[ScriptConstants.HostingConfigDisableLinuxAppServiceDetailedExecutionEvents] = value ? "1" : "0";
+            }
+        }
+
+        /// <summary>
         /// Gets feature by name.
         /// </summary>
         /// <param name="name">Feature name.</param>

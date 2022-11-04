@@ -124,7 +124,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string FeatureFlagDisableWorkerIndexing = "DisableWorkerIndexing";
         public const string FeatureFlagEnableDebugTracing = "EnableDebugTracing";
         public const string FeatureFlagEnableProxies = "EnableProxies";
-        public const string FeatureFlagEnableLinuxEPExecutionCount = "EnableLinuxFEC";
+        public const string HostingConfigDisableLinuxAppServiceDetailedExecutionEvents = "DisableLinuxExecutionDetails";
+        public const string HostingConfigDisableLinuxAppServiceExecutionEventLogBackoff = "DisableLinuxLogBackoff";
 
         public const string AdminJwtValidAudienceFormat = "https://{0}.azurewebsites.net/azurefunctions";
         public const string AdminJwtValidIssuerFormat = "https://{0}.scm.azurewebsites.net";
