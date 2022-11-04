@@ -92,7 +92,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 await Task.Delay(TimeSpan.FromSeconds(_currentFlushFrequencySeconds), _cancellationTokenSource.Token).ContinueWith(task => { });
                 if ( _currentFlushFrequencySeconds < MaxFlushFrequencySeconds)
                 {
-                    _currentFlushFrequencySeconds = Min(MaxFlushFrequencySeconds, _currentFlushFrequencySeconds * FlushFrequencyGrowthFactor);
+                    _currentFlushFrequencySeconds = Min(MaxFlushFrequencySeconds, _currentFlushFrequencySeconds * 2);
                 }
             }
             // ReSharper disable once FunctionNeverReturns
