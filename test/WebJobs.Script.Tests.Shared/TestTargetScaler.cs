@@ -26,4 +26,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             throw new Exception("test");
         }
     }
+
+    internal class FaultyTargetScaler : TestTargetScaler
+    {
+        public override Task<TargetScalerResult> GetScaleResultAsync(TargetScalerContext context)
+        {
+            throw new NotSupportedException("test");
+        }
+    }
 }

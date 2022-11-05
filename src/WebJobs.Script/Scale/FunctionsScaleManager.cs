@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.AppService.Proxy.Client;
@@ -16,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
     /// <summary>
     /// Manages scale monitoring operations.
     /// </summary>
-    public class FunctionsScaleManager
+    public class FunctionsScaleManager : IFunctionsScaleManager
     {
         private readonly IScaleMonitorManager _monitorManager;
         private readonly IScaleMetricsRepository _metricsRepository;
@@ -25,6 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
         private readonly IFunctionsHostingConfiguration _functionsHostingConfiguration;
         private readonly IEnvironment _environment;
         private readonly ILogger _logger;
+        private readonly HashSet<string> _faultyTargetScalers;
 
         // for mock testing only
         public FunctionsScaleManager()
@@ -47,6 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
             _functionsHostingConfiguration = functionsHostingConfiguration;
             _environment = environment;
             _logger = loggerFactory.CreateLogger<FunctionsScaleManager>();
+            _faultyTargetScalers = new HashSet<string>();
         }
 
         /// <summary>
@@ -57,11 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
         /// <returns>The scale vote.</returns>
         public virtual async Task<ScaleStatusResult> GetScaleStatusAsync(ScaleStatusContext context)
         {
-            var scaleMonitors = _monitorManager.GetMonitors();
-            var targetScalers = _targetScalerManager.GetTargetScalers();
-
-            GetScalersToSample(_environment, _functionsHostingConfiguration, scaleMonitors, targetScalers,
-                out List<IScaleMonitor> scaleMonitorsToProcess, out List<ITargetScaler> targetScalersToProcess);
+            GetScalersToSample(out List<IScaleMonitor> scaleMonitorsToProcess, out List<ITargetScaler> targetScalersToProcess);
 
             var scaleMonitorVotes = await GetScaleMonitorsResultAsync(context, scaleMonitorsToProcess);
             var targetScalerVotes = await GetTargetScalersResultAsync(context, targetScalersToProcess);
@@ -151,8 +150,18 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
                                 _logger.LogDebug($"Snapshot dynamic concurrency for target scaler '{targetScaler.TargetScalerDescriptor.FunctionId}' is '{functionSnapshot.Concurrency}'");
                             }
                         }
-
-                        TargetScalerResult result = await targetScaler.GetScaleResultAsync(targetScaleStatusContext);
+                        TargetScalerResult result = null;
+                        try
+                        {
+                            result = await targetScaler.GetScaleResultAsync(targetScaleStatusContext);
+                        }
+                        catch (NotSupportedException ex)
+                        {
+                            string id = GetTargetScalerFunctionUniqueId(targetScaler);
+                            _logger.LogError($"Target scaler '{id}' is not supported, scale monitor will be used instead.", ex);
+                            _faultyTargetScalers.Add(id);
+                            continue;
+                        }
                         _logger.LogDebug($"Target worker count for '{targetScaler.TargetScalerDescriptor.FunctionId}' is '{result.TargetWorkerCount}'");
 
                         ScaleVote vote = ScaleVote.None;
@@ -210,47 +219,40 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
             return vote;
         }
 
-        /// <summary>
-        /// Returns scale monitors and target scalers we want to use based on the configuration.
-        /// Scaler monitor will be ignored if a target scaler is defined in the same extensions assembly and TBS is enabled.
-        /// </summary>
-        /// <param name="environment">Environment variables.</param>
-        /// <param name="hostingConfiguration">Hosting configuration.This is used to enable TDS on stamp level for specific triggers.</param>
-        /// <param name="scaleMonitors">Registered scale monitors.</param>
-        /// <param name="targetScalers">Registered target scalers.</param>
-        /// <param name="scaleMonitorsToSample">Scale monitor to process.</param>
-        /// <param name="targetScalersToSample">Target scaler to process.</param>
-        internal static void GetScalersToSample(
-            IEnvironment environment,
-            IFunctionsHostingConfiguration hostingConfiguration,
-            IEnumerable<IScaleMonitor> scaleMonitors,
-            IEnumerable<ITargetScaler> targetScalers,
+        public void GetScalersToSample(
             out List<IScaleMonitor> scaleMonitorsToSample,
             out List<ITargetScaler> targetScalersToSample)
         {
+            var scaleMonitors = _monitorManager.GetMonitors();
+            var targetScalers = _targetScalerManager.GetTargetScalers();
+
             scaleMonitorsToSample = new List<IScaleMonitor>();
             targetScalersToSample = new List<ITargetScaler>();
 
             // Check if TBS enabled on app level
-            if (environment.IsTargetBasedScalingEnabled())
+            if (_environment.IsTargetBasedScalingEnabled())
             {
-                HashSet<string> targetScalerAssemblies = new HashSet<string>();
+                HashSet<string> targetScalerFunctions = new HashSet<string>();
                 foreach (var scaler in targetScalers)
                 {
-                    string assemblyName = scaler.GetType().Assembly.GetName().Name;
-                    string flag = hostingConfiguration.GetValue(assemblyName, null);
-                    if (flag == "1")
+                    string functionId = GetTargetScalerFunctionUniqueId(scaler);
+                    if (!_faultyTargetScalers.Contains(functionId))
                     {
-                        targetScalersToSample.Add(scaler);
-                        targetScalerAssemblies.Add(assemblyName);
+                        string assemblyName = scaler.GetType().Assembly.GetName().Name;
+                        string flag = _functionsHostingConfiguration.GetValue(assemblyName, null);
+                        if (flag == "1")
+                        {
+                            targetScalersToSample.Add(scaler);
+                            targetScalerFunctions.Add(functionId);
+                        }
                     }
                 }
 
                 foreach (var monitor in scaleMonitors)
                 {
-                    string monitorAssemblyName = monitor.GetType().Assembly.GetName().Name;
-                    // Check if there are scale monitor and target scaler defined in the same assembly
-                    if (!targetScalerAssemblies.Contains(monitorAssemblyName))
+                    string functionId = GetScaleMonitorFunctionUniqueId(monitor);
+                    // Check if target base scaler exists for the function
+                    if (!targetScalerFunctions.Contains(functionId))
                     {
                         scaleMonitorsToSample.Add(monitor);
                     }
@@ -260,6 +262,16 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
             {
                 scaleMonitorsToSample.AddRange(scaleMonitors);
             }
+        }
+
+        private string GetTargetScalerFunctionUniqueId(ITargetScaler scaler)
+        {
+            return $"{scaler.GetType().Assembly.GetName().Name}-{scaler.TargetScalerDescriptor.FunctionId}";
+        }
+
+        private string GetScaleMonitorFunctionUniqueId(IScaleMonitor monitor)
+        {
+            return $"{monitor.GetType().Assembly.GetName().Name}-{monitor.Descriptor.FunctionId}";
         }
     }
 }
