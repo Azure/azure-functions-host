@@ -82,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
                             var settings = FileUtility.ReadAllText(_configFilePath);
                             configs = Parse(settings);
                             _configs = configs;
-                            _logger.LogDebug($"Updaiting FunctionsHostingConfigurations '{settings}'");
+                            _logger.LogDebug($"Updating FunctionsHostingConfigurations '{settings}'");
                         }
                         else
                         {
