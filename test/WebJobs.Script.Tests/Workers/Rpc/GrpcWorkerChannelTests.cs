@@ -353,7 +353,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             string testWorkerId = _workerId.ToLowerInvariant();
             var traces = _logger.GetLogMessages();
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, _expectedLogMsg)));
-            Assert.False(string.IsNullOrEmpty(_metricsLogger.LoggedEvents.FirstOrDefault(e => e.Contains($"{string.Format(MetricEventNames.WorkerInvoked, testWorkerId)}_{scriptInvocationContext.FunctionMetadata.Name}"))));
+            Assert.Equal(1, _metricsLogger.LoggedEvents.Count(e => e.Contains($"{string.Format(MetricEventNames.WorkerInvoked, testWorkerId)}_{scriptInvocationContext.FunctionMetadata.Name}")));
         }
 
         [Fact]
@@ -690,7 +690,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
-        public async Task SendInvocationRequest_PublishesOutboundEvent_ReceiveInvocationResponse()
+        public async Task SendInvocationRequest_PublishesOutboundEvent_ReceivesInvocationResponse()
         {
             await CreateDefaultWorkerChannel();
             _metricsLogger.ClearCollections();
@@ -702,9 +702,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var testWorkerId = _workerId.ToLowerInvariant();
             var traces = _logger.GetLogMessages();
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"InvocationResponse received for invocation id: '{invocationid}'")));
-            Assert.False(string.IsNullOrEmpty(_metricsLogger.LoggedEvents.FirstOrDefault(e => e.Contains($"{string.Format(MetricEventNames.WorkerInvoked, testWorkerId)}_{scriptInvocationContext.FunctionMetadata.Name}"))));
-            Assert.False(string.IsNullOrEmpty(_metricsLogger.LoggedEvents.FirstOrDefault(e => e.Contains(string.Format(MetricEventNames.WorkerInvokeSucceeded, testWorkerId)))));
-            Assert.True(string.IsNullOrEmpty(_metricsLogger.LoggedEvents.FirstOrDefault(e => e.Contains(string.Format(MetricEventNames.WorkerInvokeFailed, testWorkerId)))));
+            Assert.Equal(1, _metricsLogger.LoggedEvents.Count(e => e.Contains($"{string.Format(MetricEventNames.WorkerInvoked, testWorkerId)}_{scriptInvocationContext.FunctionMetadata.Name}")));
+            Assert.Equal(1, _metricsLogger.LoggedEvents.Count(e => e.Contains(string.Format(MetricEventNames.WorkerInvokeSucceeded, testWorkerId))));
+            Assert.Equal(0, _metricsLogger.LoggedEvents.Count(e => e.Contains(string.Format(MetricEventNames.WorkerInvokeFailed, testWorkerId))));
         }
 
         [Fact]
