@@ -350,9 +350,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(Guid.NewGuid(), null);
             await _workerChannel.SendInvocationRequest(scriptInvocationContext);
             await Task.Delay(500);
+            string testWorkerId = _workerId.ToLowerInvariant();
             var traces = _logger.GetLogMessages();
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, _expectedLogMsg)));
-            Assert.False(string.IsNullOrEmpty(_metricsLogger.LoggedEvents.FirstOrDefault(e => e.Contains("testworkeridworker.invoke_js1"))));
+            Assert.Equal(1, _metricsLogger.LoggedEvents.Count(e => e.Contains($"{string.Format(MetricEventNames.WorkerInvoked, testWorkerId)}_{scriptInvocationContext.FunctionMetadata.Name}")));
         }
 
         [Fact]
@@ -686,6 +687,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             FunctionEnvironmentReloadRequest envReloadRequest = _workerChannel.GetFunctionEnvironmentReloadRequest(environmentVariables);
             Assert.True(envReloadRequest.EnvironmentVariables["TestValid"] == "TestValue");
             Assert.True(envReloadRequest.FunctionAppDirectory == _scriptRootPath);
+        }
+
+        [Fact]
+        public async Task SendInvocationRequest_PublishesOutboundEvent_ReceivesInvocationResponse()
+        {
+            await CreateDefaultWorkerChannel();
+            _metricsLogger.ClearCollections();
+            var invocationid = Guid.NewGuid();
+            ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(invocationid, new TaskCompletionSource<ScriptInvocationResult>());
+            await _workerChannel.SendInvocationRequest(scriptInvocationContext);
+            _testFunctionRpcService.PublishInvocationResponseEvent(invocationid.ToString());
+            await Task.Delay(500);
+            var testWorkerId = _workerId.ToLowerInvariant();
+            var traces = _logger.GetLogMessages();
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"InvocationResponse received for invocation id: '{invocationid}'")));
+            Assert.Equal(1, _metricsLogger.LoggedEvents.Count(e => e.Contains($"{string.Format(MetricEventNames.WorkerInvoked, testWorkerId)}_{scriptInvocationContext.FunctionMetadata.Name}")));
+            Assert.Equal(1, _metricsLogger.LoggedEvents.Count(e => e.Contains(string.Format(MetricEventNames.WorkerInvokeSucceeded, testWorkerId))));
+            Assert.Equal(0, _metricsLogger.LoggedEvents.Count(e => e.Contains(string.Format(MetricEventNames.WorkerInvokeFailed, testWorkerId))));
         }
 
         [Fact]
