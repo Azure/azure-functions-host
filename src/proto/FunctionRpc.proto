@@ -326,7 +326,7 @@ message RpcFunctionMetadata {
   // Properties for function metadata
   // They're usually specific to a worker and largely passed along to the controller API for use
   // outside the host
-   map<string,string> Properties = 16;
+   map<string,string> properties = 16;
 }
 
 // Host tells worker it is ready to receive metadata
