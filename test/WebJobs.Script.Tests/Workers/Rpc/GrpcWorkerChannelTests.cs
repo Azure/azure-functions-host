@@ -637,14 +637,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _workerChannel.SetupFunctionInvocationBuffers(functionMetadata);
             _workerChannel.SendFunctionLoadRequests(null, null);
 
+            _testFunctionRpcService.OnMessage(StreamingMessage.ContentOneofCase.FunctionLoadRequest,
+               (m) =>
+               {
+                   Assert.Contains("\"worker.functionId\": \"fn1\"", m.Message.ToString());
+               });
+
             await Task.Delay(500);
-            var traces = _logger.GetLogMessages();
-            ShowOutput(traces);
-
-            string expectedLogMessage = "Adding 4 worker properties";
-            var functionLoadLogs = traces.Where(m => m.FormattedMessage?.Contains(expectedLogMessage) ?? false);
-
-            Assert.Equal(2, functionLoadLogs.Count());
         }
 
         [Fact]

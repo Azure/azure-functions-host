@@ -561,8 +561,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 request.Metadata.Properties.Add(property.Key, property.Value.ToString());
             }
 
-            _workerChannelLogger?.LogDebug($"Adding {request.Metadata.Properties.Count} worker properties for {functionId}");
-
             return request;
         }
 
@@ -733,7 +731,10 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
                     foreach (var property in metadata.Properties)
                     {
-                        functionMetadata.Properties.TryAdd(property.Key, property.Value.ToString());
+                        if (!functionMetadata.Properties.TryAdd(property.Key, property.Value.ToString()))
+                        {
+                            _workerChannelLogger?.LogDebug("{metadataPropertyKey} is already a part of metadata properties", property.Key);
+                        }
                     }
 
                     var bindings = new List<string>();
