@@ -641,7 +641,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var traces = _logger.GetLogMessages();
             ShowOutput(traces);
 
-            string expectedLogMessage = "Adding 1 worker properties";
+            string expectedLogMessage = "Adding 4 worker properties";
             var functionLoadLogs = traces.Where(m => m.FormattedMessage?.Contains(expectedLogMessage) ?? false);
 
             Assert.Equal(2, functionLoadLogs.Count());
