@@ -17,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
     /// <summary>
     /// Manages scale monitoring operations.
     /// </summary>
-    public class FunctionsScaleManager : IFunctionsScaleManager
+    public class FunctionsScaleManager
     {
         private readonly IScaleMonitorManager _monitorManager;
         private readonly IScaleMetricsRepository _metricsRepository;
@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
         private readonly IFunctionsHostingConfiguration _functionsHostingConfiguration;
         private readonly IEnvironment _environment;
         private readonly ILogger _logger;
-        private readonly HashSet<string> _faultyTargetScalers;
+        private readonly HashSet<string> _targetScalersInError;
 
         // for mock testing only
         public FunctionsScaleManager()
@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
             _functionsHostingConfiguration = functionsHostingConfiguration;
             _environment = environment;
             _logger = loggerFactory.CreateLogger<FunctionsScaleManager>();
-            _faultyTargetScalers = new HashSet<string>();
+            _targetScalersInError = new HashSet<string>();
         }
 
         /// <summary>
@@ -157,10 +157,15 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
                         }
                         catch (NotSupportedException ex)
                         {
-                            string id = GetTargetScalerFunctionUniqueId(targetScaler);
-                            _logger.LogError($"Target scaler '{id}' is not supported, scale monitor will be used instead.", ex);
-                            _faultyTargetScalers.Add(id);
-                            continue;
+                            string targetScalerUniqueId = GetTargetScalerFunctionUniqueId(targetScaler);
+                            _logger.LogWarning($"Unable to use target based scaling for Function '{targetScaler.TargetScalerDescriptor.FunctionId}'. Metrics monitoring will be used.", ex);
+                            _targetScalersInError.Add(targetScalerUniqueId);
+
+                            // Adding ScaleVote.None vote
+                            result = new TargetScalerResult
+                            {
+                                TargetWorkerCount = context.WorkerCount
+                            };
                         }
                         _logger.LogDebug($"Target worker count for '{targetScaler.TargetScalerDescriptor.FunctionId}' is '{result.TargetWorkerCount}'");
 
@@ -219,7 +224,13 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
             return vote;
         }
 
-        public void GetScalersToSample(
+        /// <summary>
+        /// Returns scale monitors and target scalers we want to use based on the configuration.
+        /// Scaler monitor will be ignored if a target scaler is defined in the same extensions assembly and TBS is enabled.
+        /// </summary>
+        /// <param name="scaleMonitorsToSample">Scale monitor to process.</param>
+        /// <param name="targetScalersToSample">Target scaler to process.</param>
+        public virtual void GetScalersToSample(
             out List<IScaleMonitor> scaleMonitorsToSample,
             out List<ITargetScaler> targetScalersToSample)
         {
@@ -235,24 +246,24 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
                 HashSet<string> targetScalerFunctions = new HashSet<string>();
                 foreach (var scaler in targetScalers)
                 {
-                    string functionId = GetTargetScalerFunctionUniqueId(scaler);
-                    if (!_faultyTargetScalers.Contains(functionId))
+                    string scalerUniqueId = GetTargetScalerFunctionUniqueId(scaler);
+                    if (!_targetScalersInError.Contains(scalerUniqueId))
                     {
-                        string assemblyName = scaler.GetType().Assembly.GetName().Name;
+                        string assemblyName = GetAssemblyName(scaler.GetType());
                         string flag = _functionsHostingConfiguration.GetValue(assemblyName, null);
                         if (flag == "1")
                         {
                             targetScalersToSample.Add(scaler);
-                            targetScalerFunctions.Add(functionId);
+                            targetScalerFunctions.Add(scalerUniqueId);
                         }
                     }
                 }
 
                 foreach (var monitor in scaleMonitors)
                 {
-                    string functionId = GetScaleMonitorFunctionUniqueId(monitor);
-                    // Check if target base scaler exists for the function
-                    if (!targetScalerFunctions.Contains(functionId))
+                    string monitorUniqueId = GetScaleMonitorFunctionUniqueId(monitor);
+                    // Check if target based scaler exists for the function
+                    if (!targetScalerFunctions.Contains(monitorUniqueId))
                     {
                         scaleMonitorsToSample.Add(monitor);
                     }
@@ -266,12 +277,17 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
 
         private string GetTargetScalerFunctionUniqueId(ITargetScaler scaler)
         {
-            return $"{scaler.GetType().Assembly.GetName().Name}-{scaler.TargetScalerDescriptor.FunctionId}";
+            return $"{GetAssemblyName(scaler.GetType())}-{scaler.TargetScalerDescriptor.FunctionId}";
         }
 
         private string GetScaleMonitorFunctionUniqueId(IScaleMonitor monitor)
         {
-            return $"{monitor.GetType().Assembly.GetName().Name}-{monitor.Descriptor.FunctionId}";
+            return $"{GetAssemblyName(monitor.GetType())}-{monitor.Descriptor.FunctionId}";
+        }
+
+        private string GetAssemblyName(Type type)
+        {
+            return type.Assembly.GetName().Name;
         }
     }
 }

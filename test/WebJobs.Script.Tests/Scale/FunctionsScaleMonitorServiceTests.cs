@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
 
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsRuntimeScaleMonitoringEnabled, "1");
 
-            Mock<IFunctionsScaleManager> functionsScaleManagerMock = new Mock<IFunctionsScaleManager>();
+            Mock<FunctionsScaleManager> functionsScaleManagerMock = new Mock<FunctionsScaleManager>();
             functionsScaleManagerMock.Setup(x => x.GetScalersToSample(out _monitors, out _scalers));
 
             _functionsHostingConfigurationMock = new Mock<IFunctionsHostingConfiguration>(MockBehavior.Strict);

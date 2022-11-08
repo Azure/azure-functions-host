@@ -29,10 +29,10 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
         private readonly TimeSpan _interval;
         private readonly ScaleOptions _scaleOptions;
         private readonly IFunctionsHostingConfiguration _functionsHostingConfiguration;
-        private readonly IFunctionsScaleManager _functionsScaleManager;
+        private readonly FunctionsScaleManager _functionsScaleManager;
         private bool _disposed;
 
-        public FunctionsScaleMonitorService(IFunctionsScaleManager functionsScaleManager, IScaleMetricsRepository metricsRepository, IPrimaryHostStateProvider primaryHostStateProvider, IEnvironment environment, ILoggerFactory loggerFactory, IOptions<ScaleOptions> scaleOptions, IFunctionsHostingConfiguration functionsHostingConfiguration)
+        public FunctionsScaleMonitorService(FunctionsScaleManager functionsScaleManager, IScaleMetricsRepository metricsRepository, IPrimaryHostStateProvider primaryHostStateProvider, IEnvironment environment, ILoggerFactory loggerFactory, IOptions<ScaleOptions> scaleOptions, IFunctionsHostingConfiguration functionsHostingConfiguration)
         {
             _metricsRepository = metricsRepository;
             _primaryHostStateProvider = primaryHostStateProvider;
