@@ -528,10 +528,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         internal FunctionLoadRequest GetFunctionLoadRequest(FunctionMetadata metadata, ManagedDependencyOptions managedDependencyOptions)
         {
-            var functionId = metadata.GetFunctionId();
             FunctionLoadRequest request = new FunctionLoadRequest()
             {
-                FunctionId = functionId,
+                FunctionId = metadata.GetFunctionId(),
                 Metadata = new RpcFunctionMetadata()
                 {
                     Name = metadata.Name,
@@ -558,7 +557,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             foreach (var property in metadata.Properties)
             {
                 // worker properties are expected to be string values
-                request.Metadata.Properties.Add(property.Key, property.Value.ToString());
+                request.Metadata.Properties.Add(property.Key, property.Value?.ToString());
             }
 
             return request;
@@ -733,7 +732,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     {
                         if (!functionMetadata.Properties.TryAdd(property.Key, property.Value.ToString()))
                         {
-                            _workerChannelLogger?.LogDebug("{metadataPropertyKey} is already a part of metadata properties", property.Key);
+                            _workerChannelLogger?.LogDebug("{metadataPropertyKey} is already a part of metadata properties for {functionId}", property.Key, metadata.FunctionId);
                         }
                     }
 
