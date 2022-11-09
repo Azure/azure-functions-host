@@ -730,7 +730,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
                     foreach (var property in metadata.Properties)
                     {
-                        if (!functionMetadata.Properties.TryAdd(property.Key, property.Value.ToString()))
+                        if (!functionMetadata.Properties.TryAdd(property.Key, property.Value?.ToString()))
                         {
                             _workerChannelLogger?.LogDebug("{metadataPropertyKey} is already a part of metadata properties for {functionId}", property.Key, metadata.FunctionId);
                         }

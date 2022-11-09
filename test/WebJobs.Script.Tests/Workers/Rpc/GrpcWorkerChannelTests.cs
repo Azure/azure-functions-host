@@ -16,6 +16,7 @@ using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using Microsoft.Azure.WebJobs.Script.Tests.Description.DotNet;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.FunctionDataCache;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -644,6 +645,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                });
 
             await Task.Delay(500);
+        }
+
+        [Fact]
+        public async Task GetFunctionLoadRequest_IncludesAvoidsDuplicateProperties()
+        {
+            await CreateDefaultWorkerChannel();
+            var functionMetadata = GetTestFunctionsList("python");
+            var functionId = "TestFunctionId1";
+            _testFunctionRpcService.OnMessage(StreamingMessage.ContentOneofCase.FunctionsMetadataRequest,
+               _ => _testFunctionRpcService.PublishWorkerMetadataResponse(_workerId, functionId, functionMetadata, true));
+            var functions = _workerChannel.GetFunctionMetadata();
+
+            await Task.Delay(500);
+            var traces = _logger.GetLogMessages();
+            ShowOutput(traces);
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"FunctionId is already a part of metadata properties for TestFunctionId1")));
         }
 
         [Fact]
