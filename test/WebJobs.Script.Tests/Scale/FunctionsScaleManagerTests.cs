@@ -284,7 +284,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
         [InlineData(false, true, 1, 0)]
         [InlineData(true, false, 1, 0)]
         [InlineData(true, true, 0, 1)]
-        public void GetScalerSamples_Returns_Expected(bool targetBaseScalingEnabled, bool triggerEabled, int expectedScaleMonitorCount, int expectedTargetScalerCount)
+        public void GetScalersToSample_Returns_Expected(bool targetBaseScalingEnabled, bool triggerEabled, int expectedScaleMonitorCount, int expectedTargetScalerCount)
         {
             List<IScaleMonitor> scaleMonitors = new List<IScaleMonitor>
             {
@@ -324,11 +324,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
         }
 
         [Fact]
-        public async Task GetScalerSamples_Fallbacks_ToScaleMonitor()
+        public async Task GetScalersToSample_FallsBackToMonitor_OnTargetScalerError()
         {
             List<IScaleMonitor> scaleMonitors = new List<IScaleMonitor>
             {
-                new TestScaleMonitor<ScaleMetrics>("function1-test-test", "function1"),
+                new TestScaleMonitor<ScaleMetrics>("function1-test-test", "function1")
             };
             Mock<IScaleMonitorManager> scaleMonitorManagerMock = new Mock<IScaleMonitorManager>(MockBehavior.Strict);
             scaleMonitorManagerMock.Setup(x => x.GetMonitors()).Returns(scaleMonitors);
@@ -366,11 +366,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
             manager.GetScalersToSample(out List<IScaleMonitor> monitors1, out List<ITargetScaler> scalers1);
             Assert.Equal(monitors1.Count(), 0);
             Assert.Equal(scalers1.Count(), 2);
-            await manager.GetScaleStatusAsync(context);
+            ScaleStatusResult resutl1 = await manager.GetScaleStatusAsync(context);
+
+            Assert.Equal(resutl1.TargetWorkerCount, 1);
+            Assert.Equal(resutl1.Vote, ScaleVote.None);
+            var logs = _loggerProvider.GetAllLogMessages().Select(x => x.FormattedMessage).ToArray();
+            Assert.Single(logs.Where(x => x == "Unable to use target based scaling for Function 'function1'. Metrics monitoring will be used."));
+            _loggerProvider.ClearAllLogMessages();
 
             manager.GetScalersToSample(out List<IScaleMonitor> monitors2, out List<ITargetScaler> scalers2);
             Assert.Equal(monitors2.Count(), 1);
             Assert.Equal(scalers2.Count(), 1);
+            ScaleStatusResult resutl2 = await manager.GetScaleStatusAsync(context);
+            Assert.Equal(resutl2.TargetWorkerCount, null);
+            Assert.Equal(resutl2.Vote, ScaleVote.ScaleIn);
+            logs = _loggerProvider.GetAllLogMessages().Select(x => x.FormattedMessage).ToArray();
+            Assert.Empty(logs.Where(x => x == "Unable to use target based scaling for Function 'function1'. Metrics monitoring will be used."));
         }
     }
 }
