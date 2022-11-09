@@ -553,6 +553,13 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
                 request.Metadata.Bindings.Add(binding.Name, bindingInfo);
             }
+
+            foreach (var property in metadata.Properties)
+            {
+                // worker properties are expected to be string values
+                request.Metadata.Properties.Add(property.Key, property.Value?.ToString());
+            }
+
             return request;
         }
 
@@ -720,6 +727,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     };
 
                     functionMetadata.SetFunctionId(metadata.FunctionId);
+
+                    foreach (var property in metadata.Properties)
+                    {
+                        if (!functionMetadata.Properties.TryAdd(property.Key, property.Value?.ToString()))
+                        {
+                            _workerChannelLogger?.LogDebug("{metadataPropertyKey} is already a part of metadata properties for {functionId}", property.Key, metadata.FunctionId);
+                        }
+                    }
 
                     var bindings = new List<string>();
                     foreach (string binding in metadata.RawBindings)
