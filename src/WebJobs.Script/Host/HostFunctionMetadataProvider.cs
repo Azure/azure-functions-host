@@ -20,7 +20,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
-    public class HostFunctionMetadataProvider : IFunctionMetadataProvider
+    internal class HostFunctionMetadataProvider : IHostFunctionMetadataProvider
     {
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
         private readonly IMetricsLogger _metricsLogger;
@@ -37,6 +37,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public ImmutableDictionary<string, ImmutableArray<string>> FunctionErrors
            => _functionErrors.ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray());
+
+        public bool UseDefaultMetadataIndexing => true;
 
         public async Task<ImmutableArray<FunctionMetadata>> GetFunctionMetadataAsync(IEnumerable<RpcWorkerConfig> workerConfigs, IEnvironment environment, bool forceRefresh)
         {
