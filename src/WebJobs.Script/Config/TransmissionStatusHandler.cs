@@ -12,7 +12,8 @@ using JsonSerializer = System.Text.Json.JsonSerializer;
 namespace Microsoft.Azure.WebJobs.Script.Config
 {
     /// <summary>
-    /// Transmission Status Event Handler
+    /// Handler is used to track AI ingestion service response by subscribing to the transmission event.
+    /// The notification includes information about the response, and also the telemetry items which were part of the transmission.
     /// </summary>
     internal class TransmissionStatusHandler : IDisposable
     {
