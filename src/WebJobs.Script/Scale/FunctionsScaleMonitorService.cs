@@ -22,20 +22,18 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
     public class FunctionsScaleMonitorService : IHostedService, IDisposable
     {
         private readonly IPrimaryHostStateProvider _primaryHostStateProvider;
-        private readonly IScaleMonitorManager _monitorManager;
         private readonly IScaleMetricsRepository _metricsRepository;
         private readonly IEnvironment _environment;
         private readonly ILogger _logger;
         private readonly Timer _timer;
         private readonly TimeSpan _interval;
         private readonly ScaleOptions _scaleOptions;
-        private readonly ITargetScalerManager _targetScalerManager;
         private readonly IFunctionsHostingConfiguration _functionsHostingConfiguration;
+        private readonly FunctionsScaleManager _functionsScaleManager;
         private bool _disposed;
 
-        public FunctionsScaleMonitorService(IScaleMonitorManager monitorManager, ITargetScalerManager targetScalerManager, IScaleMetricsRepository metricsRepository, IPrimaryHostStateProvider primaryHostStateProvider, IEnvironment environment, ILoggerFactory loggerFactory, IOptions<ScaleOptions> scaleOptions, IFunctionsHostingConfiguration functionsHostingConfiguration)
+        public FunctionsScaleMonitorService(FunctionsScaleManager functionsScaleManager, IScaleMetricsRepository metricsRepository, IPrimaryHostStateProvider primaryHostStateProvider, IEnvironment environment, ILoggerFactory loggerFactory, IOptions<ScaleOptions> scaleOptions, IFunctionsHostingConfiguration functionsHostingConfiguration)
         {
-            _monitorManager = monitorManager;
             _metricsRepository = metricsRepository;
             _primaryHostStateProvider = primaryHostStateProvider;
             _environment = environment;
@@ -44,8 +42,8 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
 
             _interval = _scaleOptions.ScaleMetricsSampleInterval;
             _timer = new Timer(OnTimer, null, Timeout.Infinite, Timeout.Infinite);
-            _targetScalerManager = targetScalerManager;
             _functionsHostingConfiguration = functionsHostingConfiguration;
+            _functionsScaleManager = functionsScaleManager;
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
@@ -83,13 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
         {
             try
             {
-                // get the monitors
-                // if the host is offline, no monitors will be returned
-                var scaleMonitors = _monitorManager.GetMonitors();
-                var targetScalers = _targetScalerManager.GetTargetScalers();
-
-                FunctionsScaleManager.GetScalersToSample(_environment, _functionsHostingConfiguration, scaleMonitors, targetScalers,
-                    out List<IScaleMonitor> scaleMonitorsToProcess, out List<ITargetScaler> targetScalersToProcess);
+                _functionsScaleManager.GetScalersToSample(out List<IScaleMonitor> scaleMonitorsToProcess, out List<ITargetScaler> targetScalersToProcess);
 
                 if (scaleMonitorsToProcess.Any())
                 {

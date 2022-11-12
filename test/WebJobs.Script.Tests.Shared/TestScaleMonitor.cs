@@ -19,10 +19,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _descriptor = new ScaleMonitorDescriptor(GetType().Name.ToLower());
         }
 
-        public TestScaleMonitor(string descriptorId)
+        public TestScaleMonitor(string descriptorId, string functionId)
         {
             Index = 0;
-            _descriptor = new ScaleMonitorDescriptor(descriptorId);
+            _descriptor = new ScaleMonitorDescriptor(descriptorId, functionId);
         }
 
         public ScaleMonitorDescriptor Descriptor => _descriptor;
