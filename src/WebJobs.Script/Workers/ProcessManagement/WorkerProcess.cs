@@ -211,7 +211,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         {
             try
             {
-                Process.WaitForExit(waitTime);
+                if (!Process.HasExited)
+                {
+                    Process.WaitForExit(waitTime);
+                }
             }
             catch (Exception ex)
             {
