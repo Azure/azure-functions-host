@@ -405,22 +405,24 @@ namespace Microsoft.Azure.WebJobs.Script
                     });
                 }
 
-                if (SystemEnvironment.Instance.IsApplicationInsightsAgentEnabled())
+                builder.Services.AddOptions<LoggerFilterOptions>().Configure<IEnvironment>((options, environment) =>
                 {
-                    // Skip sending user generated logs to AI and QuickPulse if worker AI agent is configured, worker will send these logs to AI and Quickpulse service.
-                    builder.Services.Configure<LoggerFilterOptions>(options => options.AddFilter<ApplicationInsightsLoggerProvider>((category, logLevel) =>
+                    if (environment.IsApplicationInsightsAgentEnabled())
                     {
-                        // match Function.<FunctionName>.User
-                        if (category.Length > 14 && category.EndsWith(".User", StringComparison.Ordinal))
+                        options.AddFilter<ApplicationInsightsLoggerProvider>((category, logLevel) =>
                         {
-                            return false;
-                        }
-                        else
-                        {
-                            return true;
-                        }
-                    }));
-                }
+                            // match Function.<FunctionName>.User
+                            if (category.Length > 14 && category.EndsWith(".User", StringComparison.Ordinal))
+                            {
+                                return false;
+                            }
+                            else
+                            {
+                                return true;
+                            }
+                        });
+                    }
+                });
             }
         }
 
