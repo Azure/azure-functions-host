@@ -3,6 +3,7 @@
 <!-- Please add your release notes in the following format:
 - My change description (#PR)
 -->
+- Update Java Worker Version to [2.8.0](https://github.com/Azure/azure-functions-java-worker/releases/tag/2.8.0)
 
 - Track ApplicationInsights ingestion service response by subscribing to transmission event [PR](https://github.com/Azure/azure-functions-host/pull/8828)
 - Update ApplicationInsights packages to 2.21.0 (#8838)
