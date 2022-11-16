@@ -404,6 +404,23 @@ namespace Microsoft.Azure.WebJobs.Script
                         o.EnableDependencyTracking = false;
                     });
                 }
+
+                if (SystemEnvironment.Instance.IsApplicationInsightsAgentEnabled())
+                {
+                    // Skip sending user generated logs to AI and QuickPulse if worker AI agent is configured, worker will send these logs to AI and Quickpulse service.
+                    builder.Services.Configure<LoggerFilterOptions>(options => options.AddFilter<ApplicationInsightsLoggerProvider>((category, logLevel) =>
+                    {
+                        // match Function.<FunctionName>.User
+                        if (category.Length > 14 && category.EndsWith(".User", StringComparison.Ordinal))
+                        {
+                            return false;
+                        }
+                        else
+                        {
+                            return true;
+                        }
+                    }));
+                }
             }
         }
 
