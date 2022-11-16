@@ -930,6 +930,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(expected, workerShouldIndex);
         }
 
+        [Theory]
+        [InlineData("True", true, true)]
+        [InlineData("False", false, true)]
+        [InlineData(true, true, true)]
+        [InlineData(false, false, true)]
+        [InlineData("blah", false, false)]
+        [InlineData(null, false, false)]
+        public void TryReadAsBool_ReturnsExpectedBoolValue(object value, bool expectedValueResult, bool expectedMethodResult)
+        {
+            var properties = new Dictionary<string, object>();
+            properties.Add("MyValue", value);
+
+            bool methodResult = Utility.TryReadAsBool(properties, "MyValue", out bool resultValue);
+
+            Assert.Equal(methodResult, expectedMethodResult);
+            Assert.Equal(resultValue, expectedValueResult);
+        }
+
         private static void VerifyLogLevel(IList<LogMessage> allLogs, string msg, LogLevel expectedLevel)
         {
             var message = allLogs.Where(l => l.FormattedMessage.Contains(msg)).FirstOrDefault();

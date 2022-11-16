@@ -10,8 +10,6 @@ using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Binding
 {
@@ -61,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         // Read the properties and convert that into a System.Type.
         internal static Type GetRequestedType(ScriptBindingContext context)
         {
-            Type type = ParseDataType(context);
+            Type type = context.SupportsDeferredBinding ? typeof(ParameterBindingData) : ParseDataType(context);
 
             Cardinality cardinality;
             if (!Enum.TryParse<Cardinality>(context.Cardinality, true, out cardinality))
@@ -75,11 +73,12 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 // as output bindings
                 type = type.MakeArrayType();
             }
+
             return type;
         }
 
         // Parse the DataType field and return as a System.Type.
-        // Never return null. Use typeof(object) to refer to an unnkown.
+        // Never return null. Use typeof(object) to refer to an unknown.
         private static Type ParseDataType(ScriptBindingContext context)
         {
             DataType result;

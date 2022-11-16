@@ -5,6 +5,8 @@
 # https://git-scm.com/docs/gitignore#_pattern_format
 #
 
+* @azure/azure-functions-core
+
 # Adding codeowner for Python specific files such that GitHub automatically adds python folks as a reviewer.
 build/python.props @vrdmr @gavin-aguiar @YunchuWang
 
@@ -12,5 +14,3 @@ build/python.props @vrdmr @gavin-aguiar @YunchuWang
 test/WebJobs.Script.Tests/Microsoft.Azure.WebJobs.Script.WebHost.deps.json @fabiocav @brettsam @mathewc
 
 src/WebJobs.Script.WebHost/PreJIT/* @vrdmr @pragnagopa @eliaslopezgt @VpOfEngineering @azure/azure-functions-core
-
-* @azure/azure-functions-core

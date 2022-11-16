@@ -11,7 +11,9 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 {
@@ -262,7 +264,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             return relaodEnvResponse;
         }
 
-        public void PublishInvocationResponseEvent()
+        public void PublishInvocationResponseEvent(string invocationId = null)
         {
             StatusResult statusResult = new StatusResult()
             {
@@ -270,7 +272,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             };
             InvocationResponse invocationResponse = new InvocationResponse()
             {
-                InvocationId = "TestInvocationId",
+                InvocationId = invocationId == null ? "TestInvocationId" : invocationId,
                 Result = statusResult
             };
             StreamingMessage responseMessage = new StreamingMessage()
@@ -323,6 +325,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                         Status = statusResult,
                         FunctionId = functionId
                     };
+
+                    foreach (var property in response.Properties)
+                    {
+                        indexingResponse.Properties.Add(property.Key, property.Value.ToString());
+                    }
 
                     overallResponse.FunctionMetadataResults.Add(indexingResponse);
                 }

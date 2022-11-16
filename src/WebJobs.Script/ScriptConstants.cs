@@ -60,6 +60,9 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string SkipHostJsonConfigurationKey = "MS_SkipHostJsonConfiguration";
         public const string SkipHostInitializationKey = "MS_SkipHostInitialization";
 
+        public const string SupportsDeferredBindingKey = "SupportsDeferredBinding";
+        public const string SkipDeferredBindingKey = "SkipDeferredBinding";
+
         // Define all system parameters we inject with a prefix to avoid collisions
         // with user parameters
         public const string SystemTriggerParameterName = "_triggerValue";
@@ -119,7 +122,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string FeatureFlagDisableMergedWebHostScriptHostConfiguration = "DisableMergedConfiguration";
         public const string FeatureFlagEnableWorkerIndexing = "EnableWorkerIndexing";
         public const string FeatureFlagEnableDebugTracing = "EnableDebugTracing";
-        public const string FeatureFlagEnableMultiLanguageWorker = "EnableMultiLanguageWorker";
         public const string FeatureFlagEnableProxies = "EnableProxies";
         public const string FeatureFlagEnableLinuxEPExecutionCount = "EnableLinuxFEC";
 
