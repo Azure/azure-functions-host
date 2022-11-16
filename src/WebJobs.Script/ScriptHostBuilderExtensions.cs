@@ -414,6 +414,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 builder.Services.AddOptions<LoggerFilterOptions>().Configure<IEnvironment>((options, environment) =>
                 {
+                    // Skip sending user generated logs to AI and QuickPulse if worker AI agent is configured, worker will send these logs to AI and Quickpulse service.
                     if (environment.IsApplicationInsightsAgentEnabled())
                     {
                         options.AddFilter<ApplicationInsightsLoggerProvider>((category, logLevel) =>
