@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
@@ -45,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             Assert.Contains(GetEventMessge(source.Name, "TestEvent", "test"), logger.GetLogMessages().Select(l => l.FormattedMessage));
 
             // This assertion accounts for the log message written when a listener handler is created.
-            Assert.Equal(2, logger.GetLogMessages().Count);
+            Assert.Equal(2, GetMessageCount(logger.GetLogMessages(), source.Name));
         }
 
         /// <summary>
@@ -98,7 +99,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
 
                 int expectedMessageCount = debugTracingEnabled ? 3 : 2;
                 // This assertion accounts for the log message written when a listener handler is created.
-                Assert.Equal(expectedMessageCount, messages.Count);
+                Assert.Equal(expectedMessageCount, GetMessageCount(logger.GetLogMessages(), source.Name));
 
                 Assert.Equal(debugTracingEnabled, source.IsEnabled(eventName));
             }
@@ -148,5 +149,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
 
         private static string GetEventMessge(string source, string eventName, string payload)
             => $"Diagnostic source '{source}' emitted event '{eventName}': {payload}";
+
+        private static int GetMessageCount(IList<LogMessage> logs, string source)
+        {
+            // Exclude all the sources that's not relevant for this test
+            int count = 0;
+            foreach (var item in logs)
+            {
+                if (item.FormattedMessage.Contains(source))
+                {
+                    count++;
+                }
+            }
+            return count;
+        }
     }
 }
