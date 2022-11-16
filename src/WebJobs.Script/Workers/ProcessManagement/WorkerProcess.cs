@@ -11,7 +11,6 @@ using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -140,12 +139,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         private void OnProcessExited(object sender, EventArgs e)
         {
+            _workerProcessLogger.LogDebug("Process {processId} has exited with code {exitCode}.", Process?.Id, Process?.ExitCode);
+
             if (Disposing)
             {
                 // No action needed
                 return;
             }
-            string exceptionMessage = string.Join(",", _processStdErrDataQueue.Where(s => !string.IsNullOrEmpty(s)));
 
             try
             {
@@ -160,6 +160,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 }
                 else
                 {
+                    string exceptionMessage = string.Join(",", _processStdErrDataQueue.Where(s => !string.IsNullOrEmpty(s)));
                     var processExitEx = new WorkerProcessExitException($"{Process.StartInfo.FileName} exited with code {Process.ExitCode} (0x{Process.ExitCode.ToString("X")})", new Exception(exceptionMessage));
                     processExitEx.ExitCode = Process.ExitCode;
                     processExitEx.Pid = Process.Id;
@@ -168,7 +169,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             }
             catch (Exception exc)
             {
-                _workerProcessLogger?.LogDebug(exc, "Exception on worker process exit.");
+                _workerProcessLogger?.LogDebug(exc, "Exception on worker process exit. Process id: {processId}", Process?.Id);
                 // ignore process is already disposed
             }
             finally
@@ -208,7 +209,17 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         public void WaitForProcessExitInMilliSeconds(int waitTime)
         {
-            Process.WaitForExit(waitTime);
+            try
+            {
+                if (!Process.HasExited)
+                {
+                    Process.WaitForExit(waitTime);
+                }
+            }
+            catch (Exception ex)
+            {
+                _workerProcessLogger.LogDebug(ex, "An exception was thrown while waiting for process {processId} to exit. It is possible that the process had already exited and this can be ignored.", Process?.Id);
+            }
         }
 
         public void Dispose()
@@ -229,7 +240,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                         Process.Kill();
                         if (!Process.WaitForExit(processExitTimeoutInMilliseconds))
                         {
-                            _workerProcessLogger.LogWarning($"Worker process has not exited despite waiting for {processExitTimeoutInMilliseconds} ms");
+                            _workerProcessLogger.LogWarning("Worker process {processId} has not exited despite waiting for {processExitTimeoutInMilliseconds} ms", Process?.Id, processExitTimeoutInMilliseconds);
                         }
                     }
                     Process.Dispose();
