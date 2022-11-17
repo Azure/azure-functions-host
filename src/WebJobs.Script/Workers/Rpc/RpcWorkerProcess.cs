@@ -3,9 +3,11 @@
 
 using System;
 using System.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
@@ -20,6 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly string _scriptRootPath;
         private readonly WorkerProcessArguments _workerProcessArguments;
         private readonly string _workerDirectory;
+        private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions;
 
         internal RpcWorkerProcess(string runtime,
                                        string workerId,
@@ -32,7 +35,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                                        ILogger workerProcessLogger,
                                        IWorkerConsoleLogSource consoleLogSource,
                                        IMetricsLogger metricsLogger,
-                                       IServiceProvider serviceProvider)
+                                       IServiceProvider serviceProvider,
+                                       IOptions<FunctionsHostingConfigOptions> hostingConfigOptions)
             : base(eventManager, processRegistry, workerProcessLogger, consoleLogSource, metricsLogger, serviceProvider, rpcWorkerConfig.Description.UseStdErrorStreamForErrorsOnly)
         {
             _runtime = runtime;
@@ -44,12 +48,17 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _scriptRootPath = rootScriptPath;
             _workerProcessArguments = rpcWorkerConfig.Arguments;
             _workerDirectory = rpcWorkerConfig.Description.WorkerDirectory;
+            _hostingConfigOptions = hostingConfigOptions;
         }
 
         internal override Process CreateWorkerProcess()
         {
             var workerContext = new RpcWorkerContext(Guid.NewGuid().ToString(), RpcWorkerConstants.DefaultMaxMessageLengthBytes, _workerId, _workerProcessArguments, _scriptRootPath, _serverUri);
             workerContext.EnvironmentVariables.Add(WorkerConstants.FunctionsWorkerDirectorySettingName, _workerDirectory);
+            foreach (var pair in _hostingConfigOptions.Value.Features)
+            {
+                workerContext.EnvironmentVariables[pair.Key] = pair.Value;
+            }
             return _processFactory.CreateWorkerProcess(workerContext);
         }
 

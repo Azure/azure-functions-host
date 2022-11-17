@@ -17,6 +17,7 @@ using System.Threading.Tasks.Dataflow;
 using Google.Protobuf.Collections;
 using Google.Protobuf.WellKnownTypes;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -52,6 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private readonly Dictionary<MsgType, Queue<PendingItem>> _pendingActions = new ();
         private readonly ChannelWriter<OutboundGrpcEvent> _outbound;
         private readonly ChannelReader<InboundGrpcEvent> _inbound;
+        private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions;
 
         private IDisposable _functionLoadRequestResponseEvent;
         private bool _disposed;
@@ -93,7 +95,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions,
             ISharedMemoryManager sharedMemoryManager,
             IFunctionDataCache functionDataCache,
-            IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions)
+            IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions,
+            IOptions<FunctionsHostingConfigOptions> hostingConfigOptions)
         {
             _workerId = workerId;
             _eventManager = eventManager;
@@ -107,6 +110,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _sharedMemoryManager = sharedMemoryManager;
             _workerConcurrencyOptions = workerConcurrencyOptions;
             _processInbound = state => ProcessItem((InboundGrpcEvent)state);
+            _hostingConfigOptions = hostingConfigOptions;
 
             _workerCapabilities = new GrpcCapabilities(_workerChannelLogger);
 
@@ -499,6 +503,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         internal FunctionEnvironmentReloadRequest GetFunctionEnvironmentReloadRequest(IDictionary processEnv)
         {
+            foreach (var pair in _hostingConfigOptions.Value.Features)
+            {
+                processEnv[pair.Key] = pair.Value;
+            }
+
             FunctionEnvironmentReloadRequest request = new FunctionEnvironmentReloadRequest();
             foreach (DictionaryEntry entry in processEnv)
             {

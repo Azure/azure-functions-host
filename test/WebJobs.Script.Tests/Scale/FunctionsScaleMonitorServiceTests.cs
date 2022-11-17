@@ -25,11 +25,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
         private readonly Mock<IPrimaryHostStateProvider> _primaryHostStateProviderMock;
         private readonly TestEnvironment _environment;
         private readonly TestLoggerProvider _loggerProvider;
-        private readonly Mock<IFunctionsHostingConfiguration> _functionsHostingConfigurationMock;
         private List<IScaleMonitor> _monitors;
         private List<ITargetScaler> _scalers;
-
         private bool _isPrimaryHost;
+        private IOptions<FunctionsHostingConfigOptions> _functionsHostingConfigOptions;
 
         public FunctionsScaleMonitorServiceTests()
         {
@@ -52,10 +51,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
             Mock<FunctionsScaleManager> functionsScaleManagerMock = new Mock<FunctionsScaleManager>();
             functionsScaleManagerMock.Setup(x => x.GetScalersToSample(out _monitors, out _scalers));
 
-            _functionsHostingConfigurationMock = new Mock<IFunctionsHostingConfiguration>(MockBehavior.Strict);
-            _functionsHostingConfigurationMock.Setup(p => p.GetValue(It.IsAny<string>(), It.IsAny<string>())).Returns<string>(null);
+            _functionsHostingConfigOptions = Options.Create(new FunctionsHostingConfigOptions());
 
-            _monitor = new FunctionsScaleMonitorService(functionsScaleManagerMock.Object, _metricsRepository, _primaryHostStateProviderMock.Object, _environment, loggerFactory, options, _functionsHostingConfigurationMock.Object);
+            _monitor = new FunctionsScaleMonitorService(functionsScaleManagerMock.Object, _metricsRepository, _primaryHostStateProviderMock.Object, _environment, loggerFactory, options);
         }
 
         [Fact]

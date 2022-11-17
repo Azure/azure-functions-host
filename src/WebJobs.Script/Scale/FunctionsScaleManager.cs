@@ -11,6 +11,7 @@ using Microsoft.Azure.AppService.Proxy.Client;
 using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Scale
 {
@@ -23,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
         private readonly IScaleMetricsRepository _metricsRepository;
         private readonly ITargetScalerManager _targetScalerManager;
         private readonly IConcurrencyStatusRepository _concurrencyStatusRepository;
-        private readonly IFunctionsHostingConfiguration _functionsHostingConfiguration;
+        private readonly IOptions<FunctionsHostingConfigOptions> _functionsHostingConfigOptions;
         private readonly IEnvironment _environment;
         private readonly ILogger _logger;
         private readonly HashSet<string> _targetScalersInError;
@@ -38,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
             IScaleMetricsRepository metricsRepository,
             ITargetScalerManager targetScalerManager,
             IConcurrencyStatusRepository concurrencyStatusRepository,
-            IFunctionsHostingConfiguration functionsHostingConfiguration,
+            IOptions<FunctionsHostingConfigOptions> functionsHostingConfigOptions,
             IEnvironment environment,
             ILoggerFactory loggerFactory)
         {
@@ -46,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
             _metricsRepository = metricsRepository;
             _targetScalerManager = targetScalerManager;
             _concurrencyStatusRepository = concurrencyStatusRepository;
-            _functionsHostingConfiguration = functionsHostingConfiguration;
+            _functionsHostingConfigOptions = functionsHostingConfigOptions;
             _environment = environment;
             _logger = loggerFactory.CreateLogger<FunctionsScaleManager>();
             _targetScalersInError = new HashSet<string>();
@@ -250,7 +251,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
                     if (!_targetScalersInError.Contains(scalerUniqueId))
                     {
                         string assemblyName = GetAssemblyName(scaler.GetType());
-                        string flag = _functionsHostingConfiguration.GetValue(assemblyName, null);
+                        string flag = _functionsHostingConfigOptions.Value.GetFeature(assemblyName);
                         if (flag == "1")
                         {
                             targetScalersToSample.Add(scaler);

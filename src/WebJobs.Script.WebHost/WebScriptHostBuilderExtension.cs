@@ -26,6 +26,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -79,6 +80,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 .ConfigureAppConfiguration(configurationBuilder =>
                 {
                     ConfigureRegisteredBuilders(configurationBuilder, rootServiceProvider);
+
+                    // Adds hosting config source
+                    configurationBuilder.Add(new FunctionsHostingConfigSource(environment));
                 })
                 .ConfigureLogging(loggingBuilder =>
                 {

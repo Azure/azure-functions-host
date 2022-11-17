@@ -5,9 +5,11 @@ using System;
 using System.Diagnostics;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Host.Scale;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
 
@@ -15,15 +17,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 {
     public class RpcWorkerProcessTests
     {
+        private readonly Mock<IWorkerProcessFactory> _workerProcessFactory;
         private RpcWorkerProcess _rpcWorkerProcess;
         private Mock<IScriptEventManager> _eventManager;
         private Mock<IHostProcessMonitor> _hostProcessMonitorMock;
         private TestLogger _logger = new TestLogger("test");
+        private IOptions<FunctionsHostingConfigOptions> _functionsHostingConfigOptions;
 
         public RpcWorkerProcessTests()
         {
             _eventManager = new Mock<IScriptEventManager>();
-            var workerProcessFactory = new Mock<IWorkerProcessFactory>();
+            _workerProcessFactory = new Mock<IWorkerProcessFactory>();
             var processRegistry = new Mock<IProcessRegistry>();
             var rpcServer = new TestRpcServer();
             var languageWorkerConsoleLogSource = new Mock<IWorkerConsoleLogSource>();
@@ -38,18 +42,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var serviceProviderMock = new Mock<IServiceProvider>(MockBehavior.Strict);
             serviceProviderMock.Setup(p => p.GetService(typeof(IScriptHostManager))).Returns(scriptHostManagerMock.Object);
 
+            _functionsHostingConfigOptions = Options.Create(new FunctionsHostingConfigOptions());
+
             _rpcWorkerProcess = new RpcWorkerProcess("node",
                 "testworkerId",
                 "testrootPath",
                 rpcServer.Uri,
                 testWorkerConfigs.ElementAt(0),
                 _eventManager.Object,
-                workerProcessFactory.Object,
+                _workerProcessFactory.Object,
                 processRegistry.Object,
                 _logger,
                 languageWorkerConsoleLogSource.Object,
                 new TestMetricsLogger(),
-                serviceProviderMock.Object);
+                serviceProviderMock.Object,
+                _functionsHostingConfigOptions);
         }
 
         [Fact]
@@ -197,6 +204,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var traces = _logger.GetLogMessages();
             var disposeLogs = traces.Where(m => string.Equals(m.FormattedMessage, "Worker process has not exited despite waiting for 1000 ms"));
             Assert.False(disposeLogs.Any());
+        }
+
+        [Fact]
+        public void CreateWorkerProcess_AddsHostingConfiguration()
+        {
+            _functionsHostingConfigOptions.Value.Features["feature1"] = "1";
+            var process = _rpcWorkerProcess.CreateWorkerProcess();
+
+            _workerProcessFactory.Verify(x => x.CreateWorkerProcess(It.Is<WorkerContext>(c => c.EnvironmentVariables["feature1"] == "1")));
         }
     }
 }
