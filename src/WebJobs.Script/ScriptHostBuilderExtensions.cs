@@ -419,7 +419,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     {
                         options.AddFilter<ApplicationInsightsLoggerProvider>((category, logLevel) =>
                         {
-                            // match Function.<FunctionName>.User
+                            // match Function.<FunctionName>.User category
                             if (!string.IsNullOrEmpty(category) && category.Length > 14 && category.EndsWith(".User", StringComparison.Ordinal))
                             {
                                 return false;
