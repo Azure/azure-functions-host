@@ -391,7 +391,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
                 File.WriteAllText(fileName, "feature1=value1");
                 System.Diagnostics.Debug.WriteLine("Test2");
                 await TestHelpers.Await(() => _loggerProvider.GetAllLogMessages()
-                    .Where(x => x.FormattedMessage.StartsWith("Dynamic worker concurrency monitoring is stopping on hosting config update. Shutting down Functions Host.")).Count() > 0, timeout: 10000, pollingInterval: 100);
+                    .SingleOrDefault(x => x.FormattedMessage.StartsWith("Dynamic worker concurrency monitoring is stopping on hosting config update. Shutting down Functions Host.")) != null, timeout: 10000, pollingInterval: 100);
             }
         }
 
