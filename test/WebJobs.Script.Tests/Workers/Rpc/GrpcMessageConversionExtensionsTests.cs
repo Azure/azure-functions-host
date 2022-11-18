@@ -503,7 +503,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
-        public async Task ToRpc_Collection_String_IncludeEmptyEntries_When_Capability_Is_Present()
+        public async Task ToRpc_Collection_String_IncludeEmptyAndNullEntries_When_Capability_Is_Present()
         {
             var logger = MockNullLoggerFactory.CreateLogger();
             var capabilities = new GrpcCapabilities(logger);
@@ -516,7 +516,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             string[] arrString = { "element1", string.Empty, "element_2", null };
             TypedData actual = await arrString.ToRpc(logger, capabilities);
 
-            var expected = new RepeatedField<string> { "element1", string.Empty, "element_2" }; // null entry should be still skipped
+            var expected = new RepeatedField<string> { "element1", string.Empty, "element_2", string.Empty }; // null entry should be converted to string.Empty because collection doesn't support null's
             Assert.Equal(expected, actual.CollectionString.String);
         }
 
