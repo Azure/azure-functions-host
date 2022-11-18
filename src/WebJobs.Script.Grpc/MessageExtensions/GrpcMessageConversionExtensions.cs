@@ -307,7 +307,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     continue;
                 }
 
-                // Convert null entries to emptyEntry
+                // Convert null entries to emptyEntry because "Add" method doesn't support null (will throw)
                 collectionString.String.Add(element ?? string.Empty);
             }
             typedData.CollectionString = collectionString;
