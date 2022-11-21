@@ -676,6 +676,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         internal Task<List<RawFunctionMetadata>> SendFunctionMetadataRequest()
         {
+            // reset indexing task when in case we need to send another request
+            _functionsIndexingTask = new TaskCompletionSource<List<RawFunctionMetadata>>(TaskCreationOptions.RunContinuationsAsynchronously);
+
             RegisterCallbackForNextGrpcMessage(MsgType.FunctionMetadataResponse, _functionLoadTimeout, 1,
                 msg => ProcessFunctionMetadataResponses(msg.Message.FunctionMetadataResponse), HandleWorkerMetadataRequestError);
 

@@ -58,10 +58,15 @@ namespace Microsoft.Azure.WebJobs.Script
                     throw new InvalidOperationException(nameof(_channelManager));
                 }
 
-                // start up GRPC channels
-                await _channelManager.InitializeChannelAsync(_workerRuntime);
-
                 var channels = _channelManager.GetChannels(_workerRuntime);
+
+                if (channels == null || channels.Count() == 0)
+                {
+                    await _channelManager.InitializeChannelAsync(_workerRuntime);
+                    channels = _channelManager.GetChannels(_workerRuntime);
+                }
+                // start up GRPC channels
+
                 foreach (string workerId in channels.Keys.ToList())
                 {
                     if (channels.TryGetValue(workerId, out TaskCompletionSource<IRpcWorkerChannel> initializedLanguageWorkerChannelTask))
