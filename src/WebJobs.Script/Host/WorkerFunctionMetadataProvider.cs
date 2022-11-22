@@ -69,18 +69,32 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 foreach (string workerId in channels.Keys.ToList())
                 {
-                    if (channels.TryGetValue(workerId, out TaskCompletionSource<IRpcWorkerChannel> initializedLanguageWorkerChannelTask))
+                    if (channels.TryGetValue(workerId, out TaskCompletionSource<IRpcWorkerChannel> languageWorkerChannelTask))
                     {
                         _logger.LogDebug("Found initialized language worker channel for runtime: {workerRuntime} workerId:{workerId}", _workerRuntime, workerId);
                         try
                         {
-                            IRpcWorkerChannel channel = await initializedLanguageWorkerChannelTask.Task;
+                            IRpcWorkerChannel channel = await languageWorkerChannelTask.Task;
                             rawFunctions = await channel.GetFunctionMetadata();
+
                             if (IsDefaultIndexingRequired(rawFunctions))
                             {
                                 _functions.Clear();
                                 return new FunctionMetadataResult(useDefaultMetadataIndexing: true, _functions);
                             }
+
+                            if (!IsNullOrEmpty(rawFunctions))
+                            {
+                                functions = ValidateMetadata(rawFunctions);
+                            }
+
+                            _functions = functions.ToImmutableArray();
+                            _logger.FunctionMetadataProviderFunctionFound(_functions.IsDefault ? 0 : _functions.Count());
+
+                            // Validate if the app has functions in legacy format and add in logs to inform about the mixed app
+                            _ = Task.Delay(TimeSpan.FromMinutes(1)).ContinueWith(t => ValidateFunctionAppFormat(_scriptOptions.Value.RootScriptPath, _logger, environment));
+
+                            break;
                         }
                         catch (Exception ex)
                         {
@@ -89,18 +103,8 @@ namespace Microsoft.Azure.WebJobs.Script
                         }
                     }
                 }
-
-                if (!IsNullOrEmpty(rawFunctions))
-                {
-                    functions = ValidateMetadata(rawFunctions);
-                }
-
-                _functions = functions.ToImmutableArray();
-                _logger.FunctionMetadataProviderFunctionFound(_functions.IsDefault ? 0 : _functions.Count());
             }
 
-            // Validate if the app has functions in legacy format and add in logs to inform about the mixed app
-            _ = Task.Delay(TimeSpan.FromMinutes(1)).ContinueWith(t => ValidateFunctionAppFormat(_scriptOptions.Value.RootScriptPath, _logger, environment));
             return new FunctionMetadataResult(useDefaultMetadataIndexing: false, _functions);
         }
 

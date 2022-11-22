@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
@@ -21,8 +22,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public DefaultFunctionMetadataProvider(ILogger<DefaultFunctionMetadataProvider> logger, IWorkerFunctionMetadataProvider workerFunctionMetadataProvider, IHostFunctionMetadataProvider hostFunctionMetadataProvider)
         {
             _logger = logger;
-            _workerFunctionMetadataProvider = workerFunctionMetadataProvider;
-            _hostFunctionMetadataProvider = hostFunctionMetadataProvider;
+            _workerFunctionMetadataProvider = workerFunctionMetadataProvider ?? throw new ArgumentNullException(nameof(workerFunctionMetadataProvider));
+            _hostFunctionMetadataProvider = hostFunctionMetadataProvider ?? throw new ArgumentNullException(nameof(hostFunctionMetadataProvider));
             _environment = SystemEnvironment.Instance;
         }
 
