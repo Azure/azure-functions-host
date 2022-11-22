@@ -41,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
                     .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
                     .Select(s => s.Split(new[] { '=' }, StringSplitOptions.RemoveEmptyEntries))
                     .Where(a => a.Length == 2)
-                    .ToDictionary(a => a[0], a => a[1], StringComparer.OrdinalIgnoreCase);
+                    .ToDictionary(a => $"{ScriptConstants.FunctionsHostingConfigSectionName}:{a[0]}", a => a[1], StringComparer.OrdinalIgnoreCase);
         }
     }
 }

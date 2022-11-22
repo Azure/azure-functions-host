@@ -31,13 +31,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
                 Assert.Equal(provider.GetChildKeys(new string[] { }, null).Count(), 3);
                 string value;
-                provider.TryGet("ENABLE_FEATUREX", out value);
+                provider.TryGet($"{ScriptConstants.FunctionsHostingConfigSectionName}:ENABLE_FEATUREX", out value);
                 Assert.Equal("1", value);
-                provider.TryGet("A", out value);
+                provider.TryGet($"{ScriptConstants.FunctionsHostingConfigSectionName}:A", out value);
                 Assert.Equal("B", value);
-                provider.TryGet("TimeOut", out value);
+                provider.TryGet($"{ScriptConstants.FunctionsHostingConfigSectionName}:TimeOut", out value);
                 Assert.Equal("123", value);
-                provider.TryGet("timeout", out value); // check case insensitive search
+                provider.TryGet($"{ScriptConstants.FunctionsHostingConfigSectionName}:timeout", out value); // check case insensitive search
                 Assert.Equal("123", value);
             }
         }

@@ -188,7 +188,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.ConfigureOptions<LanguageWorkerOptionsSetup>();
             services.ConfigureOptionsWithChangeTokenSource<AppServiceOptions, AppServiceOptionsSetup, SpecializationChangeTokenSource<AppServiceOptions>>();
             services.ConfigureOptionsWithChangeTokenSource<HttpBodyControlOptions, HttpBodyControlOptionsSetup, SpecializationChangeTokenSource<HttpBodyControlOptions>>();
-            services.ConfigureOptionsWithChangeTokenSource<FunctionsHostingConfigOptions, FunctionsHostingConfigOptionsSetup, ConfigurationChangeTokenSource<FunctionsHostingConfigOptions>>();
 
             services.TryAddSingleton<IDependencyValidator, DependencyValidator>();
             services.TryAddSingleton<IJobHostMiddlewarePipeline>(s => DefaultMiddlewarePipeline.Empty);

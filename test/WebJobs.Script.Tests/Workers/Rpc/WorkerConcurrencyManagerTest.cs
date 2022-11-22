@@ -357,7 +357,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
         [Fact]
         public async Task ActivateWorkerConcurency_FunctionsHostingConfiguration_WorkAsExpected()
         {
-            System.Diagnostics.Debug.WriteLine("Test0");
             using (TempDirectory tempDir = new TempDirectory())
             {
                 WorkerConcurrencyManager manager = null;
@@ -389,7 +388,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
                 await TestHelpers.Await(() => _loggerProvider.GetAllLogMessages()
                     .SingleOrDefault(x => x.FormattedMessage.StartsWith("Dynamic worker concurrency monitoring is starting by hosting config.")) != null, timeout: 10000, pollingInterval: 100);
                 File.WriteAllText(fileName, "feature1=value1");
-                System.Diagnostics.Debug.WriteLine("Test2");
                 await TestHelpers.Await(() => _loggerProvider.GetAllLogMessages()
                     .SingleOrDefault(x => x.FormattedMessage.StartsWith("Dynamic worker concurrency monitoring is stopping on hosting config update. Shutting down Functions Host.")) != null, timeout: 10000, pollingInterval: 100);
             }

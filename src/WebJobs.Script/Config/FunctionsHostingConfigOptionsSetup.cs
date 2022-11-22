@@ -22,23 +22,14 @@ namespace Microsoft.Azure.WebJobs.Script.Config
 
         public void Configure(FunctionsHostingConfigOptions options)
         {
-            ConfigurationRoot configRoot = _configuration as ConfigurationRoot;
-            if (configRoot != null)
+            IConfigurationSection section = _configuration.GetSection(ScriptConstants.FunctionsHostingConfigSectionName);
+            if (section != null)
             {
-                IConfigurationProvider provider = configRoot.Providers.SingleOrDefault(x => x.GetType() == typeof(FunctionsHostingConfigProvider));
-                if (provider != null)
+                foreach (var pair in section.GetChildren())
                 {
-                    var keys = provider.GetChildKeys(new string[] { }, null);
-
-                    foreach (string key in keys)
+                    if (!string.IsNullOrEmpty(pair.Value))
                     {
-                        if (provider.TryGet(key, out string value))
-                        {
-                            if (!string.IsNullOrEmpty(value))
-                            {
-                                options.Features[key] = value;
-                            }
-                        }
+                        options.Features.TryAdd(pair.Key, pair.Value);
                     }
                 }
             }
