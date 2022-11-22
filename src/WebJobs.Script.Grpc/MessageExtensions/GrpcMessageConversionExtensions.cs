@@ -56,6 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     string str => new TypedData() { String = str },
                     double dbl => new TypedData() { Double = dbl },
                     ParameterBindingData bindingData => bindingData.ToModelBindingData(),
+                    ParameterBindingData[] bindingDataArray => bindingDataArray.ToRpcModelBindingDataArray(),
                     byte[][] arrBytes when IsTypedDataCollectionSupported(capabilities) => arrBytes.ToRpcByteArray(),
                     string[] arrStr when IsTypedDataCollectionSupported(capabilities) => arrStr.ToRpcStringArray(
                                                             ShouldIncludeEmptyEntriesInMessagePayload(capabilities)),
@@ -316,6 +317,19 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 collectionString.String.Add(element);
             }
             typedData.CollectionString = collectionString;
+
+            return typedData;
+        }
+
+        internal static TypedData ToRpcModelBindingDataArray(this ParameterBindingData[] arrModelBindingData)
+        {
+            TypedData typedData = new TypedData();
+            CollectionModelBindingData collectionModelBindingData = new CollectionModelBindingData();
+            foreach (ParameterBindingData element in arrModelBindingData)
+            {
+                collectionModelBindingData.ModelBindingData.Add(element.ToModelBindingData().ModelBindingData);
+            }
+            typedData.CollectionModelBindingData = collectionModelBindingData;
 
             return typedData;
         }

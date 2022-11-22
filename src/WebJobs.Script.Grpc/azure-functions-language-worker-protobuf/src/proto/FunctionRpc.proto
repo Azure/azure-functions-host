@@ -431,6 +431,7 @@ message TypedData {
     CollectionDouble collection_double = 10;
     CollectionSInt64 collection_sint64 = 11;
     ModelBindingData model_binding_data = 12;
+    CollectionModelBindingData collection_model_binding_data = 13;
   }
 }
 
@@ -475,6 +476,11 @@ message CollectionBytes {
 // Used to encapsulate collection double
 message CollectionDouble {
   repeated double double = 1;
+}
+
+// Used to encapsulate collection double
+message CollectionModelBindingData {
+  repeated ModelBindingData model_binding_data = 1;
 }
 
 // Used to encapsulate collection sint64

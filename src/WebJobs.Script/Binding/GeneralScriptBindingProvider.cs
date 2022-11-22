@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Reflection;
@@ -125,6 +126,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                         Type requestedType = GetRequestedType(Context);
                         _defaultType = _metadataProvider.GetDefaultType(_attribute, Context.Access, requestedType);
                     }
+                    _defaultType = typeof(ParameterBindingData[]);
                     return _defaultType;
                 }
             }

@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Dynamic;
 using System.IO;
+using System.Linq;
 using System.Reflection.Emit;
 using System.Text;
 using System.Threading.Tasks;
@@ -219,6 +220,19 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         {
             string str = await context.Binder.BindAsync<string>(context.Attributes);
             context.Value = str;
+        }
+
+        internal static async Task BindStringArrayAsync(BindingContext context)
+        {
+            IEnumerable<string> str = await context.Binder.BindAsync<IEnumerable<string>>(context.Attributes);
+            context.Value = str;
+        }
+
+        internal static async Task BindParameterBindingDataArrayAsync(BindingContext context)
+        {
+            IEnumerable<ParameterBindingData> parameterBindingDataList = await context.Binder.BindAsync<IEnumerable<ParameterBindingData>>(context.Attributes);
+            ParameterBindingData[] parameterBindingDataArray = parameterBindingDataList.ToArray();
+            context.Value = parameterBindingDataArray;
         }
 
         internal static async Task BindParameterBindingDataAsync(BindingContext context)
