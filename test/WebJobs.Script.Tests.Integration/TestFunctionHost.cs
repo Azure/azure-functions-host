@@ -487,7 +487,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var managerServiceProvider = manager as IServiceProvider;
 
             var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, new TestMetricsLogger());
-            var defaultProvider = new DefaultFunctionMetadataProvider(NullLogger<DefaultFunctionMetadataProvider>.Instance, null, metadataProvider);
+            var defaultProvider = new FunctionMetadataProvider(NullLogger<FunctionMetadataProvider>.Instance, null, metadataProvider);
             var metadataManager = new FunctionMetadataManager(managerServiceProvider.GetService<IOptions<ScriptJobHostOptions>>(), defaultProvider,
                 managerServiceProvider.GetService<IOptions<HttpWorkerOptions>>(), manager, factory, new TestOptionsMonitor<LanguageWorkerOptions>(workerOptions), environment);
 

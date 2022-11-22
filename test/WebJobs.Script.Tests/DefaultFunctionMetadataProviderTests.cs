@@ -25,13 +25,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class DefaultFunctionMetadataProviderTests
     {
-        private readonly TestLogger<DefaultFunctionMetadataProvider> _logger;
+        private readonly TestLogger<FunctionMetadataProvider> _logger;
         private Mock<IWorkerFunctionMetadataProvider> _workerFunctionMetadataProvider;
         private Mock<IHostFunctionMetadataProvider> _hostFunctionMetadataProvider;
 
         public DefaultFunctionMetadataProviderTests()
         {
-            _logger = new TestLogger<DefaultFunctionMetadataProvider>();
+            _logger = new TestLogger<FunctionMetadataProvider>();
             _workerFunctionMetadataProvider = new Mock<IWorkerFunctionMetadataProvider>();
             _hostFunctionMetadataProvider = new Mock<IHostFunctionMetadataProvider>();
         }
@@ -56,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "node");
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, "EnableWorkerIndexing");
 
-            var defaultProvider = new DefaultFunctionMetadataProvider(_logger, _workerFunctionMetadataProvider.Object, _hostFunctionMetadataProvider.Object);
+            var defaultProvider = new FunctionMetadataProvider(_logger, _workerFunctionMetadataProvider.Object, _hostFunctionMetadataProvider.Object);
 
             FunctionMetadataResult result = new FunctionMetadataResult(true, functionMetadataCollection.ToImmutableArray());
             _workerFunctionMetadataProvider.Setup(m => m.GetFunctionMetadataAsync(workerConfigs, environment, false)).Returns(Task.FromResult(result));
@@ -91,7 +91,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var environment = SystemEnvironment.Instance;
             environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "node");
 
-            var defaultProvider = new DefaultFunctionMetadataProvider(_logger, _workerFunctionMetadataProvider.Object, _hostFunctionMetadataProvider.Object);
+            var defaultProvider = new FunctionMetadataProvider(_logger, _workerFunctionMetadataProvider.Object, _hostFunctionMetadataProvider.Object);
 
             FunctionMetadataResult result = new FunctionMetadataResult(true, functionMetadataCollection.ToImmutableArray());
             _hostFunctionMetadataProvider.Setup(m => m.GetFunctionMetadataAsync(workerConfigs, environment, false)).Returns(Task.FromResult(functionMetadataCollection.ToImmutableArray()));

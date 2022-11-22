@@ -12,14 +12,14 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
-    internal class DefaultFunctionMetadataProvider : IFunctionMetadataProvider
+    internal class FunctionMetadataProvider : IFunctionMetadataProvider
     {
         private readonly IEnvironment _environment;
-        private readonly ILogger<DefaultFunctionMetadataProvider> _logger;
+        private readonly ILogger<FunctionMetadataProvider> _logger;
         private IWorkerFunctionMetadataProvider _workerFunctionMetadataProvider;
         private IHostFunctionMetadataProvider _hostFunctionMetadataProvider;
 
-        public DefaultFunctionMetadataProvider(ILogger<DefaultFunctionMetadataProvider> logger, IWorkerFunctionMetadataProvider workerFunctionMetadataProvider, IHostFunctionMetadataProvider hostFunctionMetadataProvider)
+        public FunctionMetadataProvider(ILogger<FunctionMetadataProvider> logger, IWorkerFunctionMetadataProvider workerFunctionMetadataProvider, IHostFunctionMetadataProvider hostFunctionMetadataProvider)
         {
             _logger = logger;
             _workerFunctionMetadataProvider = workerFunctionMetadataProvider ?? throw new ArgumentNullException(nameof(workerFunctionMetadataProvider));

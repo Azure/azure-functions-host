@@ -161,8 +161,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             services.AddSingleton<IFunctionMetadataProvider>(sp =>
             {
-                return new DefaultFunctionMetadataProvider(
-                    ActivatorUtilities.GetServiceOrCreateInstance<ILogger<DefaultFunctionMetadataProvider>>(sp),
+                return new FunctionMetadataProvider(
+                    ActivatorUtilities.GetServiceOrCreateInstance<ILogger<FunctionMetadataProvider>>(sp),
                     ActivatorUtilities.CreateInstance<WorkerFunctionMetadataProvider>(sp),
                     ActivatorUtilities.CreateInstance<HostFunctionMetadataProvider>(sp));
             });
