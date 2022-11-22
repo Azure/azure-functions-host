@@ -22,8 +22,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public FunctionMetadataProvider(ILogger<FunctionMetadataProvider> logger, IWorkerFunctionMetadataProvider workerFunctionMetadataProvider, IHostFunctionMetadataProvider hostFunctionMetadataProvider)
         {
             _logger = logger;
-            _workerFunctionMetadataProvider = workerFunctionMetadataProvider ?? throw new ArgumentNullException(nameof(workerFunctionMetadataProvider));
-            _hostFunctionMetadataProvider = hostFunctionMetadataProvider ?? throw new ArgumentNullException(nameof(hostFunctionMetadataProvider));
+            _workerFunctionMetadataProvider = workerFunctionMetadataProvider;
+            _hostFunctionMetadataProvider = hostFunctionMetadataProvider;
             _environment = SystemEnvironment.Instance;
         }
 
