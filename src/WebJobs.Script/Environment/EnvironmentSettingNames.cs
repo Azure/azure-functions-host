@@ -69,7 +69,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string FunctionsRequestBodySizeLimit = "FUNCTIONS_REQUEST_BODY_SIZE_LIMIT";
         public const string FunctionsHostIdCheckLevel = "FUNCTIONS_HOSTID_CHECK_LEVEL";
         public const string FunctionsPlatformConfigFilePath = "FUNCTIONS_PLATFORM_CONFIG_FILE_PATH";
-        public const string WebsiteNodeDefaultVersion = "WEBSITE_NODE_DEFAULT_VERSION";
         public const string TargetBaseScalingEnabled = "TARGET_BASED_SCALING_ENABLED";
 
         //Function in Kubernetes
