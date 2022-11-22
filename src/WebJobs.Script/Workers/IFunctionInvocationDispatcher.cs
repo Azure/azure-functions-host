@@ -25,8 +25,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         Task<bool> RestartWorkerWithInvocationIdAsync(string invocationId);
 
-        Task<IEnumerable<RawFunctionMetadata>> GetWorkerMetadata();
-
         Task StartWorkerChannel();
     }
 }

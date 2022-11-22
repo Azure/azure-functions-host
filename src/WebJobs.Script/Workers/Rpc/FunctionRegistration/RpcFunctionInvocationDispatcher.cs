@@ -350,14 +350,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             AddLogUserCategory(functions);
         }
 
-        // Gets metadata from worker
-        public async Task<IEnumerable<RawFunctionMetadata>> GetWorkerMetadata()
-        {
-            // calling GetAllWorkerChannelsAsync() instead of GetInitializedWorkerChannelsAsync() as invocation buffers are not setup yet
-            var channels = (await GetAllWorkerChannelsAsync()).ToArray();
-            return (channels != null && channels.Length > 0) ? await channels.First().GetFunctionMetadata() : null;
-        }
-
         public async Task<IDictionary<string, WorkerStatus>> GetWorkerStatusesAsync()
         {
             var workerChannels = (await GetInitializedWorkerChannelsAsync()).ToArray();

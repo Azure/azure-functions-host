@@ -213,14 +213,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             return true;
         }
 
-        public Task<IEnumerable<RawFunctionMetadata>> GetWorkerMetadata()
-        {
-            // Throw exception because this method is meant to support the worker indexing pipeline.
-            // This is needed in RpcFunctionInvocationDispatcher to start the GRPC process of
-            // requesting metadata from the worker and receiving metadata from the worker.
-            throw new NotSupportedException("This method is meant to support the worker indexing pipeline.");
-        }
-
         public Task FinishInitialization(IEnumerable<FunctionMetadata> functions, CancellationToken cancellationToken = default)
         {
             // Throw exception because this method is meant to support the worker indexing pipeline.
