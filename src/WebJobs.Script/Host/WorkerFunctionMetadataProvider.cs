@@ -11,7 +11,6 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
-using Microsoft.CodeAnalysis.Scripting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json.Linq;
@@ -112,7 +111,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             foreach (RawFunctionMetadata function in functions)
             {
-                if (function.UseDefaultMetadataIndexing == true)
+                if (function.UseDefaultMetadataIndexing)
                 {
                     return true;
                 }
