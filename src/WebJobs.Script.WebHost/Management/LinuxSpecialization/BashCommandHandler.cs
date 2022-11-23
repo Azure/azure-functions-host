@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
                             CreateNoWindow = true
                         }
                     };
-                    _logger.LogInformation($"Running: {process.StartInfo.FileName} {process.StartInfo.Arguments}");
+                    _logger.LogInformation(ReplaceStorageSASTokenSecret($"Running: {process.StartInfo.FileName} {process.StartInfo.Arguments}"));
                     process.Start();
                     var output = process.StandardOutput.ReadToEnd().Trim();
                     var error = process.StandardError.ReadToEnd().Trim();
