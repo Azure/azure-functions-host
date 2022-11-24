@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Text.RegularExpressions;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Extensions.Logging;
 
@@ -14,7 +15,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
     public class BashCommandHandler : IBashCommandHandler
     {
         public const string FileCommand = "file";
-        private static readonly Regex _storageSASTokenPatterns = new Regex("(sig|st|se)=.+?&");
 
         private readonly IMetricsLogger _metricsLogger;
         private readonly ILogger<BashCommandHandler> _logger;
@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
                             CreateNoWindow = true
                         }
                     };
-                    _logger.LogInformation(ReplaceStorageSASTokenSecret($"Running: {process.StartInfo.FileName} {process.StartInfo.Arguments}"));
+                    _logger.LogInformation(Sanitizer.Sanitize($"Running: {process.StartInfo.FileName} {process.StartInfo.Arguments}"));
                     process.Start();
                     var output = process.StandardOutput.ReadToEnd().Trim();
                     var error = process.StandardError.ReadToEnd().Trim();
@@ -67,11 +67,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
             }
 
             return (string.Empty, string.Empty, -1);
-        }
-
-        private static string ReplaceStorageSASTokenSecret(string target)
-        {
-            return _storageSASTokenPatterns.Replace(target, m => $"{m.Groups[1]?.Value}=<Secret>&");
         }
     }
 }
