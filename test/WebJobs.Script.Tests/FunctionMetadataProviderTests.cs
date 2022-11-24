@@ -90,6 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var environment = SystemEnvironment.Instance;
             environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "node");
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, string.Empty);
 
             var defaultProvider = new FunctionMetadataProvider(_logger, _workerFunctionMetadataProvider.Object, _hostFunctionMetadataProvider.Object);
 
