@@ -32,11 +32,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public async Task<ImmutableArray<FunctionMetadata>> GetFunctionMetadataAsync(IEnumerable<RpcWorkerConfig> workerConfigs, IEnvironment environment, bool forceRefresh = false)
         {
             bool workerIndexing = Utility.CanWorkerIndex(workerConfigs, _environment);
-
             if (!workerIndexing)
             {
                 return await GetMetadataFromHostProvider(workerConfigs, environment, forceRefresh);
             }
+
+            _logger.LogInformation("Worker indexing is enabled");
 
             FunctionMetadataResult functionMetadataResult = await _workerFunctionMetadataProvider?.GetFunctionMetadataAsync(workerConfigs, SystemEnvironment.Instance, forceRefresh);
             FunctionErrors = _workerFunctionMetadataProvider.FunctionErrors;
