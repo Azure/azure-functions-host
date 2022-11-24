@@ -3,9 +3,6 @@
 
 using System;
 using System.Diagnostics;
-using System.IO;
-using System.IO.Compression;
-using System.Text.RegularExpressions;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Extensions.Logging;
