@@ -126,7 +126,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // Management services
             services.AddSingleton<IFunctionsSyncManager, FunctionsSyncManager>();
             services.AddSingleton<IFunctionMetadataManager, FunctionMetadataManager>();
-            services.AddSingleton<IFunctionMetadataProvider, HostFunctionMetadataProvider>();
             services.AddSingleton<IWebFunctionsManager, WebFunctionsManager>();
             services.AddSingleton<IInstanceManager, InstanceManager>();
             services.AddHttpClient();
@@ -159,6 +158,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // Register common services with the WebHost
             // Language Worker Hosted Services need to be intialized before WebJobsScriptHostService
             ScriptHostBuilderExtensions.AddCommonServices(services);
+
+            services.AddSingleton<IFunctionMetadataProvider>(sp =>
+            {
+                return new FunctionMetadataProvider(
+                    sp.GetRequiredService<ILogger<FunctionMetadataProvider>>(),
+                    ActivatorUtilities.CreateInstance<WorkerFunctionMetadataProvider>(sp),
+                    ActivatorUtilities.CreateInstance<HostFunctionMetadataProvider>(sp));
+            });
 
             // Core script host services
             services.AddSingleton<WebJobsScriptHostService>();

@@ -554,7 +554,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task GetExtensionsStartupTypes_WorkerIndexing_BypassesSelectiveLoading()
+        public async Task GetExtensionsStartupTypes_WorkerIndexing_PerformsSelectiveLoading()
         {
             var storageExtensionReference = new ExtensionReference { Name = "Storage", TypeName = typeof(AzureStorageWebJobsStartup).AssemblyQualifiedName };
             storageExtensionReference.Bindings.Add("blob");
@@ -590,6 +590,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var mockFunctionMetadataManager = GetTestFunctionMetadataManager();
 
                 var mockExtensionBundleManager = new Mock<IExtensionBundleManager>();
+                mockExtensionBundleManager.Setup(e => e.GetExtensionBundleDetails()).Returns(Task.FromResult(new ExtensionBundleDetails() { Id = "bundleID", Version = "1.0.0" }));
                 mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
                 mockExtensionBundleManager.Setup(e => e.GetExtensionBundleBinPathAsync()).Returns(Task.FromResult(binPath));
 
@@ -610,9 +611,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, null);
 
                 //Assert that filtering did not take place because of worker indexing
-                Assert.True(types.Count() == 2);
+                Assert.True(types.Count() == 1);
                 Assert.Equal(typeof(AzureStorageWebJobsStartup).FullName, types.ElementAt(0).FullName);
-                Assert.Equal(typeof(AzureStorageWebJobsStartup).FullName, types.ElementAt(1).FullName);
             }
         }
 
@@ -629,7 +629,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var functionMetadataCollection = metadataColection ?? new List<FunctionMetadata>() { functionMetdata };
 
             var functionMetadataManager = new Mock<IFunctionMetadataManager>();
-            functionMetadataManager.Setup(e => e.GetFunctionMetadata(true, true, false, null)).Returns(functionMetadataCollection.ToImmutableArray());
+            functionMetadataManager.Setup(e => e.GetFunctionMetadata(true, true, false)).Returns(functionMetadataCollection.ToImmutableArray());
             return functionMetadataManager.Object;
         }
 
