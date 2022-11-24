@@ -23,13 +23,13 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
-    public class DefaultFunctionMetadataProviderTests
+    public class FunctionMetadataProviderTests
     {
         private readonly TestLogger<FunctionMetadataProvider> _logger;
         private Mock<IWorkerFunctionMetadataProvider> _workerFunctionMetadataProvider;
         private Mock<IHostFunctionMetadataProvider> _hostFunctionMetadataProvider;
 
-        public DefaultFunctionMetadataProviderTests()
+        public FunctionMetadataProviderTests()
         {
             _logger = new TestLogger<FunctionMetadataProvider>();
             _workerFunctionMetadataProvider = new Mock<IWorkerFunctionMetadataProvider>();

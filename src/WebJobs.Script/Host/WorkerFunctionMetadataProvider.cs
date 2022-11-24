@@ -24,8 +24,8 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly ILogger _logger;
         private readonly IEnvironment _environment;
         private readonly IWebHostRpcWorkerChannelManager _channelManager;
+        private readonly string _workerRuntime;
         private ImmutableArray<FunctionMetadata> _functions;
-        private string _workerRuntime;
 
         public WorkerFunctionMetadataProvider(
             IOptions<ScriptJobHostOptions> scriptOptions,
@@ -59,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 var channels = _channelManager.GetChannels(_workerRuntime);
 
-                if (channels == null || channels.Count() == 0)
+                if (channels?.Any() != true)
                 {
                     await _channelManager.InitializeChannelAsync(_workerRuntime);
                     channels = _channelManager.GetChannels(_workerRuntime);
@@ -76,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script
                             IRpcWorkerChannel channel = await languageWorkerChannelTask.Task;
                             rawFunctions = await channel.GetFunctionMetadata();
 
-                            if (IsDefaultIndexingRequired(rawFunctions))
+                            if (rawFunctions.Any(x => x.UseDefaultMetadataIndexing))
                             {
                                 _functions.Clear();
                                 return new FunctionMetadataResult(useDefaultMetadataIndexing: true, _functions);
@@ -105,18 +105,6 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             return new FunctionMetadataResult(useDefaultMetadataIndexing: false, _functions);
-        }
-
-        private bool IsDefaultIndexingRequired(IEnumerable<RawFunctionMetadata> functions)
-        {
-            foreach (RawFunctionMetadata function in functions)
-            {
-                if (function.UseDefaultMetadataIndexing)
-                {
-                    return true;
-                }
-            }
-            return false;
         }
 
         internal static void ValidateFunctionAppFormat(string scriptPath, ILogger logger, IEnvironment environment, IFileSystem fileSystem = null)

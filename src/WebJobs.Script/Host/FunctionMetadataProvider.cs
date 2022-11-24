@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 return await GetMetadataFromHostProvider(workerConfigs, environment, forceRefresh);
             }
 
-            FunctionMetadataResult functionMetadataResult = await _workerFunctionMetadataProvider.GetFunctionMetadataAsync(workerConfigs, SystemEnvironment.Instance, forceRefresh);
+            FunctionMetadataResult functionMetadataResult = await _workerFunctionMetadataProvider?.GetFunctionMetadataAsync(workerConfigs, SystemEnvironment.Instance, forceRefresh);
             FunctionErrors = _workerFunctionMetadataProvider.FunctionErrors;
 
             if (functionMetadataResult.UseDefaultMetadataIndexing)
@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private async Task<ImmutableArray<FunctionMetadata>> GetMetadataFromHostProvider(IEnumerable<RpcWorkerConfig> workerConfigs, IEnvironment environment, bool forceRefresh = false)
         {
-            var functions = await _hostFunctionMetadataProvider.GetFunctionMetadataAsync(workerConfigs, environment, forceRefresh);
+            var functions = await _hostFunctionMetadataProvider?.GetFunctionMetadataAsync(workerConfigs, environment, forceRefresh);
             FunctionErrors = _hostFunctionMetadataProvider.FunctionErrors;
             return functions;
         }
