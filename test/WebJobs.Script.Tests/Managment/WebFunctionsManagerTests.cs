@@ -86,7 +86,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             FileUtility.Instance = fileSystem;
             _fileSystem = fileSystem;
             var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, new TestMetricsLogger());
-            var functionMetadataManager = TestFunctionMetadataManager.GetFunctionMetadataManager(new OptionsWrapper<ScriptJobHostOptions>(new ScriptJobHostOptions()), metadataProvider, null, new OptionsWrapper<HttpWorkerOptions>(new HttpWorkerOptions()), loggerFactory, new OptionsWrapper<LanguageWorkerOptions>(TestHelpers.GetTestLanguageWorkerOptions()));
+            var defaultProvider = new FunctionMetadataProvider(NullLogger<FunctionMetadataProvider>.Instance, null, metadataProvider);
+            var functionMetadataManager = TestFunctionMetadataManager.GetFunctionMetadataManager(new OptionsWrapper<ScriptJobHostOptions>(new ScriptJobHostOptions()), defaultProvider, null, new OptionsWrapper<HttpWorkerOptions>(new HttpWorkerOptions()), loggerFactory, new TestOptionsMonitor<LanguageWorkerOptions>(TestHelpers.GetTestLanguageWorkerOptions()));
 
             var emptyOptions = new JobHostInternalStorageOptions();
             var azureStorageProvider = TestHelpers.GetAzureStorageProvider(configurationMock.Object, emptyOptions);
@@ -185,7 +186,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
         private static HttpClient CreateHttpClient(StringBuilder writeContent)
         {
-            return new HttpClient(new MockHttpHandler(writeContent));
+            var httpClient = new HttpClient(new MockHttpHandler(writeContent));
+            var mockFactory = new Mock<IHttpClientFactory>();
+            mockFactory.Setup(m => m.CreateClient(It.IsAny<string>()))
+                 .Returns(httpClient);
+            return mockFactory.Object;
         }
 
         private static LanguageWorkerOptions CreateLanguageWorkerConfigSettings()

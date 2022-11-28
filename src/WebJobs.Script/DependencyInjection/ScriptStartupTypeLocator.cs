@@ -76,11 +76,9 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
             bool isLegacyExtensionBundle = _extensionBundleManager.IsLegacyExtensionBundle();
             bool isPrecompiledFunctionApp = false;
 
-            // if workerIndexing
-            //      Function.json (httpTrigger, blobTrigger, blobTrigger)  -> httpTrigger, blobTrigger
             // dotnet app precompiled -> Do not use bundles
             var workerConfigs = _languageWorkerOptions.Value.WorkerConfigs;
-            if (bundleConfigured && !Utility.CanWorkerIndex(workerConfigs, SystemEnvironment.Instance))
+            if (bundleConfigured)
             {
                 var functionMetadataCollection = _functionMetadataManager.GetFunctionMetadata(forceRefresh: true, includeCustomProviders: false);
                 bindingsSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -164,8 +162,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
 
             foreach (var extensionItem in extensionItems)
             {
-                if (Utility.CanWorkerIndex(workerConfigs, SystemEnvironment.Instance)
-                    || !bundleConfigured
+                if (!bundleConfigured
                     || extensionItem.Bindings.Count == 0
                     || extensionItem.Bindings.Intersect(bindingsSet, StringComparer.OrdinalIgnoreCase).Any())
                 {
