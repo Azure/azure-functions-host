@@ -111,13 +111,13 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             {
                 await BindStringAsync(context);
             }
-            else if (_binding.DefaultType == typeof(string[]))
+            else if (_binding.DefaultType == typeof(IEnumerable<ParameterBindingData>))
             {
-                await BindStringArrayAsync(context);
+                await BindCollectionAsync<ParameterBindingData>(context);
             }
-            else if (_binding.DefaultType == typeof(ParameterBindingData[]))
+            else if (_binding.DefaultType == typeof(IEnumerable<string>))
             {
-                await BindParameterBindingDataArrayAsync(context);
+                await BindCollectionAsync<string>(context);
             }
             else if (_binding.DefaultType == typeof(ParameterBindingData))
             {

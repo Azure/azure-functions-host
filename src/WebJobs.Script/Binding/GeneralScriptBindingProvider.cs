@@ -62,7 +62,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         {
             Type type = context.SupportsDeferredBinding ? typeof(ParameterBindingData) : ParseDataType(context);
 
-            /*
             Cardinality cardinality;
             if (!Enum.TryParse<Cardinality>(context.Cardinality, true, out cardinality))
             {
@@ -73,9 +72,10 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             {
                 // arrays are supported for both trigger input as well
                 // as output bindings
-                type = type.MakeArrayType();
+
+                //type = type.MakeArrayType();
+                type = typeof(IEnumerable<>).MakeGenericType(type);
             }
-            */
 
             return type;
         }
@@ -127,16 +127,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     {
                         Type requestedType = GetRequestedType(Context);
                         _defaultType = _metadataProvider.GetDefaultType(_attribute, Context.Access, requestedType);
-
-                        Cardinality cardinality;
-                        if (!Enum.TryParse<Cardinality>(Context.Cardinality, true, out cardinality))
-                        {
-                            cardinality = Cardinality.One; // default
-                        }
-                        if (cardinality == Cardinality.Many)
-                        {
-                            _defaultType = _defaultType.MakeArrayType();
-                        }
                     }
 
                     return _defaultType;

@@ -222,17 +222,11 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             context.Value = str;
         }
 
-        internal static async Task BindStringArrayAsync(BindingContext context)
-        {
-            IEnumerable<string> str = await context.Binder.BindAsync<IEnumerable<string>>(context.Attributes);
-            context.Value = str;
-        }
 
-        internal static async Task BindParameterBindingDataArrayAsync(BindingContext context)
+        internal static async Task BindCollectionAsync<T>(BindingContext context)
         {
-            IEnumerable<ParameterBindingData> parameterBindingDataList = await context.Binder.BindAsync<IEnumerable<ParameterBindingData>>(context.Attributes);
-            ParameterBindingData[] parameterBindingDataArray = parameterBindingDataList.ToArray();
-            context.Value = parameterBindingDataArray;
+            IEnumerable<T> bindingList = await context.Binder.BindAsync<IEnumerable<T>>(context.Attributes);
+            context.Value = bindingList.ToArray();
         }
 
         internal static async Task BindParameterBindingDataAsync(BindingContext context)
