@@ -64,16 +64,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             {
                 AssignUserExecutePermissionsIfNotExists(workerProcess.StartInfo.FileName);
                 AssignUserExecutePermissionsIfNotExists(workerProcess.StartInfo.Arguments);
-                string fpath = "home/site/wwwroot/"+workerProcess.StartInfo.Arguments;
+                string fpath = "home/site/wwwroot/" + workerProcess.StartInfo.Arguments;
                 AssignUserExecutePermissionsIfNotExists(fpath);
                 AssignUserExecutePermissionsIfNotExists(_scriptRootPath);
-                fpath = _scriptRootPath + "/"+workerProcess.StartInfo.Arguments;
+                fpath = _scriptRootPath + "/" + workerProcess.StartInfo.Arguments;
                 AssignUserExecutePermissionsIfNotExists(fpath);
-                fpath = _scriptRootPath + "/"+workerProcess.StartInfo.FileName;
+                fpath = _scriptRootPath + "/" + workerProcess.StartInfo.FileName;
                 AssignUserExecutePermissionsIfNotExists(fpath);
-                fpath = workerContext.WorkingDirectory + "/"+workerProcess.StartInfo.Arguments;
+                fpath = workerContext.WorkingDirectory + "/" + workerProcess.StartInfo.Arguments;
                 AssignUserExecutePermissionsIfNotExists(fpath);
-                fpath = workerContext.WorkingDirectory +"/"+workerProcess.StartInfo.FileName;
+                fpath = workerContext.WorkingDirectory + "/" + workerProcess.StartInfo.FileName;
                 AssignUserExecutePermissionsIfNotExists(fpath);
             }
             return workerProcess;
