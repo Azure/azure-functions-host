@@ -63,6 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             if (_environment.IsAnyLinuxConsumption())
             {
                 AssignUserExecutePermissionsIfNotExists(workerProcess.StartInfo.FileName);
+                AssignUserExecutePermissionsIfNotExists(workerProcess.StartInfo.Arguments);
             }
             return workerProcess;
         }
@@ -71,6 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         {
             try
             {
+                _workerProcessLogger.LogInformation($"[TEST] FilePath: {filePath}");
                 UnixFileInfo fileInfo = new UnixFileInfo(filePath);
                 if (!fileInfo.FileAccessPermissions.HasFlag(FileAccessPermissions.UserExecute))
                 {
