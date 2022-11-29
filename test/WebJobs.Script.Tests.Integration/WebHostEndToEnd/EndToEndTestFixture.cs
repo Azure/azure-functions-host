@@ -122,6 +122,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string logPath = Path.Combine(Path.GetTempPath(), @"Functions");
             if (!string.IsNullOrEmpty(_functionsWorkerRuntime))
             {
+                string currentFeatureFlags = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags);
+                var featureFlags = string.IsNullOrEmpty(currentFeatureFlags) ? ScriptConstants.FeatureFlagDisableWorkerIndexing : $"{currentFeatureFlags}, {ScriptConstants.FeatureFlagDisableWorkerIndexing}";
+                Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, featureFlags);
                 Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, _functionsWorkerRuntime);
                 Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerProcessCountSettingName, _workerProcessCount.ToString());
             }
