@@ -64,6 +64,17 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             {
                 AssignUserExecutePermissionsIfNotExists(workerProcess.StartInfo.FileName);
                 AssignUserExecutePermissionsIfNotExists(workerProcess.StartInfo.Arguments);
+                string fpath = "home/site/wwwroot/"+workerProcess.StartInfo.Arguments;
+                AssignUserExecutePermissionsIfNotExists(fpath);
+                AssignUserExecutePermissionsIfNotExists(_scriptRootPath);
+                fpath = _scriptRootPath + "/"+workerProcess.StartInfo.Arguments;
+                AssignUserExecutePermissionsIfNotExists(fpath);
+                fpath = _scriptRootPath + "/"+workerProcess.StartInfo.FileName;
+                AssignUserExecutePermissionsIfNotExists(fpath);
+                fpath = workerContext.WorkingDirectory + "/"+workerProcess.StartInfo.Arguments;
+                AssignUserExecutePermissionsIfNotExists(fpath);
+                fpath = workerContext.WorkingDirectory +"/"+workerProcess.StartInfo.FileName;
+                AssignUserExecutePermissionsIfNotExists(fpath);
             }
             return workerProcess;
         }
@@ -74,6 +85,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             {
                 _workerProcessLogger.LogInformation($"[TEST] FilePath: {filePath}");
                 UnixFileInfo fileInfo = new UnixFileInfo(filePath);
+                _workerProcessLogger.LogInformation($"[TEST] FilePath: {filePath}");
                 if (!fileInfo.FileAccessPermissions.HasFlag(FileAccessPermissions.UserExecute))
                 {
                     _workerProcessLogger.LogDebug("Assigning execute permissions to file: {filePath}", filePath);
