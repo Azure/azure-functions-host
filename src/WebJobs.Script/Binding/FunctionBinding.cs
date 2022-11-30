@@ -222,7 +222,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             context.Value = str;
         }
 
-
         internal static async Task BindCollectionAsync<T>(BindingContext context)
         {
             IEnumerable<T> bindingList = await context.Binder.BindAsync<IEnumerable<T>>(context.Attributes);
