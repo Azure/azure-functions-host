@@ -84,7 +84,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             functionMetadataCollection.Add(GetTestFunctionMetadata());
 
             var workerConfigs = TestHelpers.GetTestWorkerConfigs().ToImmutableArray();
-            workerConfigs.ToList().ForEach(config => config.Description.WorkerIndexing = "true");
+            workerConfigs.ToList().ForEach(config => config.Description.WorkerIndexing = "false");
             var scriptjobhostoptions = new ScriptJobHostOptions();
             scriptjobhostoptions.RootScriptPath = Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "..", "sample", "node");
 

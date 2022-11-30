@@ -118,7 +118,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string FeatureFlagDisableDiagnosticEventLogging = "DisableDiagnosticEventLogging";
         public const string FeatureFlagDisableMergedWebHostScriptHostConfiguration = "DisableMergedConfiguration";
         public const string FeatureFlagDisableAspNetCoreGrpc = "DisableAspNetCoreGrpc";
-        public const string FeatureFlagEnableWorkerIndexing = "EnableWorkerIndexing";
+        public const string FeatureFlagDisableWorkerIndexing = "DisableWorkerIndexing";
         public const string FeatureFlagEnableMultiLanguageWorker = "EnableMultiLanguageWorker";
         public const string FeatureFlagEnableLinuxEPExecutionCount = "EnableLinuxFEC";
 

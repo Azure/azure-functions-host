@@ -3,6 +3,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -98,11 +100,13 @@ namespace Microsoft.WebJobs.Script.Tests
             var optionsMonitor = new OptionsMonitor<ScriptApplicationHostOptions>(factory, changeTokens, factory);
 
             var hostMetadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, metricsLogger);
-            var defaultProvider = new FunctionMetadataProvider(NullLogger<FunctionMetadataProvider>.Instance, null, hostMetadataProvider);
+
+            var workerProvider = new Mock<IWorkerFunctionMetadataProvider>();
+            workerProvider.Setup(m => m.GetFunctionMetadataAsync(It.IsAny<IEnumerable<RpcWorkerConfig>>(), SystemEnvironment.Instance, false)).Returns(Task.FromResult(new FunctionMetadataResult(true, ImmutableArray<FunctionMetadata>.Empty)));
+            var defaultProvider = new FunctionMetadataProvider(NullLogger<FunctionMetadataProvider>.Instance, workerProvider.Object, hostMetadataProvider);
             var metadataManager = TestFunctionMetadataManager.GetFunctionMetadataManager(new OptionsWrapper<ScriptJobHostOptions>(new ScriptJobHostOptions()), defaultProvider, new List<IFunctionProvider>(), new OptionsWrapper<HttpWorkerOptions>(new HttpWorkerOptions()), new NullLoggerFactory(), new OptionsWrapper<LanguageWorkerOptions>(TestHelpers.GetTestLanguageWorkerOptions()));
             services.AddSingleton<IFunctionMetadataManager>(metadataManager);
             services.AddSingleton<IFunctionMetadataProvider>(defaultProvider);
-
             return services;
         }
     }
