@@ -129,13 +129,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
             (string stdout, string stderr, int exitCode) = _bashCommandHandler.RunBashCommand(
                 $"{Aria2CExecutable} --allow-overwrite -x12 -d {directory} -o {fileName} '{zipUri}'",
                 downloadMetricName);
-            _logger.LogInformation(Sanitizer.Sanitize($"Running: {Aria2CExecutable} --allow-overwrite -x12 -d {directory} -o {fileName} '{Sanitizer.Sanitize(zipUri?.AbsoluteUri)}"));
             if (exitCode != 0)
             {
                 var msg = $"Error downloading package. stdout: {stdout}, stderr: {stderr}, exitCode: {exitCode}";
                 _logger.LogError(msg);
                 throw new InvalidOperationException(msg);
             }
+            _logger.LogInformation(Sanitizer.Sanitize($"Executed: {Aria2CExecutable} --allow-overwrite -x12 -d {directory} -o {fileName} '{Sanitizer.Sanitize(zipUri?.AbsoluteUri)}"));
+
             var fileInfo = FileUtility.FileInfoFromFileName(Path.Combine(directory, fileName));
             _logger.LogInformation("'{fileInfo.Length}' bytes downloaded. IsWarmupRequest = '{isWarmupRequest}'",
                 fileInfo.Length, isWarmupRequest);

@@ -152,7 +152,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
 
             // Check file magic-number using `file` command.
             (var output, _, _) = _bashCommandHandler.RunBashCommand($"{BashCommandHandler.FileCommand} -b {filePath}", MetricEventNames.LinuxContainerSpecializationFileCommand);
-            _logger.LogInformation(Sanitizer.Sanitize($"Running: {BashCommandHandler.FileCommand} -b {filePath} {MetricEventNames.LinuxContainerSpecializationFileCommand}"));
+            _logger.LogInformation(Sanitizer.Sanitize($"Executed: {BashCommandHandler.FileCommand} -b {filePath} {MetricEventNames.LinuxContainerSpecializationFileCommand}"));
             if (output.StartsWith(SquashfsPrefix, StringComparison.OrdinalIgnoreCase))
             {
                 return CodePackageType.Squashfs;
@@ -184,7 +184,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
 
             _bashCommandHandler.RunBashCommand($"{UnsquashFSExecutable} -f -d '{scriptPath}' '{filePath}'",
                 MetricEventNames.LinuxContainerSpecializationUnsquash);
-            _logger.LogInformation(Sanitizer.Sanitize($"Running: {UnsquashFSExecutable} -f -d '{scriptPath}' '{filePath}' {MetricEventNames.LinuxContainerSpecializationUnsquash}"));
+            _logger.LogInformation(Sanitizer.Sanitize($"Executed: {UnsquashFSExecutable} -f -d '{scriptPath}' '{filePath}' {MetricEventNames.LinuxContainerSpecializationUnsquash}"));
         }
 
         public async Task<bool> MountAzureFileShare(HostAssignmentContext assignmentContext)
