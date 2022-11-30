@@ -72,9 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             {
                 // arrays are supported for both trigger input as well
                 // as output bindings
-
-                //type = type.MakeArrayType();
-                type = typeof(IEnumerable<>).MakeGenericType(type);
+                type = type.GetType() == typeof(ParameterBindingData) ? typeof(IEnumerable<>).MakeGenericType(type) : type.MakeArrayType();
             }
 
             return type;
