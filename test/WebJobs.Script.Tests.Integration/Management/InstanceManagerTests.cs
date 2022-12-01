@@ -193,8 +193,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             await TestHelpers.CreateContentZip(contentRoot, zipFilePath, Path.Combine(@"TestScripts", "DotNet"));
 
             IConfiguration configuration = TestHelpers.GetTestConfiguration();
-            //string connectionString = configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
-            string connectionString = "UseDevelopmentStorage=true";
+            string connectionString = configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
+
             Uri sasUri = await TestHelpers.CreateBlobSas(connectionString, zipFilePath, "scm-run-from-pkg-test", "NonEmpty.zip");
 
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
