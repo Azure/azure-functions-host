@@ -431,6 +431,7 @@ message TypedData {
     CollectionDouble collection_double = 10;
     CollectionSInt64 collection_sint64 = 11;
     ModelBindingData model_binding_data = 12;
+    CollectionModelBindingData collection_model_binding_data = 13;
   }
 }
 
@@ -668,4 +669,9 @@ message ModelBindingData
 
     // The binding data content
     bytes content = 4;
+}
+
+// Used to encapsulate collection model_binding_data
+message CollectionModelBindingData {
+  repeated ModelBindingData model_binding_data = 1;
 }
