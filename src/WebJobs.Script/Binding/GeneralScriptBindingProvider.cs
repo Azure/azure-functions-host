@@ -126,7 +126,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                         Type requestedType = GetRequestedType(Context);
                         _defaultType = _metadataProvider.GetDefaultType(_attribute, Context.Access, requestedType);
                     }
-
                     return _defaultType;
                 }
             }
