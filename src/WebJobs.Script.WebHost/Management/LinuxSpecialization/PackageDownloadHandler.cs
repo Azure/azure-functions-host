@@ -135,7 +135,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
                 _logger.LogError(msg);
                 throw new InvalidOperationException(msg);
             }
-            _logger.LogInformation(Sanitizer.Sanitize($"Executed: {Aria2CExecutable} --allow-overwrite -x12 -d {directory} -o {fileName} '{Sanitizer.Sanitize(zipUri?.AbsoluteUri)}"));
+            _logger.LogInformation($"Executed: {Aria2CExecutable} --allow-overwrite -x12 -d {directory} -o {fileName} '{Sanitizer.Sanitize(zipUri?.AbsoluteUri)}");
 
             var fileInfo = FileUtility.FileInfoFromFileName(Path.Combine(directory, fileName));
             _logger.LogInformation("'{fileInfo.Length}' bytes downloaded. IsWarmupRequest = '{isWarmupRequest}'",
