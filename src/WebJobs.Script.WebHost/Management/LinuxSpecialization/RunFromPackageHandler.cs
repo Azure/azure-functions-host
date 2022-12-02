@@ -181,10 +181,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
         private void UnsquashImage(string filePath, string scriptPath)
         {
             _logger.LogDebug($"Unsquashing remote zip to {scriptPath}");
-
-            _bashCommandHandler.RunBashCommand($"{UnsquashFSExecutable} -f -d '{scriptPath}' '{filePath}'",
-                MetricEventNames.LinuxContainerSpecializationUnsquash);
-            _logger.LogInformation(Sanitizer.Sanitize($"Executed: {UnsquashFSExecutable} -f -d '{scriptPath}' '{filePath}' {MetricEventNames.LinuxContainerSpecializationUnsquash}"));
+            var command = $"{UnsquashFSExecutable} -f -d '{scriptPath}' '{filePath}'";
+            _bashCommandHandler.RunBashCommand(command, MetricEventNames.LinuxContainerSpecializationUnsquash);
+            _logger.LogInformation(Sanitizer.Sanitize(command));
         }
 
         public async Task<bool> MountAzureFileShare(HostAssignmentContext assignmentContext)

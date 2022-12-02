@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
                             CreateNoWindow = true
                         }
                     };
-                    _logger.LogInformation($"Running: {process.StartInfo.FileName}");
+                    _logger.LogInformation($"Running: bash.exe (arguments omitted)");
                     process.Start();
                     var output = process.StandardOutput.ReadToEnd().Trim();
                     var error = process.StandardError.ReadToEnd().Trim();
