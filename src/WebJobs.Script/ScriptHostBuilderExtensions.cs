@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Hosting;
@@ -387,12 +388,18 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     o.InstrumentationKey = appInsightsInstrumentationKey;
                     o.ConnectionString = appInsightsConnectionString;
-                }, t => t.TelemetryProcessorChainBuilder.Use(next => new ScriptTelemetryProcessor(next)));
+                }, t =>
+                {
+                    if (t.TelemetryChannel is ServerTelemetryChannel channel)
+                    {
+                        channel.TransmissionStatusEvent += TransmissionStatusHandler.Handler;
+                    }
+
+                    t.TelemetryProcessorChainBuilder.Use(next => new ScriptTelemetryProcessor(next));
+                });
 
                 builder.Services.ConfigureOptions<ApplicationInsightsLoggerOptionsSetup>();
-
                 builder.Services.AddSingleton<ISdkVersionProvider, FunctionsSdkVersionProvider>();
-
                 builder.Services.AddSingleton<ITelemetryInitializer, ScriptTelemetryInitializer>();
 
                 if (SystemEnvironment.Instance.IsPlaceholderModeEnabled())
@@ -404,6 +411,26 @@ namespace Microsoft.Azure.WebJobs.Script
                         o.EnableDependencyTracking = false;
                     });
                 }
+
+                builder.Services.AddOptions<LoggerFilterOptions>().Configure<IEnvironment>((options, environment) =>
+                {
+                    // Skip sending user generated logs to AI and QuickPulse if worker AI agent is configured, worker will send these logs to AI and Quickpulse service.
+                    if (environment.IsApplicationInsightsAgentEnabled())
+                    {
+                        options.AddFilter<ApplicationInsightsLoggerProvider>((category, logLevel) =>
+                        {
+                            // skip Function.<FunctionName>.User category
+                            if (!string.IsNullOrEmpty(category) && category.Length > 14 && category.EndsWith(".User", StringComparison.Ordinal))
+                            {
+                                return false;
+                            }
+                            else
+                            {
+                                return true;
+                            }
+                        });
+                    }
+                });
             }
         }
 
