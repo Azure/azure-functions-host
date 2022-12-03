@@ -711,5 +711,34 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             Assert.Equal(typedData.ModelBindingData, returned_typedata.ModelBindingData);
         }
+
+        [Fact]
+        public void ToModelBindingDataArray_Creates_Valid_BindingData()
+        {
+            var logger = MockNullLoggerFactory.CreateLogger();
+            var capabilities = new GrpcCapabilities(logger);
+
+            var binaryData = new BinaryData("hello world");
+            var parameterBindingData = new ParameterBindingData("1.0", "CosmosDB", binaryData, "application/json");
+            var parameterBindingDataArray = new ParameterBindingData[] { parameterBindingData };
+
+            TypedData returned_typedata = parameterBindingDataArray.ToModelBindingDataArray();
+
+            var modelBindingData = new ModelBindingData
+            {
+                Version = parameterBindingData.Version,
+                ContentType = parameterBindingData.ContentType,
+                Source = parameterBindingData.Source,
+                Content = ByteString.CopyFrom(parameterBindingData.Content)
+            };
+
+            var collectionModelBindingData = new CollectionModelBindingData();
+            collectionModelBindingData.ModelBindingData.Add(modelBindingData);
+
+            TypedData typedData = new TypedData();
+            typedData.CollectionModelBindingData = collectionModelBindingData;
+
+            Assert.Equal(typedData.ModelBindingData, returned_typedata.ModelBindingData);
+        }
     }
 }
