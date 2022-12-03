@@ -478,11 +478,6 @@ message CollectionDouble {
   repeated double double = 1;
 }
 
-// Used to encapsulate collection double
-message CollectionModelBindingData {
-  repeated ModelBindingData model_binding_data = 1;
-}
-
 // Used to encapsulate collection sint64
 message CollectionSInt64 {
   repeated sint64 sint64 = 1;
