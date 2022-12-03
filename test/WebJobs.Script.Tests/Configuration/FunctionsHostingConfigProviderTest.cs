@@ -12,8 +12,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 {
     public class FunctionsHostingConfigProviderTest
     {
-        [Fact]
-        public void Load_Returns_Expected()
+        [Theory]
+        [InlineData("ENABLE_FEATUREX=1,A=B,TimeOut=123")]
+        [InlineData("ENABLE_FEATUREX=1;A=B;TimeOut=123")]
+        public void Load_Returns_Expected(string config)
         {
             using (TempDirectory tempDir = new TempDirectory())
             {
@@ -23,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 FunctionsHostingConfigSource source = new FunctionsHostingConfigSource(mockEnvironment.Object);
 
                 FunctionsHostingConfigProvider provider = new FunctionsHostingConfigProvider(source);
-                File.WriteAllText(fileName, "ENABLE_FEATUREX=1,A=B,TimeOut=123");
+                File.WriteAllText(fileName, config);
                 using (Stream stream = File.OpenRead(fileName))
                 {
                     provider.Load(stream);

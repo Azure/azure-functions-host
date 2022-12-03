@@ -11,7 +11,7 @@ using Microsoft.Extensions.Configuration;
 namespace Microsoft.Azure.WebJobs.Script.Config
 {
     /// <summary>
-    /// A hosting configuration file based <see cref="FileConfigurationProvider"/>.
+    /// A file-based hosting configuration <see cref="FileConfigurationProvider"/>.
     /// </summary>
     public class FunctionsHostingConfigProvider : FileConfigurationProvider
     {

@@ -29,7 +29,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         private readonly IEnvironment _environment;
         private readonly IApplicationLifetime _applicationLifetime;
         private readonly long _memoryLimit = AppServicesHostingUtility.GetMemoryLimitBytes();
-        private readonly IOptions<FunctionsHostingConfigOptions> _functionsHostingConfigOptions;
         private readonly IOptionsMonitor<FunctionsHostingConfigOptions> _functionsHostingConfigOptionsMonitor;
         private readonly Func<Task> _stopApplication;
 
@@ -45,7 +44,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             IFunctionInvocationDispatcherFactory functionInvocationDispatcherFactory,
             IEnvironment environment,
             IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions,
-            IOptions<FunctionsHostingConfigOptions> functionsHostingConfigOptions,
             IOptionsMonitor<FunctionsHostingConfigOptions> functionsHostingConfigOptionsMonitor,
             IApplicationLifetime applicationLifetime,
             ILoggerFactory loggerFactory)
@@ -53,7 +51,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             _functionInvocationDispatcherFactory = functionInvocationDispatcherFactory ?? throw new ArgumentNullException(nameof(functionInvocationDispatcherFactory));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _workerConcurrencyOptions = workerConcurrencyOptions;
-            _functionsHostingConfigOptions = functionsHostingConfigOptions;
             _functionsHostingConfigOptionsMonitor = functionsHostingConfigOptionsMonitor;
             _applicationLifetime = applicationLifetime;
             _logger = loggerFactory?.CreateLogger(LogCategories.Concurrency);
@@ -88,7 +85,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                         _logger.LogDebug($"Dynamic worker concurrency monitoring is starting by app setting.");
                         Activate();
                     }
-                    else if (_functionsHostingConfigOptions.Value.FunctionsWorkerDynamicConcurrencyEnabled)
+                    else if (_functionsHostingConfigOptionsMonitor.CurrentValue != null && _functionsHostingConfigOptionsMonitor.CurrentValue.FunctionsWorkerDynamicConcurrencyEnabled)
                     {
                         _logger.LogDebug($"Dynamic worker concurrency monitoring is starting by hosting config.");
                         Activate();

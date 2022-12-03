@@ -16,9 +16,11 @@ namespace Microsoft.Azure.WebJobs.Script.Config
 
         public FunctionsHostingConfigSource(IEnvironment environment)
         {
+            // If runs on Linux SKUs read from FunctionsPlatformConfigFilePath
             _path = environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsPlatformConfigFilePath);
             if (string.IsNullOrEmpty(_path))
             {
+                // This path is for windows SKUs
                 _path = Environment.ExpandEnvironmentVariables(System.IO.Path.Combine("%ProgramFiles(x86)%", "SiteExtensions", "kudu", "ScmHostingConfigurations.txt"));
             }
         }
