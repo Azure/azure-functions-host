@@ -194,6 +194,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             IConfiguration configuration = TestHelpers.GetTestConfiguration();
             string connectionString = configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
+
             Uri sasUri = await TestHelpers.CreateBlobSas(connectionString, zipFilePath, "scm-run-from-pkg-test", "NonEmpty.zip");
 
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
@@ -226,7 +227,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
 
-            if (logs.Length == 9)
+            if (logs.Length == 10)
             {
                 Assert.Collection(logs,
                     p => Assert.StartsWith("Starting Assignment", p),
@@ -237,6 +238,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                     p => Assert.StartsWith("Output:", p),
                     p => Assert.True(true), // this line varies depending on whether WSL is on the machine; just ignore it
                     p => Assert.StartsWith("exitCode:", p),
+                    p => Assert.StartsWith("Executed: ", p),
                     p => Assert.StartsWith("Triggering specialization", p));
             }
             else
@@ -248,6 +250,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                     p => Assert.StartsWith("Unsquashing remote zip", p),
                     p => Assert.StartsWith("Running: ", p),
                     p => Assert.StartsWith("Error running bash", p),
+                    p => Assert.StartsWith("Executed: ", p),
                     p => Assert.StartsWith("Triggering specialization", p));
             }
         }

@@ -3,8 +3,7 @@
 
 using System;
 using System.Diagnostics;
-using System.IO;
-using System.IO.Compression;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Extensions.Logging;
 
@@ -41,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
                             CreateNoWindow = true
                         }
                     };
-                    _logger.LogInformation($"Running: {process.StartInfo.FileName} {process.StartInfo.Arguments}");
+                    _logger.LogInformation($"Running: bash.exe (arguments omitted)");
                     process.Start();
                     var output = process.StandardOutput.ReadToEnd().Trim();
                     var error = process.StandardError.ReadToEnd().Trim();
