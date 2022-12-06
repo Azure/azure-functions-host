@@ -36,13 +36,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly ScriptSettingsManager _settingsManager;
         private readonly ManualResetEventSlim _hostStartedEvent = new ManualResetEventSlim();
         private readonly string _rootPath;
+        private readonly ProxyClientExecutor _proxyClient;
         private readonly bool _startHost;
         private readonly ICollection<string> _functions;
         private readonly string _functionsWorkerLanguage;
         private readonly bool _addWorkerConcurrency;
+        private readonly TimeSpan? _addWorkerDelay;
 
-        protected ScriptHostEndToEndTestFixture(string rootPath, string testId, string functionsWorkerLanguage,
-            bool startHost = true, ICollection<string> functions = null, bool addWorkerConcurrency = false)
+        protected ScriptHostEndToEndTestFixture(string rootPath, string testId, string functionsWorkerLanguage, ProxyClientExecutor proxyClient = null,
+            bool startHost = true, ICollection<string> functions = null, bool addWorkerConcurrency = false, TimeSpan? addWorkerDelay = null)
         {
             _settingsManager = ScriptSettingsManager.Instance;
             FixtureId = testId;
@@ -52,10 +54,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             LoggerProvider = new TestLoggerProvider();
 
             _rootPath = rootPath;
+            _proxyClient = proxyClient;
             _startHost = startHost;
             _functions = functions;
             _functionsWorkerLanguage = functionsWorkerLanguage;
             _addWorkerConcurrency = addWorkerConcurrency;
+            _addWorkerDelay = addWorkerDelay;
         }
 
         public TestLoggerProvider LoggerProvider { get; }
@@ -143,7 +147,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                        {
                            o.Functions = _functions;
                        }
-                   });               
+                   });
+
+                   if (_proxyClient != null)
+                   {
+                       services.AddSingleton<ProxyClientExecutor>(_proxyClient);
+                   }
 
                    // Shared memory data transfer
                    if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
@@ -155,9 +164,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                        services.AddSingleton<IMemoryMappedFileAccessor, MemoryMappedFileAccessorUnix>();
                    }
                    services.AddSingleton<ISharedMemoryManager, SharedMemoryManager>();
-                   if (_addWorkerConcurrency)
+                   if (_addWorkerConcurrency && _addWorkerDelay > TimeSpan.Zero)
                    {
-                       services.AddSingleton<IScriptEventManager, WorkerConcurrencyManagerEndToEndTests.TestScriptEventManager>();
+                       services.AddSingleton<IScriptEventManager>(new WorkerConcurrencyManagerEndToEndTests.TestScriptEventManager(_addWorkerDelay.Value));
                    }
 
                    ConfigureServices(services);

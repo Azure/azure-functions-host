@@ -274,10 +274,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
                 !t.Message.Contains("Skipping WorkerConfig for language")
             ).ToArray();
 
-            int expectedCount = 14;
+            int expectedCount = 16;
             Assert.True(traces.Length == expectedCount, $"Expected {expectedCount} messages, but found {traces.Length}. Actual logs:{Environment.NewLine}{string.Join(Environment.NewLine, traces.Select(t => t.Message))}");
 
             int idx = 0;
+            ValidateTrace(traces[idx++], "1 functions found", LogCategories.Startup);
             ValidateTrace(traces[idx++], "2 functions loaded", LogCategories.Startup);
             ValidateTrace(traces[idx++], "A function allow list has been specified", LogCategories.Startup);
             ValidateTrace(traces[idx++], "Found the following functions:\r\n", LogCategories.Startup);
@@ -292,6 +293,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             ValidateTrace(traces[idx++], "Initializing Warmup Extension", LogCategories.CreateTriggerCategory("Warmup"));
             ValidateTrace(traces[idx++], "Job host started", LogCategories.Startup);
             ValidateTrace(traces[idx++], "Loading functions metadata", LogCategories.Startup);
+            ValidateTrace(traces[idx++], "Reading functions metadata", LogCategories.Startup);
             ValidateTrace(traces[idx++], "Starting Host (HostId=", LogCategories.Startup);
         }
 

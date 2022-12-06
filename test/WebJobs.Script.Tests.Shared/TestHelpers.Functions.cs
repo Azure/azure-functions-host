@@ -6,12 +6,10 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
-using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -66,13 +64,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public static FunctionBinding CreateTestBinding(JObject json)
         {
-            ScriptBindingContext context = new ScriptBindingContext(json);
-            WebJobsCoreScriptBindingProvider provider = new WebJobsCoreScriptBindingProvider(NullLogger<WebJobsCoreScriptBindingProvider>.Instance);
+            var context = new ScriptBindingContext(json);
+            var provider = new WebJobsCoreScriptBindingProvider(NullLogger<WebJobsCoreScriptBindingProvider>.Instance);
+
             ScriptBinding scriptBinding = null;
             provider.TryCreate(context, out scriptBinding);
-            BindingMetadata bindingMetadata = BindingMetadata.Create(json);
-            var config = new ScriptJobHostOptions();
-            return new ExtensionBinding(config, scriptBinding, bindingMetadata);
+
+            if (scriptBinding != null)
+            {
+                BindingMetadata bindingMetadata = BindingMetadata.Create(json);
+                var config = new ScriptJobHostOptions();
+                return new ExtensionBinding(config, scriptBinding, bindingMetadata);
+            }
+
+            return null;
         }
 
         public static string RemoveByteOrderMarkAndWhitespace(string s) => Utility.RemoveUtf8ByteOrderMark(s).Trim().Replace(" ", string.Empty);

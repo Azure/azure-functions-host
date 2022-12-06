@@ -486,6 +486,41 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
+        public async Task ToRpc_Collection_String_IgnoreEmptyEntries_When_Capability_Is_Not_Present()
+        {
+            var logger = MockNullLoggerFactory.CreateLogger();
+            var capabilities = new GrpcCapabilities(logger);
+            capabilities.UpdateCapabilities(new MapField<string, string>
+                {
+                    { RpcWorkerConstants.TypedDataCollection, bool.TrueString },
+                });
+
+            string[] arrString = { "element1", string.Empty, "element_2" };
+            TypedData actual = await arrString.ToRpc(logger, capabilities);
+
+            var expected = new RepeatedField<string> { "element1", "element_2" };
+            Assert.Equal(expected, actual.CollectionString.String);
+        }
+
+        [Fact]
+        public async Task ToRpc_Collection_String_IncludeEmptyEntries_When_Capability_Is_Present()
+        {
+            var logger = MockNullLoggerFactory.CreateLogger();
+            var capabilities = new GrpcCapabilities(logger);
+            capabilities.UpdateCapabilities(new MapField<string, string>
+                {
+                    { RpcWorkerConstants.TypedDataCollection, bool.TrueString },
+                    { RpcWorkerConstants.IncludeEmptyEntriesInMessagePayload, bool.TrueString }
+                });
+
+            string[] arrString = { "element1", string.Empty, "element_2", null };
+            TypedData actual = await arrString.ToRpc(logger, capabilities);
+
+            var expected = new RepeatedField<string> { "element1", string.Empty, "element_2" }; // null entry should be still skipped
+            Assert.Equal(expected, actual.CollectionString.String);
+        }
+
+        [Fact]
         public async Task ToRpc_Collection_Long_With_Capabilities_Value()
         {
             var logger = MockNullLoggerFactory.CreateLogger();
@@ -652,6 +687,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             typedData.Bytes = ByteString.CopyFrom(arrByte);
 
             Assert.Equal(typedData.Bytes, returned_typedata.Bytes);
+        }
+
+        [Fact]
+        public void ToModelBindingData_Creates_Valid_BindingData()
+        {
+            var logger = MockNullLoggerFactory.CreateLogger();
+            var capabilities = new GrpcCapabilities(logger);
+
+            var binaryData = new BinaryData("hello world");
+            var parameterBindingData = new ParameterBindingData("1.0", "CosmosDB", binaryData, "application/json");
+
+            TypedData returned_typedata = parameterBindingData.ToModelBindingData();
+
+            TypedData typedData = new TypedData();
+            typedData.ModelBindingData = new ModelBindingData
+            {
+                Version = parameterBindingData.Version,
+                ContentType = parameterBindingData.ContentType,
+                Source = parameterBindingData.Source,
+                Content = ByteString.CopyFrom(parameterBindingData.Content)
+            };
+
+            Assert.Equal(typedData.ModelBindingData, returned_typedata.ModelBindingData);
         }
     }
 }

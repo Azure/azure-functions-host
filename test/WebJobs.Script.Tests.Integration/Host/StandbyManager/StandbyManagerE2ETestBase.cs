@@ -44,13 +44,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             StandbyManager.ResetChangeToken();
         }
 
-        protected Task<IWebHostBuilder> CreateWebHostBuilderAsync(string testDirName, IEnvironment environment)
+        protected async Task<IWebHostBuilder> CreateWebHostBuilderAsync(string testDirName, IEnvironment environment)
         {
             var httpConfig = new HttpConfiguration();
             var uniqueTestRootPath = Path.Combine(_testRootPath, testDirName, Guid.NewGuid().ToString());
             var scriptRootPath = Path.Combine(uniqueTestRootPath, "wwwroot");
 
-            FileUtility.EnsureDirectoryExists(scriptRootPath);          
+            FileUtility.EnsureDirectoryExists(scriptRootPath);
+            string proxyConfigPath = Path.Combine(scriptRootPath, "proxies.json");
+            File.WriteAllText(proxyConfigPath, "{}");
+            await TestHelpers.Await(() => File.Exists(proxyConfigPath));
 
             _loggerProvider = new TestLoggerProvider();
             _metricsLogger = new TestMetricsLogger();
@@ -107,7 +110,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     });
                 });
 
-            return Task.FromResult(webHostBuilder);
+            return webHostBuilder;
         }
 
         protected async Task InitializeTestHostAsync(string testDirName, IEnvironment environment)

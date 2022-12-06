@@ -109,23 +109,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
-        [InlineData(true, true, false, true, true, false)] // in standby
-        [InlineData(true, true, false, true, false, false)] // in standby
-        [InlineData(true, true, false, false, true, true)]
-        [InlineData(false, true, true, false, false, false)] // container not ready
-        [InlineData(false, true, true, false, true, true)]
-        [InlineData(false, false, true, false, true, false)] // no encryption key
+        [InlineData(true, true, false, true, true, true, false)] // in standby
+        [InlineData(true, true, false, false, true, true, false)] // in standby
+        [InlineData(true, true, false, true, true, false, false)] // in standby
+        [InlineData(true, true, false, false, true, false, false)] // in standby
+        [InlineData(true, true, false, true, false, true, true)]
+        [InlineData(true, true, false, false, false, true, true)]
+        [InlineData(false, true, true, true, false, false, false)] // container not ready
+        [InlineData(false, true, true, false, false, false, false)] // container not ready
+        [InlineData(false, true, true, true, false, true, true)]
+        [InlineData(false, true, true, false, false, true, true)]
+        [InlineData(false, false, true, true, false, true, false)] // no encryption key
+        [InlineData(false, false, true, false, false, true, false)] // no encryption key
         // note: normally linux dedicated would have AzureWebsiteInstanceId set.
         // However the test will always catch it as Windows because it checks the OS of the running process.
         // Setting AzureWebsiteInstanceId to null will make it fail the IsAppServiceWindows, and it shouldn't affect the check for dedicated linux
-        [InlineData(false, true, false, false, false, true)] // dedicated linux
-        public void IsSyncTriggersEnvironment_StandbyMode_ReturnsExpectedResult(bool isAppService, bool hasEncryptionKey, bool isConsumptionLinux, bool standbyMode, bool containerReady, bool expected)
+        [InlineData(false, true, false, true, false, false, false)] // dedicated linux
+        [InlineData(false, true, false, false, false, false, true)] // dedicated linux
+        public void IsSyncTriggersEnvironment_StandbyMode_ReturnsExpectedResult(bool isAppService, bool hasEncryptionKey, bool isConsumptionLinuxOnAtlas, bool isConsumptionLinuxOnLegion, bool standbyMode, bool containerReady, bool expected)
         {
             _mockWebHostEnvironment.SetupGet(p => p.InStandbyMode).Returns(standbyMode);
 
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId)).Returns(isAppService ? "1" : null);
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey)).Returns(hasEncryptionKey ? "1" : null);
-            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.ContainerName)).Returns(isConsumptionLinux ? "1" : null);
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.ContainerName)).Returns(isConsumptionLinuxOnAtlas || isConsumptionLinuxOnLegion ? "1" : null);
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.LegionServiceHost)).Returns(isConsumptionLinuxOnLegion ? "1" : null);
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady)).Returns(containerReady ? "1" : null);
 
             var result = FunctionsSyncManager.IsSyncTriggersEnvironment(_mockWebHostEnvironment.Object, _mockEnvironment.Object);

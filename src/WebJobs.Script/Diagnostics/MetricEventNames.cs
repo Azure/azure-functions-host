@@ -25,6 +25,9 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
 
         // language worker level events
         public const string WorkerInitializeLatency = "host.startup.outofproc.{0}worker.initialize.attempt{1}.latency";
+        public const string WorkerInvoked = "{0}worker.invoke";
+        public const string WorkerInvokeSucceeded = "{0}worker.invoke.succeeded";
+        public const string WorkerInvokeFailed = "{0}worker.invoke.failed";
 
         // FunctionMetadataprovider events
         public const string ReadFunctionsMetadata = "functionmetadataprovider.readfunctionsmetadata";
@@ -37,6 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
 
         // LanguageWorkerChannel events
         public const string FunctionLoadRequestResponse = "rpcworkerchannel.functionloadrequestresponse";
+        public const string WorkerMetadata = "rpcworkerchannel.workerinitresponse.workermetadata";
 
         // ScriptStartupTypeLocator events
         public const string ParseExtensions = "ScriptStartupTypeLocator.ParseExtensions";
@@ -78,6 +82,8 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         public const string LinuxContainerSpecializationZipDownloadWarmup = "linux.container.specialization.zip.download.warmup";
         public const string LinuxContainerSpecializationZipWrite = "linux.container.specialization.zip.write";
         public const string LinuxContainerSpecializationZipWriteWarmup = "linux.container.specialization.zip.write.warmup";
+        public const string LinuxContainerSpecializationZipMountCopy = "linux.container.specialization.zip.mountcopy";
+        public const string LinuxContainerSpecializationZipMountCopyWarmup = "linux.container.specialization.zip.mountcopy.warmup";
         public const string LinuxContainerSpecializationZipHead = "linux.container.specialization.zip.head";
         public const string LinuxContainerSpecializationZipHeadWarmup = "linux.container.specialization.zip.head.warmup";
         public const string LinuxContainerSpecializationFuseMount = "linux.container.specialization.mount";

@@ -1,0 +1,17 @@
+﻿{
+    "bindings": [
+      {
+        "authLevel": "anonymous",
+        "name": "req",
+        "type": "httpTrigger",
+        "direction": "in",
+        "route": "pingMakeResponse"
+      },
+        {
+            "name": "$return",
+            "type": "http",
+            "direction": "out"
+        }
+    ],
+    "disabled": false
+}

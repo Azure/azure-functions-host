@@ -15,7 +15,10 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureFunctionsColdStartKey = "MS_AzureFunctionsColdStart";
         public const string AzureFunctionsRequestTimer = "MS_AzureFunctionsRequestTimer";
         public const string AzureFunctionsHttpRequestKey = "MS_AzureFunctionsHttpRequest";
+        public const string AzureProxyFunctionExecutorKey = "MS_AzureProxyFunctionExecutor";
         public const string AzureFunctionsHostKey = "MS_AzureFunctionsHost";
+        public const string AzureFunctionsNestedProxyCount = "MS_AzureFunctionsNestedProxyCount";
+        public const string AzureFunctionsProxyResult = "MS_AzureFunctionsProxyResult";
         public const string AzureFunctionsDuplicateHttpHeadersKey = "MS_AzureFunctionsDuplicateHttpHeaders";
         public const string JobHostMiddlewarePipelineRequestDelegate = "MS_JobHostMiddlewarePipelineRequestDelegate";
         public const string HstsMiddlewareRequestDelegate = "MS_HstsMiddlewareRequestDelegate";
@@ -33,6 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string LogPropertyIsSystemLogKey = "MS_IsSystemLog";
         public const string LogPropertyFunctionInvocationIdKey = "MS_FunctionInvocationId";
         public const string LogPropertyHostInstanceIdKey = "HostInstanceId";
+        public const string LogPropertyProcessIdKey = "ProcessId";
         public const string LogPropertyActivityIdKey = "MS_ActivityId";
 
         public const string TraceSourceSecretManagement = "SecretManagement";
@@ -56,6 +60,9 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string SkipHostJsonConfigurationKey = "MS_SkipHostJsonConfiguration";
         public const string SkipHostInitializationKey = "MS_SkipHostInitialization";
 
+        public const string SupportsDeferredBindingKey = "SupportsDeferredBinding";
+        public const string SkipDeferredBindingKey = "SkipDeferredBinding";
+
         // Define all system parameters we inject with a prefix to avoid collisions
         // with user parameters
         public const string SystemTriggerParameterName = "_triggerValue";
@@ -65,12 +72,14 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string SystemReturnParameterBindingName = "$return";
         public const string SystemReturnParameterName = "_return";
         public const string SystemLoggerParameterName = "_logger";
+        public const string SystemCancellationTokenParameterName = "_cancellationToken";
 
         public const string DebugSentinelFileName = "debug_sentinel";
         public const string DiagnosticSentinelFileName = "diagnostic_sentinel";
         public const string HostMetadataFileName = "host.json";
         public const string FunctionMetadataFileName = "function.json";
         public const string AutorestGeenratedMetadataFileName = ".autorest_generated.json";
+        public const string ProxyMetadataFileName = "proxies.json";
         public const string ExtensionsMetadataFileName = "extensions.json";
         public const string AppOfflineFileName = "app_offline.htm";
         public const string RunFromPackageFailedFileName = "FAILED TO INITIALIZE RUN FROM PACKAGE.txt";
@@ -93,11 +102,15 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AntaresColdStartHeaderName = "X-MS-COLDSTART";
         public const string SiteTokenHeaderName = "x-ms-site-restricted-token";
         public const string EasyAuthIdentityHeader = "x-ms-client-principal";
+        public const string AntaresPlatformInternal = "x-ms-platform-internal";
         public const string AzureVersionHeader = "x-ms-version";
         public const string XIdentityHeader = "X-IDENTITY-HEADER";
         public const string DynamicSku = "Dynamic";
         public const string ElasticPremiumSku = "ElasticPremium";
         public const string DefaultProductionSlotName = "production";
+
+        public const string AzureProxyFunctionLocalRedirectKey = "MS_ProxyLocalRedirectCount";
+        public const int AzureProxyFunctionMaxLocalRedirects = 10;
 
         public const string FeatureFlagDisableShadowCopy = "DisableShadowCopy";
         public const string FeatureFlagsEnableDynamicExtensionLoading = "EnableDynamicExtensionLoading";
@@ -107,7 +120,10 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string FeatureFlagEnableDiagnosticEventLogging = "EnableDiagnosticEventLogging";
         public const string FeatureFlagDisableDiagnosticEventLogging = "DisableDiagnosticEventLogging";
         public const string FeatureFlagDisableMergedWebHostScriptHostConfiguration = "DisableMergedConfiguration";
-        public const string FeatureFlagEnableWorkerIndexing = "EnableWorkerIndexing";
+        public const string FeatureFlagDisableWorkerIndexing = "DisableWorkerIndexing";
+        public const string FeatureFlagEnableDebugTracing = "EnableDebugTracing";
+        public const string FeatureFlagEnableProxies = "EnableProxies";
+        public const string FeatureFlagEnableLinuxEPExecutionCount = "EnableLinuxFEC";
 
         public const string AdminJwtValidAudienceFormat = "https://{0}.azurewebsites.net/azurefunctions";
         public const string AdminJwtValidIssuerFormat = "https://{0}.scm.azurewebsites.net";
@@ -173,7 +189,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string Windows32BitRID = "win-x86";
         public const string WorkFlowAppKind = "workflowapp";
         public const string LogicAppDefaultExtensionBundleVersion = "[1.*, 2.0.0)";
-        public const string DefaultExtensionBundleVersion = "[2.*, 3.0.0)";
+        public const string DefaultExtensionBundleVersion = "[3.*, 4.0.0)";
 
         public const string AzureMonitorTraceCategory = "FunctionAppLogs";
 
@@ -182,6 +198,14 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string DiagnosticEventKey = "MS_DiagnosticEvent";
         public const string HelpLinkKey = "MS_HelpLink";
         public const string ErrorCodeKey = "MS_ErrorCode";
+
+        public const string DataFolderName = "data";
+        public const string SitePackagesFolderName = "SitePackages";
+        public const string SitePackageNameTxtFileName = "packagename.txt";
+        // Diagnostic sources
+        public const string HostDiagnosticSourcePrefix = "Microsoft.Azure.Functions.Host.";
+        public const string HostDiagnosticSourceDebugEventNamePrefix = "debug-";
+        public const string DiagnosticSourceAssemblyContext = HostDiagnosticSourcePrefix + "AssemblyContext";
 
         public static readonly ImmutableArray<string> HttpMethods = ImmutableArray.Create("get", "post", "delete", "head", "patch", "put", "options");
         public static readonly ImmutableArray<string> AssemblyFileTypes = ImmutableArray.Create(".dll", ".exe");

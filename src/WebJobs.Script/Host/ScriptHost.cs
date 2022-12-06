@@ -66,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly string _instanceId;
         private readonly IEnvironment _environment;
         private readonly IFunctionDataCache _functionDataCache;
-        private readonly IOptions<LanguageWorkerOptions> _languageWorkerOptions;
+        private readonly IOptionsMonitor<LanguageWorkerOptions> _languageWorkerOptions;
         private static readonly int _processId = Process.GetCurrentProcess().Id;
 
         private ValueStopwatch _stopwatch;
@@ -106,7 +106,7 @@ namespace Microsoft.Azure.WebJobs.Script
             IApplicationLifetime applicationLifetime,
             IExtensionBundleManager extensionBundleManager,
             IFunctionDataCache functionDataCache,
-            IOptions<LanguageWorkerOptions> languageWorkerOptions,
+            IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions,
             ScriptSettingsManager settingsManager = null)
             : base(options, jobHostContextFactory)
         {
@@ -280,12 +280,10 @@ namespace Microsoft.Azure.WebJobs.Script
                 _workerRuntime = _workerRuntime ?? _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
 
                 // get worker config information and check to see if worker should index or not
-                var workerConfigs = _languageWorkerOptions.Value.WorkerConfigs;
-
-                bool workerIndexing = Utility.CanWorkerIndex(workerConfigs, _environment);
+                var workerConfigs = _languageWorkerOptions.CurrentValue.WorkerConfigs;
 
                 // Generate Functions
-                IEnumerable<FunctionMetadata> functionMetadataList = GetFunctionsMetadata(workerIndexing);
+                IEnumerable<FunctionMetadata> functionMetadataList = GetFunctionsMetadata();
 
                 if (!_environment.IsPlaceholderModeEnabled())
                 {
@@ -297,7 +295,8 @@ namespace Microsoft.Azure.WebJobs.Script
                         // Windows Consumption as well.
                         string runtimeVersion = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName);
 
-                        if (!string.IsNullOrEmpty(runtimeVersion))
+                        // If the environment is multi language, we are running multiple language workers, and thus not honoring 'FUNCTIONS_WORKER_RUNTIME_VERSION'
+                        if (!string.IsNullOrEmpty(runtimeVersion) && !_environment.IsMultiLanguageRuntimeEnvironment())
                         {
                             runtimeStack = string.Concat(runtimeStack, "-", runtimeVersion);
                         }
@@ -312,14 +311,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 await InitializeFunctionDescriptorsAsync(functionMetadataList, cancellationToken);
 
-                if (!workerIndexing)
-                {
-                    // Initialize worker function invocation dispatcher only for valid functions after creating function descriptors
-                    // Dispatcher not needed for codeless function.
-                    // Disptacher needed for non-dotnet codeless functions
-                    var filteredFunctionMetadata = functionMetadataList.Where(m => !Utility.IsCodelessDotNetLanguageFunction(m));
-                    await _functionDispatcher.InitializeAsync(Utility.GetValidFunctions(filteredFunctionMetadata, Functions), cancellationToken);
-                }
+                var filteredFunctionMetadata = functionMetadataList.Where(m => m.IsProxy() || !Utility.IsCodelessDotNetLanguageFunction(m));
+                await _functionDispatcher.InitializeAsync(Utility.GetValidFunctions(filteredFunctionMetadata, Functions), cancellationToken);
 
                 GenerateFunctions();
                 ScheduleFileSystemCleanup();
@@ -367,22 +360,15 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
-        /// Gets metadata collection of functions configured.
+        /// Gets metadata collection of functions and proxies configured.
         /// </summary>
         /// <returns>A metadata collection of functions and proxies configured.</returns>
-        private IEnumerable<FunctionMetadata> GetFunctionsMetadata(bool workerIndexing)
+        private IEnumerable<FunctionMetadata> GetFunctionsMetadata()
         {
             IEnumerable<FunctionMetadata> functionMetadata;
-            if (workerIndexing)
-            {
-                _logger.LogInformation("Worker indexing is enabled");
-                functionMetadata = _functionMetadataManager.GetFunctionMetadata(forceRefresh: false, dispatcher: _functionDispatcher);
-            }
-            else
-            {
-                functionMetadata = _functionMetadataManager.GetFunctionMetadata(false);
-                _workerRuntime = _workerRuntime ?? Utility.GetWorkerRuntime(functionMetadata);
-            }
+
+            functionMetadata = _functionMetadataManager.GetFunctionMetadata(forceRefresh: false);
+            _workerRuntime ??= Utility.GetWorkerRuntime(functionMetadata);
             foreach (var error in _functionMetadataManager.Errors)
             {
                 FunctionErrors.Add(error.Key, error.Value.ToArray());
@@ -400,6 +386,16 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 var timeoutBuilder = CustomAttributeBuilderUtility.GetTimeoutCustomAttributeBuilder(scriptConfig.FunctionTimeout.Value);
                 customAttributes.Add(timeoutBuilder);
+            }
+            // apply retry settings for function execution
+            if (scriptConfig.Retry != null)
+            {
+                // apply the retry settings from host.json
+                var retryCustomAttributeBuilder = CustomAttributeBuilderUtility.GetRetryCustomAttributeBuilder(scriptConfig.Retry);
+                if (retryCustomAttributeBuilder != null)
+                {
+                    customAttributes.Add(retryCustomAttributeBuilder);
+                }
             }
 
             return customAttributes;
@@ -436,7 +432,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 if (string.IsNullOrEmpty(extensionVersion))
                 {
                     throw new HostInitializationException($"Invalid site extension configuration. " +
-                        $"Please update the App Setting '{EnvironmentSettingNames.FunctionsExtensionVersion}' to a valid value (e.g. ~2). " +
+                        $"Please update the App Setting '{EnvironmentSettingNames.FunctionsExtensionVersion}' to a valid value (e.g. ~4). " +
                         $"The value cannot be missing or an empty string.");
                 }
                 else if (string.Equals(extensionVersion, "latest", StringComparison.OrdinalIgnoreCase))
@@ -533,6 +529,15 @@ namespace Microsoft.Azure.WebJobs.Script
                 _logger.AddingDescriptorProviderForLanguage(RpcWorkerConstants.DotNetLanguageWorkerName);
                 _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, _loggerFactory));
             }
+            else if (_environment.IsMultiLanguageRuntimeEnvironment())
+            {
+                _logger.AddingDescriptorProviderForLanguage("All (Multi Language)");
+
+                var workerOptions = _languageWorkerOptions.CurrentValue;
+
+                _descriptorProviders.Add(new MultiLanguageFunctionDescriptorProvider(this, workerOptions.WorkerConfigs, ScriptOptions, _bindingProviders,
+                    _functionDispatcher, _loggerFactory, _applicationLifetime, workerOptions.WorkerConfigs.Max(wc => wc.CountOptions.InitializationTimeout)));
+            }
             else if (_isHttpWorker)
             {
                 _logger.AddingDescriptorProviderForHttpWorker();
@@ -547,7 +552,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 _logger.AddingDescriptorProviderForLanguage(_workerRuntime);
 
-                var workerConfig = _languageWorkerOptions.Value.WorkerConfigs?.FirstOrDefault(c => c.Description.Language.Equals(_workerRuntime, StringComparison.OrdinalIgnoreCase));
+                var workerConfig = _languageWorkerOptions.CurrentValue.WorkerConfigs?.FirstOrDefault(c => c.Description.Language.Equals(_workerRuntime, StringComparison.OrdinalIgnoreCase));
 
                 // If there's no worker config, use the default (for legacy behavior; mostly for tests).
                 TimeSpan initializationTimeout = workerConfig?.CountOptions?.InitializationTimeout ?? WorkerProcessCountOptions.DefaultInitializationTimeout;
@@ -576,10 +581,15 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         private void AddCodelessDescriptors(IEnumerable<FunctionMetadata> functionMetadata)
         {
-            // If we have a codeless function, we need to add a .NET descriptor provider. But only if it wasn't already added.
+            if (functionMetadata.Any(m => m.IsProxy()))
+            {
+                _descriptorProviders.Add(new ProxyFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _loggerFactory));
+            }
+
+            // If we have a non-proxy codeless function, we need to add a .NET descriptor provider. But only if it wasn't already added.
             // At the moment, we are assuming that all codeless functions will have language as DotNetAssembly
             if (!_descriptorProviders.Any(d => d is DotNetFunctionDescriptorProvider)
-                && functionMetadata.Any(m => m.IsCodeless()))
+                && functionMetadata.Any(m => m.IsCodeless() && !m.IsProxy()))
             {
                 _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, _loggerFactory));
             }
@@ -775,29 +785,35 @@ namespace Microsoft.Azure.WebJobs.Script
             var httpTrigger = function.HttpTriggerAttribute;
             if (httpTrigger != null)
             {
-                ValidateHttpFunction(function.Name, httpTrigger);
+                bool isProxy = function.Metadata != null && function.Metadata.IsProxy();
 
-                // prevent duplicate/conflicting routes for functions
-                foreach (var pair in httpFunctions)
+                ValidateHttpFunction(function.Name, httpTrigger, isProxy);
+
+                if (!isProxy)
                 {
-                    if (HttpRoutesConflict(httpTrigger, pair.Value))
+                    // prevent duplicate/conflicting routes for functions
+                    // proxy routes check is done in the proxy dll itself and proxies do not use routePrefix so should not check conflict with functions
+                    foreach (var pair in httpFunctions)
                     {
-                        throw new InvalidOperationException($"The route specified conflicts with the route defined by function '{pair.Key}'.");
+                        if (HttpRoutesConflict(httpTrigger, pair.Value))
+                        {
+                            throw new InvalidOperationException($"The route specified conflicts with the route defined by function '{pair.Key}'.");
+                        }
                     }
                 }
 
                 if (httpFunctions.ContainsKey(function.Name))
                 {
-                    throw new InvalidOperationException($"The function name '{function.Name}' must be unique within the function app.");
+                    throw new InvalidOperationException($"The function or proxy name '{function.Name}' must be unique within the function app.");
                 }
 
                 httpFunctions.Add(function.Name, httpTrigger);
             }
         }
 
-        internal static void ValidateHttpFunction(string functionName, HttpTriggerAttribute httpTrigger)
+        internal static void ValidateHttpFunction(string functionName, HttpTriggerAttribute httpTrigger, bool isProxy = false)
         {
-            if (string.IsNullOrWhiteSpace(httpTrigger.Route))
+            if (string.IsNullOrWhiteSpace(httpTrigger.Route) && !isProxy)
             {
                 // if no explicit route is provided, default to the function name
                 httpTrigger.Route = functionName;

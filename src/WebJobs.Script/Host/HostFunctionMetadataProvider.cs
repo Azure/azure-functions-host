@@ -20,7 +20,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
-    public class HostFunctionMetadataProvider : IFunctionMetadataProvider
+    internal class HostFunctionMetadataProvider : IHostFunctionMetadataProvider
     {
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
         private readonly IMetricsLogger _metricsLogger;
@@ -108,6 +108,14 @@ namespace Microsoft.Azure.WebJobs.Script
                     Utility.AddFunctionError(_functionErrors, functionName, Utility.FlattenException(ex, includeSource: false), isFunctionShortName: true);
                 }
                 return null;
+            }
+        }
+
+        internal void ValidateName(string name, bool isProxy = false)
+        {
+            if (!Utility.IsValidFunctionName(name))
+            {
+                throw new InvalidOperationException(string.Format("'{0}' is not a valid {1} name.", name, isProxy ? "proxy" : "function"));
             }
         }
 

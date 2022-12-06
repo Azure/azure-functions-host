@@ -111,7 +111,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             // verify the cached error for the invalid function
             FunctionStatus status = await Fixture.Host.GetFunctionStatusAsync("Invalid");
             string error = status.Errors.Single();
-            Assert.Equal("'invalid' is not a valid binding direction.", error);
+            Assert.Contains("'invalid' is not a valid binding direction.", error);
         }
 
         [Fact]
@@ -192,7 +192,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             await TestHelpers.Await(() =>
             {
                 userLogs = Fixture.Host.GetScriptHostLogMessages(userCategory).Select(p => p.FormattedMessage).ToList();
-                consoleLog = Fixture.Host.GetScriptHostLogMessages(WorkerConstants.FunctionConsoleLogCategoryName).Select(p => p.FormattedMessage).SingleOrDefault();
+                consoleLog = Fixture.Host.GetScriptHostLogMessages(WorkerConstants.ConsoleLogCategoryName).Select(p => p.FormattedMessage).SingleOrDefault();
                 return userLogs.Count == 11 && consoleLog != null;
             }, userMessageCallback: Fixture.Host.GetLog);
 
@@ -232,7 +232,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.False(allLogs.Any(l => l.Summary.Contains("loglevel")));
             Assert.False(allLogs.Any(l => l.Summary.Contains("after done")));
             Assert.False(allLogs.Any(l => l.Source.EndsWith(".User")));
-            Assert.False(allLogs.Any(l => l.Source == WorkerConstants.FunctionConsoleLogCategoryName));
+            Assert.False(allLogs.Any(l => l.Source == WorkerConstants.ConsoleLogCategoryName));
             Assert.NotEmpty(allLogs);
         }
 
@@ -892,7 +892,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 #endif
         public class TestFixture : EndToEndTestFixture
         {
-            public TestFixture() : base(@"TestScripts\Node", "node", RpcWorkerConstants.NodeLanguageWorkerName)
+            private static string rootPath = Path.Combine("TestScripts", "Node");
+
+            public TestFixture() : base(rootPath, "node", RpcWorkerConstants.NodeLanguageWorkerName)
             {
             }
 

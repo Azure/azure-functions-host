@@ -7,6 +7,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Options;
@@ -16,7 +17,10 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     internal static class EnvironmentExtensions
     {
-        // For testing
+        private static bool? isApplicationInsightsAgentEnabled;
+
+        private static bool? isMultiLanguageEnabled;
+
         internal static string BaseDirectory { get; set; }
 
         public static string GetEnvironmentVariableOrDefault(this IEnvironment environment, string name, string defaultValue)
@@ -26,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static bool IsLinuxMetricsPublishingEnabled(this IEnvironment environment)
         {
-            return environment.IsLinuxConsumption() && string.IsNullOrEmpty(environment.GetEnvironmentVariable(ContainerStartContext));
+            return environment.IsLinuxConsumptionOnAtlas() && string.IsNullOrEmpty(environment.GetEnvironmentVariable(ContainerStartContext));
         }
 
         public static bool IsPlaceholderModeEnabled(this IEnvironment environment)
@@ -43,6 +47,11 @@ namespace Microsoft.Azure.WebJobs.Script
         public static bool IsRuntimeScaleMonitoringEnabled(this IEnvironment environment)
         {
             return environment.GetEnvironmentVariable(FunctionsRuntimeScaleMonitoringEnabled) == "1";
+        }
+
+        public static bool IsAdminIsolationEnabled(this IEnvironment environment)
+        {
+            return environment.GetEnvironmentVariable(FunctionsAdminIsolationEnabled) == "1";
         }
 
         public static bool IsEasyAuthEnabled(this IEnvironment environment)
@@ -63,6 +72,14 @@ namespace Microsoft.Azure.WebJobs.Script
             }
             string[] categories = value.Split(',');
             return categories.Contains(ScriptConstants.AzureMonitorTraceCategory);
+        }
+
+        /// <summary>
+        /// Gets if <a href="https://docs.microsoft.com/azure/azure-functions/functions-proxies">proxies.json support</a> is enabled.
+        /// </summary>
+        public static bool IsProxiesEnabled(this IEnvironment environment)
+        {
+            return FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableProxies, environment);
         }
 
         public static bool IsRunningAsHostedSiteExtension(this IEnvironment environment)
@@ -95,6 +112,21 @@ namespace Microsoft.Azure.WebJobs.Script
                    !string.IsNullOrEmpty(environment.GetEnvironmentVariable(AzureFilesContentShare));
         }
 
+        public static string GetAzureWebsiteHomePath(this IEnvironment environment)
+        {
+            return environment.GetEnvironmentVariable(AzureWebsiteHomePath);
+        }
+
+        public static string GetSitePackagesPath(this IEnvironment environment)
+        {
+            return Path.Combine(environment.GetAzureWebsiteHomePath(), ScriptConstants.DataFolderName, ScriptConstants.SitePackagesFolderName);
+        }
+
+        public static string GetSitePackageNameTxtPath(this IEnvironment environment)
+        {
+            return Path.Combine(environment.GetSitePackagesPath(), ScriptConstants.SitePackageNameTxtFileName);
+        }
+
         public static bool IsCoreTools(this IEnvironment environment)
         {
             return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(CoreToolsEnvironment));
@@ -111,7 +143,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return isFunctionsV2CompatibilityMode || isV2ExtensionVersion;
         }
 
-        public static bool IsV2CompatibileOnV3Extension(this IEnvironment environment)
+        public static bool IsV2CompatibleOnV3Extension(this IEnvironment environment)
         {
             string compatModeString = environment.GetEnvironmentVariable(FunctionsV2CompatibilityModeKey);
             bool.TryParse(compatModeString, out bool isFunctionsV2CompatibilityMode);
@@ -173,7 +205,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <returns><see cref="true"/> if running in a Windows or Linux Consumption App Service app; otherwise, false.</returns>
         public static bool IsConsumptionSku(this IEnvironment environment)
         {
-            return IsWindowsConsumption(environment) || IsLinuxConsumption(environment);
+            return IsWindowsConsumption(environment) || IsAnyLinuxConsumption(environment);
         }
 
         /// <summary>
@@ -230,9 +262,23 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         /// <param name="environment">The environment to verify</param>
         /// <returns><see cref="true"/> if running in a Linux Consumption App Service app; otherwise, false.</returns>
-        public static bool IsLinuxConsumption(this IEnvironment environment)
+        public static bool IsAnyLinuxConsumption(this IEnvironment environment)
         {
-            return !environment.IsAppService() && !string.IsNullOrEmpty(environment.GetEnvironmentVariable(ContainerName));
+            return environment.IsLinuxConsumptionOnAtlas() || environment.IsLinuxConsumptionOnLegion();
+        }
+
+        public static bool IsLinuxConsumptionOnAtlas(this IEnvironment environment)
+        {
+            return !environment.IsAppService() &&
+                   !string.IsNullOrEmpty(environment.GetEnvironmentVariable(ContainerName)) &&
+                   string.IsNullOrEmpty(environment.GetEnvironmentVariable(LegionServiceHost));
+        }
+
+        public static bool IsLinuxConsumptionOnLegion(this IEnvironment environment)
+        {
+            return !environment.IsAppService() &&
+                   !string.IsNullOrEmpty(environment.GetEnvironmentVariable(ContainerName)) &&
+                   !string.IsNullOrEmpty(environment.GetEnvironmentVariable(LegionServiceHost));
         }
 
         /// <summary>
@@ -254,7 +300,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <returns><see cref="true"/> if running in a Linux Azure managed hosting environment; otherwise, false.</returns>
         public static bool IsLinuxAzureManagedHosting(this IEnvironment environment)
         {
-            return environment.IsLinuxConsumption() || environment.IsLinuxAppService();
+            return environment.IsAnyLinuxConsumption() || environment.IsLinuxAppService();
         }
 
         /// <summary>
@@ -305,12 +351,24 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
-        /// Gets the computer name.
+        /// Gets if runtime environment is logic apps.
         /// </summary>
         public static bool IsLogicApp(this IEnvironment environment)
         {
             string appKind = environment.GetEnvironmentVariable(AppKind)?.ToLower();
             return !string.IsNullOrEmpty(appKind) && appKind.Contains(ScriptConstants.WorkFlowAppKind);
+        }
+
+        /// <summary>
+        /// Gets if runtime environment needs multi language
+        /// </summary>
+        public static bool IsMultiLanguageRuntimeEnvironment(this IEnvironment environment)
+        {
+            if (!isMultiLanguageEnabled.HasValue)
+            {
+                isMultiLanguageEnabled = environment.IsLogicApp();
+            }
+            return isMultiLanguageEnabled.Value;
         }
 
         /// <summary>
@@ -333,7 +391,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         public static string GetInstanceId(this IEnvironment environment)
         {
-            if (environment.IsLinuxConsumption())
+            if (environment.IsAnyLinuxConsumption())
             {
                 return environment.GetEnvironmentVariableOrDefault(ContainerName, string.Empty);
             }
@@ -507,6 +565,46 @@ namespace Microsoft.Azure.WebJobs.Script
                 placeholderRuntimeSet.Add(workerRuntime);
             }
             return placeholderRuntimeSet;
+        }
+
+        public static bool IsApplicationInsightsAgentEnabled(this IEnvironment environment)
+        {
+            // cache the value of the environment variable
+            if (isApplicationInsightsAgentEnabled.HasValue)
+            {
+                return isApplicationInsightsAgentEnabled.Value;
+            }
+            else if (!environment.IsPlaceholderModeEnabled())
+            {
+                bool.TryParse(environment.GetEnvironmentVariable(AppInsightsAgent), out bool isEnabled);
+                isApplicationInsightsAgentEnabled = isEnabled;
+                return isApplicationInsightsAgentEnabled.Value;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Clears all cached static flags in <see cref="EnvironmentExtensions"/>.
+        /// Currently we only use it to purge static initialisations in across tests.
+        /// </summary>
+        public static void ClearCache()
+        {
+            isMultiLanguageEnabled = null;
+            isApplicationInsightsAgentEnabled = null;
+        }
+
+        /// <summary>
+        /// Gets a value indicated in the variable FUNCTIONS_EXTENSION_VERSION
+        /// </summary>
+        /// <returns>Value of FUNCTIONS_EXTENSION_VERSION variable</returns>
+        public static string GetFunctionsExtensionVersion(this IEnvironment environment)
+        {
+            return environment.GetEnvironmentVariableOrDefault(FunctionsExtensionVersion, string.Empty);
+        }
+
+        public static bool IsTargetBasedScalingEnabled(this IEnvironment environment)
+        {
+            return string.Equals(environment.GetEnvironmentVariable(TargetBaseScalingEnabled), "1");
         }
     }
 }

@@ -15,6 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureWebsiteSku = "WEBSITE_SKU";
         public const string RemoteDebuggingPort = "REMOTEDEBUGGINGPORT";
         public const string AzureWebsitePlaceholderMode = "WEBSITE_PLACEHOLDER_MODE";
+        public const string InitializedFromPlaceholder = "INITIALIZED_FROM_PLACEHOLDER";
         public const string AzureWebsiteHomePath = "HOME";
         public const string AzureWebJobsScriptRoot = "AzureWebJobsScriptRoot";
         public const string CompilationReleaseMode = "AzureWebJobsDotNetReleaseCompilation";
@@ -27,9 +28,11 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AppInsightsInstrumentationKey = "APPINSIGHTS_INSTRUMENTATIONKEY";
         public const string AppInsightsConnectionString = "APPLICATIONINSIGHTS_CONNECTION_STRING";
         public const string AppInsightsQuickPulseAuthApiKey = "APPINSIGHTS_QUICKPULSEAUTHAPIKEY";
+        public const string AppInsightsAgent = "APPLICATIONINSIGHTS_ENABLE_AGENT";
         public const string FunctionsExtensionVersion = "FUNCTIONS_EXTENSION_VERSION";
         public const string FunctionWorkerRuntime = "FUNCTIONS_WORKER_RUNTIME";
         public const string ContainerName = "CONTAINER_NAME";
+        public const string LegionServiceHost = "LEGION_SERVICE_HOST";
         public const string WebSiteHomeStampName = "WEBSITE_HOME_STAMPNAME";
         public const string WebSiteStampDeploymentId = "WEBSITE_STAMP_DEPLOYMENT_ID";
         public const string WebSiteAuthEncryptionKey = "WEBSITE_AUTH_ENCRYPTION_KEY";
@@ -55,6 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureFilesContentShare = "WEBSITE_CONTENTSHARE";
         public const string AzureWebsiteRuntimeSiteName = "WEBSITE_DEPLOYMENT_ID";
         public const string FunctionsRuntimeScaleMonitoringEnabled = "FUNCTIONS_RUNTIME_SCALE_MONITORING_ENABLED";
+        public const string FunctionsAdminIsolationEnabled = "FUNCTIONS_ADMIN_ISOLATION_ENABLED";
         public const string AzureWebsiteStartupContextCache = "WEBSITE_FUNCTIONS_STARTUPCONTEXT_CACHE";
         public const string AzureWebJobsFeatureFlags = "AzureWebJobsFeatureFlags";
         public const string CloudName = "WEBSITE_CLOUD_NAME";
@@ -65,6 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string FunctionsRequestBodySizeLimit = "FUNCTIONS_REQUEST_BODY_SIZE_LIMIT";
         public const string FunctionsHostIdCheckLevel = "FUNCTIONS_HOSTID_CHECK_LEVEL";
         public const string FunctionsPlatformConfigFilePath = "FUNCTIONS_PLATFORM_CONFIG_FILE_PATH";
+        public const string TargetBaseScalingEnabled = "TARGET_BASED_SCALING_ENABLED";
 
         //Function in Kubernetes
         public const string PodNamespace = "POD_NAMESPACE";

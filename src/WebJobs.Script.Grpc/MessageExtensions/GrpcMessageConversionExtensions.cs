@@ -7,8 +7,10 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
 using Google.Protobuf;
+using Google.Protobuf.WellKnownTypes;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
@@ -53,13 +55,33 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     JObject jobj => new TypedData() { Json = jobj.ToString(Formatting.None) },
                     string str => new TypedData() { String = str },
                     double dbl => new TypedData() { Double = dbl },
+                    ParameterBindingData bindingData => bindingData.ToModelBindingData(),
                     byte[][] arrBytes when IsTypedDataCollectionSupported(capabilities) => arrBytes.ToRpcByteArray(),
-                    string[] arrStr when IsTypedDataCollectionSupported(capabilities) => arrStr.ToRpcStringArray(),
+                    string[] arrStr when IsTypedDataCollectionSupported(capabilities) => arrStr.ToRpcStringArray(
+                                                            ShouldIncludeEmptyEntriesInMessagePayload(capabilities)),
                     double[] arrDouble when IsTypedDataCollectionSupported(capabilities) => arrDouble.ToRpcDoubleArray(),
                     long[] arrLong when IsTypedDataCollectionSupported(capabilities) => arrLong.ToRpcLongArray(),
                     _ => value.ToRpcDefault(),
                 });
             }
+        }
+
+        internal static TypedData ToModelBindingData(this ParameterBindingData data)
+        {
+            var modelBindingData = new ModelBindingData
+            {
+                Version = data.Version,
+                Source = data.Source,
+                ContentType = data.ContentType,
+                Content = ByteString.CopyFrom(data.Content)
+            };
+
+            var typedData = new TypedData
+            {
+                ModelBindingData = modelBindingData
+            };
+
+            return typedData;
         }
 
         internal static async Task<TypedData> ToRpcHttp(this HttpRequest request, ILogger logger, GrpcCapabilities capabilities)
@@ -203,7 +225,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     rawBodyString = await request.ReadAsStringAsync();
                     try
                     {
-                        // REVIEW: We are json deserializing this to a JObject only to serialze
+                        // REVIEW: We are json deserializing this to a JObject only to serialize
                         // it back to string below. Why?
                         body = JsonConvert.DeserializeObject(rawBodyString);
                     }
@@ -273,16 +295,25 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             return typedData;
         }
 
-        internal static TypedData ToRpcStringArray(this string[] arrString)
+        internal static TypedData ToRpcStringArray(this string[] arrString, bool includeEmptyEntries)
         {
             TypedData typedData = new TypedData();
             CollectionString collectionString = new CollectionString();
             foreach (string element in arrString)
             {
-                if (!string.IsNullOrEmpty(element))
+                // Don't add null entries.("Add" method below will throw)
+                if (element is null)
                 {
-                    collectionString.String.Add(element);
+                    continue;
                 }
+
+                // Empty string entries are okay to add based on includeEmptyEntries param value.
+                if (element == string.Empty && !includeEmptyEntries)
+                {
+                    continue;
+                }
+
+                collectionString.String.Add(element);
             }
             typedData.CollectionString = collectionString;
 
@@ -313,6 +344,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             typedData.CollectionSint64 = collectionLong;
 
             return typedData;
+        }
+
+        private static bool ShouldIncludeEmptyEntriesInMessagePayload(GrpcCapabilities capabilities)
+        {
+            return !string.IsNullOrWhiteSpace(capabilities.GetCapabilityState(RpcWorkerConstants.IncludeEmptyEntriesInMessagePayload));
         }
 
         private static bool IsRawBodyBytesRequested(GrpcCapabilities capabilities)

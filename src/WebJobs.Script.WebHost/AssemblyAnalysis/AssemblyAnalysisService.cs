@@ -26,6 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.AssemblyAnalyzer
         private Task _analysisTask;
         private bool _disposed;
         private bool _analysisScheduled;
+        private ILogger _logger;
 
         public AssemblyAnalysisService(IEnvironment environment, WebJobsScriptHostService scriptHost, ILoggerFactory loggerFactory, IOptionsMonitor<StandbyOptions> standbyOptionsMonitor)
         {
@@ -33,26 +34,34 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.AssemblyAnalyzer
             _scriptHost = scriptHost;
             _loggerFactory = loggerFactory;
             _standbyOptionsMonitor = standbyOptionsMonitor;
+            _logger = _loggerFactory.CreateLogger<AssemblyAnalysisService>();
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
-            if (!_environment.IsCoreTools())
+            try
             {
-                if (_standbyOptionsMonitor.CurrentValue.InStandbyMode)
+                if (!_environment.IsCoreTools())
                 {
-                    _standbyOptionsMonitor.OnChange(standbyOptions =>
+                    if (_standbyOptionsMonitor.CurrentValue.InStandbyMode)
                     {
-                        if (!standbyOptions.InStandbyMode && !_analysisScheduled)
+                        _standbyOptionsMonitor.OnChange(standbyOptions =>
                         {
-                            ScheduleAssemblyAnalysis();
-                        }
-                    });
+                            if (!standbyOptions.InStandbyMode && !_analysisScheduled)
+                            {
+                                ScheduleAssemblyAnalysis();
+                            }
+                        });
+                    }
+                    else
+                    {
+                        ScheduleAssemblyAnalysis();
+                    }
                 }
-                else
-                {
-                    ScheduleAssemblyAnalysis();
-                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error starting Assembly analysis service. Handling error and continuing.");
             }
 
             return Task.CompletedTask;
@@ -60,16 +69,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.AssemblyAnalyzer
 
         public Task StopAsync(CancellationToken cancellationToken)
         {
-            _cancellationTokenSource?.Cancel();
-
-            if (_analysisTask != null && !_analysisTask.IsCompleted)
+            try
             {
-                var logger = _loggerFactory.CreateLogger<AssemblyAnalysisService>();
-                logger.LogDebug("Assembly analysis service stopped before analysis completion. Waiting for cancellation.");
+                _cancellationTokenSource?.Cancel();
 
-                return _analysisTask;
+                if (_analysisTask != null && !_analysisTask.IsCompleted)
+                {
+                    _logger.LogDebug("Assembly analysis service stopped before analysis completion. Waiting for cancellation.");
+
+                    return _analysisTask;
+                }
             }
-
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error stopping Assembly analysis service. Handling error and continuing.");
+            }
             return Task.CompletedTask;
         }
 

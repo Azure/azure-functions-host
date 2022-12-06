@@ -10,6 +10,7 @@ using System.Runtime.InteropServices;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Workers;
+using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -24,7 +25,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         private static string customRootPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         private static string testLanguagePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         private static string testLanguage = "testLanguage";
-
         private readonly TestSystemRuntimeInformation _testSysRuntimeInfo = new TestSystemRuntimeInformation();
         private readonly TestEnvironment _testEnvironment;
 
@@ -112,7 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public void ReadWorkerProviderFromConfig_EmptyWorkerPath()
         {
-            var configs = new List<TestRpcWorkerConfig>() { MakeTestConfig(testLanguage, new string[0], false, string.Empty, true) };
+            var configs = new List<TestRpcWorkerConfig>() { MakeTestConfig(testLanguage, new string[0], false, string.Empty, false, true) };
             TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
 
             var workerConfigs = TestReadWorkerProviderFromConfig(configs, new TestLogger(testLanguage), testMetricsLogger);
@@ -202,7 +202,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public void ReadWorkerProviderFromConfig_AddProfile_ReturnsDefaultDescription()
         {
             var expectedArguments = new string[] { "-v", "verbose" };
-            var configs = new List<TestRpcWorkerConfig>() { MakeTestConfig(testLanguage, expectedArguments, false, "TestProfile") };
+            var configs = new List<TestRpcWorkerConfig>() { MakeTestConfig(testLanguage, expectedArguments, false, "TestProfile", true) };
             var testLogger = new TestLogger(testLanguage);
             TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
 
@@ -615,6 +615,58 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.Equal("3.7", workerDescription.DefaultRuntimeVersion);
         }
 
+        public static IEnumerable<object[]> RpcWorkerDescriptionArgumentsWithPlaceholder()
+        {
+            yield return new object[] { "D:/Code/Host/workers/java", new List<string> { RpcWorkerConstants.WorkerDirectoryPath } };
+            yield return new object[] { "/java", new List<string> { string.Concat("/path/version/", RpcWorkerConstants.WorkerDirectoryPath) } };
+            yield return new object[] { "/", new List<string> { string.Concat("version/", RpcWorkerConstants.WorkerDirectoryPath) } };
+        }
+
+        [Theory]
+        [MemberData(nameof(RpcWorkerDescriptionArgumentsWithPlaceholder))]
+        public void LanguageWorker_FormatArguments_ReplacePlaceholder(string workerDirectory, List<string> arguments)
+        {
+            RpcWorkerDescription workerDescription = new RpcWorkerDescription()
+            {
+                Arguments = arguments,
+                DefaultExecutablePath = "python",
+                WorkerDirectory = workerDirectory,
+                Language = "python"
+            };
+            workerDescription.FormatArgumentsIfNeeded(new TestLogger(testLanguage));
+
+            for (int i = 0; i < arguments.Count; i++)
+            {
+                Assert.Contains(workerDirectory, workerDescription.Arguments[i]);
+            }
+        }
+
+        public static IEnumerable<object[]> RpcWorkerDescriptionArgumentsWithoutPlaceholder()
+        {
+            yield return new object[] { "D:/Code/Host/workers/java", new List<string> { } };
+            yield return new object[] { "D:/Code/Host/workers/", new List<string> { string.Empty, null } };
+            yield return new object[] { "/worker/path", new List<string> { string.Empty, null, "/path/version/" } };
+        }
+
+        [Theory]
+        [MemberData(nameof(RpcWorkerDescriptionArgumentsWithoutPlaceholder))]
+        public void LanguageWorker_FormatArguments_DoNotReplacePlaceholder(string workerDirectory, List<string> arguments)
+        {
+            RpcWorkerDescription workerDescription = new RpcWorkerDescription()
+            {
+                Arguments = arguments,
+                DefaultExecutablePath = "python",
+                WorkerDirectory = workerDirectory,
+                Language = "python"
+            };
+            workerDescription.FormatArgumentsIfNeeded(new TestLogger(testLanguage));
+
+            for (int i = 0; i < arguments.Count; i++)
+            {
+                Assert.DoesNotContain(workerDirectory, workerDescription.Arguments[i]);
+            }
+        }
+
         private IEnumerable<RpcWorkerConfig> TestReadWorkerProviderFromConfig(IEnumerable<TestRpcWorkerConfig> configs, ILogger testLogger, TestMetricsLogger testMetricsLogger, string language = null, Dictionary<string, string> keyValuePairs = null, bool appSvcEnv = false)
         {
             Mock<IEnvironment> mockEnvironment = new Mock<IEnvironment>();
@@ -630,7 +682,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
                 var scriptHostOptions = new ScriptJobHostOptions();
                 var scriptSettingsManager = new ScriptSettingsManager(config);
-                var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, testMetricsLogger);
+                var workerProfileManager = new Mock<IWorkerProfileManager>();
+                var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, testMetricsLogger, workerProfileManager.Object);
+
                 if (appSvcEnv)
                 {
                     var testEnvVariables = new Dictionary<string, string>
@@ -643,6 +697,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                         return configFactory.GetConfigs();
                     }
                 }
+
                 configFactory.BuildWorkerProviderDictionary();
                 return configFactory.GetConfigs();
             }
@@ -669,9 +724,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             return config;
         }
 
-        private static TestRpcWorkerConfig MakeTestConfig(string language, string[] arguments, bool invalid = false, string addAppSvcProfile = "", bool emptyWorkerPath = false)
+        private static TestRpcWorkerConfig MakeTestConfig(string language, string[] arguments, bool invalid = false, string addAppSvcProfile = "", bool invalidProfile = false, bool emptyWorkerPath = false)
         {
-            string json = RpcWorkerConfigTestUtilities.GetTestWorkerConfig(language, arguments, invalid, addAppSvcProfile, emptyWorkerPath).ToString();
+            string json = RpcWorkerConfigTestUtilities.GetTestWorkerConfig(language, arguments, invalid, addAppSvcProfile, invalidProfile, emptyWorkerPath).ToString();
             return new TestRpcWorkerConfig()
             {
                 Json = json,

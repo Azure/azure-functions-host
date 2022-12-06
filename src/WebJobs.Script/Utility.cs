@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Dynamic;
 using System.Globalization;
@@ -541,10 +540,10 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             functionName = isFunctionShortName ? functionName : Utility.GetFunctionShortName(functionName);
 
-            ICollection<string> functionErrorCollection = new Collection<string>();
+            ICollection<string> functionErrorCollection = new HashSet<string>();
             if (!string.IsNullOrEmpty(functionName) && !functionErrors.TryGetValue(functionName, out functionErrorCollection))
             {
-                functionErrors[functionName] = functionErrorCollection = new Collection<string>();
+                functionErrors[functionName] = functionErrorCollection = new HashSet<string>();
             }
             functionErrorCollection.Add(error);
         }
@@ -673,7 +672,13 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 return true;
             }
+
             return !string.IsNullOrEmpty(functionMetadata.Language) && functionMetadata.Language.Equals(workerRuntime, StringComparison.OrdinalIgnoreCase);
+        }
+
+        internal static bool IsFunctionMetadataLanguageSupportedByWorkerRuntime(FunctionMetadata functionMetadata, IList<RpcWorkerConfig> workerConfigs)
+        {
+            return !string.IsNullOrEmpty(functionMetadata.Language) && workerConfigs.Select(wc => wc.Description.Language).Contains(functionMetadata.Language);
         }
 
         public static bool IsDotNetLanguageFunction(string functionLanguage)
@@ -906,14 +911,11 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static bool CanWorkerIndex(IEnumerable<RpcWorkerConfig> workerConfigs, IEnvironment environment)
         {
-            if (!FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableWorkerIndexing, environment))
+            if (!FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagDisableWorkerIndexing, environment)
+                && workerConfigs != null
+                && !environment.IsMultiLanguageRuntimeEnvironment())
             {
-                return false;
-            }
-
-            var workerRuntime = environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
-            if (workerConfigs != null)
-            {
+                var workerRuntime = environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
                 var workerConfig = workerConfigs.Where(c => c.Description != null && c.Description.Language != null && c.Description.Language.Equals(workerRuntime, StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
 
                 // if feature flag is enabled and workerConfig.WorkerIndexing == true, then return true
@@ -976,7 +978,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public static FunctionAppContentEditingState GetFunctionAppContentEditingState(IEnvironment environment, IOptions<ScriptApplicationHostOptions> applicationHostOptions)
         {
             // For now, host can determine with certainty if contents are editable only for Linux Consumption apps. Return unknown for other SKUs.
-            if (!environment.IsLinuxConsumption())
+            if (!environment.IsAnyLinuxConsumption())
             {
                 return FunctionAppContentEditingState.Unknown;
             }
@@ -988,6 +990,24 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 return FunctionAppContentEditingState.NotAllowed;
             }
+        }
+
+        public static bool TryReadAsBool(IDictionary<string, object> properties, string propertyKey, out bool result)
+        {
+            if (properties.TryGetValue(propertyKey, out object valueObject))
+            {
+                if (valueObject is bool boolValue)
+                {
+                    result = boolValue;
+                    return true;
+                }
+                else if (valueObject is string stringValue)
+                {
+                    return bool.TryParse(stringValue, out result);
+                }
+            }
+
+            return result = false;
         }
 
         private class FilteredExpandoObjectConverter : ExpandoObjectConverter

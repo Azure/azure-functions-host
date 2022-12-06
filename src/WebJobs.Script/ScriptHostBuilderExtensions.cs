@@ -5,10 +5,9 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
-using Microsoft.Azure.WebJobs.Host.Scale;
-using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Hosting;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
@@ -17,6 +16,7 @@ using Microsoft.Azure.WebJobs.Script.BindingExtensions;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.DependencyInjection;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
@@ -27,8 +27,8 @@ using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
+using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
-using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -111,7 +111,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 var extensionBundleOptions = GetExtensionBundleOptions(config);
                 var bundleManager = new ExtensionBundleManager(extensionBundleOptions, SystemEnvironment.Instance, loggerFactory);
                 var metadataServiceManager = applicationOptions.RootServiceProvider.GetService<IFunctionMetadataManager>();
-                var languageWorkerOptions = applicationOptions.RootServiceProvider.GetService<IOptions<LanguageWorkerOptions>>();
+                var languageWorkerOptions = applicationOptions.RootServiceProvider.GetService<IOptionsMonitor<LanguageWorkerOptions>>();
 
                 var locator = new ScriptStartupTypeLocator(applicationOptions.ScriptPath, loggerFactory.CreateLogger<ScriptStartupTypeLocator>(), bundleManager, metadataServiceManager, metricsLogger, languageWorkerOptions);
 
@@ -162,7 +162,7 @@ namespace Microsoft.Azure.WebJobs.Script
                             // Validate the config for anything that needs the Scale Controller.
                             // Including Core Tools as a warning during development time.
                             if (environment.IsWindowsConsumption() ||
-                                environment.IsLinuxConsumption() ||
+                                environment.IsAnyLinuxConsumption() ||
                                 (environment.IsWindowsElasticPremium() && !environment.IsRuntimeScaleMonitoringEnabled()) ||
                                 environment.IsCoreTools())
                             {
@@ -249,6 +249,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 services.AddSingleton<IFunctionInvocationDispatcherFactory, FunctionInvocationDispatcherFactory>();
                 services.AddSingleton<IScriptJobHost>(p => p.GetRequiredService<ScriptHost>());
                 services.AddSingleton<IJobHost>(p => p.GetRequiredService<ScriptHost>());
+                services.AddSingleton<IFunctionProvider, ProxyFunctionProvider>();
                 services.AddSingleton<IHostedService, WorkerConcurrencyManager>();
 
                 services.AddSingleton<ITypeLocator, ScriptTypeLocator>();
@@ -327,6 +328,7 @@ namespace Microsoft.Azure.WebJobs.Script
             services.AddSingleton<HostIdValidator>();
             services.AddSingleton<IHostIdProvider, ScriptHostIdProvider>();
             services.TryAddSingleton<IScriptEventManager, ScriptEventManager>();
+            services.AddSingleton<IWorkerProfileManager, WorkerProfileManager>();
 
             // Add Language Worker Service
             // Need to maintain the order: Add RpcInitializationService before core script host services
@@ -386,12 +388,18 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     o.InstrumentationKey = appInsightsInstrumentationKey;
                     o.ConnectionString = appInsightsConnectionString;
+                }, t =>
+                {
+                    if (t.TelemetryChannel is ServerTelemetryChannel channel)
+                    {
+                        channel.TransmissionStatusEvent += TransmissionStatusHandler.Handler;
+                    }
+
+                    t.TelemetryProcessorChainBuilder.Use(next => new ScriptTelemetryProcessor(next));
                 });
 
                 builder.Services.ConfigureOptions<ApplicationInsightsLoggerOptionsSetup>();
-
                 builder.Services.AddSingleton<ISdkVersionProvider, FunctionsSdkVersionProvider>();
-
                 builder.Services.AddSingleton<ITelemetryInitializer, ScriptTelemetryInitializer>();
 
                 if (SystemEnvironment.Instance.IsPlaceholderModeEnabled())
@@ -403,6 +411,26 @@ namespace Microsoft.Azure.WebJobs.Script
                         o.EnableDependencyTracking = false;
                     });
                 }
+
+                builder.Services.AddOptions<LoggerFilterOptions>().Configure<IEnvironment>((options, environment) =>
+                {
+                    // Skip sending user generated logs to AI and QuickPulse if worker AI agent is configured, worker will send these logs to AI and Quickpulse service.
+                    if (environment.IsApplicationInsightsAgentEnabled())
+                    {
+                        options.AddFilter<ApplicationInsightsLoggerProvider>((category, logLevel) =>
+                        {
+                            // skip Function.<FunctionName>.User category
+                            if (!string.IsNullOrEmpty(category) && category.Length > 14 && category.EndsWith(".User", StringComparison.Ordinal))
+                            {
+                                return false;
+                            }
+                            else
+                            {
+                                return true;
+                            }
+                        });
+                    }
+                });
             }
         }
 

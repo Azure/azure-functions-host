@@ -3,10 +3,13 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -26,6 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         private readonly IEnvironment _environment;
         private readonly IFunctionsHostingConfiguration _functionsHostingConfigurations;
         private readonly IApplicationLifetime _applicationLifetime;
+        private readonly long _memoryLimit = AppServicesHostingUtility.GetMemoryLimitBytes();
 
         private IOptions<WorkerConcurrencyOptions> _workerConcurrencyOptions;
         private IFunctionInvocationDispatcher _functionInvocationDispatcher;
@@ -114,7 +118,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         internal async void OnTimer(object sender, System.Timers.ElapsedEventArgs e)
         {
-            if (_disposed)
+            if (_environment.IsPlaceholderModeEnabled() || _disposed)
             {
                 return;
             }
@@ -125,8 +129,17 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
                 if (NewWorkerIsRequired(workerStatuses, _addWorkerStopwatch.GetElapsedTime()))
                 {
-                    await _functionInvocationDispatcher.StartWorkerChannel();
-                    _addWorkerStopwatch = ValueStopwatch.StartNew();
+                    if (_functionInvocationDispatcher is RpcFunctionInvocationDispatcher rpcDispatcher)
+                    {
+                        var allWorkerChannels = await rpcDispatcher.GetAllWorkerChannelsAsync();
+                        if (CanScale(allWorkerChannels) && IsEnoughMemoryToScale(Process.GetCurrentProcess().PrivateMemorySize64,
+                            allWorkerChannels.Select(x => x.WorkerProcess.Process.PrivateMemorySize64),
+                            _memoryLimit))
+                        {
+                            await _functionInvocationDispatcher.StartWorkerChannel();
+                            _addWorkerStopwatch = ValueStopwatch.StartNew();
+                        }
+                    }
                 }
             }
             catch (Exception ex)
@@ -162,10 +175,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                     return;
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 // Best effort
                 // return and do not start the activation timmer again
+                _logger.LogError(ex, "Error activating worker concurrency");
                 return;
             }
 
@@ -282,6 +296,53 @@ LatencyHistory=({formattedLatencyHistory}), AvgLatency={latencyAvg}, MaxLatency=
         public void Dispose()
         {
             Dispose(true);
+        }
+
+        internal bool IsEnoughMemoryToScale(long hostProcessSize, IEnumerable<long> workerChannelSizes, long memoryLimit)
+        {
+            if (memoryLimit <= 0)
+            {
+                return true;
+            }
+
+            // Checking memory before adding a new worker
+            // By adding `maxWorkerSize` to current memeory consumption we are predicting what will be overall memory consumption after adding a new worker.
+            // We do not want this value to be more then 80%.
+            long maxWorkerSize = workerChannelSizes.Max();
+            long currentMemoryConsumption = workerChannelSizes.Sum() + hostProcessSize;
+            if (currentMemoryConsumption + maxWorkerSize > memoryLimit * 0.8)
+            {
+                _logger.LogDebug($"Starting new language worker canceled: TotalMemory={memoryLimit}, MaxWorkerSize={maxWorkerSize}, CurrentMemoryConsumption={currentMemoryConsumption}");
+                return false;
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// Checks if a new worker can be added.
+        /// </summary>
+        /// <param name="workerChannels">All current worker channels.</param>
+        /// <returns>True if a new worker can be started.</returns>
+        internal bool CanScale(IEnumerable<IRpcWorkerChannel> workerChannels)
+        {
+            // Cancel if there is any "non-ready" channel.
+            // A "ready" channel means it's ready for invocations.
+            var nonReadyWorkerChannels = workerChannels.Where(x => x.IsChannelReadyForInvocations() == false);
+            if (nonReadyWorkerChannels.Any())
+            {
+                _logger.LogDebug($"Starting new language worker canceled as there is atleast one non ready channel: TotalChannels={workerChannels.Count()}, NonReadyChannels={nonReadyWorkerChannels.Count()}");
+                return false;
+            }
+
+            // Cancel if MaxWorkerCount is reached.
+            int workersCount = workerChannels.Count();
+            if (workersCount >= _workerConcurrencyOptions.Value.MaxWorkerCount)
+            {
+                _logger.LogDebug($"Starting new language worker canceled as the count of total channels reaches the maximum limit: TotalChannels={workersCount}, MaxWorkerCount={_workerConcurrencyOptions.Value.MaxWorkerCount}");
+                return false;
+            }
+
+            return true;
         }
 
         internal class WorkerStatusDetails

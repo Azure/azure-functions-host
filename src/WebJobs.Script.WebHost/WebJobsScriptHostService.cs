@@ -159,7 +159,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             get
             {
-                return _healthMonitorOptions.Value.Enabled && _environment.IsAppService();
+                return _healthMonitorOptions.Value.Enabled && _environment.IsAppService() && !_scriptWebHostEnvironment.InStandbyMode;
             }
         }
 
@@ -269,7 +269,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 // If we're in a non-transient error state or offline, skip host initialization
                 bool skipJobHostStartup = isOffline || hasNonTransientErrors;
                 bool skipHostJsonConfiguration = startupMode == JobHostStartupMode.HandlingConfigurationParsingError;
-                _logger.Building(skipJobHostStartup, skipHostJsonConfiguration, activeOperation.Id);
+                string functionsExtensionVersion = _environment.GetFunctionsExtensionVersion();
+                _logger.Building(functionsExtensionVersion, skipJobHostStartup, skipHostJsonConfiguration, activeOperation.Id);
 
                 using (_metricsLogger.LatencyEvent(MetricEventNames.ScriptHostManagerBuildScriptHost))
                 {
@@ -434,7 +435,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             var currentHost = ActiveHost;
             ActiveHost = null;
             Task stopTask = Orphan(currentHost, cancellationToken);
-            Task result = await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(10), cancellationToken));
+            Task result = await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(10)));
 
             if (result != stopTask)
             {

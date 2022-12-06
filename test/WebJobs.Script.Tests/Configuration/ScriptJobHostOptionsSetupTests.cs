@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Configuration;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using Xunit;
@@ -34,9 +35,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             Assert.Equal(1, options.WatchDirectories.Count);
             Assert.Equal("node_modules", options.WatchDirectories.ElementAt(0));
 
-            Assert.Equal(2, options.WatchFiles.Count);
+            Assert.Equal(3, options.WatchFiles.Count);
             Assert.Contains("host.json", options.WatchFiles);
             Assert.Contains("function.json", options.WatchFiles);
+            Assert.Contains("proxies.json", options.WatchFiles);
 
             // File watching disabled
             settings[ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "fileWatchingEnabled")] = bool.FalseString;
@@ -66,9 +68,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             Assert.Equal("Shared", options.WatchDirectories.ElementAt(1));
             Assert.Equal("Tools", options.WatchDirectories.ElementAt(2));
 
-            Assert.Equal(4, options.WatchFiles.Count);
+            Assert.Equal(5, options.WatchFiles.Count);
             Assert.Contains("host.json", options.WatchFiles);
             Assert.Contains("function.json", options.WatchFiles);
+            Assert.Contains("proxies.json", options.WatchFiles);
             Assert.Contains("myFirstFile.ext", options.WatchFiles);
             Assert.Contains("mySecondFile.ext", options.WatchFiles);
         }
@@ -148,6 +151,83 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var options = GetConfiguredOptions(settings);
 
             Assert.Equal(TimeSpan.FromSeconds(30), options.FunctionTimeout);
+        }
+
+        [Theory]
+        [InlineData("fixedDelay", "3", "00:00:05", false)]
+        [InlineData("invalid", "3", "00:00:05", true)]
+        [InlineData("fixedDelay", "3", null, true)]
+        [InlineData("fixedDelay", "3", "-10000000000", true)]
+        [InlineData("fixedDelay", "3", "10000000000:00000000:40000", true)]
+        [InlineData("fixedDelay", null, "00:00:05", true)]
+        [InlineData("fixedDelay", "-1", "00:00:05", false)]
+        [InlineData("fixedDelay", "-4", "00:00:05", true)]
+        public void Configure_AppliesRetry_FixedDelay(string expectedStrategy, string maxRetryCount, string delayInterval, bool throwsError)
+        {
+            var settings = new Dictionary<string, string>
+            {
+                { ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "retry", "strategy"), expectedStrategy },
+                { ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "retry", "maxRetryCount"), maxRetryCount },
+                { ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "retry", "delayInterval"), delayInterval }
+            };
+            if (string.IsNullOrEmpty(delayInterval) || string.IsNullOrEmpty(maxRetryCount))
+            {
+                Assert.Throws<ArgumentNullException>(() => GetConfiguredOptions(settings));
+                return;
+            }
+            if (throwsError)
+            {
+                if (int.Parse(maxRetryCount) <= 0)
+                {
+                    Assert.Throws<ArgumentOutOfRangeException>(() => GetConfiguredOptions(settings));
+                    return;
+                }
+                Assert.Throws<InvalidOperationException>(() => GetConfiguredOptions(settings));
+                return;
+            }
+            var options = GetConfiguredOptions(settings);
+            Assert.Equal(RetryStrategy.FixedDelay, options.Retry.Strategy);
+            Assert.Equal(int.Parse(maxRetryCount), options.Retry.MaxRetryCount.Value);
+            Assert.Equal(TimeSpan.Parse(delayInterval), options.Retry.DelayInterval);
+        }
+
+        [Theory]
+        [InlineData("ExponentialBackoff", "3", "00:00:05", "00:30:00", false)]
+        [InlineData("ExponentialBackoff", "sdfsdfd", "00:00:05", "00:30:00", true)]
+        [InlineData("ExponentialBackoff", "5", "00:35:05", "00:30:00", true)]
+        [InlineData("ExponentialBackoff", "5", null, "00:30:00", true)]
+        [InlineData("ExponentialBackoff", "5", "00:35:05", null, true)]
+        public void Configure_AppliesRetry_ExponentialBackOffDelay(string expectedStrategy, string maxRetryCount, string minimumInterval, string maximumInterval, bool throwsError)
+        {
+            var settings = new Dictionary<string, string>
+            {
+                { ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "retry", "strategy"), expectedStrategy },
+                { ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "retry", "maxRetryCount"), maxRetryCount },
+                { ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "retry", "minimumInterval"), minimumInterval },
+                { ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "retry", "maximumInterval"), maximumInterval }
+            };
+            if (string.IsNullOrEmpty(minimumInterval) || string.IsNullOrEmpty(maximumInterval))
+            {
+                Assert.Throws<ArgumentNullException>(() => GetConfiguredOptions(settings));
+                return;
+            }
+            var minIntervalTimeSpan = TimeSpan.Parse(minimumInterval);
+            var maxIntervalTimeSpan = TimeSpan.Parse(maximumInterval);
+            if (throwsError)
+            {
+                if (minIntervalTimeSpan > maxIntervalTimeSpan)
+                {
+                    Assert.Throws<ArgumentException>(() => GetConfiguredOptions(settings));
+                    return;
+                }
+                Assert.Throws<InvalidOperationException>(() => GetConfiguredOptions(settings));
+                return;
+            }
+            var options = GetConfiguredOptions(settings);
+            Assert.Equal(RetryStrategy.ExponentialBackoff, options.Retry.Strategy);
+            Assert.Equal(int.Parse(maxRetryCount), options.Retry.MaxRetryCount);
+            Assert.Equal(minIntervalTimeSpan, options.Retry.MinimumInterval);
+            Assert.Equal(maxIntervalTimeSpan, options.Retry.MaximumInterval);
         }
 
         [Fact]

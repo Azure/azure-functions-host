@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 {
     public class HostJsonFileConfigurationSourceTests
     {
-        private readonly string _hostJsonWithBundles = "{\r\n  \"version\": \"2.0\",\r\n  \"extensionBundle\": {\r\n    \"id\": \"Microsoft.Azure.Functions.ExtensionBundle\",\r\n    \"version\": \"[2.*, 3.0.0)\"\r\n  }\r\n}";
+        private readonly string _hostJsonWithBundles = "{\r\n  \"version\": \"2.0\",\r\n  \"extensionBundle\": {\r\n    \"id\": \"Microsoft.Azure.Functions.ExtensionBundle\",\r\n    \"version\": \"[3.*, 4.0.0)\"\r\n  }\r\n}";
         private readonly string _hostJsonWithWorkFlowBundle = "{\r\n  \"version\": \"2.0\",\r\n  \"extensionBundle\": {\r\n    \"id\": \"Microsoft.Azure.Functions.ExtensionBundle.Workflows\",\r\n    \"version\": \"[1.*, 2.0.0)\"\r\n  }\r\n}";
         private readonly string _defaultHostJson = "{\r\n  \"version\": \"2.0\"\r\n}";
         private readonly ScriptApplicationHostOptions _options;

@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Hosting;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -20,21 +21,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
     public class FunctionsScaleMonitorServiceTests
     {
         private readonly FunctionsScaleMonitorService _monitor;
-        private readonly Mock<IScaleMonitorManager> _monitorManagerMock;
         private readonly TestMetricsRepository _metricsRepository;
         private readonly Mock<IPrimaryHostStateProvider> _primaryHostStateProviderMock;
         private readonly TestEnvironment _environment;
         private readonly TestLoggerProvider _loggerProvider;
-        private readonly List<IScaleMonitor> _monitors;
+        private readonly Mock<IFunctionsHostingConfiguration> _functionsHostingConfigurationMock;
+        private List<IScaleMonitor> _monitors;
+        private List<ITargetScaler> _scalers;
+
         private bool _isPrimaryHost;
 
         public FunctionsScaleMonitorServiceTests()
         {
             _isPrimaryHost = true;
             _monitors = new List<IScaleMonitor>();
+            _scalers = new List<ITargetScaler>();
 
-            _monitorManagerMock = new Mock<IScaleMonitorManager>(MockBehavior.Strict);
-            _monitorManagerMock.Setup(p => p.GetMonitors()).Returns(() => _monitors);
             _metricsRepository = new TestMetricsRepository();
             _primaryHostStateProviderMock = new Mock<IPrimaryHostStateProvider>(MockBehavior.Strict);
             _primaryHostStateProviderMock.SetupGet(p => p.IsPrimary).Returns(() => _isPrimaryHost);
@@ -47,7 +49,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
 
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsRuntimeScaleMonitoringEnabled, "1");
 
-            _monitor = new FunctionsScaleMonitorService(_monitorManagerMock.Object, _metricsRepository, _primaryHostStateProviderMock.Object, _environment, loggerFactory, options);
+            Mock<FunctionsScaleManager> functionsScaleManagerMock = new Mock<FunctionsScaleManager>();
+            functionsScaleManagerMock.Setup(x => x.GetScalersToSample(out _monitors, out _scalers));
+
+            _functionsHostingConfigurationMock = new Mock<IFunctionsHostingConfiguration>(MockBehavior.Strict);
+            _functionsHostingConfigurationMock.Setup(p => p.GetValue(It.IsAny<string>(), It.IsAny<string>())).Returns<string>(null);
+
+            _monitor = new FunctionsScaleMonitorService(functionsScaleManagerMock.Object, _metricsRepository, _primaryHostStateProviderMock.Object, _environment, loggerFactory, options, _functionsHostingConfigurationMock.Object);
         }
 
         [Fact]

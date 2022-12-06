@@ -123,6 +123,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         }
 
         [Fact]
+        public async Task InvokeProxy_GetsResponse()
+        {
+            string uri = "something";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
+
+            var response = await _fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            string responseContent = await response.Content.ReadAsStringAsync();
+            Assert.Equal(responseContent, uri);
+        }
+
+        [Fact]
         public async Task HttpTrigger_DuplicateQueryParams_Succeeds()
         {
             string functionKey = await _fixture.Host.GetFunctionSecretAsync("httptrigger");
@@ -229,7 +242,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         [Fact(Skip = "http://github.com/Azure/azure-functions-host/issues/2812")]
         public async Task HttpTrigger_CustomRoute_Post_ReturnsExpectedResponse()
         {
-
             string id = Guid.NewGuid().ToString();
             string functionKey = await _fixture.Host.GetFunctionSecretAsync("HttpTrigger-CustomRoute-Post");
             string uri = $"api/node/products/housewares/{id}?code={functionKey}";
@@ -298,6 +310,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             response = await _fixture.Host.HttpClient.SendAsync(request);
             timestamp = response.Headers.GetValues("Shared-Module").First();
             Assert.Equal(initialTimestamp, timestamp);
+
+            // Prevent errors when host is disposed during startup.
+            await TestHelpers.Await(_fixture.Host.IsHostStarted, userMessageCallback: _fixture.Host.GetLog);
         }
 
         [Fact]
@@ -351,6 +366,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             public TestFixture()
                 : base(Path.Combine(Environment.CurrentDirectory, "..", "..", "..", "..", "..", "sample", "node"), "samples", RpcWorkerConstants.NodeLanguageWorkerName)
             {
+                ProxyEndToEndTests.EnableProxiesOnSystemEnvironment();
             }
 
             protected override ExtensionPackageReference[] GetExtensionsToInstall()

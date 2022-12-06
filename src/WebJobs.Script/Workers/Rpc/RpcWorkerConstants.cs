@@ -18,6 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         // This will override the default directories.
         public const string FunctionsUnixSharedMemoryDirectories = "FUNCTIONS_UNIX_SHARED_MEMORY_DIRECTORIES";
         public const string DotNetLanguageWorkerName = "dotnet";
+        public const string DotNetIsolatedLanguageWorkerName = "dotnet-isolated";
         public const string NodeLanguageWorkerName = "node";
         public const string JavaLanguageWorkerName = "java";
         public const string PowerShellLanguageWorkerName = "powershell";
@@ -33,11 +34,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public const string OSPlaceholder = "{os}";
         public const string ArchitecturePlaceholder = "{architecture}";
         public const string RuntimeVersionPlaceholder = "%" + FunctionWorkerRuntimeVersionSettingName + "%";
+        public const string WorkerDirectoryPath = "{workerDirectoryPath}";
 
         // Rpc message length
         public const int DefaultMaxMessageLengthBytes = int.MaxValue;
 
-        // Capabilites
+        // Capabilities
         public const string RawHttpBodyBytes = "RawHttpBodyBytes";
         public const string TypedDataCollection = "TypedDataCollection";
         public const string RpcHttpBodyOnly = "RpcHttpBodyOnly";
@@ -48,9 +50,19 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public const string SharedMemoryDataTransfer = "SharedMemoryDataTransfer";
         public const string FunctionDataCache = "FunctionDataCache";
         public const string AcceptsListOfFunctionLoadRequests = "AcceptsListOfFunctionLoadRequests";
+        public const string EnableUserCodeException = "EnableUserCodeException";
+        public const string SupportsLoadResponseCollection = "SupportsLoadResponseCollection";
+        public const string HandlesWorkerTerminateMessage = "HandlesWorkerTerminateMessage";
+        public const string HandlesInvocationCancelMessage = "HandlesInvocationCancelMessage";
 
-        // Host Capabilites
+        /// <summary>
+        /// Indicates whether empty entries in the trigger message should be included when sending RpcInvocation data to OOP workers.
+        /// </summary>
+        public const string IncludeEmptyEntriesInMessagePayload = "IncludeEmptyEntriesInMessagePayload";
+
+        // Host Capabilities
         public const string V2Compatable = "V2Compatable";
+        public const string MultiStream = nameof(MultiStream);
 
         // dotnet executable file path components
         public const string DotNetExecutableName = "dotnet";

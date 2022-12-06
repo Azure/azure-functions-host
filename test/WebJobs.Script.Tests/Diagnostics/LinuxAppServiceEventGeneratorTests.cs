@@ -5,11 +5,13 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using Microsoft.Azure.WebJobs.Script.Tests.Workers;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
+using static Microsoft.Azure.WebJobs.Script.ScriptConstants;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
 {
@@ -36,7 +38,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
                 [LinuxEventGenerator.FunctionsMetricsCategory] =
                     new MockLinuxAppServiceFileLogger(LinuxEventGenerator.FunctionsMetricsCategory, string.Empty, null),
                 [LinuxEventGenerator.FunctionsDetailsCategory] =
-                    new MockLinuxAppServiceFileLogger(LinuxEventGenerator.FunctionsDetailsCategory, string.Empty, null)
+                    new MockLinuxAppServiceFileLogger(LinuxEventGenerator.FunctionsDetailsCategory, string.Empty, null),
+                [LinuxEventGenerator.FunctionsExecutionEventsCategory] =
+                    new MockLinuxAppServiceFileLogger(LinuxEventGenerator.FunctionsExecutionEventsCategory, string.Empty, null)
             };
 
             var loggerFactoryMock = new Mock<LinuxAppServiceFileLoggerFactory>(MockBehavior.Strict);
@@ -170,6 +174,52 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
                 p => Assert.Equal(regionName, p),
                 p => Assert.Equal(properties, UnNormalize(p)),
                 p => Assert.True(DateTime.TryParse(p, out DateTime dt)));
+        }
+
+        [Theory]
+        [MemberData(nameof(LinuxEventGeneratorTestData.GetFunctionExecutionEvents), MemberType = typeof(LinuxEventGeneratorTestData))]
+        public void ParseFunctionExecutionEvents(string executionId, string siteName, int concurrency, string functionName, string invocationId,
+            string executionStage, long executionTimeSpan, bool success, bool featureFlagEnabled)
+        {
+            TestScopedEnvironmentVariable featureFlags = null;
+            try
+            {
+                if (featureFlagEnabled)
+                {
+                    featureFlags = new TestScopedEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, FeatureFlagEnableLinuxEPExecutionCount);
+                }
+                _generator.LogFunctionExecutionEvent(executionId, siteName, concurrency, functionName, invocationId, executionStage, executionTimeSpan, success);
+                string evt = _loggers[LinuxEventGenerator.FunctionsExecutionEventsCategory].Events.Single();
+
+                if (featureFlagEnabled)
+                {
+                    Regex regex = new Regex(LinuxAppServiceEventGenerator.ExecutionEventRegex);
+                    var match = regex.Match(evt);
+
+                    Assert.True(match.Success);
+                    Assert.Equal(10, match.Groups.Count);
+
+                    var groupMatches = match.Groups.Cast<Group>().Select(p => p.Value).Skip(1).ToArray();
+                    Assert.Collection(groupMatches,
+                        p => Assert.Equal(executionId, p),
+                        p => Assert.Equal(siteName, p),
+                        p => Assert.Equal(concurrency.ToString(), p),
+                        p => Assert.Equal(functionName, p),
+                        p => Assert.Equal(invocationId, p),
+                        p => Assert.Equal(executionStage, p),
+                        p => Assert.Equal(executionTimeSpan.ToString(), p),
+                        p => Assert.True(Convert.ToBoolean(p)),
+                        p => Assert.True(DateTime.TryParse(p, out DateTime dt)));
+                }
+                else
+                {
+                    Assert.True(DateTime.TryParse(evt, out DateTime dt));
+                }
+            }
+            finally
+            {
+                featureFlags?.Dispose();
+            }
         }
     }
 }

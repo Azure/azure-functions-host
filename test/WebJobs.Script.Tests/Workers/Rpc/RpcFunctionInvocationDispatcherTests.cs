@@ -8,6 +8,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -91,74 +92,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
-        public async Task WorkerIndexing_Starting_MultipleWebhostChannels_Succeeds()
+        public async Task WorkerIndexing_Starting_WebhostChannel_Succeeds()
         {
             _testLoggerProvider.ClearAllLogMessages();
             int expectedProcessCount = 3;
+            int expectedWebhostProcessCount = 1;
             RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher(expectedProcessCount, true, runtime: RpcWorkerConstants.JavaLanguageWorkerName, workerIndexing: true);
             await functionDispatcher.InitializeAsync(new List<FunctionMetadata>());
-            var finalWebhostChannelCount = await WaitForWebhostWorkerChannelsToStartup(functionDispatcher.WebHostLanguageWorkerChannelManager, expectedProcessCount, RpcWorkerConstants.JavaLanguageWorkerName);
-            Assert.Equal(expectedProcessCount, finalWebhostChannelCount);
+            var finalWebhostChannelCount = await WaitForWebhostWorkerChannelsToStartup(functionDispatcher.WebHostLanguageWorkerChannelManager, expectedWebhostProcessCount, RpcWorkerConstants.JavaLanguageWorkerName);
+            Assert.Equal(expectedWebhostProcessCount, finalWebhostChannelCount);
 
             var finalJobhostChannelCount = functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels().Count();
             Assert.Equal(0, finalJobhostChannelCount);
-        }
-
-        [Fact]
-        public async Task WorkerIndexing_Setting_ChannelInitializationState_Succeeds()
-        {
-            _testLoggerProvider.ClearAllLogMessages();
-            int expectedProcessCount = 3;
-            RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher(expectedProcessCount, false, runtime: RpcWorkerConstants.JavaLanguageWorkerName, workerIndexing: true);
-
-            // create channels and ensure that they aren't ready for invocation requests yet
-            await functionDispatcher.InitializeAsync(new List<FunctionMetadata>());
-            int createdChannelsCount = await WaitForJobhostWorkerChannelsToStartup(functionDispatcher, expectedProcessCount, false);
-            Assert.Equal(expectedProcessCount, createdChannelsCount);
-
-            IEnumerable<IRpcWorkerChannel> channels = await functionDispatcher.GetInitializedWorkerChannelsAsync();
-            Assert.Equal(0, channels.Count());
-
-            // set up invocation buffers, send load requests, and ensure that the channels are now set up for invocation requests
-            var functions = GetTestFunctionsList(RpcWorkerConstants.JavaLanguageWorkerName);
-            await functionDispatcher.FinishInitialization(functions);
-            int initializedChannelsCount = await WaitForJobhostWorkerChannelsToStartup(functionDispatcher, expectedProcessCount, true);
-            Assert.Equal(expectedProcessCount, initializedChannelsCount);
-        }
-
-        [Theory]
-        [InlineData(null)]
-        [InlineData(RpcWorkerConstants.JavaLanguageWorkerName)]
-        public async Task WorkerRuntime_Setting_ChannelInitializationState_Succeeds(string workerRuntime)
-        {
-            _testLoggerProvider.ClearAllLogMessages();
-            int expectedProcessCount = 1;
-            RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher(expectedProcessCount, false, runtime: workerRuntime, workerIndexing: true);
-
-            // create channels and ensure that they aren't ready for invocation requests yet
-            await functionDispatcher.InitializeAsync(new List<FunctionMetadata>());
-
-            if (!string.IsNullOrEmpty(workerRuntime))
-            {
-                int createdChannelsCount = await WaitForJobhostWorkerChannelsToStartup(functionDispatcher, expectedProcessCount, false);
-                Assert.Equal(expectedProcessCount, createdChannelsCount);
-
-                IEnumerable<IRpcWorkerChannel> channels = await functionDispatcher.GetInitializedWorkerChannelsAsync();
-                Assert.Equal(0, channels.Count());
-
-                // set up invocation buffers, send load requests, and ensure that the channels are now set up for invocation requests
-                var functions = GetTestFunctionsList(RpcWorkerConstants.JavaLanguageWorkerName);
-                await functionDispatcher.FinishInitialization(functions);
-                int initializedChannelsCount = await WaitForJobhostWorkerChannelsToStartup(functionDispatcher, expectedProcessCount, true);
-                Assert.Equal(expectedProcessCount, initializedChannelsCount);
-            }
-            else
-            {
-                foreach (var currChannel in functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels())
-                {
-                    Assert.True(((TestRpcWorkerChannel)currChannel).ExecutionContexts.Count == 0);
-                }
-            }
         }
 
         [Fact]
@@ -327,6 +272,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             await functionDispatcher.InitializeAsync(functions);
             Assert.Equal(FunctionInvocationDispatcherState.Default, functionDispatcher.State);
+        }
+
+        [Fact]
+        public async Task InitializeAsync_Throws_When_Worker_Config_not_found()
+        {
+            // Our GetTestFunctionDispatcher return a dispatcher with 2 worker configs loaded(java, node)
+            RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher(runtime: "python");
+
+            Func<Task> task = () => functionDispatcher.InitializeAsync(new List<FunctionMetadata>());
+
+            InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(task);
+            Assert.Equal("WorkerConfig for runtime: python not found", exception.Message);
+        }
+
+        [Fact]
+        public async Task InitializeAsync_DoesNotThrow_ForDotNetIsolatedWithoutDeployedPayload()
+        {
+            RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher(runtime: RpcWorkerConstants.DotNetIsolatedLanguageWorkerName);
+
+            // Should not throw for dotnet-isolated runtime.
+            await functionDispatcher.InitializeAsync(new List<FunctionMetadata>());
         }
 
         [Fact]
@@ -680,9 +646,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 testEnv.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, runtime);
             }
-            if (workerIndexing)
+            if (!workerIndexing)
             {
-                testEnv.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing);
+                testEnv.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagDisableWorkerIndexing);
             }
             if (placeholder)
             {
@@ -719,6 +685,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _javaTestChannel = new TestRpcWorkerChannel(Guid.NewGuid().ToString(), "java", eventManager, _testLogger, false);
             var optionsMonitor = TestHelpers.CreateOptionsMonitor(workerConfigOptions);
 
+            testEnv.SetEnvironmentVariable("APPLICATIONINSIGHTS_ENABLE_AGENT", "true");
             return new RpcFunctionInvocationDispatcher(scriptOptions,
                 metricsLogger.Object,
                 testEnv,

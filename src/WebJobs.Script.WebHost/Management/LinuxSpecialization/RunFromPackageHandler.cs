@@ -2,12 +2,15 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.Logging;
+using NuGet.Protocol.Plugins;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
 {
@@ -38,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public async Task<bool> ApplyBlobPackageContext(RunFromPackageContext pkgContext, string targetPath, bool azureFilesMounted, bool throwOnFailure = true)
+        public async Task<bool> ApplyRunFromPackageContext(RunFromPackageContext pkgContext, string targetPath, bool azureFilesMounted, bool throwOnFailure = true)
         {
             try
             {
@@ -51,8 +54,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
                         EnvironmentSettingNames.DefaultLocalSitePackagesPath)
                     : string.Empty;
 
-                // download zip and extract
-                var filePath = await _packageDownloadHandler.Download(pkgContext);
+                // download zip
+                string filePath = await _packageDownloadHandler.Download(pkgContext);
+
+                // extract zip
                 await UnpackPackage(filePath, targetPath, pkgContext, localSitePackagesPath);
 
                 string bundlePath = Path.Combine(targetPath, "worker-bundle");
@@ -65,7 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
             }
             catch (Exception e)
             {
-                _logger.LogDebug(e, nameof(ApplyBlobPackageContext));
+                _logger.LogDebug(e, nameof(ApplyRunFromPackageContext));
                 if (throwOnFailure)
                 {
                     throw;
@@ -128,8 +133,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
 
         private CodePackageType GetPackageType(string filePath, RunFromPackageContext pkgContext)
         {
-            // cloud build always builds squashfs
-            if (pkgContext.IsScmRunFromPackage())
+            // cloud build always builds squashfs.
+            if (pkgContext.IsScmRunFromPackage() || pkgContext.IsRunFromLocalPackage())
             {
                 return CodePackageType.Squashfs;
             }
@@ -147,6 +152,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
 
             // Check file magic-number using `file` command.
             (var output, _, _) = _bashCommandHandler.RunBashCommand($"{BashCommandHandler.FileCommand} -b {filePath}", MetricEventNames.LinuxContainerSpecializationFileCommand);
+            _logger.LogInformation(Sanitizer.Sanitize($"Executed: {BashCommandHandler.FileCommand} -b {filePath} {MetricEventNames.LinuxContainerSpecializationFileCommand}"));
             if (output.StartsWith(SquashfsPrefix, StringComparison.OrdinalIgnoreCase))
             {
                 return CodePackageType.Squashfs;
@@ -175,9 +181,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
         private void UnsquashImage(string filePath, string scriptPath)
         {
             _logger.LogDebug($"Unsquashing remote zip to {scriptPath}");
-
-            _bashCommandHandler.RunBashCommand($"{UnsquashFSExecutable} -f -d '{scriptPath}' '{filePath}'",
-                MetricEventNames.LinuxContainerSpecializationUnsquash);
+            var command = $"{UnsquashFSExecutable} -f -d '{scriptPath}' '{filePath}'";
+            _bashCommandHandler.RunBashCommand(command, MetricEventNames.LinuxContainerSpecializationUnsquash);
+            _logger.LogInformation(Sanitizer.Sanitize($"Executed: {command}"));
         }
 
         public async Task<bool> MountAzureFileShare(HostAssignmentContext assignmentContext)
