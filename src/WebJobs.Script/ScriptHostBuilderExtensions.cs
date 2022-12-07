@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel;
@@ -412,25 +413,19 @@ namespace Microsoft.Azure.WebJobs.Script
                     });
                 }
 
-                builder.Services.AddOptions<LoggerFilterOptions>().Configure<IEnvironment>((options, environment) =>
-                {
-                    // Skip sending user generated logs to AI and QuickPulse if worker AI agent is configured, worker will send these logs to AI and Quickpulse service.
-                    if (environment.IsApplicationInsightsAgentEnabled())
+                // Out-of-proc workers have the option of handling App Insights by themselves. If this is the case, they can
+                // use a custom property on the current Activity with IgnoreApplicationInsightsKey to signal that App Insights
+                // should ignore this log message as it's already been written by the worker.
+                builder.Services
+                    .AddOptions<LoggerFilterOptions>()
+                    .Configure<IEnvironment>((options, environment) =>
                     {
-                        options.AddFilter<ApplicationInsightsLoggerProvider>((category, logLevel) =>
+                        if (!environment.IsDotNetInProc())
                         {
-                            // skip Function.<FunctionName>.User category
-                            if (!string.IsNullOrEmpty(category) && category.Length > 14 && category.EndsWith(".User", StringComparison.Ordinal))
-                            {
-                                return false;
-                            }
-                            else
-                            {
-                                return true;
-                            }
-                        });
-                    }
-                });
+                            options.AddFilter<ApplicationInsightsLoggerProvider>((_, _) =>
+                                Activity.Current?.GetCustomProperty(ScriptConstants.IgnoreApplicationInsightsKey) == null);
+                        }
+                    });
             }
         }
 

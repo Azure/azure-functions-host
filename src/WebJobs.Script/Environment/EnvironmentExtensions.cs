@@ -8,9 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using Microsoft.Azure.WebJobs.Script.Config;
-using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
-using Microsoft.Extensions.Options;
 using static Microsoft.Azure.WebJobs.Script.EnvironmentSettingNames;
 
 namespace Microsoft.Azure.WebJobs.Script
@@ -605,6 +603,14 @@ namespace Microsoft.Azure.WebJobs.Script
         public static bool IsTargetBasedScalingEnabled(this IEnvironment environment)
         {
             return string.Equals(environment.GetEnvironmentVariable(TargetBaseScalingEnabled), "1");
+        }
+
+        public static bool IsDotNetInProc(this IEnvironment environment)
+        {
+            var workerRuntime = environment.GetFunctionsWorkerRuntime();
+
+            return string.IsNullOrEmpty(workerRuntime) ||
+                   string.Compare(workerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase) == 0;
         }
     }
 }

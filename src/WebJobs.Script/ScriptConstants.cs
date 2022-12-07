@@ -39,6 +39,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string LogPropertyProcessIdKey = "ProcessId";
         public const string LogPropertyActivityIdKey = "MS_ActivityId";
 
+        public const string IgnoreApplicationInsightsKey = "MS_IgnoreApplicationInisghts";
+
         public const string TraceSourceSecretManagement = "SecretManagement";
         public const string TraceSourceHostAdmin = "HostAdmin";
         public const string TraceSourceFileWatcher = "FileWatcher";

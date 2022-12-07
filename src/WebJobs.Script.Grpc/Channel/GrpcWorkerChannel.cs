@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private readonly IOptions<WorkerConcurrencyOptions> _workerConcurrencyOptions;
         private readonly WaitCallback _processInbound;
         private readonly object _syncLock = new object();
-        private readonly Dictionary<MsgType, Queue<PendingItem>> _pendingActions = new ();
+        private readonly Dictionary<MsgType, Queue<PendingItem>> _pendingActions = new Dictionary<MsgType, Queue<PendingItem>>();
         private readonly ChannelWriter<OutboundGrpcEvent> _outbound;
         private readonly ChannelReader<InboundGrpcEvent> _inbound;
 
@@ -78,6 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private TimeSpan _functionLoadTimeout = TimeSpan.FromMinutes(1);
         private bool _isSharedMemoryDataTransferEnabled;
         private bool _cancelCapabilityEnabled;
+        private bool _workerApplicationInsightsLoggingEnabled;
 
         private System.Timers.Timer _timer;
 
@@ -396,6 +397,13 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             {
                 // If the worker does not support using shared memory data transfer, caching must also be disabled
                 ScriptHost.IsFunctionDataCacheEnabled = false;
+            }
+
+            if (_environment.IsApplicationInsightsAgentEnabled() ||
+                (bool.TryParse(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.WorkerApplicationInsightsLoggingEnabled), out bool appInsightsWorkerEnabled) &&
+                appInsightsWorkerEnabled))
+            {
+                _workerApplicationInsightsLoggingEnabled = true;
             }
 
             _workerInitTask.TrySetResult(true);
@@ -896,12 +904,18 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         internal void Log(GrpcEvent msg)
         {
             var rpcLog = msg.Message.RpcLog;
-            LogLevel logLevel = (LogLevel)rpcLog.Level;
             if (_executingInvocations.TryGetValue(rpcLog.InvocationId, out ScriptInvocationContext context))
             {
                 // Restore the execution context from the original invocation. This allows AsyncLocal state to flow to loggers.
-                System.Threading.ExecutionContext.Run(context.AsyncExecutionContext, (s) =>
+                System.Threading.ExecutionContext.Run(context.AsyncExecutionContext, static (state) =>
                 {
+                    var stateTuple = ((ScriptInvocationContext Context, RpcLog RpcLog, bool AppInsightsEnabledOnWorker))state;
+
+                    var rpcLog = stateTuple.RpcLog;
+                    LogLevel logLevel = (LogLevel)rpcLog.Level;
+
+                    var context = stateTuple.Context;
+
                     if (rpcLog.LogCategory == RpcLogCategory.CustomMetric)
                     {
                         if (rpcLog.PropertiesMap.TryGetValue(LogConstants.NameKey, out var metricName)
@@ -916,18 +930,38 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     }
                     else
                     {
-                        if (rpcLog.Exception != null)
+                        bool cleanup = false;
+                        try
                         {
-                            // TODO fix RpcException catch all https://github.com/Azure/azure-functions-dotnet-worker/issues/370
-                            var exception = new Workers.Rpc.RpcException(rpcLog.Message, rpcLog.Exception.Message, rpcLog.Exception.StackTrace);
-                            context.Logger.Log(logLevel, new EventId(0, rpcLog.EventId), rpcLog.Message, exception, (state, exc) => state);
+                            if (stateTuple.AppInsightsEnabledOnWorker)
+                            {
+                                if (Activity.Current != null)
+                                {
+                                    Activity.Current.SetCustomProperty(ScriptConstants.IgnoreApplicationInsightsKey, true);
+                                    cleanup = true;
+                                }
+                            }
+
+                            if (rpcLog.Exception != null)
+                            {
+                                // TODO fix RpcException catch all https://github.com/Azure/azure-functions-dotnet-worker/issues/370
+                                var exception = new Workers.Rpc.RpcException(rpcLog.Message, rpcLog.Exception.Message, rpcLog.Exception.StackTrace);
+                                context.Logger.Log(logLevel, new EventId(0, rpcLog.EventId), rpcLog.Message, exception, (state, exc) => state);
+                            }
+                            else
+                            {
+                                context.Logger.Log(logLevel, new EventId(0, rpcLog.EventId), rpcLog.Message, null, (state, exc) => state);
+                            }
                         }
-                        else
+                        finally
                         {
-                            context.Logger.Log(logLevel, new EventId(0, rpcLog.EventId), rpcLog.Message, null, (state, exc) => state);
+                            if (cleanup)
+                            {
+                                Activity.Current.SetCustomProperty(ScriptConstants.IgnoreApplicationInsightsKey, null);
+                            }
                         }
                     }
-                }, null);
+                }, (context, rpcLog, _workerApplicationInsightsLoggingEnabled));
             }
         }
 
