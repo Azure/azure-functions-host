@@ -453,7 +453,7 @@
           {
             "name": "addReply",
             "parameters": {
-              "comment": "This issue has been automatically marked as stale because it has been marked as requiring author feedback but has not had any activity for **4 days**. It will be closed if no further activity occurs **within 3 days of this comment**."
+              "comment": "This issue has been automatically marked as stale because it has been marked as requiring author feedback but has not had any activity for **4 days**. It will be closed if no further activity occurs **within 3 days of this comment**.\n\nIf you are not the original author (${issueAuthor}) and believe this issue is not stale, please comment with `/bot not-stale` and I will not close it."
             }
           }
         ]
@@ -2136,6 +2136,67 @@
             "name": "removeLabel",
             "parameters": {
               "label": "pr: needs author feedback"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "taskType": "trigger",
+      "capabilityId": "IssueResponder",
+      "subCapability": "IssueCommentResponder",
+      "version": "1.0",
+      "config": {
+        "conditions": {
+          "operator": "and",
+          "operands": [
+            {
+              "name": "commentContains",
+              "parameters": {
+                "commentPattern": "/bot not-stale"
+              }
+            },
+            {
+              "operator": "and",
+              "operands": [
+                {
+                  "name": "hasLabel",
+                  "parameters": {
+                    "label": "Needs: Author Feedback"
+                  }
+                },
+                {
+                  "name": "hasLabel",
+                  "parameters": {
+                    "label": "no-recent-activity"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "eventType": "issue",
+        "eventNames": [
+          "issue_comment"
+        ],
+        "taskName": "Test",
+        "actions": [
+          {
+            "name": "addLabel",
+            "parameters": {
+              "label": "bot: do not close"
+            }
+          },
+          {
+            "name": "addLabel",
+            "parameters": {
+              "label": "Needs: Attention :wave:"
+            }
+          },
+          {
+            "name": "addReply",
+            "parameters": {
+              "comment": "Thank you ${contextualAuthor}. This issue will not be automatically closed and a member of the team will review it soon."
             }
           }
         ]
