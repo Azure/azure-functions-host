@@ -11,6 +11,7 @@
 - Fix the duplicate log issue with Java ApplicationInsights agent
 - Update Node.js Worker Version to [3.5.2](https://github.com/Azure/azure-functions-nodejs-worker/releases/tag/v3.5.2)
 - Making feature flag for worker indexing opt-out instead of opt-in (#8864)
+- Update PowerShell Worker 7.2 to 4.0.2496 [Release Note](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.2496)
 
 
 **Release sprint:** Sprint 132
