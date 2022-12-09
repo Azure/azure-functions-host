@@ -360,7 +360,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             {
                 WorkerConcurrencyManager manager = null;
                 string fileName = Path.Combine(tempDir.Path, "settings.txt");
-                IHost host = FunctionsHostingConfigOptionsTest.GetHostBuilder(fileName, $"feature1=value1,{RpcWorkerConstants.FunctionsWorkerDynamicConcurrencyEnabled}=1")
+                IHost host = FunctionsHostingConfigOptionsTest.GetScriptHostBuilder(fileName, $"feature1=value1,{RpcWorkerConstants.FunctionsWorkerDynamicConcurrencyEnabled}=1")
                     .ConfigureServices((context, services) =>
                     {
                         services.AddSingleton<IHostedService, WorkerConcurrencyManager>(serviceProvider =>

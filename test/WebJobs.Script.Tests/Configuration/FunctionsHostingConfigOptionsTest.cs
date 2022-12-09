@@ -3,12 +3,12 @@
 
 using System.IO;
 using System.Threading.Tasks;
-using Google.Protobuf.WellKnownTypes;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
+
 using WebJobs.Script.Tests;
 using Xunit;
 
@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         {
             using (TempDirectory tempDir = new TempDirectory())
             {
-                IHost host = GetHostBuilder(Path.Combine(tempDir.Path, "settings.txt"), $"feature1=value1,feature2=value2").Build();
+                IHost host = GetScriptHostBuilder(Path.Combine(tempDir.Path, "settings.txt"), $"feature1=value1,feature2=value2").Build();
                 var testService = host.Services.GetService<TestService>();
 
                 _ = Task.Run(async () =>
@@ -44,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             using (TempDirectory tempDir = new TempDirectory())
             {
                 string fileName = Path.Combine(tempDir.Path, "settings.txt");
-                IHost host = GetHostBuilder(fileName, $"feature1=value1,feature2=value2").Build();
+                IHost host = GetScriptHostBuilder(fileName, $"feature1=value1,feature2=value2").Build();
                 var testService = host.Services.GetService<TestService>();
 
                 await host.StartAsync();
@@ -64,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             using (TempDirectory tempDir = new TempDirectory())
             {
                 string fileName = Path.Combine(tempDir.Path, "settings.txt");
-                IHost host = GetHostBuilder(fileName, $"feature1=value1,feature2=value2").Build();
+                IHost host = GetScriptHostBuilder(fileName, $"feature1=value1,feature2=value2").Build();
                 var testService = host.Services.GetService<TestService>();
 
                 await host.StartAsync();
@@ -86,7 +86,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             using (TempDirectory tempDir = new TempDirectory())
             {
                 string fileName = Path.Combine(tempDir.Path, "settings.txt");
-                IHost host = GetHostBuilder(fileName, string.Empty).Build();
+                IHost host = GetScriptHostBuilder(fileName, string.Empty).Build();
                 var testService = host.Services.GetService<TestService>();
 
                 await host.StartAsync();
@@ -101,7 +101,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             }
         }
 
-        internal static IHostBuilder GetHostBuilder(string fileName, string fileContent)
+        internal static IHostBuilder GetScriptHostBuilder(string fileName, string fileContent)
         {
             if (!string.IsNullOrEmpty(fileContent))
             {
@@ -111,16 +111,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             TestEnvironment environment = new TestEnvironment();
             environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsPlatformConfigFilePath, fileName);
 
+            IHost webHost = new HostBuilder()
+                .ConfigureAppConfiguration((builderContext, config) =>
+                {
+                    config.Add(new FunctionsHostingConfigSource(environment));
+                })
+                .ConfigureServices((context, services) =>
+                {
+                    services.ConfigureOptions<FunctionsHostingConfigOptionsSetup>();
+                    services.Configure<FunctionsHostingConfigOptions>(context.Configuration.GetSection(ScriptConstants.FunctionsHostingConfigSectionName));
+                }).Build();
+
             return new HostBuilder()
                 .ConfigureServices((context, services) =>
                 {
                     services.AddSingleton<TestService>();
-                    services.ConfigureOptions<FunctionsHostingConfigOptionsSetup>();
-                    services.AddSingleton<IOptionsChangeTokenSource<FunctionsHostingConfigOptions>, ConfigurationChangeTokenSource<FunctionsHostingConfigOptions>>();
                 })
                 .ConfigureDefaultTestWebScriptHost(null, configureRootServices: (services) =>
                 {
-                    services.AddSingleton<IEnvironment>(environment);
+                    services.AddSingleton(webHost.Services.GetService<IOptions<FunctionsHostingConfigOptions>>());
+                    services.AddSingleton(webHost.Services.GetService<IOptionsMonitor<FunctionsHostingConfigOptions>>());
                 });
         }
 

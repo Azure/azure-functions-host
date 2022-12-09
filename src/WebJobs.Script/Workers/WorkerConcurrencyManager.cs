@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         private ValueStopwatch _addWorkerStopwatch = ValueStopwatch.StartNew();
         private ValueStopwatch _logStateStopWatch = ValueStopwatch.StartNew();
         private bool _disposed = false;
-        private IDisposable _hostinConfigOnChange;
+        private IDisposable _hostingConfigOnChange;
 
         public WorkerConcurrencyManager(
             IFunctionInvocationDispatcherFactory functionInvocationDispatcherFactory,
@@ -90,7 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                         _logger.LogDebug($"Dynamic worker concurrency monitoring is starting by hosting config.");
                         Activate();
 
-                        _hostinConfigOnChange = _functionsHostingConfigOptionsMonitor.OnChange(async (newOptions) =>
+                        _hostingConfigOnChange = _functionsHostingConfigOptionsMonitor.OnChange(async (newOptions) =>
                         {
                             if (!newOptions.FunctionsWorkerDynamicConcurrencyEnabled)
                             {
@@ -250,7 +250,7 @@ LatencyHistory=({formattedLatencyHistory}), AvgLatency={latencyAvg}, MaxLatency=
                 if (disposing)
                 {
                     _timer?.Dispose();
-                    _hostinConfigOnChange?.Dispose();
+                    _hostingConfigOnChange?.Dispose();
                 }
 
                 _disposed = true;
