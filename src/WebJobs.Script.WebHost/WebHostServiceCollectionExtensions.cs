@@ -190,7 +190,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.ConfigureOptionsWithChangeTokenSource<AppServiceOptions, AppServiceOptionsSetup, SpecializationChangeTokenSource<AppServiceOptions>>();
             services.ConfigureOptionsWithChangeTokenSource<HttpBodyControlOptions, HttpBodyControlOptionsSetup, SpecializationChangeTokenSource<HttpBodyControlOptions>>();
             services.ConfigureOptions<FunctionsHostingConfigOptionsSetup>();
-            services.Configure<FunctionsHostingConfigOptions>(configuration.GetSection(ScriptConstants.FunctionsHostingConfigSectionName));
+            if (configuration != null)
+            {
+                services.Configure<FunctionsHostingConfigOptions>(configuration.GetSection(ScriptConstants.FunctionsHostingConfigSectionName));
+            }
 
             services.TryAddSingleton<IDependencyValidator, DependencyValidator>();
             services.TryAddSingleton<IJobHostMiddlewarePipeline>(s => DefaultMiddlewarePipeline.Empty);
