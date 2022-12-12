@@ -35,8 +35,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         private IOptions<WorkerConcurrencyOptions> _workerConcurrencyOptions;
         private IFunctionInvocationDispatcher _functionInvocationDispatcher;
         private System.Timers.Timer _timer;
-        private ValueStopwatch _addWorkerStopwatch = ValueStopwatch.StartNew();
-        private ValueStopwatch _logStateStopWatch = ValueStopwatch.StartNew();
+        private Stopwatch _addWorkerStopwatch = Stopwatch.StartNew();
+        private Stopwatch _logStateStopWatch = Stopwatch.StartNew();
         private bool _disposed = false;
         private IDisposable _hostingConfigOnChange;
 

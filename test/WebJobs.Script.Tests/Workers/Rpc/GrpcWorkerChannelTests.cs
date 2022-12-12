@@ -94,11 +94,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             };
             _hostOptionsMonitor = TestHelpers.CreateOptionsMonitor(hostOptions);
 
-            _hostingConfigOptions = Options.Create(new FunctionsHostingConfigOptions());
-        }
-
-        private Task CreateDefaultWorkerChannel(bool autoStart = true, IDictionary<string, string> capabilities = null)
-        {
             _workerChannel = new GrpcWorkerChannel(
                _workerId,
                _eventManager,
@@ -113,6 +108,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _functionDataCache,
                _workerConcurrencyOptions,
                _hostingConfigOptions);
+
+            _hostingConfigOptions = Options.Create(new FunctionsHostingConfigOptions());
         }
 
         public void Dispose()
@@ -478,29 +475,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.True(envReloadRequest.FunctionAppDirectory == _scriptRootPath);
         }
 
-
         [Fact]
-        public async Task SendFunctionEnvironmentReloadRequest_AddsHostingConfig()
-        {
-            _hostingConfigOptions.Value.Features["TestFeature"] = "TestFeatureValue";
-            _hostingConfigOptions.Value.Features["TestEnvVariable"] = "TestEnvVariableValue2";
-
-            await CreateDefaultWorkerChannel();
-
-            var environmentVariables = new Dictionary<string, string>()
-            {
-                { "TestValid", "TestValue" },
-                { "TestEnvVariable", "TestEnvVariableValue1" }
-            };
-
-            FunctionEnvironmentReloadRequest envReloadRequest = _workerChannel.GetFunctionEnvironmentReloadRequest(environmentVariables);
-            Assert.True(envReloadRequest.EnvironmentVariables["TestValid"] == "TestValue");
-            Assert.True(envReloadRequest.EnvironmentVariables["TestFeature"] == "TestFeatureValue");
-            Assert.True(envReloadRequest.EnvironmentVariables["TestEnvVariable"] == "TestEnvVariableValue2");
-        }
-
-        [Fact]
-        public async Task ReceivesInboundEvent_InvocationResponse()
+        public void ReceivesInboundEvent_InvocationResponse()
         {
             _testFunctionRpcService.PublishInvocationResponseEvent();
             var traces = _logger.GetLogMessages();

@@ -45,6 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private readonly ISharedMemoryManager _sharedMemoryManager;
         private readonly List<TimeSpan> _workerStatusLatencyHistory = new List<TimeSpan>();
         private readonly IOptions<WorkerConcurrencyOptions> _workerConcurrencyOptions;
+        private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions;
 
         private IDisposable _functionLoadRequestResponseEvent;
         private bool _disposed;
@@ -102,6 +103,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _applicationHostOptions = applicationHostOptions;
             _sharedMemoryManager = sharedMemoryManager;
             _workerConcurrencyOptions = workerConcurrencyOptions;
+            _hostingConfigOptions = hostingConfigOptions;
 
             _workerCapabilities = new GrpcCapabilities(_workerChannelLogger);
 

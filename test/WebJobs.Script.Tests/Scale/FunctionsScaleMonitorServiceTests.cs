@@ -27,7 +27,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
         private readonly TestLoggerProvider _loggerProvider;
         private readonly List<IScaleMonitor> _monitors;
         private bool _isPrimaryHost;
-        private IOptions<FunctionsHostingConfigOptions> _functionsHostingConfigOptions;
 
         public FunctionsScaleMonitorServiceTests()
         {

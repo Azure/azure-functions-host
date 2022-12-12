@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
                 {
                     if (!string.IsNullOrEmpty(pair.Value))
                     {
-                        options.Features.TryAdd(pair.Key, pair.Value);
+                        options.Features[pair.Key] = pair.Value;
                     }
                 }
             }
