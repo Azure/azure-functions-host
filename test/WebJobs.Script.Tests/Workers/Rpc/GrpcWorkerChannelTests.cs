@@ -94,6 +94,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             };
             _hostOptionsMonitor = TestHelpers.CreateOptionsMonitor(hostOptions);
 
+            _hostingConfigOptions = Options.Create(new FunctionsHostingConfigOptions());
+
             _workerChannel = new GrpcWorkerChannel(
                _workerId,
                _eventManager,
@@ -108,8 +110,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _functionDataCache,
                _workerConcurrencyOptions,
                _hostingConfigOptions);
-
-            _hostingConfigOptions = Options.Create(new FunctionsHostingConfigOptions());
         }
 
         public void Dispose()
