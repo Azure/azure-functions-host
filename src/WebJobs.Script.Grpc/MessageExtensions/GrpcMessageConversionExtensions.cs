@@ -7,8 +7,10 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
 using Google.Protobuf;
+using Google.Protobuf.WellKnownTypes;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
@@ -53,6 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     JObject jobj => new TypedData() { Json = jobj.ToString(Formatting.None) },
                     string str => new TypedData() { String = str },
                     double dbl => new TypedData() { Double = dbl },
+                    ParameterBindingData bindingData => bindingData.ToModelBindingData(),
                     byte[][] arrBytes when IsTypedDataCollectionSupported(capabilities) => arrBytes.ToRpcByteArray(),
                     string[] arrStr when IsTypedDataCollectionSupported(capabilities) => arrStr.ToRpcStringArray(
                                                             ShouldIncludeEmptyEntriesInMessagePayload(capabilities)),
@@ -61,6 +64,24 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     _ => value.ToRpcDefault(),
                 });
             }
+        }
+
+        internal static TypedData ToModelBindingData(this ParameterBindingData data)
+        {
+            var modelBindingData = new ModelBindingData
+            {
+                Version = data.Version,
+                Source = data.Source,
+                ContentType = data.ContentType,
+                Content = ByteString.CopyFrom(data.Content)
+            };
+
+            var typedData = new TypedData
+            {
+                ModelBindingData = modelBindingData
+            };
+
+            return typedData;
         }
 
         internal static async Task<TypedData> ToRpcHttp(this HttpRequest request, ILogger logger, GrpcCapabilities capabilities)

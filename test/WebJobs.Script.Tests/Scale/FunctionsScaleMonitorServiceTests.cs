@@ -4,10 +4,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using FluentAssertions.Events;
 using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Hosting;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -23,15 +21,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
     public class FunctionsScaleMonitorServiceTests
     {
         private readonly FunctionsScaleMonitorService _monitor;
-        private readonly Mock<IScaleMonitorManager> _monitorManagerMock;
         private readonly TestMetricsRepository _metricsRepository;
         private readonly Mock<IPrimaryHostStateProvider> _primaryHostStateProviderMock;
         private readonly TestEnvironment _environment;
         private readonly TestLoggerProvider _loggerProvider;
-        private readonly List<IScaleMonitor> _monitors;
-        private readonly List<ITargetScaler> _scalers;
-        private readonly Mock<ITargetScalerManager> _targetScaleManager;
         private readonly Mock<IFunctionsHostingConfiguration> _functionsHostingConfigurationMock;
+        private List<IScaleMonitor> _monitors;
+        private List<ITargetScaler> _scalers;
+
         private bool _isPrimaryHost;
 
         public FunctionsScaleMonitorServiceTests()
@@ -40,8 +37,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
             _monitors = new List<IScaleMonitor>();
             _scalers = new List<ITargetScaler>();
 
-            _monitorManagerMock = new Mock<IScaleMonitorManager>(MockBehavior.Strict);
-            _monitorManagerMock.Setup(p => p.GetMonitors()).Returns(() => _monitors);
             _metricsRepository = new TestMetricsRepository();
             _primaryHostStateProviderMock = new Mock<IPrimaryHostStateProvider>(MockBehavior.Strict);
             _primaryHostStateProviderMock.SetupGet(p => p.IsPrimary).Returns(() => _isPrimaryHost);
@@ -54,13 +49,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
 
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsRuntimeScaleMonitoringEnabled, "1");
 
-            _targetScaleManager = new Mock<ITargetScalerManager>(MockBehavior.Strict);
-            _targetScaleManager.Setup(p => p.GetTargetScalers()).Returns(_scalers);
+            Mock<FunctionsScaleManager> functionsScaleManagerMock = new Mock<FunctionsScaleManager>();
+            functionsScaleManagerMock.Setup(x => x.GetScalersToSample(out _monitors, out _scalers));
 
             _functionsHostingConfigurationMock = new Mock<IFunctionsHostingConfiguration>(MockBehavior.Strict);
             _functionsHostingConfigurationMock.Setup(p => p.GetValue(It.IsAny<string>(), It.IsAny<string>())).Returns<string>(null);
 
-            _monitor = new FunctionsScaleMonitorService(_monitorManagerMock.Object, _targetScaleManager.Object, _metricsRepository, _primaryHostStateProviderMock.Object, _environment, loggerFactory, options, _functionsHostingConfigurationMock.Object);
+            _monitor = new FunctionsScaleMonitorService(functionsScaleManagerMock.Object, _metricsRepository, _primaryHostStateProviderMock.Object, _environment, loggerFactory, options, _functionsHostingConfigurationMock.Object);
         }
 
         [Fact]
@@ -204,24 +199,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
 
             var metricsWritten = _metricsRepository.Metrics[monitor2].Take(5);
             Assert.Equal(testMetrics2, metricsWritten);
-        }
-
-        [Fact]
-        public async Task TakeMetricsSamplesAsync_CancelsTaking_IfTBSEbabled()
-        {
-            TestScaleMonitor1 monitor = new TestScaleMonitor1();
-            _monitors.Add(monitor);
-
-            TestTargetScaler scaler = new TestTargetScaler();
-            _scalers.Add(scaler);
-
-            _environment.SetEnvironmentVariable(EnvironmentSettingNames.TargetBaseScalingEnabled, "1");
-            string assemblyName = Assembly.GetExecutingAssembly().GetName().Name;
-            _functionsHostingConfigurationMock.Setup(p => p.GetValue(assemblyName, It.IsAny<string>())).Returns("1");
-            await _monitor.TakeMetricsSamplesAsync();
-
-            var logs = _loggerProvider.GetAllLogMessages().ToArray();
-            Assert.DoesNotContain(logs, x => x.FormattedMessage.StartsWith("Taking metrics samples for "));
         }
     }
 
