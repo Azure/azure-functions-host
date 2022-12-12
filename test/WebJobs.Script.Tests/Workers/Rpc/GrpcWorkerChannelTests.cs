@@ -8,6 +8,8 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -51,6 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         private readonly ISharedMemoryManager _sharedMemoryManager;
         private readonly IFunctionDataCache _functionDataCache;
         private readonly IOptions<WorkerConcurrencyOptions> _workerConcurrencyOptions;
+        private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions;
         private GrpcWorkerChannel _workerChannel;
 
         public GrpcWorkerChannelTests()
@@ -91,6 +94,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             };
             _hostOptionsMonitor = TestHelpers.CreateOptionsMonitor(hostOptions);
 
+            _hostingConfigOptions = Options.Create(new FunctionsHostingConfigOptions());
+        }
+
+        private Task CreateDefaultWorkerChannel(bool autoStart = true, IDictionary<string, string> capabilities = null)
+        {
             _workerChannel = new GrpcWorkerChannel(
                _workerId,
                _eventManager,
@@ -103,7 +111,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _hostOptionsMonitor,
                _sharedMemoryManager,
                _functionDataCache,
-               _workerConcurrencyOptions);
+               _workerConcurrencyOptions,
+               _hostingConfigOptions);
         }
 
         public void Dispose()
@@ -199,7 +208,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _hostOptionsMonitor,
                _sharedMemoryManager,
                _functionDataCache,
-               _workerConcurrencyOptions);
+               _workerConcurrencyOptions,
+               _hostingConfigOptions);
             await Assert.ThrowsAsync<FileNotFoundException>(async () => await _workerChannel.StartWorkerProcessAsync(CancellationToken.None));
         }
 
@@ -313,7 +323,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _hostOptionsMonitor,
                _sharedMemoryManager,
                _functionDataCache,
-               _workerConcurrencyOptions);
+               _workerConcurrencyOptions,
+               _hostingConfigOptions);
             channel.SetupFunctionInvocationBuffers(GetTestFunctionsList("node"));
             ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(invocationId, resultSource);
             await channel.SendInvocationRequest(scriptInvocationContext);
@@ -467,8 +478,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.True(envReloadRequest.FunctionAppDirectory == _scriptRootPath);
         }
 
+
         [Fact]
-        public void ReceivesInboundEvent_InvocationResponse()
+        public async Task SendFunctionEnvironmentReloadRequest_AddsHostingConfig()
+        {
+            _hostingConfigOptions.Value.Features["TestFeature"] = "TestFeatureValue";
+            _hostingConfigOptions.Value.Features["TestEnvVariable"] = "TestEnvVariableValue2";
+
+            await CreateDefaultWorkerChannel();
+
+            var environmentVariables = new Dictionary<string, string>()
+            {
+                { "TestValid", "TestValue" },
+                { "TestEnvVariable", "TestEnvVariableValue1" }
+            };
+
+            FunctionEnvironmentReloadRequest envReloadRequest = _workerChannel.GetFunctionEnvironmentReloadRequest(environmentVariables);
+            Assert.True(envReloadRequest.EnvironmentVariables["TestValid"] == "TestValue");
+            Assert.True(envReloadRequest.EnvironmentVariables["TestFeature"] == "TestFeatureValue");
+            Assert.True(envReloadRequest.EnvironmentVariables["TestEnvVariable"] == "TestEnvVariableValue2");
+        }
+
+        [Fact]
+        public async Task ReceivesInboundEvent_InvocationResponse()
         {
             _testFunctionRpcService.PublishInvocationResponseEvent();
             var traces = _logger.GetLogMessages();
@@ -761,7 +793,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _hostOptionsMonitor,
                _sharedMemoryManager,
                _functionDataCache,
-               _workerConcurrencyOptions);
+               _workerConcurrencyOptions,
+               _hostingConfigOptions);
 
             IEnumerable<TimeSpan> latencyHistory = null;
 
@@ -799,7 +832,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _hostOptionsMonitor,
                _sharedMemoryManager,
                _functionDataCache,
-               _workerConcurrencyOptions);
+               _workerConcurrencyOptions,
+               _hostingConfigOptions);
 
             // wait 10 seconds
             await Task.Delay(10000);

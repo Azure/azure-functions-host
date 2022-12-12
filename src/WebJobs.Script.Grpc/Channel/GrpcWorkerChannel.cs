@@ -14,6 +14,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -87,7 +88,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions,
             ISharedMemoryManager sharedMemoryManager,
             IFunctionDataCache functionDataCache,
-            IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions)
+            IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions,
+            IOptions<FunctionsHostingConfigOptions> hostingConfigOptions)
         {
             _workerId = workerId;
             _eventManager = eventManager;
@@ -391,6 +393,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         internal FunctionEnvironmentReloadRequest GetFunctionEnvironmentReloadRequest(IDictionary processEnv)
         {
+            foreach (var pair in _hostingConfigOptions.Value.Features)
+            {
+                processEnv[pair.Key] = pair.Value;
+            }
+
             FunctionEnvironmentReloadRequest request = new FunctionEnvironmentReloadRequest();
             foreach (DictionaryEntry entry in processEnv)
             {

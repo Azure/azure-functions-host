@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Xunit;
@@ -21,6 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
         private readonly TestLoggerProvider _loggerProvider;
         private readonly List<IScaleMonitor> _monitors;
         private readonly ILogger _testLogger;
+        private IOptions<FunctionsHostingConfigOptions> _functionsHostingConfigOptions;
 
         public FunctionsScaleManagerTests()
         {
