@@ -93,7 +93,7 @@ namespace WebJobsStartupTests
         {
             if (_config is ConfigurationRoot root)
             {
-                if (root.Providers.Count() != 8)
+                if (root.Providers.Count() != 7)
                 {
                     return false;
                 }
@@ -107,8 +107,7 @@ namespace WebJobsStartupTests
                     root.Providers.ElementAt(i++) is JsonConfigurationProvider &&
                     root.Providers.ElementAt(i++) is EnvironmentVariablesConfigurationProvider &&
                     root.Providers.ElementAt(i++) is MemoryConfigurationProvider && // From Startup.cs
-                    root.Providers.ElementAt(i++) is JsonConfigurationProvider && // From test settings; Always runs last in tests.
-                    root.Providers.ElementAt(i++) is FileConfigurationProvider; // From hosting config
+                    root.Providers.ElementAt(i++) is JsonConfigurationProvider; // From test settings; Always runs last in tests.
             }
 
             return false;
