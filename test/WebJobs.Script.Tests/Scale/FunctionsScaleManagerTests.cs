@@ -13,6 +13,7 @@ using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.Tests.Description.DotNet;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Xunit;
@@ -30,9 +31,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
         private readonly TestLoggerProvider _loggerProvider;
         private readonly List<IScaleMonitor> _monitors;
         private readonly List<ITargetScaler> _targetScalers;
-        private readonly Mock<IFunctionsHostingConfiguration> _functionsHostingConfigurationMock;
         private readonly TestEnvironment _environment;
         private readonly ILogger _testLogger;
+        private IOptions<FunctionsHostingConfigOptions> _functionsHostingConfigOptions;
 
         public FunctionsScaleManagerTests()
         {
@@ -59,11 +60,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
                     }
                 });
 
-            _functionsHostingConfigurationMock = new Mock<IFunctionsHostingConfiguration>(MockBehavior.Strict);
+            _functionsHostingConfigOptions = Options.Create(new FunctionsHostingConfigOptions());
+
             _environment = new TestEnvironment();
 
             _scaleManager = new FunctionsScaleManager(_monitorManagerMock.Object, _metricsRepositoryMock.Object, _targetScalerManagerMock.Object, _concurrencyStatusRepositoryMock.Object,
-                _functionsHostingConfigurationMock.Object, _environment, _loggerFactory);
+                _functionsHostingConfigOptions, _environment, _loggerFactory);
         }
 
         [Theory]
@@ -142,7 +144,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
             }
 
             string assemblyName = Assembly.GetExecutingAssembly().GetName().Name;
-            _functionsHostingConfigurationMock.Setup(p => p.GetValue(assemblyName, It.IsAny<string>())).Returns("1");
+            _functionsHostingConfigOptions.Value.Features[assemblyName] = "1";
 
             var status = await _scaleManager.GetScaleStatusAsync(context);
 
@@ -238,7 +240,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.TargetBaseScalingEnabled, "1");
 
             string assemblyName = Assembly.GetExecutingAssembly().GetName().Name;
-            _functionsHostingConfigurationMock.Setup(p => p.GetValue(assemblyName, It.IsAny<string>())).Returns("1");
+            _functionsHostingConfigOptions.Value.Features[assemblyName] = "1";
 
             var status = await _scaleManager.GetScaleStatusAsync(context);
 
@@ -303,9 +305,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
             Mock<ITargetScalerManager> targetScalerManagerMock = new Mock<ITargetScalerManager>(MockBehavior.Strict);
             targetScalerManagerMock.Setup(x => x.GetTargetScalers()).Returns(targetScalers);
 
-            Mock<IFunctionsHostingConfiguration> functionsHostingConfigurationMock = new Mock<IFunctionsHostingConfiguration>(MockBehavior.Strict);
             string assemblyName = Assembly.GetExecutingAssembly().GetName().Name;
-            functionsHostingConfigurationMock.Setup(p => p.GetValue(assemblyName, It.IsAny<string>())).Returns(triggerEabled ? "1" : null);
+            _functionsHostingConfigOptions.Value.Features[assemblyName] = triggerEabled ? "1" : null;
 
             TestEnvironment env = new TestEnvironment();
             if (targetBaseScalingEnabled)
@@ -314,7 +315,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
             }
 
             FunctionsScaleManager manager = new FunctionsScaleManager(scaleMonitorManagerMock.Object, _metricsRepositoryMock.Object,
-                targetScalerManagerMock.Object, _concurrencyStatusRepositoryMock.Object, functionsHostingConfigurationMock.Object,
+                targetScalerManagerMock.Object, _concurrencyStatusRepositoryMock.Object, _functionsHostingConfigOptions,
                 env, _loggerFactory);
 
             manager.GetScalersToSample(out List<IScaleMonitor> scaleMonitorsToProcess, out List<ITargetScaler> targetScalesToProcess);
@@ -347,15 +348,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
             Mock<ITargetScalerManager> targetScalerManagerMock = new Mock<ITargetScalerManager>(MockBehavior.Strict);
             targetScalerManagerMock.Setup(x => x.GetTargetScalers()).Returns(targetScalers);
 
-            Mock<IFunctionsHostingConfiguration> functionsHostingConfigurationMock = new Mock<IFunctionsHostingConfiguration>(MockBehavior.Strict);
             string assemblyName = Assembly.GetExecutingAssembly().GetName().Name;
-            functionsHostingConfigurationMock.Setup(p => p.GetValue(assemblyName, It.IsAny<string>())).Returns("1");
+            _functionsHostingConfigOptions.Value.Features[assemblyName] = "1";
 
             TestEnvironment env = new TestEnvironment();
             env.SetEnvironmentVariable(EnvironmentSettingNames.TargetBaseScalingEnabled, "1");
 
             FunctionsScaleManager manager = new FunctionsScaleManager(scaleMonitorManagerMock.Object, _metricsRepositoryMock.Object,
-                targetScalerManagerMock.Object, _concurrencyStatusRepositoryMock.Object, functionsHostingConfigurationMock.Object,
+                targetScalerManagerMock.Object, _concurrencyStatusRepositoryMock.Object, _functionsHostingConfigOptions,
                 env, _loggerFactory);
 
             var context = new ScaleStatusContext()
