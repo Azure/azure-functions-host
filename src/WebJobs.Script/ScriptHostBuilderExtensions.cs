@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel;
@@ -400,6 +399,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 });
 
                 builder.Services.ConfigureOptions<ApplicationInsightsLoggerOptionsSetup>();
+                builder.Services.ConfigureOptions<ApplicationInsightsLoggerFilterOptionsSetup>();
                 builder.Services.AddSingleton<ISdkVersionProvider, FunctionsSdkVersionProvider>();
                 builder.Services.AddSingleton<ITelemetryInitializer, ScriptTelemetryInitializer>();
 
@@ -412,20 +412,6 @@ namespace Microsoft.Azure.WebJobs.Script
                         o.EnableDependencyTracking = false;
                     });
                 }
-
-                // Out-of-proc workers have the option of handling App Insights by themselves. If this is the case, they can
-                // use a custom property on the current Activity with IgnoreApplicationInsightsKey to signal that App Insights
-                // should ignore this log message as it's already been written by the worker.
-                builder.Services
-                    .AddOptions<LoggerFilterOptions>()
-                    .Configure<IEnvironment>((options, environment) =>
-                    {
-                        if (!environment.IsDotNetInProc())
-                        {
-                            options.AddFilter<ApplicationInsightsLoggerProvider>((_, _) =>
-                                Activity.Current?.GetCustomProperty(ScriptConstants.IgnoreApplicationInsightsKey) == null);
-                        }
-                    });
             }
         }
 

@@ -17,6 +17,7 @@ using System.Threading.Tasks.Dataflow;
 using Google.Protobuf.Collections;
 using Google.Protobuf.WellKnownTypes;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -930,17 +931,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     }
                     else
                     {
-                        bool cleanup = false;
                         try
                         {
-                            if (stateTuple.AppInsightsEnabledOnWorker)
-                            {
-                                if (Activity.Current != null)
-                                {
-                                    Activity.Current.SetCustomProperty(ScriptConstants.IgnoreApplicationInsightsKey, true);
-                                    cleanup = true;
-                                }
-                            }
+                            ApplicationInsightsLoggerFilterOptionsSetup.FilterApplicationInsightsFromWorker.Value = stateTuple.AppInsightsEnabledOnWorker;
 
                             if (rpcLog.Exception != null)
                             {
@@ -955,10 +948,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                         }
                         finally
                         {
-                            if (cleanup)
-                            {
-                                Activity.Current.SetCustomProperty(ScriptConstants.IgnoreApplicationInsightsKey, null);
-                            }
+                            ApplicationInsightsLoggerFilterOptionsSetup.FilterApplicationInsightsFromWorker.Value = false;
                         }
                     }
                 }, (context, rpcLog, _workerApplicationInsightsLoggingEnabled));
