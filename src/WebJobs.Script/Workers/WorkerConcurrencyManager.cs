@@ -27,40 +27,35 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         private readonly ILogger _logger;
         private readonly IFunctionInvocationDispatcherFactory _functionInvocationDispatcherFactory;
         private readonly IEnvironment _environment;
-        private readonly IFunctionsHostingConfiguration _functionsHostingConfigurations;
         private readonly IApplicationLifetime _applicationLifetime;
         private readonly long _memoryLimit = AppServicesHostingUtility.GetMemoryLimitBytes();
+        private readonly IOptionsMonitor<FunctionsHostingConfigOptions> _functionsHostingConfigOptionsMonitor;
+        private readonly Func<Task> _stopApplication;
 
         private IOptions<WorkerConcurrencyOptions> _workerConcurrencyOptions;
         private IFunctionInvocationDispatcher _functionInvocationDispatcher;
         private System.Timers.Timer _timer;
-        private System.Timers.Timer _activationTimer;
         private Stopwatch _addWorkerStopwatch = Stopwatch.StartNew();
         private Stopwatch _logStateStopWatch = Stopwatch.StartNew();
-        private TimeSpan _activationTimerInterval = TimeSpan.FromMinutes(5);
         private bool _disposed = false;
+        private IDisposable _hostingConfigOnChange;
 
         public WorkerConcurrencyManager(
             IFunctionInvocationDispatcherFactory functionInvocationDispatcherFactory,
             IEnvironment environment,
             IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions,
-            IFunctionsHostingConfiguration functionsHostingConfigurations,
+            IOptionsMonitor<FunctionsHostingConfigOptions> functionsHostingConfigOptionsMonitor,
             IApplicationLifetime applicationLifetime,
             ILoggerFactory loggerFactory)
         {
             _functionInvocationDispatcherFactory = functionInvocationDispatcherFactory ?? throw new ArgumentNullException(nameof(functionInvocationDispatcherFactory));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _workerConcurrencyOptions = workerConcurrencyOptions;
-            _functionsHostingConfigurations = functionsHostingConfigurations;
+            _functionsHostingConfigOptionsMonitor = functionsHostingConfigOptionsMonitor;
             _applicationLifetime = applicationLifetime;
             _logger = loggerFactory?.CreateLogger(LogCategories.Concurrency);
-        }
-
-        // For tests
-        public TimeSpan ActivationTimerInterval
-        {
-            get => _activationTimerInterval;
-            set => _activationTimerInterval = value;
+            _stopApplication = StopApplication;
+            _stopApplication = _stopApplication.Debounce(1000);
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
@@ -87,18 +82,23 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                     }
                     if (_environment.IsWorkerDynamicConcurrencyEnabled())
                     {
+                        _logger.LogDebug($"Dynamic worker concurrency monitoring is starting by app setting.");
                         Activate();
                     }
-                    else
+                    else if (_functionsHostingConfigOptionsMonitor.CurrentValue != null && _functionsHostingConfigOptionsMonitor.CurrentValue.FunctionsWorkerDynamicConcurrencyEnabled)
                     {
-                        // The worker concurreny feature can be activated once FunctionsHostingConfigurations is updated
-                        _activationTimer = new System.Timers.Timer()
+                        _logger.LogDebug($"Dynamic worker concurrency monitoring is starting by hosting config.");
+                        Activate();
+
+                        _hostingConfigOnChange = _functionsHostingConfigOptionsMonitor.OnChange(async (newOptions) =>
                         {
-                            AutoReset = false,
-                            Interval = _activationTimerInterval.TotalMilliseconds
-                        };
-                        _activationTimer.Elapsed += OnActivationTimer;
-                        _activationTimer.Start();
+                            if (!newOptions.FunctionsWorkerDynamicConcurrencyEnabled)
+                            {
+                                // There is a known issue when OnChange fires twice: https://github.com/dotnet/aspnetcore/issues/2542
+                                // Lets make sure we stopped the app once
+                                await _stopApplication();
+                            }
+                        });
                     }
                 }
             }
@@ -148,42 +148,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 _logger.LogError(ex, "Error monitoring worker concurrency");
             }
             _timer.Start();
-        }
-
-        private void OnActivationTimer(object sender, System.Timers.ElapsedEventArgs e)
-        {
-            if (_disposed)
-            {
-                return;
-            }
-
-            try
-            {
-                if (_timer == null && _functionsHostingConfigurations.FunctionsWorkerDynamicConcurrencyEnabled)
-                {
-                    // if the feature is not active and FunctionsHostingConfiguration has the flag
-                    Activate();
-                    _environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerDynamicConcurrencyEnabled, "true");
-                    _logger.LogDebug($"Dynamic worker concurrency monitoring was started by activation timer.");
-                }
-                else if (_timer != null && !_functionsHostingConfigurations.FunctionsWorkerDynamicConcurrencyEnabled)
-                {
-                    // if the feature was activated by FunctionsHostingConfiguration and then disabled - shutdown the host
-                    _logger.LogDebug($"Dynamic worker concurrency monitoring is disabled after activation. Shutting down Functions Host.");
-                    _functionInvocationDispatcher.ShutdownAsync();
-                    _applicationLifetime.StopApplication();
-                    return;
-                }
-            }
-            catch (Exception ex)
-            {
-                // Best effort
-                // return and do not start the activation timmer again
-                _logger.LogError(ex, "Error activating worker concurrency");
-                return;
-            }
-
-            _activationTimer.Start();
         }
 
         private void Activate()
@@ -286,7 +250,7 @@ LatencyHistory=({formattedLatencyHistory}), AvgLatency={latencyAvg}, MaxLatency=
                 if (disposing)
                 {
                     _timer?.Dispose();
-                    _activationTimer?.Dispose();
+                    _hostingConfigOnChange?.Dispose();
                 }
 
                 _disposed = true;
@@ -343,6 +307,13 @@ LatencyHistory=({formattedLatencyHistory}), AvgLatency={latencyAvg}, MaxLatency=
             }
 
             return true;
+        }
+
+        private async Task StopApplication()
+        {
+            _logger.LogDebug($"Dynamic worker concurrency monitoring is stopping on hosting config update. Shutting down Functions Host.");
+            await _functionInvocationDispatcher.ShutdownAsync();
+            _applicationLifetime.StopApplication();
         }
 
         internal class WorkerStatusDetails
