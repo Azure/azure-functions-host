@@ -9,7 +9,6 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
-using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.Management.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Extensions;
 using Microsoft.Extensions.Logging;
@@ -80,11 +79,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         /// It attempts to clean left over artifacts from a possible previous function with the same name
         /// if config is changed, then `configChanged` is set to true so the caller can call SyncTriggers if needed.
         /// </summary>
-        /// <param name="name">name of the function to be created</param>
-        /// <param name="functionMetadata">in case of update for function.json</param>
+        /// <param name="name">name of the function to be created.</param>
+        /// <param name="functionMetadata">in case of update for function.json.</param>
         /// <param name="request">Current HttpRequest.</param>
-        /// <returns>(success, configChanged, functionMetadataResult)</returns>
-        public async Task<(bool, bool, FunctionMetadataResponse)> CreateOrUpdate(string name, FunctionMetadataResponse functionMetadata, HttpRequest request)
+        /// <returns>(success, configChanged, functionMetadataResult).</returns>
+        public async Task<(bool Success, bool ConfigChanged, FunctionMetadataResponse Response)> CreateOrUpdate(string name, FunctionMetadataResponse functionMetadata, HttpRequest request)
         {
             var hostOptions = _applicationHostOptions.CurrentValue.ToHostOptions();
             var configChanged = false;
@@ -154,12 +153,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         }
 
         /// <summary>
-        /// maps a functionName to its FunctionMetadataResponse
+        /// maps a functionName to its FunctionMetadataResponse.
         /// </summary>
-        /// <param name="name">Function name to retrieve</param>
-        /// <param name="request">Current HttpRequest</param>
-        /// <returns>(success, FunctionMetadataResponse)</returns>
-        public async Task<(bool, FunctionMetadataResponse)> TryGetFunction(string name, HttpRequest request)
+        /// <param name="name">Function name to retrieve.</param>
+        /// <param name="request">Current HttpRequest.</param>
+        /// <returns>(success, FunctionMetadataResponse).</returns>
+        public async Task<(bool Success, FunctionMetadataResponse Response)> TryGetFunction(string name, HttpRequest request)
         {
             var hostOptions = _applicationHostOptions.CurrentValue.ToHostOptions();
             var functionMetadata = GetFunctionsMetadata(includeProxies: false, forceRefresh: true)
@@ -180,9 +179,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         /// <summary>
         /// Delete a function and all it's artifacts.
         /// </summary>
-        /// <param name="function">Function to be deleted</param>
-        /// <returns>(success, errorMessage)</returns>
-        public async Task<(bool, string)> TryDeleteFunction(FunctionMetadataResponse function)
+        /// <param name="function">Function to be deleted.</param>
+        /// <returns>(success, errorMessage).</returns>
+        public async Task<(bool Success, string ErrorMessage)> TryDeleteFunction(FunctionMetadataResponse function)
         {
             try
             {

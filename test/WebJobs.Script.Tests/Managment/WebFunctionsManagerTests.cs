@@ -11,7 +11,6 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
-using Microsoft.Azure.WebJobs.Script.Management.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
@@ -136,7 +135,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         public async Task TryGetFunction_NoMatchingFunction_ReturnsEmpty()
         {
             var result = await _webFunctionsManager.TryGetFunction("non-function", null);
-            Assert.False(result.Item1);
+            Assert.False(result.Success);
         }
 
         [Fact]
@@ -146,7 +145,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             {
                 FileUtility.Instance = CreateEmptyFileSystem(_hostOptions);
                 var action = await _webFunctionsManager.TryGetFunction("function1", null);
-                Assert.False(action.Item1);
+                Assert.False(action.Success);
             }
             finally
             {

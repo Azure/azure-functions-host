@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var tcs = new TaskCompletionSource<bool>();
             var rwh = ThreadPool.RegisterWaitForSingleObject(waitHandle,
-                delegate { tcs.TrySetResult(true); }, null, -1, true);
+                (state, timedOut) => { tcs.TrySetResult(true); }, null, -1, true);
             var t = tcs.Task.ContinueWith((antecedent) => rwh.Unregister(null));
 
             return t;
@@ -519,7 +519,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         /// Mock an HttpClientFactory and its CreateClient functionality.
         /// </summary>
         /// <param name="handler">Some tests pass a mock HttpHandler into their HttpClient.</param>
-        /// <returns>IHttpClientFactory</returns>
+        /// <returns>IHttpClientFactory.</returns>
         public static IHttpClientFactory CreateHttpClientFactory(HttpMessageHandler handler = null)
         {
             var httpClient = handler == null ? new HttpClient() : new HttpClient(handler);

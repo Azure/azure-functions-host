@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _workerRuntime = workerRuntime;
         }
 
-        public override async Task<(bool, FunctionDescriptor)> TryCreate(FunctionMetadata functionMetadata)
+        public override async Task<(bool Success, FunctionDescriptor Descriptor)> TryCreate(FunctionMetadata functionMetadata)
         {
             if (functionMetadata == null)
             {

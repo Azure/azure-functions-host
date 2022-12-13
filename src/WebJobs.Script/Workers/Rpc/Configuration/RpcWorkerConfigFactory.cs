@@ -217,7 +217,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                         profileConditions.Add(condition);
                     }
 
-                    descriptionProfiles.Add(new (profile.ProfileName, profileConditions, profile.Description));
+                    descriptionProfiles.Add(new(profile.ProfileName, profileConditions, profile.Description));
                 }
             }
             catch (Exception)
@@ -251,7 +251,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             // Validate
             if (workerProcessCount.ProcessCount <= 0)
             {
-                throw new ArgumentOutOfRangeException($"{nameof(workerProcessCount.ProcessCount)}",  "ProcessCount must be greater than 0.");
+                throw new ArgumentOutOfRangeException(nameof(workerProcessCount.ProcessCount), "ProcessCount must be greater than 0.");
             }
             if (workerProcessCount.ProcessCount > workerProcessCount.MaxProcessCount)
             {

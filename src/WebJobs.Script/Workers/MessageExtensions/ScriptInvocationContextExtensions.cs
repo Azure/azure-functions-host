@@ -41,12 +41,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             // populate input bindings
             foreach (var input in scriptInvocationContext.Inputs)
             {
-                if (input.val is HttpRequest httpRequest)
+                if (input.Val is HttpRequest httpRequest)
                 {
-                    httpScriptInvocationContext.Data[input.name] = await httpRequest.GetRequestAsJObject();
+                    httpScriptInvocationContext.Data[input.Name] = await httpRequest.GetRequestAsJObject();
                     continue;
                 }
-                httpScriptInvocationContext.Data[input.name] = GetHttpScriptInvocationContextValue(input.val, input.type);
+                httpScriptInvocationContext.Data[input.Name] = GetHttpScriptInvocationContextValue(input.Val, input.Type);
             }
 
             SetRetryContext(scriptInvocationContext, httpScriptInvocationContext);

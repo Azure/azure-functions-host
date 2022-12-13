@@ -7,7 +7,7 @@ namespace System
 {
     internal static class ExceptionExtensions
     {
-        public static (string exceptionType, string exceptionMessage, string exceptionDetails) GetExceptionDetails(this Exception exception)
+        public static (string ExceptionType, string ExceptionMessage, string ExceptionDetails) GetExceptionDetails(this Exception exception)
         {
             if (exception == null)
             {

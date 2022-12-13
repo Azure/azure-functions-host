@@ -17,7 +17,6 @@ using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
-using Microsoft.Azure.WebJobs.Script.Tests.Description.DotNet;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.FunctionDataCache;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -1287,7 +1286,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                     FunctionDirectory = _scriptRootPath
                 },
                 BindingData = new Dictionary<string, object>(),
-                Inputs = new List<(string name, DataType type, object val)>(),
+                Inputs = new List<(string Name, DataType Type, object Val)>(),
                 ResultSource = resultSource,
                 CancellationToken = token == null ? CancellationToken.None : (CancellationToken)token
             };
@@ -1298,7 +1297,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         /// </summary>
         /// <param name="invocationId">ID of the invocation.</param>
         /// <param name="resultSource">Task result source.</param>
-        /// <returns>A test <see cref="ScriptInvocationContext"/></returns>
+        /// <returns>A test <see cref="ScriptInvocationContext"/>.</returns>
         private ScriptInvocationContext GetTestScriptInvocationContextWithSharedMemoryInputs(Guid invocationId, TaskCompletionSource<ScriptInvocationResult> resultSource)
         {
             const int inputStringLength = 2 * 1024 * 1024;
@@ -1307,7 +1306,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             const int inputBytesLength = 2 * 1024 * 1024;
             byte[] inputBytes = TestUtils.GetRandomBytesInArray(inputBytesLength);
 
-            var inputs = new List<(string name, DataType type, object val)>
+            var inputs = new List<(string Name, DataType Type, object Val)>
             {
                 ("fooStr", DataType.String, inputString),
                 ("fooBytes", DataType.Binary, inputBytes),

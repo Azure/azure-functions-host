@@ -16,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         /// <param name="key">The key to check.</param>
         /// <param name="functionName">Optional function name, if we're authorizing a specific function.</param>
         /// <returns>A key name, auth level pair.</returns>
-        Task<(string, AuthorizationLevel)> GetAuthorizationLevelOrNullAsync(string key, string functionName = null);
+        Task<(string KeyName, AuthorizationLevel Level)> GetAuthorizationLevelOrNullAsync(string key, string functionName = null);
 
         /// <summary>
         /// Deletes a function secret.

@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _expressionRegex = new Regex(@"{(.*?)\}", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         }
 
-        public override async Task<(bool, FunctionDescriptor)> TryCreate(FunctionMetadata functionMetadata)
+        public override async Task<(bool Success, FunctionDescriptor Descriptor)> TryCreate(FunctionMetadata functionMetadata)
         {
             if (functionMetadata == null)
             {

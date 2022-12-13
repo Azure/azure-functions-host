@@ -17,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
     /// </summary>
     internal class TransmissionStatusHandler : IDisposable
     {
-        private static readonly DiagnosticListener _source = new (ScriptConstants.HostDiagnosticSourcePrefix + "ApplicationInsights");
+        private static readonly DiagnosticListener _source = new(ScriptConstants.HostDiagnosticSourcePrefix + "ApplicationInsights");
 
         internal static void Handler(object sender, TransmissionStatusEventArgs args)
         {

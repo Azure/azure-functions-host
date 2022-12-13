@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
-        public override async Task<(bool, FunctionDescriptor)> TryCreate(FunctionMetadata functionMetadata)
+        public override async Task<(bool Success, FunctionDescriptor Descriptor)> TryCreate(FunctionMetadata functionMetadata)
         {
             if (functionMetadata == null)
             {
