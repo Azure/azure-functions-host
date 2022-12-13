@@ -8,13 +8,11 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
@@ -33,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected ICollection<IScriptBindingProvider> BindingProviders { get; private set; }
 
-        public virtual async Task<(bool, FunctionDescriptor)> TryCreate(FunctionMetadata functionMetadata)
+        public virtual async Task<(bool Success, FunctionDescriptor Descriptor)> TryCreate(FunctionMetadata functionMetadata)
         {
             if (functionMetadata == null)
             {

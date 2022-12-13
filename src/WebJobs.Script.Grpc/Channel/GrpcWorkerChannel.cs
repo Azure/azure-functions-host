@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private readonly IOptions<WorkerConcurrencyOptions> _workerConcurrencyOptions;
         private readonly WaitCallback _processInbound;
         private readonly object _syncLock = new object();
-        private readonly Dictionary<MsgType, Queue<PendingItem>> _pendingActions = new ();
+        private readonly Dictionary<MsgType, Queue<PendingItem>> _pendingActions = new();
         private readonly ChannelWriter<OutboundGrpcEvent> _outbound;
         private readonly ChannelReader<InboundGrpcEvent> _inbound;
         private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions;

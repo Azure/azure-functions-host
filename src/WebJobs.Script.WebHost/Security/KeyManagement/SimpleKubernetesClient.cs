@@ -201,7 +201,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
-        private async Task<(string, bool)> GetObjectUrl(string objectName, bool watchUrl = false)
+        private async Task<(string Url, bool IsSecret)> GetObjectUrl(string objectName, bool watchUrl = false)
         {
             var isSecret = true;
             if (!objectName.StartsWith("secrets/") && !objectName.StartsWith("configmaps/"))

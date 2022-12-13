@@ -74,7 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Profiles
         /// </summary>
         public RpcWorkerDescription ApplyProfile(RpcWorkerDescription defaultWorkerDescription)
         {
-            RpcWorkerDescription updatedDescription = new ();
+            RpcWorkerDescription updatedDescription = new();
             updatedDescription.Arguments = UseProfileOrDefault(ProfileDescription.Arguments, defaultWorkerDescription.Arguments);
             updatedDescription.DefaultExecutablePath = UseProfileOrDefault(ProfileDescription.DefaultExecutablePath, defaultWorkerDescription.DefaultExecutablePath);
             updatedDescription.DefaultWorkerPath = UseProfileOrDefault(ProfileDescription.DefaultWorkerPath, defaultWorkerDescription.DefaultWorkerPath);

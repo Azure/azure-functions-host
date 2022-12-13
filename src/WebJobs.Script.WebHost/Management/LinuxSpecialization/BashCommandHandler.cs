@@ -3,7 +3,6 @@
 
 using System;
 using System.Diagnostics;
-using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Extensions.Logging;
 
@@ -22,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public (string, string, int) RunBashCommand(string command, string metricName)
+        public (string Output, string Error, int ExitCode) RunBashCommand(string command, string metricName)
         {
             try
             {

@@ -116,7 +116,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             httpContext.Request.Path = "/test";
             httpContext.Request.Method = "Post";
 
-            var inputs = new List<(string name, DataType type, object val)>
+            var inputs = new List<(string Name, DataType Type, object Val)>
             {
                 ("req", DataType.String, httpContext.Request)
             };
@@ -206,7 +206,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
                 { "sys", new SystemBindingData() }
             };
 
-            var inputs = new List<(string name, DataType type, object val)>
+            var inputs = new List<(string Name, DataType Type, object Val)>
             {
                 ("req", DataType.String, httpContext.Request),
                 ("blob", DataType.String, null),  // verify that null values are handled
@@ -384,7 +384,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             const int inputBytesLength = 2 * 1024 * 1024;
             byte[] inputBytes = TestUtils.GetRandomBytesInArray(inputBytesLength);
 
-            var inputs = new List<(string name, DataType type, object val)>
+            var inputs = new List<(string Name, DataType Type, object Val)>
             {
                 ("req", DataType.String, httpContext.Request),
                 ("fooStr", DataType.String, inputString),
@@ -522,7 +522,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             FunctionDataCacheKey key2 = new FunctionDataCacheKey("fooBytes", "0x1");
             MockCacheAwareReadObject cacheObj2 = new MockCacheAwareReadObject(key2, sharedMemObj2, _functionDataCache);
 
-            var inputs = new List<(string name, DataType type, object val)>
+            var inputs = new List<(string Name, DataType Type, object Val)>
             {
                 ("req", DataType.String, httpContext.Request),
                 ("fooStr", DataType.String, cacheObj1),
@@ -666,7 +666,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             FunctionDataCacheKey key2 = new FunctionDataCacheKey("fooBytes", "0x1");
             MockCacheAwareReadObject cacheObj2 = new MockCacheAwareReadObject(key2, inputStream2, _functionDataCache);
 
-            var inputs = new List<(string name, DataType type, object val)>
+            var inputs = new List<(string Name, DataType Type, object Val)>
             {
                 ("req", DataType.String, httpContext.Request),
                 ("fooStr", DataType.String, cacheObj1),
@@ -811,7 +811,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             const int inputBytesLength = 32;
             byte[] inputBytes = TestUtils.GetRandomBytesInArray(inputBytesLength);
 
-            var inputs = new List<(string name, DataType type, object val)>
+            var inputs = new List<(string Name, DataType Type, object Val)>
             {
                 ("req", DataType.String, httpContext.Request),
                 ("fooStr", DataType.String, inputString),

@@ -81,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Authentication
             }
         }
 
-        internal static Task<(string, AuthorizationLevel)> GetAuthorizationKeyInfoAsync(HttpRequest request, ISecretManagerProvider secretManagerProvider)
+        internal static Task<(string KeyName, AuthorizationLevel Level)> GetAuthorizationKeyInfoAsync(HttpRequest request, ISecretManagerProvider secretManagerProvider)
         {
             if (secretManagerProvider.SecretsEnabled)
             {

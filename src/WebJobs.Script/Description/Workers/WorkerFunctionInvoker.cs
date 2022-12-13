@@ -125,7 +125,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
-        private async Task<(string name, DataType type, object value)[]> BindInputsAsync(Binder binder)
+        private async Task<(string Name, DataType Type, object Value)[]> BindInputsAsync(Binder binder)
         {
             var bindingTasks = _inputBindings
                 .Where(binding => !binding.Metadata.IsTrigger)
