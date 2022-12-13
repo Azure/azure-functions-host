@@ -28,7 +28,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
         private List<IScaleMonitor> _monitors;
         private List<ITargetScaler> _scalers;
         private bool _isPrimaryHost;
-        private IOptions<FunctionsHostingConfigOptions> _functionsHostingConfigOptions;
 
         public FunctionsScaleMonitorServiceTests()
         {
@@ -51,9 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
             Mock<FunctionsScaleManager> functionsScaleManagerMock = new Mock<FunctionsScaleManager>();
             functionsScaleManagerMock.Setup(x => x.GetScalersToSample(out _monitors, out _scalers));
 
-            _functionsHostingConfigOptions = Options.Create(new FunctionsHostingConfigOptions());
-
-            _monitor = new FunctionsScaleMonitorService(functionsScaleManagerMock.Object, _metricsRepository, _primaryHostStateProviderMock.Object, _environment, loggerFactory, options);
+            _monitor = new FunctionsScaleMonitorService(functionsScaleManagerMock.Object, _metricsRepository, loggerFactory, _primaryHostStateProviderMock.Object, _environment,  options);
         }
 
         [Fact]
@@ -107,7 +104,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
 
             var logs = _loggerProvider.GetAllLogMessages().ToArray();
             Assert.Equal(1, logs.Length);
-            Assert.Equal("Runtime scale monitoring is enabled.", logs[0].FormattedMessage);
+            Assert.Equal("Scale monitor service started is started.", logs[0].FormattedMessage);
         }
 
         [Fact]
@@ -137,7 +134,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
             var logs = _loggerProvider.GetAllLogMessages().ToArray();
 
             var infoLogs = logs.Where(p => p.Level == LogLevel.Information);
-            Assert.Equal("Runtime scale monitoring is enabled.", logs[0].FormattedMessage);
+            Assert.Equal("Scale monitor service started is started.", logs[0].FormattedMessage);
             Assert.Equal("Taking metrics samples for 1 monitor(s).", logs[1].FormattedMessage);
             Assert.True(logs[2].FormattedMessage.StartsWith("Scale metrics sample for monitor 'testscalemonitor1': {\"Count\":10,"));
 
@@ -186,7 +183,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
             var logs = _loggerProvider.GetAllLogMessages().ToArray();
 
             var infoLogs = logs.Where(p => p.Level == LogLevel.Information);
-            Assert.Equal("Runtime scale monitoring is enabled.", logs[0].FormattedMessage);
+            Assert.Equal("Scale monitor service started is started.", logs[0].FormattedMessage);
             Assert.Equal("Taking metrics samples for 2 monitor(s).", logs[1].FormattedMessage);
 
             // verify the failure logs for the failing monitor

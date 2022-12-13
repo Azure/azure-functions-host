@@ -64,8 +64,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
 
             _environment = new TestEnvironment();
 
-            _scaleManager = new FunctionsScaleManager(_monitorManagerMock.Object, _metricsRepositoryMock.Object, _targetScalerManagerMock.Object, _concurrencyStatusRepositoryMock.Object,
-                _functionsHostingConfigOptions, _environment, _loggerFactory);
+            _scaleManager = new FunctionsScaleManager(_monitorManagerMock.Object, _targetScalerManagerMock.Object, _metricsRepositoryMock.Object, _concurrencyStatusRepositoryMock.Object,
+                _loggerFactory, _functionsHostingConfigOptions, _environment);
         }
 
         [Theory]
@@ -257,32 +257,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
         }
 
         [Theory]
-        [InlineData(0, 0, 0, ScaleVote.None)]
-        [InlineData(1, 0, 0, ScaleVote.ScaleIn)]
-        [InlineData(1, 1, 3, ScaleVote.ScaleOut)]
-        [InlineData(0, 0, 1, ScaleVote.None)]
-        [InlineData(1, 0, 1, ScaleVote.ScaleIn)]
-        [InlineData(5, 0, 3, ScaleVote.ScaleIn)]
-        public void GetAggregateScaleVote_ReturnsExpectedResult(int workerCount, int numScaleOutVotes, int numScaleInVotes, ScaleVote expected)
-        {
-            var context = new ScaleStatusContext
-            {
-                WorkerCount = workerCount
-            };
-            List<ScaleVote> votes = new List<ScaleVote>();
-            for (int i = 0; i < numScaleOutVotes; i++)
-            {
-                votes.Add(ScaleVote.ScaleOut);
-            }
-            for (int i = 0; i < numScaleInVotes; i++)
-            {
-                votes.Add(ScaleVote.ScaleIn);
-            }
-            var vote = FunctionsScaleManager.GetAggregateScaleVote(votes, context, _testLogger);
-            Assert.Equal(expected, vote);
-        }
-
-        [Theory]
         [InlineData(false, true, 1, 0)]
         [InlineData(true, false, 1, 0)]
         [InlineData(true, true, 0, 1)]
@@ -314,9 +288,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
                 env.SetEnvironmentVariable(EnvironmentSettingNames.TargetBaseScalingEnabled, "1");
             }
 
-            FunctionsScaleManager manager = new FunctionsScaleManager(scaleMonitorManagerMock.Object, _metricsRepositoryMock.Object,
-                targetScalerManagerMock.Object, _concurrencyStatusRepositoryMock.Object, _functionsHostingConfigOptions,
-                env, _loggerFactory);
+            FunctionsScaleManager manager = new FunctionsScaleManager(scaleMonitorManagerMock.Object, targetScalerManagerMock.Object, _metricsRepositoryMock.Object,
+                _concurrencyStatusRepositoryMock.Object, _loggerFactory, _functionsHostingConfigOptions,
+                env);
 
             manager.GetScalersToSample(out List<IScaleMonitor> scaleMonitorsToProcess, out List<ITargetScaler> targetScalesToProcess);
 
@@ -354,9 +328,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
             TestEnvironment env = new TestEnvironment();
             env.SetEnvironmentVariable(EnvironmentSettingNames.TargetBaseScalingEnabled, "1");
 
-            FunctionsScaleManager manager = new FunctionsScaleManager(scaleMonitorManagerMock.Object, _metricsRepositoryMock.Object,
-                targetScalerManagerMock.Object, _concurrencyStatusRepositoryMock.Object, _functionsHostingConfigOptions,
-                env, _loggerFactory);
+            FunctionsScaleManager manager = new FunctionsScaleManager(scaleMonitorManagerMock.Object, targetScalerManagerMock.Object, _metricsRepositoryMock.Object,
+                _concurrencyStatusRepositoryMock.Object, _loggerFactory, _functionsHostingConfigOptions, env);
 
             var context = new ScaleStatusContext()
             {
@@ -366,7 +339,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
             manager.GetScalersToSample(out List<IScaleMonitor> monitors1, out List<ITargetScaler> scalers1);
             Assert.Equal(monitors1.Count(), 0);
             Assert.Equal(scalers1.Count(), 2);
-            ScaleStatusResult resutl1 = await manager.GetScaleStatusAsync(context);
+            ScaleStatus resutl1 = await manager.GetScaleStatusAsync(context);
 
             Assert.Equal(resutl1.TargetWorkerCount, 1);
             Assert.Equal(resutl1.Vote, ScaleVote.None);
@@ -377,7 +350,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
             manager.GetScalersToSample(out List<IScaleMonitor> monitors2, out List<ITargetScaler> scalers2);
             Assert.Equal(monitors2.Count(), 1);
             Assert.Equal(scalers2.Count(), 1);
-            ScaleStatusResult resutl2 = await manager.GetScaleStatusAsync(context);
+            ScaleStatus resutl2 = await manager.GetScaleStatusAsync(context);
             Assert.Equal(resutl2.TargetWorkerCount, null);
             Assert.Equal(resutl2.Vote, ScaleVote.ScaleIn);
             logs = _loggerProvider.GetAllLogMessages().Select(x => x.FormattedMessage).ToArray();
