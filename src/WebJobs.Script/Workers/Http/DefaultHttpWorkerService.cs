@@ -79,9 +79,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 Outputs = new Dictionary<string, object>()
             };
 
-            (string Name, DataType Type, object Request) input = scriptInvocationContext.Inputs.First();
+            var input = scriptInvocationContext.Inputs.First();
 
-            HttpRequest httpRequest = input.Request as HttpRequest;
+            HttpRequest httpRequest = input.Val as HttpRequest;
             if (httpRequest == null)
             {
                 throw new InvalidOperationException($"HttpTrigger value for: `{input.Name}` is null");
