@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Reactive.Linq;
 using System.Text;
 using System.Threading;
@@ -16,6 +17,7 @@ using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Google.Protobuf.Collections;
 using Google.Protobuf.WellKnownTypes;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -31,6 +33,7 @@ using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Yarp.ReverseProxy.Forwarder;
 
 using static Microsoft.Azure.WebJobs.Script.Grpc.Messages.RpcLog.Types;
 using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
@@ -81,6 +84,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private bool _isSharedMemoryDataTransferEnabled;
         private bool? _cancelCapabilityEnabled;
         private bool _isWorkerApplicationInsightsLoggingEnabled;
+        private IHttpForwarder _httpForwarder;
 
         private System.Timers.Timer _timer;
 
@@ -96,7 +100,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions,
             ISharedMemoryManager sharedMemoryManager,
             IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions,
-            IOptions<FunctionsHostingConfigOptions> hostingConfigOptions)
+            IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
+            IHttpForwarder httpForwarder)
         {
             _workerId = workerId;
             _eventManager = eventManager;
@@ -112,6 +117,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _processInbound = state => ProcessItem((InboundGrpcEvent)state);
             _hostingConfigOptions = hostingConfigOptions;
 
+            _httpForwarder = httpForwarder;
             _workerCapabilities = new GrpcCapabilities(_workerChannelLogger);
 
             if (!_eventManager.TryGetGrpcChannels(workerId, out var inbound, out var outbound))
@@ -727,6 +733,38 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 if (_cancelCapabilityEnabled != null && _cancelCapabilityEnabled.Value)
                 {
                     context.CancellationToken.Register(() => SendInvocationCancel(invocationRequest.InvocationId));
+                }
+
+                if (context.FunctionMetadata.Trigger.Type.Contains("httpTrigger"))
+                {
+                    var handler = new SocketsHttpHandler();
+                    var invoker = new HttpMessageInvoker(handler);
+                    var options = new ForwarderRequestConfig();
+                    HttpRequest httpRequest = context.Inputs.FirstOrDefault(i => i.val is HttpRequest).val as HttpRequest;
+                    HttpContext httpContext = httpRequest.HttpContext;
+                    // so http request comes in as an asp.net type (3rd input).
+                    await _httpForwarder.SendAsync(httpContext, "http://localhost:5555/", invoker, options, static (context, request) =>
+                    {
+                        return ValueTask.CompletedTask;
+                    });
+                }
+                else
+                {
+                    var invocationRequest = await context.ToRpcInvocationRequest(_workerChannelLogger, _workerCapabilities, _isSharedMemoryDataTransferEnabled, _sharedMemoryManager);
+                    AddAdditionalTraceContext(invocationRequest.TraceContext.Attributes, context);
+                    _executingInvocations.TryAdd(invocationRequest.InvocationId, context);
+
+                    if (_cancelCapabilityEnabled)
+                    {
+                        context.CancellationToken.Register(() => SendInvocationCancel(invocationRequest.InvocationId));
+                    }
+
+                    _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvoked, Id), functionName: context.FunctionMetadata.Name);
+
+                    await SendStreamingMessageAsync(new StreamingMessage
+                    {
+                        InvocationRequest = invocationRequest
+                    });
                 }
             }
             catch (Exception invokeEx)
