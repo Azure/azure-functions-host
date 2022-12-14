@@ -117,7 +117,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _testEnvironment,
                _hostOptionsMonitor,
                _sharedMemoryManager,
-               _functionDataCache,
                _workerConcurrencyOptions,
                _hostingConfigOptions);
 
@@ -284,7 +283,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _testEnvironment,
                _hostOptionsMonitor,
                _sharedMemoryManager,
-               _functionDataCache,
                _workerConcurrencyOptions,
                _hostingConfigOptions);
             await Assert.ThrowsAsync<FileNotFoundException>(async () => await _workerChannel.StartWorkerProcessAsync(CancellationToken.None));
@@ -509,7 +507,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _testEnvironment,
                _hostOptionsMonitor,
                _sharedMemoryManager,
-               _functionDataCache,
                _workerConcurrencyOptions,
                _hostingConfigOptions);
             channel.SetupFunctionInvocationBuffers(GetTestFunctionsList("node"));
@@ -1107,7 +1104,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _testEnvironment,
                _hostOptionsMonitor,
                _sharedMemoryManager,
-               _functionDataCache,
                _workerConcurrencyOptions,
                _hostingConfigOptions);
 
@@ -1147,7 +1143,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _testEnvironment,
                _hostOptionsMonitor,
                _sharedMemoryManager,
-               _functionDataCache,
                _workerConcurrencyOptions,
                _hostingConfigOptions);
 

@@ -54,7 +54,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private readonly ChannelWriter<OutboundGrpcEvent> _outbound;
         private readonly ChannelReader<InboundGrpcEvent> _inbound;
         private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions;
-
         private IDisposable _functionLoadRequestResponseEvent;
         private bool _disposed;
         private bool _disposing;
@@ -80,6 +79,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private TimeSpan _functionLoadTimeout = TimeSpan.FromMinutes(1);
         private bool _isSharedMemoryDataTransferEnabled;
         private bool _cancelCapabilityEnabled;
+        private bool _isWorkerApplicationInsightsLoggingEnabled;
 
         private System.Timers.Timer _timer;
 
@@ -94,7 +94,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             IEnvironment environment,
             IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions,
             ISharedMemoryManager sharedMemoryManager,
-            IFunctionDataCache functionDataCache,
             IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions,
             IOptions<FunctionsHostingConfigOptions> hostingConfigOptions)
         {
@@ -392,7 +391,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
 
             _state = _state | RpcWorkerChannelState.Initialized;
-            _workerCapabilities.UpdateCapabilities(_initMessage.Capabilities);
+
+            UpdateCapabilities(_initMessage.Capabilities);
+
             _isSharedMemoryDataTransferEnabled = IsSharedMemoryDataTransferEnabled();
             _cancelCapabilityEnabled = !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.HandlesInvocationCancelMessage));
 
@@ -402,7 +403,20 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 ScriptHost.IsFunctionDataCacheEnabled = false;
             }
 
+            if (_environment.IsApplicationInsightsAgentEnabled() ||
+                (bool.TryParse(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.WorkerApplicationInsightsLoggingEnabled), out bool appInsightsWorkerEnabled) &&
+                appInsightsWorkerEnabled))
+            {
+                _isWorkerApplicationInsightsLoggingEnabled = true;
+            }
+
             _workerInitTask.TrySetResult(true);
+        }
+
+        // Allow tests to add capabilities, even if not directly supported by the worker.
+        internal virtual void UpdateCapabilities(IDictionary<string, string> fields)
+        {
+            _workerCapabilities.UpdateCapabilities(fields);
         }
 
         public void SetupFunctionInvocationBuffers(IEnumerable<FunctionMetadata> functions)
@@ -882,7 +896,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         }
 
         /// <summary>
-        /// Request to free memory allocated by the worker (for output bindings)
+        /// Request to free memory allocated by the worker (for output bindings).
         /// </summary>
         /// <param name="outputMaps">List of names of shared memory maps to close from the worker.</param>
         internal void SendCloseSharedMemoryResourcesForInvocationRequest(IList<string> outputMaps)
@@ -905,12 +919,18 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         internal void Log(GrpcEvent msg)
         {
             var rpcLog = msg.Message.RpcLog;
-            LogLevel logLevel = (LogLevel)rpcLog.Level;
             if (_executingInvocations.TryGetValue(rpcLog.InvocationId, out ScriptInvocationContext context))
             {
                 // Restore the execution context from the original invocation. This allows AsyncLocal state to flow to loggers.
-                System.Threading.ExecutionContext.Run(context.AsyncExecutionContext, (s) =>
+                System.Threading.ExecutionContext.Run(context.AsyncExecutionContext, static (state) =>
                 {
+                    var stateTuple = ((ScriptInvocationContext Context, RpcLog RpcLog, bool AppInsightsEnabledOnWorker))state;
+
+                    var rpcLog = stateTuple.RpcLog;
+                    LogLevel logLevel = (LogLevel)rpcLog.Level;
+
+                    var context = stateTuple.Context;
+
                     if (rpcLog.LogCategory == RpcLogCategory.CustomMetric)
                     {
                         if (rpcLog.PropertiesMap.TryGetValue(LogConstants.NameKey, out var metricName)
@@ -925,18 +945,27 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     }
                     else
                     {
-                        if (rpcLog.Exception != null)
+                        try
                         {
-                            // TODO fix RpcException catch all https://github.com/Azure/azure-functions-dotnet-worker/issues/370
-                            var exception = new Workers.Rpc.RpcException(rpcLog.Message, rpcLog.Exception.Message, rpcLog.Exception.StackTrace);
-                            context.Logger.Log(logLevel, new EventId(0, rpcLog.EventId), rpcLog.Message, exception, (state, exc) => state);
+                            WorkerTraceFilterTelemetryProcessor.FilterApplicationInsightsFromWorker.Value = stateTuple.AppInsightsEnabledOnWorker;
+
+                            if (rpcLog.Exception != null)
+                            {
+                                // TODO fix RpcException catch all https://github.com/Azure/azure-functions-dotnet-worker/issues/370
+                                var exception = new Workers.Rpc.RpcException(rpcLog.Message, rpcLog.Exception.Message, rpcLog.Exception.StackTrace);
+                                context.Logger.Log(logLevel, new EventId(0, rpcLog.EventId), rpcLog.Message, exception, (state, exc) => state);
+                            }
+                            else
+                            {
+                                context.Logger.Log(logLevel, new EventId(0, rpcLog.EventId), rpcLog.Message, null, (state, exc) => state);
+                            }
                         }
-                        else
+                        finally
                         {
-                            context.Logger.Log(logLevel, new EventId(0, rpcLog.EventId), rpcLog.Message, null, (state, exc) => state);
+                            WorkerTraceFilterTelemetryProcessor.FilterApplicationInsightsFromWorker.Value = false;
                         }
                     }
-                }, null);
+                }, (context, rpcLog, _isWorkerApplicationInsightsLoggingEnabled));
             }
         }
 
