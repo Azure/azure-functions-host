@@ -604,13 +604,5 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             return string.Equals(environment.GetEnvironmentVariable(TargetBaseScalingEnabled), "1");
         }
-
-        public static bool IsDotNetInProc(this IEnvironment environment)
-        {
-            var workerRuntime = environment.GetFunctionsWorkerRuntime();
-
-            return string.IsNullOrEmpty(workerRuntime) ||
-                   string.Compare(workerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase) == 0;
-        }
     }
 }
