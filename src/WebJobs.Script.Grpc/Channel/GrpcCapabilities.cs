@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using Google.Protobuf.Collections;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Grpc
@@ -27,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             return null;
         }
 
-        public void UpdateCapabilities(MapField<string, string> capabilities)
+        public void UpdateCapabilities(IDictionary<string, string> capabilities)
         {
             if (capabilities == null)
             {

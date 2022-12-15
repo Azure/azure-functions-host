@@ -25,12 +25,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private readonly IEnvironment _environment = null;
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions = null;
         private readonly ISharedMemoryManager _sharedMemoryManager = null;
-        private readonly IFunctionDataCache _functionDataCache = null;
         private readonly IOptions<WorkerConcurrencyOptions> _workerConcurrencyOptions;
         private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions;
 
-        public GrpcWorkerChannelFactory(IScriptEventManager eventManager, IEnvironment environment, IRpcServer rpcServer, ILoggerFactory loggerFactory, IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions,
-            IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IRpcWorkerProcessFactory rpcWorkerProcessManager, ISharedMemoryManager sharedMemoryManager, IFunctionDataCache functionDataCache,
+        public GrpcWorkerChannelFactory(IScriptEventManager eventManager, IEnvironment environment, ILoggerFactory loggerFactory,
+            IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IRpcWorkerProcessFactory rpcWorkerProcessManager, ISharedMemoryManager sharedMemoryManager,
             IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions, IOptions<FunctionsHostingConfigOptions> hostingConfigOptions)
         {
             _eventManager = eventManager;
@@ -39,7 +38,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _environment = environment;
             _applicationHostOptions = applicationHostOptions;
             _sharedMemoryManager = sharedMemoryManager;
-            _functionDataCache = functionDataCache;
             _workerConcurrencyOptions = workerConcurrencyOptions;
             _hostingConfigOptions = hostingConfigOptions;
         }
@@ -55,20 +53,28 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _eventManager.AddGrpcChannels(workerId); // prepare the inbound/outbound dedicated channels
             ILogger workerLogger = _loggerFactory.CreateLogger($"Worker.LanguageWorkerChannel.{runtime}.{workerId}");
             IWorkerProcess rpcWorkerProcess = _rpcWorkerProcessFactory.Create(workerId, runtime, scriptRootPath, languageWorkerConfig);
+
+            return CreateInternal(workerId, _eventManager, languageWorkerConfig, rpcWorkerProcess, workerLogger, metricsLogger, attemptCount,
+                _environment, _applicationHostOptions, _sharedMemoryManager, _workerConcurrencyOptions, _hostingConfigOptions);
+        }
+
+        internal virtual IRpcWorkerChannel CreateInternal(string workerId, IScriptEventManager eventManager, RpcWorkerConfig languageWorkerConfig, IWorkerProcess rpcWorkerProcess,
+            ILogger workerLogger, IMetricsLogger metricsLogger, int attemptCount, IEnvironment environment, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions,
+            ISharedMemoryManager sharedMemoryManager, IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions, IOptions<FunctionsHostingConfigOptions> hostingConfigOptions)
+        {
             return new GrpcWorkerChannel(
                          workerId,
-                         _eventManager,
+                         eventManager,
                          languageWorkerConfig,
                          rpcWorkerProcess,
                          workerLogger,
                          metricsLogger,
                          attemptCount,
-                         _environment,
-                         _applicationHostOptions,
-                         _sharedMemoryManager,
-                         _functionDataCache,
-                         _workerConcurrencyOptions,
-                         _hostingConfigOptions);
+                         environment,
+                         applicationHostOptions,
+                         sharedMemoryManager,
+                         workerConcurrencyOptions,
+                         hostingConfigOptions);
         }
     }
 }
