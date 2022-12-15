@@ -161,7 +161,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             return await _packageDownloadHandler.Download(context);
         }
 
-        private async Task<(string, long?)> ValidateBlobPackageContext(RunFromPackageContext context)
+        private async Task<(string Error, long? ContentLength)> ValidateBlobPackageContext(RunFromPackageContext context)
         {
             string blobUri = context.Url;
             string eventName = context.IsWarmUpRequest
