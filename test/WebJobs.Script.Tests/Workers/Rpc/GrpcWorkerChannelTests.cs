@@ -117,7 +117,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _testEnvironment,
                _hostOptionsMonitor,
                _sharedMemoryManager,
-               _functionDataCache,
                _workerConcurrencyOptions,
                _hostingConfigOptions);
 
@@ -284,7 +283,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _testEnvironment,
                _hostOptionsMonitor,
                _sharedMemoryManager,
-               _functionDataCache,
                _workerConcurrencyOptions,
                _hostingConfigOptions);
             await Assert.ThrowsAsync<FileNotFoundException>(async () => await _workerChannel.StartWorkerProcessAsync(CancellationToken.None));
@@ -499,20 +497,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var resultSource = new TaskCompletionSource<ScriptInvocationResult>();
             Guid invocationId = Guid.NewGuid();
             GrpcWorkerChannel channel = new GrpcWorkerChannel(
-                                            _workerId,
-                                            _eventManager,
-                                            _testWorkerConfig,
-                                            _mockrpcWorkerProcess.Object,
-                                            _logger,
-                                            _metricsLogger,
-                                            0,
-                                            _testEnvironment,
-                                            _hostOptionsMonitor,
-                                            _sharedMemoryManager,
-                                            _functionDataCache,
-                                            _workerConcurrencyOptions,
-                                            _hostingConfigOptions);
-
+               _workerId,
+               _eventManager,
+               _testWorkerConfig,
+               _mockrpcWorkerProcess.Object,
+               _logger,
+               _metricsLogger,
+               0,
+               _testEnvironment,
+               _hostOptionsMonitor,
+               _sharedMemoryManager,
+               _workerConcurrencyOptions,
+               _hostingConfigOptions);
             channel.SetupFunctionInvocationBuffers(GetTestFunctionsList("node"));
             ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(invocationId, resultSource);
             await channel.SendInvocationRequest(scriptInvocationContext);
@@ -1108,7 +1104,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _testEnvironment,
                _hostOptionsMonitor,
                _sharedMemoryManager,
-               _functionDataCache,
                _workerConcurrencyOptions,
                _hostingConfigOptions);
 
@@ -1148,7 +1143,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _testEnvironment,
                _hostOptionsMonitor,
                _sharedMemoryManager,
-               _functionDataCache,
                _workerConcurrencyOptions,
                _hostingConfigOptions);
 

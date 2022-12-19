@@ -8,9 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using Microsoft.Azure.WebJobs.Script.Config;
-using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
-using Microsoft.Extensions.Options;
 using static Microsoft.Azure.WebJobs.Script.EnvironmentSettingNames;
 
 namespace Microsoft.Azure.WebJobs.Script
@@ -189,7 +187,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// Gets a value indicating whether the application is running in a Windows Consumption (dynamic)
         /// App Service environment.
         /// </summary>
-        /// <param name="environment">The environment to verify</param>
+        /// <param name="environment">The environment to verify.</param>
         /// <returns><see cref="true"/> if running in a Windows Consumption App Service app; otherwise, false.</returns>
         public static bool IsWindowsConsumption(this IEnvironment environment)
         {
@@ -201,7 +199,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// Gets a value indicating whether the application is running in a Windows or Linux Consumption (dynamic)
         /// App Service environment.
         /// </summary>
-        /// <param name="environment">The environment to verify</param>
+        /// <param name="environment">The environment to verify.</param>
         /// <returns><see cref="true"/> if running in a Windows or Linux Consumption App Service app; otherwise, false.</returns>
         public static bool IsConsumptionSku(this IEnvironment environment)
         {
@@ -209,7 +207,7 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
-        /// Returns true if the app is running on Virtual Machine Scale Sets (VMSS)
+        /// Returns true if the app is running on Virtual Machine Scale Sets (VMSS).
         /// </summary>
         public static bool IsVMSS(this IEnvironment environment)
         {
@@ -232,7 +230,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// Gets a value indicating whether the application is running in a Windows Elastic Premium
         /// App Service environment.
         /// </summary>
-        /// <param name="environment">The environment to verify</param>
+        /// <param name="environment">The environment to verify.</param>
         /// <returns><see cref="true"/> if running in a Windows Elastic Premium app; otherwise, false.</returns>
         public static bool IsWindowsElasticPremium(this IEnvironment environment)
         {
@@ -247,9 +245,9 @@ namespace Microsoft.Azure.WebJobs.Script
 
         /// <summary>
         /// Gets a value indicating whether the application is running in an Azure Windows managed hosting environment
-        /// (i.e. Windows Consumption or Windows Dedicated)
+        /// (i.e. Windows Consumption or Windows Dedicated).
         /// </summary>
-        /// <param name="environment">The environment to verify</param>
+        /// <param name="environment">The environment to verify.</param>
         /// <returns><see cref="true"/> if running in a Windows Azure managed hosting environment; otherwise, false.</returns>
         public static bool IsWindowsAzureManagedHosting(this IEnvironment environment)
         {
@@ -260,7 +258,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// Gets a value indicating whether the application is running in a Linux Consumption (dynamic)
         /// App Service environment.
         /// </summary>
-        /// <param name="environment">The environment to verify</param>
+        /// <param name="environment">The environment to verify.</param>
         /// <returns><see cref="true"/> if running in a Linux Consumption App Service app; otherwise, false.</returns>
         public static bool IsAnyLinuxConsumption(this IEnvironment environment)
         {
@@ -285,7 +283,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// Gets a value indicating whether the application is running in a Linux App Service
         /// environment (Dedicated Linux).
         /// </summary>
-        /// <param name="environment">The environment to verify</param>
+        /// <param name="environment">The environment to verify.</param>
         /// <returns><see cref="true"/> if running in a Linux Azure App Service; otherwise, false.</returns>
         public static bool IsLinuxAppService(this IEnvironment environment)
         {
@@ -294,9 +292,9 @@ namespace Microsoft.Azure.WebJobs.Script
 
         /// <summary>
         /// Gets a value indicating whether the application is running in an Azure Linux managed hosting environment
-        /// (i.e. Linux Consumption or Linux Dedicated)
+        /// (i.e. Linux Consumption or Linux Dedicated).
         /// </summary>
-        /// <param name="environment">The environment to verify</param>
+        /// <param name="environment">The environment to verify.</param>
         /// <returns><see cref="true"/> if running in a Linux Azure managed hosting environment; otherwise, false.</returns>
         public static bool IsLinuxAzureManagedHosting(this IEnvironment environment)
         {
@@ -307,7 +305,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// Gets a value indicating whether the application is running in App Service
         /// (Windows Consumption, Windows Dedicated or Linux Dedicated).
         /// </summary>
-        /// <param name="environment">The environment to verify</param>
+        /// <param name="environment">The environment to verify.</param>
         /// <returns><see cref="true"/> if running in a Azure App Service; otherwise, false.</returns>
         public static bool IsAppService(this IEnvironment environment)
         {
@@ -315,9 +313,9 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
-        /// Gets a value indicating whether the application is running in Kubernetes App Service environment(K8SE)
+        /// Gets a value indicating whether the application is running in Kubernetes App Service environment(K8SE).
         /// </summary>
-        /// <param name="environment">The environment to verify</param>
+        /// <param name="environment">The environment to verify.</param>
         /// <returns><see cref="true"/> If running in a Kubernetes Azure App Service; otherwise, false.</returns>
         public static bool IsKubernetesManagedHosting(this IEnvironment environment)
         {
@@ -360,7 +358,7 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
-        /// Gets if runtime environment needs multi language
+        /// Gets if runtime environment needs multi language.
         /// </summary>
         public static bool IsMultiLanguageRuntimeEnvironment(this IEnvironment environment)
         {
@@ -594,9 +592,9 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
-        /// Gets a value indicated in the variable FUNCTIONS_EXTENSION_VERSION
+        /// Gets a value indicated in the variable FUNCTIONS_EXTENSION_VERSION.
         /// </summary>
-        /// <returns>Value of FUNCTIONS_EXTENSION_VERSION variable</returns>
+        /// <returns>Value of FUNCTIONS_EXTENSION_VERSION variable.</returns>
         public static string GetFunctionsExtensionVersion(this IEnvironment environment)
         {
             return environment.GetEnvironmentVariableOrDefault(FunctionsExtensionVersion, string.Empty);
