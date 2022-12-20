@@ -21,6 +21,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 {
     public abstract class LinuxInstanceManager : IInstanceManager
     {
+        private const string WebsiteNodeDefaultVersion = "8.5.0";
+
         private readonly object _assignmentLock = new object();
         private readonly ILogger _logger;
         private readonly IMeshServiceClient _meshServiceClient;
@@ -29,8 +31,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private readonly IScriptWebHostEnvironment _webHostEnvironment;
 
         private HostAssignmentContext _assignmentContext;
-
-        private const string WebsiteNodeDefaultVersion = "8.5.0";
 
         public LinuxInstanceManager(IHttpClientFactory httpClientFactory, IScriptWebHostEnvironment webHostEnvironment,
             IEnvironment environment, ILogger<LinuxInstanceManager> logger, IMetricsLogger metricsLogger, IMeshServiceClient meshServiceClient)
