@@ -25,23 +25,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         public override Task<string> SpecializeMSISidecar(HostAssignmentContext context)
         {
             // Legion will take care of MSI Specialization
-            return Task.FromResult((string)null);
+            return Task.FromResult<string>(null);
         }
 
         protected override Task<string> DownloadWarmupAsync(RunFromPackageContext context)
         {
-            return Task.FromResult((string)null);
+            return Task.FromResult<string>(null);
         }
 
         public override Task<string> ValidateContext(HostAssignmentContext assignmentContext)
         {
             // Don't need to validate RunFromPackageContext in Legion
-            return Task.FromResult((string)null);
+            return Task.FromResult<string>(null);
         }
 
         protected override Task<string> ApplyContextAsync(HostAssignmentContext assignmentContext)
         {
-            return Task.FromResult((string)null);
+            return Task.FromResult<string>(null);
         }
     }
 }
