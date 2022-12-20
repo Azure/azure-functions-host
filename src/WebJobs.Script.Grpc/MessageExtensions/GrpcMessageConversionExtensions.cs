@@ -301,19 +301,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             CollectionString collectionString = new CollectionString();
             foreach (string element in arrString)
             {
-                // Don't add null entries.("Add" method below will throw)
-                if (element is null)
+                // Empty string/null entries are okay to add based on includeEmptyEntries param value.
+                if (string.IsNullOrEmpty(element) && !includeEmptyEntries)
                 {
                     continue;
                 }
 
-                // Empty string entries are okay to add based on includeEmptyEntries param value.
-                if (element == string.Empty && !includeEmptyEntries)
-                {
-                    continue;
-                }
-
-                collectionString.String.Add(element);
+                // Convert null entries to emptyEntry because "Add" method doesn't support null (will throw)
+                collectionString.String.Add(element ?? string.Empty);
             }
             typedData.CollectionString = collectionString;
 
