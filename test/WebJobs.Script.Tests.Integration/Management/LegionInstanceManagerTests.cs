@@ -63,7 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             _instanceManager = new LegionInstanceManager(_httpClientFactory, _scriptWebEnvironment, _environment,
                 _loggerFactory.CreateLogger<LegionInstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object);
 
-            LegionInstanceManager.Reset();
+            _instanceManager.Reset();
         }
 
         [Fact]

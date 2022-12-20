@@ -55,7 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 new Mock<IPackageDownloadHandler>(MockBehavior.Strict).Object);
             var startupContextProvider = new StartupContextProvider(environment, loggerFactory.CreateLogger<StartupContextProvider>());
 
-            AtlasInstanceManager.Reset();
+            instanceManager.Reset();
 
             var podController = new KubernetesPodController(environment, instanceManager, loggerFactory, startupContextProvider);
 
@@ -113,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 new Mock<IPackageDownloadHandler>(MockBehavior.Strict).Object);
             var startupContextProvider = new StartupContextProvider(environment, loggerFactory.CreateLogger<StartupContextProvider>());
 
-            AtlasInstanceManager.Reset();
+            instanceManager.Reset();
 
             const string podEncryptionKey = "/a/vXvWJ3Hzgx4PFxlDUJJhQm5QVyGiu0NNLFm/ZMMg=";
             var podController = new KubernetesPodController(environment, instanceManager, loggerFactory, startupContextProvider);

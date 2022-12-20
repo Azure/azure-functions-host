@@ -63,7 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             _instanceManager = new AtlasInstanceManager(_optionsFactory, _httpClientFactory, _scriptWebEnvironment, _environment,
                 _loggerFactory.CreateLogger<AtlasInstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object, _runFromPackageHandler, _packageDownloadHandler.Object);
 
-            AtlasInstanceManager.Reset();
+            _instanceManager.Reset();
         }
 
         [Fact]
@@ -1267,7 +1267,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                     StatusCode = httpStatusCode
                 });
 
-            LinuxInstanceManager.Reset();
+            _instanceManager.Reset();
 
             return new AtlasInstanceManager(_optionsFactory, TestHelpers.CreateHttpClientFactory(handlerMock.Object), _scriptWebEnvironment,
                 _environment, _loggerFactory.CreateLogger<AtlasInstanceManager>(), new TestMetricsLogger(),

@@ -65,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 new TestMetricsLogger(), meshServiceClient.Object, _runFromPackageHandler.Object, new Mock<IPackageDownloadHandler>(MockBehavior.Strict).Object);
             var startupContextProvider = new StartupContextProvider(environment, loggerFactory.CreateLogger<StartupContextProvider>());
 
-            AtlasInstanceManager.Reset();
+            instanceManager.Reset();
 
             var instanceController = new InstanceController(environment, instanceManager, loggerFactory, startupContextProvider);
 
@@ -141,7 +141,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 new TestMetricsLogger(), null, _runFromPackageHandler.Object, new Mock<IPackageDownloadHandler>(MockBehavior.Strict).Object);
             var startupContextProvider = new StartupContextProvider(environment, loggerFactory.CreateLogger<StartupContextProvider>());
 
-            AtlasInstanceManager.Reset();
+            instanceManager.Reset();
 
             var instanceController = new InstanceController(environment, instanceManager, loggerFactory, startupContextProvider);
 
@@ -195,7 +195,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 new TestMetricsLogger(), null, _runFromPackageHandler.Object, new Mock<IPackageDownloadHandler>(MockBehavior.Strict).Object);
             var startupContextProvider = new StartupContextProvider(environment, loggerFactory.CreateLogger<StartupContextProvider>());
 
-            AtlasInstanceManager.Reset();
+            instanceManager.Reset();
 
             var instanceController = new InstanceController(environment, instanceManager, loggerFactory, startupContextProvider);
 
@@ -238,7 +238,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var instanceManager = new Mock<IInstanceManager>();
             var startupContextProvider = new StartupContextProvider(environment, loggerFactory.CreateLogger<StartupContextProvider>());
 
-            AtlasInstanceManager.Reset();
+            instanceManager.Reset();
 
             var instanceController = new InstanceController(environment, instanceManager.Object, loggerFactory,
                 startupContextProvider);

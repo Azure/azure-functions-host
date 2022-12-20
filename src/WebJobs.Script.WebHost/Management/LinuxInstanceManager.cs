@@ -22,13 +22,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
     public abstract class LinuxInstanceManager : IInstanceManager
     {
         private readonly object _assignmentLock = new object();
-        private HostAssignmentContext _assignmentContext;
-
         private readonly ILogger _logger;
         private readonly IMeshServiceClient _meshServiceClient;
         private readonly IEnvironment _environment;
         private readonly HttpClient _client;
         private readonly IScriptWebHostEnvironment _webHostEnvironment;
+
+        private HostAssignmentContext _assignmentContext;
 
         public LinuxInstanceManager(IHttpClientFactory httpClientFactory, IScriptWebHostEnvironment webHostEnvironment,
             IEnvironment environment, ILogger<LinuxInstanceManager> logger, IMetricsLogger metricsLogger, IMeshServiceClient meshServiceClient)
@@ -145,7 +145,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         }
 
         // for testing
-        internal static void Reset()
+        internal void Reset()
         {
             _assignmentContext = null;
         }

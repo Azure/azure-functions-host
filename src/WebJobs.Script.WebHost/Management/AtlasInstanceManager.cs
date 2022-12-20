@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 {
     public class AtlasInstanceManager : LinuxInstanceManager
     {
-        private static readonly object _assignmentLock = new object();
+        private readonly object _assignmentLock = new object();
 
         private readonly ILogger _logger;
         private readonly IMetricsLogger _metricsLogger;
