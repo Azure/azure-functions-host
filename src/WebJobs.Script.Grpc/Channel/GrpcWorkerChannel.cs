@@ -297,7 +297,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     await tcs.Task;
                     var elapsed = sw.GetElapsedTime();
                     workerStatus.Latency = elapsed;
-                    _workerChannelLogger.LogDebug($"[HostMonitor] Worker status request took {elapsed.TotalMilliseconds}ms");
+                    _workerChannelLogger.LogDebug("[HostMonitor] Worker status request took {totalMs}ms", elapsed.TotalMilliseconds);
                 }
             }
 
@@ -373,14 +373,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             _workerChannelLogger.LogDebug("Received WorkerInitResponse. Worker process initialized");
             _initMessage = initEvent.Message.WorkerInitResponse;
-            _workerChannelLogger.LogDebug($"Worker capabilities: {_initMessage.Capabilities}");
+            _workerChannelLogger.LogDebug("Worker capabilities: {capabilities}", _initMessage.Capabilities);
 
             if (_initMessage.WorkerMetadata != null)
             {
                 _initMessage.UpdateWorkerMetadata(_workerConfig);
                 var workerMetadata = _initMessage.WorkerMetadata.ToString();
                 _metricsLogger.LogEvent(MetricEventNames.WorkerMetadata, functionName: null, workerMetadata);
-                _workerChannelLogger.LogDebug($"Worker metadata: {workerMetadata}");
+                _workerChannelLogger.LogDebug("Worker metadata: {workerMetadata}", workerMetadata);
             }
 
             if (_initMessage.Result.IsFailure(out Exception exc))
@@ -472,7 +472,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             FunctionLoadRequestCollection functionLoadRequestCollection = GetFunctionLoadRequestCollection(functions, managedDependencyOptions);
 
-            _workerChannelLogger.LogDebug("Sending FunctionLoadRequestCollection with number of functions:'{count}'", functionLoadRequestCollection.FunctionLoadRequests.Count);
+            _workerChannelLogger.LogDebug("Sending FunctionLoadRequestCollection with number of functions: '{count}'", functionLoadRequestCollection.FunctionLoadRequests.Count);
 
             // send load requests for the registered functions
             SendStreamingMessage(new StreamingMessage
@@ -540,7 +540,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         internal void SendFunctionLoadRequest(FunctionMetadata metadata, ManagedDependencyOptions managedDependencyOptions)
         {
             _functionLoadRequestResponseEvent = _metricsLogger.LatencyEvent(MetricEventNames.FunctionLoadRequestResponse);
-            _workerChannelLogger.LogDebug("Sending FunctionLoadRequest for function:'{functionName}' with functionId:'{functionId}'", metadata.Name, metadata.GetFunctionId());
+            _workerChannelLogger.LogDebug("Sending FunctionLoadRequest for function: '{functionName}' with functionId: '{functionId}'", metadata.Name, metadata.GetFunctionId());
 
             // send a load request for the registered function
             SendStreamingMessage(new StreamingMessage
@@ -566,7 +566,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             if (managedDependencyOptions != null && managedDependencyOptions.Enabled)
             {
-                _workerChannelLogger?.LogDebug($"Adding dependency download request to {_workerConfig.Description.Language} language worker");
+                _workerChannelLogger?.LogDebug("Adding dependency download request to {language} language worker", _workerConfig.Description.Language);
                 request.ManagedDependencyEnabled = managedDependencyOptions.Enabled;
             }
 
@@ -595,11 +595,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             {
                 if (functionLoadEx == null)
                 {
-                    _workerChannelLogger?.LogError("Worker failed to to load function: '{functionName}' with function id: '{functionId}'. Function load exception is not set by the worker.", functionName, loadResponse.FunctionId);
+                    _workerChannelLogger?.LogError("Worker failed to to load function: '{functionName}' with functionId: '{functionId}'. Function load exception is not set by the worker.", functionName, loadResponse.FunctionId);
                 }
                 else
                 {
-                    _workerChannelLogger?.LogError(functionLoadEx, "Worker failed to load function: '{functionName}' with function id: '{functionId}'.", functionName, loadResponse.FunctionId);
+                    _workerChannelLogger?.LogError(functionLoadEx, "Worker failed to load function: '{functionName}' with functionId: '{functionId}'.", functionName, loadResponse.FunctionId);
                 }
                 //Cache function load errors to replay error messages on invoking failed functions
                 _functionLoadErrors[loadResponse.FunctionId] = functionLoadEx;
@@ -607,7 +607,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             if (loadResponse.IsDependencyDownloaded)
             {
-                _workerChannelLogger?.LogDebug($"Managed dependency successfully downloaded by the {_workerConfig.Description.Language} language worker");
+                _workerChannelLogger?.LogDebug("Managed dependency successfully downloaded by the {workerLanguage} language worker", _workerConfig.Description.Language);
             }
 
             // link the invocation inputs to the invoke call
@@ -631,26 +631,29 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         {
             try
             {
-                // do not send invocation requests for functions that failed to load or could not be indexed by the worker
+                var invocationId = context.ExecutionContext.InvocationId.ToString();
+
+                // do not send an invocation request for functions that failed to load or could not be indexed by the worker
                 if (_functionLoadErrors.ContainsKey(context.FunctionMetadata.GetFunctionId()))
                 {
-                    _workerChannelLogger.LogDebug($"Function {context.FunctionMetadata.Name} failed to load");
+                    _workerChannelLogger.LogDebug("Function {functionName} failed to load", context.FunctionMetadata.Name);
                     context.ResultSource.TrySetException(_functionLoadErrors[context.FunctionMetadata.GetFunctionId()]);
-                    _executingInvocations.TryRemove(context.ExecutionContext.InvocationId.ToString(), out ScriptInvocationContext _);
+                    _executingInvocations.TryRemove(invocationId, out ScriptInvocationContext _);
                     return;
                 }
                 else if (_metadataRequestErrors.ContainsKey(context.FunctionMetadata.GetFunctionId()))
                 {
-                    _workerChannelLogger.LogDebug($"Worker failed to load metadata for {context.FunctionMetadata.Name}");
+                    _workerChannelLogger.LogDebug("Worker failed to load metadata for {functionName}", context.FunctionMetadata.Name);
                     context.ResultSource.TrySetException(_metadataRequestErrors[context.FunctionMetadata.GetFunctionId()]);
-                    _executingInvocations.TryRemove(context.ExecutionContext.InvocationId.ToString(), out ScriptInvocationContext _);
+                    _executingInvocations.TryRemove(invocationId, out ScriptInvocationContext _);
                     return;
                 }
 
+                // do not send an invocation request if cancellation has been requested
                 if (context.CancellationToken.IsCancellationRequested)
                 {
-                    _workerChannelLogger.LogDebug("Cancellation has been requested, cancelling invocation request");
-                    context.ResultSource.SetCanceled();
+                    _workerChannelLogger.LogWarning("Cancellation has been requested. The invocation request with id '{invocationId}' is cancelled and will not be sent to the worker.", invocationId);
+                    context.ResultSource.TrySetCanceled();
                     return;
                 }
 
@@ -658,17 +661,17 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 AddAdditionalTraceContext(invocationRequest.TraceContext.Attributes, context);
                 _executingInvocations.TryAdd(invocationRequest.InvocationId, context);
 
-                if (_cancelCapabilityEnabled)
-                {
-                    context.CancellationToken.Register(() => SendInvocationCancel(invocationRequest.InvocationId));
-                }
-
                 _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvoked, Id), functionName: context.FunctionMetadata.Name);
 
                 await SendStreamingMessageAsync(new StreamingMessage
                 {
                     InvocationRequest = invocationRequest
                 });
+
+                if (_cancelCapabilityEnabled)
+                {
+                    context.CancellationToken.Register(() => SendInvocationCancel(invocationRequest.InvocationId));
+                }
             }
             catch (Exception invokeEx)
             {
@@ -678,7 +681,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         internal void SendInvocationCancel(string invocationId)
         {
-            _workerChannelLogger.LogDebug($"Sending invocation cancel request for InvocationId {invocationId}");
+            _workerChannelLogger.LogDebug("Sending InvocationCancel request for invocation: '{invocationId}'", invocationId);
 
             var invocationCancel = new InvocationCancel
             {
@@ -740,7 +743,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     }
                     if (metadata.Status != null && metadata.Status.IsFailure(out Exception metadataRequestEx))
                     {
-                        _workerChannelLogger.LogError($"Worker failed to index function {metadata.FunctionId}");
+                        _workerChannelLogger.LogError("Worker failed to index function {functionId}", metadata.FunctionId);
                         _metadataRequestErrors[metadata.FunctionId] = metadataRequestEx;
                     }
 
@@ -824,7 +827,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         internal async Task InvokeResponse(InvocationResponse invokeResponse)
         {
-            _workerChannelLogger.LogDebug("InvocationResponse received for invocation id: '{invocationId}'", invokeResponse.InvocationId);
+            _workerChannelLogger.LogDebug("InvocationResponse received for invocation: '{invocationId}'", invokeResponse.InvocationId);
+
             // Check if the worker supports logging user-code-thrown exceptions to app insights
             bool capabilityEnabled = !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.EnableUserCodeException));
 
@@ -854,7 +858,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
                         if (usedSharedMemory)
                         {
-                            _workerChannelLogger.LogDebug("Shared memory usage for response of invocation Id: {Id} is {SharedMemoryUsage}", invokeResponse.InvocationId, logBuilder.ToString());
+                            _workerChannelLogger.LogDebug("Shared memory usage for response of invocation '{invocationId}' is {SharedMemoryUsage}", invokeResponse.InvocationId, logBuilder.ToString());
                         }
 
                         IDictionary<string, object> bindingsDictionary = await invokeResponse.OutputData
@@ -876,7 +880,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                         // Free memory allocated by the host (for input bindings) which was needed only for the duration of this invocation
                         if (!_sharedMemoryManager.TryFreeSharedMemoryMapsForInvocation(invokeResponse.InvocationId))
                         {
-                            _workerChannelLogger.LogWarning($"Cannot free all shared memory resources for invocation: {invokeResponse.InvocationId}");
+                            _workerChannelLogger.LogWarning("Cannot free all shared memory resources for invocation: {invocationId}", invokeResponse.InvocationId);
                         }
 
                         // List of shared memory maps that were produced by the worker (for output bindings)
@@ -1152,7 +1156,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 GracePeriod = Duration.FromTimeSpan(TimeSpan.FromSeconds(gracePeriod))
             };
 
-            _workerChannelLogger.LogDebug($"Sending WorkerTerminate message with grace period {gracePeriod} seconds.");
+            _workerChannelLogger.LogDebug("Sending WorkerTerminate message with grace period of {gracePeriod} seconds.", gracePeriod);
 
             SendStreamingMessage(new StreamingMessage
             {
@@ -1164,7 +1168,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         public async Task DrainInvocationsAsync()
         {
-            _workerChannelLogger.LogDebug($"Count of in-buffer invocations waiting to be drained out: {_executingInvocations.Count}");
+            _workerChannelLogger.LogDebug("Count of in-buffer invocations waiting to be drained out: {invocationCount}", _executingInvocations.Count);
             foreach (ScriptInvocationContext currContext in _executingInvocations.Values)
             {
                 await currContext.ResultSource.Task;
@@ -1186,7 +1190,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             foreach (ScriptInvocationContext currContext in _executingInvocations?.Values)
             {
                 string invocationId = currContext?.ExecutionContext?.InvocationId.ToString();
-                _workerChannelLogger.LogDebug("Worker '{workerId}' encountered a fatal error. Failing invocation id: '{invocationId}'", _workerId, invocationId);
+                _workerChannelLogger.LogDebug("Worker '{workerId}' encountered a fatal error. Failing invocation: '{invocationId}'", _workerId, invocationId);
                 currContext?.ResultSource?.TrySetException(workerException);
                 _executingInvocations.TryRemove(invocationId, out ScriptInvocationContext _);
             }

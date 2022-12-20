@@ -188,7 +188,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             _workerChannel.Dispose();
             var traces = _logger.GetLogMessages();
-            var expectedLogMsg = $"Sending WorkerTerminate message with grace period {WorkerConstants.WorkerTerminateGracePeriodInSeconds} seconds.";
+            var expectedLogMsg = $"Sending WorkerTerminate message with grace period of {WorkerConstants.WorkerTerminateGracePeriodInSeconds} seconds.";
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, expectedLogMsg)));
         }
 
@@ -199,7 +199,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             _workerChannel.Dispose();
             var traces = _logger.GetLogMessages();
-            var expectedLogMsg = $"Sending WorkerTerminate message with grace period {WorkerConstants.WorkerTerminateGracePeriodInSeconds} seconds.";
+            var expectedLogMsg = $"Sending WorkerTerminate message with grace period of {WorkerConstants.WorkerTerminateGracePeriodInSeconds} seconds.";
             Assert.False(traces.Any(m => string.Equals(m.FormattedMessage, expectedLogMsg)));
         }
 
@@ -391,7 +391,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             var cancellationWaitTimeMs = 3000;
             var invocationId = Guid.NewGuid();
-            var expectedCancellationLog = $"Sending invocation cancel request for InvocationId {invocationId.ToString()}";
+            var expectedCancellationLog = $"Sending InvocationCancel request for invocation: '{invocationId.ToString()}'";
 
             var cts = new CancellationTokenSource();
             cts.CancelAfter(cancellationWaitTimeMs);
@@ -448,7 +448,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             var cancellationWaitTimeMs = 3000;
             var invocationId = Guid.NewGuid();
-            var expectedCancellationLog = "Cancellation has been requested, cancelling invocation request";
+            var expectedCancellationLog = $"Cancellation has been requested. The invocation request with id '{invocationId}' is cancelled and will not be sent to the worker.";
 
             var cts = new CancellationTokenSource();
             cts.CancelAfter(cancellationWaitTimeMs);
@@ -477,7 +477,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public async Task SendInvocationCancelRequest_PublishesOutboundEvent()
         {
             var invocationId = Guid.NewGuid();
-            var expectedCancellationLog = $"Sending invocation cancel request for InvocationId {invocationId.ToString()}";
+            var expectedCancellationLog = $"Sending InvocationCancel request for invocation: '{invocationId.ToString()}'";
 
             await CreateDefaultWorkerChannel(capabilities: new Dictionary<string, string>() { { RpcWorkerConstants.HandlesInvocationCancelMessage, "true" } });
             var scriptInvocationContext = GetTestScriptInvocationContext(invocationId, null);
@@ -582,7 +582,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, _expectedLogMsg));
             AreExpectedMetricsGenerated();
             Assert.Equal(3, functionLoadLogs.Count());
-            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, string.Format("Sending FunctionLoadRequestCollection with number of functions:'{0}'", functionMetadata.ToList().Count))));
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, string.Format("Sending FunctionLoadRequestCollection with number of functions: '{0}'", functionMetadata.ToList().Count))));
         }
 
         [Fact]
@@ -767,14 +767,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             await CreateDefaultWorkerChannel();
             _metricsLogger.ClearCollections();
-            var invocationid = Guid.NewGuid();
-            ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(invocationid, new TaskCompletionSource<ScriptInvocationResult>());
+            var invocationId = Guid.NewGuid();
+            ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(invocationId, new TaskCompletionSource<ScriptInvocationResult>());
             await _workerChannel.SendInvocationRequest(scriptInvocationContext);
-            _testFunctionRpcService.PublishInvocationResponseEvent(invocationid.ToString());
+            _testFunctionRpcService.PublishInvocationResponseEvent(invocationId.ToString());
             await Task.Delay(500);
             var testWorkerId = _workerId.ToLowerInvariant();
             var traces = _logger.GetLogMessages();
-            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"InvocationResponse received for invocation id: '{invocationid}'")));
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"InvocationResponse received for invocation: '{invocationId}'")));
             Assert.Equal(1, _metricsLogger.LoggedEvents.Count(e => e.Contains($"{string.Format(MetricEventNames.WorkerInvoked, testWorkerId)}_{scriptInvocationContext.FunctionMetadata.Name}")));
             Assert.Equal(1, _metricsLogger.LoggedEvents.Count(e => e.Contains(string.Format(MetricEventNames.WorkerInvokeSucceeded, testWorkerId))));
             Assert.Equal(0, _metricsLogger.LoggedEvents.Count(e => e.Contains(string.Format(MetricEventNames.WorkerInvokeFailed, testWorkerId))));
@@ -807,7 +807,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _testFunctionRpcService.PublishInvocationResponseEvent();
             await Task.Delay(500);
             var traces = _logger.GetLogMessages();
-            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "InvocationResponse received for invocation id: 'TestInvocationId'")));
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "InvocationResponse received for invocation: 'TestInvocationId'")));
         }
 
         [Fact]
@@ -862,8 +862,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var traces = _logger.GetLogMessages();
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Setting up FunctionInvocationBuffer for function: 'js1' with functionId: 'TestFunctionId1'")), "setup TestFunctionId1");
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Setting up FunctionInvocationBuffer for function: 'js2' with functionId: 'TestFunctionId2'")), "setup TestFunctionId2");
-            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Worker failed to load function: 'js1' with function id: 'TestFunctionId1'.")), "fail TestFunctionId1");
-            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Worker failed to load function: 'js2' with function id: 'TestFunctionId2'.")), "fail TestFunctionId2");
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Worker failed to load function: 'js1' with functionId: 'TestFunctionId1'.")), "fail TestFunctionId1");
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Worker failed to load function: 'js2' with functionId: 'TestFunctionId2'.")), "fail TestFunctionId2");
         }
 
         [Fact]
