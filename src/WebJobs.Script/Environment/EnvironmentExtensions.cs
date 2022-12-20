@@ -254,6 +254,11 @@ namespace Microsoft.Azure.WebJobs.Script
             return environment.IsAppService() && RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
         }
 
+        public static bool IsManagedEnvironment(this IEnvironment environment)
+        {
+            return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(ManagedEnvironment));
+        }
+
         /// <summary>
         /// Gets a value indicating whether the application is running in a Linux Consumption (dynamic)
         /// App Service environment.

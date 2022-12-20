@@ -111,7 +111,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 PrepareSyncTriggers();
 
                 var hashBlobClient = await GetHashBlobAsync();
-                if (isBackgroundSync && hashBlobClient == null && !_environment.IsKubernetesManagedHosting())
+                if (isBackgroundSync && hashBlobClient == null && !_environment.IsKubernetesManagedHosting() && !_environment.IsManagedEnvironment())
                 {
                     // short circuit before doing any work in background sync
                     // cases where we need to check/update hash but don't have
@@ -132,7 +132,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
                 bool shouldSyncTriggers = true;
                 string newHash = null;
-                if (isBackgroundSync && !_environment.IsKubernetesManagedHosting())
+                if (isBackgroundSync && !_environment.IsKubernetesManagedHosting() && !_environment.IsManagedEnvironment())
                 {
                     newHash = await CheckHashAsync(hashBlobClient, payload.Content);
                     shouldSyncTriggers = newHash != null;
@@ -191,6 +191,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         internal static bool IsSyncTriggersEnvironment(IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment)
         {
+            if (environment.IsManagedEnvironment())
+            {
+                return true;
+            }
+
             if (environment.IsCoreTools())
             {
                 // don't sync triggers when running locally or not running in a cloud
@@ -659,7 +664,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         internal HttpRequestMessage BuildSetTriggersRequest()
         {
             var url = default(string);
-            if (_environment.IsKubernetesManagedHosting())
+            if (_environment.IsKubernetesManagedHosting() || _environment.IsManagedEnvironment())
             {
                 var buildServiceHostname =
                     _environment.GetEnvironmentVariable("BUILD_SERVICE_HOSTNAME");
@@ -710,6 +715,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 request.Headers.Add("User-Agent", ScriptConstants.FunctionsUserAgent);
                 request.Headers.Add(ScriptConstants.SiteTokenHeaderName, token);
                 request.Content = new StringContent(content, Encoding.UTF8, "application/json");
+
+                if (_environment.IsManagedEnvironment())
+                {
+                    request.Headers.Add(ScriptConstants.KubernetesManagedAppName, _environment.GetEnvironmentVariable("CONTAINER_APP_NAME"));
+                }
 
                 if (_environment.IsKubernetesManagedHosting())
                 {
