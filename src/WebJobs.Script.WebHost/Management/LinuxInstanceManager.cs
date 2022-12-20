@@ -30,6 +30,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         private HostAssignmentContext _assignmentContext;
 
+        private const string WebsiteNodeDefaultVersion = "8.5.0";
+
         public LinuxInstanceManager(IHttpClientFactory httpClientFactory, IScriptWebHostEnvironment webHostEnvironment,
             IEnvironment environment, ILogger<LinuxInstanceManager> logger, IMetricsLogger metricsLogger, IMeshServiceClient meshServiceClient)
         {
@@ -140,7 +142,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             return new Dictionary<string, string>
             {
                 { EnvironmentSettingNames.FunctionsExtensionVersion, ScriptHost.Version },
-                { EnvironmentSettingNames.WebsiteNodeDefaultVersion, "8.5.0" }
+                { EnvironmentSettingNames.WebsiteNodeDefaultVersion, WebsiteNodeDefaultVersion }
             };
         }
 
