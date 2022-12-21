@@ -30,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _logFileDirectory = logFileDirectory;
             _logFilePath = Path.Combine(_logFileDirectory, _logFileName + ".log");
             _buffer = new BlockingCollection<string>(new ConcurrentQueue<string>());
-            _currentFlushFrequencySeconds = logBackoffEnabled ? 1 : 30;
+            _currentFlushFrequencySeconds = logBackoffEnabled ? 1 : MaxFlushFrequencySeconds;
             _currentBatch = new List<string>();
             _fileSystem = fileSystem;
             _cancellationTokenSource = new CancellationTokenSource();
@@ -48,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         public int MaxFileSizeMb { get; set; } = 10;
 
         // Maximum time between successive flushes (seconds)
-         public int MaxFlushFrequencySeconds { get; set; } = 30;
+        public int MaxFlushFrequencySeconds { get; set; } = 30;
 
         public virtual void Log(string message)
         {
@@ -90,7 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             {
                 await InternalProcessLogQueue();
                 await Task.Delay(TimeSpan.FromSeconds(_currentFlushFrequencySeconds), _cancellationTokenSource.Token).ContinueWith(task => { });
-                if ( _currentFlushFrequencySeconds < MaxFlushFrequencySeconds)
+                if (_currentFlushFrequencySeconds < MaxFlushFrequencySeconds)
                 {
                     _currentFlushFrequencySeconds = Min(MaxFlushFrequencySeconds, _currentFlushFrequencySeconds * 2);
                 }
