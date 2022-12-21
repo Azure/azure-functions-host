@@ -70,6 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string FunctionsHostIdCheckLevel = "FUNCTIONS_HOSTID_CHECK_LEVEL";
         public const string FunctionsPlatformConfigFilePath = "FUNCTIONS_PLATFORM_CONFIG_FILE_PATH";
         public const string TargetBaseScalingEnabled = "TARGET_BASED_SCALING_ENABLED";
+        public const string WebsiteNodeDefaultVersion = "WEBSITE_NODE_DEFAULT_VERSION";
 
         //Function in Kubernetes
         public const string PodNamespace = "POD_NAMESPACE";

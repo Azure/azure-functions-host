@@ -128,12 +128,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IFunctionsSyncManager, FunctionsSyncManager>();
             services.AddSingleton<IFunctionMetadataManager, FunctionMetadataManager>();
             services.AddSingleton<IWebFunctionsManager, WebFunctionsManager>();
-            services.AddSingleton<IInstanceManager, InstanceManager>();
             services.AddHttpClient();
             services.AddSingleton<StartupContextProvider>();
             services.AddSingleton<IFileSystem>(_ => FileUtility.Instance);
             services.AddTransient<VirtualFileSystem>();
             services.AddTransient<VirtualFileSystemMiddleware>();
+
+            if (SystemEnvironment.Instance.IsLinuxConsumptionOnLegion())
+            {
+                services.AddSingleton<IInstanceManager, LegionInstanceManager>();
+            }
+            else
+            {
+                // Default IInstanceManager
+                services.AddSingleton<IInstanceManager, AtlasInstanceManager>();
+            }
 
             // Logging and diagnostics
             services.AddSingleton<IMetricsLogger, WebHostMetricsLogger>();
