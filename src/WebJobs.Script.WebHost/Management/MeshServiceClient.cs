@@ -104,6 +104,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             {
                 new KeyValuePair<string, string>(Operation, "add-health-event"),
                 new KeyValuePair<string, string>("healthEvent", healthEventString),
+                GetInternalRequestBody(),
             });
 
             _logger.LogInformation($"Posted health event status: {responseMessage.StatusCode}");
@@ -158,6 +159,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
 
             return serialized;
+        }
+
+        private static KeyValuePair<string, string> GetInternalRequestBody()
+        {
+            var internalRequestBody = new InternalRequestBody()
+            {
+                InstanceName = _environment.GetEnvironmentVariable(EnvironmentSettingNames.ContainerName)
+            };
+
+            var internalRequestBodyString = Serialize(internalRequestBody);
+
+            _logger.LogInformation($"[TEST] func-host internalRequestBodyString: {internalRequestBodyString}");
+
+            return new KeyValuePair<string, string>("InternalRequestBody", internalRequestBodyString);
         }
     }
 }
