@@ -82,6 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
 
         private async Task UnpackPackage(string filePath, string scriptPath, RunFromPackageContext pkgContext, string localSitePackagesPath)
         {
+            _logger.LogInformation("[TEST] UnpackPackage 1");
             var useLocalSitePackages = !string.IsNullOrEmpty(localSitePackagesPath);
             CodePackageType packageType;
             using (_metricsLogger.LatencyEvent(MetricEventNames.LinuxContainerSpecializationGetPackageType))
@@ -91,40 +92,50 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
 
             if (packageType == CodePackageType.Squashfs)
             {
+                _logger.LogInformation("[TEST] UnpackPackage 2");
                 // default to mount for squashfs images
                 if (_environment.IsMountDisabled())
                 {
+                    _logger.LogInformation("[TEST] UnpackPackage 3");
                     if (useLocalSitePackages)
                     {
+                        _logger.LogInformation("[TEST] UnpackPackage 4");
                         UnsquashImage(filePath, localSitePackagesPath);
                         await CreateBindMount(localSitePackagesPath, scriptPath);
                     }
                     else
                     {
+                        _logger.LogInformation("[TEST] UnpackPackage 5");
                         UnsquashImage(filePath, scriptPath);
                     }
                 }
                 else
                 {
+                    _logger.LogInformation("[TEST] UnpackPackage 6");
                     await _meshServiceClient.MountFuse(MeshServiceClient.SquashFsOperation, filePath, scriptPath);
                 }
             }
             else if (packageType == CodePackageType.Zip)
             {
+                _logger.LogInformation("[TEST] UnpackPackage 7");
                 // default to unzip for zip packages
                 if (_environment.IsMountEnabled())
                 {
+                    _logger.LogInformation("[TEST] UnpackPackage 8");
                     await _meshServiceClient.MountFuse(MeshServiceClient.ZipOperation, filePath, scriptPath);
                 }
                 else
                 {
+                    _logger.LogInformation("[TEST] UnpackPackage 9");
                     if (useLocalSitePackages)
                     {
+                        _logger.LogInformation("[TEST] UnpackPackage 10");
                         _unZipHandler.UnzipPackage(filePath, localSitePackagesPath);
                         await CreateBindMount(localSitePackagesPath, scriptPath);
                     }
                     else
                     {
+                        _logger.LogInformation("[TEST] UnpackPackage 11");
                         _unZipHandler.UnzipPackage(filePath, scriptPath);
                     }
                 }
