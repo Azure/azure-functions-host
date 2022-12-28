@@ -161,7 +161,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             return serialized;
         }
 
-        private static KeyValuePair<string, string> GetInternalRequestBody()
+        private KeyValuePair<string, string> GetInternalRequestBody()
         {
             var internalRequestBody = new InternalRequestBody()
             {
