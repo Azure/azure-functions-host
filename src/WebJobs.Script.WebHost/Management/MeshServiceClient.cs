@@ -46,6 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 new KeyValuePair<string, string>("accountKey", key),
                 new KeyValuePair<string, string>("contentShare", contentShare),
                 new KeyValuePair<string, string>("targetPath", targetPath),
+                GetInternalRequestBody(),
             });
 
             return responseMessage.IsSuccessStatusCode;
@@ -66,6 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 new KeyValuePair<string, string>(Operation, type),
                 new KeyValuePair<string, string>("filePath", filePath),
                 new KeyValuePair<string, string>("targetPath", scriptPath),
+                GetInternalRequestBody(),
             });
         }
 
@@ -119,6 +121,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 new KeyValuePair<string, string>(Operation, BindMountOperation),
                 new KeyValuePair<string, string>("sourcePath", sourcePath),
                 new KeyValuePair<string, string>("targetPath", targetPath),
+                GetInternalRequestBody(),
             });
 
             httpResponseMessage.EnsureSuccessStatusCode();
@@ -133,6 +136,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             {
                 new KeyValuePair<string, string>(Operation, AddFES),
                 new KeyValuePair<string, string>("content", Serialize(activities)),
+                GetInternalRequestBody(),
             };
 
             var response = await SendAsync(operation);
@@ -169,8 +173,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             };
 
             var internalRequestBodyString = Serialize(internalRequestBody);
-
-            _logger.LogInformation($"[TEST] func-host internalRequestBodyString: {internalRequestBodyString}");
 
             return new KeyValuePair<string, string>("InternalRequestBody", internalRequestBodyString);
         }
