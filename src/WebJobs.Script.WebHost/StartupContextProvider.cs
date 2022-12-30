@@ -140,6 +140,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public virtual HostAssignmentContext SetContext(EncryptedHostAssignmentContext encryptedContext)
         {
             string decryptedContext = SimpleWebTokenHelper.Decrypt(encryptedContext.EncryptedContext, environment: _environment);
+
+            _logger.LogInformation("[TEST]: decryptedContext: " + decryptedContext);
             var hostAssignmentContext = JsonConvert.DeserializeObject<HostAssignmentContext>(decryptedContext);
 
             // Don't update StartupContext for warmup requests
