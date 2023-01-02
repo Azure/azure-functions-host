@@ -5,6 +5,15 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "Docker .NET Core Attach (Preview)",
+      "type": "docker",
+      "request": "attach",
+      "platform": "netCore",
+      "sourceFileMap": {
+        "/azure-functions-host": "${workspaceFolder}"
+      }
+    },
+    {
       "name": ".NET Core Launch (web)",
       "type": "coreclr",
       "request": "launch",
@@ -33,6 +42,27 @@
       "type": "coreclr",
       "request": "attach",
       "processId": "${command:pickProcess}"
-    }
+    },
+    {
+      "name": ".NET Core Attach k8s",
+      "type": "coreclr",
+      "request": "attach",
+      "processId": "${command:pickRemoteProcess}",
+      "pipeTransport": {
+          "pipeCwd": "${workspaceFolder}",
+          "pipeProgram": "kubectl",
+          "pipeArgs": [ "exec", "-i", "-n", "k8se-apps", "kk-app--6h3oda1-5dccf744f-psjs2", "--" ],
+          "debuggerPath": "/vsdbg/vsdbg",
+          "quoteArgs": false
+      },
+      "sourceFileMap": {
+          "/workingdir": "${workspaceFolder}"
+      },
+      "requireExactSource": false,
+      "justMyCode": false,
+      // "sourceLinkOptions": {
+      //   "*": { "enabled": false }
+      // }
+  },
   ]
 }

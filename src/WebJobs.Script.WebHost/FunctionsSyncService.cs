@@ -33,6 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _primaryHostStateProvider = primaryHostStateProvider;
             _functionsSyncManager = functionsSyncManager;
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
+            _functionsSyncManager.SetLogger(_logger);
         }
 
         // exposed for testing
@@ -72,6 +73,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 if (!cancellationToken.IsCancellationRequested && ShouldSyncTriggers)
                 {
                     _logger.LogDebug("Initiating background SyncTriggers operation");
+                    // Thread.Sleep(30000);
+                    // _logger.LogDebug("Initiating background SyncTriggers operation now");
                     await _functionsSyncManager.TrySyncTriggersAsync(isBackgroundSync: true);
                 }
             }

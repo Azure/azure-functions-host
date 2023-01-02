@@ -52,7 +52,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private readonly Regex versionRegex = new Regex(@"Version=(?<majorversion>\d)\.\d\.\d");
 
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
-        private readonly ILogger _logger;
         private readonly HttpClient _httpClient;
         private readonly ISecretManagerProvider _secretManagerProvider;
         private readonly IConfiguration _configuration;
@@ -64,6 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private readonly SemaphoreSlim _syncSemaphore = new SemaphoreSlim(1, 1);
         private readonly IAzureBlobStorageProvider _azureBlobStorageProvider;
 
+        private ILogger _logger;
         private BlobClient _hashBlobClient;
 
         public FunctionsSyncManager(IConfiguration configuration, IHostIdProvider hostIdProvider, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger<FunctionsSyncManager> logger, IHttpClientFactory httpClientFactory, ISecretManagerProvider secretManagerProvider, IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment, HostNameProvider hostNameProvider, IFunctionMetadataManager functionMetadataManager, IAzureBlobStorageProvider azureBlobStorageProvider)
@@ -89,13 +89,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
         }
 
+        public void SetLogger(ILogger logger)
+        {
+            _logger = logger;
+        }
+
         public async Task<SyncTriggersResult> TrySyncTriggersAsync(bool isBackgroundSync = false)
         {
             var result = new SyncTriggersResult
             {
                 Success = true
             };
-
+            // _logger.LogDebug("!IsSyncTriggersEnvironment(_webHostEnvironment, _environment)");
             if (!IsSyncTriggersEnvironment(_webHostEnvironment, _environment))
             {
                 result.Success = false;
@@ -103,6 +108,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 _logger.LogWarning(result.Error);
                 return result;
             }
+            // _logger.LogDebug("try { await _syncSemaphore.WaitAsync();");
 
             try
             {
@@ -111,6 +117,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 PrepareSyncTriggers();
 
                 var hashBlobClient = await GetHashBlobAsync();
+                // _logger.LogDebug("isBackgroundSync && hashBlobClient == null && !_environment.IsKubernetesManagedHosting() && !_environment.IsManagedEnvironment()");
                 if (isBackgroundSync && hashBlobClient == null && !_environment.IsKubernetesManagedHosting() && !_environment.IsManagedEnvironment())
                 {
                     // short circuit before doing any work in background sync
@@ -120,6 +127,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 }
 
                 var payload = await GetSyncTriggersPayload();
+                // _logger.LogDebug("isBackgroundSync && payload.Count == 0");
                 if (isBackgroundSync && payload.Count == 0)
                 {
                     // We don't do background sync for empty triggers.
@@ -132,19 +140,24 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
                 bool shouldSyncTriggers = true;
                 string newHash = null;
+                // _logger.LogDebug("isBackgroundSync && !_environment.IsKubernetesManagedHosting() && !_environment.IsManagedEnvironment()");
                 if (isBackgroundSync && !_environment.IsKubernetesManagedHosting() && !_environment.IsManagedEnvironment())
                 {
                     newHash = await CheckHashAsync(hashBlobClient, payload.Content);
                     shouldSyncTriggers = newHash != null;
                 }
 
+                // _logger.LogDebug("shouldSyncTriggers");
                 if (shouldSyncTriggers)
                 {
+                    // _logger.LogDebug("await SetTriggersAsync(payload.Content)");
                     var (success, error) = await SetTriggersAsync(payload.Content);
+                    // _logger.LogDebug("success && newHash != null");
                     if (success && newHash != null)
                     {
                         await UpdateHashAsync(hashBlobClient, newHash);
                     }
+                    // _logger.LogDebug("result.Success = success; result.Error = error;" + success + error);
                     result.Success = success;
                     result.Error = error;
                 }
