@@ -218,7 +218,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 }
             }
 
-            logger.LogDebug($"Worker description arguments after formatting: {Arguments}");
+            logger.LogDebug($"Worker description arguments after formatting: {string.Join(" ", Arguments)} ");
         }
 
         internal bool ShouldFormatWorkerPath(string workerPath)
