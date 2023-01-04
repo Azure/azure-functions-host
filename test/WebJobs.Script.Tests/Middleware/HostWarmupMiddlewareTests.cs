@@ -1,11 +1,13 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using Castle.Core.Logging;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Eventing;
-using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
@@ -15,11 +17,9 @@ using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Microsoft.VisualStudio.TestPlatform.ObjectModel.Client;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Xunit;
-using ILoggerFactory = Microsoft.Extensions.Logging.ILoggerFactory;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
 {
@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
         private readonly IEnvironment _testEnvironment;
         private readonly IRpcServer _rpcServer;
         private readonly TestLoggerProvider _loggerProvider;
-        private readonly ILoggerFactory _loggerFactory;
+        private readonly Microsoft.Extensions.Logging.ILoggerFactory _loggerFactory;
         private readonly LanguageWorkerOptions _languageWorkerOptions;
         private readonly Mock<IRpcWorkerProcessFactory> _rpcWorkerProcessFactory;
         private readonly IRpcWorkerChannelFactory _rpcWorkerChannelFactory;
@@ -49,8 +49,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
                 { "StandbyModeEnabled", "true" }
             };
 
+        private IOptions<FunctionsHostingConfigOptions> _functionsHostingConfigOptions;
+
         public HostWarmupMiddlewareTests()
         {
+            _functionsHostingConfigOptions = Options.Create(new FunctionsHostingConfigOptions());
             _eventManager = new ScriptEventManager();
             _rpcServer = new TestRpcServer();
             _loggerProvider = new TestLoggerProvider();
@@ -154,13 +157,54 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
             testLoggerFactory.AddProvider(testLoggerProvider);
             ILogger<HostWarmupMiddleware> testLogger = testLoggerFactory.CreateLogger<HostWarmupMiddleware>();
 
-            WebHostRpcWorkerChannelManager rpcWorkerChannelManager = new WebHostRpcWorkerChannelManager(_eventManager, environment, testLoggerFactory, _rpcWorkerChannelFactory, _optionsMonitor, new TestMetricsLogger(), _workerOptionsMonitor, _emptyConfig, _workerProfileManager);
-            HostWarmupMiddleware hostWarmupMiddleware = new HostWarmupMiddleware(null, new Mock<IScriptWebHostEnvironment>().Object, environment, new Mock<IScriptHostManager>().Object, testLogger, rpcWorkerChannelManager);
+            HostWarmupMiddleware hostWarmupMiddleware = new HostWarmupMiddleware(null, new Mock<IScriptWebHostEnvironment>().Object, environment, new Mock<IScriptHostManager>().Object, testLogger, _rpcWorkerChannelManager, _functionsHostingConfigOptions);
 
             hostWarmupMiddleware.ReadRuntimeAssemblyFiles();
             // Assert
             var traces = testLoggerProvider.GetAllLogMessages();
             Assert.True(traces.Any(m => m.FormattedMessage.Contains("Number of files read:")));
         }
+
+        //[Fact]
+        //public async void WorkerWarmup_VerifyLogs()
+        //{
+        //    var environment = new TestEnvironment();
+        //    environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+        //    environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId, "12345");
+        //    environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "java");
+
+        //    var hostEnvironment = new ScriptWebHostEnvironment(environment);
+        //    var testLoggerFactory = new LoggerFactory();
+        //    TestLoggerProvider testLoggerProvider = new TestLoggerProvider();
+        //    testLoggerFactory.AddProvider(testLoggerProvider);
+        //    ILogger<HostWarmupMiddleware> testLogger = testLoggerFactory.CreateLogger<HostWarmupMiddleware>();
+
+        //    _functionsHostingConfigOptions.Value.Features[RpcWorkerConstants.WorkerWarmupEnabled] = "1";
+        //    HostWarmupMiddleware hostWarmupMiddleware = new HostWarmupMiddleware(null, hostEnvironment, environment, new Mock<IScriptHostManager>().Object, testLogger, _rpcWorkerChannelManager, _functionsHostingConfigOptions);
+
+        //    string requestId = Guid.NewGuid().ToString();
+        //    var context = new DefaultHttpContext();
+        //    Uri uri = new Uri("http://azure.com/api/warmup");
+        //    var requestFeature = context.Request.HttpContext.Features.Get<IHttpRequestFeature>();
+        //    requestFeature.Method = "POST";
+        //    requestFeature.Scheme = uri.Scheme;
+        //    requestFeature.Path = uri.GetComponents(UriComponents.KeepDelimiter | UriComponents.Path, UriFormat.Unescaped);
+        //    requestFeature.PathBase = string.Empty;
+        //    requestFeature.QueryString = uri.GetComponents(UriComponents.KeepDelimiter | UriComponents.Query, UriFormat.Unescaped);
+
+        //    var headers = new HeaderDictionary();
+
+        //    if (!string.IsNullOrEmpty(uri.Host))
+        //    {
+        //        headers.Add("Host", uri.Host);
+        //    }
+
+        //    requestFeature.Headers = headers;
+
+        //    await hostWarmupMiddleware.Invoke(context);
+
+        //    var traces = testLoggerProvider.GetAllLogMessages();
+        //    Assert.True(traces.Any(m => m.FormattedMessage.Contains("Completed Worker warmup")));
+        //}
     }
 }

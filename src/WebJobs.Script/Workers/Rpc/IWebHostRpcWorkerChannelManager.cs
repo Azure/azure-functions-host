@@ -19,6 +19,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         Task ShutdownChannelsAsync();
 
-        Task SendWorkerWarmupRequest();
+        Task WorkerWarmup();
     }
 }

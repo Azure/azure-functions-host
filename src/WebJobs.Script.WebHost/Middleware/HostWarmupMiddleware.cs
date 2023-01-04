@@ -2,16 +2,17 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Diagnostics.JitTrace;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
@@ -19,6 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
     public class HostWarmupMiddleware
     {
         private readonly IWebHostRpcWorkerChannelManager _webHostRpcWorkerChannelManager;
+        private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions;
         private readonly RequestDelegate _next;
         private readonly IScriptWebHostEnvironment _webHostEnvironment;
         private readonly IEnvironment _environment;
@@ -30,7 +32,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
         private static readonly PathString _warmupRoutePath = new PathString($"/api/{WarmUpConstants.FunctionName}");
         private static readonly PathString _warmupRouteAlternatePath = new PathString($"/api/{WarmUpConstants.AlternateRoute}");
 
-        public HostWarmupMiddleware(RequestDelegate next, IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment, IScriptHostManager hostManager, ILogger<HostWarmupMiddleware> logger, IWebHostRpcWorkerChannelManager rpcWorkerChannelManager)
+        public HostWarmupMiddleware(
+            RequestDelegate next,
+            IScriptWebHostEnvironment webHostEnvironment,
+            IEnvironment environment,
+            IScriptHostManager hostManager,
+            ILogger<HostWarmupMiddleware> logger,
+            IWebHostRpcWorkerChannelManager rpcWorkerChannelManager,
+            IOptions<FunctionsHostingConfigOptions> hostingConfigOptions)
         {
             _next = next;
             _webHostEnvironment = webHostEnvironment;
@@ -39,6 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             _logger = logger;
             _assemblyLocalPath = Path.GetDirectoryName(new Uri(typeof(HostWarmupMiddleware).Assembly.Location).LocalPath);
             _webHostRpcWorkerChannelManager = rpcWorkerChannelManager ?? throw new ArgumentNullException(nameof(rpcWorkerChannelManager));
+            _hostingConfigOptions = hostingConfigOptions;
         }
 
         public Task Invoke(HttpContext httpContext)
@@ -69,16 +79,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
             ReadRuntimeAssemblyFiles();
 
-            SendWorkerWarmupRequest();
+            WorkerWarmup();
 
             await WarmUp(httpContext.Request);
 
             await _next.Invoke(httpContext);
         }
 
-        private async void SendWorkerWarmupRequest()
+        private async void WorkerWarmup()
         {
-            await _webHostRpcWorkerChannelManager.SendWorkerWarmupRequest();
+            if (_hostingConfigOptions.Value.WorkerWarmupEnabled)
+            {
+                await _webHostRpcWorkerChannelManager.WorkerWarmup();
+            }
         }
 
         internal void ReadRuntimeAssemblyFiles()

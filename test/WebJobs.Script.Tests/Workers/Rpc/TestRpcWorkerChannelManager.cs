@@ -144,7 +144,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             }
         }
 
-        public Task SendWorkerWarmupRequest()
+        public Task WorkerWarmup()
         {
             throw new NotImplementedException();
         }
