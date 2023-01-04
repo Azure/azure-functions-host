@@ -6,6 +6,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Net.Http.Formatting;
+using System.Reflection.Metadata;
 using System.Threading.Tasks;
 using Microsoft.Azure.Storage;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
@@ -38,6 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         {
             var sa = CloudStorageAccount.Parse(connectionString);
             var key = Convert.ToBase64String(sa.Credentials.ExportKey());
+
             HttpResponseMessage responseMessage = await SendAsync(new[]
             {
                 new KeyValuePair<string, string>(Operation, "cifs"),
@@ -46,7 +49,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 new KeyValuePair<string, string>("accountKey", key),
                 new KeyValuePair<string, string>("contentShare", contentShare),
                 new KeyValuePair<string, string>("targetPath", targetPath),
-                GetInternalRequestBody(),
             });
 
             return responseMessage.IsSuccessStatusCode;
@@ -67,7 +69,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 new KeyValuePair<string, string>(Operation, type),
                 new KeyValuePair<string, string>("filePath", filePath),
                 new KeyValuePair<string, string>("targetPath", scriptPath),
-                GetInternalRequestBody(),
             });
         }
 
@@ -106,7 +107,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             {
                 new KeyValuePair<string, string>(Operation, "add-health-event"),
                 new KeyValuePair<string, string>("healthEvent", healthEventString),
-                GetInternalRequestBody(),
             });
 
             _logger.LogInformation($"Posted health event status: {responseMessage.StatusCode}");
@@ -121,7 +121,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 new KeyValuePair<string, string>(Operation, BindMountOperation),
                 new KeyValuePair<string, string>("sourcePath", sourcePath),
                 new KeyValuePair<string, string>("targetPath", targetPath),
-                GetInternalRequestBody(),
             });
 
             httpResponseMessage.EnsureSuccessStatusCode();
@@ -136,7 +135,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             {
                 new KeyValuePair<string, string>(Operation, AddFES),
                 new KeyValuePair<string, string>("content", Serialize(activities)),
-                GetInternalRequestBody(),
             };
 
             var response = await SendAsync(operation);
@@ -147,8 +145,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         {
             var operationName = formData.FirstOrDefault(f => string.Equals(f.Key, Operation)).Value;
             _logger.LogDebug($"Sending mesh request {operationName}");
-            var res = await _client.PostAsync(_environment.GetEnvironmentVariable(EnvironmentSettingNames.MeshInitURI),
-                new FormUrlEncodedContent(formData));
+            //var res = await _client.PostAsync(_environment.GetEnvironmentVariable(EnvironmentSettingNames.MeshInitURI),
+            //    new FormUrlEncodedContent(formData));
+            //var res = await _client.PostAsync(string requestUri, HttpContent content);
+
+            var request = new HttpRequestMessage(HttpMethod.Post, _environment.GetEnvironmentVariable(EnvironmentSettingNames.MeshInitURI))
+            {
+                Content = new FormUrlEncodedContent(formData)
+            };
+
+            request.Headers.Add("fx-current-instance", _environment.GetEnvironmentVariable(EnvironmentSettingNames.ContainerName));
+
+            var res = await _client.SendAsync(request);
+
             _logger.LogDebug($"Mesh response {res.StatusCode}");
             return res;
         }
