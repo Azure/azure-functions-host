@@ -8,6 +8,7 @@ using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Hosting;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
@@ -307,7 +308,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, FunctionsScaleMonitorService>());
                 }
-                services.TryAddSingleton<FunctionsScaleManager>();
+                services.TryAddSingleton<ScaleManager>();
 
                 services.AddSingleton<IHostOptionsProvider, HostOptionsProvider>();
             });

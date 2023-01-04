@@ -42,12 +42,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
             _loggerProvider = new TestLoggerProvider();
             ILoggerFactory loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(_loggerProvider);
-            var scaleOptions = new ScaleOptions(TimeSpan.FromMilliseconds(50));
+            var scaleOptions = new ScaleOptions();
+            scaleOptions.ScaleMetricsSampleInterval = TimeSpan.FromMilliseconds(50);
             var options = new OptionsWrapper<ScaleOptions>(scaleOptions);
 
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsRuntimeScaleMonitoringEnabled, "1");
 
-            Mock<FunctionsScaleManager> functionsScaleManagerMock = new Mock<FunctionsScaleManager>();
+            Mock<ScaleManager> functionsScaleManagerMock = new Mock<ScaleManager>();
             functionsScaleManagerMock.Setup(x => x.GetScalersToSample(out _monitors, out _scalers));
 
             _monitor = new FunctionsScaleMonitorService(functionsScaleManagerMock.Object, _metricsRepository, loggerFactory, _primaryHostStateProviderMock.Object, _environment,  options);

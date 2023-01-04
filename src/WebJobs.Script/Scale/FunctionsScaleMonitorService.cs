@@ -14,15 +14,12 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
     {
         private readonly IPrimaryHostStateProvider _primaryHostStateProvider;
         private readonly IEnvironment _environment;
-        private readonly ScaleOptions _scaleOptions;
 
         public FunctionsScaleMonitorService(ScaleManager scaleManager, IScaleMetricsRepository metricsRepository, ILoggerFactory loggerFactory,
-            IPrimaryHostStateProvider primaryHostStateProvider, IEnvironment environment, IOptions<ScaleOptions> scaleOptions) : base(scaleManager, metricsRepository, loggerFactory)
+            IPrimaryHostStateProvider primaryHostStateProvider, IEnvironment environment, IOptions<ScaleOptions> scaleOptions) : base(scaleManager, metricsRepository, scaleOptions, loggerFactory)
         {
             _primaryHostStateProvider = primaryHostStateProvider;
             _environment = environment;
-            _scaleOptions = scaleOptions.Value;
-            _interval = _scaleOptions.ScaleMetricsSampleInterval;
         }
 
         public override Task StartAsync(CancellationToken cancellationToken)
