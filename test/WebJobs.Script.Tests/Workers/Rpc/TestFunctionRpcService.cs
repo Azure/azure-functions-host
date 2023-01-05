@@ -11,9 +11,7 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 {
@@ -41,12 +39,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public void OnMessage(StreamingMessage.ContentOneofCase messageType, Action<OutboundGrpcEvent> callback)
             => _handlers.AddOrUpdate(messageType, callback, (messageType, oldValue) => oldValue + callback);
 
-        public void AutoReply(StreamingMessage.ContentOneofCase messageType)
+        public void AutoReply(StreamingMessage.ContentOneofCase messageType, bool workerSupportsSpecialization = false)
         {
             // apply standard default responses
             Action<OutboundGrpcEvent> callback = messageType switch
             {
-                StreamingMessage.ContentOneofCase.FunctionEnvironmentReloadRequest => _ => PublishFunctionEnvironmentReloadResponseEvent(),
+                StreamingMessage.ContentOneofCase.FunctionEnvironmentReloadRequest => _ => PublishFunctionEnvironmentReloadResponseEvent(workerSupportsSpecialization),
                 _ => null,
             };
             if (callback is not null)
@@ -178,13 +176,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Write(responseMessage);
         }
 
-        public void PublishFunctionEnvironmentReloadResponseEvent()
+        public void PublishFunctionEnvironmentReloadResponseEvent(bool workerSupportsSpecialization)
         {
-            FunctionEnvironmentReloadResponse relaodEnvResponse = GetTestFunctionEnvReloadResponse();
+            FunctionEnvironmentReloadResponse reloadEnvResponse = GetTestFunctionEnvReloadResponse();
             StreamingMessage responseMessage = new StreamingMessage()
             {
-                FunctionEnvironmentReloadResponse = relaodEnvResponse
+                FunctionEnvironmentReloadResponse = reloadEnvResponse
             };
+
+            if (workerSupportsSpecialization)
+            {
+                responseMessage.FunctionEnvironmentReloadResponse.WorkerMetadata = new()
+                {
+                    RuntimeName = ".NET",
+                    RuntimeVersion = "7.0",
+                    WorkerVersion = "1.0.0",
+                    WorkerBitness = "x64"
+                };
+                responseMessage.FunctionEnvironmentReloadResponse.Capabilities.Add("RpcHttpBodyOnly", bool.TrueString);
+                responseMessage.FunctionEnvironmentReloadResponse.Capabilities.Add("TypedDataCollection", bool.TrueString);
+            }
+
             Write(responseMessage);
         }
 

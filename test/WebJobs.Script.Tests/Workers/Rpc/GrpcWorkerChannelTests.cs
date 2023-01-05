@@ -702,7 +702,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 Environment.SetEnvironmentVariable("TestNull", null);
                 Environment.SetEnvironmentVariable("TestEmpty", string.Empty);
                 Environment.SetEnvironmentVariable("TestValid", "TestValue");
-                _testFunctionRpcService.AutoReply(StreamingMessage.ContentOneofCase.FunctionEnvironmentReloadRequest);
+                _testFunctionRpcService.AutoReply(StreamingMessage.ContentOneofCase.FunctionEnvironmentReloadRequest, workerSupportsSpecialization: true);
                 var pending = _workerChannel.SendFunctionEnvironmentReloadRequest();
                 await Task.Delay(500);
                 await pending; // this can timeout
@@ -718,6 +718,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             ShowOutput(traces);
             var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, "Sending FunctionEnvironmentReloadRequest to WorkerProcess with Pid: '910'"));
             Assert.Equal(1, functionLoadLogs.Count());
+
+            // for specialization use case, env reload response include worker metadata and capabilities.
+            var metatadataLog = traces.Where(m => string.Equals(m.FormattedMessage,
+                @"Worker metadata: { ""runtimeName"": "".NET"", ""runtimeVersion"": ""7.0"", ""workerVersion"": ""1.0.0"", ""workerBitness"": ""x64"" }"));
+            var capabilityUpdateLog = traces.Where(m => string.Equals(m.FormattedMessage,
+                @"Updating capabilities: { ""RpcHttpBodyOnly"": ""True"", ""TypedDataCollection"": ""True"" }"));
+            Assert.Single(metatadataLog);
+            Assert.Single(capabilityUpdateLog);
         }
 
         [Fact]
