@@ -78,7 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private TaskCompletionSource<List<RawFunctionMetadata>> _functionsIndexingTask = new TaskCompletionSource<List<RawFunctionMetadata>>(TaskCreationOptions.RunContinuationsAsynchronously);
         private TimeSpan _functionLoadTimeout = TimeSpan.FromMinutes(1);
         private bool _isSharedMemoryDataTransferEnabled;
-        private bool _cancelCapabilityEnabled;
+        private bool? _cancelCapabilityEnabled;
         private bool _isWorkerApplicationInsightsLoggingEnabled;
 
         private System.Timers.Timer _timer;
@@ -357,6 +357,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         internal void FunctionEnvironmentReloadResponse(FunctionEnvironmentReloadResponse res, IDisposable latencyEvent)
         {
             _workerChannelLogger.LogDebug("Received FunctionEnvironmentReloadResponse from WorkerProcess with Pid: '{0}'", _rpcWorkerProcess.Id);
+
+            LogWorkerMetadata(res.WorkerMetadata);
+            UpdateCapabilities(res.Capabilities);
+            _cancelCapabilityEnabled ??= !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.HandlesInvocationCancelMessage));
+
             if (res.Result.IsFailure(out Exception reloadEnvironmentVariablesException))
             {
                 _workerChannelLogger.LogError(reloadEnvironmentVariablesException, "Failed to reload environment variables");
@@ -375,13 +380,10 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _initMessage = initEvent.Message.WorkerInitResponse;
             _workerChannelLogger.LogDebug("Worker capabilities: {capabilities}", _initMessage.Capabilities);
 
-            if (_initMessage.WorkerMetadata != null)
-            {
-                _initMessage.UpdateWorkerMetadata(_workerConfig);
-                var workerMetadata = _initMessage.WorkerMetadata.ToString();
-                _metricsLogger.LogEvent(MetricEventNames.WorkerMetadata, functionName: null, workerMetadata);
-                _workerChannelLogger.LogDebug("Worker metadata: {workerMetadata}", workerMetadata);
-            }
+            // In placeholder scenario, the capabilities and worker metadata will not be available
+            // until specialization is done (env reload request). So these can be removed from worker init response code path.
+            // to do to track this: https://github.com/Azure/azure-functions-host/issues/9019
+            LogWorkerMetadata(_initMessage.WorkerMetadata);
 
             if (_initMessage.Result.IsFailure(out Exception exc))
             {
@@ -395,7 +397,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             UpdateCapabilities(_initMessage.Capabilities);
 
             _isSharedMemoryDataTransferEnabled = IsSharedMemoryDataTransferEnabled();
-            _cancelCapabilityEnabled = !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.HandlesInvocationCancelMessage));
+            _cancelCapabilityEnabled ??= !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.HandlesInvocationCancelMessage));
 
             if (!_isSharedMemoryDataTransferEnabled)
             {
@@ -411,6 +413,19 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
 
             _workerInitTask.TrySetResult(true);
+        }
+
+        private void LogWorkerMetadata(WorkerMetadata workerMetadata)
+        {
+            if (workerMetadata == null)
+            {
+                return;
+            }
+
+            workerMetadata.UpdateWorkerMetadata(_workerConfig);
+            var workerMetadataString = workerMetadata.ToString();
+            _metricsLogger.LogEvent(MetricEventNames.WorkerMetadata, functionName: null, workerMetadataString);
+            _workerChannelLogger.LogDebug("Worker metadata: {workerMetadata}", workerMetadataString);
         }
 
         // Allow tests to add capabilities, even if not directly supported by the worker.
@@ -668,7 +683,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     InvocationRequest = invocationRequest
                 });
 
-                if (_cancelCapabilityEnabled)
+                if (_cancelCapabilityEnabled != null && _cancelCapabilityEnabled.Value)
                 {
                     context.CancellationToken.Register(() => SendInvocationCancel(invocationRequest.InvocationId));
                 }
