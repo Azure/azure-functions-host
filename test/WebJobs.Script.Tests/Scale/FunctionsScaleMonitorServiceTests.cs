@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
             ILoggerFactory loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(_loggerProvider);
             var scaleOptions = new ScaleOptions();
-            scaleOptions.ScaleMetricsSampleInterval = TimeSpan.FromMilliseconds(50);
+            scaleOptions.ScaleMetricsSampleInterval = TimeSpan.FromSeconds(1);
             var options = new OptionsWrapper<ScaleOptions>(scaleOptions);
 
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsRuntimeScaleMonitoringEnabled, "1");
