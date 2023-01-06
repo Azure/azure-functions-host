@@ -238,6 +238,13 @@ message FunctionEnvironmentReloadRequest {
 }
 
 message FunctionEnvironmentReloadResponse {
+  // After specialization, worker sends capabilities & metadata.
+  // Worker metadata captured for telemetry purposes
+  WorkerMetadata worker_metadata = 1;
+
+  // A map of worker supported features/capabilities
+  map<string, string> capabilities = 2;
+
   // Status of the response
   StatusResult result = 3;
 }
