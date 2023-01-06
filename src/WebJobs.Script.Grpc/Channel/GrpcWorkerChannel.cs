@@ -78,6 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private TaskCompletionSource<bool> _reloadTask = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         private TaskCompletionSource<bool> _workerInitTask = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         private TaskCompletionSource<List<RawFunctionMetadata>> _functionsIndexingTask = new TaskCompletionSource<List<RawFunctionMetadata>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        private TaskCompletionSource<bool> _workerWarmupTask = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         private TimeSpan _functionLoadTimeout = TimeSpan.FromMinutes(1);
         private bool _isSharedMemoryDataTransferEnabled;
         private bool? _cancelCapabilityEnabled;
@@ -534,19 +535,40 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         public Task SendWorkerWarmupRequest()
         {
-            _workerChannelLogger.LogDebug("Sending WorkerWarmupRequest to WorkerProcess with Pid: '{0}'", _rpcWorkerProcess.Id);
-
-            WorkerWarmupRequest request = new WorkerWarmupRequest()
+            bool capabilityEnabled = !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.HandlesWorkerWarmupMessage));
+            if (!capabilityEnabled)
             {
-                WorkerDirectory = _workerConfig.Description.WorkerDirectory,
-            };
-
-            SendStreamingMessage(new StreamingMessage
+                _workerChannelLogger.LogDebug("Worker warmup capability not enabled");
+            }
+            else
             {
-                WorkerWarmupRequest = request
-            });
+                _workerChannelLogger.LogDebug("Sending WorkerWarmupRequest to WorkerProcess with Pid: '{0}'", _rpcWorkerProcess.Id);
 
-            return _reloadTask.Task;
+                RegisterCallbackForNextGrpcMessage(MsgType.WorkerWarmupResponse, TimeSpan.FromMinutes(1), 1,
+                msg => ProcessWorkerWarmupResponse(msg.Message.WorkerWarmupResponse), HandleWorkerWarmupError);
+
+                var request = new WorkerWarmupRequest()
+                {
+                    WorkerDirectory = _workerConfig.Description.WorkerDirectory,
+                };
+
+                SendStreamingMessage(new StreamingMessage
+                {
+                    WorkerWarmupRequest = request
+                });
+            }
+            return _workerWarmupTask.Task;
+        }
+
+        internal void ProcessWorkerWarmupResponse(WorkerWarmupResponse response)
+        {
+            _workerChannelLogger.LogDebug("Received WorkerWarmupResponse from WorkerProcess with Pid: '{0}'", _rpcWorkerProcess.Id);
+            if (response.Result.IsFailure(out Exception workerWarmupException))
+            {
+                _workerChannelLogger.LogError(workerWarmupException, "Worker warmup failed");
+                _workerWarmupTask.SetException(workerWarmupException);
+            }
+            _workerWarmupTask.SetResult(true);
         }
 
         internal FunctionEnvironmentReloadRequest GetFunctionEnvironmentReloadRequest(IDictionary processEnv)
@@ -1092,6 +1114,12 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 return;
             }
             _eventManager.Publish(new WorkerErrorEvent(_runtime, Id, exc));
+        }
+
+        internal void HandleWorkerWarmupError(Exception exc)
+        {
+            _workerChannelLogger.LogError(exc, "Worker warmup failed");
+            _workerWarmupTask.SetException(exc);
         }
 
         private ValueTask SendStreamingMessageAsync(StreamingMessage msg)

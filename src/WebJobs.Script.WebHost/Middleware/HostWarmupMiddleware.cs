@@ -79,17 +79,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
             ReadRuntimeAssemblyFiles();
 
-            WorkerWarmup();
+            await WorkerWarmup();
 
-            await WarmUp(httpContext.Request);
+            await HostWarmUp(httpContext.Request);
 
             await _next.Invoke(httpContext);
         }
 
-        private async void WorkerWarmup()
+        private async Task WorkerWarmup()
         {
             if (_hostingConfigOptions.Value.WorkerWarmupEnabled)
             {
+                _logger.LogDebug("Worker warmup hosting configuration is enabled");
                 await _webHostRpcWorkerChannelManager.WorkerWarmup();
             }
         }
@@ -157,7 +158,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             }
         }
 
-        public async Task WarmUp(HttpRequest request)
+        public async Task HostWarmUp(HttpRequest request)
         {
             if (request.Query.TryGetValue("restart", out StringValues value) && string.Compare("1", value) == 0)
             {

@@ -52,6 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public const string SupportsLoadResponseCollection = "SupportsLoadResponseCollection";
         public const string HandlesWorkerTerminateMessage = "HandlesWorkerTerminateMessage";
         public const string HandlesInvocationCancelMessage = "HandlesInvocationCancelMessage";
+        public const string HandlesWorkerWarmupMessage = "HandlesWorkerWarmupMessage";
         public const string WorkerApplicationInsightsLoggingEnabled = nameof(WorkerApplicationInsightsLoggingEnabled);
 
         /// <summary>

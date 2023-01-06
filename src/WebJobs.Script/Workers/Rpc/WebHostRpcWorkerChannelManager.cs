@@ -142,16 +142,19 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         public async Task WorkerWarmup()
         {
-            _logger.LogInformation("Starting Worker warmup");
             _workerRuntime = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
 
-            IRpcWorkerChannel rpcWorkerChannel = await GetChannelAsync(_workerRuntime);
-
-            if (_workerRuntime != null && rpcWorkerChannel != null)
+            if (_workerRuntime != null)
             {
-                await rpcWorkerChannel.SendWorkerWarmupRequest();
+                IRpcWorkerChannel rpcWorkerChannel = await GetChannelAsync(_workerRuntime);
+
+                if (rpcWorkerChannel != null)
+                {
+                    _logger.LogDebug("Starting worker warmup");
+                    await rpcWorkerChannel.SendWorkerWarmupRequest();
+                    _logger.LogDebug("Completed worker warmup");
+                }
             }
-            _logger.LogDebug("Completed Worker warmup");
         }
 
         private bool UsePlaceholderChannel(string workerRuntime)
