@@ -87,7 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         internal static TypedData ToModelBindingDataArray(this ParameterBindingData[] dataArray)
         {
-            var collectionModelBindingData = new CollectionModelBindingData();
+            CollectionModelBindingData collectionModelBindingData = new ();
 
             foreach (ParameterBindingData element in dataArray)
             {
@@ -97,12 +97,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 }
             }
 
-            TypedData typedData = new TypedData()
-            {
-                CollectionModelBindingData = collectionModelBindingData
-            };
-
-            return typedData;
+            return new TypedData() { CollectionModelBindingData = collectionModelBindingData };
         }
 
         internal static async Task<TypedData> ToRpcHttp(this HttpRequest request, ILogger logger, GrpcCapabilities capabilities)
