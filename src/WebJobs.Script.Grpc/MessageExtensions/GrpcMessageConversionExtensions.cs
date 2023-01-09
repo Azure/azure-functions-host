@@ -91,7 +91,10 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             foreach (ParameterBindingData element in dataArray)
             {
-                collectionModelBindingData.ModelBindingData.Add(element.ToModelBindingData().ModelBindingData);
+                if (element != null)
+                {
+                    collectionModelBindingData.ModelBindingData.Add(element.ToModelBindingData().ModelBindingData);
+                }
             }
 
             TypedData typedData = new TypedData()

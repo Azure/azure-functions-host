@@ -720,9 +720,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             var binaryData = new BinaryData("hello world");
             var parameterBindingData = new ParameterBindingData("1.0", "CosmosDB", binaryData, "application/json");
-            var parameterBindingDataArray = new ParameterBindingData[] { parameterBindingData };
+            var parameterBindingDataArray = new ParameterBindingData[] { parameterBindingData, parameterBindingData };
 
-            TypedData returned_typedata = parameterBindingDataArray.ToModelBindingDataArray();
+            TypedData returned_typedData = parameterBindingDataArray.ToModelBindingDataArray();
 
             var modelBindingData = new ModelBindingData
             {
@@ -734,11 +734,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             var collectionModelBindingData = new CollectionModelBindingData();
             collectionModelBindingData.ModelBindingData.Add(modelBindingData);
+            collectionModelBindingData.ModelBindingData.Add(modelBindingData);
 
             TypedData typedData = new TypedData();
             typedData.CollectionModelBindingData = collectionModelBindingData;
 
-            Assert.Equal(typedData.ModelBindingData, returned_typedata.ModelBindingData);
+            Assert.Equal(returned_typedData.CollectionModelBindingData.ModelBindingData.Count, 2);
+            Assert.Equal(typedData.CollectionModelBindingData.ModelBindingData.First(), returned_typedData.CollectionModelBindingData.ModelBindingData.First());
+        }
+
+        [Fact]
+        public void ToModelBindingData_EmptyAndNullArray_Creates_Valid_BindingData()
+        {
+            var parameterBindingDataEmptyArray = new ParameterBindingData[] { };
+            var parameterBindingDataNullArray = new ParameterBindingData[] { null };
+
+            TypedData returned_emptyTypedData = parameterBindingDataEmptyArray.ToModelBindingDataArray();
+            TypedData returned_nullTypedData = parameterBindingDataNullArray.ToModelBindingDataArray();
+
+            var collectionModelBindingData = new CollectionModelBindingData();
+
+            TypedData typedData = new TypedData();
+            typedData.CollectionModelBindingData = collectionModelBindingData;
+
+            Assert.Equal(returned_emptyTypedData.CollectionModelBindingData.ModelBindingData.Count, 0);
+            Assert.Equal(returned_nullTypedData.CollectionModelBindingData.ModelBindingData.Count, 0);
         }
     }
 }
