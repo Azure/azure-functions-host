@@ -87,7 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         internal static TypedData ToModelBindingDataArray(this ParameterBindingData[] dataArray)
         {
-            CollectionModelBindingData collectionModelBindingData = new ();
+            var collectionModelBindingData = new CollectionModelBindingData();
 
             foreach (ParameterBindingData element in dataArray)
             {
