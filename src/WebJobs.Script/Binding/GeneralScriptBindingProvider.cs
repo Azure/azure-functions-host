@@ -72,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             {
                 // arrays are supported for both trigger input as well
                 // as output bindings
-                type = context.SupportsDeferredBinding ? typeof(IEnumerable<ParameterBindingData>) : type.MakeArrayType();
+                type = type.MakeArrayType();
             }
 
             return type;
