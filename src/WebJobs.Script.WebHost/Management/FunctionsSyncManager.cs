@@ -732,6 +732,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 if (_environment.IsManagedEnvironment())
                 {
                     request.Headers.Add(ScriptConstants.KubernetesManagedAppName, _environment.GetEnvironmentVariable("CONTAINER_APP_NAME"));
+                    request.Headers.Add(ScriptConstants.KubernetesManagedAppNamespace, _environment.GetEnvironmentVariable("CONTAINER_APP_NAMESPACE"));
+                    request.Headers.Add("K8SE_APP_REVISION", _environment.GetEnvironmentVariable("CONTAINER_APP_REVISION"));
                 }
 
                 if (_environment.IsKubernetesManagedHosting())
