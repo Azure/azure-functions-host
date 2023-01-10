@@ -739,7 +739,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             TypedData typedData = new TypedData();
             typedData.CollectionModelBindingData = collectionModelBindingData;
 
-            Assert.Equal(returned_typedData.CollectionModelBindingData.ModelBindingData.Count, 2);
+            Assert.Equal(2, returned_typedData.CollectionModelBindingData.ModelBindingData.Count);
             Assert.Equal(typedData.CollectionModelBindingData.ModelBindingData.First(), returned_typedData.CollectionModelBindingData.ModelBindingData.First());
         }
 
@@ -757,8 +757,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             TypedData typedData = new TypedData();
             typedData.CollectionModelBindingData = collectionModelBindingData;
 
-            Assert.Equal(returned_emptyTypedData.CollectionModelBindingData.ModelBindingData.Count, 0);
-            Assert.Equal(returned_nullTypedData.CollectionModelBindingData.ModelBindingData.Count, 0);
+            Assert.Equal(0, returned_emptyTypedData.CollectionModelBindingData.ModelBindingData.Count);
+            Assert.Equal(0, returned_nullTypedData.CollectionModelBindingData.ModelBindingData.Count);
         }
     }
 }
