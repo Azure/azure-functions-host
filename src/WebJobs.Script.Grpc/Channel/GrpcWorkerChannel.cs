@@ -730,6 +730,26 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 }
 
                 var invocationRequest = await context.ToRpcInvocationRequest(_workerChannelLogger, _workerCapabilities, _isSharedMemoryDataTransferEnabled, _sharedMemoryManager);
+
+                // hard code this for prototyping - automatically forward http requests for http trigger functions
+                if (context.FunctionMetadata.Trigger.Type.Contains("httpTrigger"))
+                {
+                    var handler = new SocketsHttpHandler();
+                    var invoker = new HttpMessageInvoker(handler);
+                    var options = new ForwarderRequestConfig();
+                    HttpRequest httpRequest = context.Inputs.FirstOrDefault(i => i.Val is HttpRequest).Val as HttpRequest;
+                    HttpContext httpContext = httpRequest.HttpContext;
+
+                    // add function id to headers as a correlation id
+                    // httpRequest.Headers.Add("function-id", context.FunctionMetadata.GetFunctionId());
+
+                    // so http request comes in as an asp.net type (3rd input).
+                    await _httpForwarder.SendAsync(httpContext, "http://localhost:5555/", invoker, options, static (context, request) =>
+                    {
+                        return ValueTask.CompletedTask;
+                    });
+                }
+
                 AddAdditionalTraceContext(invocationRequest.TraceContext.Attributes, context);
                 _executingInvocations.TryAdd(invocationRequest.InvocationId, context);
 
@@ -743,38 +763,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 if (_cancelCapabilityEnabled != null && _cancelCapabilityEnabled.Value)
                 {
                     context.CancellationToken.Register(() => SendInvocationCancel(invocationRequest.InvocationId));
-                }
-
-                if (context.FunctionMetadata.Trigger.Type.Contains("httpTrigger"))
-                {
-                    var handler = new SocketsHttpHandler();
-                    var invoker = new HttpMessageInvoker(handler);
-                    var options = new ForwarderRequestConfig();
-                    HttpRequest httpRequest = context.Inputs.FirstOrDefault(i => i.val is HttpRequest).val as HttpRequest;
-                    HttpContext httpContext = httpRequest.HttpContext;
-                    // so http request comes in as an asp.net type (3rd input).
-                    await _httpForwarder.SendAsync(httpContext, "http://localhost:5555/", invoker, options, static (context, request) =>
-                    {
-                        return ValueTask.CompletedTask;
-                    });
-                }
-                else
-                {
-                    var invocationRequest = await context.ToRpcInvocationRequest(_workerChannelLogger, _workerCapabilities, _isSharedMemoryDataTransferEnabled, _sharedMemoryManager);
-                    AddAdditionalTraceContext(invocationRequest.TraceContext.Attributes, context);
-                    _executingInvocations.TryAdd(invocationRequest.InvocationId, context);
-
-                    if (_cancelCapabilityEnabled)
-                    {
-                        context.CancellationToken.Register(() => SendInvocationCancel(invocationRequest.InvocationId));
-                    }
-
-                    _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvoked, Id), functionName: context.FunctionMetadata.Name);
-
-                    await SendStreamingMessageAsync(new StreamingMessage
-                    {
-                        InvocationRequest = invocationRequest
-                    });
                 }
             }
             catch (Exception invokeEx)
