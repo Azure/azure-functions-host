@@ -4,6 +4,7 @@
 using System;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
@@ -17,8 +18,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         public LinuxAppServiceEventGenerator(
             LinuxAppServiceFileLoggerFactory loggerFactory,
             HostNameProvider hostNameProvider,
-            Action<string> writeEvent = null,
-            IOptions<FunctionsHostingConfigOptions> _functionsHostingConfigOptions)
+            IOptions<FunctionsHostingConfigOptions> functionsHostingConfigOptions,
+            Action<string> writeEvent = null)
         {
             _writeEvent = writeEvent ?? WriteEvent;
             _loggerFactory = loggerFactory;
@@ -75,7 +76,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         {
             bool logBackoffEnabled = !_functionsHostingConfigOptions.Value?.DisableLinuxLogBackoff ?? true;
             var logger = _loggerFactory.GetOrCreate(FunctionsExecutionEventsCategory, logBackoffEnabled);
-            
             string currentUtcTime = DateTime.UtcNow.ToString();
             bool detailedExecutionEventsDisabled = _functionsHostingConfigOptions.Value?.DisableLinuxAppServiceExecutionDetails ?? false;
             if (!detailedExecutionEventsDisabled)
