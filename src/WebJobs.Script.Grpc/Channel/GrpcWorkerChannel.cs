@@ -674,7 +674,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
                 foreach ((string, DataType, object) element in context.Inputs)
                 {
-                    if (element.Item3.GetType() == typeof(ParameterBindingData))
+                    if (element.Item3.GetType() == typeof(ParameterBindingData) || element.Item3.GetType() == typeof(ParameterBindingData[]))
                     {
                         _workerChannelLogger.LogInformation($"Binding to ParameterBindingData:{element}");
                         _metricsLogger.LogEvent(string.Format(MetricEventNames.BindToParameterBindingData, context.FunctionMetadata.Name, element.Item1));
