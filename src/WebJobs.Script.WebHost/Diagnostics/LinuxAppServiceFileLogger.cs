@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private Task _outputTask;
         private int _currentFlushFrequencySeconds;
 
-        public LinuxAppServiceFileLogger(string logFileName, string logFileDirectory, IFileSystem fileSystem, bool startOnCreate = true, bool logBackoffEnabled = false)
+        public LinuxAppServiceFileLogger(string logFileName, string logFileDirectory, IFileSystem fileSystem, bool logBackoffEnabled, bool startOnCreate = true)
         {
             _logFileName = logFileName;
             _logFileDirectory = logFileDirectory;
@@ -92,7 +92,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 await Task.Delay(TimeSpan.FromSeconds(_currentFlushFrequencySeconds), _cancellationTokenSource.Token).ContinueWith(task => { });
                 if (_currentFlushFrequencySeconds < MaxFlushFrequencySeconds)
                 {
-                    _currentFlushFrequencySeconds = Min(MaxFlushFrequencySeconds, _currentFlushFrequencySeconds * 2);
+                    _currentFlushFrequencySeconds = Math.Min(MaxFlushFrequencySeconds, _currentFlushFrequencySeconds * 2);
                 }
             }
             // ReSharper disable once FunctionNeverReturns
