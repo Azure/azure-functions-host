@@ -65,11 +65,15 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             var bindings = inputBindings.Union(outputBindings);
 
-            // If an input or output binding uses expressions, we do not want to use ParameterBindingData for the trigger bindings
             if (triggerMetadata.SupportsDeferredBinding())
             {
-                bool skipDeferredBinding = BindingAttributeContainsExpression(bindings);
-                if (skipDeferredBinding)
+                // If an input or output binding uses expressions, we do not want to use ParameterBindingData for the trigger bindings
+                bool containsExpression = BindingAttributeContainsExpression(bindings);
+
+                // If the trigger is a CosmosDBTrigger, we do not want to use ParameterBindingData as it is not supported
+                bool isCosmosTrigger = IsCosmosDBTrigger(triggerMetadata);
+
+                if (containsExpression || isCosmosTrigger)
                 {
                     triggerMetadata.Properties.Add(ScriptConstants.SkipDeferredBindingKey, true);
                 }
@@ -134,6 +138,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
 
             return false;
+        }
+
+        internal bool IsCosmosDBTrigger(BindingMetadata triggerMetadata)
+        {
+            return triggerMetadata.Type == "cosmosDBTrigger" ? true : false;
         }
     }
 }
