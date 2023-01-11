@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         public virtual LinuxAppServiceFileLogger GetOrCreate(string category, bool logBackoffEnabled = false)
         {
             return Loggers.GetOrAdd(category,
-                static (c, path) => new Lazy<LinuxAppServiceFileLogger>(() => new LinuxAppServiceFileLogger(c, path, new FileSystem())), _logRootPath, logBackoffEnabled:linuxFastLogEnabled ).Value;
+                static (c, path) => new Lazy<LinuxAppServiceFileLogger>(() => new LinuxAppServiceFileLogger(c, path, new FileSystem())), _logRootPath, logBackoffEnabled:logBackoffEnabled).Value;
         }
     }
 }
