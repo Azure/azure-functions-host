@@ -12,14 +12,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly Action<string> _writeEvent;
         private readonly LinuxAppServiceFileLoggerFactory _loggerFactory;
         private readonly HostNameProvider _hostNameProvider;
-        private readonly IFunctionsHostingConfiguration _functionsHostingConfiguration;
+        private readonly IOptions<FunctionsHostingConfigOptions> _functionsHostingConfigOptions;
 
-        public LinuxAppServiceEventGenerator(LinuxAppServiceFileLoggerFactory loggerFactory, HostNameProvider hostNameProvider, Action<string> writeEvent = null, IFunctionsHostingConfiguration functionsHostingConfiguration)
+        public LinuxAppServiceEventGenerator(
+            LinuxAppServiceFileLoggerFactory loggerFactory,
+            HostNameProvider hostNameProvider,
+            Action<string> writeEvent = null,
+            IOptions<FunctionsHostingConfigOptions> _functionsHostingConfigOptions)
         {
             _writeEvent = writeEvent ?? WriteEvent;
             _loggerFactory = loggerFactory;
             _hostNameProvider = hostNameProvider ?? throw new ArgumentNullException(nameof(hostNameProvider));
-            _functionsHostingConfiguration = functionsHostingConfiguration;
+            _functionsHostingConfigOptions = functionsHostingConfigOptions;
         }
 
         public static string TraceEventRegex { get; } = "(?<Level>[0-6]),(?<SubscriptionId>[^,]*),(?<HostName>[^,]*),(?<AppName>[^,]*),(?<FunctionName>[^,]*),(?<EventName>[^,]*),(?<Source>[^,]*),\"(?<Details>.*)\",\"(?<Summary>.*)\",(?<HostVersion>[^,]*),(?<EventTimestamp>[^,]+),(?<ExceptionType>[^,]*),\"(?<ExceptionMessage>.*)\",(?<FunctionInvocationId>[^,]*),(?<HostInstanceId>[^,]*),(?<ActivityId>[^,\"]*)";
@@ -69,11 +73,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         public override void LogFunctionExecutionEvent(string executionId, string siteName, int concurrency, string functionName,
             string invocationId, string executionStage, long executionTimeSpan, bool success)
         {
-            bool logBackoffEnabled = !string.IsNullOrEmpty(_functionsHostingConfiguration.GetValue(ScriptConstants.HostingConfigEnableLinuxAppServiceExecutionEventLogBackoff));
+            bool logBackoffEnabled = !_functionsHostingConfigOptions.Value?.DisableLinuxLogBackoff ?? true;
             var logger = _loggerFactory.GetOrCreate(FunctionsExecutionEventsCategory, logBackoffEnabled);
+            
             string currentUtcTime = DateTime.UtcNow.ToString();
-            bool executionCountMetricEnabled = !string.IsNullOrEmpty(_functionsHostingConfiguration.GetValue(ScriptConstants.HostingConfigEnableLinuxAppServiceDetailedExecutionEvents));
-            if (executionCountMetricEnabled)
+            bool detailedExecutionEventsDisabled = _functionsHostingConfigOptions.Value?.DisableLinuxAppServiceExecutionDetails ?? false;
+            if (!detailedExecutionEventsDisabled)
             {
                 string log = string.Join(",", executionId, siteName, concurrency.ToString(), functionName, invocationId, executionStage, executionTimeSpan.ToString(), success.ToString(), currentUtcTime);
                 WriteEvent(logger, log);
