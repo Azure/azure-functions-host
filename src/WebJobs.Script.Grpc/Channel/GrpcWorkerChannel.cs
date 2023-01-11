@@ -672,6 +672,15 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     return;
                 }
 
+                foreach ((string, DataType, object) element in context.Inputs)
+                {
+                    if (element.Item3.GetType() == typeof(ParameterBindingData))
+                    {
+                        _workerChannelLogger.LogInformation($"Binding to ParameterBindingData:{element}");
+                        _metricsLogger.LogEvent(string.Format(MetricEventNames.BindToParameterBindingData, context.FunctionMetadata.Name, element.Item1));
+                    }
+                }
+
                 var invocationRequest = await context.ToRpcInvocationRequest(_workerChannelLogger, _workerCapabilities, _isSharedMemoryDataTransferEnabled, _sharedMemoryManager);
                 AddAdditionalTraceContext(invocationRequest.TraceContext.Attributes, context);
                 _executingInvocations.TryAdd(invocationRequest.InvocationId, context);
