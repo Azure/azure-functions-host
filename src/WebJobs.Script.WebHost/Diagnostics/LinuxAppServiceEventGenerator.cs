@@ -74,10 +74,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         public override void LogFunctionExecutionEvent(string executionId, string siteName, int concurrency, string functionName,
             string invocationId, string executionStage, long executionTimeSpan, bool success)
         {
-            bool logBackoffEnabled = !_functionsHostingConfigOptions.Value?.DisableLinuxLogBackoff ?? true;
+            bool logBackoffEnabled = !_functionsHostingConfigOptions.Value.DisableLinuxLogBackoff;
             var logger = _loggerFactory.GetOrCreate(FunctionsExecutionEventsCategory, logBackoffEnabled);
             string currentUtcTime = DateTime.UtcNow.ToString();
-            bool detailedExecutionEventsDisabled = _functionsHostingConfigOptions.Value?.DisableLinuxAppServiceExecutionDetails ?? false;
+            bool detailedExecutionEventsDisabled = _functionsHostingConfigOptions.Value.DisableLinuxAppServiceExecutionDetails;
             if (!detailedExecutionEventsDisabled)
             {
                 string log = string.Join(",", executionId, siteName, concurrency.ToString(), functionName, invocationId, executionStage, executionTimeSpan.ToString(), success.ToString(), currentUtcTime);

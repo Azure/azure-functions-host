@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private Task _outputTask;
         private int _currentFlushFrequencySeconds;
 
-        public LinuxAppServiceFileLogger(string logFileName, string logFileDirectory, IFileSystem fileSystem, bool logBackoffEnabled, bool startOnCreate = true)
+        public LinuxAppServiceFileLogger(string logFileName, string logFileDirectory, IFileSystem fileSystem, bool logBackoffEnabled = false, bool startOnCreate = true)
         {
             _logFileName = logFileName;
             _logFileDirectory = logFileDirectory;
@@ -48,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         public int MaxFileSizeMb { get; set; } = 10;
 
         // Maximum time between successive flushes (seconds)
-        public int MaxFlushFrequencySeconds { get; set; } = 30;
+        private int MaxFlushFrequencySeconds { get; } = 30;
 
         public virtual void Log(string message)
         {
