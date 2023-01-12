@@ -361,26 +361,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
-        public async Task SendInvocationRequest_ParameterBindingData()
-        {
-            await CreateDefaultWorkerChannel();
-            _metricsLogger.ClearCollections();
-            ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(Guid.NewGuid(), null);
-            scriptInvocationContext.Inputs = new List<(string Name, DataType Type, object Val)>()
-            {
-                ("test1", DataType.String, new ParameterBindingData("1.0", "string", new BinaryData("hello"), "data")),
-                ("test2", DataType.String, new ParameterBindingData[] { new ParameterBindingData("1.0", "string", new BinaryData("hello"), "data") })
-            };
-
-            await _workerChannel.SendInvocationRequest(scriptInvocationContext);
-            await Task.Delay(500);
-            var traces = _logger.GetLogMessages();
-            string expectedLogMsg = "binding to ParameterBindingData";
-            Assert.True(traces.Any(m => m.FormattedMessage.Contains(expectedLogMsg)));
-            Assert.Equal(2, _metricsLogger.LoggedEvents.Count(e => e.Contains(string.Format(MetricEventNames.BindToParameterBindingData, scriptInvocationContext.FunctionMetadata.Name))));
-        }
-
-        [Fact]
         public async Task SendInvocationRequest_IsInExecutingInvocation()
         {
             await CreateDefaultWorkerChannel();
@@ -573,6 +553,71 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, _expectedLogMsg));
             AreExpectedMetricsGenerated();
             Assert.Equal(3, functionLoadLogs.Count()); // one WorkInitRequest, two FunctionLoadRequest
+        }
+
+        [Fact]
+        public async Task SendLoadRequests_SkipParameterBindingData()
+        {
+            await CreateDefaultWorkerChannel();
+            _metricsLogger.ClearCollections();
+
+            var binding = new BindingMetadata()
+            {
+                Name = "abc",
+                Type = "BlobTrigger"
+            };
+
+            binding.Properties.Add(ScriptConstants.SkipDeferredBindingKey, true);
+            binding.Properties.Add(ScriptConstants.SupportsDeferredBindingKey, true);
+
+            var function = new FunctionMetadata()
+            {
+                Language = "node",
+                Name = "js1"
+            };
+
+            function.Bindings.Add(binding);
+
+            _workerChannel.SetupFunctionInvocationBuffers(new List<FunctionMetadata>() { function });
+            _workerChannel.SendFunctionLoadRequests(null, TimeSpan.FromMinutes(5));
+            await Task.Delay(500);
+            var traces = _logger.GetLogMessages();
+            string expectedLog = $"Function '{function.Name}' skipping binding to ParameterBindingData for binding name '{binding.Name}' and type '{binding.Type}' as '{ScriptConstants.SkipDeferredBindingKey}' set to 'True'";
+            var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, expectedLog));
+            AreExpectedMetricsGenerated();
+            Assert.Equal(0, _metricsLogger.LoggedEvents.Count(e => e.Contains(string.Format(MetricEventNames.BindToParameterBindingData, function.Name))));
+        }
+
+        [Fact]
+        public async Task SendLoadRequests_SupportParameterBindingData()
+        {
+            await CreateDefaultWorkerChannel();
+            _metricsLogger.ClearCollections();
+
+            var binding = new BindingMetadata()
+            {
+                Name = "abc",
+                Type = "BlobTrigger"
+            };
+
+            binding.Properties.Add(ScriptConstants.SupportsDeferredBindingKey, true);
+
+            var function = new FunctionMetadata()
+            {
+                Language = "node",
+                Name = "js1"
+            };
+
+            function.Bindings.Add(binding);
+
+            _workerChannel.SetupFunctionInvocationBuffers(new List<FunctionMetadata>() { function });
+            _workerChannel.SendFunctionLoadRequests(null, TimeSpan.FromMinutes(5));
+            await Task.Delay(500);
+            var traces = _logger.GetLogMessages();
+            string expectedLog = $"Function '{function.Name}' binding to ParameterBindingData for binding name '{binding.Name}' and type '{binding.Type}' as '{ScriptConstants.SupportsDeferredBindingKey}' set to 'True'";
+            var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, expectedLog));
+            AreExpectedMetricsGenerated();
+            Assert.Equal(1, _metricsLogger.LoggedEvents.Count(e => e.Contains(string.Format(MetricEventNames.BindToParameterBindingData, function.Name))));
         }
 
         [Fact]

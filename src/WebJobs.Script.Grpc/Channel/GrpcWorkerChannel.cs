@@ -14,6 +14,7 @@ using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
+using System.Xml.Linq;
 using Google.Protobuf.Collections;
 using Google.Protobuf.WellKnownTypes;
 using Microsoft.Azure.WebJobs.Logging;
@@ -590,6 +591,23 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 BindingInfo bindingInfo = binding.ToBindingInfo();
 
                 request.Metadata.Bindings.Add(binding.Name, bindingInfo);
+
+                binding.Properties.TryGetValue(ScriptConstants.SupportsDeferredBindingKey, out bool supportsDeferredBindingFlag);
+
+                if (supportsDeferredBindingFlag)
+                {
+                    binding.Properties.TryGetValue(ScriptConstants.SkipDeferredBindingKey, out bool skipDeferredBindingFlag);
+
+                    if (skipDeferredBindingFlag)
+                    {
+                        _workerChannelLogger.LogInformation("Function '{functionName}' skipping binding to ParameterBindingData for binding name '{name}' and type '{type}' as '{SkipDeferredBinding}' set to '{value}'", metadata.Name, binding.Name, binding.Type, ScriptConstants.SkipDeferredBindingKey, skipDeferredBindingFlag);
+                    }
+                    else
+                    {
+                        _workerChannelLogger.LogInformation("Function '{functionName}' binding to ParameterBindingData for binding name '{name}' and type '{type}' as '{supportsDeferredBinding}' set to '{value}'", metadata.Name, binding.Name, binding.Type, ScriptConstants.SupportsDeferredBindingKey, supportsDeferredBindingFlag);
+                        _metricsLogger.LogEvent(string.Format(MetricEventNames.BindToParameterBindingData, metadata.Name));
+                    }
+                }
             }
 
             foreach (var property in metadata.Properties)
@@ -670,15 +688,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     _workerChannelLogger.LogWarning("Cancellation has been requested. The invocation request with id '{invocationId}' is cancelled and will not be sent to the worker.", invocationId);
                     context.ResultSource.TrySetCanceled();
                     return;
-                }
-
-                foreach ((string, DataType, object) element in context.Inputs)
-                {
-                    if (element.Item3.GetType() == typeof(ParameterBindingData) || element.Item3.GetType() == typeof(ParameterBindingData[]))
-                    {
-                        _workerChannelLogger.LogInformation("Function '{functionName}' binding to ParameterBindingData for parameter '{name}', datatype '{datatype}' and binding '{binding}'", context.FunctionMetadata.Name, element.Item1, element.Item2, element.Item3);
-                        _metricsLogger.LogEvent(string.Format(MetricEventNames.BindToParameterBindingData, context.FunctionMetadata.Name));
-                    }
                 }
 
                 var invocationRequest = await context.ToRpcInvocationRequest(_workerChannelLogger, _workerCapabilities, _isSharedMemoryDataTransferEnabled, _sharedMemoryManager);
