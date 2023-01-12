@@ -361,6 +361,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
+        public async Task SendInvocationRequest_ParameterBindingData()
+        {
+            await CreateDefaultWorkerChannel();
+            _metricsLogger.ClearCollections();
+            ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(Guid.NewGuid(), null);
+            scriptInvocationContext.Inputs = new List<(string Name, DataType Type, object Val)>()
+            {
+                ("test1", DataType.String, new ParameterBindingData("1.0", "string", new BinaryData("hello"), "data")),
+                ("test2", DataType.String, new ParameterBindingData[] { new ParameterBindingData("1.0", "string", new BinaryData("hello"), "data") })
+            };
+
+            await _workerChannel.SendInvocationRequest(scriptInvocationContext);
+            await Task.Delay(500);
+            var traces = _logger.GetLogMessages();
+            string expectedLogMsg = "binding to ParameterBindingData";
+            Assert.True(traces.Any(m => m.FormattedMessage.Contains(expectedLogMsg)));
+            Assert.Equal(2, _metricsLogger.LoggedEvents.Count(e => e.Contains(string.Format(MetricEventNames.BindToParameterBindingData, scriptInvocationContext.FunctionMetadata.Name))));
+        }
+
+        [Fact]
         public async Task SendInvocationRequest_IsInExecutingInvocation()
         {
             await CreateDefaultWorkerChannel();
