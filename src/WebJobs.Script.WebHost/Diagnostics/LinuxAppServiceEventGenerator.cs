@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Runtime.CompilerServices;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -14,6 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly LinuxAppServiceFileLoggerFactory _loggerFactory;
         private readonly HostNameProvider _hostNameProvider;
         private readonly IOptions<FunctionsHostingConfigOptions> _functionsHostingConfigOptions;
+        private readonly bool _logBackoffEnabled;
 
         public LinuxAppServiceEventGenerator(
             LinuxAppServiceFileLoggerFactory loggerFactory,
@@ -25,6 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _loggerFactory = loggerFactory;
             _hostNameProvider = hostNameProvider ?? throw new ArgumentNullException(nameof(hostNameProvider));
             _functionsHostingConfigOptions = functionsHostingConfigOptions;
+            _logBackoffEnabled = !functionsHostingConfigOptions.Value.DisableLinuxAppServiceLogBackoff;
         }
 
         public static string TraceEventRegex { get; } = "(?<Level>[0-6]),(?<SubscriptionId>[^,]*),(?<HostName>[^,]*),(?<AppName>[^,]*),(?<FunctionName>[^,]*),(?<EventName>[^,]*),(?<Source>[^,]*),\"(?<Details>.*)\",\"(?<Summary>.*)\",(?<HostVersion>[^,]*),(?<EventTimestamp>[^,]+),(?<ExceptionType>[^,]*),\"(?<ExceptionMessage>.*)\",(?<FunctionInvocationId>[^,]*),(?<HostInstanceId>[^,]*),(?<ActivityId>[^,\"]*)";
@@ -74,9 +77,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         public override void LogFunctionExecutionEvent(string executionId, string siteName, int concurrency, string functionName,
             string invocationId, string executionStage, long executionTimeSpan, bool success)
         {
-            bool logBackoffEnabled = !_functionsHostingConfigOptions.Value.DisableLinuxAppServiceLogBackoff;
             LinuxAppServiceFileLogger logger;
-            if (logBackoffEnabled)
+            if (_logBackoffEnabled)
             {
                logger = _loggerFactory.GetOrCreateBackoff(FunctionsExecutionEventsCategory);
             }
