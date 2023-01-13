@@ -570,19 +570,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             binding.Properties.Add(ScriptConstants.SkipDeferredBindingKey, true);
             binding.Properties.Add(ScriptConstants.SupportsDeferredBindingKey, true);
 
-            var function = new FunctionMetadata()
+            IEnumerable<FunctionMetadata> functionMetadata = GetTestFunctionsList("node");
+            foreach (var function in functionMetadata)
             {
-                Language = "node",
-                Name = "js1"
-            };
+                function.Bindings.Add(binding);
+            }
 
-            function.Bindings.Add(binding);
-
-            _workerChannel.SetupFunctionInvocationBuffers(new List<FunctionMetadata>() { function });
+            _workerChannel.SetupFunctionInvocationBuffers(functionMetadata);
             _workerChannel.SendFunctionLoadRequests(null, TimeSpan.FromMinutes(5));
             await Task.Delay(500);
             AreExpectedMetricsGenerated();
-            Assert.Equal(0, _metricsLogger.LoggedEvents.Count(e => e.Contains(string.Format(MetricEventNames.BindToParameterBindingData, function.Name))));
+            Assert.Equal(0, _metricsLogger.LoggedEvents.Count(e => e.Contains(string.Format(MetricEventNames.BindToParameterBindingData, "js1"))));
         }
 
         [Fact]
@@ -599,19 +597,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             binding.Properties.Add(ScriptConstants.SupportsDeferredBindingKey, true);
 
-            var function = new FunctionMetadata()
+            IEnumerable<FunctionMetadata> functionMetadata = GetTestFunctionsList("node");
+            foreach (var function in functionMetadata)
             {
-                Language = "node",
-                Name = "js1"
-            };
+                function.Bindings.Add(binding);
+            }
 
-            function.Bindings.Add(binding);
-
-            _workerChannel.SetupFunctionInvocationBuffers(new List<FunctionMetadata>() { function });
+            _workerChannel.SetupFunctionInvocationBuffers(functionMetadata);
             _workerChannel.SendFunctionLoadRequests(null, TimeSpan.FromMinutes(5));
             await Task.Delay(500);
             AreExpectedMetricsGenerated();
-            Assert.Equal(1, _metricsLogger.LoggedEvents.Count(e => e.Contains(string.Format(MetricEventNames.BindToParameterBindingData, function.Name))));
+            Assert.Equal(1, _metricsLogger.LoggedEvents.Count(e => e.Contains(string.Format(MetricEventNames.BindToParameterBindingData, "js1"))));
+            Assert.Equal(1, _metricsLogger.LoggedEvents.Count(e => e.Contains(string.Format(MetricEventNames.BindToParameterBindingData, "js2"))));
         }
 
         [Fact]
