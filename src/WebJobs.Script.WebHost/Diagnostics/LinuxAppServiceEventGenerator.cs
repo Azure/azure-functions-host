@@ -75,7 +75,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             string invocationId, string executionStage, long executionTimeSpan, bool success)
         {
             bool logBackoffEnabled = !_functionsHostingConfigOptions.Value.DisableLinuxAppServiceLogBackoff;
-            var logger = _loggerFactory.GetOrCreate(FunctionsExecutionEventsCategory, logBackoffEnabled);
+            LinuxAppServiceFileLogger logger;
+            if (logBackoffEnabled)
+            {
+               logger = _loggerFactory.GetOrCreateBackoff(FunctionsExecutionEventsCategory);
+            }
+            else
+            {
+                logger = _loggerFactory.GetOrCreate(FunctionsExecutionEventsCategory);
+            }
             string currentUtcTime = DateTime.UtcNow.ToString();
             bool detailedExecutionEventsDisabled = _functionsHostingConfigOptions.Value.DisableLinuxAppServiceExecutionDetails;
             if (!detailedExecutionEventsDisabled)

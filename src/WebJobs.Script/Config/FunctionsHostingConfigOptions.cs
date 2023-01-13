@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         }
 
         /// <summary>
-        /// Gets a value indicating whether Linux Appservice/EP Detailed Execution Event is disabled in the hosting config.
+        /// Gets or sets a value indicating whether Linux Appservice/EP Detailed Execution Event is disabled in the hosting config.
         /// </summary>
         public bool DisableLinuxAppServiceExecutionDetails
         {
@@ -51,9 +51,10 @@ namespace Microsoft.Azure.WebJobs.Script.Config
             {
                 return GetFeature(ScriptConstants.HostingConfigDisableLinuxAppServiceDetailedExecutionEvents) == "1";
             }
-            set 
+
+            set
             {
-                _features[ScriptConstants.HostingConfigDisableLinuxAppServiceDetailedExecutionEvents] = value ? "1" : "0";
+               _features[ScriptConstants.HostingConfigDisableLinuxAppServiceDetailedExecutionEvents] = value ? "1" : "0";
             }
         }
 

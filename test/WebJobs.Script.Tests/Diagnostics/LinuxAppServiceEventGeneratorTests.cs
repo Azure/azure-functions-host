@@ -47,7 +47,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             };
 
             var loggerFactoryMock = new Mock<LinuxAppServiceFileLoggerFactory>(MockBehavior.Strict);
-            loggerFactoryMock.Setup(f => f.GetOrCreate(It.IsAny<string>(), It.IsAny<bool>)).Returns<string>(s => _loggers[s]);
+            loggerFactoryMock.Setup(f => f.GetOrCreate(It.IsAny<string>())).Returns<string>(s => _loggers[s]);
+            loggerFactoryMock.Setup(f => f.GetOrCreateBackoff(It.IsAny<string>())).Returns<string>(s => _loggers[s]);
 
             _functionsHostingConfigOptions = Options.Create(new FunctionsHostingConfigOptions());
 
@@ -56,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
                 .Returns<string>(s => _hostNameDefault);
 
             var hostNameProvider = new HostNameProvider(environmentMock.Object);
-            _generator = new LinuxAppServiceEventGenerator(loggerFactoryMock.Object, hostNameProvider, _functionHostingConfigOptions, writer);
+            _generator = new LinuxAppServiceEventGenerator(loggerFactoryMock.Object, hostNameProvider, _functionsHostingConfigOptions, writer);
         }
 
         public static string UnNormalize(string normalized)

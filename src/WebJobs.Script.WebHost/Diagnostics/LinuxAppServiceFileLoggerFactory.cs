@@ -17,17 +17,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _logRootPath = Environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsLogsMountPath);
         }
 
-        public virtual LinuxAppServiceFileLogger GetOrCreate(string category, bool logBackoffEnabled = false)
+        public virtual LinuxAppServiceFileLogger GetOrCreate(string category)
         {
-            if (logBackoffEnabled)
-            {
-                // If logbackoff is enabled, we want to create a new logger instance
-                // so that we can backoff flush frequency and emit the first log faster. This benefits EP scaling
-                return Loggers.GetOrAdd(category,
-                static (c, path) => new Lazy<LinuxAppServiceFileLogger>(() => new LinuxAppServiceFileLogger(c, path, new FileSystem(), true)), _logRootPath).Value;
-            }
             return Loggers.GetOrAdd(category,
                 static (c, path) => new Lazy<LinuxAppServiceFileLogger>(() => new LinuxAppServiceFileLogger(c, path, new FileSystem(), false)), _logRootPath).Value;
+        }
+
+        public virtual LinuxAppServiceFileLogger GetOrCreateBackoff(string category)
+        {
+            // If logbackoff is enabled, we want to create a new logger instance
+            // so that we can backoff flush frequency and emit the first log faster. This benefits EP scaling
+            return Loggers.GetOrAdd(category,
+            static (c, path) => new Lazy<LinuxAppServiceFileLogger>(() => new LinuxAppServiceFileLogger(c, path, new FileSystem(), true)), _logRootPath).Value;
         }
     }
 }
