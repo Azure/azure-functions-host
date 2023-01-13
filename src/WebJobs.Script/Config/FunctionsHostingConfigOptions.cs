@@ -62,6 +62,10 @@ namespace Microsoft.Azure.WebJobs.Script.Config
             {
                 return GetFeature(ScriptConstants.HostingConfigDisableLinuxAppServiceDetailedExecutionEvents) == "1";
             }
+            set 
+            {
+                _features[ScriptConstants.HostingConfigDisableLinuxAppServiceDetailedExecutionEvents] = value ? "1" : "0";
+            }
         }
 
         /// <summary>
