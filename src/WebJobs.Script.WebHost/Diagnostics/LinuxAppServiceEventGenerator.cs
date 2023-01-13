@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Runtime.CompilerServices;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -78,6 +79,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         public override void LogFunctionExecutionEvent(string executionId, string siteName, int concurrency, string functionName,
             string invocationId, string executionStage, long executionTimeSpan, bool success)
         {
+<<<<<<< HEAD
+=======
+            LinuxAppServiceFileLogger logger;
+            if (_logBackoffEnabled)
+            {
+               logger = _loggerFactory.GetOrCreateBackoff(FunctionsExecutionEventsCategory);
+            }
+            else
+            {
+                logger = _loggerFactory.GetOrCreate(FunctionsExecutionEventsCategory);
+            }
+>>>>>>> af0376201 (Move Logbackoff to constructor)
             string currentUtcTime = DateTime.UtcNow.ToString();
             bool detailedExecutionEventsDisabled = _functionsHostingConfigOptions.Value.DisableLinuxAppServiceExecutionDetails;
             if (!detailedExecutionEventsDisabled)
