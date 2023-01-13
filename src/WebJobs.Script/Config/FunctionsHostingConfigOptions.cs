@@ -34,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         /// <summary>
         /// Gets a value indicating whether Linux Log Backoff is disabled in the hosting config.
         /// </summary>
-        public bool DisableLinuxLogBackoff
+        public bool DisableLinuxAppServiceLogBackoff
         {
             get
             {
