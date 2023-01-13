@@ -580,7 +580,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _workerChannel.SendFunctionLoadRequests(null, TimeSpan.FromMinutes(5));
             await Task.Delay(500);
             AreExpectedMetricsGenerated();
-            Assert.Equal(0, _metricsLogger.LoggedEvents.Count(e => e.Contains(string.Format(MetricEventNames.BindToParameterBindingData, "js1"))));
+            Assert.Equal(0, _metricsLogger.LoggedEvents.Count(e => e.Contains(MetricEventNames.FunctionBindingDeferred)));
         }
 
         [Fact]
@@ -607,8 +607,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _workerChannel.SendFunctionLoadRequests(null, TimeSpan.FromMinutes(5));
             await Task.Delay(500);
             AreExpectedMetricsGenerated();
-            Assert.Equal(1, _metricsLogger.LoggedEvents.Count(e => e.Contains(string.Format(MetricEventNames.BindToParameterBindingData, "js1"))));
-            Assert.Equal(1, _metricsLogger.LoggedEvents.Count(e => e.Contains(string.Format(MetricEventNames.BindToParameterBindingData, "js2"))));
+            Assert.Equal(2, _metricsLogger.LoggedEvents.Count(e => e.Contains(MetricEventNames.FunctionBindingDeferred)));
         }
 
         [Fact]
