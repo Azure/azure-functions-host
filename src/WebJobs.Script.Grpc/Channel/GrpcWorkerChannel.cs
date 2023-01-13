@@ -594,7 +594,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
                 if (binding.SupportsDeferredBinding() && !binding.SkipDeferredBinding())
                 {
-                    _metricsLogger.LogEvent(MetricEventNames.FunctionBindingDeferred);
+                    _metricsLogger.LogEvent(MetricEventNames.FunctionBindingDeferred, functionName: metadata.Name);
                 }
             }
 

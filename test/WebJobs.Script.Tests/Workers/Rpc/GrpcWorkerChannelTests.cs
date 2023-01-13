@@ -608,6 +608,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             await Task.Delay(500);
             AreExpectedMetricsGenerated();
             Assert.Equal(2, _metricsLogger.LoggedEvents.Count(e => e.Contains(MetricEventNames.FunctionBindingDeferred)));
+            Assert.Equal(1, _metricsLogger.LoggedEvents.Count(e => e.Contains($"{MetricEventNames.FunctionBindingDeferred}_js1")));
+            Assert.Equal(1, _metricsLogger.LoggedEvents.Count(e => e.Contains($"{MetricEventNames.FunctionBindingDeferred}_js2")));
         }
 
         [Fact]
