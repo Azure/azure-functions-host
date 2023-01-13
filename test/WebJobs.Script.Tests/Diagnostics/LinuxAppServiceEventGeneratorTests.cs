@@ -5,9 +5,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Tests.Workers;
 using Microsoft.Azure.WebJobs.Script.WebHost;
-using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -186,13 +186,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         public void ParseFunctionExecutionEvents(string executionId, string siteName, int concurrency, string functionName, string invocationId,
             string executionStage, long executionTimeSpan, bool success, bool detailedExecutionEventsDisabled)
         {
-            if(detailedExecutionEventsDisabled)
+            if (detailedExecutionEventsDisabled)
             {
-                _functionsHostingConfigOptions.Value.DisableLinuxAppServiceExecutionDetails = "1";
+                _functionsHostingConfigOptions.Value.DisableLinuxAppServiceExecutionDetails = true;
             }
             else
             {
-                _functionsHostingConfigOptions.Value.DisableLinuxAppServiceExecutionDetails = "0";
+                _functionsHostingConfigOptions.Value.DisableLinuxAppServiceExecutionDetails = false;
             }
             _generator.LogFunctionExecutionEvent(executionId, siteName, concurrency, functionName, invocationId, executionStage, executionTimeSpan, success);
             string evt = _loggers[LinuxEventGenerator.FunctionsExecutionEventsCategory].Events.Single();
