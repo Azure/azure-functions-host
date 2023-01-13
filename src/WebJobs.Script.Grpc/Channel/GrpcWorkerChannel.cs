@@ -22,6 +22,7 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.Grpc.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc.Extensions;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
@@ -592,21 +593,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
                 request.Metadata.Bindings.Add(binding.Name, bindingInfo);
 
-                binding.Properties.TryGetValue(ScriptConstants.SupportsDeferredBindingKey, out bool supportsDeferredBindingFlag);
-
-                if (supportsDeferredBindingFlag)
+                if (binding.SupportsDeferredBinding() && !binding.SkipDeferredBinding())
                 {
-                    binding.Properties.TryGetValue(ScriptConstants.SkipDeferredBindingKey, out bool skipDeferredBindingFlag);
-
-                    if (skipDeferredBindingFlag)
-                    {
-                        _workerChannelLogger.LogInformation("Function '{functionName}' skipping binding to ParameterBindingData for binding name '{name}' and type '{type}' as '{SkipDeferredBinding}' set to '{value}'", metadata.Name, binding.Name, binding.Type, ScriptConstants.SkipDeferredBindingKey, skipDeferredBindingFlag);
-                    }
-                    else
-                    {
-                        _workerChannelLogger.LogInformation("Function '{functionName}' binding to ParameterBindingData for binding name '{name}' and type '{type}' as '{supportsDeferredBinding}' set to '{value}'", metadata.Name, binding.Name, binding.Type, ScriptConstants.SupportsDeferredBindingKey, supportsDeferredBindingFlag);
-                        _metricsLogger.LogEvent(string.Format(MetricEventNames.BindToParameterBindingData, metadata.Name));
-                    }
+                    _metricsLogger.LogEvent(string.Format(MetricEventNames.BindToParameterBindingData, metadata.Name));
                 }
             }
 

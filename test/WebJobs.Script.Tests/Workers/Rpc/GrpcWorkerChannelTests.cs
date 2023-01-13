@@ -581,9 +581,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _workerChannel.SetupFunctionInvocationBuffers(new List<FunctionMetadata>() { function });
             _workerChannel.SendFunctionLoadRequests(null, TimeSpan.FromMinutes(5));
             await Task.Delay(500);
-            var traces = _logger.GetLogMessages();
-            string expectedLog = $"Function '{function.Name}' skipping binding to ParameterBindingData for binding name '{binding.Name}' and type '{binding.Type}' as '{ScriptConstants.SkipDeferredBindingKey}' set to 'True'";
-            var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, expectedLog));
             AreExpectedMetricsGenerated();
             Assert.Equal(0, _metricsLogger.LoggedEvents.Count(e => e.Contains(string.Format(MetricEventNames.BindToParameterBindingData, function.Name))));
         }
@@ -613,9 +610,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _workerChannel.SetupFunctionInvocationBuffers(new List<FunctionMetadata>() { function });
             _workerChannel.SendFunctionLoadRequests(null, TimeSpan.FromMinutes(5));
             await Task.Delay(500);
-            var traces = _logger.GetLogMessages();
-            string expectedLog = $"Function '{function.Name}' binding to ParameterBindingData for binding name '{binding.Name}' and type '{binding.Type}' as '{ScriptConstants.SupportsDeferredBindingKey}' set to 'True'";
-            var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, expectedLog));
             AreExpectedMetricsGenerated();
             Assert.Equal(1, _metricsLogger.LoggedEvents.Count(e => e.Contains(string.Format(MetricEventNames.BindToParameterBindingData, function.Name))));
         }
