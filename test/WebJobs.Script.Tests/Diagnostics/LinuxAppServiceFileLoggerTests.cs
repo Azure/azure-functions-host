@@ -47,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
                 streamWriter.Setup(s => s.WriteLineAsync(It.Is<string>(log => log.Equals(expectedLogs[i1])))).Returns(Task.FromResult(true));
             }
 
-            var fileLogger = new LinuxAppServiceFileLogger(LogFileName, LogDirectoryPath, fileSystem.Object, false);
+            var fileLogger = new LinuxAppServiceFileLogger(LogFileName, LogDirectoryPath, fileSystem.Object, false, false);
 
             foreach (var log in GetLogs())
             {
@@ -76,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         {
             // Expect no methods to be called on ILinuxAppServiceFileSystem
             var fileSystem = new Mock<IFileSystem>(MockBehavior.Strict);
-            var fileLogger = new LinuxAppServiceFileLogger(LogFileName, LogDirectoryPath, fileSystem.Object, false);
+            var fileLogger = new LinuxAppServiceFileLogger(LogFileName, LogDirectoryPath, fileSystem.Object, false, false);
             await fileLogger.InternalProcessLogQueue();
         }
 
@@ -84,7 +84,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         public async void Rolls_Files_If_File_Size_Exceeds_Limit()
         {
             var fileSystem = new Mock<IFileSystem>(MockBehavior.Strict);
-            var fileLogger = new LinuxAppServiceFileLogger(LogFileName, LogDirectoryPath, fileSystem.Object, false);
+            var fileLogger = new LinuxAppServiceFileLogger(LogFileName, LogDirectoryPath, fileSystem.Object, false, false);
             var dirBase = new Mock<DirectoryBase>(MockBehavior.Strict);
             var fileInfoFactory = new Mock<IFileInfoFactory>(MockBehavior.Strict);
             var fileInfoBase = new Mock<FileInfoBase>(MockBehavior.Strict);
@@ -135,7 +135,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         public async void Deletes_Oldest_File_If_Exceeds_Limit()
         {
             var fileSystem = new Mock<IFileSystem>(MockBehavior.Strict);
-            var fileLogger = new LinuxAppServiceFileLogger(LogFileName, LogDirectoryPath, fileSystem.Object, false);
+            var fileLogger = new LinuxAppServiceFileLogger(LogFileName, LogDirectoryPath, fileSystem.Object, false, false);
             var dirBase = new Mock<DirectoryBase>(MockBehavior.Strict);
             var fileInfoFactory = new Mock<IFileInfoFactory>(MockBehavior.Strict);
             var fileInfoBase = new Mock<FileInfoBase>(MockBehavior.Strict);
