@@ -10,7 +10,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
 {
     public class MockLinuxAppServiceFileLogger : LinuxAppServiceFileLogger
     {
-        public MockLinuxAppServiceFileLogger(string category, string logFileDirectory, IFileSystem fileSystem) : base(category, logFileDirectory, fileSystem)
+        public MockLinuxAppServiceFileLogger(string category, string logFileDirectory, IFileSystem fileSystem,  : base(category, logFileDirectory, fileSystem)
         {
             Events = new List<string>();
         }
