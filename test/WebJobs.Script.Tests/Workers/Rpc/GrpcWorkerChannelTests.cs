@@ -556,6 +556,63 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
+        public async Task SendLoadRequests_SkipParameterBindingData()
+        {
+            await CreateDefaultWorkerChannel();
+            _metricsLogger.ClearCollections();
+
+            var binding = new BindingMetadata()
+            {
+                Name = "abc",
+                Type = "BlobTrigger"
+            };
+
+            binding.Properties.Add(ScriptConstants.SkipDeferredBindingKey, true);
+            binding.Properties.Add(ScriptConstants.SupportsDeferredBindingKey, true);
+
+            IEnumerable<FunctionMetadata> functionMetadata = GetTestFunctionsList("node");
+            foreach (var function in functionMetadata)
+            {
+                function.Bindings.Add(binding);
+            }
+
+            _workerChannel.SetupFunctionInvocationBuffers(functionMetadata);
+            _workerChannel.SendFunctionLoadRequests(null, TimeSpan.FromMinutes(5));
+            await Task.Delay(500);
+            AreExpectedMetricsGenerated();
+            Assert.Equal(0, _metricsLogger.LoggedEvents.Count(e => e.Contains(MetricEventNames.FunctionBindingDeferred)));
+        }
+
+        [Fact]
+        public async Task SendLoadRequests_SupportParameterBindingData()
+        {
+            await CreateDefaultWorkerChannel();
+            _metricsLogger.ClearCollections();
+
+            var binding = new BindingMetadata()
+            {
+                Name = "abc",
+                Type = "BlobTrigger"
+            };
+
+            binding.Properties.Add(ScriptConstants.SupportsDeferredBindingKey, true);
+
+            IEnumerable<FunctionMetadata> functionMetadata = GetTestFunctionsList("node");
+            foreach (var function in functionMetadata)
+            {
+                function.Bindings.Add(binding);
+            }
+
+            _workerChannel.SetupFunctionInvocationBuffers(functionMetadata);
+            _workerChannel.SendFunctionLoadRequests(null, TimeSpan.FromMinutes(5));
+            await Task.Delay(500);
+            AreExpectedMetricsGenerated();
+            Assert.Equal(2, _metricsLogger.LoggedEvents.Count(e => e.Contains(MetricEventNames.FunctionBindingDeferred)));
+            Assert.Equal(1, _metricsLogger.LoggedEvents.Count(e => e.Contains($"{MetricEventNames.FunctionBindingDeferred}_js1")));
+            Assert.Equal(1, _metricsLogger.LoggedEvents.Count(e => e.Contains($"{MetricEventNames.FunctionBindingDeferred}_js2")));
+        }
+
+        [Fact]
         public async Task SendLoadRequestCollection_PublishesOutboundEvents()
         {
             await CreateDefaultWorkerChannel(capabilities: new Dictionary<string, string>() { { RpcWorkerConstants.SupportsLoadResponseCollection, "true" } });

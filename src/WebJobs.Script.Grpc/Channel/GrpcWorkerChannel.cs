@@ -21,6 +21,7 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.Grpc.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc.Extensions;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
@@ -590,6 +591,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 BindingInfo bindingInfo = binding.ToBindingInfo();
 
                 request.Metadata.Bindings.Add(binding.Name, bindingInfo);
+
+                if (binding.SupportsDeferredBinding() && !binding.SkipDeferredBinding())
+                {
+                    _metricsLogger.LogEvent(MetricEventNames.FunctionBindingDeferred, functionName: metadata.Name);
+                }
             }
 
             foreach (var property in metadata.Properties)
