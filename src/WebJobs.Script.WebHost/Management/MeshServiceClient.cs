@@ -6,8 +6,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
-using System.Net.Http.Formatting;
-using System.Reflection.Metadata;
 using System.Threading.Tasks;
 using Microsoft.Azure.Storage;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
@@ -145,20 +143,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         {
             var operationName = formData.FirstOrDefault(f => string.Equals(f.Key, Operation)).Value;
             _logger.LogDebug($"Sending mesh request {operationName}");
-            //var res = await _client.PostAsync(_environment.GetEnvironmentVariable(EnvironmentSettingNames.MeshInitURI),
-            //    new FormUrlEncodedContent(formData));
-            //var res = await _client.PostAsync(string requestUri, HttpContent content);
 
             var request = new HttpRequestMessage(HttpMethod.Post, _environment.GetEnvironmentVariable(EnvironmentSettingNames.MeshInitURI))
             {
                 Content = new FormUrlEncodedContent(formData)
             };
 
-            request.Headers.Add("fx-current-instance", _environment.GetEnvironmentVariable(EnvironmentSettingNames.ContainerName));
+            request.Headers.Add(ScriptConstants.ContainerInstanceHeader, _environment.GetEnvironmentVariable(EnvironmentSettingNames.ContainerName));
 
             var res = await _client.SendAsync(request);
 
             _logger.LogDebug($"Mesh response {res.StatusCode}");
+
             return res;
         }
 
@@ -172,18 +168,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
 
             return serialized;
-        }
-
-        private KeyValuePair<string, string> GetInternalRequestBody()
-        {
-            var internalRequestBody = new InternalRequestBody()
-            {
-                InstanceName = _environment.GetEnvironmentVariable(EnvironmentSettingNames.ContainerName)
-            };
-
-            var internalRequestBodyString = Serialize(internalRequestBody);
-
-            return new KeyValuePair<string, string>("InternalRequestBody", internalRequestBodyString);
         }
     }
 }

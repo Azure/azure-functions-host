@@ -105,6 +105,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AntaresPlatformInternal = "x-ms-platform-internal";
         public const string AzureVersionHeader = "x-ms-version";
         public const string XIdentityHeader = "X-IDENTITY-HEADER";
+        public const string ContainerInstanceHeader = "fx-current-instance";
         public const string DynamicSku = "Dynamic";
         public const string ElasticPremiumSku = "ElasticPremium";
         public const string DefaultProductionSlotName = "production";
