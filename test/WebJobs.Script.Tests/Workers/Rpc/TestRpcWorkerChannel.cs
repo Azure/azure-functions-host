@@ -50,6 +50,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
         public IWorkerProcess WorkerProcess => null;
 
+        public RpcWorkerConfig WorkerConfig => null;
+
         public IDictionary<string, BufferBlock<ScriptInvocationContext>> FunctionInputBuffers => throw new NotImplementedException();
 
         public List<Task> ExecutionContexts => _executionContexts;

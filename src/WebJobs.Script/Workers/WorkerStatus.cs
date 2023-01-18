@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         public IEnumerable<TimeSpan> LatencyHistory { get; set; }
 
         /// <summary>
-        /// Gets or sets a value indicating whether worker is ready
+        /// Gets or sets a value indicating whether worker is ready.
         /// </summary>
         public bool IsReady { get; set; }
     }

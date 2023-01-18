@@ -12,6 +12,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
     public interface IRpcWorkerChannel : IWorkerChannel
     {
+        RpcWorkerConfig WorkerConfig { get; }
+
         IDictionary<string, BufferBlock<ScriptInvocationContext>> FunctionInputBuffers { get; }
 
         bool IsChannelReadyForInvocations();

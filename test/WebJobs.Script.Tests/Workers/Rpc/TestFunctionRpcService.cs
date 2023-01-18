@@ -221,6 +221,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 initResponse.WorkerMetadata = workerMetadata;
             }
+            else
+            {
+                initResponse.WorkerMetadata = new WorkerMetadata()
+                {
+                    RuntimeVersion = ".Net"
+                };
+            }
 
             StreamingMessage responseMessage = new StreamingMessage()
             {

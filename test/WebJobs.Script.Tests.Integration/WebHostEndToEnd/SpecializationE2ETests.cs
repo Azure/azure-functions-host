@@ -331,7 +331,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var workerOptionsPlaceholderMode = host.Services.GetService<IOptions<LanguageWorkerOptions>>();
             Assert.Equal(4, workerOptionsPlaceholderMode.Value.WorkerConfigs.Count);
             var rpcChannelInPlaceholderMode = (GrpcWorkerChannel)channelFactory.Create("/", "powershell", null, 0, workerOptionsPlaceholderMode.Value.WorkerConfigs);
-            Assert.Equal(expectedPowerShellVersion, rpcChannelInPlaceholderMode.Config.Description.DefaultRuntimeVersion);
+            Assert.Equal(expectedPowerShellVersion, rpcChannelInPlaceholderMode.WorkerConfig.Description.DefaultRuntimeVersion);
 
 
             // TestServer will block in the constructor so pull out the StandbyManager and use it
@@ -359,7 +359,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var workerOptionsAtJobhostLevel = scriptHostService.Services.GetService<IOptions<LanguageWorkerOptions>>();
             Assert.Equal(1, workerOptionsAtJobhostLevel.Value.WorkerConfigs.Count);
             var rpcChannelAfterSpecialization = (GrpcWorkerChannel)channelFactory.Create("/", "powershell", null, 0, workerOptionsAtJobhostLevel.Value.WorkerConfigs);
-            Assert.Equal(expectedPowerShellVersion, rpcChannelAfterSpecialization.Config.Description.DefaultRuntimeVersion);
+            Assert.Equal(expectedPowerShellVersion, rpcChannelAfterSpecialization.WorkerConfig.Description.DefaultRuntimeVersion);
         }
 
         /// <summary>

@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -21,6 +22,8 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
+using Microsoft.Azure.WebJobs.Script.Workers;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -32,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 {
     /// <summary>
     /// Controller responsible for handling all administrative requests for host operations
-    /// example host status, ping, log, etc
+    /// example host status, ping, log, etc.
     /// </summary>
     public class HostController : Controller
     {
@@ -105,6 +108,56 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             _logger.LogInformation(message);
 
             return Ok(status);
+        }
+
+        /// <summary>
+        ///  Currently, anyone in Reader role can access this information.
+        ///  If this API is extended to include any secrets, it will need to be
+        ///  locked down to only Contributor roles.
+        /// </summary>
+        [HttpGet]
+        [Route("admin/host/workerProcesses")]
+        [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal)]
+        public async Task<IActionResult> GetWorkerProcesses([FromServices] IScriptHostManager scriptHostManager)
+        {
+            if (!Utility.TryGetHostService(scriptHostManager, out IWebHostRpcWorkerChannelManager webHostLanguageWorkerChannelManager))
+            {
+                return StatusCode(StatusCodes.Status503ServiceUnavailable);
+            }
+
+            var processes = new List<WorkerProcessInfo>();
+            string workerRuntime = _environment.GetFunctionsWorkerRuntime();
+
+            var webhostChannelDictionary = webHostLanguageWorkerChannelManager.GetChannels(workerRuntime);
+
+            List<IRpcWorkerChannel> channels = new List<IRpcWorkerChannel>();
+            if (webhostChannelDictionary is not null)
+            {
+                foreach (var pair in webhostChannelDictionary)
+                {
+                    var workerChannel = await pair.Value.Task;
+                    channels.Add(workerChannel);
+                }
+            }
+
+            if (Utility.TryGetHostService(scriptHostManager, out IJobHostRpcWorkerChannelManager jobHostLanguageWorkerChannelManager))
+            {
+                channels.AddRange(jobHostLanguageWorkerChannelManager.GetChannels(workerRuntime));
+            }
+
+            foreach (var channel in channels)
+            {
+                var processInfo = new WorkerProcessInfo()
+                {
+                    ProcessId = channel.WorkerProcess.Process.Id,
+                    ExecutableName = channel.WorkerProcess.Process.ProcessName,
+                    DebugEngine = Utility.GetDebugEngineInfo(channel.WorkerConfig, workerRuntime),
+                    IsEligibleForOpenInBrowser = false
+                };
+                processes.Add(processInfo);
+            }
+
+            return Ok(processes);
         }
 
         [HttpPost]
@@ -262,7 +315,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [HttpPost]
         [Route("admin/host/log")]
         [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal)]
-        public IActionResult Log([FromBody]IEnumerable<HostLogEntry> logEntries)
+        public IActionResult Log([FromBody] IEnumerable<HostLogEntry> logEntries)
         {
             if (logEntries == null)
             {

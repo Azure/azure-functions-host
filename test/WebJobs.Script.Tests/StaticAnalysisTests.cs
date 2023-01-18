@@ -41,6 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 "HostController.DrainStatus",
                 "HostController.GetConfig",
                 "HostController.GetHostStatus",
+                "HostController.GetWorkerProcesses",
                 "HostController.Ping",
                 "InstanceController.GetHttpHealthStatus",
                 "InstanceController.GetInstanceInfo"
