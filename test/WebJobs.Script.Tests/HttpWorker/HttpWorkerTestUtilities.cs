@@ -50,9 +50,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
             return new QueryCollection(QueryHelpers.ParseQuery(QueryParamString));
         }
 
-        public static List<(string name, DataType type, object val)> GetSimpleHttpTriggerScriptInvocationInputs()
+        public static List<(string Name, DataType Type, object Val)> GetSimpleHttpTriggerScriptInvocationInputs()
         {
-            List<(string name, DataType type, object val)> inputs = new List<(string name, DataType type, object val)>();
+            List<(string Name, DataType Type, object Val)> inputs = new();
             inputs.Add(("testInputReq", DataType.String, GetTestHttpRequest()));
             return inputs;
         }
@@ -186,9 +186,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
             };
         }
 
-        public static List<(string name, DataType type, object val)> GetScriptInvocationInputs()
+        public static List<(string Name, DataType Type, object Val)> GetScriptInvocationInputs()
         {
-            List<(string name, DataType type, object val)> inputs = new List<(string name, DataType type, object val)>();
+            List<(string Name, DataType Type, object Val)> inputs = new();
             inputs.Add(("myqueueItem", DataType.String, "HelloWorld"));
             return inputs;
         }

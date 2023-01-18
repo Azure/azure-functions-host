@@ -20,6 +20,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.WebJobs.Script.Tests;
 using WebJobs.Script.Tests;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -29,10 +30,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly string functionName = "Test_test";
         public static string KeyName = "Te!@#st!1-te_st";
 
-        public SecretsRepositoryTests(SecretsRepositoryTests.Fixture fixture)
+        private ITestOutputHelper _output;
+
+        public SecretsRepositoryTests(SecretsRepositoryTests.Fixture fixture, ITestOutputHelper outputHelper)
         {
             Utility.ColdStartDelayMS = 50;
             _fixture = fixture;
+            _output = outputHelper;
         }
 
         public enum SecretsRepositoryType
@@ -377,35 +381,39 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             using (var directory = new TempDirectory())
             {
                 await _fixture.TestInitialize(repositoryType, directory.Path);
-
-                ScriptSecrets testSecrets = new HostSecrets()
-                {
-                    MasterKey = new Key("master", "test"),
-                    FunctionKeys = new List<Key>() { new Key(KeyName, "test") },
-                    SystemKeys = new List<Key>() { new Key(KeyName, "test") }
-                };
-
                 string testFunctionName = "host";
-
                 var target = _fixture.GetNewSecretRepository();
 
-                // Set up initial secrets.
-                await _fixture.WriteSecret(testFunctionName, testSecrets);
+                async Task RunTest()
+                {
+                    HostSecrets testSecrets = new HostSecrets()
+                    {
+                        MasterKey = new Key("master", "test"),
+                        FunctionKeys = new List<Key>(),
+                        SystemKeys = new List<Key>() { new Key(KeyName, "test") }
+                    };
 
-                // Perform a write and read similtaneously. Previously, our usage of OpenWriteAsync
-                // would erase the content of the blob while writing, resulting in null secrets from the
-                // read.
-                Task writeTask = target.WriteAsync(ScriptSecretsType.Host, testFunctionName, testSecrets);
-                HostSecrets secretsContent = await target.ReadAsync(ScriptSecretsType.Host, testFunctionName) as HostSecrets;
+                    // make the payload larger to guarantee the race condition
+                    for (int i = 0; i < 1000; i++)
+                    {
+                        testSecrets.FunctionKeys.Add(new Key(KeyName + i, "test"));
+                    }
+                    // Set up initial secrets.
+                    await _fixture.WriteSecret(testFunctionName, testSecrets);
 
-                await writeTask;
+                    // Perform a write and read similtaneously. Previously, our usage of OpenWriteAsync
+                    // would erase the content of the blob while writing, resulting in null secrets from the
+                    // read.
+                    Task writeTask = target.WriteAsync(ScriptSecretsType.Host, testFunctionName, testSecrets);
+                    HostSecrets secretsContent = await target.ReadAsync(ScriptSecretsType.Host, testFunctionName) as HostSecrets;
 
-                Assert.Equal(secretsContent.MasterKey.Name, "master");
-                Assert.Equal(secretsContent.MasterKey.Value, "test");
-                Assert.Equal(secretsContent.FunctionKeys[0].Name, KeyName);
-                Assert.Equal(secretsContent.FunctionKeys[0].Value, "test");
-                Assert.Equal(secretsContent.SystemKeys[0].Name, KeyName);
-                Assert.Equal(secretsContent.SystemKeys[0].Value, "test");
+                    await writeTask;
+
+                    Assert.NotNull(secretsContent);
+                }
+
+                // this is a race so it may not fire every time; try several times
+                await TestHelpers.RetryFailedTest(RunTest, 10, _output);
             }
         }
 
@@ -417,40 +425,50 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             using (var directory = new TempDirectory())
             {
                 await _fixture.TestInitialize(repositoryType, directory.Path);
-
-                HostSecrets testSecrets = new HostSecrets()
-                {
-                    MasterKey = new Key("master", "test"),
-                    FunctionKeys = new List<Key>() { new Key(KeyName, "test") },
-                    SystemKeys = new List<Key>() { new Key(KeyName, "test") }
-                };
-
+                var target = _fixture.GetNewSecretRepository();
                 string testFunctionName = "host";
 
-                var target = _fixture.GetNewSecretRepository();
+                async Task RunTest()
+                {
+                    HostSecrets testSecrets = new HostSecrets()
+                    {
+                        MasterKey = new Key("master", "test"),
+                        FunctionKeys = new List<Key>(),
+                        SystemKeys = new List<Key>() { new Key(KeyName, "test") }
+                    };
 
-                // Set up initial secrets.
-                await _fixture.WriteSecret(testFunctionName, testSecrets);
-                HostSecrets secretsContent = await target.ReadAsync(ScriptSecretsType.Host, testFunctionName) as HostSecrets;
-                Assert.Equal("test", secretsContent.FunctionKeys.Single().Value);
+                    // make the payload larger to guarantee the race condition
+                    for (int i = 0; i < 1000; i++)
+                    {
+                        testSecrets.FunctionKeys.Add(new Key(KeyName + i, "test"));
+                    }
 
-                testSecrets.FunctionKeys.Single().Value = "changed";
+                    // Set up initial secrets.
+                    await _fixture.WriteSecret(testFunctionName, testSecrets);
+                    HostSecrets secretsContent = await target.ReadAsync(ScriptSecretsType.Host, testFunctionName) as HostSecrets;
+                    Assert.Equal("test", secretsContent.FunctionKeys.First().Value);
 
-                // Simultaneous writes will result in one of the writes being discarded due to
-                // non-matching ETag.
-                Task writeTask1 = target.WriteAsync(ScriptSecretsType.Host, testFunctionName, testSecrets);
-                Task writeTask2 = target.WriteAsync(ScriptSecretsType.Host, testFunctionName, testSecrets);
+                    testSecrets.FunctionKeys.First().Value = "changed";
 
-                var ex = await Assert.ThrowsAsync<RequestFailedException>(() => Task.WhenAll(writeTask1, writeTask2));
+                    // Simultaneous writes will result in one of the writes being discarded due to
+                    // non-matching ETag.
+                    Task writeTask1 = target.WriteAsync(ScriptSecretsType.Host, testFunctionName, testSecrets);
+                    Task writeTask2 = target.WriteAsync(ScriptSecretsType.Host, testFunctionName, testSecrets);
 
-                // Ensure the write went through.
-                secretsContent = await target.ReadAsync(ScriptSecretsType.Host, testFunctionName) as HostSecrets;
-                Assert.Equal("changed", secretsContent.FunctionKeys.Single().Value);
+                    var ex = await Assert.ThrowsAsync<RequestFailedException>(() => Task.WhenAll(writeTask1, writeTask2));
 
-                Assert.Equal("ConditionNotMet", ex.ErrorCode);
-                Assert.Equal(412, ex.Status);
-                Assert.True(writeTask1.IsCompletedSuccessfully || writeTask2.IsCompletedSuccessfully,
-                    "One of the write operations should have completed successfully.");
+                    // Ensure the write went through.
+                    secretsContent = await target.ReadAsync(ScriptSecretsType.Host, testFunctionName) as HostSecrets;
+                    Assert.Equal("changed", secretsContent.FunctionKeys.First().Value);
+
+                    Assert.Equal("ConditionNotMet", ex.ErrorCode);
+                    Assert.Equal(412, ex.Status);
+                    Assert.True(writeTask1.IsCompletedSuccessfully || writeTask2.IsCompletedSuccessfully,
+                        "One of the write operations should have completed successfully.");
+                }
+
+                // this is a race so it may not fire every time; try several times
+                await TestHelpers.RetryFailedTest(RunTest, 10, _output);
             }
         }
 
@@ -462,37 +480,47 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             using (var directory = new TempDirectory())
             {
                 await _fixture.TestInitialize(repositoryType, directory.Path);
-
-                HostSecrets testSecrets = new HostSecrets()
-                {
-                    MasterKey = new Key("master", "test"),
-                    FunctionKeys = new List<Key>() { new Key(KeyName, "test") },
-                    SystemKeys = new List<Key>() { new Key(KeyName, "test") }
-                };
-
                 string testFunctionName = "host";
-
                 var target = _fixture.GetNewSecretRepository();
 
-                // Ensure nothing is there.                
-                HostSecrets secretsContent = await target.ReadAsync(ScriptSecretsType.Host, testFunctionName) as HostSecrets;
-                Assert.Null(secretsContent);
+                async Task RunTest()
+                {
+                    HostSecrets testSecrets = new HostSecrets()
+                    {
+                        MasterKey = new Key("master", "test"),
+                        FunctionKeys = new List<Key>(),
+                        SystemKeys = new List<Key>() { new Key(KeyName, "test") }
+                    };
 
-                // Simultaneous creates will result in one of the writes being discarded due to
-                // non-matching ETag.
-                Task writeTask1 = target.WriteAsync(ScriptSecretsType.Host, testFunctionName, testSecrets);
-                Task writeTask2 = target.WriteAsync(ScriptSecretsType.Host, testFunctionName, testSecrets);
+                    // make the payload larger to guarantee the race condition
+                    for (int i = 0; i < 1000; i++)
+                    {
+                        testSecrets.FunctionKeys.Add(new Key(KeyName + i, "test"));
+                    }
 
-                var ex = await Assert.ThrowsAsync<RequestFailedException>(() => Task.WhenAll(writeTask1, writeTask2));
+                    // Ensure nothing is there.                
+                    HostSecrets secretsContent = await target.ReadAsync(ScriptSecretsType.Host, testFunctionName) as HostSecrets;
+                    Assert.Null(secretsContent);
 
-                // Ensure the write went through.
-                secretsContent = await target.ReadAsync(ScriptSecretsType.Host, testFunctionName) as HostSecrets;
-                Assert.Equal("test", secretsContent.FunctionKeys.Single().Value);
+                    // Simultaneous creates will result in one of the writes being discarded due to
+                    // non-matching ETag.
+                    Task writeTask1 = target.WriteAsync(ScriptSecretsType.Host, testFunctionName, testSecrets);
+                    Task writeTask2 = target.WriteAsync(ScriptSecretsType.Host, testFunctionName, testSecrets);
 
-                Assert.Equal("BlobAlreadyExists", ex.ErrorCode);
-                Assert.Equal(409, ex.Status);
-                Assert.True(writeTask1.IsCompletedSuccessfully || writeTask2.IsCompletedSuccessfully,
-                    "One of the write operations should have completed successfully.");
+                    var ex = await Assert.ThrowsAsync<RequestFailedException>(() => Task.WhenAll(writeTask1, writeTask2));
+
+                    // Ensure the write went through.
+                    secretsContent = await target.ReadAsync(ScriptSecretsType.Host, testFunctionName) as HostSecrets;
+                    Assert.Equal("test", secretsContent.FunctionKeys.First().Value);
+
+                    Assert.Equal("BlobAlreadyExists", ex.ErrorCode);
+                    Assert.Equal(409, ex.Status);
+                    Assert.True(writeTask1.IsCompletedSuccessfully || writeTask2.IsCompletedSuccessfully,
+                        "One of the write operations should have completed successfully.");
+                }
+
+                // this is a race so it may not fire every time; try several times
+                await TestHelpers.RetryFailedTest(RunTest, 10, _output);
             }
         }
 

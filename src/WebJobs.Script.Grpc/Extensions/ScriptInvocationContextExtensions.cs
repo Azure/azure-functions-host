@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -53,12 +52,12 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 if (isSharedMemoryDataTransferEnabled)
                 {
                     // Try to transfer this data over shared memory instead of RPC
-                    if (input.val == null || !sharedMemValueCache.TryGetValue(input.val, out sharedMemValue))
+                    if (input.Val == null || !sharedMemValueCache.TryGetValue(input.Val, out sharedMemValue))
                     {
-                        sharedMemValue = await input.val.ToRpcSharedMemoryAsync(input.type, logger, invocationRequest.InvocationId, sharedMemoryManager);
-                        if (input.val != null)
+                        sharedMemValue = await input.Val.ToRpcSharedMemoryAsync(input.Type, logger, invocationRequest.InvocationId, sharedMemoryManager);
+                        if (input.Val != null)
                         {
-                            sharedMemValueCache.Add(input.val, sharedMemValue);
+                            sharedMemValueCache.Add(input.Val, sharedMemValue);
                         }
                     }
                 }
@@ -68,19 +67,19 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     // Data was successfully transferred over shared memory; create a ParameterBinding accordingly
                     parameterBinding = new ParameterBinding
                     {
-                        Name = input.name,
+                        Name = input.Name,
                         RpcSharedMemory = sharedMemValue
                     };
 
                     usedSharedMemory = true;
-                    logBuilder.AppendFormat("{0}:{1},", input.name, sharedMemValue.Count);
+                    logBuilder.AppendFormat("{0}:{1},", input.Name, sharedMemValue.Count);
                 }
                 else
                 {
-                    if (!TryConvertObjectIfNeeded(input.val, logger, out object val))
+                    if (!TryConvertObjectIfNeeded(input.Val, logger, out object val))
                     {
                         // Conversion did not take place, keep the existing value as it is
-                        val = input.val;
+                        val = input.Val;
                     }
 
                     // Data was not transferred over shared memory (either disabled, type not supported or some error); resort to RPC
@@ -88,7 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     if (val == null || !rpcValueCache.TryGetValue(val, out rpcValue))
                     {
                         rpcValue = await val.ToRpc(logger, capabilities);
-                        if (input.val != null)
+                        if (input.Val != null)
                         {
                             rpcValueCache.Add(val, rpcValue);
                         }
@@ -96,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
                     parameterBinding = new ParameterBinding
                     {
-                        Name = input.name,
+                        Name = input.Name,
                         Data = rpcValue
                     };
                 }

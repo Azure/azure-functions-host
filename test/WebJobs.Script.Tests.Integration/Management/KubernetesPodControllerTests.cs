@@ -49,13 +49,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 StatusCode = HttpStatusCode.OK
             });
 
-            var instanceManager = new InstanceManager(_optionsFactory, TestHelpers.CreateHttpClientFactory(handlerMock.Object),
-                scriptWebEnvironment, environment, loggerFactory.CreateLogger<InstanceManager>(),
+            var instanceManager = new AtlasInstanceManager(_optionsFactory, TestHelpers.CreateHttpClientFactory(handlerMock.Object),
+                scriptWebEnvironment, environment, loggerFactory.CreateLogger<AtlasInstanceManager>(),
                 new TestMetricsLogger(), null, new Mock<IRunFromPackageHandler>().Object,
                 new Mock<IPackageDownloadHandler>(MockBehavior.Strict).Object);
             var startupContextProvider = new StartupContextProvider(environment, loggerFactory.CreateLogger<StartupContextProvider>());
 
-            InstanceManager.Reset();
+            instanceManager.Reset();
 
             var podController = new KubernetesPodController(environment, instanceManager, loggerFactory, startupContextProvider);
 
@@ -107,13 +107,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 StatusCode = HttpStatusCode.OK
             });
 
-            var instanceManager = new InstanceManager(_optionsFactory, TestHelpers.CreateHttpClientFactory(handlerMock.Object),
-                scriptWebEnvironment, environment, loggerFactory.CreateLogger<InstanceManager>(),
+            var instanceManager = new AtlasInstanceManager(_optionsFactory, TestHelpers.CreateHttpClientFactory(handlerMock.Object),
+                scriptWebEnvironment, environment, loggerFactory.CreateLogger<AtlasInstanceManager>(),
                 new TestMetricsLogger(), null, new Mock<IRunFromPackageHandler>().Object,
                 new Mock<IPackageDownloadHandler>(MockBehavior.Strict).Object);
             var startupContextProvider = new StartupContextProvider(environment, loggerFactory.CreateLogger<StartupContextProvider>());
 
-            InstanceManager.Reset();
+            instanceManager.Reset();
 
             const string podEncryptionKey = "/a/vXvWJ3Hzgx4PFxlDUJJhQm5QVyGiu0NNLFm/ZMMg=";
             var podController = new KubernetesPodController(environment, instanceManager, loggerFactory, startupContextProvider);

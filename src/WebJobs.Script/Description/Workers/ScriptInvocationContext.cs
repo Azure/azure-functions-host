@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public IEnumerable<KeyValuePair<string, string>> Attributes { get; set; }
 
-        public IEnumerable<(string name, DataType type, object val)> Inputs { get; set; }
+        public IEnumerable<(string Name, DataType Type, object Val)> Inputs { get; set; }
 
         public Dictionary<string, object> BindingData { get; set; }
 

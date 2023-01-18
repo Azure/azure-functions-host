@@ -324,13 +324,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // We want it to start first, but finish last, so unstick it in a couple seconds.
             Task ignore = Task.Delay(3000).ContinueWith(_ => _pauseAfterStandbyHostBuild.Release());
 
+            var expectedPowerShellVersion = "7.2";
             IWebHost host = builder.Build();
             var scriptHostService = host.Services.GetService<WebJobsScriptHostService>();
             var channelFactory = host.Services.GetService<IRpcWorkerChannelFactory>();
             var workerOptionsPlaceholderMode = host.Services.GetService<IOptions<LanguageWorkerOptions>>();
             Assert.Equal(4, workerOptionsPlaceholderMode.Value.WorkerConfigs.Count);
             var rpcChannelInPlaceholderMode = (GrpcWorkerChannel)channelFactory.Create("/", "powershell", null, 0, workerOptionsPlaceholderMode.Value.WorkerConfigs);
-            Assert.Equal("7", rpcChannelInPlaceholderMode.Config.Description.DefaultRuntimeVersion);
+            Assert.Equal(expectedPowerShellVersion, rpcChannelInPlaceholderMode.Config.Description.DefaultRuntimeVersion);
 
 
             // TestServer will block in the constructor so pull out the StandbyManager and use it
@@ -346,7 +347,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
             _environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "powershell");
-            _environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, "7");
+            _environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, expectedPowerShellVersion);
 
             var specializeTask = Task.Run(async () => await standbyManager.SpecializeHostAsync());
 
@@ -358,7 +359,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var workerOptionsAtJobhostLevel = scriptHostService.Services.GetService<IOptions<LanguageWorkerOptions>>();
             Assert.Equal(1, workerOptionsAtJobhostLevel.Value.WorkerConfigs.Count);
             var rpcChannelAfterSpecialization = (GrpcWorkerChannel)channelFactory.Create("/", "powershell", null, 0, workerOptionsAtJobhostLevel.Value.WorkerConfigs);
-            Assert.Equal("7", rpcChannelAfterSpecialization.Config.Description.DefaultRuntimeVersion);
+            Assert.Equal(expectedPowerShellVersion, rpcChannelAfterSpecialization.Config.Description.DefaultRuntimeVersion);
         }
 
         /// <summary>

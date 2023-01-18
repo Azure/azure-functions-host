@@ -12,10 +12,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
     {
         Task<IEnumerable<FunctionMetadataResponse>> GetFunctionsMetadata(bool includeProxies);
 
-        Task<(bool, FunctionMetadataResponse)> TryGetFunction(string name, HttpRequest request);
+        Task<(bool Success, FunctionMetadataResponse Response)> TryGetFunction(string name, HttpRequest request);
 
-        Task<(bool, bool, FunctionMetadataResponse)> CreateOrUpdate(string name, FunctionMetadataResponse functionMetadata, HttpRequest request);
+        Task<(bool Success, bool ConfigChanged, FunctionMetadataResponse Response)> CreateOrUpdate(string name, FunctionMetadataResponse functionMetadata, HttpRequest request);
 
-        Task<(bool, string)> TryDeleteFunction(FunctionMetadataResponse function);
+        Task<(bool Success, string ErrorMessage)> TryDeleteFunction(FunctionMetadataResponse function);
     }
 }

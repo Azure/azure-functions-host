@@ -26,6 +26,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -151,6 +152,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     // Hosted services
                     services.AddSingleton<IFileMonitoringService, FileMonitoringService>();
                     services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, IFileMonitoringService>(p => p.GetService<IFileMonitoringService>()));
+
+                    IOptions<FunctionsHostingConfigOptions> hostingConfigOptions = rootServiceProvider.GetService<IOptions<FunctionsHostingConfigOptions>>();
+                    IOptionsMonitor<FunctionsHostingConfigOptions> hostingConfigOptionsMonitor = rootServiceProvider.GetService<IOptionsMonitor<FunctionsHostingConfigOptions>>();
+                    services.AddSingleton(hostingConfigOptions);
+                    services.AddSingleton(hostingConfigOptionsMonitor);
 
                     ConfigureRegisteredBuilders(services, rootServiceProvider);
                 });

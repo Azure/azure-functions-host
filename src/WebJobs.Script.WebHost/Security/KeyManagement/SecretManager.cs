@@ -7,12 +7,10 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Azure;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
@@ -106,7 +104,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                             // so we read the secrets running them through the appropriate readers
                             hostSecrets = ReadHostSecrets(hostSecrets);
                         }
-                        catch (CryptographicException ex)
+                        catch (CryptographicException ex) when (!ex.InnerException.IsFatal())
                         {
                             string message = string.Format(Resources.TraceNonDecryptedHostSecretRefresh, ex);
                             _logger.LogDebug(message);
@@ -175,7 +173,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                             // Read all secrets, which will run the keys through the appropriate readers
                             secrets.Keys = secrets.Keys.Select(k => _keyValueConverterFactory.ReadKey(k)).ToList();
                         }
-                        catch (CryptographicException ex)
+                        catch (CryptographicException ex) when (!ex.InnerException.IsFatal())
                         {
                             string message = string.Format(Resources.TraceNonDecryptedFunctionSecretRefresh, functionName, ex);
                             _logger.LogDebug(message);
@@ -388,7 +386,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return await _repository.ReadAsync(type, keyScope);
         }
 
-        public async Task<(string, AuthorizationLevel)> GetAuthorizationLevelOrNullAsync(string keyValue, string functionName = null)
+        public async Task<(string KeyName, AuthorizationLevel Level)> GetAuthorizationLevelOrNullAsync(string keyValue, string functionName = null)
         {
             if (keyValue != null)
             {
@@ -404,7 +402,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 bool secretsCached = _hostSecrets != null || _functionSecrets.Any();
 
                 var result = await GetAuthorizationLevelAsync(this, keyValue, functionName);
-                if (result.Item2 != AuthorizationLevel.Anonymous)
+                if (result.Level != AuthorizationLevel.Anonymous)
                 {
                     // key match
                     _authorizationCache[cacheKey] = result;
@@ -430,7 +428,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return (null, AuthorizationLevel.Anonymous);
         }
 
-        internal static async Task<(string, AuthorizationLevel)> GetAuthorizationLevelAsync(ISecretManager secretManager, string keyValue, string functionName = null)
+        internal static async Task<(string KeyName, AuthorizationLevel Level)> GetAuthorizationLevelAsync(ISecretManager secretManager, string keyValue, string functionName = null)
         {
             // see if the key specified is the master key
             HostSecretsInfo hostSecrets = await secretManager.GetHostSecretsAsync();

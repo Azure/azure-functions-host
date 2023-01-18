@@ -7,9 +7,17 @@ using System.IO;
 using System.Net.Http;
 using System.Threading;
 using Microsoft.ApplicationInsights.Channel;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Grpc;
+using Microsoft.Azure.WebJobs.Script.Workers;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
@@ -18,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
     {
         public const string ApplicationInsightsKey = "some_key";
 
-        public ApplicationInsightsTestFixture(string scriptRoot, string testId)
+        public ApplicationInsightsTestFixture(string scriptRoot, string testId, bool ignoreAppInsightsFromWorker = false)
         {
             string scriptPath = Path.Combine(Environment.CurrentDirectory, scriptRoot);
             string logPath = Path.Combine(Path.GetTempPath(), @"Functions");
@@ -52,6 +60,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
                     {
                         [EnvironmentSettingNames.AppInsightsInstrumentationKey] = ApplicationInsightsKey
                     });
+                },
+                configureWebHostServices: s =>
+                {
+                    if (ignoreAppInsightsFromWorker)
+                    {
+                        s.AddSingleton<IRpcWorkerChannelFactory, TestGrpcWorkerChannelFactory>();
+                    }
                 });
 
             HttpClient = TestHost.HttpClient;
@@ -78,6 +93,37 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             // is disposed on a background task, it doesn't block. So waiting here to ensure
             // everything is flushed and can't affect subsequent tests.
             Thread.Sleep(2000);
+        }
+
+        private class TestGrpcWorkerChannelFactory : GrpcWorkerChannelFactory
+        {
+            public TestGrpcWorkerChannelFactory(IScriptEventManager eventManager, IEnvironment environment, ILoggerFactory loggerFactory, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IRpcWorkerProcessFactory rpcWorkerProcessManager, ISharedMemoryManager sharedMemoryManager, IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions, IOptions<FunctionsHostingConfigOptions> hostingConfigOptions)
+                : base(eventManager, environment, loggerFactory, applicationHostOptions, rpcWorkerProcessManager, sharedMemoryManager, workerConcurrencyOptions, hostingConfigOptions)
+            {
+            }
+
+            internal override IRpcWorkerChannel CreateInternal(string workerId, IScriptEventManager eventManager, RpcWorkerConfig languageWorkerConfig, IWorkerProcess rpcWorkerProcess,
+            ILogger workerLogger, IMetricsLogger metricsLogger, int attemptCount, IEnvironment environment, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions,
+            ISharedMemoryManager sharedMemoryManager, IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions, IOptions<FunctionsHostingConfigOptions> hostingConfigOptions)
+            {
+                return new TestGrpcWorkerChannel(workerId, eventManager, languageWorkerConfig, rpcWorkerProcess, workerLogger, metricsLogger,
+                    attemptCount, environment, applicationHostOptions, sharedMemoryManager, workerConcurrencyOptions, hostingConfigOptions);
+            }
+
+            private class TestGrpcWorkerChannel : GrpcWorkerChannel
+            {
+                internal TestGrpcWorkerChannel(string workerId, IScriptEventManager eventManager, RpcWorkerConfig workerConfig, IWorkerProcess rpcWorkerProcess, ILogger logger, IMetricsLogger metricsLogger, int attemptCount, IEnvironment environment, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ISharedMemoryManager sharedMemoryManager, IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions, IOptions<FunctionsHostingConfigOptions> hostingConfigOptions)
+                    : base(workerId, eventManager, workerConfig, rpcWorkerProcess, logger, metricsLogger, attemptCount, environment, applicationHostOptions, sharedMemoryManager, workerConcurrencyOptions, hostingConfigOptions)
+                {
+                }
+
+                internal override void UpdateCapabilities(IDictionary<string, string> fields)
+                {
+                    // inject a capability
+                    fields[RpcWorkerConstants.WorkerApplicationInsightsLoggingEnabled] = bool.TrueString;
+                    base.UpdateCapabilities(fields);
+                }
+            }
         }
     }
 }

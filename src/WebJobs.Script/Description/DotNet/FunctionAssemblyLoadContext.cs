@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private static readonly ConcurrentDictionary<string, int> _sharedContextAssembliesInFallbackLoad = new ConcurrentDictionary<string, int>();
         private static readonly RuntimeAssembliesInfo _runtimeAssembliesInfo = new RuntimeAssembliesInfo();
 
-        private static Lazy<FunctionAssemblyLoadContext> _defaultContext = new (() => CreateSharedContext(ResolveFunctionBaseProbingPath()), true);
+        private static Lazy<FunctionAssemblyLoadContext> _defaultContext = new(() => CreateSharedContext(ResolveFunctionBaseProbingPath()), true);
 
         private readonly List<string> _probingPaths = new List<string>();
         private readonly IDictionary<string, RuntimeAsset[]> _depsAssemblies;
@@ -61,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _runtimeAssembliesInfo.ResetIfStale();
         }
 
-        internal static (IDictionary<string, RuntimeAsset[]> depsAssemblies, IDictionary<string, RuntimeAsset[]> nativeLibraries) InitializeDeps(string basePath, List<string> ridFallbacks)
+        internal static (IDictionary<string, RuntimeAsset[]> DepsAssemblies, IDictionary<string, RuntimeAsset[]> NativeLibraries) InitializeDeps(string basePath, List<string> ridFallbacks)
         {
             string depsFilePath = Path.Combine(basePath, DotNetConstants.FunctionsDepsFileName);
 
@@ -421,7 +421,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return LoadFromAssemblyPath(assemblyPath);
         }
 
-        internal (bool succeeded, Assembly assembly, bool isRuntimeAssembly) TryLoadAssembly(AssemblyName assemblyName)
+        internal (bool Succeeded, Assembly Assembly, bool IsRuntimeAssembly) TryLoadAssembly(AssemblyName assemblyName)
         {
             bool isRuntimeAssembly = IsRuntimeAssembly(assemblyName);
 

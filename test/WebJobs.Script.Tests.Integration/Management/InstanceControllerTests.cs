@@ -58,14 +58,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var meshServiceClient = new Mock<IMeshServiceClient>(MockBehavior.Strict);
             meshServiceClient.Setup(c => c.NotifyHealthEvent(ContainerHealthEventType.Fatal,
-                It.Is<Type>(t => t == typeof(InstanceManager)), "Failed to specialize MSI sidecar")).Returns(Task.CompletedTask);
+                It.Is<Type>(t => t == typeof(AtlasInstanceManager)), "Failed to specialize MSI sidecar")).Returns(Task.CompletedTask);
 
-            var instanceManager = new InstanceManager(_optionsFactory, TestHelpers.CreateHttpClientFactory(handlerMock.Object),
-                scriptWebEnvironment, environment, loggerFactory.CreateLogger<InstanceManager>(),
+            var instanceManager = new AtlasInstanceManager(_optionsFactory, TestHelpers.CreateHttpClientFactory(handlerMock.Object),
+                scriptWebEnvironment, environment, loggerFactory.CreateLogger<AtlasInstanceManager>(),
                 new TestMetricsLogger(), meshServiceClient.Object, _runFromPackageHandler.Object, new Mock<IPackageDownloadHandler>(MockBehavior.Strict).Object);
             var startupContextProvider = new StartupContextProvider(environment, loggerFactory.CreateLogger<StartupContextProvider>());
 
-            InstanceManager.Reset();
+            instanceManager.Reset();
 
             var instanceController = new InstanceController(environment, instanceManager, loggerFactory, startupContextProvider);
 
@@ -96,7 +96,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.Equal(objectResult.Value, "Specialize MSI sidecar call failed. StatusCode=BadRequest");
 
             meshServiceClient.Verify(c => c.NotifyHealthEvent(ContainerHealthEventType.Fatal,
-                It.Is<Type>(t => t == typeof(InstanceManager)), "Failed to specialize MSI sidecar"), Times.Once);
+                It.Is<Type>(t => t == typeof(AtlasInstanceManager)), "Failed to specialize MSI sidecar"), Times.Once);
         }
 
         [Fact]
@@ -136,12 +136,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 StatusCode = HttpStatusCode.OK
             });
 
-            var instanceManager = new InstanceManager(_optionsFactory, TestHelpers.CreateHttpClientFactory(handlerMock.Object),
-                scriptWebEnvironment, environment, loggerFactory.CreateLogger<InstanceManager>(),
+            var instanceManager = new AtlasInstanceManager(_optionsFactory, TestHelpers.CreateHttpClientFactory(handlerMock.Object),
+                scriptWebEnvironment, environment, loggerFactory.CreateLogger<AtlasInstanceManager>(),
                 new TestMetricsLogger(), null, _runFromPackageHandler.Object, new Mock<IPackageDownloadHandler>(MockBehavior.Strict).Object);
             var startupContextProvider = new StartupContextProvider(environment, loggerFactory.CreateLogger<StartupContextProvider>());
 
-            InstanceManager.Reset();
+            instanceManager.Reset();
 
             var instanceController = new InstanceController(environment, instanceManager, loggerFactory, startupContextProvider);
 
@@ -190,12 +190,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             StatusCode = HttpStatusCode.OK
             });
 
-            var instanceManager = new InstanceManager(_optionsFactory, TestHelpers.CreateHttpClientFactory(handlerMock.Object),
-                scriptWebEnvironment, environment, loggerFactory.CreateLogger<InstanceManager>(),
+            var instanceManager = new AtlasInstanceManager(_optionsFactory, TestHelpers.CreateHttpClientFactory(handlerMock.Object),
+                scriptWebEnvironment, environment, loggerFactory.CreateLogger<AtlasInstanceManager>(),
                 new TestMetricsLogger(), null, _runFromPackageHandler.Object, new Mock<IPackageDownloadHandler>(MockBehavior.Strict).Object);
             var startupContextProvider = new StartupContextProvider(environment, loggerFactory.CreateLogger<StartupContextProvider>());
 
-            InstanceManager.Reset();
+            instanceManager.Reset();
 
             var instanceController = new InstanceController(environment, instanceManager, loggerFactory, startupContextProvider);
 
@@ -238,7 +238,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var instanceManager = new Mock<IInstanceManager>();
             var startupContextProvider = new StartupContextProvider(environment, loggerFactory.CreateLogger<StartupContextProvider>());
 
-            InstanceManager.Reset();
+            instanceManager.Reset();
 
             var instanceController = new InstanceController(environment, instanceManager.Object, loggerFactory,
                 startupContextProvider);

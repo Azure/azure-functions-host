@@ -39,7 +39,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             var settings = new Dictionary<string, string>()
             {
                 [EnvironmentSettingNames.AppKind] = "workflowApp",
-                [EnvironmentSettingNames.AzureWebJobsFeatureFlags] = $"{ScriptConstants.FeatureFlagEnableMultiLanguageWorker}",
             };
             var testEnvironment = new TestEnvironment(settings);
 
@@ -86,7 +85,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             var settings = new Dictionary<string, string>()
             {
                 [EnvironmentSettingNames.AppKind] = "workflowApp",
-                [EnvironmentSettingNames.AzureWebJobsFeatureFlags] = $"{ScriptConstants.FeatureFlagEnableMultiLanguageWorker}",
             };
             var testEnvironment = new TestEnvironment(settings);
 
@@ -126,7 +124,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             var settings = new Dictionary<string, string>()
             {
                 [EnvironmentSettingNames.AppKind] = "workflowApp",
-                [EnvironmentSettingNames.AzureWebJobsFeatureFlags] = $"{ScriptConstants.FeatureFlagEnableMultiLanguageWorker}",
             };
             var testEnvironment = new TestEnvironment(settings);
 
@@ -166,7 +163,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             var settings = new Dictionary<string, string>()
             {
                 [EnvironmentSettingNames.AppKind] = "workflowApp",
-                [EnvironmentSettingNames.AzureWebJobsFeatureFlags] = $"{ScriptConstants.FeatureFlagEnableMultiLanguageWorker}",
             };
             var testEnvironment = new TestEnvironment(settings);
 

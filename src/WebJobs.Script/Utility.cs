@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Dynamic;
 using System.Globalization;
@@ -912,12 +911,9 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static bool CanWorkerIndex(IEnumerable<RpcWorkerConfig> workerConfigs, IEnvironment environment)
         {
-            if (!FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableWorkerIndexing, environment))
-            {
-                return false;
-            }
-
-            if (workerConfigs != null && !environment.IsMultiLanguageRuntimeEnvironment())
+            if (!FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagDisableWorkerIndexing, environment)
+                && workerConfigs != null
+                && !environment.IsMultiLanguageRuntimeEnvironment())
             {
                 var workerRuntime = environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
                 var workerConfig = workerConfigs.Where(c => c.Description != null && c.Description.Language != null && c.Description.Language.Equals(workerRuntime, StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
@@ -994,6 +990,24 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 return FunctionAppContentEditingState.NotAllowed;
             }
+        }
+
+        public static bool TryReadAsBool(IDictionary<string, object> properties, string propertyKey, out bool result)
+        {
+            if (properties.TryGetValue(propertyKey, out object valueObject))
+            {
+                if (valueObject is bool boolValue)
+                {
+                    result = boolValue;
+                    return true;
+                }
+                else if (valueObject is string stringValue)
+                {
+                    return bool.TryParse(stringValue, out result);
+                }
+            }
+
+            return result = false;
         }
 
         private class FilteredExpandoObjectConverter : ExpandoObjectConverter

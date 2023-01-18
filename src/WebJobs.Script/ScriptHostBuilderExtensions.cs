@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Hosting;
@@ -26,6 +27,7 @@ using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
+using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -286,7 +288,6 @@ namespace Microsoft.Azure.WebJobs.Script
                          .GetSection(ConfigurationSectionNames.Scale)
                          .Bind(o);
                     });
-                services.AddSingleton<IFunctionsHostingConfiguration, FunctionsHostingConfiguration>();
 
                 services.AddSingleton<IFileLoggingStatusManager, FileLoggingStatusManager>();
 
@@ -326,6 +327,7 @@ namespace Microsoft.Azure.WebJobs.Script
             services.AddSingleton<HostIdValidator>();
             services.AddSingleton<IHostIdProvider, ScriptHostIdProvider>();
             services.TryAddSingleton<IScriptEventManager, ScriptEventManager>();
+            services.AddSingleton<IWorkerProfileManager, WorkerProfileManager>();
 
             // Add Language Worker Service
             // Need to maintain the order: Add RpcInitializationService before core script host services
@@ -385,12 +387,19 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     o.InstrumentationKey = appInsightsInstrumentationKey;
                     o.ConnectionString = appInsightsConnectionString;
-                }, t => t.TelemetryProcessorChainBuilder.Use(next => new ScriptTelemetryProcessor(next)));
+                }, t =>
+                {
+                    if (t.TelemetryChannel is ServerTelemetryChannel channel)
+                    {
+                        channel.TransmissionStatusEvent += TransmissionStatusHandler.Handler;
+                    }
+
+                    t.TelemetryProcessorChainBuilder.Use(next => new WorkerTraceFilterTelemetryProcessor(next));
+                    t.TelemetryProcessorChainBuilder.Use(next => new ScriptTelemetryProcessor(next));
+                });
 
                 builder.Services.ConfigureOptions<ApplicationInsightsLoggerOptionsSetup>();
-
                 builder.Services.AddSingleton<ISdkVersionProvider, FunctionsSdkVersionProvider>();
-
                 builder.Services.AddSingleton<ITelemetryInitializer, ScriptTelemetryInitializer>();
 
                 if (SystemEnvironment.Instance.IsPlaceholderModeEnabled())

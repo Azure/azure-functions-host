@@ -94,7 +94,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
         }
 
-        public async Task<(string, AuthorizationLevel)> GetAuthorizationLevelOrNullAsync(string key, string functionName = null)
+        public async Task<(string KeyName, AuthorizationLevel Level)> GetAuthorizationLevelOrNullAsync(string key, string functionName = null)
         {
             return await SecretManager.GetAuthorizationLevelAsync(this, key, functionName);
         }

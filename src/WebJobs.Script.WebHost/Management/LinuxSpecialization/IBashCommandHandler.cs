@@ -5,6 +5,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
 {
     public interface IBashCommandHandler
     {
-        (string, string, int) RunBashCommand(string command, string metricName);
+        (string Output, string Error, int ExitCode) RunBashCommand(string command, string metricName);
     }
 }

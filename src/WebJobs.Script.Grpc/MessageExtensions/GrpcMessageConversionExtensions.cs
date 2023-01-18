@@ -7,8 +7,10 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
 using Google.Protobuf;
+using Google.Protobuf.WellKnownTypes;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
@@ -53,6 +55,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     JObject jobj => new TypedData() { Json = jobj.ToString(Formatting.None) },
                     string str => new TypedData() { String = str },
                     double dbl => new TypedData() { Double = dbl },
+                    ParameterBindingData bindingData => bindingData.ToModelBindingData(),
+                    ParameterBindingData[] bindingDataArray => bindingDataArray.ToModelBindingDataArray(),
                     byte[][] arrBytes when IsTypedDataCollectionSupported(capabilities) => arrBytes.ToRpcByteArray(),
                     string[] arrStr when IsTypedDataCollectionSupported(capabilities) => arrStr.ToRpcStringArray(
                                                             ShouldIncludeEmptyEntriesInMessagePayload(capabilities)),
@@ -61,6 +65,39 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     _ => value.ToRpcDefault(),
                 });
             }
+        }
+
+        internal static TypedData ToModelBindingData(this ParameterBindingData data)
+        {
+            var modelBindingData = new ModelBindingData
+            {
+                Version = data.Version,
+                Source = data.Source,
+                ContentType = data.ContentType,
+                Content = ByteString.CopyFrom(data.Content)
+            };
+
+            var typedData = new TypedData
+            {
+                ModelBindingData = modelBindingData
+            };
+
+            return typedData;
+        }
+
+        internal static TypedData ToModelBindingDataArray(this ParameterBindingData[] dataArray)
+        {
+            var collectionModelBindingData = new CollectionModelBindingData();
+
+            foreach (ParameterBindingData element in dataArray)
+            {
+                if (element != null)
+                {
+                    collectionModelBindingData.ModelBindingData.Add(element.ToModelBindingData().ModelBindingData);
+                }
+            }
+
+            return new TypedData() { CollectionModelBindingData = collectionModelBindingData };
         }
 
         internal static async Task<TypedData> ToRpcHttp(this HttpRequest request, ILogger logger, GrpcCapabilities capabilities)
@@ -280,19 +317,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             CollectionString collectionString = new CollectionString();
             foreach (string element in arrString)
             {
-                // Don't add null entries.("Add" method below will throw)
-                if (element is null)
+                // Empty string/null entries are okay to add based on includeEmptyEntries param value.
+                if (string.IsNullOrEmpty(element) && !includeEmptyEntries)
                 {
                     continue;
                 }
 
-                // Empty string entries are okay to add based on includeEmptyEntries param value.
-                if (element == string.Empty && !includeEmptyEntries)
-                {
-                    continue;
-                }
-
-                collectionString.String.Add(element);
+                // Convert null entries to emptyEntry because "Add" method doesn't support null (will throw)
+                collectionString.String.Add(element ?? string.Empty);
             }
             typedData.CollectionString = collectionString;
 

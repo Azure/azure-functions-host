@@ -56,8 +56,7 @@
           "issues",
           "project_card"
         ]
-      },
-      "id": "KH5N8Ky2K"
+      }
     },
     {
       "taskType": "trigger",
@@ -114,8 +113,7 @@
         "eventNames": [
           "issue_comment"
         ]
-      },
-      "id": "O649JwbnjS"
+      }
     },
     {
       "taskType": "trigger",
@@ -159,8 +157,7 @@
           "issues",
           "project_card"
         ]
-      },
-      "id": "aQwjCUekCh"
+      }
     },
     {
       "taskType": "scheduled",
@@ -295,6 +292,12 @@
             "parameters": {
               "days": 3
             }
+          },
+          {
+            "name": "noLabel",
+            "parameters": {
+              "label": "bot: do not close"
+            }
           }
         ],
         "actions": [
@@ -303,8 +306,7 @@
             "parameters": {}
           }
         ]
-      },
-      "id": "906mdH_oG9"
+      }
     },
     {
       "taskType": "scheduled",
@@ -451,12 +453,11 @@
           {
             "name": "addReply",
             "parameters": {
-              "comment": "This issue has been automatically marked as stale because it has been marked as requiring author feedback but has not had any activity for **4 days**. It will be closed if no further activity occurs **within 3 days of this comment**."
+              "comment": "This issue has been automatically marked as stale because it has been marked as requiring author feedback but has not had any activity for **4 days**. It will be closed if no further activity occurs **within 3 days of this comment**.\n\nIf you are not the original author (${issueAuthor}) and believe this issue is not stale, please comment with `/bot not-stale` and I will not close it."
             }
           }
         ]
-      },
-      "id": "5EeMtqNGSF"
+      }
     },
     {
       "taskType": "scheduled",
@@ -599,15 +600,13 @@
             "parameters": {}
           }
         ]
-      },
-      "id": "quJmRsbw6h"
+      }
     },
     {
       "taskType": "trigger",
       "capabilityId": "IssueResponder",
       "subCapability": "IssuesOnlyResponder",
       "version": "1.0",
-      "id": "BpBMtKkYx",
       "config": {
         "eventType": "issue",
         "eventNames": [
@@ -672,8 +671,7 @@
             }
           }
         ]
-      },
-      "id": "z2NE_n38v"
+      }
     },
     {
       "taskType": "trigger",
@@ -711,8 +709,7 @@
         "eventNames": [
           "pull_request_review"
         ]
-      },
-      "id": "yGuNfEN7VJ"
+      }
     },
     {
       "taskType": "trigger",
@@ -765,8 +762,7 @@
           "issues",
           "project_card"
         ]
-      },
-      "id": "HdQJmGS2xL"
+      }
     },
     {
       "taskType": "trigger",
@@ -806,8 +802,7 @@
         "eventNames": [
           "issue_comment"
         ]
-      },
-      "id": "QqzKjJVwV6"
+      }
     },
     {
       "taskType": "trigger",
@@ -847,8 +842,7 @@
         "eventNames": [
           "pull_request_review"
         ]
-      },
-      "id": "mZCPURCvuh"
+      }
     },
     {
       "taskType": "trigger",
@@ -893,8 +887,7 @@
           "issues",
           "project_card"
         ]
-      },
-      "id": "BDPyRz8pa-"
+      }
     },
     {
       "taskType": "trigger",
@@ -926,8 +919,7 @@
         "eventNames": [
           "issue_comment"
         ]
-      },
-      "id": "oPXnMxM1ki"
+      }
     },
     {
       "taskType": "trigger",
@@ -959,8 +951,7 @@
         "eventNames": [
           "pull_request_review"
         ]
-      },
-      "id": "o3DSMGH_gv"
+      }
     },
     {
       "taskType": "scheduled",
@@ -1103,8 +1094,7 @@
             "parameters": {}
           }
         ]
-      },
-      "id": "g6oRU1qghc"
+      }
     },
     {
       "taskType": "scheduled",
@@ -1255,8 +1245,7 @@
             }
           }
         ]
-      },
-      "id": "G_Vu__RzBi"
+      }
     },
     {
       "taskType": "trigger",
@@ -1271,8 +1260,7 @@
         "mergeType": "squash",
         "deleteBranches": true,
         "requireAllStatuses": true
-      },
-      "id": "Q5a2tbJDNL"
+      }
     },
     {
       "taskType": "trigger",
@@ -1375,8 +1363,7 @@
             }
           }
         ]
-      },
-      "id": "64wtBgyCS"
+      }
     },
     {
       "taskType": "trigger",
@@ -1438,8 +1425,7 @@
             }
           }
         ]
-      },
-      "id": "Ox-fHQqjt3"
+      }
     },
     {
       "taskType": "scheduled",
@@ -1576,15 +1562,13 @@
             }
           }
         ]
-      },
-      "id": "uV_zJiQ2cp"
+      }
     },
     {
       "taskType": "scheduled",
       "capabilityId": "ScheduledSearch",
       "subCapability": "ScheduledSearch",
       "version": "1.1",
-      "id": "jESOVaOAa8X8U8OF30lh2",
       "config": {
         "frequency": [
           {
@@ -1840,7 +1824,6 @@
       "capabilityId": "ScheduledSearch",
       "subCapability": "ScheduledSearch",
       "version": "1.1",
-      "id": "G_2BB5u1hWtFkHooWjmNU",
       "config": {
         "frequency": [
           {
@@ -1988,7 +1971,6 @@
       "capabilityId": "ScheduledSearch",
       "subCapability": "ScheduledSearch",
       "version": "1.1",
-      "id": "pTrZ-9agMkYmbC0XZ_LbV",
       "config": {
         "frequency": [
           {
@@ -2112,7 +2094,6 @@
       "capabilityId": "IssueResponder",
       "subCapability": "PullRequestResponder",
       "version": "1.0",
-      "id": "yNhUVQMpShZbTZo9YWysI",
       "config": {
         "conditions": {
           "operator": "and",
@@ -2159,6 +2140,67 @@
           }
         ]
       }
+    },
+    {
+      "taskType": "trigger",
+      "capabilityId": "IssueResponder",
+      "subCapability": "IssueCommentResponder",
+      "version": "1.0",
+      "config": {
+        "conditions": {
+          "operator": "and",
+          "operands": [
+            {
+              "name": "commentContains",
+              "parameters": {
+                "commentPattern": "/bot not-stale"
+              }
+            },
+            {
+              "operator": "and",
+              "operands": [
+                {
+                  "name": "hasLabel",
+                  "parameters": {
+                    "label": "Needs: Author Feedback"
+                  }
+                },
+                {
+                  "name": "hasLabel",
+                  "parameters": {
+                    "label": "no-recent-activity"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "eventType": "issue",
+        "eventNames": [
+          "issue_comment"
+        ],
+        "taskName": "Test",
+        "actions": [
+          {
+            "name": "addLabel",
+            "parameters": {
+              "label": "bot: do not close"
+            }
+          },
+          {
+            "name": "addLabel",
+            "parameters": {
+              "label": "Needs: Attention :wave:"
+            }
+          },
+          {
+            "name": "addReply",
+            "parameters": {
+              "comment": "Thank you ${contextualAuthor}. This issue will not be automatically closed and a member of the team will review it soon."
+            }
+          }
+        ]
+      }
     }
   ],
   "userGroups": [
@@ -2177,10 +2219,6 @@
         "satvu",
         "jviau"
       ],
-      "modifiedBy": {
-        "upn": "likasem@microsoft.com",
-        "timestamp": "2022-05-18T21:00:09.818Z"
-      },
       "assignmentSchemes": [
         {
           "target": "All",
