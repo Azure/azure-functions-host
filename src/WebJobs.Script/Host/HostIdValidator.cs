@@ -126,6 +126,10 @@ namespace Microsoft.Azure.WebJobs.Script
                 // we only allow Warning/Error levels to be specified, so anything other than
                 // Warning is treated as Error
                 _logger.LogError(message);
+
+                //TODO - eventid?
+                Microsoft.Azure.WebJobs.Script.Diagnostics.DiagnosticEventLoggerExtensions.LogError(_logger, 10, "AZFD004", message, "https://aka.ms/functions-hostid-collision", new Exception(message));
+
                 _applicationLifetime.StopApplication();
             }
         }
