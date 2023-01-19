@@ -80,6 +80,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private TimeSpan _functionLoadTimeout = TimeSpan.FromMinutes(1);
         private bool _isSharedMemoryDataTransferEnabled;
         private bool? _cancelCapabilityEnabled;
+        private int _metadataLoadStarted = 0;
         private bool _isWorkerApplicationInsightsLoggingEnabled;
 
         private System.Timers.Timer _timer;
@@ -760,7 +761,13 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         // gets metadata from worker
         public Task<List<RawFunctionMetadata>> GetFunctionMetadata()
         {
-            return SendFunctionMetadataRequest();
+            // lazy
+            if (Interlocked.Exchange(ref _metadataLoadStarted, 1) == 0)
+            {
+                _ = SendFunctionMetadataRequest();
+            }
+
+            return _functionsIndexingTask.Task;
         }
 
         internal Task<List<RawFunctionMetadata>> SendFunctionMetadataRequest()
