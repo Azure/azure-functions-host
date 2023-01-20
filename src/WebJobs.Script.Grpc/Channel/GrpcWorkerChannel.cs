@@ -740,11 +740,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     HttpRequest httpRequest = context.Inputs.FirstOrDefault(i => i.Val is HttpRequest).Val as HttpRequest;
                     HttpContext httpContext = httpRequest.HttpContext;
 
-                    // add function id to headers as a correlation id
-                    // httpRequest.Headers.Add("function-id", context.FunctionMetadata.GetFunctionId());
+                    // add invocation id as correlation id
+                    httpRequest.Headers.TryAdd("invocation-id", context.ExecutionContext.InvocationId.ToString());
 
                     // so http request comes in as an asp.net type (3rd input).
-                    await _httpForwarder.SendAsync(httpContext, "http://localhost:5555/", invoker, options, static (context, request) =>
+                    _ = _httpForwarder.SendAsync(httpContext, "http://localhost:5555/", invoker, options, static (context, request) =>
                     {
                         return ValueTask.CompletedTask;
                     });
