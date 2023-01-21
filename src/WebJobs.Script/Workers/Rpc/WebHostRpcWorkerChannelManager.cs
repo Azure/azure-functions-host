@@ -128,7 +128,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 {
                     _logger.LogDebug("Loading environment variables for runtime: {runtime}", _workerRuntime);
                     await rpcWorkerChannel.SendFunctionEnvironmentReloadRequest();
-                    _ = rpcWorkerChannel.GetFunctionMetadata();
+                   // _ = rpcWorkerChannel.GetFunctionMetadata();
                 }
                 else
                 {
