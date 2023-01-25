@@ -14,7 +14,6 @@ using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
-using Azure.Core;
 using Google.Protobuf.Collections;
 using Google.Protobuf.WellKnownTypes;
 using Microsoft.Azure.WebJobs.Logging;
@@ -78,7 +77,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private TaskCompletionSource<bool> _reloadTask = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         private TaskCompletionSource<bool> _workerInitTask = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         private TaskCompletionSource<List<RawFunctionMetadata>> _functionsIndexingTask = new TaskCompletionSource<List<RawFunctionMetadata>>(TaskCreationOptions.RunContinuationsAsynchronously);
-        private TaskCompletionSource<bool> _workerWarmupTask = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         private TimeSpan _functionLoadTimeout = TimeSpan.FromMinutes(1);
         private bool _isSharedMemoryDataTransferEnabled;
         private bool? _cancelCapabilityEnabled;
@@ -533,7 +531,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             return _reloadTask.Task;
         }
 
-        public Task SendWorkerWarmupRequest()
+        public void SendWorkerWarmupRequest()
         {
             bool capabilityEnabled = !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.HandlesWorkerWarmupMessage));
             if (!capabilityEnabled)
@@ -557,7 +555,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     WorkerWarmupRequest = request
                 });
             }
-            return _workerWarmupTask.Task;
         }
 
         internal void ProcessWorkerWarmupResponse(WorkerWarmupResponse response)
@@ -566,9 +563,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             if (response.Result.IsFailure(out Exception workerWarmupException))
             {
                 _workerChannelLogger.LogError(workerWarmupException, "Worker warmup failed");
-                _workerWarmupTask.SetException(workerWarmupException);
             }
-            _workerWarmupTask.SetResult(true);
         }
 
         internal FunctionEnvironmentReloadRequest GetFunctionEnvironmentReloadRequest(IDictionary processEnv)
@@ -1116,10 +1111,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _eventManager.Publish(new WorkerErrorEvent(_runtime, Id, exc));
         }
 
-        internal void HandleWorkerWarmupError(Exception exc)
+        private void HandleWorkerWarmupError(Exception exc)
         {
             _workerChannelLogger.LogError(exc, "Worker warmup failed");
-            _workerWarmupTask.SetException(exc);
         }
 
         private ValueTask SendStreamingMessageAsync(StreamingMessage msg)

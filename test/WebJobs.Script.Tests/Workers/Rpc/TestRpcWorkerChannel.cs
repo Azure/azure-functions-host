@@ -163,10 +163,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             return null;
         }
 
-        public Task SendWorkerWarmupRequest()
+        public void SendWorkerWarmupRequest()
         {
             _testLogger.LogInformation("SendWorkerWarmupRequest called");
-            return Task.CompletedTask;
+            return;
         }
     }
 }
