@@ -38,6 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         {
             var sa = CloudStorageAccount.Parse(connectionString);
             var key = Convert.ToBase64String(sa.Credentials.ExportKey());
+
             HttpResponseMessage responseMessage = await SendAsync(new[]
             {
                 new KeyValuePair<string, string>(Operation, "cifs"),
@@ -142,9 +143,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         {
             var operationName = formData.FirstOrDefault(f => string.Equals(f.Key, Operation)).Value;
             _logger.LogDebug($"Sending mesh request {operationName}");
-            var res = await _client.PostAsync(_environment.GetEnvironmentVariable(EnvironmentSettingNames.MeshInitURI),
-                new FormUrlEncodedContent(formData));
+
+            var request = new HttpRequestMessage(HttpMethod.Post, _environment.GetEnvironmentVariable(EnvironmentSettingNames.MeshInitURI))
+            {
+                Content = new FormUrlEncodedContent(formData)
+            };
+
+            request.Headers.Add(ScriptConstants.ContainerInstanceHeader, _environment.GetEnvironmentVariable(EnvironmentSettingNames.ContainerName));
+
+            var res = await _client.SendAsync(request);
+
             _logger.LogDebug($"Mesh response {res.StatusCode}");
+
             return res;
         }
 
