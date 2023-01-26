@@ -11,7 +11,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
 {
     public static class DiagnosticEventLoggerExtensions
     {
-        public static void LogDiagnosticEvent(this ILogger logger, LogLevel level, int eventId, string errorCode, string message, string helpLink, Exception exception)
+        public static void LogDiagnosticEvent(this ILogger logger, LogLevel level, string errorCode, string message, string helpLink, Exception exception)
         {
             var stateDict = new Dictionary<string, object>
             {
@@ -20,17 +20,19 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
                 { ScriptConstants.ErrorCodeKey, errorCode }
             };
 
+            int eventId = 0; // Dummy value - diagnostic events does not log an eventId.
+
             logger.Log(level, eventId, stateDict, exception, (state, ex) => message);
         }
 
-        public static void LogInformation(this ILogger logger, int eventId, string errorCode, string message, string helpLink)
+        public static void LogDiagnosticEventInformation(this ILogger logger, string errorCode, string message, string helpLink)
         {
-            logger.LogDiagnosticEvent(LogLevel.Information, eventId, errorCode, message, helpLink, null);
+            logger.LogDiagnosticEvent(LogLevel.Information, errorCode, message, helpLink, null);
         }
 
-        public static void LogError(this ILogger logger, int eventId, string errorCode, string message, string helpLink, Exception exception)
+        public static void LogDiagnosticEventError(this ILogger logger, string errorCode, string message, string helpLink, Exception exception)
         {
-            logger.LogDiagnosticEvent(LogLevel.Error, eventId, errorCode, message, helpLink, exception);
+            logger.LogDiagnosticEvent(LogLevel.Error, errorCode, message, helpLink, exception);
         }
     }
 }
