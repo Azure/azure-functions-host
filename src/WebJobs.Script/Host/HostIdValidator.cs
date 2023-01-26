@@ -127,8 +127,8 @@ namespace Microsoft.Azure.WebJobs.Script
                 // Warning is treated as Error
                 _logger.LogError(message);
 
-                //TODO - eventid?
-                Microsoft.Azure.WebJobs.Script.Diagnostics.DiagnosticEventLoggerExtensions.LogError(_logger, 10, "AZFD004", message, "https://aka.ms/functions-hostid-collision", new Exception(message));
+                // TODO - update link once make it
+                Microsoft.Azure.WebJobs.Script.Diagnostics.DiagnosticEventLoggerExtensions.LogError(_logger, 0, "AZFD004", message, "https://aka.ms/functions-hostid-collision", new Exception(message));
 
                 _applicationLifetime.StopApplication();
             }
