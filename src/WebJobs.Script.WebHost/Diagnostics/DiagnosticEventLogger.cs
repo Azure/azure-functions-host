@@ -31,14 +31,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             return !_environment.IsPlaceholderModeEnabled();
         }
 
-        private bool IsDiagnosticEvent(IDictionary<string, object> stateInfo)
+        private bool IsDiagnosticEvent(IDictionary<string, object> state)
         {
-            return stateInfo.Keys.Contains(ScriptConstants.DiagnosticEventKey, StringComparer.OrdinalIgnoreCase);
-        }
-
-        private bool HasHelpLink(IDictionary<string, object> stateInfo)
-        {
-            return !string.IsNullOrEmpty(stateInfo[ScriptConstants.ErrorCodeKey].ToString());
+            return state.Keys.Contains(ScriptConstants.DiagnosticEventKey, StringComparer.OrdinalIgnoreCase);
         }
 
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
@@ -48,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 return;
             }
 
-            if (state is IDictionary<string, object> stateInfo && IsDiagnosticEvent(stateInfo) && HasHelpLink(stateInfo))
+            if (state is IDictionary<string, object> stateInfo && IsDiagnosticEvent(stateInfo))
             {
                 string message = formatter(state, exception);
                 if (_diagnosticEventRepository == null)
