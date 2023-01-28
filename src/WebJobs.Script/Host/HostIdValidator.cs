@@ -120,6 +120,8 @@ namespace Microsoft.Azure.WebJobs.Script
             if (level == LogLevel.Warning)
             {
                 _logger.LogWarning(message);
+
+                Microsoft.Azure.WebJobs.Script.Diagnostics.DiagnosticEventLoggerExtensions.LogInformation(_logger, 0, "AZFD004", message, "https://aka.ms/functions-hostid-collision");
             }
             else
             {
@@ -127,7 +129,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 // Warning is treated as Error
                 _logger.LogError(message);
 
-                // TODO - update link once make it
+                // TODO - update link once create it
                 Microsoft.Azure.WebJobs.Script.Diagnostics.DiagnosticEventLoggerExtensions.LogError(_logger, 0, "AZFD004", message, "https://aka.ms/functions-hostid-collision", new Exception(message));
 
                 _applicationLifetime.StopApplication();
