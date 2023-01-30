@@ -19,6 +19,7 @@ using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Features;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -41,6 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             }
 
             var functionExecution = context.Features.Get<IFunctionExecutionFeature>();
+
             if (functionExecution != null && !context.Response.HasStarted)
             {
                 // LiveLogs session id is used to show only contextual logs in the "Code + Test" experience. The id is included in the custom dimension.
@@ -61,6 +63,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
                 }
 
                 ActionContext actionContext = new ActionContext(context, context.GetRouteData(), new ActionDescriptor());
+
+                if (context.Response.Headers.TryGetValue("IsHttpProxying", out var value))
+                {
+                    if (value.ToString() == bool.TrueString)
+                    {
+                        return;
+                    }
+                }
+
+                // TODO: Skip this line and extraneous work to get to this step when HttpProxying
                 await result.ExecuteResultAsync(actionContext);
             }
         }

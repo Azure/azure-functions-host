@@ -731,8 +731,23 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
                 var invocationRequest = await context.ToRpcInvocationRequest(_workerChannelLogger, _workerCapabilities, _isSharedMemoryDataTransferEnabled, _sharedMemoryManager);
 
+                AddAdditionalTraceContext(invocationRequest.TraceContext.Attributes, context);
+                _executingInvocations.TryAdd(invocationRequest.InvocationId, context);
+
+                _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvoked, Id), functionName: context.FunctionMetadata.Name);
+
+                var grpcTask = SendStreamingMessageAsync(new StreamingMessage
+                {
+                    InvocationRequest = invocationRequest
+                });
+
+                if (_cancelCapabilityEnabled)
+                {
+                    context.CancellationToken.Register(() => SendInvocationCancel(invocationRequest.InvocationId));
+                }
+
                 // hard code this for prototyping - automatically forward http requests for http trigger functions
-                if (context.FunctionMetadata.Trigger.Type.Contains("httpTrigger"))
+                if (!string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.EnableHttpProxying)))
                 {
                     var handler = new SocketsHttpHandler();
                     var invoker = new HttpMessageInvoker(handler);
@@ -741,28 +756,16 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     HttpContext httpContext = httpRequest.HttpContext;
 
                     // add invocation id as correlation id
+                    // TODO: add "invocation-id" as a constant somewhere / maybe find a better name
                     httpRequest.Headers.TryAdd("invocation-id", context.ExecutionContext.InvocationId.ToString());
 
-                    // so http request comes in as an asp.net type (3rd input).
-                    _ = _httpForwarder.SendAsync(httpContext, "http://localhost:5555/", invoker, options, static (context, request) =>
-                    {
-                        return ValueTask.CompletedTask;
-                    });
+                    var aspNetTask = _httpForwarder.SendAsync(httpContext, "http://localhost:5555/", invoker, options);
+
+                    await Task.WhenAll(grpcTask.AsTask(), aspNetTask.AsTask());
                 }
-
-                AddAdditionalTraceContext(invocationRequest.TraceContext.Attributes, context);
-                _executingInvocations.TryAdd(invocationRequest.InvocationId, context);
-
-                _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvoked, Id), functionName: context.FunctionMetadata.Name);
-
-                await SendStreamingMessageAsync(new StreamingMessage
+                else
                 {
-                    InvocationRequest = invocationRequest
-                });
-
-                if (_cancelCapabilityEnabled != null && _cancelCapabilityEnabled.Value)
-                {
-                    context.CancellationToken.Register(() => SendInvocationCancel(invocationRequest.InvocationId));
+                    await grpcTask;
                 }
             }
             catch (Exception invokeEx)
