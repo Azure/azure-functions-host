@@ -76,6 +76,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                     Process.EnableRaisingEvents = true;
 
                     _workerProcessLogger?.LogDebug($"TEST WorkerProcess.StartProcessAsync() 5");
+                    _workerProcessLogger?.LogDebug($"TEST WorkerProcess.StartProcessAsync() 5.1");
+                    _workerProcessLogger?.LogDebug($"TEST WorkerProcess.StartProcessAsync() FileName:{Process.StartInfo.FileName}");
+                    _workerProcessLogger?.LogDebug($"TEST WorkerProcess.StartProcessAsync() FileName:{Process.StartInfo.WorkingDirectory}");
+                    _workerProcessLogger?.LogDebug($"TEST WorkerProcess.StartProcessAsync() FileName:{Process.StartInfo.Arguments}");
 
                     _workerProcessLogger?.LogDebug($"Starting worker process with FileName:{Process.StartInfo.FileName} WorkingDirectory:{Process.StartInfo.WorkingDirectory} Arguments:{Process.StartInfo.Arguments}");
                     _workerProcessLogger?.LogDebug($"TEST WorkerProcess.StartProcessAsync() 6");
