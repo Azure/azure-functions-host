@@ -76,11 +76,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                     Process.EnableRaisingEvents = true;
 
                     _workerProcessLogger?.LogDebug($"TEST WorkerProcess.StartProcessAsync() 5");
-                    _workerProcessLogger?.LogDebug($"TEST WorkerProcess.StartProcessAsync() 5.1");
-                    _workerProcessLogger?.LogDebug($"TEST WorkerProcess.StartProcessAsync() FileName:{Process.StartInfo.FileName}");
-                    _workerProcessLogger?.LogDebug($"TEST WorkerProcess.StartProcessAsync() FileName:{Process.StartInfo.WorkingDirectory}");
-                    _workerProcessLogger?.LogDebug($"TEST WorkerProcess.StartProcessAsync() FileName:{Process.StartInfo.Arguments}");
-
                     _workerProcessLogger?.LogDebug($"Starting worker process with FileName:{Process.StartInfo.FileName} WorkingDirectory:{Process.StartInfo.WorkingDirectory} Arguments:{Process.StartInfo.Arguments}");
                     _workerProcessLogger?.LogDebug($"TEST WorkerProcess.StartProcessAsync() 6");
                     Process.Start();
@@ -89,6 +84,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                     _workerProcessLogger?.LogDebug($"TEST WorkerProcess.StartProcessAsync() 8");
 
                     // Log all of the files in Process.StartInfo.WorkingDirectory
+                    var files = System.IO.Directory.GetFiles(Process.StartInfo.WorkingDirectory);
+                    foreach (var file in files)
+                    {
+                        _workerProcessLogger?.LogDebug($"TEST WorkerProcess.StartProcessAsync() 9.1 file:{file}");
+                    }
 
                     Process.BeginErrorReadLine();
                     Process.BeginOutputReadLine();
