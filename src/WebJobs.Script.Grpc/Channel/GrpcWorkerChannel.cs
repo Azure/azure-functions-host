@@ -265,13 +265,19 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         public async Task StartWorkerProcessAsync(CancellationToken cancellationToken)
         {
+            _workerChannelLogger.LogDebug("TEST GRPC Worker - StartWorkerProcessAsync() 1");
             RegisterCallbackForNextGrpcMessage(MsgType.StartStream, _workerConfig.CountOptions.ProcessStartupTimeout, 1, SendWorkerInitRequest, HandleWorkerStartStreamError);
+            _workerChannelLogger.LogDebug("TEST GRPC Worker - StartWorkerProcessAsync() 2");
             // note: it is important that the ^^^ StartStream is in place *before* we start process the loop, otherwise we get a race condition
             _ = ProcessInbound();
 
+            _workerChannelLogger.LogDebug("TEST GRPC Worker - StartWorkerProcessAsync() 3");
+
             _workerChannelLogger.LogDebug("Initiating Worker Process start up");
             await _rpcWorkerProcess.StartProcessAsync();
+            _workerChannelLogger.LogDebug("TEST GRPC Worker - StartWorkerProcessAsync() 4");
             _state = _state | RpcWorkerChannelState.Initializing;
+            _workerChannelLogger.LogDebug("TEST GRPC Worker - StartWorkerProcessAsync() 5");
             await _workerInitTask.Task;
         }
 

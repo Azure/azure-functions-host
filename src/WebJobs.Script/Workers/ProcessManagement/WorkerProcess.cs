@@ -61,19 +61,30 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         public Task StartProcessAsync()
         {
+            _workerProcessLogger?.LogDebug($"TEST WorkerProcess.StartProcessAsync() 1");
             using (_metricsLogger.LatencyEvent(MetricEventNames.ProcessStart))
             {
+                _workerProcessLogger?.LogDebug($"TEST WorkerProcess.StartProcessAsync() 2");
                 Process = CreateWorkerProcess();
+                _workerProcessLogger?.LogDebug($"TEST WorkerProcess.StartProcessAsync() 3");
                 try
                 {
+                    _workerProcessLogger?.LogDebug($"TEST WorkerProcess.StartProcessAsync() 4");
                     Process.ErrorDataReceived += (sender, e) => OnErrorDataReceived(sender, e);
                     Process.OutputDataReceived += (sender, e) => OnOutputDataReceived(sender, e);
                     Process.Exited += (sender, e) => OnProcessExited(sender, e);
                     Process.EnableRaisingEvents = true;
 
+                    _workerProcessLogger?.LogDebug($"TEST WorkerProcess.StartProcessAsync() 5");
+
                     _workerProcessLogger?.LogDebug($"Starting worker process with FileName:{Process.StartInfo.FileName} WorkingDirectory:{Process.StartInfo.WorkingDirectory} Arguments:{Process.StartInfo.Arguments}");
+                    _workerProcessLogger?.LogDebug($"TEST WorkerProcess.StartProcessAsync() 6");
                     Process.Start();
+                    _workerProcessLogger?.LogDebug($"TEST WorkerProcess.StartProcessAsync() 7");
                     _workerProcessLogger?.LogDebug($"{Process.StartInfo.FileName} process with Id={Process.Id} started");
+                    _workerProcessLogger?.LogDebug($"TEST WorkerProcess.StartProcessAsync() 8");
+
+                    // Log all of the files in Process.StartInfo.WorkingDirectory
 
                     Process.BeginErrorReadLine();
                     Process.BeginOutputReadLine();

@@ -53,12 +53,17 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal override Process CreateWorkerProcess()
         {
+            _workerProcessLogger.LogInformation("TEST: RpcWorkerProcess.CreateWorkerProcess() 1");
             var workerContext = new RpcWorkerContext(Guid.NewGuid().ToString(), RpcWorkerConstants.DefaultMaxMessageLengthBytes, _workerId, _workerProcessArguments, _scriptRootPath, _serverUri);
+            _workerProcessLogger.LogInformation("TEST: RpcWorkerProcess.CreateWorkerProcess() 2");
             workerContext.EnvironmentVariables.Add(WorkerConstants.FunctionsWorkerDirectorySettingName, _workerDirectory);
+            _workerProcessLogger.LogInformation("TEST: RpcWorkerProcess.CreateWorkerProcess() 3");
             foreach (var pair in _hostingConfigOptions.Value.Features)
             {
+                _workerProcessLogger.LogInformation("TEST: RpcWorkerProcess.CreateWorkerProcess() 4");
                 workerContext.EnvironmentVariables[pair.Key] = pair.Value;
             }
+            _workerProcessLogger.LogInformation("TEST: RpcWorkerProcess.CreateWorkerProcess() 5");
             return _processFactory.CreateWorkerProcess(workerContext);
         }
 

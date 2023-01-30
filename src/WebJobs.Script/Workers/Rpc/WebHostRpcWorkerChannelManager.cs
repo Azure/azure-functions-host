@@ -13,6 +13,7 @@ using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using static Microsoft.AspNetCore.Razor.Language.TagHelperMetadata;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
@@ -71,8 +72,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _logger.LogDebug("Creating language worker channel for runtime:{runtime}", runtime);
             try
             {
+                _logger.LogDebug($"TEST InitializeLanguageWorkerChannel() 1 runtime: {runtime} _workerRuntime: {_workerRuntime}");
                 rpcWorkerChannel = _rpcWorkerChannelFactory.Create(scriptRootPath, runtime, _metricsLogger, 0, _languageWorkerOptions.CurrentValue.WorkerConfigs);
+                _logger.LogDebug("TEST InitializeLanguageWorkerChannel() 2");
                 AddOrUpdateWorkerChannels(runtime, rpcWorkerChannel);
+                _logger.LogDebug("TEST InitializeLanguageWorkerChannel() 3");
                 await rpcWorkerChannel.StartWorkerProcessAsync().ContinueWith(processStartTask =>
                 {
                     if (processStartTask.Status == TaskStatus.RanToCompletion)
@@ -281,17 +285,23 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal void AddOrUpdateWorkerChannels(string initializedRuntime, IRpcWorkerChannel initializedLanguageWorkerChannel)
         {
+            _logger.LogDebug($"TEST AddOrUpdateWorkerChannels() 1 initializedRuntime: {initializedRuntime}");
             _logger.LogDebug("Adding webhost language worker channel for runtime: {language}. workerId:{id}", initializedRuntime, initializedLanguageWorkerChannel.Id);
             _workerChannels.AddOrUpdate(initializedRuntime,
                     (runtime) =>
                     {
+                        _logger.LogDebug($"TEST AddOrUpdateWorkerChannels() 2 runtime: {runtime}");
                         Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>> newLanguageWorkerChannels = new Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>>();
+                        _logger.LogDebug($"TEST AddOrUpdateWorkerChannels() 3");
                         newLanguageWorkerChannels.Add(initializedLanguageWorkerChannel.Id, new TaskCompletionSource<IRpcWorkerChannel>());
+                        _logger.LogDebug($"TEST AddOrUpdateWorkerChannels() 4");
                         return newLanguageWorkerChannels;
                     },
                     (runtime, existingLanguageWorkerChannels) =>
                     {
+                        _logger.LogDebug($"TEST AddOrUpdateWorkerChannels() 5");
                         existingLanguageWorkerChannels.Add(initializedLanguageWorkerChannel.Id, new TaskCompletionSource<IRpcWorkerChannel>());
+                        _logger.LogDebug($"TEST AddOrUpdateWorkerChannels() 6");
                         return existingLanguageWorkerChannels;
                     });
         }
