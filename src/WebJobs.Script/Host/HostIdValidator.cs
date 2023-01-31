@@ -128,11 +128,10 @@ namespace Microsoft.Azure.WebJobs.Script
             }
             else
             {
-                // we only allow Warning/Error levels to be specified, so anything other than
-                // Warning is treated as Error
+                // We only allow Warning/Error levels to be specified,
+                // so anything other than Warning is treated as Error.
                 _logger.LogError(message);
 
-                // TODO - update link once create it
                 DiagnosticEventLoggerExtensions.LogDiagnosticEventError(_logger, HostIdCollisionErrorCode, message, "https://aka.ms/functions-hostid-collision", new Exception(message));
 
                 _applicationLifetime.StopApplication();

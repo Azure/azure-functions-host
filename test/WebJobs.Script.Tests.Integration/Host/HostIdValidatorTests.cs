@@ -143,7 +143,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsHostIdCheckLevel, level);
             _mockApplicationLifetime.Setup(p => p.StopApplication());
 
-           // await ClearHostIdInfoAsync();
+            await ClearHostIdInfoAsync();
 
             HostIdValidator.HostIdInfo hostIdInfo = new HostIdValidator.HostIdInfo
             {
