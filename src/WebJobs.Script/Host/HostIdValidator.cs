@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Azure;
 using Azure.Storage.Blobs;
 using Microsoft.Azure.WebJobs.Host.Storage;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Properties;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
@@ -27,6 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script
     public class HostIdValidator
     {
         public const string BlobPathFormat = "ids/usage/{0}";
+        private const string HostIdCollisionErrorCode = "AZFD004";
         private const LogLevel DefaultLevel = LogLevel.Error;
 
         private readonly IEnvironment _environment;
@@ -117,11 +119,12 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             string message = string.Format(Resources.HostIdCollisionFormat, hostId);
+
             if (level == LogLevel.Warning)
             {
                 _logger.LogWarning(message);
 
-                Microsoft.Azure.WebJobs.Script.Diagnostics.DiagnosticEventLoggerExtensions.LogInformation(_logger, 0, "AZFD004", message, "https://aka.ms/functions-hostid-collision");
+                DiagnosticEventLoggerExtensions.LogDiagnosticEventInformation(_logger, HostIdCollisionErrorCode, message, "https://aka.ms/functions-hostid-collision");
             }
             else
             {
@@ -130,7 +133,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 _logger.LogError(message);
 
                 // TODO - update link once create it
-                Microsoft.Azure.WebJobs.Script.Diagnostics.DiagnosticEventLoggerExtensions.LogError(_logger, 0, "AZFD004", message, "https://aka.ms/functions-hostid-collision", new Exception(message));
+                DiagnosticEventLoggerExtensions.LogDiagnosticEventError(_logger, HostIdCollisionErrorCode, message, "https://aka.ms/functions-hostid-collision", new Exception(message));
 
                 _applicationLifetime.StopApplication();
             }
