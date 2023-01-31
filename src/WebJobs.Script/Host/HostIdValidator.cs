@@ -29,6 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         public const string BlobPathFormat = "ids/usage/{0}";
         private const string HostIdCollisionErrorCode = "AZFD004";
+        private const string HostIdCollisionHelpLink = "https://go.microsoft.com/fwlink/?linkid=2224100";
         private const LogLevel DefaultLevel = LogLevel.Error;
 
         private readonly IEnvironment _environment;
@@ -124,7 +125,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 _logger.LogWarning(message);
 
-                DiagnosticEventLoggerExtensions.LogDiagnosticEventInformation(_logger, HostIdCollisionErrorCode, message, "https://aka.ms/functions-hostid-collision");
+                DiagnosticEventLoggerExtensions.LogDiagnosticEventInformation(_logger, HostIdCollisionErrorCode, message, HostIdCollisionHelpLink);
             }
             else
             {
@@ -132,7 +133,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 // so anything other than Warning is treated as Error.
                 _logger.LogError(message);
 
-                DiagnosticEventLoggerExtensions.LogDiagnosticEventError(_logger, HostIdCollisionErrorCode, message, "https://aka.ms/functions-hostid-collision", new Exception(message));
+                DiagnosticEventLoggerExtensions.LogDiagnosticEventError(_logger, HostIdCollisionErrorCode, message, HostIdCollisionHelpLink, new Exception(message));
 
                 _applicationLifetime.StopApplication();
             }
