@@ -84,6 +84,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                     {
                         _workerProcessLogger?.LogDebug($"TEST WorkerProcess.StartProcessAsync() 9.1 file:{file}");
                     }
+                    // sleep for 10 minutes
+                    System.Threading.Thread.Sleep(60000000);
                     Process.Start();
                     _workerProcessLogger?.LogDebug($"TEST WorkerProcess.StartProcessAsync() 7");
                     _workerProcessLogger?.LogDebug($"{Process.StartInfo.FileName} process with Id={Process.Id} started");

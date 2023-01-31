@@ -59,8 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
                 string tempRoot = Path.GetTempPath();
 
                 options.LogPath = Path.Combine(tempRoot, @"functions\standby\logs");
-                // set scriptpath to temproot/functions/standby/wwwroot
-                options.ScriptPath = Path.Combine(tempRoot, @"functions/standby/wwwroot");
+                options.ScriptPath = Path.Combine(tempRoot, @"functions\standby\wwwroot");
                 options.SecretsPath = Path.Combine(tempRoot, @"functions\standby\secrets");
                 options.IsSelfHost = options.IsSelfHost;
                 options.IsStandbyConfiguration = true;
