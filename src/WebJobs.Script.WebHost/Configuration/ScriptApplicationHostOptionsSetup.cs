@@ -59,7 +59,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
                 string tempRoot = Path.GetTempPath();
 
                 options.LogPath = Path.Combine(tempRoot, @"functions\standby\logs");
-                options.ScriptPath = Path.Combine(tempRoot, @"functions\standby\wwwroot");
+                // set scriptpath to temproot/functions/standby/wwwroot
+                options.ScriptPath = Path.Combine(tempRoot, @"functions/standby/wwwroot");
                 options.SecretsPath = Path.Combine(tempRoot, @"functions\standby\secrets");
                 options.IsSelfHost = options.IsSelfHost;
                 options.IsStandbyConfiguration = true;
@@ -67,6 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
 
             options.IsFileSystemReadOnly |= IsZipDeployment(out bool isScmRunFromPackage);
             options.IsScmRunFromPackage = isScmRunFromPackage;
+
         }
 
         private bool IsZipDeployment(out bool isScmRunFromPackage)
