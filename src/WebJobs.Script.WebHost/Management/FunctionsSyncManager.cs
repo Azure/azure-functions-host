@@ -117,8 +117,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 PrepareSyncTriggers();
 
                 var hashBlobClient = await GetHashBlobAsync();
-                // _logger.LogDebug("isBackgroundSync && hashBlobClient == null && !_environment.IsKubernetesManagedHosting() && !_environment.IsManagedEnvironment()");
-                if (isBackgroundSync && hashBlobClient == null && !_environment.IsKubernetesManagedHosting() && !_environment.IsManagedEnvironment())
+                // _logger.LogDebug("isBackgroundSync && hashBlobClient == null && !_environment.IsKubernetesManagedHosting() && !_environment.IsManagedAppEnvironment()");
+                if (isBackgroundSync && hashBlobClient == null && !_environment.IsKubernetesManagedHosting() && !_environment.IsManagedAppEnvironment())
                 {
                     // short circuit before doing any work in background sync
                     // cases where we need to check/update hash but don't have
@@ -140,7 +140,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
                 bool shouldSyncTriggers = true;
                 string newHash = null;
-                // _logger.LogDebug("isBackgroundSync && !_environment.IsKubernetesManagedHosting() && !_environment.IsManagedEnvironment()");
+                // _logger.LogDebug("isBackgroundSync && !_environment.IsKubernetesManagedHosting() && !_environment.IsManagedAppEnvironment()");
                 if (isBackgroundSync && !_environment.IsKubernetesManagedHosting() && !_environment.IsManagedEnvironment())
                 {
                     newHash = await CheckHashAsync(hashBlobClient, payload.Content);
@@ -204,11 +204,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         internal static bool IsSyncTriggersEnvironment(IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment)
         {
-            if (environment.IsManagedEnvironment())
-            {
-                return true;
-            }
-
             if (environment.IsCoreTools())
             {
                 // don't sync triggers when running locally or not running in a cloud
@@ -677,7 +672,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         internal HttpRequestMessage BuildSetTriggersRequest()
         {
             var url = default(string);
-            if (_environment.IsKubernetesManagedHosting() || _environment.IsManagedEnvironment())
+            if (_environment.IsKubernetesManagedHosting() || _environment.IsManagedAppEnvironment())
             {
                 var buildServiceHostname = _environment.GetEnvironmentVariable("FUNCTIONS_API_SERVER") ??
                     _environment.GetEnvironmentVariable("BUILD_SERVICE_HOSTNAME");
@@ -729,7 +724,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 request.Headers.Add(ScriptConstants.SiteTokenHeaderName, token);
                 request.Content = new StringContent(content, Encoding.UTF8, "application/json");
 
-                if (_environment.IsManagedEnvironment())
+                if (_environment.IsManagedAppEnvironment())
                 {
                     request.Headers.Add("K8SE-APP-NAME", _environment.GetEnvironmentVariable("CONTAINER_APP_NAME"));
                     request.Headers.Add("K8SE-APP-NAMESPACE", _environment.GetEnvironmentVariable("CONTAINER_APP_NAMESPACE"));
