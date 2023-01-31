@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Hosting;
@@ -287,7 +288,6 @@ namespace Microsoft.Azure.WebJobs.Script
                          .GetSection(ConfigurationSectionNames.Scale)
                          .Bind(o);
                     });
-                services.AddSingleton<IFunctionsHostingConfiguration, FunctionsHostingConfiguration>();
 
                 services.AddSingleton<IFileLoggingStatusManager, FileLoggingStatusManager>();
 
@@ -387,12 +387,19 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     o.InstrumentationKey = appInsightsInstrumentationKey;
                     o.ConnectionString = appInsightsConnectionString;
-                }, t => t.TelemetryProcessorChainBuilder.Use(next => new ScriptTelemetryProcessor(next)));
+                }, t =>
+                {
+                    if (t.TelemetryChannel is ServerTelemetryChannel channel)
+                    {
+                        channel.TransmissionStatusEvent += TransmissionStatusHandler.Handler;
+                    }
+
+                    t.TelemetryProcessorChainBuilder.Use(next => new WorkerTraceFilterTelemetryProcessor(next));
+                    t.TelemetryProcessorChainBuilder.Use(next => new ScriptTelemetryProcessor(next));
+                });
 
                 builder.Services.ConfigureOptions<ApplicationInsightsLoggerOptionsSetup>();
-
                 builder.Services.AddSingleton<ISdkVersionProvider, FunctionsSdkVersionProvider>();
-
                 builder.Services.AddSingleton<ITelemetryInitializer, ScriptTelemetryInitializer>();
 
                 if (SystemEnvironment.Instance.IsPlaceholderModeEnabled())

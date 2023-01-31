@@ -687,7 +687,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         // This function will call POST https://{app}.azurewebsites.net/operation/settriggers with the content
         // of triggers. It'll verify app ownership using a SWT token valid for 5 minutes. It should be plenty.
-        private async Task<(bool, string)> SetTriggersAsync(string content)
+        private async Task<(bool Success, string ErrorMessage)> SetTriggersAsync(string content)
         {
             var token = SimpleWebTokenHelper.CreateToken(DateTime.UtcNow.AddMinutes(5));
 

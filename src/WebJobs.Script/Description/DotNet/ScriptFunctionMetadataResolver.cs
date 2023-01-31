@@ -10,7 +10,6 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.Loader;
-using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.CodeAnalysis;
@@ -84,7 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             "Microsoft.Identity.Client.Extensions.Msal"
         };
 
-        private static Lazy<IEnumerable<string>> _privateHostAssemblies = new (GetPrivateHostAssemblies);
+        private static Lazy<IEnumerable<string>> _privateHostAssemblies = new(GetPrivateHostAssemblies);
 
         public ScriptFunctionMetadataResolver(string scriptFilePath, ICollection<IScriptBindingProvider> bindingProviders, ILogger logger)
         {
@@ -119,7 +118,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 assembliesInfo.Reset -= RuntimeAssembliesResetHandler;
             }
 
-            _privateHostAssemblies = new (GetPrivateHostAssemblies);
+            _privateHostAssemblies = new(GetPrivateHostAssemblies);
         }
 
         public ScriptOptions CreateScriptOptions()

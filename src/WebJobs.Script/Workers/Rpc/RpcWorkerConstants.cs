@@ -1,8 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
-
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
     public static class RpcWorkerConstants
@@ -54,6 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public const string SupportsLoadResponseCollection = "SupportsLoadResponseCollection";
         public const string HandlesWorkerTerminateMessage = "HandlesWorkerTerminateMessage";
         public const string HandlesInvocationCancelMessage = "HandlesInvocationCancelMessage";
+        public const string WorkerApplicationInsightsLoggingEnabled = nameof(WorkerApplicationInsightsLoggingEnabled);
 
         /// <summary>
         /// Indicates whether empty entries in the trigger message should be included when sending RpcInvocation data to OOP workers.

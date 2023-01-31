@@ -11,7 +11,6 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
-using Microsoft.Azure.WebJobs.Script.Management.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
@@ -86,7 +85,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             FileUtility.Instance = fileSystem;
             _fileSystem = fileSystem;
             var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, new TestMetricsLogger());
-            var functionMetadataManager = TestFunctionMetadataManager.GetFunctionMetadataManager(new OptionsWrapper<ScriptJobHostOptions>(new ScriptJobHostOptions()), metadataProvider, null, new OptionsWrapper<HttpWorkerOptions>(new HttpWorkerOptions()), loggerFactory, new TestOptionsMonitor<LanguageWorkerOptions>(TestHelpers.GetTestLanguageWorkerOptions()));
+            var defaultProvider = new FunctionMetadataProvider(NullLogger<FunctionMetadataProvider>.Instance, null, metadataProvider);
+            var functionMetadataManager = TestFunctionMetadataManager.GetFunctionMetadataManager(new OptionsWrapper<ScriptJobHostOptions>(new ScriptJobHostOptions()), defaultProvider, null, new OptionsWrapper<HttpWorkerOptions>(new HttpWorkerOptions()), loggerFactory, new TestOptionsMonitor<LanguageWorkerOptions>(TestHelpers.GetTestLanguageWorkerOptions()));
 
             var emptyOptions = new JobHostInternalStorageOptions();
             var azureBlobStorageProvider = TestHelpers.GetAzureBlobStorageProvider(configurationMock.Object, storageOptions: emptyOptions);
@@ -135,7 +135,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         public async Task TryGetFunction_NoMatchingFunction_ReturnsEmpty()
         {
             var result = await _webFunctionsManager.TryGetFunction("non-function", null);
-            Assert.False(result.Item1);
+            Assert.False(result.Success);
         }
 
         [Fact]
@@ -145,7 +145,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             {
                 FileUtility.Instance = CreateEmptyFileSystem(_hostOptions);
                 var action = await _webFunctionsManager.TryGetFunction("function1", null);
-                Assert.False(action.Item1);
+                Assert.False(action.Success);
             }
             finally
             {
@@ -185,11 +185,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
         private static IHttpClientFactory CreateHttpClientFactory(StringBuilder writeContent)
         {
-           var httpClient = new HttpClient(new MockHttpHandler(writeContent));
-           var mockFactory = new Mock<IHttpClientFactory>();
-           mockFactory.Setup(m => m.CreateClient(It.IsAny<string>()))
-                .Returns(httpClient);
-           return mockFactory.Object;
+            var httpClient = new HttpClient(new MockHttpHandler(writeContent));
+            var mockFactory = new Mock<IHttpClientFactory>();
+            mockFactory.Setup(m => m.CreateClient(It.IsAny<string>()))
+                 .Returns(httpClient);
+            return mockFactory.Object;
         }
 
         private static LanguageWorkerOptions CreateLanguageWorkerConfigSettings()

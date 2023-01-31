@@ -282,10 +282,8 @@ namespace Microsoft.Azure.WebJobs.Script
                 // get worker config information and check to see if worker should index or not
                 var workerConfigs = _languageWorkerOptions.CurrentValue.WorkerConfigs;
 
-                bool workerIndexing = Utility.CanWorkerIndex(workerConfigs, _environment);
-
                 // Generate Functions
-                IEnumerable<FunctionMetadata> functionMetadataList = GetFunctionsMetadata(workerIndexing);
+                IEnumerable<FunctionMetadata> functionMetadataList = GetFunctionsMetadata();
 
                 if (!_environment.IsPlaceholderModeEnabled())
                 {
@@ -313,14 +311,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 await InitializeFunctionDescriptorsAsync(functionMetadataList, cancellationToken);
 
-                if (!workerIndexing)
-                {
-                    // Initialize worker function invocation dispatcher only for valid functions after creating function descriptors
-                    // Dispatcher not needed for codeless function.
-                    // Dispatcher needed for non-dotnet codeless functions
-                    var filteredFunctionMetadata = functionMetadataList.Where(m => m.IsProxy() || !Utility.IsCodelessDotNetLanguageFunction(m));
-                    await _functionDispatcher.InitializeAsync(Utility.GetValidFunctions(filteredFunctionMetadata, Functions), cancellationToken);
-                }
+                var filteredFunctionMetadata = functionMetadataList.Where(m => m.IsProxy() || !Utility.IsCodelessDotNetLanguageFunction(m));
+                await _functionDispatcher.InitializeAsync(Utility.GetValidFunctions(filteredFunctionMetadata, Functions), cancellationToken);
 
                 GenerateFunctions();
                 ScheduleFileSystemCleanup();
@@ -371,19 +363,12 @@ namespace Microsoft.Azure.WebJobs.Script
         /// Gets metadata collection of functions and proxies configured.
         /// </summary>
         /// <returns>A metadata collection of functions and proxies configured.</returns>
-        private IEnumerable<FunctionMetadata> GetFunctionsMetadata(bool workerIndexing)
+        private IEnumerable<FunctionMetadata> GetFunctionsMetadata()
         {
             IEnumerable<FunctionMetadata> functionMetadata;
-            if (workerIndexing)
-            {
-                _logger.LogInformation("Worker indexing is enabled");
-                functionMetadata = _functionMetadataManager.GetFunctionMetadata(forceRefresh: false, dispatcher: _functionDispatcher);
-            }
-            else
-            {
-                functionMetadata = _functionMetadataManager.GetFunctionMetadata(false);
-                _workerRuntime = _workerRuntime ?? Utility.GetWorkerRuntime(functionMetadata);
-            }
+
+            functionMetadata = _functionMetadataManager.GetFunctionMetadata(forceRefresh: false);
+            _workerRuntime ??= Utility.GetWorkerRuntime(functionMetadata);
             foreach (var error in _functionMetadataManager.Errors)
             {
                 FunctionErrors.Add(error.Key, error.Value.ToArray());

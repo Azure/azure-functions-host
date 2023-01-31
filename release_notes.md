@@ -1,12 +1,14 @@
 ### Release notes
+
 <!-- Please add your release notes in the following format:
 - My change description (#PR)
 -->
-- Update Python Worker Version to [4.8.0](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.8.0)
-- Update Java Worker Version to [2.7.0](https://github.com/Azure/azure-functions-java-worker/releases/tag/2.7.0)
-- Update Node.js Worker Version to [3.5.1](https://github.com/Azure/azure-functions-nodejs-worker/releases/tag/v3.5.1)
-- Update ApplicationInsights packages to 2.21.0 (#8838)
+- Update Python Worker Version to [4.10.0](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.10.0)
+- Update App Service Authentication/Authorization on Linux Consumption from 1.4.17 to 1.5.1 [Release Note](https://github.com/Azure/app-service-announcements/issues/406)
+- Upgraded proto files to v1.7.1-protofile release (#9023)
+- Refresh capabilities & log worker metadata after specialization (#9020)
+- Update DiagnosticEventLoggerExtensions method names (#9056)
 - Update custom handlers to support trigger return values (#8874)
 
-**Release sprint:** Sprint 131
-[ [bugs](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+131%22+label%3Abug+is%3Aclosed) | [features](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+131%22+label%3Afeature+is%3Aclosed) ]
+**Release sprint:** Sprint 138
+[ [bugs](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+138%22+label%3Abug+is%3Aclosed) | [features](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+138%22+label%3Afeature+is%3Aclosed) ]

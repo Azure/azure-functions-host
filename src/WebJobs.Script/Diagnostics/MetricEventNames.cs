@@ -25,6 +25,9 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
 
         // language worker level events
         public const string WorkerInitializeLatency = "host.startup.outofproc.{0}worker.initialize.attempt{1}.latency";
+        public const string WorkerInvoked = "{0}worker.invoke";
+        public const string WorkerInvokeSucceeded = "{0}worker.invoke.succeeded";
+        public const string WorkerInvokeFailed = "{0}worker.invoke.failed";
 
         // FunctionMetadataprovider events
         public const string ReadFunctionsMetadata = "functionmetadataprovider.readfunctionsmetadata";
@@ -49,6 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         // function level events
         public const string FunctionInvokeLatency = "function.invoke.latency";
         public const string FunctionBindingTypeFormat = "function.binding.{0}";
+        public const string FunctionBindingDeferred = "function.binding.deferred";
         public const string FunctionCompileLatencyByLanguageFormat = "function.compile.{0}.latency";
         public const string FunctionInvokeThrottled = "function.invoke.throttled";
         public const string FunctionUserLog = "function.userlog";

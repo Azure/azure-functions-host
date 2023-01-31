@@ -10,7 +10,7 @@ namespace Microsoft.Azure.WebJobs.Script.Eventing
     public class ScriptEventManager : IScriptEventManager, IDisposable
     {
         private readonly Subject<ScriptEvent> _subject = new Subject<ScriptEvent>();
-        private readonly ConcurrentDictionary<(string, Type), object> _workerState = new ();
+        private readonly ConcurrentDictionary<(string, Type), object> _workerState = new();
 
         private bool _disposed = false;
 

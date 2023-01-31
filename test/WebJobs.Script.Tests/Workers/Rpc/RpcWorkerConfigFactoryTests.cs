@@ -134,7 +134,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 Assert.NotNull(pythonWorkerConfig);
                 Assert.NotNull(powershellWorkerConfig);
                 Assert.Equal("3.8", pythonWorkerConfig.Description.DefaultRuntimeVersion);
-                Assert.Equal("7", powershellWorkerConfig.Description.DefaultRuntimeVersion);
+                Assert.Equal("7.2", powershellWorkerConfig.Description.DefaultRuntimeVersion);
             }
         }
 

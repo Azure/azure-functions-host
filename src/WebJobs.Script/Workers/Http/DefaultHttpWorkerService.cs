@@ -51,9 +51,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
         private static HttpClient CreateHttpClient(IOptions<HttpWorkerOptions> httpWorkerOptions)
         {
-            HttpClientHandler handler = new ();
+            HttpClientHandler handler = new();
             handler.AllowAutoRedirect = !httpWorkerOptions.Value.EnableForwardingHttpRequest;
-            return new (handler);
+            return new(handler);
         }
 
         public Task InvokeAsync(ScriptInvocationContext scriptInvocationContext)
@@ -79,12 +79,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 Outputs = new Dictionary<string, object>()
             };
 
-            (string name, DataType type, object request) input = scriptInvocationContext.Inputs.First();
+            var input = scriptInvocationContext.Inputs.First();
 
-            HttpRequest httpRequest = input.request as HttpRequest;
+            HttpRequest httpRequest = input.Val as HttpRequest;
             if (httpRequest == null)
             {
-                throw new InvalidOperationException($"HttpTrigger value for: `{input.name}` is null");
+                throw new InvalidOperationException($"HttpTrigger value for: `{input.Name}` is null");
             }
 
             try

@@ -39,12 +39,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public void OnMessage(StreamingMessage.ContentOneofCase messageType, Action<OutboundGrpcEvent> callback)
             => _handlers.AddOrUpdate(messageType, callback, (messageType, oldValue) => oldValue + callback);
 
-        public void AutoReply(StreamingMessage.ContentOneofCase messageType)
+        public void AutoReply(StreamingMessage.ContentOneofCase messageType, bool workerSupportsSpecialization = false)
         {
             // apply standard default responses
             Action<OutboundGrpcEvent> callback = messageType switch
             {
-                StreamingMessage.ContentOneofCase.FunctionEnvironmentReloadRequest => _ => PublishFunctionEnvironmentReloadResponseEvent(),
+                StreamingMessage.ContentOneofCase.FunctionEnvironmentReloadRequest => _ => PublishFunctionEnvironmentReloadResponseEvent(workerSupportsSpecialization),
                 _ => null,
             };
             if (callback is not null)
@@ -176,13 +176,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Write(responseMessage);
         }
 
-        public void PublishFunctionEnvironmentReloadResponseEvent()
+        public void PublishFunctionEnvironmentReloadResponseEvent(bool workerSupportsSpecialization)
         {
-            FunctionEnvironmentReloadResponse relaodEnvResponse = GetTestFunctionEnvReloadResponse();
+            FunctionEnvironmentReloadResponse reloadEnvResponse = GetTestFunctionEnvReloadResponse();
             StreamingMessage responseMessage = new StreamingMessage()
             {
-                FunctionEnvironmentReloadResponse = relaodEnvResponse
+                FunctionEnvironmentReloadResponse = reloadEnvResponse
             };
+
+            if (workerSupportsSpecialization)
+            {
+                responseMessage.FunctionEnvironmentReloadResponse.WorkerMetadata = new()
+                {
+                    RuntimeName = ".NET",
+                    RuntimeVersion = "7.0",
+                    WorkerVersion = "1.0.0",
+                    WorkerBitness = "x64"
+                };
+                responseMessage.FunctionEnvironmentReloadResponse.Capabilities.Add("RpcHttpBodyOnly", bool.TrueString);
+                responseMessage.FunctionEnvironmentReloadResponse.Capabilities.Add("TypedDataCollection", bool.TrueString);
+            }
+
             Write(responseMessage);
         }
 
@@ -262,7 +276,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             return relaodEnvResponse;
         }
 
-        public void PublishInvocationResponseEvent()
+        public void PublishInvocationResponseEvent(string invocationId = null)
         {
             StatusResult statusResult = new StatusResult()
             {
@@ -270,7 +284,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             };
             InvocationResponse invocationResponse = new InvocationResponse()
             {
-                InvocationId = "TestInvocationId",
+                InvocationId = invocationId == null ? "TestInvocationId" : invocationId,
                 Result = statusResult
             };
             StreamingMessage responseMessage = new StreamingMessage()
@@ -323,6 +337,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                         Status = statusResult,
                         FunctionId = functionId
                     };
+
+                    foreach (var property in response.Properties)
+                    {
+                        indexingResponse.Properties.Add(property.Key, property.Value.ToString());
+                    }
 
                     overallResponse.FunctionMetadataResults.Add(indexingResponse);
                 }

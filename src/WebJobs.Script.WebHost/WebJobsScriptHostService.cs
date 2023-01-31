@@ -178,8 +178,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 await StartHostAsync(tokenSource.Token);
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException ex)
             {
+                _logger.LogWarning("Host startup operation has been cancelled", ex);
+
                 if (cancellationToken.IsCancellationRequested)
                 {
                     _logger.ScriptHostServiceInitCanceledByRuntime();

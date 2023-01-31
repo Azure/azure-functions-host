@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _loggerFactory = loggerFactory;
         }
 
-        public override Task<(bool, FunctionDescriptor)> TryCreate(FunctionMetadata functionMetadata)
+        public override Task<(bool Success, FunctionDescriptor Descriptor)> TryCreate(FunctionMetadata functionMetadata)
         {
             if (functionMetadata == null)
             {

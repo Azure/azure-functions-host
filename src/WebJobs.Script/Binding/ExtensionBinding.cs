@@ -111,6 +111,14 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             {
                 await BindStringAsync(context);
             }
+            else if (_binding.DefaultType == typeof(ParameterBindingData[]))
+            {
+                await BindCollectionAsync<ParameterBindingData>(context);
+            }
+            else if (_binding.DefaultType == typeof(ParameterBindingData))
+            {
+                await BindParameterBindingDataAsync(context);
+            }
             else
             {
                 throw new NotSupportedException($"ScriptBinding type {_binding.DefaultType} is not supported");

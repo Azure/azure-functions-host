@@ -217,8 +217,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     Arguments[i] = Arguments[i].Replace(RpcWorkerConstants.WorkerDirectoryPath, WorkerDirectory);
                 }
             }
-
-            logger.LogDebug($"Worker description arguments after formatting: {Arguments}");
         }
 
         internal bool ShouldFormatWorkerPath(string workerPath)

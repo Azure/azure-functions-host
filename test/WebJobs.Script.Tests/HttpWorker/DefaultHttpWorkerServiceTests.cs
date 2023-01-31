@@ -549,8 +549,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
             Assert.Equal(expectedData.Count(), httpScriptInvocationContext.Data.Count());
             foreach (var item in expectedData)
             {
-                Assert.True(httpScriptInvocationContext.Data.Keys.Contains(item.name));
-                Assert.Equal(JsonConvert.SerializeObject(item.val), httpScriptInvocationContext.Data[item.name]);
+                Assert.True(httpScriptInvocationContext.Data.Keys.Contains(item.Name));
+                Assert.Equal(JsonConvert.SerializeObject(item.Val), httpScriptInvocationContext.Data[item.Name]);
             }
         }
 

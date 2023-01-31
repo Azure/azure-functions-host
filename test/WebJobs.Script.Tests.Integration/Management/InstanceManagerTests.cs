@@ -34,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         private readonly TestLoggerProvider _loggerProvider;
         private readonly TestEnvironmentEx _environment;
         private readonly ScriptWebHostEnvironment _scriptWebEnvironment;
-        private readonly InstanceManager _instanceManager;
+        private readonly AtlasInstanceManager _instanceManager;
         private readonly Mock<IMeshServiceClient> _meshServiceClientMock;
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly LoggerFactory _loggerFactory = new LoggerFactory();
@@ -60,10 +60,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             _runFromPackageHandler = new RunFromPackageHandler(_environment, _meshServiceClientMock.Object,
                 bashCommandHandler, zipHandler, _packageDownloadHandler.Object, metricsLogger, new Logger<RunFromPackageHandler>(_loggerFactory));
 
-            _instanceManager = new InstanceManager(_optionsFactory, _httpClientFactory, _scriptWebEnvironment, _environment,
-                _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object, _runFromPackageHandler, _packageDownloadHandler.Object);
+            _instanceManager = new AtlasInstanceManager(_optionsFactory, _httpClientFactory, _scriptWebEnvironment, _environment,
+                _loggerFactory.CreateLogger<AtlasInstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object, _runFromPackageHandler, _packageDownloadHandler.Object);
 
-            InstanceManager.Reset();
+            _instanceManager.Reset();
         }
 
         [Fact]
@@ -146,7 +146,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             };
 
             _meshServiceClientMock.Setup(c => c.NotifyHealthEvent(ContainerHealthEventType.Fatal,
-                It.Is<Type>(t => t == typeof(InstanceManager)), "Assign failed")).Returns(Task.CompletedTask);
+                It.Is<Type>(t => t == typeof(AtlasInstanceManager)), "Assign failed")).Returns(Task.CompletedTask);
 
             bool result = _instanceManager.StartAssignment(context);
             Assert.True(result);
@@ -159,7 +159,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.Equal("Kaboom!", error.Exception.Message);
 
             _meshServiceClientMock.Verify(c => c.NotifyHealthEvent(ContainerHealthEventType.Fatal,
-                It.Is<Type>(t => t == typeof(InstanceManager)), "Assign failed"), Times.Once);
+                It.Is<Type>(t => t == typeof(AtlasInstanceManager)), "Assign failed"), Times.Once);
         }
 
         [Fact]
@@ -194,6 +194,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             IConfiguration configuration = TestHelpers.GetTestConfiguration();
             string connectionString = configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
+
             Uri sasUri = await TestHelpers.CreateBlobSas(connectionString, zipFilePath, "scm-run-from-pkg-test", "NonEmpty.zip");
 
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
@@ -215,8 +216,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             _packageDownloadHandler.Setup(p => p.Download(It.IsAny<RunFromPackageContext>()))
                 .Returns(Task.FromResult(string.Empty));
 
-            var instanceManager = new InstanceManager(optionsFactory, _httpClientFactory, _scriptWebEnvironment,
-                _environment, _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(),
+            var instanceManager = new AtlasInstanceManager(optionsFactory, _httpClientFactory, _scriptWebEnvironment,
+                _environment, _loggerFactory.CreateLogger<AtlasInstanceManager>(), new TestMetricsLogger(),
                 _meshServiceClientMock.Object, _runFromPackageHandler, _packageDownloadHandler.Object);
 
             bool result = instanceManager.StartAssignment(context);
@@ -226,7 +227,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
 
-            if (logs.Length == 9)
+            if (logs.Length == 10)
             {
                 Assert.Collection(logs,
                     p => Assert.StartsWith("Starting Assignment", p),
@@ -237,6 +238,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                     p => Assert.StartsWith("Output:", p),
                     p => Assert.True(true), // this line varies depending on whether WSL is on the machine; just ignore it
                     p => Assert.StartsWith("exitCode:", p),
+                    p => Assert.StartsWith("Executed: ", p),
                     p => Assert.StartsWith("Triggering specialization", p));
             }
             else
@@ -248,6 +250,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                     p => Assert.StartsWith("Unsquashing remote zip", p),
                     p => Assert.StartsWith("Running: ", p),
                     p => Assert.StartsWith("Error running bash", p),
+                    p => Assert.StartsWith("Executed: ", p),
                     p => Assert.StartsWith("Triggering specialization", p));
             }
         }
@@ -301,8 +304,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 IsScmRunFromPackage = false
             };
             var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(options);
-            var instanceManager = new InstanceManager(optionsFactory, _httpClientFactory, _scriptWebEnvironment,
-                _environment, _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(),
+            var instanceManager = new AtlasInstanceManager(optionsFactory, _httpClientFactory, _scriptWebEnvironment,
+                _environment, _loggerFactory.CreateLogger<AtlasInstanceManager>(), new TestMetricsLogger(),
                 _meshServiceClientMock.Object, _runFromPackageHandler, _packageDownloadHandler.Object);
 
             bool result = instanceManager.StartAssignment(context);
@@ -377,8 +380,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 StatusCode = HttpStatusCode.NotFound
             });
 
-            var instanceManager = new InstanceManager(_optionsFactory, TestHelpers.CreateHttpClientFactory(handlerMock.Object),
-                scriptWebEnvironment, environment, loggerFactory.CreateLogger<InstanceManager>(),
+            var instanceManager = new AtlasInstanceManager(_optionsFactory, TestHelpers.CreateHttpClientFactory(handlerMock.Object),
+                scriptWebEnvironment, environment, loggerFactory.CreateLogger<AtlasInstanceManager>(),
                 new TestMetricsLogger(), null, _runFromPackageHandler, _packageDownloadHandler.Object);
 
             var assignmentContext = new HostAssignmentContext
@@ -660,7 +663,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var meshServiceClient = new Mock<IMeshServiceClient>(MockBehavior.Strict);
 
             meshServiceClient.Setup(c => c.NotifyHealthEvent(ContainerHealthEventType.Fatal,
-                It.Is<Type>(t => t == typeof(InstanceManager)), "Failed to specialize MSI sidecar")).Returns(Task.CompletedTask);
+                It.Is<Type>(t => t == typeof(AtlasInstanceManager)), "Failed to specialize MSI sidecar")).Returns(Task.CompletedTask);
 
             var instanceManager = GetInstanceManagerForMSISpecialization(assignmentContext, HttpStatusCode.BadRequest, meshServiceClient.Object);
 
@@ -675,7 +678,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 p => Assert.StartsWith("Specialize MSI sidecar call failed. StatusCode=BadRequest", p));
 
             meshServiceClient.Verify(c => c.NotifyHealthEvent(ContainerHealthEventType.Fatal,
-                It.Is<Type>(t => t == typeof(InstanceManager)), "Failed to specialize MSI sidecar"), Times.Once);
+                It.Is<Type>(t => t == typeof(AtlasInstanceManager)), "Failed to specialize MSI sidecar"), Times.Once);
         }
 
         [Fact]
@@ -698,7 +701,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var meshServiceClient = new Mock<IMeshServiceClient>(MockBehavior.Strict);
             meshServiceClient.Setup(c => c.NotifyHealthEvent(ContainerHealthEventType.Fatal,
-                It.Is<Type>(t => t == typeof(InstanceManager)), "Could not specialize MSI sidecar since MSIContext was empty")).Returns(Task.CompletedTask);
+                It.Is<Type>(t => t == typeof(AtlasInstanceManager)), "Could not specialize MSI sidecar since MSIContext was empty")).Returns(Task.CompletedTask);
 
             var instanceManager = GetInstanceManagerForMSISpecialization(assignmentContext, HttpStatusCode.BadRequest, meshServiceClient.Object);
 
@@ -711,7 +714,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 p => Assert.StartsWith("Skipping specialization of MSI sidecar since MSIContext was absent", p));
 
             meshServiceClient.Verify(c => c.NotifyHealthEvent(ContainerHealthEventType.Fatal,
-                It.Is<Type>(t => t == typeof(InstanceManager)), "Could not specialize MSI sidecar since MSIContext was empty"), Times.Once);
+                It.Is<Type>(t => t == typeof(AtlasInstanceManager)), "Could not specialize MSI sidecar since MSIContext was empty"), Times.Once);
         }
 
         [Fact]
@@ -758,8 +761,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             meshInitServiceClient.Setup(client =>
                 client.MountBlob(Utility.BuildStorageConnectionString(account3, accessKey3, CloudConstants.AzureStorageSuffix), share3, targetPath3)).Returns(Task.FromResult(true));
 
-            var instanceManager = new InstanceManager(_optionsFactory, _httpClientFactory, _scriptWebEnvironment, _environment,
-                _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), meshInitServiceClient.Object,
+            var instanceManager = new AtlasInstanceManager(_optionsFactory, _httpClientFactory, _scriptWebEnvironment, _environment,
+                _loggerFactory.CreateLogger<AtlasInstanceManager>(), new TestMetricsLogger(), meshInitServiceClient.Object,
                 _runFromPackageHandler, _packageDownloadHandler.Object);
 
             instanceManager.StartAssignment(hostAssignmentContext);
@@ -811,8 +814,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             meshInitServiceClient.Setup(client =>
                 client.MountCifs(Utility.BuildStorageConnectionString(account1, accessKey1, CloudConstants.AzureStorageSuffix), share1, targetPath1)).Returns(Task.FromResult(true));
 
-            var instanceManager = new InstanceManager(_optionsFactory, _httpClientFactory, _scriptWebEnvironment, _environment,
-                _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), meshInitServiceClient.Object,
+            var instanceManager = new AtlasInstanceManager(_optionsFactory, _httpClientFactory, _scriptWebEnvironment, _environment,
+                _loggerFactory.CreateLogger<AtlasInstanceManager>(), new TestMetricsLogger(), meshInitServiceClient.Object,
                 _runFromPackageHandler, _packageDownloadHandler.Object);
 
             instanceManager.StartAssignment(hostAssignmentContext);
@@ -868,8 +871,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions() { ScriptPath = scriptPath });
 
-            var instanceManager = new InstanceManager(optionsFactory, _httpClientFactory, _scriptWebEnvironment, _environment,
-                _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object,
+            var instanceManager = new AtlasInstanceManager(optionsFactory, _httpClientFactory, _scriptWebEnvironment, _environment,
+                _loggerFactory.CreateLogger<AtlasInstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object,
                 runFromPackageHandler.Object, _packageDownloadHandler.Object);
 
             bool result = instanceManager.StartAssignment(context);
@@ -934,8 +937,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions() { ScriptPath = scriptPath });
 
-            var instanceManager = new InstanceManager(optionsFactory, _httpClientFactory, _scriptWebEnvironment, _environment,
-                _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object,
+            var instanceManager = new AtlasInstanceManager(optionsFactory, _httpClientFactory, _scriptWebEnvironment, _environment,
+                _loggerFactory.CreateLogger<AtlasInstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object,
                 runFromPackageHandler.Object, _packageDownloadHandler.Object);
 
             bool result = instanceManager.StartAssignment(context);
@@ -989,8 +992,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions() { ScriptPath = scriptPath });
 
-            var instanceManager = new InstanceManager(optionsFactory, _httpClientFactory, _scriptWebEnvironment, _environment,
-                _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object,
+            var instanceManager = new AtlasInstanceManager(optionsFactory, _httpClientFactory, _scriptWebEnvironment, _environment,
+                _loggerFactory.CreateLogger<AtlasInstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object,
                 runFromPackageHandler.Object, _packageDownloadHandler.Object);
 
             bool result = instanceManager.StartAssignment(context);
@@ -1045,8 +1048,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions() { ScriptPath = scriptPath });
 
-            var instanceManager = new InstanceManager(optionsFactory, _httpClientFactory, _scriptWebEnvironment, _environment,
-                _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object,
+            var instanceManager = new AtlasInstanceManager(optionsFactory, _httpClientFactory, _scriptWebEnvironment, _environment,
+                _loggerFactory.CreateLogger<AtlasInstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object,
                 runFromPackageHandler.Object, _packageDownloadHandler.Object);
 
             bool result = instanceManager.StartAssignment(context);
@@ -1096,8 +1099,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions() { ScriptPath = scriptPath });
 
-            var instanceManager = new InstanceManager(optionsFactory, _httpClientFactory, _scriptWebEnvironment, _environment,
-                _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object,
+            var instanceManager = new AtlasInstanceManager(optionsFactory, _httpClientFactory, _scriptWebEnvironment, _environment,
+                _loggerFactory.CreateLogger<AtlasInstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object,
                 runFromPackageHandler.Object, _packageDownloadHandler.Object);
 
             bool result = instanceManager.StartAssignment(context);
@@ -1150,8 +1153,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions() { ScriptPath = scriptPath });
 
-            var instanceManager = new InstanceManager(optionsFactory, _httpClientFactory, _scriptWebEnvironment, _environment,
-                _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object,
+            var instanceManager = new AtlasInstanceManager(optionsFactory, _httpClientFactory, _scriptWebEnvironment, _environment,
+                _loggerFactory.CreateLogger<AtlasInstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object,
                 runFromPackageHandler.Object, _packageDownloadHandler.Object);
 
             bool result = instanceManager.StartAssignment(context);
@@ -1218,8 +1221,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions() { ScriptPath = scriptPath });
 
-            var instanceManager = new InstanceManager(optionsFactory, _httpClientFactory, _scriptWebEnvironment, _environment,
-                _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object,
+            var instanceManager = new AtlasInstanceManager(optionsFactory, _httpClientFactory, _scriptWebEnvironment, _environment,
+                _loggerFactory.CreateLogger<AtlasInstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object,
                 runFromPackageHandler.Object, _packageDownloadHandler.Object);
 
             bool result = instanceManager.StartAssignment(context);
@@ -1248,7 +1251,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             return string.Equals(r.Url, expectedUrl, StringComparison.OrdinalIgnoreCase);
         }
 
-        private InstanceManager GetInstanceManagerForMSISpecialization(HostAssignmentContext hostAssignmentContext,
+        private AtlasInstanceManager GetInstanceManagerForMSISpecialization(HostAssignmentContext hostAssignmentContext,
             HttpStatusCode httpStatusCode, IMeshServiceClient meshServiceClient)
         {
             var handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
@@ -1264,10 +1267,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                     StatusCode = httpStatusCode
                 });
 
-            InstanceManager.Reset();
+            _instanceManager.Reset();
 
-            return new InstanceManager(_optionsFactory, TestHelpers.CreateHttpClientFactory(handlerMock.Object), _scriptWebEnvironment,
-                _environment, _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(),
+            return new AtlasInstanceManager(_optionsFactory, TestHelpers.CreateHttpClientFactory(handlerMock.Object), _scriptWebEnvironment,
+                _environment, _loggerFactory.CreateLogger<AtlasInstanceManager>(), new TestMetricsLogger(),
                 meshServiceClient, _runFromPackageHandler, _packageDownloadHandler.Object);
         }
 

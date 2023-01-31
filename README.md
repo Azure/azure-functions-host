@@ -8,7 +8,7 @@
 |release/3.0|[![Build Status](https://dev.azure.com/azfunc/Azure%20Functions/_apis/build/status/Azure.azure-functions-host?branchName=release%2F3.0)](https://dev.azure.com/azfunc/Azure%20Functions/_build/latest?definitionId=37&branchName=release%2F3.0)|
 |v2.x|[![Build Status](https://dev.azure.com/azfunc/Azure%20Functions/_apis/build/status/Azure.azure-functions-host?branchName=v2.x)](https://dev.azure.com/azfunc/Azure%20Functions/_build/latest?definitionId=37&branchName=v2.x)|
 |release/2.0|[![Build Status](https://dev.azure.com/azfunc/Azure%20Functions/_apis/build/status/Azure.azure-functions-host?branchName=release%2F2.0)](https://dev.azure.com/azfunc/Azure%20Functions/_build/latest?definitionId=37&branchName=release%2F2.0)|
-|v1.x|[![Build status](https://ci.appveyor.com/api/projects/status/a6j46j1tawdfs3js?svg=true&branch=v1.x)](https://ci.appveyor.com/project/appsvc/azure-webjobs-sdk-script-y8o14?branch=v1.x)|
+|v1.x|[![Build Status](https://azfunc.visualstudio.com/Azure%20Functions/_apis/build/status/Azure.azure-functions-host?branchName=v1.x)](https://azfunc.visualstudio.com/Azure%20Functions/_build/latest?definitionId=37&branchName=v1.x)|
 
 Azure Functions Host
 ===

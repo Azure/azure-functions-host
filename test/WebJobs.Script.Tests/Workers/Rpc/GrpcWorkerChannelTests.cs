@@ -10,6 +10,7 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -55,6 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         private readonly IFunctionDataCache _functionDataCache;
         private readonly IOptions<WorkerConcurrencyOptions> _workerConcurrencyOptions;
         private readonly ITestOutputHelper _testOutput;
+        private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions;
         private GrpcWorkerChannel _workerChannel;
 
         public GrpcWorkerChannelTests(ITestOutputHelper testOutput)
@@ -98,6 +100,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _hostOptionsMonitor = TestHelpers.CreateOptionsMonitor(hostOptions);
 
             _testEnvironment.SetEnvironmentVariable("APPLICATIONINSIGHTS_ENABLE_AGENT", "true");
+
+            _hostingConfigOptions = Options.Create(new FunctionsHostingConfigOptions());
         }
 
         private Task CreateDefaultWorkerChannel(bool autoStart = true, IDictionary<string, string> capabilities = null)
@@ -113,8 +117,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _testEnvironment,
                _hostOptionsMonitor,
                _sharedMemoryManager,
-               _functionDataCache,
-               _workerConcurrencyOptions);
+               _workerConcurrencyOptions,
+               _hostingConfigOptions);
 
             if (autoStart)
             {
@@ -184,7 +188,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             _workerChannel.Dispose();
             var traces = _logger.GetLogMessages();
-            var expectedLogMsg = $"Sending WorkerTerminate message with grace period {WorkerConstants.WorkerTerminateGracePeriodInSeconds} seconds.";
+            var expectedLogMsg = $"Sending WorkerTerminate message with grace period of {WorkerConstants.WorkerTerminateGracePeriodInSeconds} seconds.";
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, expectedLogMsg)));
         }
 
@@ -195,7 +199,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             _workerChannel.Dispose();
             var traces = _logger.GetLogMessages();
-            var expectedLogMsg = $"Sending WorkerTerminate message with grace period {WorkerConstants.WorkerTerminateGracePeriodInSeconds} seconds.";
+            var expectedLogMsg = $"Sending WorkerTerminate message with grace period of {WorkerConstants.WorkerTerminateGracePeriodInSeconds} seconds.";
             Assert.False(traces.Any(m => string.Equals(m.FormattedMessage, expectedLogMsg)));
         }
 
@@ -279,8 +283,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _testEnvironment,
                _hostOptionsMonitor,
                _sharedMemoryManager,
-               _functionDataCache,
-               _workerConcurrencyOptions);
+               _workerConcurrencyOptions,
+               _hostingConfigOptions);
             await Assert.ThrowsAsync<FileNotFoundException>(async () => await _workerChannel.StartWorkerProcessAsync(CancellationToken.None));
         }
 
@@ -346,11 +350,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public async Task SendInvocationRequest_PublishesOutboundEvent()
         {
             await CreateDefaultWorkerChannel();
+            _metricsLogger.ClearCollections();
             ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(Guid.NewGuid(), null);
             await _workerChannel.SendInvocationRequest(scriptInvocationContext);
             await Task.Delay(500);
+            string testWorkerId = _workerId.ToLowerInvariant();
             var traces = _logger.GetLogMessages();
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, _expectedLogMsg)));
+            Assert.Equal(1, _metricsLogger.LoggedEvents.Count(e => e.Contains($"{string.Format(MetricEventNames.WorkerInvoked, testWorkerId)}_{scriptInvocationContext.FunctionMetadata.Name}")));
         }
 
         [Fact]
@@ -384,7 +391,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             var cancellationWaitTimeMs = 3000;
             var invocationId = Guid.NewGuid();
-            var expectedCancellationLog = $"Sending invocation cancel request for InvocationId {invocationId.ToString()}";
+            var expectedCancellationLog = $"Sending InvocationCancel request for invocation: '{invocationId.ToString()}'";
 
             var cts = new CancellationTokenSource();
             cts.CancelAfter(cancellationWaitTimeMs);
@@ -441,7 +448,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             var cancellationWaitTimeMs = 3000;
             var invocationId = Guid.NewGuid();
-            var expectedCancellationLog = "Cancellation has been requested, cancelling invocation request";
+            var expectedCancellationLog = $"Cancellation has been requested. The invocation request with id '{invocationId}' is cancelled and will not be sent to the worker.";
 
             var cts = new CancellationTokenSource();
             cts.CancelAfter(cancellationWaitTimeMs);
@@ -470,7 +477,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public async Task SendInvocationCancelRequest_PublishesOutboundEvent()
         {
             var invocationId = Guid.NewGuid();
-            var expectedCancellationLog = $"Sending invocation cancel request for InvocationId {invocationId.ToString()}";
+            var expectedCancellationLog = $"Sending InvocationCancel request for invocation: '{invocationId.ToString()}'";
 
             await CreateDefaultWorkerChannel(capabilities: new Dictionary<string, string>() { { RpcWorkerConstants.HandlesInvocationCancelMessage, "true" } });
             var scriptInvocationContext = GetTestScriptInvocationContext(invocationId, null);
@@ -500,8 +507,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _testEnvironment,
                _hostOptionsMonitor,
                _sharedMemoryManager,
-               _functionDataCache,
-               _workerConcurrencyOptions);
+               _workerConcurrencyOptions,
+               _hostingConfigOptions);
             channel.SetupFunctionInvocationBuffers(GetTestFunctionsList("node"));
             ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(invocationId, resultSource);
             await channel.SendInvocationRequest(scriptInvocationContext);
@@ -549,6 +556,63 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
+        public async Task SendLoadRequests_SkipParameterBindingData()
+        {
+            await CreateDefaultWorkerChannel();
+            _metricsLogger.ClearCollections();
+
+            var binding = new BindingMetadata()
+            {
+                Name = "abc",
+                Type = "BlobTrigger"
+            };
+
+            binding.Properties.Add(ScriptConstants.SkipDeferredBindingKey, true);
+            binding.Properties.Add(ScriptConstants.SupportsDeferredBindingKey, true);
+
+            IEnumerable<FunctionMetadata> functionMetadata = GetTestFunctionsList("node");
+            foreach (var function in functionMetadata)
+            {
+                function.Bindings.Add(binding);
+            }
+
+            _workerChannel.SetupFunctionInvocationBuffers(functionMetadata);
+            _workerChannel.SendFunctionLoadRequests(null, TimeSpan.FromMinutes(5));
+            await Task.Delay(500);
+            AreExpectedMetricsGenerated();
+            Assert.Equal(0, _metricsLogger.LoggedEvents.Count(e => e.Contains(MetricEventNames.FunctionBindingDeferred)));
+        }
+
+        [Fact]
+        public async Task SendLoadRequests_SupportParameterBindingData()
+        {
+            await CreateDefaultWorkerChannel();
+            _metricsLogger.ClearCollections();
+
+            var binding = new BindingMetadata()
+            {
+                Name = "abc",
+                Type = "BlobTrigger"
+            };
+
+            binding.Properties.Add(ScriptConstants.SupportsDeferredBindingKey, true);
+
+            IEnumerable<FunctionMetadata> functionMetadata = GetTestFunctionsList("node");
+            foreach (var function in functionMetadata)
+            {
+                function.Bindings.Add(binding);
+            }
+
+            _workerChannel.SetupFunctionInvocationBuffers(functionMetadata);
+            _workerChannel.SendFunctionLoadRequests(null, TimeSpan.FromMinutes(5));
+            await Task.Delay(500);
+            AreExpectedMetricsGenerated();
+            Assert.Equal(2, _metricsLogger.LoggedEvents.Count(e => e.Contains(MetricEventNames.FunctionBindingDeferred)));
+            Assert.Equal(1, _metricsLogger.LoggedEvents.Count(e => e.Contains($"{MetricEventNames.FunctionBindingDeferred}_js1")));
+            Assert.Equal(1, _metricsLogger.LoggedEvents.Count(e => e.Contains($"{MetricEventNames.FunctionBindingDeferred}_js2")));
+        }
+
+        [Fact]
         public async Task SendLoadRequestCollection_PublishesOutboundEvents()
         {
             await CreateDefaultWorkerChannel(capabilities: new Dictionary<string, string>() { { RpcWorkerConstants.SupportsLoadResponseCollection, "true" } });
@@ -575,7 +639,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, _expectedLogMsg));
             AreExpectedMetricsGenerated();
             Assert.Equal(3, functionLoadLogs.Count());
-            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, string.Format("Sending FunctionLoadRequestCollection with number of functions:'{0}'", functionMetadata.ToList().Count))));
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, string.Format("Sending FunctionLoadRequestCollection with number of functions: '{0}'", functionMetadata.ToList().Count))));
         }
 
         [Fact]
@@ -603,6 +667,75 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
+        public async Task GetFunctionMetadata_IncludesMetadataProperties()
+        {
+            await CreateDefaultWorkerChannel();
+
+            var functionMetadata = GetTestFunctionsList("python", true);
+            var functionId = "id123";
+            _testFunctionRpcService.OnMessage(StreamingMessage.ContentOneofCase.FunctionsMetadataRequest,
+               _ => _testFunctionRpcService.PublishWorkerMetadataResponse(_workerId, functionId, functionMetadata, successful: true, useDefaultMetadataIndexing: false));
+
+            var functions = await _workerChannel.GetFunctionMetadata();
+
+            Assert.Equal(functions[0].Metadata.Properties.Count, 4);
+            Assert.Equal(functions[0].Metadata.Properties["worker.functionId"], "fn1");
+        }
+
+        [Fact]
+        public async Task SendLoadRequests_IncludesMetadataProperties()
+        {
+            await CreateDefaultWorkerChannel();
+
+            var functionMetadata = GetTestFunctionsList("python", true);
+            var functionId = "id123";
+            _testFunctionRpcService.OnMessage(StreamingMessage.ContentOneofCase.FunctionsMetadataRequest,
+               _ => _testFunctionRpcService.PublishWorkerMetadataResponse(_workerId, functionId, functionMetadata, successful: true, useDefaultMetadataIndexing: false));
+
+            var functions = await _workerChannel.GetFunctionMetadata();
+
+            functionMetadata = functions.Select(f => f.Metadata);
+            _workerChannel.SetupFunctionInvocationBuffers(functionMetadata);
+            _workerChannel.SendFunctionLoadRequests(null, null);
+
+            _testFunctionRpcService.OnMessage(StreamingMessage.ContentOneofCase.FunctionLoadRequest,
+               (m) =>
+               {
+                   Assert.Contains("\"worker.functionId\": \"fn1\"", m.Message.ToString());
+               });
+
+            await Task.Delay(500);
+        }
+
+        [Fact]
+        public async Task GetFunctionLoadRequest_IncludesAvoidsDuplicateProperties()
+        {
+            await CreateDefaultWorkerChannel();
+            var functionMetadata = GetTestFunctionsList("python");
+            var functionId = "TestFunctionId1";
+            _testFunctionRpcService.OnMessage(StreamingMessage.ContentOneofCase.FunctionsMetadataRequest,
+               _ => _testFunctionRpcService.PublishWorkerMetadataResponse(_workerId, functionId, functionMetadata, true));
+            var functions = _workerChannel.GetFunctionMetadata();
+
+            await Task.Delay(500);
+            var traces = _logger.GetLogMessages();
+            ShowOutput(traces);
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"FunctionId is already a part of metadata properties for TestFunctionId1")));
+        }
+
+        [Fact]
+        public async Task GetFunctionLoadRequest_IncludesWorkerProperties()
+        {
+            await CreateDefaultWorkerChannel();
+
+            var functionMetadata = GetTestFunctionsList("python", true);
+            _workerChannel.SetupFunctionInvocationBuffers(functionMetadata);
+            var loadRequest = _workerChannel.GetFunctionLoadRequest(functionMetadata.ElementAt(0), null);
+
+            Assert.Equal(loadRequest.Metadata.Properties["worker.functionId"], "fn1");
+        }
+
+        [Fact]
         public async Task SendLoadRequests_DoesNotTimeout_FunctionTimeoutNotSet()
         {
             await CreateDefaultWorkerChannel();
@@ -626,7 +759,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 Environment.SetEnvironmentVariable("TestNull", null);
                 Environment.SetEnvironmentVariable("TestEmpty", string.Empty);
                 Environment.SetEnvironmentVariable("TestValid", "TestValue");
-                _testFunctionRpcService.AutoReply(StreamingMessage.ContentOneofCase.FunctionEnvironmentReloadRequest);
+                _testFunctionRpcService.AutoReply(StreamingMessage.ContentOneofCase.FunctionEnvironmentReloadRequest, workerSupportsSpecialization: true);
                 var pending = _workerChannel.SendFunctionEnvironmentReloadRequest();
                 await Task.Delay(500);
                 await pending; // this can timeout
@@ -642,6 +775,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             ShowOutput(traces);
             var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, "Sending FunctionEnvironmentReloadRequest to WorkerProcess with Pid: '910'"));
             Assert.Equal(1, functionLoadLogs.Count());
+
+            // for specialization use case, env reload response include worker metadata and capabilities.
+            var metatadataLog = traces.Where(m => string.Equals(m.FormattedMessage,
+                @"Worker metadata: { ""runtimeName"": "".NET"", ""runtimeVersion"": ""7.0"", ""workerVersion"": ""1.0.0"", ""workerBitness"": ""x64"" }"));
+            var capabilityUpdateLog = traces.Where(m => string.Equals(m.FormattedMessage,
+                @"Updating capabilities: { ""RpcHttpBodyOnly"": ""True"", ""TypedDataCollection"": ""True"" }"));
+            Assert.Single(metatadataLog);
+            Assert.Single(capabilityUpdateLog);
         }
 
         [Fact]
@@ -687,13 +828,51 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
+        public async Task SendInvocationRequest_PublishesOutboundEvent_ReceivesInvocationResponse()
+        {
+            await CreateDefaultWorkerChannel();
+            _metricsLogger.ClearCollections();
+            var invocationId = Guid.NewGuid();
+            ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(invocationId, new TaskCompletionSource<ScriptInvocationResult>());
+            await _workerChannel.SendInvocationRequest(scriptInvocationContext);
+            _testFunctionRpcService.PublishInvocationResponseEvent(invocationId.ToString());
+            await Task.Delay(500);
+            var testWorkerId = _workerId.ToLowerInvariant();
+            var traces = _logger.GetLogMessages();
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"InvocationResponse received for invocation: '{invocationId}'")));
+            Assert.Equal(1, _metricsLogger.LoggedEvents.Count(e => e.Contains($"{string.Format(MetricEventNames.WorkerInvoked, testWorkerId)}_{scriptInvocationContext.FunctionMetadata.Name}")));
+            Assert.Equal(1, _metricsLogger.LoggedEvents.Count(e => e.Contains(string.Format(MetricEventNames.WorkerInvokeSucceeded, testWorkerId))));
+            Assert.Equal(0, _metricsLogger.LoggedEvents.Count(e => e.Contains(string.Format(MetricEventNames.WorkerInvokeFailed, testWorkerId))));
+        }
+
+        [Fact]
+        public async Task SendFunctionEnvironmentReloadRequest_AddsHostingConfig()
+        {
+            _hostingConfigOptions.Value.Features["TestFeature"] = "TestFeatureValue";
+            _hostingConfigOptions.Value.Features["TestEnvVariable"] = "TestEnvVariableValue2";
+
+            await CreateDefaultWorkerChannel();
+
+            var environmentVariables = new Dictionary<string, string>()
+            {
+                { "TestValid", "TestValue" },
+                { "TestEnvVariable", "TestEnvVariableValue1" }
+            };
+
+            FunctionEnvironmentReloadRequest envReloadRequest = _workerChannel.GetFunctionEnvironmentReloadRequest(environmentVariables);
+            Assert.True(envReloadRequest.EnvironmentVariables["TestValid"] == "TestValue");
+            Assert.True(envReloadRequest.EnvironmentVariables["TestFeature"] == "TestFeatureValue");
+            Assert.True(envReloadRequest.EnvironmentVariables["TestEnvVariable"] == "TestEnvVariableValue2");
+        }
+
+        [Fact]
         public async Task ReceivesInboundEvent_InvocationResponse()
         {
             await CreateDefaultWorkerChannel();
             _testFunctionRpcService.PublishInvocationResponseEvent();
             await Task.Delay(500);
             var traces = _logger.GetLogMessages();
-            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "InvocationResponse received for invocation id: 'TestInvocationId'")));
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "InvocationResponse received for invocation: 'TestInvocationId'")));
         }
 
         [Fact]
@@ -748,8 +927,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var traces = _logger.GetLogMessages();
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Setting up FunctionInvocationBuffer for function: 'js1' with functionId: 'TestFunctionId1'")), "setup TestFunctionId1");
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Setting up FunctionInvocationBuffer for function: 'js2' with functionId: 'TestFunctionId2'")), "setup TestFunctionId2");
-            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Worker failed to load function: 'js1' with function id: 'TestFunctionId1'.")), "fail TestFunctionId1");
-            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Worker failed to load function: 'js2' with function id: 'TestFunctionId2'.")), "fail TestFunctionId2");
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Worker failed to load function: 'js1' with functionId: 'TestFunctionId1'.")), "fail TestFunctionId1");
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Worker failed to load function: 'js2' with functionId: 'TestFunctionId2'.")), "fail TestFunctionId2");
         }
 
         [Fact]
@@ -990,8 +1169,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _testEnvironment,
                _hostOptionsMonitor,
                _sharedMemoryManager,
-               _functionDataCache,
-               _workerConcurrencyOptions);
+               _workerConcurrencyOptions,
+               _hostingConfigOptions);
 
             IEnumerable<TimeSpan> latencyHistory = null;
 
@@ -1029,8 +1208,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _testEnvironment,
                _hostOptionsMonitor,
                _sharedMemoryManager,
-               _functionDataCache,
-               _workerConcurrencyOptions);
+               _workerConcurrencyOptions,
+               _hostingConfigOptions);
 
             // wait 10 seconds
             await Task.Delay(10000);
@@ -1115,7 +1294,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             }
         }
 
-        private IEnumerable<FunctionMetadata> GetTestFunctionsList(string runtime)
+        private IEnumerable<FunctionMetadata> GetTestFunctionsList(string runtime, bool addWorkerProperties = false)
         {
             var metadata1 = new FunctionMetadata()
             {
@@ -1126,6 +1305,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             metadata1.SetFunctionId("TestFunctionId1");
             metadata1.Properties.Add(LogConstants.CategoryNameKey, "testcat1");
             metadata1.Properties.Add(ScriptConstants.LogPropertyHostInstanceIdKey, "testhostId1");
+
+            if (addWorkerProperties)
+            {
+                metadata1.Properties.Add("worker.functionId", "fn1");
+            }
+
             var metadata2 = new FunctionMetadata()
             {
                 Language = runtime,
@@ -1135,6 +1320,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             metadata2.SetFunctionId("TestFunctionId2");
             metadata2.Properties.Add(LogConstants.CategoryNameKey, "testcat2");
             metadata2.Properties.Add(ScriptConstants.LogPropertyHostInstanceIdKey, "testhostId2");
+
+            if (addWorkerProperties)
+            {
+                metadata2.Properties.Add("WORKER.functionId", "fn2");
+            }
+
             return new List<FunctionMetadata>()
             {
                 metadata1,
@@ -1155,7 +1346,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                     FunctionDirectory = _scriptRootPath
                 },
                 BindingData = new Dictionary<string, object>(),
-                Inputs = new List<(string name, DataType type, object val)>(),
+                Inputs = new List<(string Name, DataType Type, object Val)>(),
                 ResultSource = resultSource,
                 CancellationToken = token == null ? CancellationToken.None : (CancellationToken)token
             };
@@ -1166,7 +1357,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         /// </summary>
         /// <param name="invocationId">ID of the invocation.</param>
         /// <param name="resultSource">Task result source.</param>
-        /// <returns>A test <see cref="ScriptInvocationContext"/></returns>
+        /// <returns>A test <see cref="ScriptInvocationContext"/>.</returns>
         private ScriptInvocationContext GetTestScriptInvocationContextWithSharedMemoryInputs(Guid invocationId, TaskCompletionSource<ScriptInvocationResult> resultSource)
         {
             const int inputStringLength = 2 * 1024 * 1024;
@@ -1175,7 +1366,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             const int inputBytesLength = 2 * 1024 * 1024;
             byte[] inputBytes = TestUtils.GetRandomBytesInArray(inputBytesLength);
 
-            var inputs = new List<(string name, DataType type, object val)>
+            var inputs = new List<(string Name, DataType Type, object Val)>
             {
                 ("fooStr", DataType.String, inputString),
                 ("fooBytes", DataType.Binary, inputBytes),

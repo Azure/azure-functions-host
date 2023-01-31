@@ -60,6 +60,9 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string SkipHostJsonConfigurationKey = "MS_SkipHostJsonConfiguration";
         public const string SkipHostInitializationKey = "MS_SkipHostInitialization";
 
+        public const string SupportsDeferredBindingKey = "SupportsDeferredBinding";
+        public const string SkipDeferredBindingKey = "SkipDeferredBinding";
+
         // Define all system parameters we inject with a prefix to avoid collisions
         // with user parameters
         public const string SystemTriggerParameterName = "_triggerValue";
@@ -102,6 +105,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AntaresPlatformInternal = "x-ms-platform-internal";
         public const string AzureVersionHeader = "x-ms-version";
         public const string XIdentityHeader = "X-IDENTITY-HEADER";
+        public const string ContainerInstanceHeader = "fx-current-instance";
         public const string DynamicSku = "Dynamic";
         public const string ElasticPremiumSku = "ElasticPremium";
         public const string DefaultProductionSlotName = "production";
@@ -117,9 +121,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string FeatureFlagEnableDiagnosticEventLogging = "EnableDiagnosticEventLogging";
         public const string FeatureFlagDisableDiagnosticEventLogging = "DisableDiagnosticEventLogging";
         public const string FeatureFlagDisableMergedWebHostScriptHostConfiguration = "DisableMergedConfiguration";
-        public const string FeatureFlagEnableWorkerIndexing = "EnableWorkerIndexing";
+        public const string FeatureFlagDisableWorkerIndexing = "DisableWorkerIndexing";
         public const string FeatureFlagEnableDebugTracing = "EnableDebugTracing";
-        public const string FeatureFlagEnableMultiLanguageWorker = "EnableMultiLanguageWorker";
         public const string FeatureFlagEnableProxies = "EnableProxies";
         public const string FeatureFlagEnableLinuxEPExecutionCount = "EnableLinuxFEC";
 
@@ -215,5 +218,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static readonly string FunctionMetadataDirectTypeKey = "DirectType";
         public static readonly string LiveLogsSessionAIKey = "#AzFuncLiveLogsSessionId";
+
+        public static readonly string FunctionsHostingConfigSectionName = "FunctionsHostingConfig";
     }
 }
