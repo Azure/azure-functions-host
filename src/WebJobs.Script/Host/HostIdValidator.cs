@@ -133,7 +133,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 // so anything other than Warning is treated as Error.
                 _logger.LogError(message);
 
-                DiagnosticEventLoggerExtensions.LogDiagnosticEventError(_logger, HostIdCollisionErrorCode, message, HostIdCollisionHelpLink, new Exception(message));
+                DiagnosticEventLoggerExtensions.LogDiagnosticEventError(_logger, HostIdCollisionErrorCode, message, HostIdCollisionHelpLink, new ArgumentException(message));
 
                 _applicationLifetime.StopApplication();
             }
