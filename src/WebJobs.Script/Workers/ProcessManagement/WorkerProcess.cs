@@ -78,17 +78,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                     _workerProcessLogger?.LogDebug($"TEST WorkerProcess.StartProcessAsync() 5");
                     _workerProcessLogger?.LogDebug($"Starting worker process with FileName:{Process.StartInfo.FileName} WorkingDirectory:{Process.StartInfo.WorkingDirectory} Arguments:{Process.StartInfo.Arguments}");
                     _workerProcessLogger?.LogDebug($"TEST WorkerProcess.StartProcessAsync() 6");
-                    Process.Start();
-                    _workerProcessLogger?.LogDebug($"TEST WorkerProcess.StartProcessAsync() 7");
-                    _workerProcessLogger?.LogDebug($"{Process.StartInfo.FileName} process with Id={Process.Id} started");
-                    _workerProcessLogger?.LogDebug($"TEST WorkerProcess.StartProcessAsync() 8");
-
                     // Log all of the files in Process.StartInfo.WorkingDirectory
                     var files = System.IO.Directory.GetFiles(Process.StartInfo.WorkingDirectory);
                     foreach (var file in files)
                     {
                         _workerProcessLogger?.LogDebug($"TEST WorkerProcess.StartProcessAsync() 9.1 file:{file}");
                     }
+                    Process.Start();
+                    _workerProcessLogger?.LogDebug($"TEST WorkerProcess.StartProcessAsync() 7");
+                    _workerProcessLogger?.LogDebug($"{Process.StartInfo.FileName} process with Id={Process.Id} started");
+                    _workerProcessLogger?.LogDebug($"TEST WorkerProcess.StartProcessAsync() 8");
 
                     Process.BeginErrorReadLine();
                     Process.BeginOutputReadLine();
