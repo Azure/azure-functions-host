@@ -68,7 +68,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
 
             options.IsFileSystemReadOnly |= IsZipDeployment(out bool isScmRunFromPackage);
             options.IsScmRunFromPackage = isScmRunFromPackage;
-
         }
 
         private bool IsZipDeployment(out bool isScmRunFromPackage)
