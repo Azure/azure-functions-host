@@ -152,7 +152,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             IRpcWorkerChannel rpcWorkerChannel = await GetChannelAsync(_workerRuntime);
             if (rpcWorkerChannel != null)
             {
-                _logger.LogDebug("Starting worker warmup");
                 rpcWorkerChannel.SendWorkerWarmupRequest();
             }
         }

@@ -90,7 +90,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
         {
             if (_hostingConfigOptions.Value.WorkerWarmupEnabled)
             {
-                _logger.LogDebug("Worker warmup hosting configuration is enabled");
                 await _webHostRpcWorkerChannelManager.WorkerWarmup();
             }
         }
