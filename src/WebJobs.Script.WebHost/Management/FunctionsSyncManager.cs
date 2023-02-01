@@ -111,7 +111,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 PrepareSyncTriggers();
 
                 var hashBlobClient = await GetHashBlobAsync();
-                if (isBackgroundSync && hashBlobClient == null && !_environment.IsKubernetesManagedHosting())
+                if (isBackgroundSync && hashBlobClient == null && !_environment.IsKubernetesManagedHosting() && !_environment.IsManagedAppEnvironment())
                 {
                     // short circuit before doing any work in background sync
                     // cases where we need to check/update hash but don't have
@@ -132,7 +132,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
                 bool shouldSyncTriggers = true;
                 string newHash = null;
-                if (isBackgroundSync && !_environment.IsKubernetesManagedHosting())
+                if (isBackgroundSync && !_environment.IsKubernetesManagedHosting() && !_environment.IsManagedAppEnvironment())
                 {
                     newHash = await CheckHashAsync(hashBlobClient, payload.Content);
                     shouldSyncTriggers = newHash != null;
@@ -659,9 +659,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         internal HttpRequestMessage BuildSetTriggersRequest()
         {
             var url = default(string);
-            if (_environment.IsKubernetesManagedHosting())
+            if (_environment.IsKubernetesManagedHosting() || _environment.IsManagedAppEnvironment())
             {
-                var buildServiceHostname =
+                var buildServiceHostname = _environment.GetEnvironmentVariable("FUNCTIONS_API_SERVER") ??
                     _environment.GetEnvironmentVariable("BUILD_SERVICE_HOSTNAME");
                 if (string.IsNullOrEmpty(buildServiceHostname))
                 {
@@ -710,6 +710,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 request.Headers.Add("User-Agent", ScriptConstants.FunctionsUserAgent);
                 request.Headers.Add(ScriptConstants.SiteTokenHeaderName, token);
                 request.Content = new StringContent(content, Encoding.UTF8, "application/json");
+
+                if (_environment.IsManagedAppEnvironment())
+                {
+                    request.Headers.Add("K8SE-APP-NAME", _environment.GetEnvironmentVariable("CONTAINER_APP_NAME"));
+                    request.Headers.Add("K8SE-APP-NAMESPACE", _environment.GetEnvironmentVariable("CONTAINER_APP_NAMESPACE"));
+                    request.Headers.Add("K8SE-APP-REVISION", _environment.GetEnvironmentVariable("CONTAINER_APP_REVISION"));
+                }
 
                 if (_environment.IsKubernetesManagedHosting())
                 {
