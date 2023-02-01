@@ -428,7 +428,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             IRpcWorkerChannel javaWorkerChannel = CreateTestChannel(RpcWorkerConstants.JavaLanguageWorkerName);
 
-            await _rpcWorkerChannelManager.WorkerWarmup();
+            await _rpcWorkerChannelManager.WorkerWarmupAsync();
 
             // Verify logs
             var traces = _testLogger.GetLogMessages();
