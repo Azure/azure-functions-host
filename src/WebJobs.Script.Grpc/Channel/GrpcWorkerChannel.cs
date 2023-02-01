@@ -31,6 +31,7 @@ using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Yarp.ReverseProxy.Forwarder;
@@ -732,7 +733,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 var invocationRequest = await context.ToRpcInvocationRequest(_workerChannelLogger, _workerCapabilities, _isSharedMemoryDataTransferEnabled, _sharedMemoryManager);
 
                 AddAdditionalTraceContext(invocationRequest.TraceContext.Attributes, context);
-                _executingInvocations.TryAdd(invocationRequest.InvocationId, context);
 
                 _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvoked, Id), functionName: context.FunctionMetadata.Name);
 
@@ -740,6 +740,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 {
                     InvocationRequest = invocationRequest
                 });
+
+                _executingInvocations.TryAdd(invocationRequest.InvocationId, context);
 
                 if (_cancelCapabilityEnabled)
                 {
@@ -763,7 +765,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
                     var aspNetTask = _httpForwarder.SendAsync(httpContext, "http://localhost:5555/", invoker, options);
 
-                    // actually use ScriptInvocationContext, add AspNet task to it and in InvokeResponse wait for that to come back too.
+                    context.Properties.Add("HttpProxyingTask", aspNetTask);
                 }
             }
             catch (Exception invokeEx)
@@ -929,6 +931,17 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             {
                 if (invokeResponse.Result.IsInvocationSuccess(context.ResultSource, capabilityEnabled))
                 {
+                    // TODO: We need to check if the Asp.Net pipeline completed successfully or not
+                    if (context.Properties.TryGetValue("HttpProxyingTask", out ValueTask<ForwarderError> httpProxyTask))
+                    {
+                        ForwarderError httpProxyTaskResult = await httpProxyTask;
+
+                        if (httpProxyTaskResult is not ForwarderError.None)
+                        {
+                            // how do we handle an error if invocation succeeds?
+                        }
+                    }
+
                     _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvokeSucceeded, Id));
 
                     try
