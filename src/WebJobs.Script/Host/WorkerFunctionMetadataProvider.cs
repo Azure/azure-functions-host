@@ -38,6 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script
             _environment = environment;
             _channelManager = webHostRpcWorkerChannelManager;
             _workerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
+            _logger.LogDebug("WorkerFunctionMetadataProvider initialized with workerRuntime:{workerRuntime}", _workerRuntime);
         }
 
         public ImmutableDictionary<string, ImmutableArray<string>> FunctionErrors
@@ -45,6 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public async Task<FunctionMetadataResult> GetFunctionMetadataAsync(IEnumerable<RpcWorkerConfig> workerConfigs, IEnvironment environment, bool forceRefresh)
         {
+            _logger.LogDebug("GetFunctionMetadataAsync called with workerRuntime:{workerRuntime}", _workerRuntime);
             IEnumerable<FunctionMetadata> functions = new List<FunctionMetadata>();
             _logger.FunctionMetadataProviderParsingFunctions();
 
