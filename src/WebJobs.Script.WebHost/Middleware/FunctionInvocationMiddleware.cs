@@ -64,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
                 ActionContext actionContext = new ActionContext(context, context.GetRouteData(), new ActionDescriptor());
 
-                if (context.Response.Headers.TryGetValue("IsHttpProxying", out var value))
+                if (context.Items.TryGetValue("IsHttpProxying", out var value))
                 {
                     if (value.ToString() == bool.TrueString)
                     {
