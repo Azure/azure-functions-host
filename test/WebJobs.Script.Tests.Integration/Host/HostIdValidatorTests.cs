@@ -127,9 +127,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             await _hostIdValidator.ValidateHostIdUsageAsync(_testHostId);
 
             var logs = _loggerProvider.GetAllLogMessages();
-            var log = logs.Single();
+            //var log = logs.Single();
+            var log = logs[0];
             Assert.Equal(LogLevel.Warning, log.Level);
             Assert.Equal(string.Format(Resources.HostIdCollisionFormat, _testHostId), log.FormattedMessage);
+
+            var diagLog = logs[1];
+            Assert.Contains("collision", diagLog.FormattedMessage);
 
             _mockApplicationLifetime.Verify(p => p.StopApplication(), Times.Never);
         }
@@ -162,7 +166,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             Assert.Equal(string.Format(Resources.HostIdCollisionFormat, _testHostId), log.FormattedMessage);
 
             var diagLog = logs[1];
-            Assert.Contains(log.FormattedMessage, "collision");
+            Assert.Contains("collision", diagLog.FormattedMessage);
 
             _mockApplicationLifetime.Verify(p => p.StopApplication(), Times.Once);
         }
@@ -196,9 +200,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             var logs = _loggerProvider.GetAllLogMessages();
             if (collision)
             {
-                var log = logs.Single();
+                //var log = logs.Single();
+                var log = logs[0];
                 Assert.Equal(LogLevel.Error, log.Level);
                 Assert.Equal(string.Format(Resources.HostIdCollisionFormat, _testHostId), log.FormattedMessage);
+
+                var diagLog = logs[1];
+                Assert.Contains("collision", diagLog.FormattedMessage);
 
                 _mockApplicationLifetime.Verify(p => p.StopApplication(), Times.Once);
             }
