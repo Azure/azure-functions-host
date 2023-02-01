@@ -111,7 +111,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 PrepareSyncTriggers();
 
                 var hashBlobClient = await GetHashBlobAsync();
-                if (isBackgroundSync && hashBlobClient == null && !_environment.IsKubernetesManagedHosting() && !_environment.IsManagedAppEnvironment())
+                if (isBackgroundSync && hashBlobClient == null && !_environment.IsKubernetesManagedHosting())
                 {
                     // short circuit before doing any work in background sync
                     // cases where we need to check/update hash but don't have
@@ -132,7 +132,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
                 bool shouldSyncTriggers = true;
                 string newHash = null;
-                if (isBackgroundSync && !_environment.IsKubernetesManagedHosting() && !_environment.IsManagedAppEnvironment())
+                if (isBackgroundSync && !_environment.IsKubernetesManagedHosting())
                 {
                     newHash = await CheckHashAsync(hashBlobClient, payload.Content);
                     shouldSyncTriggers = newHash != null;
