@@ -726,7 +726,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
                 _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvoked, Id), functionName: context.FunctionMetadata.Name);
 
-                var grpcTask = SendStreamingMessageAsync(new StreamingMessage
+                await SendStreamingMessageAsync(new StreamingMessage
                 {
                     InvocationRequest = invocationRequest
                 });
@@ -736,7 +736,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     context.CancellationToken.Register(() => SendInvocationCancel(invocationRequest.InvocationId));
                 }
 
-                // hard code this for prototyping - automatically forward http requests for http trigger functions
                 if (!string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.EnableHttpProxying)))
                 {
                     var handler = new SocketsHttpHandler();
@@ -745,17 +744,16 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     HttpRequest httpRequest = context.Inputs.FirstOrDefault(i => i.Val is HttpRequest).Val as HttpRequest;
                     HttpContext httpContext = httpRequest.HttpContext;
 
+                    // add IsHttpProxying to HttpContext Items (verify this is internal or not?)
+                    httpContext.Items.Add("IsHttpProxying", bool.TrueString);
+
                     // add invocation id as correlation id
                     // TODO: add "invocation-id" as a constant somewhere / maybe find a better name
                     httpRequest.Headers.TryAdd("invocation-id", context.ExecutionContext.InvocationId.ToString());
 
                     var aspNetTask = _httpForwarder.SendAsync(httpContext, "http://localhost:5555/", invoker, options);
 
-                    await Task.WhenAll(grpcTask.AsTask(), aspNetTask.AsTask());
-                }
-                else
-                {
-                    await grpcTask;
+                    // actually use ScriptInvocationContext, add AspNet task to it and in InvokeResponse wait for that to come back too.
                 }
             }
             catch (Exception invokeEx)
