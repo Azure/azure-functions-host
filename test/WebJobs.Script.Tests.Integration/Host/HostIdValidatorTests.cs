@@ -156,9 +156,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             await _hostIdValidator.ValidateHostIdUsageAsync(_testHostId);
 
             var logs = _loggerProvider.GetAllLogMessages();
-            var log = logs.Single();
+            //var log = logs.Single();
+            var log = logs[0];
             Assert.Equal(LogLevel.Error, log.Level);
             Assert.Equal(string.Format(Resources.HostIdCollisionFormat, _testHostId), log.FormattedMessage);
+
+            var diagLog = logs[1];
+            Assert.Contains(log.FormattedMessage, "collision");
 
             _mockApplicationLifetime.Verify(p => p.StopApplication(), Times.Once);
         }
