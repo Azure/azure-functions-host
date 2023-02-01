@@ -9,6 +9,7 @@
 - Refresh capabilities & log worker metadata after specialization (#9020)
 - Update DiagnosticEventLoggerExtensions method names (#9056)
 - Emit diagnostic event upon Host Id collision (#9061)
+- Update custom handlers to support trigger return values (#8874)
 
 **Release sprint:** Sprint 138
 [ [bugs](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+138%22+label%3Abug+is%3Aclosed) | [features](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+138%22+label%3Afeature+is%3Aclosed) ]
