@@ -31,5 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         public ILogger Logger { get; set; }
 
         public System.Threading.ExecutionContext AsyncExecutionContext { get; set; }
+
+        public Dictionary<string, object> Properties { get; set; } = new Dictionary<string, object>();
     }
 }
