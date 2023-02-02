@@ -419,6 +419,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.Contains("Process startup failed", ex.InnerException.Message);
         }
 
+        [Fact]
+        public async void WorkerWarmup_VerifyLogs()
+        {
+            var testMetricsLogger = new TestMetricsLogger();
+            _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.JavaLanguageWorkerName);
+            _rpcWorkerChannelManager = new WebHostRpcWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, _rpcWorkerChannelFactory, _optionsMonitor, testMetricsLogger, _workerOptionsMonitor, _emptyConfig, _workerProfileManager);
+
+            IRpcWorkerChannel javaWorkerChannel = CreateTestChannel(RpcWorkerConstants.JavaLanguageWorkerName);
+
+            await _rpcWorkerChannelManager.WorkerWarmupAsync();
+
+            // Verify logs
+            var traces = _testLogger.GetLogMessages();
+            var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, "SendWorkerWarmupRequest called"));
+            Assert.True(functionLoadLogs.Count() == 1);
+        }
+
         private bool AreRequiredMetricsEmitted(TestMetricsLogger metricsLogger)
         {
             bool hasBegun = false;

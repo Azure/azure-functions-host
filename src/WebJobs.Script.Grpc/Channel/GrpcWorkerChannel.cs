@@ -531,6 +531,41 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             return _reloadTask.Task;
         }
 
+        public void SendWorkerWarmupRequest()
+        {
+            bool capabilityEnabled = !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.HandlesWorkerWarmupMessage));
+            if (!capabilityEnabled)
+            {
+                _workerChannelLogger.LogDebug("Worker warmup capability not enabled");
+            }
+            else
+            {
+                _workerChannelLogger.LogDebug("Sending WorkerWarmupRequest to WorkerProcess with Pid: '{0}'", _rpcWorkerProcess.Id);
+
+                RegisterCallbackForNextGrpcMessage(MsgType.WorkerWarmupResponse, TimeSpan.FromMinutes(1), 1,
+                msg => ProcessWorkerWarmupResponse(msg.Message.WorkerWarmupResponse), HandleWorkerWarmupError);
+
+                var request = new WorkerWarmupRequest()
+                {
+                    WorkerDirectory = _workerConfig.Description.WorkerDirectory,
+                };
+
+                SendStreamingMessage(new StreamingMessage
+                {
+                    WorkerWarmupRequest = request
+                });
+            }
+        }
+
+        internal void ProcessWorkerWarmupResponse(WorkerWarmupResponse response)
+        {
+            _workerChannelLogger.LogDebug("Received WorkerWarmupResponse from WorkerProcess with Pid: '{0}'", _rpcWorkerProcess.Id);
+            if (response.Result.IsFailure(out Exception workerWarmupException))
+            {
+                _workerChannelLogger.LogError(workerWarmupException, "Worker warmup failed");
+            }
+        }
+
         internal FunctionEnvironmentReloadRequest GetFunctionEnvironmentReloadRequest(IDictionary processEnv)
         {
             foreach (var pair in _hostingConfigOptions.Value.Features)
@@ -1074,6 +1109,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 return;
             }
             _eventManager.Publish(new WorkerErrorEvent(_runtime, Id, exc));
+        }
+
+        private void HandleWorkerWarmupError(Exception exc)
+        {
+            _workerChannelLogger.LogError(exc, "Worker warmup failed");
         }
 
         private ValueTask SendStreamingMessageAsync(StreamingMessage msg)

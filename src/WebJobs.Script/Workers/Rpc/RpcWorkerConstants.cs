@@ -52,6 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public const string SupportsLoadResponseCollection = "SupportsLoadResponseCollection";
         public const string HandlesWorkerTerminateMessage = "HandlesWorkerTerminateMessage";
         public const string HandlesInvocationCancelMessage = "HandlesInvocationCancelMessage";
+        public const string HandlesWorkerWarmupMessage = "HandlesWorkerWarmupMessage";
         public const string WorkerApplicationInsightsLoggingEnabled = nameof(WorkerApplicationInsightsLoggingEnabled);
 
         /// <summary>
@@ -73,5 +74,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public const string PythonThreadpoolThreadCount = "PYTHON_THREADPOOL_THREAD_COUNT";
         public const string PSWorkerInProcConcurrencyUpperBound = "PSWorkerInProcConcurrencyUpperBound";
         public const string DefaultConcurrencyLimit = "1000";
+
+        // Language worker warmup
+        public const string WorkerWarmupEnabled = "WORKER_WARMUP_ENABLED";
     }
 }

@@ -32,6 +32,17 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         }
 
         /// <summary>
+        /// Gets a value indicating whether language workers warmup feature is enabled in the hosting config.
+        /// </summary>
+        public bool WorkerWarmupEnabled
+        {
+            get
+            {
+                return GetFeature(RpcWorkerConstants.WorkerWarmupEnabled) == "1";
+            }
+        }
+
+        /// <summary>
         /// Gets feature by name.
         /// </summary>
         /// <param name="name">Feature name.</param>

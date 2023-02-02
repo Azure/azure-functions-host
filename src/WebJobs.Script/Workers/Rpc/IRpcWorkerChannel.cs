@@ -22,6 +22,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         Task SendFunctionEnvironmentReloadRequest();
 
+        void SendWorkerWarmupRequest();
+
         Task<List<RawFunctionMetadata>> GetFunctionMetadata();
 
         Task DrainInvocationsAsync();

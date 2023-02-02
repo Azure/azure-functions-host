@@ -140,6 +140,22 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _logger.LogDebug("Completed language worker channel specialization");
         }
 
+        public async Task WorkerWarmupAsync()
+        {
+            _workerRuntime = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
+
+            if (_workerRuntime == null)
+            {
+                return;
+            }
+
+            IRpcWorkerChannel rpcWorkerChannel = await GetChannelAsync(_workerRuntime);
+            if (rpcWorkerChannel != null)
+            {
+                rpcWorkerChannel.SendWorkerWarmupRequest();
+            }
+        }
+
         private bool UsePlaceholderChannel(string workerRuntime)
         {
             if (string.IsNullOrEmpty(workerRuntime))
