@@ -308,11 +308,6 @@ jobs:
       Verbosity: 'Information'
   - publish: $(Build.Repository.LocalPath)\packages
     artifact: NugetPackages
-  - task: ManifestGeneratorTask@0
-    displayName: 'SBOM Generation Task - Performance'
-    inputs:
-      BuildDropPath: '$(Build.Repository.LocalPath)\WebJobs.Script.Performance.App'
-      Verbosity: 'Information'
   - publish: $(Build.Repository.LocalPath)\WebJobs.Script.Performance.App
     artifact: Performance
     
