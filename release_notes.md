@@ -8,6 +8,7 @@
 - Upgraded proto files to v1.7.1-protofile release (#9023)
 - Refresh capabilities & log worker metadata after specialization (#9020)
 - Update DiagnosticEventLoggerExtensions method names (#9056)
+- Emit diagnostic event upon Host Id collision (#9061)
 - Update custom handlers to support trigger return values (#8874)
 
 **Release sprint:** Sprint 138
