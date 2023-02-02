@@ -2,14 +2,12 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Concurrent;
 using System.IO.Abstractions;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
     public class LinuxAppServiceFileLoggerFactory
     {
-        private static readonly ConcurrentDictionary<string, Lazy<LinuxAppServiceFileLogger>> Loggers = new ConcurrentDictionary<string, Lazy<LinuxAppServiceFileLogger>>();
         private readonly string _logRootPath;
 
         public LinuxAppServiceFileLoggerFactory()
@@ -17,18 +15,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _logRootPath = Environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsLogsMountPath);
         }
 
-        public virtual LinuxAppServiceFileLogger GetOrCreate(string category)
+        public virtual Lazy<LinuxAppServiceFileLogger> Create(string category, bool backoffEnabled)
         {
-            return Loggers.GetOrAdd(category,
-                static (c, path) => new Lazy<LinuxAppServiceFileLogger>(() => new LinuxAppServiceFileLogger(c, path, new FileSystem(), false)), _logRootPath).Value;
-        }
-
-        public virtual LinuxAppServiceFileLogger GetOrCreateBackoff(string category)
-        {
-            // If logbackoff is enabled, we want to create a new logger instance
-            // so that we can backoff flush frequency and emit the first log faster. This benefits EP scaling
-            return Loggers.GetOrAdd(category,
-            static (c, path) => new Lazy<LinuxAppServiceFileLogger>(() => new LinuxAppServiceFileLogger(c, path, new FileSystem(), true)), _logRootPath).Value;
+            return new Lazy<LinuxAppServiceFileLogger>(() => new LinuxAppServiceFileLogger(category, _logRootPath, new FileSystem(), logBackoffEnabled: backoffEnabled));
         }
     }
 }
