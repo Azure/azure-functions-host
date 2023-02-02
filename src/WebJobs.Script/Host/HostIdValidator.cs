@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Azure;
 using Azure.Storage.Blobs;
 using Microsoft.Azure.WebJobs.Host.Storage;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Properties;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
@@ -27,6 +28,8 @@ namespace Microsoft.Azure.WebJobs.Script
     public class HostIdValidator
     {
         public const string BlobPathFormat = "ids/usage/{0}";
+        private const string HostIdCollisionErrorCode = "AZFD004";
+        private const string HostIdCollisionHelpLink = "https://go.microsoft.com/fwlink/?linkid=2224100";
         private const LogLevel DefaultLevel = LogLevel.Error;
 
         private readonly IEnvironment _environment;
@@ -117,15 +120,21 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             string message = string.Format(Resources.HostIdCollisionFormat, hostId);
+
             if (level == LogLevel.Warning)
             {
                 _logger.LogWarning(message);
+
+                DiagnosticEventLoggerExtensions.LogDiagnosticEventInformation(_logger, HostIdCollisionErrorCode, message, HostIdCollisionHelpLink);
             }
             else
             {
-                // we only allow Warning/Error levels to be specified, so anything other than
-                // Warning is treated as Error
+                // We only allow Warning/Error levels to be specified,
+                // so anything other than Warning is treated as Error.
                 _logger.LogError(message);
+
+                DiagnosticEventLoggerExtensions.LogDiagnosticEventError(_logger, HostIdCollisionErrorCode, message, HostIdCollisionHelpLink, new InvalidOperationException(message));
+
                 _applicationLifetime.StopApplication();
             }
         }

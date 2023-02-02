@@ -35,6 +35,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 {
                     scriptInvocationResult.Return = GetBindingValue(returnParameterBindingMetadata.DataType, httpScriptInvocationResult.ReturnValue);
                 }
+                else
+                {
+                    // Some triggers (like Durable Functions' triggers) assign $return implicitly.
+                    scriptInvocationResult.Return = httpScriptInvocationResult.ReturnValue;
+                }
             }
             return scriptInvocationResult;
         }
