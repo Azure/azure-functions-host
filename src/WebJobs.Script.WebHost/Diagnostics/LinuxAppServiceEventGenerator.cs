@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Runtime.CompilerServices;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -13,14 +14,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly Action<string> _writeEvent;
         private readonly HostNameProvider _hostNameProvider;
         private readonly IOptions<FunctionsHostingConfigOptions> _functionsHostingConfigOptions;
-        // Loggers
-        private readonly Lazy<LinuxAppServiceFileLogger> _functionsExecutionEventsCategoryLogger;
-        private readonly Lazy<LinuxAppServiceFileLogger> _functionsLogsCategoryLogger;
-        private readonly Lazy<LinuxAppServiceFileLogger> _functionsMetricsCategoryLogger;
-        private readonly Lazy<LinuxAppServiceFileLogger> _functionsDetailsCategoryLogger;
+        private readonly Lazy<ILinuxAppServiceFileLogger> _functionsExecutionEventsCategoryLogger;
+        private readonly Lazy<ILinuxAppServiceFileLogger> _functionsLogsCategoryLogger;
+        private readonly Lazy<ILinuxAppServiceFileLogger> _functionsMetricsCategoryLogger;
+        private readonly Lazy<ILinuxAppServiceFileLogger> _functionsDetailsCategoryLogger;
 
         public LinuxAppServiceEventGenerator(
-            LinuxAppServiceFileLoggerFactory loggerFactory,
+            ILinuxAppServiceFileLoggerFactory loggerFactory,
             HostNameProvider hostNameProvider,
             IOptions<FunctionsHostingConfigOptions> functionsHostingConfigOptions,
             Action<string> writeEvent = null)
@@ -28,11 +28,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _writeEvent = writeEvent ?? WriteEvent;
             _hostNameProvider = hostNameProvider ?? throw new ArgumentNullException(nameof(hostNameProvider));
             _functionsHostingConfigOptions = functionsHostingConfigOptions;
-            _functionsExecutionEventsCategoryLogger = loggerFactory.Create(FunctionsExecutionEventsCategory, backoffEnabled: !functionsHostingConfigOptions.Value.DisableLinuxAppServiceLogBackoff);
-            _functionsLogsCategoryLogger = loggerFactory.Create(FunctionsLogsCategory, backoffEnabled: false);
-            _functionsMetricsCategoryLogger = loggerFactory.Create(FunctionsMetricsCategory, backoffEnabled: false);
-            _functionsDetailsCategoryLogger = loggerFactory.Create(FunctionsDetailsCategory, backoffEnabled: false);
+            _functionsExecutionEventsCategoryLogger = loggerFactory.Create(FunctionsExecutionEventsCategory, functionsHostingConfigOptions.Value.DisableLinuxAppServiceLogBackoff);
+            _functionsLogsCategoryLogger = loggerFactory.Create(FunctionsLogsCategory, false);
+            _functionsMetricsCategoryLogger = loggerFactory.Create(FunctionsMetricsCategory, false);
+            _functionsDetailsCategoryLogger = loggerFactory.Create(FunctionsDetailsCategory, false);
         }
+
+        //Exposing Loggers for Unit tests
+        internal Lazy<ILinuxAppServiceFileLogger> FunctionsExecutionEventsCategoryLogger => _functionsExecutionEventsCategoryLogger;
+
+        internal Lazy<ILinuxAppServiceFileLogger> FunctionsLogsCategoryLogger => _functionsLogsCategoryLogger;
+
+        internal Lazy<ILinuxAppServiceFileLogger> FunctionsMetricsCategoryLogger => _functionsMetricsCategoryLogger;
+
+        internal Lazy<ILinuxAppServiceFileLogger> FunctionsDetailsCategoryLogger => _functionsDetailsCategoryLogger;
 
         public static string TraceEventRegex { get; } = "(?<Level>[0-6]),(?<SubscriptionId>[^,]*),(?<HostName>[^,]*),(?<AppName>[^,]*),(?<FunctionName>[^,]*),(?<EventName>[^,]*),(?<Source>[^,]*),\"(?<Details>.*)\",\"(?<Summary>.*)\",(?<HostVersion>[^,]*),(?<EventTimestamp>[^,]+),(?<ExceptionType>[^,]*),\"(?<ExceptionMessage>.*)\",(?<FunctionInvocationId>[^,]*),(?<HostInstanceId>[^,]*),(?<ActivityId>[^,\"]*)";
 
@@ -91,7 +100,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             }
         }
 
-        private static void WriteEvent(LinuxAppServiceFileLogger logger, string evt)
+        private static void WriteEvent(ILinuxAppServiceFileLogger logger, string evt)
         {
             logger.Log(evt);
         }
