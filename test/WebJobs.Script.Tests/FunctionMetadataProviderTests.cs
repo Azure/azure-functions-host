@@ -59,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var defaultProvider = new FunctionMetadataProvider(_logger, _workerFunctionMetadataProvider.Object, _hostFunctionMetadataProvider.Object);
 
             FunctionMetadataResult result = new FunctionMetadataResult(true, functionMetadataCollection.ToImmutableArray());
-            _workerFunctionMetadataProvider.Setup(m => m.GetFunctionMetadataAsync(workerConfigs, environment, false)).Returns(Task.FromResult(result));
+            _workerFunctionMetadataProvider.Setup(m => m.GetFunctionMetadataAsync(workerConfigs, false)).Returns(Task.FromResult(result));
             _hostFunctionMetadataProvider.Setup(m => m.GetFunctionMetadataAsync(workerConfigs, environment, false)).Returns(Task.FromResult(functionMetadataCollection.ToImmutableArray()));
 
             // Act
