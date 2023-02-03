@@ -7,7 +7,7 @@ using System.IO.Abstractions;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
-    public class LinuxAppServiceFileLoggerFactory
+    public class LinuxAppServiceFileLoggerFactory : ILinuxAppServiceFileLoggerFactory
     {
         private readonly string _logRootPath;
 
@@ -16,9 +16,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _logRootPath = Environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsLogsMountPath);
         }
 
-        public virtual Lazy<LinuxAppServiceFileLogger> Create(string category, bool backoffEnabled)
+        public virtual Lazy<ILinuxAppServiceFileLogger> Create(string category, bool logBackoffEnabled)
         {
-            return new Lazy<LinuxAppServiceFileLogger>(() => new LinuxAppServiceFileLogger(category, _logRootPath, new FileSystem(), backoffEnabled: backoffEnabled));
+            return new Lazy<ILinuxAppServiceFileLogger>(() => new LinuxAppServiceFileLogger(category, _logRootPath, new FileSystem(), logBackoffEnabled: logBackoffEnabled));
         }
     }
 }

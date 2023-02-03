@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
-    public class LinuxAppServiceFileLogger
+    public class LinuxAppServiceFileLogger : ILinuxAppServiceFileLogger
     {
         private readonly string _logFileName;
         private readonly string _logFileDirectory;
