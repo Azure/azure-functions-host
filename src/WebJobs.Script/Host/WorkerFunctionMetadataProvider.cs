@@ -46,9 +46,11 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public async Task<FunctionMetadataResult> GetFunctionMetadataAsync(IEnumerable<RpcWorkerConfig> workerConfigs, bool forceRefresh)
         {
+            _logger.LogInformation("Before GetFunctionMetadataAsync called with workerRuntime:{workerRuntime}", _workerRuntime);
+
             _workerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
 
-            _logger.LogInformation("Updated GetFunctionMetadataAsync called with workerRuntime:{workerRuntime}", _workerRuntime);
+            _logger.LogInformation("After GetFunctionMetadataAsync called with workerRuntime:{workerRuntime}", _workerRuntime);
             IEnumerable<FunctionMetadata> functions = new List<FunctionMetadata>();
             _logger.FunctionMetadataProviderParsingFunctions();
 
