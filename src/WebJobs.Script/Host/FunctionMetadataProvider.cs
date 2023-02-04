@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             _logger.LogInformation("Worker indexing is enabled");
 
-            FunctionMetadataResult functionMetadataResult = await _workerFunctionMetadataProvider?.GetFunctionMetadataAsync(workerConfigs, SystemEnvironment.Instance, forceRefresh);
+            FunctionMetadataResult functionMetadataResult = await _workerFunctionMetadataProvider?.GetFunctionMetadataAsync(workerConfigs, forceRefresh);
             FunctionErrors = _workerFunctionMetadataProvider.FunctionErrors;
 
             if (functionMetadataResult.UseDefaultMetadataIndexing)
