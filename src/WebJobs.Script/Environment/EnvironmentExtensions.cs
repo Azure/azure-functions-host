@@ -255,7 +255,17 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
-        /// Gets a value indicating whether the application is running in Centauri environment.
+        /// Gets a value indicating whether the application is running in Kubernetes Environment.
+        /// </summary>
+        /// <param name="environment">The environment to verify.</param>
+        /// <returns><see cref="true"/> if running in Kubernetes environment; otherwise, false.</returns>
+        public static bool IsAnyKubernetesEnvironment(this IEnvironment environment)
+        {
+            return environment.IsKubernetesManagedHosting() || environment.IsManagedAppEnvironment();
+        }
+
+        /// <summary>
+        /// Gets a value indicating whether the application is running in Managed App environment.
         /// </summary>
         /// <param name="environment">The environment to verify.</param>
         /// <returns><see cref="true"/> if running in Managed App environment; otherwise, false.</returns>

@@ -126,7 +126,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         // Setting AzureWebsiteInstanceId to null will make it fail the IsAppServiceWindows, and it shouldn't affect the check for dedicated linux
         [InlineData(false, true, false, true, false, false, false, false)] // dedicated linux
         [InlineData(false, true, false, false, false, false, false, true)] // dedicated linux
-        [InlineData(false, true, false, false, false, false, true, true)] // Centauri
+        [InlineData(false, true, false, false, false, false, true, true)] // managed app environment
         public void IsSyncTriggersEnvironment_StandbyMode_ReturnsExpectedResult(bool isAppService, bool hasEncryptionKey, bool isConsumptionLinuxOnAtlas, bool isConsumptionLinuxOnLegion, bool standbyMode, bool containerReady, bool isManagedAppEnvironment, bool expected)
         {
             _mockWebHostEnvironment.SetupGet(p => p.InStandbyMode).Returns(standbyMode);

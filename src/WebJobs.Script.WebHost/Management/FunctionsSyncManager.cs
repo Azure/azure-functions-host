@@ -659,15 +659,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         internal HttpRequestMessage BuildSetTriggersRequest()
         {
             var url = default(string);
-            if (_environment.IsKubernetesManagedHosting() || _environment.IsManagedAppEnvironment())
+            if (_environment.IsAnyKubernetesEnvironment())
             {
-                var buildServiceHostname = _environment.GetEnvironmentVariable("FUNCTIONS_API_SERVER") ??
+                var hostName = _environment.GetEnvironmentVariable("FUNCTIONS_API_SERVER") ??
                     _environment.GetEnvironmentVariable("BUILD_SERVICE_HOSTNAME");
-                if (string.IsNullOrEmpty(buildServiceHostname))
+                if (string.IsNullOrEmpty(hostName))
                 {
-                    buildServiceHostname = $"http://{ManagedKubernetesBuildServiceName}.{ManagedKubernetesBuildServiceNamespace}.svc.cluster.local:{ManagedKubernetesBuildServicePort}";
+                    hostName = $"http://{ManagedKubernetesBuildServiceName}.{ManagedKubernetesBuildServiceNamespace}.svc.cluster.local:{ManagedKubernetesBuildServicePort}";
                 }
-                url = $"{buildServiceHostname}/api/operations/settriggers";
+                url = $"{hostName}/api/operations/settriggers";
             }
             else
             {
@@ -717,8 +717,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     request.Headers.Add("K8SE-APP-NAMESPACE", _environment.GetEnvironmentVariable("CONTAINER_APP_NAMESPACE"));
                     request.Headers.Add("K8SE-APP-REVISION", _environment.GetEnvironmentVariable("CONTAINER_APP_REVISION"));
                 }
-
-                if (_environment.IsKubernetesManagedHosting())
+                else if (_environment.IsKubernetesManagedHosting())
                 {
                     request.Headers.Add(ScriptConstants.KubernetesManagedAppName, _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName));
                     request.Headers.Add(ScriptConstants.KubernetesManagedAppNamespace, _environment.GetEnvironmentVariable(EnvironmentSettingNames.PodNamespace));
