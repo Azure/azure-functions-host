@@ -431,7 +431,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 _mockHttpHandler.MockStatusCode = HttpStatusCode.InternalServerError;
                 var syncResult = await _functionsSyncManager.TrySyncTriggersAsync(isBackgroundSync: true);
                 Assert.False(syncResult.Success);
-                string expectedErrorMessage = "SyncTriggers operation failed (StatusCode=InternalServerError).";
+                string expectedErrorMessage = "SyncTriggers call failed (StatusCode=InternalServerError).";
                 Assert.Equal(expectedErrorMessage, syncResult.Error);
                 Assert.Equal(1, _mockHttpHandler.RequestCount);
                 var result = JObject.Parse(_contentBuilder.ToString());
@@ -831,8 +831,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         {
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.KubernetesServiceHost)).Returns(kubernetesServiceHost);
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.PodNamespace)).Returns("POD_NAMESPACE");
-            _mockEnvironment.Setup(p => p.GetEnvironmentVariable("BUILD_SERVICE_HOSTNAME"))
-                .Returns("");
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable("BUILD_SERVICE_HOSTNAME")).Returns("");
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable("FUNCTIONS_API_SERVER")).Returns("");
+
             var httpRequest = _functionsSyncManager.BuildSetTriggersRequest();
             Assert.Equal(expectedSyncTriggersUri, httpRequest.RequestUri.AbsoluteUri);
             Assert.Equal(HttpMethod.Post, httpRequest.Method);
