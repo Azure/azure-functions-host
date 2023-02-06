@@ -135,6 +135,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsSecretStorageType)).Returns("blob");
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.KubernetesServiceHost)).Returns("");
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.PodNamespace)).Returns("");
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.ManagedEnvironment)).Returns((string)null);
 
             _hostNameProvider = new HostNameProvider(_mockEnvironment.Object);
 
@@ -430,7 +431,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 _mockHttpHandler.MockStatusCode = HttpStatusCode.InternalServerError;
                 var syncResult = await _functionsSyncManager.TrySyncTriggersAsync(isBackgroundSync: true);
                 Assert.False(syncResult.Success);
-                string expectedErrorMessage = "SyncTriggers call failed (StatusCode=InternalServerError).";
+                string expectedErrorMessage = "SyncTriggers operation failed (StatusCode=InternalServerError).";
                 Assert.Equal(expectedErrorMessage, syncResult.Error);
                 Assert.Equal(1, _mockHttpHandler.RequestCount);
                 var result = JObject.Parse(_contentBuilder.ToString());
