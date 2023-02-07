@@ -921,17 +921,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             {
                 if (invokeResponse.Result.IsInvocationSuccess(context.ResultSource, capabilityEnabled))
                 {
-                    // TODO: We need to check if the Asp.Net pipeline completed successfully or not
-                    if (context.Properties.TryGetValue("HttpProxyingTask", out ValueTask<ForwarderError> httpProxyTask))
-                    {
-                        ForwarderError httpProxyTaskResult = await httpProxyTask;
-
-                        if (httpProxyTaskResult is not ForwarderError.None)
-                        {
-                            // how do we handle an error if invocation succeeds?
-                        }
-                    }
-
                     _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvokeSucceeded, Id));
 
                     try
@@ -959,6 +948,17 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
                         IDictionary<string, object> bindingsDictionary = await invokeResponse.OutputData
                             .ToDictionaryAsync(binding => binding.Name, binding => GetBindingDataAsync(binding, invokeResponse.InvocationId));
+
+                        // TODO: We need to check if the Asp.Net pipeline completed successfully or not
+                        if (context.Properties.TryGetValue("HttpProxyingTask", out ValueTask<ForwarderError> httpProxyTask))
+                        {
+                            ForwarderError httpProxyTaskResult = await httpProxyTask;
+
+                            if (httpProxyTaskResult is not ForwarderError.None)
+                            {
+                                // how do we handle this error if Functions pipeline suceeded and this failed?
+                            }
+                        }
 
                         var result = new ScriptInvocationResult()
                         {
