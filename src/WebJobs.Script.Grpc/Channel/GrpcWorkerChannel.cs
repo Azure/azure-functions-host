@@ -753,7 +753,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     // TODO: add "invocation-id" as a constant somewhere / maybe find a better name
                     httpRequest.Headers.TryAdd("invocation-id", context.ExecutionContext.InvocationId.ToString());
 
-                    var aspNetTask = _httpForwarder.SendAsync(httpContext, "http://localhost:5555/", invoker, options);
+                    var port = Environment.GetEnvironmentVariable("Azure_Functions_HttpProxyingPort");
+
+                    if (port is null)
+                    {
+                        port = "5555";
+                    }
+
+                    var aspNetTask = _httpForwarder.SendAsync(httpContext, "http://localhost:" + port, invoker, options);
 
                     context.Properties.Add("HttpProxyingTask", aspNetTask);
                 }
