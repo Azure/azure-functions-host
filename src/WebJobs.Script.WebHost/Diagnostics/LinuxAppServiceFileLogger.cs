@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly IFileSystem _fileSystem;
         private readonly CancellationTokenSource _cancellationTokenSource;
         private Task _outputTask;
-        private int _currentFlushFrequencySeconds;
+        private bool _logBackOffEnabled;
 
         public LinuxAppServiceFileLogger(string logFileName, string logFileDirectory, IFileSystem fileSystem, bool logBackoffEnabled = false, bool startOnCreate = true)
         {
@@ -30,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _logFileDirectory = logFileDirectory;
             _logFilePath = Path.Combine(_logFileDirectory, _logFileName + ".log");
             _buffer = new BlockingCollection<string>(new ConcurrentQueue<string>());
-            _currentFlushFrequencySeconds = logBackoffEnabled ? 1 : MaxFlushFrequencySeconds;
+            _logBackOffEnabled = logBackoffEnabled;
             _currentBatch = new List<string>();
             _fileSystem = fileSystem;
             _cancellationTokenSource = new CancellationTokenSource();
@@ -46,9 +46,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         // Maximum size of individual log file in MB
         public int MaxFileSizeMb { get; set; } = 10;
-
-        // Maximum time between successive flushes (seconds)
-        private int MaxFlushFrequencySeconds { get; } = 30;
 
         public virtual void Log(string message)
         {
@@ -86,13 +83,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public virtual async Task ProcessLogQueue(object state)
         {
+            int maxFlushFrequencySeconds = 30;
+            int currentFlushFrequencySeconds = _logBackOffEnabled ? 1 : maxFlushFrequencySeconds;
+
             while (!_cancellationTokenSource.IsCancellationRequested)
             {
                 await InternalProcessLogQueue();
-                await Task.Delay(TimeSpan.FromSeconds(_currentFlushFrequencySeconds), _cancellationTokenSource.Token).ContinueWith(task => { });
-                if (_currentFlushFrequencySeconds < MaxFlushFrequencySeconds)
+                await Task.Delay(TimeSpan.FromSeconds(currentFlushFrequencySeconds), _cancellationTokenSource.Token).ContinueWith(task => { });
+                if (currentFlushFrequencySeconds < maxFlushFrequencySeconds)
                 {
-                    _currentFlushFrequencySeconds = Math.Min(MaxFlushFrequencySeconds, _currentFlushFrequencySeconds * 2);
+                    currentFlushFrequencySeconds = Math.Min(maxFlushFrequencySeconds, currentFlushFrequencySeconds * 2);
                 }
             }
             // ReSharper disable once FunctionNeverReturns
