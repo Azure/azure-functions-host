@@ -33,6 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _functionsLogsCategoryLogger = loggerFactory.Create(FunctionsLogsCategory, backoffEnabled: false);
             _functionsMetricsCategoryLogger = loggerFactory.Create(FunctionsMetricsCategory, backoffEnabled: false);
             _functionsDetailsCategoryLogger = loggerFactory.Create(FunctionsDetailsCategory, backoffEnabled: false);
+            _writeEvent(_functionsLogsCategoryLogger.Value, $"Linux App Service Event Generator Initialized, execution log backoff enabled: {executionLogBackoffEnabled}, executionDetails : {functionsHostingConfigOptions.Value.DisableLinuxAppServiceExecutionDetails}");
         }
 
         //Exposing Loggers for Unit tests
