@@ -116,6 +116,81 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Profiles
             Assert.False(profileManager.IsCorrectProfileLoaded("java"));
         }
 
+        [Fact]
+        public void IsCorrectProfileLoaded_DifferentRuntimeNoProfile_ReturnsTrue()
+        {
+            var argumentList = new string[] { "-TestArg=1" };
+            var description = RpcWorkerConfigTestUtilities.GetTestDefaultWorkerDescription("java", argumentList);
+            var profiles = WorkerDescriptionProfileData("java", description);
+
+            _testEnvironment.SetEnvironmentVariable("APPLICATIONINSIGHTS_ENABLE_AGENT", "true");
+
+            WorkerProfileManager profileManager = new(_testLogger, _testEnvironment);
+            profileManager.SetWorkerDescriptionProfiles(profiles, "java");
+            profileManager.LoadWorkerDescriptionFromProfiles(description, out var workerDescription);
+
+            // Same profile should load as we didn't change any condition outcomes
+            Assert.True(profileManager.IsCorrectProfileLoaded("java"));
+
+            // Different runtime without profiles
+            Assert.True(profileManager.IsCorrectProfileLoaded("dotnet"));
+        }
+
+        [Fact]
+        public void IsCorrectProfileLoaded_DifferentRuntimeWithProfile_ReturnsTrue()
+        {
+            var argumentList = new string[] { "-TestArg=1" };
+            var description = RpcWorkerConfigTestUtilities.GetTestDefaultWorkerDescription("java", argumentList);
+            var profiles = WorkerDescriptionProfileData("java", description);
+
+            _testEnvironment.SetEnvironmentVariable("APPLICATIONINSIGHTS_ENABLE_AGENT", "true");
+
+            WorkerProfileManager profileManager = new(_testLogger, _testEnvironment);
+            profileManager.SetWorkerDescriptionProfiles(profiles, "java");
+            profileManager.LoadWorkerDescriptionFromProfiles(description, out var javaWorkerDescription);
+
+            var dotnetArgumentList = new string[] { "-TestArg=2" };
+            var dotnetDescription = RpcWorkerConfigTestUtilities.GetTestDefaultWorkerDescription("dotnet", dotnetArgumentList);
+            var dotnetProfiles = WorkerDescriptionProfileData("dotnet", dotnetDescription);
+
+            profileManager.SetWorkerDescriptionProfiles(dotnetProfiles, "dotnet");
+            profileManager.LoadWorkerDescriptionFromProfiles(dotnetDescription, out var dotnetWorkerDescription);
+
+            // Same profile should load as we didn't change any condition outcomes
+            Assert.True(profileManager.IsCorrectProfileLoaded("java"));
+
+            // Different runtime also loads same profile as we didn't change any condition outcomes
+            Assert.True(profileManager.IsCorrectProfileLoaded("dotnet"));
+        }
+
+        [Fact]
+        public void IsCorrectProfileLoaded_DifferentRuntimeWithProfile_ReturnsFalse()
+        {
+            var argumentList = new string[] { "-TestArg=1" };
+            var description = RpcWorkerConfigTestUtilities.GetTestDefaultWorkerDescription("java", argumentList);
+            var profiles = WorkerDescriptionProfileData("java", description);
+
+            _testEnvironment.SetEnvironmentVariable("APPLICATIONINSIGHTS_ENABLE_AGENT", "true");
+
+            WorkerProfileManager profileManager = new(_testLogger, _testEnvironment);
+            profileManager.SetWorkerDescriptionProfiles(profiles, "java");
+            profileManager.LoadWorkerDescriptionFromProfiles(description, out var javaWorkerDescription);
+
+            var dotnetArgumentList = new string[] { "-TestArg=2" };
+            var dotnetDescription = RpcWorkerConfigTestUtilities.GetTestDefaultWorkerDescription("dotnet", dotnetArgumentList);
+            var dotnetProfiles = WorkerDescriptionProfileData("dotnet", dotnetDescription);
+
+            profileManager.SetWorkerDescriptionProfiles(dotnetProfiles, "dotnet");
+            profileManager.LoadWorkerDescriptionFromProfiles(dotnetDescription, out var dotnetWorkerDescription);
+
+            // Same profile should load as we didn't change any condition outcomes
+            Assert.True(profileManager.IsCorrectProfileLoaded("java"));
+
+            // Changing the condition so a different profile evaluates to true
+            _testEnvironment.SetEnvironmentVariable("APPLICATIONINSIGHTS_ENABLE_AGENT", "false");
+            Assert.False(profileManager.IsCorrectProfileLoaded("dotnet"));
+        }
+
         public static List<WorkerDescriptionProfile> WorkerDescriptionProfileData(string language, RpcWorkerDescription description)
         {
             var conditionLogger = new TestLogger("ConditionLogger");
