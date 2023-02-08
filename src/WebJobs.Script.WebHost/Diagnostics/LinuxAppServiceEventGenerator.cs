@@ -32,6 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _functionsLogsCategoryLogger = loggerFactory.Create(FunctionsLogsCategory, backoffEnabled: false);
             _functionsMetricsCategoryLogger = loggerFactory.Create(FunctionsMetricsCategory, backoffEnabled: false);
             _functionsDetailsCategoryLogger = loggerFactory.Create(FunctionsDetailsCategory, backoffEnabled: false);
+            _writeEvent(_functionsExecutionEventsCategoryLogger.Value, $"Linux App Service Event Generator Initialized. Execution Log Backoff Enabled: {executionLogBackoffEnabled}, Detailed Execution Event Enabled: {!functionsHostingConfigOptions.Value.DisableLinuxAppServiceExecutionDetails}");
         }
 
         public static string TraceEventRegex { get; } = "(?<Level>[0-6]),(?<SubscriptionId>[^,]*),(?<HostName>[^,]*),(?<AppName>[^,]*),(?<FunctionName>[^,]*),(?<EventName>[^,]*),(?<Source>[^,]*),\"(?<Details>.*)\",\"(?<Summary>.*)\",(?<HostVersion>[^,]*),(?<EventTimestamp>[^,]+),(?<ExceptionType>[^,]*),\"(?<ExceptionMessage>.*)\",(?<FunctionInvocationId>[^,]*),(?<HostInstanceId>[^,]*),(?<ActivityId>[^,\"]*)";
