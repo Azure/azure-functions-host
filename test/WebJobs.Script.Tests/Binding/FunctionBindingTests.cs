@@ -178,7 +178,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task BindParameterBindingDataAsync()
         {
             string contentString = "hello world";
-            ParameterBindingData bindingData = new ("1.0.0", "AzureStorageBlob", BinaryData.FromString(contentString), "application/json");
+            ParameterBindingData bindingData = new("1.0.0", "AzureStorageBlob", BinaryData.FromString(contentString), "application/json");
 
             var binderMock = new Mock<Binder>(MockBehavior.Strict);
             var attributes = new Attribute[] { new BlobAttribute("test") };
