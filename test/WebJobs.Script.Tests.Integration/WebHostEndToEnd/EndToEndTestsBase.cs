@@ -405,20 +405,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string logEntry = null;
 
             await TestHelpers.Await(() =>
-           {
-               // search the logs for token "TestResult:" and parse the following JSON
-               var logs = Fixture.Host.GetScriptHostLogMessages(LogCategories.CreateFunctionUserCategory(functionName));
-               if (logs != null)
-               {
-                   logEntry = logs.Select(p => p.FormattedMessage).SingleOrDefault(p => p != null && p.Contains("TestResult:"));
-               }
-               return logEntry != null;
-           });
+            {
+                // search the logs for token "TestResult:" and parse the following JSON
+                var logs = Fixture.Host.GetScriptHostLogMessages(LogCategories.CreateFunctionUserCategory(functionName));
+                if (logs != null)
+                {
+                    logEntry = logs.Select(p => p.FormattedMessage).SingleOrDefault(p => p != null && p.Contains("TestResult:"));
+                }
+                return logEntry != null;
+            });
 
             int idx = logEntry.IndexOf("{");
             logEntry = logEntry.Substring(idx);
 
             return JObject.Parse(logEntry);
+        }
+
+        protected async Task<IEnumerable<LogMessage>> GetFunctionLogs(string functionName)
+        {
+            IEnumerable<LogMessage> logs = null;
+
+            await TestHelpers.Await(() =>
+            {
+                logs = Fixture.Host.GetScriptHostLogMessages(LogCategories.CreateFunctionUserCategory(functionName));
+                return logs != null;
+            }, timeout: 30000, pollingInterval: 500);
+
+            return logs;
         }
 
         public class ScenarioInput

@@ -416,6 +416,12 @@ jobs:
     inputs:
       command: ci
       workingDir: sample/CustomHandlerRetry
+  - task: DotNetCoreCLI@2
+    displayName: 'Build dotnet isolated sample app'
+    inputs:
+      command: 'build'
+      projects: |
+        **\DotNetIsolated.csproj
   - task: AzureKeyVault@1
     inputs:
       # Note: This is actually a Service Connection in DevOps, not an Azure subscription name
@@ -524,6 +530,15 @@ jobs:
       command: 'test'
       testRunTitle: "Samples end to end tests"
       arguments: '--filter "Group=SamplesEndToEndTests" --no-build'
+      projects: |
+        **\WebJobs.Script.Tests.Integration.csproj
+  - task: DotNetCoreCLI@2
+    displayName: "SDK-type binding end to end tests"
+    condition: succeededOrFailed()
+    inputs:
+      command: 'test'
+      testRunTitle: "SDK-type binding end to end tests"
+      arguments: '--filter "Group=SdkTypeBindingEndToEnd" --no-build'
       projects: |
         **\WebJobs.Script.Tests.Integration.csproj
   - task: DotNetCoreCLI@2

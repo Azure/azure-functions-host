@@ -28,6 +28,7 @@ using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.EnvironmentVariables;
+using Microsoft.Extensions.Configuration.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -76,7 +77,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Action<ILoggingBuilder> configureScriptHostLogging = null,
             Action<IServiceCollection> configureScriptHostServices = null,
             Action<IConfigurationBuilder> configureWebHostAppConfiguration = null,
-            bool addTestSettings = true)
+            bool addTestSettings = true,
+            bool setStorageEnvironmentVariable = false)
         {
             _appRoot = scriptPath;
 
@@ -134,7 +136,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     if (addTestSettings)
                     {
-                        scriptHostConfigurationBuilder.AddTestSettings();
+                        scriptHostConfigurationBuilder.AddTestSettings(setStorageEnvironmentVariable);
                     }
                     configureScriptHostAppConfiguration?.Invoke(scriptHostConfigurationBuilder);
                 })

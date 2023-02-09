@@ -3,8 +3,8 @@
 
 using System;
 using System.IO;
-using System.Linq;
 using Microsoft.Extensions.Configuration;
+using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -14,5 +14,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private static string configPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".azurefunctions", ConfigFile);
 
         public static IConfigurationBuilder AddTestSettings(this IConfigurationBuilder builder) => builder.AddJsonFile(configPath, true);
+
+        public static IConfigurationBuilder AddTestSettings(this IConfigurationBuilder builder, bool setStorageEnvironmentVariable)
+        {
+            if (setStorageEnvironmentVariable)
+            {
+                JObject config = JObject.Parse(File.ReadAllText(configPath));
+                var storageConnection = config["AzureWebJobsStorage"].ToString();
+                Environment.SetEnvironmentVariable("AzureWebJobsStorage", storageConnection);
+            }
+
+            return builder.AddTestSettings();
+        }
     }
 }

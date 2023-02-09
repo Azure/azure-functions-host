@@ -37,12 +37,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private int _workerProcessCount;
         private string _functionsWorkerRuntimeVersion;
         private bool _addTestSettings;
+        private bool _setStorageEnvironmentVariable;
 
-        protected EndToEndTestFixture(string rootPath, string testId, 
-            string functionsWorkerRuntime, 
-            int workerProcessesCount = 1, 
+        protected EndToEndTestFixture(string rootPath, string testId,
+            string functionsWorkerRuntime,
+            int workerProcessesCount = 1,
             string functionsWorkerRuntimeVersion = null,
-            bool addTestSettings = true)
+            bool addTestSettings = true,
+            bool setStorageEnvironmentVariable = false)
         {
             FixtureId = testId;
 
@@ -51,6 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _workerProcessCount = workerProcessesCount;
             _functionsWorkerRuntimeVersion = functionsWorkerRuntimeVersion;
             _addTestSettings = addTestSettings;
+            _setStorageEnvironmentVariable = setStorageEnvironmentVariable;
         }
 
         public CloudBlobContainer TestInputContainer { get; private set; }
@@ -136,7 +139,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             FunctionsSyncManagerMock = new Mock<IFunctionsSyncManager>(MockBehavior.Strict);
             FunctionsSyncManagerMock.Setup(p => p.TrySyncTriggersAsync(It.IsAny<bool>())).ReturnsAsync(new SyncTriggersResult { Success = true });
 
-            Host = new TestFunctionHost(_copiedRootPath, logPath, addTestSettings: _addTestSettings,
+            Host = new TestFunctionHost(_copiedRootPath, logPath, addTestSettings: _addTestSettings, setStorageEnvironmentVariable: _setStorageEnvironmentVariable,
                 configureScriptHostWebJobsBuilder: webJobsBuilder =>
                 {
                     ConfigureScriptHost(webJobsBuilder);

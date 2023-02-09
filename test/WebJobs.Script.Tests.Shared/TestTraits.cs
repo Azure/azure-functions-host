@@ -30,6 +30,11 @@ namespace Microsoft.WebJobs.Script.Tests
         public const string DrainModeEndToEnd = "DrainModeEndToEndTests";
 
         /// <summary>
+        /// Tests for the worker-side SDK binding feature.
+        /// </summary>
+        public const string SdkTypeBindingEndToEnd = "SdkTypeBindingEndToEnd";
+
+        /// <summary>
         /// Standby mode tests are special in that they set uni-directional
         /// static state, and benefit from test isolation.
         /// </summary>
