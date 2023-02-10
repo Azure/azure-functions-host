@@ -1,3 +1,14 @@
+variables:
+  ${{ if not(contains(variables['Build.SourceBranch'], '/release/analyzers/' )) }}:
+      buildNumberTemp: $(Build.BuildNumber)
+  ${{ if contains(variables['Build.SourceBranch'], '/release/analyzers/' ) }}:
+      isReleaseBuildTemp: true
+  buildNumber: $[variables.buildNumberTemp]
+  isReleaseBuild: $[variables.isReleaseBuildTemp]
+  solution: '**/*.sln'
+  buildPlatform: 'Any CPU'
+  buildConfiguration: 'Release'
+
 pr:
   branches:
     include:
@@ -21,8 +32,11 @@ trigger:
 jobs:
 - job: BuildTestPack
   pool:
-    vmImage: 'windows-latest'
+    name: '1ES-Hosted-AzFunc'
+    demands:
+      - ImageOverride -equals MMS2022TLS
   steps:
+  - task: 1ESHostedPoolValidation@1  
   - task: DotNetCoreCLI@2
     displayName: 'Build project'
     inputs:
@@ -35,7 +49,7 @@ jobs:
       command: 'test'
       arguments: '-c Release'
       projects: 'test/**/WebJobs.Script.Tests.Analyzers.csproj'
-  - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@1
+  - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@2
     displayName: 'ESRP CodeSigning: Authenticode'
     condition: eq(variables.isReleaseBuild, true)
     inputs:
@@ -74,7 +88,7 @@ jobs:
       arguments: '--no-build -c Release -o packages -p:BuildNumber=$(buildNumber) -p:CommitHash=$(Build.SourceVersion)'
       projects: |
         **\WebJobs.Script.Analyzers.csproj
-  - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@1
+  - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@2
     displayName: 'ESRP CodeSigning: Nupkg'
     condition: eq(variables.isReleaseBuild, true)
     inputs:
@@ -107,13 +121,3 @@ jobs:
   - publish: $(System.DefaultWorkingDirectory)/packages
     artifact: drop
 
-variables:
-  ${{ if not(contains(variables['Build.SourceBranch'], '/release/analyzers/' )) }}:
-      buildNumberTemp: $(Build.BuildNumber)
-  ${{ if contains(variables['Build.SourceBranch'], '/release/analyzers/' ) }}:
-      isReleaseBuildTemp: true
-  buildNumber: $[variables.buildNumberTemp]
-  isReleaseBuild: $[variables.isReleaseBuildTemp]
-  solution: '**/*.sln'
-  buildPlatform: 'Any CPU'
-  buildConfiguration: 'Release'
