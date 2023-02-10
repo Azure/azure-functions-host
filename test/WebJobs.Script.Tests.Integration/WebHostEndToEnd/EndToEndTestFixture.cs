@@ -38,9 +38,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private string _functionsWorkerRuntimeVersion;
         private bool _addTestSettings;
 
-        protected EndToEndTestFixture(string rootPath, string testId, 
-            string functionsWorkerRuntime, 
-            int workerProcessesCount = 1, 
+        protected EndToEndTestFixture(string rootPath, string testId,
+            string functionsWorkerRuntime,
+            int workerProcessesCount = 1,
             string functionsWorkerRuntimeVersion = null,
             bool addTestSettings = true)
         {
@@ -161,7 +161,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     ConfigureWebHost(configBuilder);
                 });
 
-            string connectionString = Host.JobHostServices.GetService<IConfiguration>().GetWebJobsConnectionString(ConnectionStringNames.Storage);
+            string connectionString = Host.JobHostServices?.GetService<IConfiguration>().GetWebJobsConnectionString(ConnectionStringNames.Storage);
             if (!string.IsNullOrEmpty(connectionString))
             {
                 CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
