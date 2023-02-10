@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Runtime.CompilerServices;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -14,10 +13,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly Action<string> _writeEvent;
         private readonly HostNameProvider _hostNameProvider;
         private readonly IOptions<FunctionsHostingConfigOptions> _functionsHostingConfigOptions;
-        private readonly Lazy<ILinuxAppServiceFileLogger> _functionsExecutionEventsCategoryLogger;
-        private readonly Lazy<ILinuxAppServiceFileLogger> _functionsLogsCategoryLogger;
-        private readonly Lazy<ILinuxAppServiceFileLogger> _functionsMetricsCategoryLogger;
-        private readonly Lazy<ILinuxAppServiceFileLogger> _functionsDetailsCategoryLogger;
+        private ILinuxAppServiceFileLogger _functionsExecutionEventsCategoryLogger;
+        private ILinuxAppServiceFileLogger _functionsLogsCategoryLogger;
+        private ILinuxAppServiceFileLogger _functionsMetricsCategoryLogger;
+        private ILinuxAppServiceFileLogger _functionsDetailsCategoryLogger;
 
         public LinuxAppServiceEventGenerator(
             ILinuxAppServiceFileLoggerFactory loggerFactory,
@@ -28,21 +27,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _writeEvent = writeEvent ?? WriteEvent;
             _hostNameProvider = hostNameProvider ?? throw new ArgumentNullException(nameof(hostNameProvider));
             _functionsHostingConfigOptions = functionsHostingConfigOptions;
-            bool executionLogBackoffEnabled = !functionsHostingConfigOptions.Value.DisableLinuxAppServiceLogBackoff;
-            _functionsExecutionEventsCategoryLogger = loggerFactory.Create(FunctionsExecutionEventsCategory, backoffEnabled: executionLogBackoffEnabled);
+            _functionsExecutionEventsCategoryLogger = loggerFactory.Create(FunctionsExecutionEventsCategory, backoffEnabled: !_functionsHostingConfigOptions.Value.DisableLinuxAppServiceLogBackoff);
             _functionsLogsCategoryLogger = loggerFactory.Create(FunctionsLogsCategory, backoffEnabled: false);
-            _functionsMetricsCategoryLogger = loggerFactory.Create(FunctionsMetricsCategory, backoffEnabled: false);
-            _functionsDetailsCategoryLogger = loggerFactory.Create(FunctionsDetailsCategory, backoffEnabled: false);
+            _functionsMetricsCategoryLogger = loggerFactory.Create(FunctionsMetricsCategory, false);
+            _functionsDetailsCategoryLogger = loggerFactory.Create(FunctionsDetailsCategory, false);
         }
 
-        //Exposing Loggers for Unit tests
-        internal Lazy<ILinuxAppServiceFileLogger> FunctionsExecutionEventsCategoryLogger => _functionsExecutionEventsCategoryLogger;
+        internal ILinuxAppServiceFileLogger FunctionsExecutionEventsCategoryLogger => _functionsExecutionEventsCategoryLogger;
 
-        internal Lazy<ILinuxAppServiceFileLogger> FunctionsLogsCategoryLogger => _functionsLogsCategoryLogger;
+        internal ILinuxAppServiceFileLogger FunctionsLogsCategoryLogger => _functionsLogsCategoryLogger;
 
-        internal Lazy<ILinuxAppServiceFileLogger> FunctionsMetricsCategoryLogger => _functionsMetricsCategoryLogger;
+        internal ILinuxAppServiceFileLogger FunctionsMetricsCategoryLogger => _functionsMetricsCategoryLogger;
 
-        internal Lazy<ILinuxAppServiceFileLogger> FunctionsDetailsCategoryLogger => _functionsDetailsCategoryLogger;
+        internal ILinuxAppServiceFileLogger FunctionsDetailsCategoryLogger => _functionsDetailsCategoryLogger;
 
         public static string TraceEventRegex { get; } = "(?<Level>[0-6]),(?<SubscriptionId>[^,]*),(?<HostName>[^,]*),(?<AppName>[^,]*),(?<FunctionName>[^,]*),(?<EventName>[^,]*),(?<Source>[^,]*),\"(?<Details>.*)\",\"(?<Summary>.*)\",(?<HostVersion>[^,]*),(?<EventTimestamp>[^,]+),(?<ExceptionType>[^,]*),\"(?<ExceptionMessage>.*)\",(?<FunctionInvocationId>[^,]*),(?<HostInstanceId>[^,]*),(?<ActivityId>[^,\"]*)";
 
@@ -63,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             var hostName = _hostNameProvider.Value;
             using (FunctionsSystemLogsEventSource.SetActivityId(activityId))
             {
-                WriteEvent(_functionsLogsCategoryLogger.Value, $"{(int)ToEventLevel(level)},{subscriptionId},{hostName},{appName},{functionName},{eventName},{source},{NormalizeString(details)},{NormalizeString(summary)},{hostVersion},{formattedEventTimestamp},{exceptionType},{NormalizeString(exceptionMessage)},{functionInvocationId},{hostInstanceId},{activityId}");
+                WriteEvent(_functionsLogsCategoryLogger, $"{(int)ToEventLevel(level)},{subscriptionId},{hostName},{appName},{functionName},{eventName},{source},{NormalizeString(details)},{NormalizeString(summary)},{hostVersion},{formattedEventTimestamp},{exceptionType},{NormalizeString(exceptionMessage)},{functionInvocationId},{hostInstanceId},{activityId}");
             }
         }
 
@@ -71,13 +68,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             long minimum, long maximum, long count, DateTime eventTimestamp, string data, string runtimeSiteName, string slotName)
         {
             var hostVersion = ScriptHost.Version;
-            WriteEvent(_functionsMetricsCategoryLogger.Value, $"{subscriptionId},{appName},{functionName},{eventName},{average},{minimum},{maximum},{count},{hostVersion},{eventTimestamp.ToString(EventTimestampFormat)},{data}");
+            WriteEvent(_functionsMetricsCategoryLogger, $"{subscriptionId},{appName},{functionName},{eventName},{average},{minimum},{maximum},{count},{hostVersion},{eventTimestamp.ToString(EventTimestampFormat)},{data}");
         }
 
         public override void LogFunctionDetailsEvent(string siteName, string functionName, string inputBindings, string outputBindings,
             string scriptType, bool isDisabled)
         {
-            WriteEvent(_functionsDetailsCategoryLogger.Value, $"{siteName},{functionName},{NormalizeString(inputBindings)},{NormalizeString(outputBindings)},{scriptType},{(isDisabled ? 1 : 0)}");
+            WriteEvent(_functionsDetailsCategoryLogger, $"{siteName},{functionName},{NormalizeString(inputBindings)},{NormalizeString(outputBindings)},{scriptType},{(isDisabled ? 1 : 0)}");
         }
 
         public override void LogFunctionExecutionAggregateEvent(string siteName, string functionName, long executionTimeInMs,
@@ -93,11 +90,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             if (!detailedExecutionEventsDisabled)
             {
                 string log = string.Join(",", executionId, siteName, concurrency.ToString(), functionName, invocationId, executionStage, executionTimeSpan.ToString(), success.ToString(), currentUtcTime);
-                WriteEvent(_functionsExecutionEventsCategoryLogger.Value, log);
+                WriteEvent(_functionsExecutionEventsCategoryLogger, log);
             }
             else
             {
-                WriteEvent(_functionsExecutionEventsCategoryLogger.Value, currentUtcTime);
+                WriteEvent(_functionsExecutionEventsCategoryLogger, currentUtcTime);
             }
         }
 

@@ -16,9 +16,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _logRootPath = Environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsLogsMountPath);
         }
 
-        public virtual Lazy<ILinuxAppServiceFileLogger> Create(string category, bool logBackoffEnabled)
+        public virtual ILinuxAppServiceFileLogger Create(string category, bool logBackoffEnabled)
         {
-            return new Lazy<ILinuxAppServiceFileLogger>(() => new LinuxAppServiceFileLogger(category, _logRootPath, new FileSystem(), logBackoffEnabled: logBackoffEnabled));
+            return new LinuxAppServiceFileLogger(category, _logRootPath, new FileSystem(), logBackoffEnabled: logBackoffEnabled);
         }
     }
 }

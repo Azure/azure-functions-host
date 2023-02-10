@@ -7,6 +7,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
     public interface ILinuxAppServiceFileLoggerFactory
     {
-        public Lazy<ILinuxAppServiceFileLogger> Create(string category, bool backoffEnabled);
+        public ILinuxAppServiceFileLogger Create(string category, bool backoffEnabled);
     }
 }
