@@ -99,7 +99,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 profileId = profile.ProfileId;
             }
 
-            var activeProfile = string.Empty;
+            string activeProfile;
             if (!_activeProfiles.TryGetValue(workerRuntime, out activeProfile))
             {
                 activeProfile = string.Empty;
