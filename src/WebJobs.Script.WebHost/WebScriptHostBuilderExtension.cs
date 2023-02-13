@@ -157,6 +157,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     services.AddSingleton(hostingConfigOptions);
                     services.AddSingleton(hostingConfigOptionsMonitor);
 
+                    if (!FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagDisableDiagnosticEventLogging))
+                    {
+                        services.AddSingleton<ILoggerProvider, DiagnosticEventLoggerProvider>();
+                        services.TryAddSingleton<IDiagnosticEventRepository, DiagnosticEventTableStorageRepository>();
+                        services.TryAddSingleton<IDiagnosticEventRepositoryFactory, DiagnosticEventRepositoryFactory>();
+                    }
+
                     ConfigureRegisteredBuilders(services, rootServiceProvider);
                 });
 

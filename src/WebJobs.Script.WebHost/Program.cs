@@ -77,13 +77,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                     loggingBuilder.AddDefaultWebJobsFilters();
                     loggingBuilder.AddWebJobsSystem<WebHostSystemLoggerProvider>();
-
-                    if (!FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagDisableDiagnosticEventLogging))
-                    {
-                        loggingBuilder.Services.AddSingleton<ILoggerProvider, DiagnosticEventLoggerProvider>();
-                        loggingBuilder.Services.TryAddSingleton<IDiagnosticEventRepository, DiagnosticEventTableStorageRepository>();
-                        loggingBuilder.Services.TryAddSingleton<IDiagnosticEventRepositoryFactory, DiagnosticEventRepositoryFactory>();
-                    }
                 })
                 .UseStartup<Startup>();
         }
