@@ -18,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         private readonly IEnvironment _environment;
         private readonly IEnumerable<IWorkerProfileConditionProvider> _conditionProviders;
 
-        private string _activeProfile = string.Empty;
+        private Dictionary<string, string> _activeProfiles;
         private Dictionary<string, List<WorkerDescriptionProfile>> _profiles;
 
         public WorkerProfileManager(ILogger<WorkerProfileManager> logger, IEnvironment environment)
@@ -26,6 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
+            _activeProfiles = new Dictionary<string, string>();
             _profiles = new Dictionary<string, List<WorkerDescriptionProfile>>();
             _conditionProviders = new List<IWorkerProfileConditionProvider>
             {
@@ -63,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             if (GetEvaluatedProfile(defaultWorkerDescription.Language, out WorkerDescriptionProfile profile))
             {
                 _logger?.LogInformation($"Worker initialized with profile - {profile.Name}, Profile ID {profile.ProfileId} from worker config.");
-                _activeProfile = profile.ProfileId;
+                _activeProfiles[defaultWorkerDescription.Language] = profile.ProfileId;
                 workerDescription = profile.ApplyProfile(defaultWorkerDescription);
             }
             else
@@ -97,7 +98,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             {
                 profileId = profile.ProfileId;
             }
-            return _activeProfile.Equals(profileId);
+
+            string activeProfile;
+            if (!_activeProfiles.TryGetValue(workerRuntime, out activeProfile))
+            {
+                activeProfile = string.Empty;
+            }
+            return activeProfile.Equals(profileId);
         }
     }
 }
