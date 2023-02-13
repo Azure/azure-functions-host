@@ -10,6 +10,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     public class TestOptionsMonitor<T> : IOptionsMonitor<T> where T : class, new()
     {
         private readonly Func<T> _optionsFactory;
+        private Action<T, string> _listener;
 
         public TestOptionsMonitor(T options)
             : this(() => options ?? new T())
@@ -30,7 +31,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public IDisposable OnChange(Action<T, string> listener)
         {
+            _listener = listener;
             return Disposable.Empty;
+        }
+
+        internal void InvokeChanged()
+        {
+            _listener?.Invoke(CurrentValue, null);
         }
     }
 }
