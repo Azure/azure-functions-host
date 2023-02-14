@@ -128,7 +128,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 {
                     _logger.LogDebug("Loading environment variables for runtime: {runtime}", _workerRuntime);
                     await rpcWorkerChannel.SendFunctionEnvironmentReloadRequest();
-                   // _ = rpcWorkerChannel.GetFunctionMetadata();
                 }
                 else
                 {
@@ -183,10 +182,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
 
             // If a profile evaluates to true and was not previously loaded, restart worker process
-            //if (!_profileManager.IsCorrectProfileLoaded(workerRuntime))
-            //{
-            //    return false;
-            //}
+            if (!_profileManager.IsCorrectProfileLoaded(workerRuntime))
+            {
+                return false;
+            }
 
             return true;
         }
