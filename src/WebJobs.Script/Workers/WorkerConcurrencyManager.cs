@@ -9,6 +9,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -85,14 +86,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                         _logger.LogDebug($"Dynamic worker concurrency monitoring is starting by app setting.");
                         Activate();
                     }
-                    else if (_functionsHostingConfigOptionsMonitor.CurrentValue != null && _functionsHostingConfigOptionsMonitor.CurrentValue.FunctionsWorkerDynamicConcurrencyEnabled)
+                    else if (_functionsHostingConfigOptionsMonitor.CurrentValue != null && _functionsHostingConfigOptionsMonitor.CurrentValue.IsFunctionsWorkerDynamicConcurrencyEnabled())
                     {
                         _logger.LogDebug($"Dynamic worker concurrency monitoring is starting by hosting config.");
                         Activate();
 
                         _hostingConfigOnChange = _functionsHostingConfigOptionsMonitor.OnChange(async (newOptions) =>
                         {
-                            if (!newOptions.FunctionsWorkerDynamicConcurrencyEnabled)
+                            if (!newOptions.IsFunctionsWorkerDynamicConcurrencyEnabled())
                             {
                                 // There is a known issue when OnChange fires twice: https://github.com/dotnet/aspnetcore/issues/2542
                                 // Lets make sure we stopped the app once

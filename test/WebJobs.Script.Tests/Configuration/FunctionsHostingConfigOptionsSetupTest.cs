@@ -1,8 +1,8 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System.Collections.Generic;
 using System.IO;
+using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.Configuration;
 using Moq;
@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 string fileName = Path.Combine(tempDir.Path, "settings.txt");
                 IConfiguration configuraton = GetConfiguration(fileName, $"feature1=value1,feature2=value2");
                 FunctionsHostingConfigOptionsSetup setup = new FunctionsHostingConfigOptionsSetup(configuraton);
-                Config.FunctionsHostingConfigOptions options = new Config.FunctionsHostingConfigOptions();
+                FunctionsHostingConfigOptions options = new FunctionsHostingConfigOptions();
                 setup.Configure(options);
 
                 Assert.Equal(options.GetFeature("feature1"), "value1");
@@ -36,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 string fileName = Path.Combine(tempDir.Path, "settings.txt");
                 IConfiguration configuraton = GetConfiguration(fileName, string.Empty);
                 FunctionsHostingConfigOptionsSetup setup = new FunctionsHostingConfigOptionsSetup(configuraton);
-                Config.FunctionsHostingConfigOptions options = new Config.FunctionsHostingConfigOptions();
+                FunctionsHostingConfigOptions options = new FunctionsHostingConfigOptions();
                 setup.Configure(options);
 
                 Assert.Empty(options.Features);

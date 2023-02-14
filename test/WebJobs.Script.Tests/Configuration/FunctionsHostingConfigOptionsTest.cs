@@ -3,6 +3,7 @@
 
 using System.IO;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -136,7 +137,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
         public class TestService
         {
-            public TestService(IOptions<Config.FunctionsHostingConfigOptions> options, IOptionsMonitor<Config.FunctionsHostingConfigOptions> monitor)
+            public TestService(IOptions<FunctionsHostingConfigOptions> options, IOptionsMonitor<FunctionsHostingConfigOptions> monitor)
             {
                 Options = options;
                 Monitor = monitor;
@@ -146,9 +147,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 });
             }
 
-            public IOptions<Config.FunctionsHostingConfigOptions> Options { get; set; }
+            public IOptions<FunctionsHostingConfigOptions> Options { get; set; }
 
-            public IOptionsMonitor<Config.FunctionsHostingConfigOptions> Monitor { get; set; }
+            public IOptionsMonitor<FunctionsHostingConfigOptions> Monitor { get; set; }
         }
     }
 }
