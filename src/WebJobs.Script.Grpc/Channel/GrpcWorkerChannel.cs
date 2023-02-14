@@ -731,8 +731,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 }
 
                 var invocationRequest = await context.ToRpcInvocationRequest(_workerChannelLogger, _workerCapabilities, _isSharedMemoryDataTransferEnabled, _sharedMemoryManager);
-
                 AddAdditionalTraceContext(invocationRequest.TraceContext.Attributes, context);
+                _executingInvocations.TryAdd(invocationRequest.InvocationId, context);
 
                 _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvoked, Id), functionName: context.FunctionMetadata.Name);
 
@@ -741,9 +741,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     InvocationRequest = invocationRequest
                 });
 
-                _executingInvocations.TryAdd(invocationRequest.InvocationId, context);
-
-                if (_cancelCapabilityEnabled)
+                if (_cancelCapabilityEnabled != null && _cancelCapabilityEnabled.Value)
                 {
                     context.CancellationToken.Register(() => SendInvocationCancel(invocationRequest.InvocationId));
                 }
