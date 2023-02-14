@@ -51,9 +51,6 @@ namespace Microsoft.Azure.WebJobs.Script
         private const string DelayedConfigurationActionKey = "MS_DelayedConfigurationAction";
         private const string ConfigurationSnapshotKey = "MS_ConfigurationSnapshot";
 
-        private const string ExternalStartupErrorDiagnosticId = "AZFD0005";
-        private const string ExternalStartupErrorHelpLink = "https://go.microsoft.com/fwlink/?linkid=2224847";
-
         public static IHostBuilder AddScriptHost(this IHostBuilder builder, Action<ScriptApplicationHostOptions> configureOptions, ILoggerFactory loggerFactory = null)
         {
             if (configureOptions == null)
@@ -507,7 +504,7 @@ namespace Microsoft.Azure.WebJobs.Script
             var startupEx = new ExternalStartupException(message, ex);
 
             var logger = loggerFactory.CreateLogger(LogCategories.Startup);
-            logger.LogDiagnosticEventError(ExternalStartupErrorDiagnosticId, message, ExternalStartupErrorHelpLink, startupEx);
+            logger.LogDiagnosticEventError(DiagnosticEventConstants.ExternalStartupErrorCode, message, DiagnosticEventConstants.ExternalStartupErrorHelpLink, startupEx);
 
             // Send the error to App Insights if possible. This is happening during ScriptHost construction so we
             // have no existing TelemetryClient to use. Create a one-off client and flush it ASAP.
