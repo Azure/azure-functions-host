@@ -200,9 +200,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 // Check for marker file indicating a zip package failure, and if found stop the application.
                 // We never want to run with an incorrect file system.
                 string path = Path.Combine(_applicationHostOptions.CurrentValue.ScriptPath, ScriptConstants.RunFromPackageFailedFileName);
+
                 if (File.Exists(path))
                 {
-                    _logger.LogError($"Shutting down host due to presence of {path}");
+                    string errorMessage = File.ReadAllText(path);
+                    _logger.LogError($"Shutting down host due to presence of {path}. Error details: {errorMessage}");
                     _applicationLifetime.StopApplication();
                 }
             }
