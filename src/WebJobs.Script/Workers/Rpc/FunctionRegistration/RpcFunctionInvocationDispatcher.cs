@@ -117,8 +117,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             if (!string.IsNullOrEmpty(_workerRuntime))
             {
-                var workerConfig = _workerConfigs.Where(c => c.Description.Language.Equals(_workerRuntime, StringComparison.InvariantCultureIgnoreCase))
-                                                .FirstOrDefault();
+                var workerConfig = _workerConfigs
+                    .FirstOrDefault(c => c.Description.Language.Equals(_workerRuntime, StringComparison.InvariantCultureIgnoreCase));
                 if (workerConfig != null)
                 {
                     return workerConfig.CountOptions.ProcessCount;
@@ -261,7 +261,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 return;
             }
 
-            var workerConfig = _workerConfigs.Where(c => c.Description.Language.Equals(_workerRuntime, StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
+            var workerConfig = _workerConfigs.FirstOrDefault(c => c.Description.Language.Equals(_workerRuntime, StringComparison.InvariantCultureIgnoreCase));
 
             // For other OOP workers, workerconfigs are present inside "workers" folder of host bin directory and is used to populate "_workerConfigs".
             // For dotnet-isolated _workerConfigs is populated by reading workerconfig.json from the deployed payload(customer function app code).
@@ -271,7 +271,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             // We are skipping this check for multi-language environments because they use multiple workers and thus doesn't honor 'FUNCTIONS_WORKER_RUNTIME'
             // Also, skip if dotnet-isolated app without payload as it is a valid case to exist.
-            if ((workerConfig == null && (functions == null || functions.Count() == 0))
+            if (workerConfig == null && (functions == null || !functions.Any())
                 && !_environment.IsMultiLanguageRuntimeEnvironment()
                 && !isDotNetIsolatedAppWithoutPayload)
             {
@@ -283,7 +283,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 throw new InvalidOperationException($"WorkerConfig for runtime: {_workerRuntime} not found");
             }
 
-            if (functions == null || functions.Count() == 0)
+            if (functions == null || !functions.Any())
             {
                 // do not initialize function dispatcher if there are no functions, unless the worker is indexing
                 _logger.LogDebug($"{nameof(RpcFunctionInvocationDispatcher)} received no functions");
@@ -443,7 +443,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             return initializedWorkers;
         }
 
-        public async void WorkerError(WorkerErrorEvent workerError)
+        private async void WorkerError(WorkerErrorEvent workerError)
         {
             if (_disposing || _disposed)
             {
@@ -473,7 +473,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
         }
 
-        public async void WorkerRestart(WorkerRestartEvent workerRestart)
+        private async void WorkerRestart(WorkerRestartEvent workerRestart)
         {
             if (_disposing || _disposed)
             {
@@ -582,7 +582,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     }
                 }
             }
-            else if (_jobHostLanguageWorkerChannelManager.GetChannels().Count() == 0)
+            else if (!_jobHostLanguageWorkerChannelManager.GetChannels().Any())
             {
                 _logger.LogError("Exceeded language worker restart retry count for runtime:{runtime}. Shutting down and proactively recycling the Functions Host to recover", runtime);
                 _applicationLifetime.StopApplication();

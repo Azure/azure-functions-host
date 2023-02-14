@@ -107,7 +107,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var testLogger = new TestLogger("test");
             var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger(), _testWorkerProfileManager);
             var workerConfigs = configFactory.GetConfigs();
-            var javaPath = workerConfigs.Where(c => c.Description.Language.Equals("java", StringComparison.OrdinalIgnoreCase)).FirstOrDefault().Description.DefaultExecutablePath;
+            var javaPath = workerConfigs.FirstOrDefault(c => c.Description.Language.Equals("java", StringComparison.OrdinalIgnoreCase)).Description.DefaultExecutablePath;
             Assert.DoesNotContain(@"%JAVA_HOME%", javaPath);
             Assert.Contains(@"/bin/java", javaPath);
         }
@@ -128,8 +128,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger(), _testWorkerProfileManager);
                 var workerConfigs = configFactory.GetConfigs();
-                var pythonWorkerConfig = workerConfigs.Where(w => w.Description.Language.Equals("python", StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
-                var powershellWorkerConfig = workerConfigs.Where(w => w.Description.Language.Equals("powershell", StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
+                var pythonWorkerConfig = workerConfigs.FirstOrDefault(w => w.Description.Language.Equals("python", StringComparison.OrdinalIgnoreCase));
+                var powershellWorkerConfig = workerConfigs.FirstOrDefault(w => w.Description.Language.Equals("powershell", StringComparison.OrdinalIgnoreCase));
                 Assert.Equal(4, workerConfigs.Count);
                 Assert.NotNull(pythonWorkerConfig);
                 Assert.NotNull(powershellWorkerConfig);
@@ -150,7 +150,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var testLogger = new TestLogger("test");
             var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, testEnvironment, new TestMetricsLogger(), _testWorkerProfileManager);
             var workerConfigs = configFactory.GetConfigs();
-            var powershellWorkerConfig = workerConfigs.Where(w => w.Description.Language.Equals("powershell", StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
+            var powershellWorkerConfig = workerConfigs.FirstOrDefault(w => w.Description.Language.Equals("powershell", StringComparison.OrdinalIgnoreCase));
             Assert.Equal(1, workerConfigs.Count);
             Assert.NotNull(powershellWorkerConfig);
             Assert.Equal("7.2", powershellWorkerConfig.Description.DefaultRuntimeVersion);
