@@ -93,7 +93,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                     if (!FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagDisableDiagnosticEventLogging))
                     {
-                        // Services that this logger depends on are registered at the WebHost level.
+                        // services that this depends on are registered at the webhost level
                         loggingBuilder.Services.AddSingleton<ILoggerProvider, DiagnosticEventLoggerProvider>();
                     }
 
@@ -156,13 +156,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     IOptionsMonitor<FunctionsHostingConfigOptions> hostingConfigOptionsMonitor = rootServiceProvider.GetService<IOptionsMonitor<FunctionsHostingConfigOptions>>();
                     services.AddSingleton(hostingConfigOptions);
                     services.AddSingleton(hostingConfigOptionsMonitor);
-
-                    if (!FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagDisableDiagnosticEventLogging))
-                    {
-                        services.AddSingleton<ILoggerProvider, DiagnosticEventLoggerProvider>();
-                        services.TryAddSingleton<IDiagnosticEventRepository, DiagnosticEventTableStorageRepository>();
-                        services.TryAddSingleton<IDiagnosticEventRepositoryFactory, DiagnosticEventRepositoryFactory>();
-                    }
 
                     ConfigureRegisteredBuilders(services, rootServiceProvider);
                 });
