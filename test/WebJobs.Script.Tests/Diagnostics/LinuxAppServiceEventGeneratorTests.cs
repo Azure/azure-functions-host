@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
-using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -174,11 +174,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         {
             if (detailedExecutionEventsDisabled)
             {
-                _functionsHostingConfigOptions.Value.DisableLinuxAppServiceExecutionDetails = true;
+                _functionsHostingConfigOptions.Value.Features[ScriptConstants.HostingConfigDisableLinuxAppServiceDetailedExecutionEvents] = "1";
             }
             else
             {
-                _functionsHostingConfigOptions.Value.DisableLinuxAppServiceExecutionDetails = false;
+                _functionsHostingConfigOptions.Value.Features[ScriptConstants.HostingConfigDisableLinuxAppServiceDetailedExecutionEvents] = "0";
             }
             _generator.LogFunctionExecutionEvent(executionId, siteName, concurrency, functionName, invocationId, executionStage, executionTimeSpan, success);
             var logger = _generator.FunctionsExecutionEventsCategoryLogger as MockLinuxAppServiceFileLogger;

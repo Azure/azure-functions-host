@@ -7,7 +7,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Diagnostics.JitTrace;
@@ -88,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
         private async Task WorkerWarmupAsync()
         {
-            if (_hostingConfigOptions.Value.WorkerWarmupEnabled)
+            if (_hostingConfigOptions.Value.IsWorkerWarmupEnabled())
             {
                 await _webHostRpcWorkerChannelManager.WorkerWarmupAsync();
             }

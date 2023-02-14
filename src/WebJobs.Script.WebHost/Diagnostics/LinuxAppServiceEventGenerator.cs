@@ -2,7 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -27,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _writeEvent = writeEvent ?? WriteEvent;
             _hostNameProvider = hostNameProvider ?? throw new ArgumentNullException(nameof(hostNameProvider));
             _functionsHostingConfigOptions = functionsHostingConfigOptions;
-            _functionsExecutionEventsCategoryLogger = loggerFactory.Create(FunctionsExecutionEventsCategory, backoffEnabled: !_functionsHostingConfigOptions.Value.DisableLinuxAppServiceLogBackoff);
+            _functionsExecutionEventsCategoryLogger = loggerFactory.Create(FunctionsExecutionEventsCategory, backoffEnabled: !_functionsHostingConfigOptions.Value.IsDisableLinuxAppServiceLogBackoff());
             _functionsLogsCategoryLogger = loggerFactory.Create(FunctionsLogsCategory, backoffEnabled: false);
             _functionsMetricsCategoryLogger = loggerFactory.Create(FunctionsMetricsCategory, false);
             _functionsDetailsCategoryLogger = loggerFactory.Create(FunctionsDetailsCategory, false);
@@ -86,7 +86,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             string invocationId, string executionStage, long executionTimeSpan, bool success)
         {
             string currentUtcTime = DateTime.UtcNow.ToString();
-            bool detailedExecutionEventsDisabled = _functionsHostingConfigOptions.Value.DisableLinuxAppServiceExecutionDetails;
+            bool detailedExecutionEventsDisabled = _functionsHostingConfigOptions.Value.IsDisableLinuxAppServiceExecutionDetails();
             if (!detailedExecutionEventsDisabled)
             {
                 string log = string.Join(",", executionId, siteName, concurrency.ToString(), functionName, invocationId, executionStage, executionTimeSpan.ToString(), success.ToString(), currentUtcTime);
