@@ -86,15 +86,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                                             ? workerConfig.Description.DefaultRuntimeVersion : workerMetadata.RuntimeVersion;
         }
 
-        internal static void UpdateWorkerConfig(this WorkerMetadata workerMetadata, RpcWorkerConfig workerConfig)
-        {
-            workerMetadata.RuntimeName = string.IsNullOrEmpty(workerMetadata.RuntimeName)
-                                            ? workerConfig.Description.Language : workerMetadata.RuntimeName;
-
-            workerMetadata.RuntimeVersion = string.IsNullOrEmpty(workerMetadata.RuntimeVersion)
-                                            ? workerConfig.Description.DefaultRuntimeVersion : workerMetadata.RuntimeVersion;
-        }
-
         private static SameSiteMode RpcSameSiteEnumConverter(RpcHttpCookie.Types.SameSite sameSite)
         {
             switch (sameSite)
