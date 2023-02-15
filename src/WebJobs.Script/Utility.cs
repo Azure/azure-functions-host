@@ -105,7 +105,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             if (runtime.Equals(RpcWorkerConstants.DotNetIsolatedLanguageWorkerName, StringComparison.CurrentCultureIgnoreCase))
             {
-                if (workerConfig.Description.DefaultRuntimeVersion.Contains(RpcWorkerConstants.DotNetFramework))
+                if (workerConfig.Description.DefaultRuntimeName.Contains(RpcWorkerConstants.DotNetFramework))
                 {
                     return RpcWorkerConstants.DotNetFrameworkDebugEngine;
                 }
