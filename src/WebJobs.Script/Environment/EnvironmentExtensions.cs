@@ -364,7 +364,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             if (!isMultiLanguageEnabled.HasValue)
             {
-                isMultiLanguageEnabled = environment.IsLogicApp() && !environment.IsV2CompatibilityMode();
+                isMultiLanguageEnabled = environment.IsLogicApp();
             }
             return isMultiLanguageEnabled.Value;
         }
