@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reactive.Linq;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -44,10 +43,10 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         public IRpcWorkerChannel Create(string scriptRootPath, string runtime, IMetricsLogger metricsLogger, int attemptCount, IEnumerable<RpcWorkerConfig> workerConfigs)
         {
-            var languageWorkerConfig = workerConfigs.Where(c => c.Description.Language.Equals(runtime, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
+            var languageWorkerConfig = workerConfigs.FirstOrDefault(c => c.Description.Language.Equals(runtime, StringComparison.OrdinalIgnoreCase));
             if (languageWorkerConfig == null)
             {
-                throw new InvalidOperationException($"WorkerCofig for runtime: {runtime} not found");
+                throw new InvalidOperationException($"WorkerConfig for runtime: {runtime} not found");
             }
             string workerId = Guid.NewGuid().ToString();
             _eventManager.AddGrpcChannels(workerId); // prepare the inbound/outbound dedicated channels

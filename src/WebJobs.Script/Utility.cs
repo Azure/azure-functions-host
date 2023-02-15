@@ -37,8 +37,8 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         // Prefix that uniquely identifies our assemblies
         // i.e.: "f-<functionname>"
-        public const string AssemblyPrefix = "f-";
-        public const string AssemblySeparator = "__";
+        private const string AssemblyPrefix = "f-";
+        private const string AssemblySeparator = "__";
         private const string BlobServiceDomain = "blob";
         private const string SasVersionQueryParam = "sv";
 
@@ -153,7 +153,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         /// <param name="timeoutSeconds">The maximum number of seconds to delay.</param>
         /// <param name="pollingIntervalMilliseconds">The polling interval.</param>
-        /// <param name="condition">The condition to check</param>
+        /// <param name="condition">The condition to check.</param>
         /// <returns>A Task representing the delay.</returns>
         internal static Task<bool> DelayAsync(int timeoutSeconds, int pollingIntervalMilliseconds, Func<bool> condition)
         {
@@ -166,7 +166,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         /// <param name="timeoutSeconds">The maximum number of seconds to delay.</param>
         /// <param name="pollingIntervalMilliseconds">The polling interval.</param>
-        /// <param name="condition">The async condition to check</param>
+        /// <param name="condition">The async condition to check.</param>
         /// <returns>A Task representing the delay.</returns>
         internal static Task<bool> DelayAsync(int timeoutSeconds, int pollingIntervalMilliseconds, Func<Task<bool>> condition, CancellationToken cancellationToken)
         {
@@ -279,7 +279,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static IReadOnlyDictionary<string, string> ToStringValues(this IReadOnlyDictionary<string, object> data)
         {
-            return data.ToDictionary(p => p.Key, p => p.Value != null ? p.Value.ToString() : null, StringComparer.OrdinalIgnoreCase);
+            return data.ToDictionary(p => p.Key, p => p.Value?.ToString(), StringComparer.OrdinalIgnoreCase);
         }
 
         public static string GetValueOrNull(this StringDictionary dictionary, string key)
@@ -365,7 +365,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         /// <summary>
         /// Applies any additional binding data from the input value to the specified binding data.
-        /// This binding data then becomes available to the binding process (in the case of late bound bindings)
+        /// This binding data then becomes available to the binding process (in the case of late bound bindings).
         /// </summary>
         internal static void ApplyBindingData(object value, Dictionary<string, object> bindingData)
         {
@@ -441,9 +441,9 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
-        /// Checks if a given string has a UTF8 BOM
+        /// Checks if a given string has a UTF8 BOM.
         /// </summary>
-        /// <param name="input">The string to be evalutated</param>
+        /// <param name="input">The string to be evaluated.</param>
         /// <returns>True if the string begins with a UTF8 BOM; Otherwise, false.</returns>
         public static bool HasUtf8ByteOrderMark(string input)
             => input != null && CultureInfo.InvariantCulture.CompareInfo.IsPrefix(input, UTF8ByteOrderMark, CompareOptions.Ordinal);
@@ -649,11 +649,9 @@ namespace Microsoft.Azure.WebJobs.Script
 
         internal static string GetWorkerRuntime(IEnumerable<FunctionMetadata> functions, IEnvironment environment = null)
         {
-            string workerRuntime = null;
-
             if (environment != null)
             {
-                workerRuntime = environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
+                var workerRuntime = environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
 
                 if (!string.IsNullOrEmpty(workerRuntime))
                 {
@@ -746,7 +744,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 // No valid functions
                 return null;
             }
-            return indexedFunctions.Where(m => functionDescriptors.Select(fd => fd.Metadata.Name).Contains(m.Name) == true);
+            return indexedFunctions.Where(m => functionDescriptors.Select(fd => fd.Metadata.Name).Contains(m.Name));
         }
 
         public static bool CheckAppOffline(string scriptPath)
@@ -857,10 +855,10 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
-        /// Computes a stable non-cryptographic hash
+        /// Computes a stable non-cryptographic hash.
         /// </summary>
-        /// <param name="value">The string to use for computation</param>
-        /// <returns>A stable, non-cryptographic, hash</returns>
+        /// <param name="value">The string to use for computation.</param>
+        /// <returns>A stable, non-cryptographic, hash.</returns>
         internal static int GetStableHash(string value)
         {
             if (value == null)
@@ -933,7 +931,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 && !environment.IsMultiLanguageRuntimeEnvironment())
             {
                 var workerRuntime = environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
-                var workerConfig = workerConfigs.Where(c => c.Description != null && c.Description.Language != null && c.Description.Language.Equals(workerRuntime, StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
+                var workerConfig = workerConfigs.FirstOrDefault(c => c.Description?.Language != null && c.Description.Language.Equals(workerRuntime, StringComparison.InvariantCultureIgnoreCase));
 
                 // if feature flag is enabled and workerConfig.WorkerIndexing == true, then return true
                 if (workerConfig != null
