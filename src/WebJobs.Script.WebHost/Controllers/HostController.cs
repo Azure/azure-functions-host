@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
-using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -22,7 +21,6 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
-using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -116,7 +114,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         ///  locked down to only Contributor roles.
         /// </summary>
         [HttpGet]
-        [Route("admin/host/workerProcesses")]
+        [Route("admin/host/processes")]
         [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal)]
         public async Task<IActionResult> GetWorkerProcesses([FromServices] IScriptHostManager scriptHostManager)
         {
@@ -125,7 +123,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 return StatusCode(StatusCodes.Status503ServiceUnavailable);
             }
 
-            var processes = new List<WorkerProcessInfo>();
+            List<FunctionProcesses.FunctionProcessInfo> processes = new List<FunctionProcesses.FunctionProcessInfo>();
+
+            var hostProcess = Process.GetCurrentProcess();
+            var processInfo = new FunctionProcesses.FunctionProcessInfo()
+            {
+                ProcessId = hostProcess.Id,
+                DebugEngine = RpcWorkerConstants.DotNetCoreDebugEngine,
+                IsEligibleForOpenInBrowser = false,
+                ExecutableName = hostProcess.ProcessName
+            };
+
+            processes.Add(processInfo);
+
             string workerRuntime = _environment.GetFunctionsWorkerRuntime();
 
             var webhostChannelDictionary = webHostLanguageWorkerChannelManager.GetChannels(workerRuntime);
@@ -147,7 +157,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
             foreach (var channel in channels)
             {
-                var processInfo = new WorkerProcessInfo()
+                processInfo = new FunctionProcesses.FunctionProcessInfo()
                 {
                     ProcessId = channel.WorkerProcess.Process.Id,
                     ExecutableName = channel.WorkerProcess.Process.ProcessName,
@@ -157,7 +167,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 processes.Add(processInfo);
             }
 
-            return Ok(processes);
+            var functionProcesses = new FunctionProcesses()
+            {
+                Processes = processes
+            };
+
+            return Ok(functionProcesses);
         }
 
         [HttpPost]
