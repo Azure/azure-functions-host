@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -123,41 +124,45 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 return StatusCode(StatusCodes.Status503ServiceUnavailable);
             }
 
-            List<FunctionProcesses.FunctionProcessInfo> processes = new List<FunctionProcesses.FunctionProcessInfo>();
-
             var hostProcess = Process.GetCurrentProcess();
-            var processInfo = new FunctionProcesses.FunctionProcessInfo()
+            List<FunctionProcesses.FunctionProcessInfo> processes = new()
             {
-                ProcessId = hostProcess.Id,
-                DebugEngine = RpcWorkerConstants.DotNetCoreDebugEngine,
-                IsEligibleForOpenInBrowser = false,
-                ExecutableName = hostProcess.ProcessName
+                new FunctionProcesses.FunctionProcessInfo()
+                {
+                    ProcessId = hostProcess.Id,
+                    DebugEngine = RpcWorkerConstants.DotNetCoreDebugEngine,
+                    IsEligibleForOpenInBrowser = false,
+                    ExecutableName = hostProcess.ProcessName
+                }
             };
-
-            processes.Add(processInfo);
 
             string workerRuntime = _environment.GetFunctionsWorkerRuntime();
 
+            List<IRpcWorkerChannel> channels = null;
+            if (Utility.TryGetHostService(scriptHostManager, out IJobHostRpcWorkerChannelManager jobHostLanguageWorkerChannelManager))
+            {
+                channels = jobHostLanguageWorkerChannelManager.GetChannels(workerRuntime).ToList();
+            }
+
             var webhostChannelDictionary = webHostLanguageWorkerChannelManager.GetChannels(workerRuntime);
 
-            List<IRpcWorkerChannel> channels = new List<IRpcWorkerChannel>();
+            List<Task<IRpcWorkerChannel>> webHostchannelTasks = new List<Task<IRpcWorkerChannel>>();
             if (webhostChannelDictionary is not null)
             {
                 foreach (var pair in webhostChannelDictionary)
                 {
-                    var workerChannel = await pair.Value.Task;
-                    channels.Add(workerChannel);
+                    var workerChannel = pair.Value.Task;
+                    webHostchannelTasks.Add(workerChannel);
                 }
             }
 
-            if (Utility.TryGetHostService(scriptHostManager, out IJobHostRpcWorkerChannelManager jobHostLanguageWorkerChannelManager))
-            {
-                channels.AddRange(jobHostLanguageWorkerChannelManager.GetChannels(workerRuntime));
-            }
+            var webHostchannels = await Task.WhenAll(webHostchannelTasks);
+            channels = channels ?? new List<IRpcWorkerChannel>();
+            channels.AddRange(webHostchannels);
 
             foreach (var channel in channels)
             {
-                processInfo = new FunctionProcesses.FunctionProcessInfo()
+                var processInfo = new FunctionProcesses.FunctionProcessInfo()
                 {
                     ProcessId = channel.WorkerProcess.Process.Id,
                     ExecutableName = channel.WorkerProcess.Process.ProcessName,

@@ -103,7 +103,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         internal static string GetDebugEngineInfo(RpcWorkerConfig workerConfig, string runtime)
         {
-            if (runtime == RpcWorkerConstants.DotNetIsolatedLanguageWorkerName)
+            if (runtime.Equals(RpcWorkerConstants.DotNetIsolatedLanguageWorkerName, StringComparison.CurrentCultureIgnoreCase))
             {
                 if (workerConfig.Description.DefaultRuntimeVersion.Contains(RpcWorkerConstants.DotNetFramework))
                 {

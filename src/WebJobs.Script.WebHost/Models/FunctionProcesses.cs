@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
             public string ExecutableName { get; set; }
 
             /// <summary>
-            /// Gets or sets the debug engine string assosiated with the worker process.
+            /// Gets or sets the debug engine string associated with the worker process.
             /// </summary>
             [JsonProperty(PropertyName = "debugEngine", DefaultValueHandling = DefaultValueHandling.Ignore)]
             public string DebugEngine { get; set; }
