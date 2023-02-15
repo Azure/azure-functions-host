@@ -132,7 +132,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                     ProcessId = hostProcess.Id,
                     DebugEngine = RpcWorkerConstants.DotNetCoreDebugEngine,
                     IsEligibleForOpenInBrowser = false,
-                    ExecutableName = hostProcess.ProcessName
+                    ProcessName = hostProcess.ProcessName
                 }
             };
 
@@ -165,7 +165,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 var processInfo = new FunctionProcesses.FunctionProcessInfo()
                 {
                     ProcessId = channel.WorkerProcess.Process.Id,
-                    ExecutableName = channel.WorkerProcess.Process.ProcessName,
+                    ProcessName = channel.WorkerProcess.Process.ProcessName,
                     DebugEngine = Utility.GetDebugEngineInfo(channel.WorkerConfig, workerRuntime),
                     IsEligibleForOpenInBrowser = false
                 };

@@ -23,10 +23,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
             public int ProcessId { get; set; }
 
             /// <summary>
-            /// Gets or sets the name of the worker process executable.
+            /// Gets or sets the name of the process.
             /// </summary>
-            [JsonProperty(PropertyName = "executableName", DefaultValueHandling = DefaultValueHandling.Ignore)]
-            public string ExecutableName { get; set; }
+            [JsonProperty(PropertyName = "processName", DefaultValueHandling = DefaultValueHandling.Ignore)]
+            public string ProcessName { get; set; }
 
             /// <summary>
             /// Gets or sets the debug engine string associated with the worker process.
