@@ -101,6 +101,23 @@ namespace Microsoft.Azure.WebJobs.Script
             return null;
         }
 
+        internal static string GetDebugEngineInfo(RpcWorkerConfig workerConfig, string runtime)
+        {
+            if (runtime.Equals(RpcWorkerConstants.DotNetIsolatedLanguageWorkerName, StringComparison.CurrentCultureIgnoreCase))
+            {
+                if (workerConfig.Description.DefaultRuntimeName.Contains(RpcWorkerConstants.DotNetFramework))
+                {
+                    return RpcWorkerConstants.DotNetFrameworkDebugEngine;
+                }
+                else
+                {
+                    return RpcWorkerConstants.DotNetCoreDebugEngine;
+                }
+            }
+
+            return runtime;
+        }
+
         internal static async Task InvokeWithRetriesAsync(Action action, int maxRetries, TimeSpan retryInterval)
         {
             await InvokeWithRetriesAsync(() =>

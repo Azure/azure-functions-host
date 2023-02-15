@@ -139,7 +139,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         public IWorkerProcess WorkerProcess => _rpcWorkerProcess;
 
-        internal RpcWorkerConfig Config => _workerConfig;
+        public RpcWorkerConfig WorkerConfig => _workerConfig;
 
         private void ProcessItem(InboundGrpcEvent msg)
         {
@@ -360,6 +360,10 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _workerChannelLogger.LogDebug("Received FunctionEnvironmentReloadResponse from WorkerProcess with Pid: '{0}'", _rpcWorkerProcess.Id);
 
             LogWorkerMetadata(res.WorkerMetadata);
+
+            _workerConfig.Description.DefaultRuntimeVersion = _workerConfig.Description.DefaultRuntimeVersion ?? res.WorkerMetadata.RuntimeVersion;
+            _workerConfig.Description.DefaultRuntimeName = _workerConfig.Description.DefaultRuntimeName ?? res.WorkerMetadata.RuntimeName;
+
             UpdateCapabilities(res.Capabilities);
             _cancelCapabilityEnabled ??= !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.HandlesInvocationCancelMessage));
 
@@ -385,6 +389,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             // until specialization is done (env reload request). So these can be removed from worker init response code path.
             // to do to track this: https://github.com/Azure/azure-functions-host/issues/9019
             LogWorkerMetadata(_initMessage.WorkerMetadata);
+
+            _workerConfig.Description.DefaultRuntimeVersion = _workerConfig.Description.DefaultRuntimeVersion ?? _initMessage.WorkerMetadata.RuntimeVersion;
+            _workerConfig.Description.DefaultRuntimeName = _workerConfig.Description.DefaultRuntimeName ?? _initMessage.WorkerMetadata.RuntimeName;
 
             if (_initMessage.Result.IsFailure(out Exception exc))
             {

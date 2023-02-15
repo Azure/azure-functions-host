@@ -77,5 +77,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         // Language worker warmup
         public const string WorkerWarmupEnabled = "WORKER_WARMUP_ENABLED";
+        public const string DotNetCoreDebugEngine = ".NETCore";
+        public const string DotNetFrameworkDebugEngine = ".NETFramework";
+        public const string DotNetFramework = "Framework";
     }
 }
