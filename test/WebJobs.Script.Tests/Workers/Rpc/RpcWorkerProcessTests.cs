@@ -214,5 +214,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             _workerProcessFactory.Verify(x => x.CreateWorkerProcess(It.Is<WorkerContext>(c => c.EnvironmentVariables["feature1"] == "1")));
         }
+
+        [Fact]
+        public void WorkerProcess_WaitForExit_AfterExit_DoesNotThrow()
+        {
+            Process process = new Process();
+            ProcessStartInfo startInfo = new ProcessStartInfo();
+            startInfo.WindowStyle = ProcessWindowStyle.Hidden;
+            startInfo.FileName = "cmd.exe";
+            startInfo.Arguments = $"ls";
+            process.StartInfo = startInfo;
+            process.Start();
+
+            _rpcWorkerProcess.Process = process;
+            _rpcWorkerProcess.Dispose();
+
+            _rpcWorkerProcess.WaitForProcessExitInMilliSeconds(1);
+
+            var traces = _logger.GetLogMessages();
+            string msg = traces.Single().FormattedMessage;
+            Assert.StartsWith("An exception was thrown while waiting for a worker process to exit.", msg);
+
+            Exception ex = traces.Single().Exception;
+            Assert.IsType<InvalidOperationException>(ex);
+        }
     }
 }
