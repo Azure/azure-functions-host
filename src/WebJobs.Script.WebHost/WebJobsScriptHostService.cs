@@ -203,14 +203,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                 if (File.Exists(path))
                 {
+                    string errorPrefix = $"Shutting down host due to presence of {path}.";
+                    string errorSuffix = string.Empty;
                     try
                     {
                         string fileContent = File.ReadAllText(path);
-                        _logger.LogError($"Shutting down host due to presence of {path}. File content: {fileContent}");
+                        errorSuffix = $" File content: {fileContent}";
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError($"Shutting down host due to presence of {path}. Error reading {ScriptConstants.RunFromPackageFailedFileName} file content: {ex.Message}");
+                        errorSuffix = $" Error reading {ScriptConstants.RunFromPackageFailedFileName} file content: {ex.Message}";
+                    }
+                    finally
+                    {
+                        _logger.LogError(errorPrefix + errorSuffix);
                     }
                     _applicationLifetime.StopApplication();
                 }
