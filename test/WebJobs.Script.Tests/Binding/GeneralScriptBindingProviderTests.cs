@@ -21,27 +21,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData(null, null, typeof(object))]
         [InlineData(null, "many", typeof(object[]))]
         [InlineData("string", null, typeof(string))]
-        [InlineData("StRing", null, typeof(string))] // case insenstive
-        [InlineData("string", "mANy", typeof(string[]))] // case insensitve
+        [InlineData("StRing", null, typeof(string))] // case insensitive
+        [InlineData("string", "mANy", typeof(string[]))] // case insensitive
         [InlineData("binary", null, typeof(byte[]))]
         [InlineData("binary", "many", typeof(byte[][]))]
         [InlineData("stream", null, typeof(Stream))]
         [InlineData("stream", "many", typeof(Stream[]))] // nonsense?
-        public void Validate(string dataType, string cardinality, Type expectedType)
+        [InlineData("string", null, typeof(ParameterBindingData), true)]
+        [InlineData("string", "many", typeof(ParameterBindingData[]), true)]
+        [InlineData(null, null, typeof(ParameterBindingData), true)]
+        [InlineData(null, "many", typeof(ParameterBindingData[]), true)]
+        public void Validate(string dataType, string cardinality, Type expectedType, bool supportsDeferredBinding = false)
         {
-            var ctx = New(dataType, cardinality);
+            var ctx = New(dataType, cardinality, supportsDeferredBinding);
             var type = GeneralScriptBindingProvider.GetRequestedType(ctx);
             Assert.Equal(expectedType, type);
         }
 
-        private static ScriptBindingContext New(string dataType, string cardinality)
+        private static ScriptBindingContext New(string dataType, string cardinality, bool supportsDeferredBinding)
         {
-            var jobj = new JObject();
-            jobj["type"] = "test";
-            jobj["direction"] = "in";
-            jobj["datatype"] = dataType;
-            jobj["cardinality"] = cardinality;
-            return new ScriptBindingContext(jobj);
+            var bindingMetadataJObject = new JObject();
+            bindingMetadataJObject["type"] = "test";
+            bindingMetadataJObject["direction"] = "in";
+            bindingMetadataJObject["datatype"] = dataType;
+            bindingMetadataJObject["cardinality"] = cardinality;
+            bindingMetadataJObject["properties"] = new JObject { { "supportsDeferredBinding", supportsDeferredBinding } };
+
+            return new ScriptBindingContext(bindingMetadataJObject);
         }
 
         [Fact]
