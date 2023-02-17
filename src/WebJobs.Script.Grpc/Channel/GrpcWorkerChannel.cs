@@ -361,8 +361,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             LogWorkerMetadata(res.WorkerMetadata);
 
-            _workerConfig.Description.DefaultRuntimeVersion = _workerConfig.Description.DefaultRuntimeVersion ?? res.WorkerMetadata.RuntimeVersion;
-            _workerConfig.Description.DefaultRuntimeName = _workerConfig.Description.DefaultRuntimeName ?? res.WorkerMetadata.RuntimeName;
+            _workerConfig.Description.DefaultRuntimeVersion = _workerConfig.Description.DefaultRuntimeVersion ?? res?.WorkerMetadata?.RuntimeVersion;
+            _workerConfig.Description.DefaultRuntimeName = _workerConfig.Description.DefaultRuntimeName ?? res?.WorkerMetadata?.RuntimeName;
 
             UpdateCapabilities(res.Capabilities);
             _cancelCapabilityEnabled ??= !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.HandlesInvocationCancelMessage));
@@ -390,8 +390,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             // to do to track this: https://github.com/Azure/azure-functions-host/issues/9019
             LogWorkerMetadata(_initMessage.WorkerMetadata);
 
-            _workerConfig.Description.DefaultRuntimeVersion = _workerConfig.Description.DefaultRuntimeVersion ?? _initMessage.WorkerMetadata.RuntimeVersion;
-            _workerConfig.Description.DefaultRuntimeName = _workerConfig.Description.DefaultRuntimeName ?? _initMessage.WorkerMetadata.RuntimeName;
+            _workerConfig.Description.DefaultRuntimeVersion = _workerConfig.Description.DefaultRuntimeVersion ?? _initMessage?.WorkerMetadata?.RuntimeVersion;
+            _workerConfig.Description.DefaultRuntimeName = _workerConfig.Description.DefaultRuntimeName ?? _initMessage?.WorkerMetadata?.RuntimeName;
 
             if (_initMessage.Result.IsFailure(out Exception exc))
             {
