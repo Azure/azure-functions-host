@@ -220,7 +220,8 @@ namespace Microsoft.Azure.WebJobs.Script
                     }
                     catch (Exception ex)
                     {
-                        RecordAndThrowExternalStartupException("Error configuring services in an external startup class.", ex, loggerFactory);
+                        string appInsightsConnStr = context.Configuration[EnvironmentSettingNames.AppInsightsConnectionString];
+                        RecordAndThrowExternalStartupException("Error configuring services in an external startup class.", ex, loggerFactory, appInsightsConnStr);
                     }
                 }
 
@@ -246,7 +247,9 @@ namespace Microsoft.Azure.WebJobs.Script
                         }
                         catch (Exception ex)
                         {
-                            RecordAndThrowExternalStartupException("Error building configuration in an external startup class.", ex, loggerFactory);
+                            // Go directly to the environment; We have no valid configuration from the customer at this point.
+                            string appInsightsConnStr = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AppInsightsConnectionString);
+                            RecordAndThrowExternalStartupException("Error building configuration in an external startup class.", ex, loggerFactory, appInsightsConnStr);
                         }
                     });
                 }
@@ -499,7 +502,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        private static void RecordAndThrowExternalStartupException(string message, Exception ex, ILoggerFactory loggerFactory)
+        private static void RecordAndThrowExternalStartupException(string message, Exception ex, ILoggerFactory loggerFactory, string appInsightsConnStr)
         {
             var startupEx = new ExternalStartupException(message, ex);
 
@@ -508,7 +511,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
             // Send the error to App Insights if possible. This is happening during ScriptHost construction so we
             // have no existing TelemetryClient to use. Create a one-off client and flush it ASAP.
-            string appInsightsConnStr = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AppInsightsConnectionString);
             if (appInsightsConnStr is not null)
             {
                 using TelemetryConfiguration telemetryConfiguration = new()
