@@ -1,7 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
 using System.IO.Abstractions;
 using System.Net.Http;
 using System.Runtime.InteropServices;
@@ -147,6 +146,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             // Logging and diagnostics
             services.AddSingleton<IMetricsLogger, WebHostMetricsLogger>();
+            if (!FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagDisableDiagnosticEventLogging))
+            {
+                services.AddSingleton<ILoggerProvider, DiagnosticEventLoggerProvider>();
+                services.TryAddSingleton<IDiagnosticEventRepository, DiagnosticEventTableStorageRepository>();
+                services.TryAddSingleton<IDiagnosticEventRepositoryFactory, DiagnosticEventRepositoryFactory>();
+            }
 
             // Secret management
             services.TryAddSingleton<ISecretManagerProvider, DefaultSecretManagerProvider>();
