@@ -31,6 +31,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public long Maximum { get; set; }
 
-        public long Count { get; set; }
+        public long Count;
     }
 }

@@ -104,7 +104,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 queuedEvent.Maximum = Math.Max(queuedEvent.Maximum, latencyMS);
                 queuedEvent.Minimum = Math.Min(queuedEvent.Minimum, latencyMS);
                 queuedEvent.Average += latencyMS;  // the average is calculated later - for now we sum
-                queuedEvent.Count++;
+                Interlocked.Increment(ref queuedEvent.Count);
             }
         }
 
@@ -129,7 +129,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     };
                 }), data);
 
-            queuedEvent.Value.Count++;
+            Interlocked.Increment(ref queuedEvent.Value.Count);
         }
 
         internal void FunctionStarted(FunctionStartedEvent startedEvent)
