@@ -13,6 +13,7 @@
 - Send Workerwarmup request to warm up the worker code path before specialization (#9018)
 - Update PowerShell Worker 7.2 to 4.0.2673 [Release Note](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.2673)
 - Add error details to RunFromPackage failure log (#9094)
+- Update App Service Authentication/Authorization on Linux Consumption from 1.5.1 to 1.6.7 [Release Note](https://github.com/Azure/app-service-announcements/issues/416)
 
 **Release sprint:** Sprint 139
 [ [bugs](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+139%22+label%3Abug+is%3Aclosed) | [features](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+139%22+label%3Afeature+is%3Aclosed) ]
