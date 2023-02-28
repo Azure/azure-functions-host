@@ -13,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
 
         public FunctionsHostingConfigOptions()
         {
-            _features = new Dictionary<string, string>();
+            _features = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         }
 
         /// <summary>
