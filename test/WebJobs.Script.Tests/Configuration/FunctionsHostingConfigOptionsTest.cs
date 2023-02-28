@@ -16,8 +16,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 {
     public class FunctionsHostingConfigOptionsTest
     {
-        [Fact]
-        public async Task Case_Insensitive()
+        [Theory]
+        [InlineData("FEATURE1", "value1")]
+        [InlineData("FeAtUrE1", "value1")]
+        [InlineData("feature1", "value1")]
+        [InlineData("featuree1", null)]
+        public async Task Case_Insensitive(string key, string expectedValue)
         {
             using (TempDirectory tempDir = new TempDirectory())
             {
@@ -28,13 +32,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 {
                     await TestHelpers.Await(() =>
                     {
-                        return testService.Options.Value.GetFeature("FEATURE1") == "value1";
+                        return testService.Options.Value.GetFeature(key) == expectedValue;
                     });
                     await host.StopAsync();
                 });
 
                 await host.RunAsync();
-                Assert.Equal(testService.Options.Value.GetFeature("FEATURE1"), "value1");
+                Assert.Equal(testService.Options.Value.GetFeature(key), expectedValue);
             }
         }
 
