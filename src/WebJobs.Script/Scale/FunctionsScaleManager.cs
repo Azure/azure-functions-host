@@ -252,7 +252,8 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
                     {
                         string assemblyName = GetAssemblyName(scaler.GetType());
                         string flag = _functionsHostingConfigOptions.Value.GetFeature(assemblyName);
-                        if (flag == "1")
+                        string flagLower = _functionsHostingConfigOptions.Value.GetFeature(assemblyName.ToLower());
+                        if (flag == "1" || flagLower == "1")
                         {
                             targetScalersToSample.Add(scaler);
                             targetScalerFunctions.Add(scalerUniqueId);
