@@ -623,8 +623,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static bool IsTargetBasedScalingEnabled(this IEnvironment environment)
         {
-            string targetBaseScalingEnabledValue = environment.GetEnvironmentVariableOrDefault(TargetBaseScalingEnabled, "1");
-            return string.Equals(targetBaseScalingEnabledValue, "1");
+            return string.Equals(environment.GetEnvironmentVariable(TargetBaseScalingEnabled), "1");
         }
     }
 }
