@@ -138,9 +138,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
 
             _targetScalerManagerMock.Setup(p => p.GetTargetScalers()).Returns(new List<ITargetScaler> { targetScaler1 });
 
-            if (tbsEnabled)
+            if (!tbsEnabled)
             {
-                _environment.SetEnvironmentVariable(EnvironmentSettingNames.TargetBaseScalingEnabled, "1");
+                _environment.SetEnvironmentVariable(EnvironmentSettingNames.TargetBaseScalingEnabled, "0");
             }
 
             string assemblyName = Assembly.GetExecutingAssembly().GetName().Name;
@@ -309,9 +309,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
             _functionsHostingConfigOptions.Value.Features[assemblyName] = triggerEabled ? "1" : null;
 
             TestEnvironment env = new TestEnvironment();
-            if (targetBaseScalingEnabled)
+            if (!targetBaseScalingEnabled)
             {
-                env.SetEnvironmentVariable(EnvironmentSettingNames.TargetBaseScalingEnabled, "1");
+                env.SetEnvironmentVariable(EnvironmentSettingNames.TargetBaseScalingEnabled, "0");
             }
 
             FunctionsScaleManager manager = new FunctionsScaleManager(scaleMonitorManagerMock.Object, _metricsRepositoryMock.Object,
