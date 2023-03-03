@@ -1,8 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System.Dynamic;
-
 namespace Microsoft.Azure.WebJobs.Script
 {
     public static class EnvironmentSettingNames
@@ -15,6 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureWebsiteSku = "WEBSITE_SKU";
         public const string RemoteDebuggingPort = "REMOTEDEBUGGINGPORT";
         public const string AzureWebsitePlaceholderMode = "WEBSITE_PLACEHOLDER_MODE";
+        public const string AzureWebsiteUsePlaceholderDotNetIsolated = "WEBSITE_USE_PLACEHOLDER_DOTNETISOLATED";
         public const string InitializedFromPlaceholder = "INITIALIZED_FROM_PLACEHOLDER";
         public const string AzureWebsiteHomePath = "HOME";
         public const string AzureWebJobsScriptRoot = "AzureWebJobsScriptRoot";
@@ -123,7 +122,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string CorsAllowedOrigins = "CORS_ALLOWED_ORIGINS";
         public const string CorsSupportCredentials = "CORS_SUPPORT_CREDENTIALS";
 
-       // EasyAuth settings
+        // EasyAuth settings
         public const string EasyAuthClientId = "WEBSITE_AUTH_CLIENT_ID";
         public const string EasyAuthSigningKey = "WEBSITE_AUTH_SIGNING_KEY";
 

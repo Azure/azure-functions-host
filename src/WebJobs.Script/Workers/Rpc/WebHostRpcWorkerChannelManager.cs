@@ -170,6 +170,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 return false;
             }
 
+            if (workerRuntime.Equals(RpcWorkerConstants.DotNetIsolatedLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
+            {
+                bool placeholderEnabled = _environment.UsePlaceholderDotNetIsolated();
+                _logger.LogDebug("UsePlaceholderChannel for dotnet-isolated: {placeholderEnabled}", placeholderEnabled);
+                return placeholderEnabled;
+            }
+
             // Special case: node and PowerShell apps must be read-only to use the placeholder mode channel
             // Also cannot use placeholder worker that is targeting ~3 but has backwards compatibility with V2 enabled
             // TODO: Remove special casing when resolving https://github.com/Azure/azure-functions-host/issues/4534

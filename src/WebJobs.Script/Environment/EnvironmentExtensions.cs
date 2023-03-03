@@ -36,6 +36,11 @@ namespace Microsoft.Azure.WebJobs.Script
             return environment.GetEnvironmentVariable(AzureWebsitePlaceholderMode) == "1";
         }
 
+        public static bool UsePlaceholderDotNetIsolated(this IEnvironment environment)
+        {
+            return environment.GetEnvironmentVariable(AzureWebsiteUsePlaceholderDotNetIsolated) == "1";
+        }
+
         public static bool IsLegacyPlaceholderTemplateSite(this IEnvironment environment)
         {
             string siteName = environment.GetEnvironmentVariable(AzureWebsiteName);
