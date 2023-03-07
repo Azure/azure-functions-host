@@ -32,8 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             _environment = new TestEnvironment();
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.MeshInitURI, MeshInitUri);
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, ContainerName);
-            _meshServiceClient = new MeshServiceClient(TestHelpers.CreateHttpClientFactory(_handlerMock.Object), _environment,
-                NullLogger<MeshServiceClient>.Instance);
+            _meshServiceClient = new MeshServiceClient(new HttpClient(_handlerMock.Object), _environment, NullLogger<MeshServiceClient>.Instance);
         }
 
         private static bool IsMountCifsRequest(HttpRequestMessage request, string targetPath)
