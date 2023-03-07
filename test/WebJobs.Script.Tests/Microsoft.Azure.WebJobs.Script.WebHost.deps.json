@@ -322,7 +322,7 @@
       },
       "Microsoft.AspNet.WebApi.Client/5.2.8": {
         "dependencies": {
-          "Newtonsoft.Json": "13.0.1",
+          "Newtonsoft.Json": "13.0.2",
           "Newtonsoft.Json.Bson": "1.0.2"
         },
         "runtime": {
@@ -469,7 +469,7 @@
       "Microsoft.AspNetCore.JsonPatch/6.0.0": {
         "dependencies": {
           "Microsoft.CSharp": "4.7.0",
-          "Newtonsoft.Json": "13.0.1"
+          "Newtonsoft.Json": "13.0.2"
         },
         "runtime": {
           "lib/net6.0/Microsoft.AspNetCore.JsonPatch.dll": {
@@ -562,7 +562,7 @@
       "Microsoft.AspNetCore.Mvc.NewtonsoftJson/6.0.0": {
         "dependencies": {
           "Microsoft.AspNetCore.JsonPatch": "6.0.0",
-          "Newtonsoft.Json": "13.0.1",
+          "Newtonsoft.Json": "13.0.2",
           "Newtonsoft.Json.Bson": "1.0.2"
         },
         "runtime": {
@@ -698,7 +698,7 @@
           "Microsoft.Extensions.Caching.Memory": "2.2.0",
           "Microsoft.Extensions.Configuration": "6.0.0",
           "Microsoft.Extensions.Logging": "6.0.0",
-          "Newtonsoft.Json": "13.0.1",
+          "Newtonsoft.Json": "13.0.2",
           "System.IdentityModel.Tokens.Jwt": "6.24.0",
           "System.Security.Cryptography.X509Certificates": "4.3.1",
           "System.Text.Encodings.Web": "6.0.0"
@@ -737,7 +737,7 @@
           "Microsoft.AspNetCore.Mvc": "2.1.0",
           "Microsoft.AspNetCore.Razor.Language": "2.1.0",
           "Microsoft.Extensions.Logging.Abstractions": "6.0.0",
-          "Newtonsoft.Json": "13.0.1",
+          "Newtonsoft.Json": "13.0.2",
           "System.ComponentModel.Annotations": "4.5.0",
           "System.Configuration.ConfigurationManager": "4.7.0",
           "System.Reactive.Linq": "5.0.0",
@@ -769,7 +769,7 @@
         "dependencies": {
           "Microsoft.Azure.DocumentDB.Core": "2.11.2",
           "Microsoft.OData.Core": "7.6.4",
-          "Newtonsoft.Json": "13.0.1"
+          "Newtonsoft.Json": "13.0.2"
         },
         "runtime": {
           "lib/netstandard2.0/Microsoft.Azure.Cosmos.Table.dll": {
@@ -781,7 +781,7 @@
       "Microsoft.Azure.DocumentDB.Core/2.11.2": {
         "dependencies": {
           "NETStandard.Library": "2.0.1",
-          "Newtonsoft.Json": "13.0.1",
+          "Newtonsoft.Json": "13.0.2",
           "System.Collections.Immutable": "1.5.0",
           "System.Collections.NonGeneric": "4.0.1",
           "System.Collections.Specialized": "4.0.1",
@@ -838,7 +838,7 @@
         "dependencies": {
           "Microsoft.Azure.KeyVault.Core": "2.0.4",
           "NETStandard.Library": "2.0.1",
-          "Newtonsoft.Json": "13.0.1"
+          "Newtonsoft.Json": "13.0.2"
         },
         "runtime": {
           "lib/netstandard2.0/Microsoft.Azure.Storage.Common.dll": {
@@ -870,7 +870,7 @@
           "Microsoft.Extensions.Logging": "6.0.0",
           "Microsoft.Extensions.Logging.Abstractions": "6.0.0",
           "Microsoft.Extensions.Logging.Configuration": "6.0.0",
-          "Newtonsoft.Json": "13.0.1",
+          "Newtonsoft.Json": "13.0.2",
           "System.Memory.Data": "1.0.2",
           "System.Threading.Tasks.Dataflow": "4.8.0"
         },
@@ -979,7 +979,7 @@
           "Microsoft.ApplicationInsights.DependencyCollector": "2.21.0",
           "Microsoft.ApplicationInsights.WindowsServer": "2.21.0",
           "Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel": "2.21.0",
-          "Newtonsoft.Json": "13.0.1",
+          "Newtonsoft.Json": "13.0.2",
           "System.Collections.Immutable": "1.5.0"
         },
         "runtime": {
@@ -1333,7 +1333,7 @@
       "Microsoft.Extensions.DependencyModel/2.1.0": {
         "dependencies": {
           "Microsoft.DotNet.PlatformAbstractions": "2.1.0",
-          "Newtonsoft.Json": "13.0.1",
+          "Newtonsoft.Json": "13.0.2",
           "System.Diagnostics.Debug": "4.3.0",
           "System.Dynamic.Runtime": "4.0.11",
           "System.Linq": "4.3.0"
@@ -1753,17 +1753,17 @@
           "Microsoft.NETCore.Platforms": "3.1.9"
         }
       },
-      "Newtonsoft.Json/13.0.1": {
+      "Newtonsoft.Json/13.0.2": {
         "runtime": {
-          "lib/netstandard2.0/Newtonsoft.Json.dll": {
+          "lib/net6.0/Newtonsoft.Json.dll": {
             "assemblyVersion": "13.0.0.0",
-            "fileVersion": "13.0.1.25517"
+            "fileVersion": "13.0.2.27524"
           }
         }
       },
       "Newtonsoft.Json.Bson/1.0.2": {
         "dependencies": {
-          "Newtonsoft.Json": "13.0.1"
+          "Newtonsoft.Json": "13.0.2"
         },
         "runtime": {
           "lib/netstandard2.0/Newtonsoft.Json.Bson.dll": {
@@ -1829,7 +1829,7 @@
       },
       "NuGet.Packaging/5.11.3": {
         "dependencies": {
-          "Newtonsoft.Json": "13.0.1",
+          "Newtonsoft.Json": "13.0.2",
           "NuGet.Configuration": "5.11.3",
           "NuGet.Versioning": "5.11.3",
           "System.Security.Cryptography.Cng": "5.0.0",
@@ -2934,7 +2934,7 @@
           "Microsoft.Extensions.Hosting.Abstractions": "6.0.0",
           "Microsoft.Extensions.Logging.Console": "6.0.0",
           "Mono.Posix.NETStandard": "1.0.0",
-          "Newtonsoft.Json": "13.0.1",
+          "Newtonsoft.Json": "13.0.2",
           "NuGet.ProjectModel": "5.11.3",
           "System.Drawing.Common": "4.7.3",
           "System.IO.Abstractions": "2.1.0.227",
@@ -4085,12 +4085,12 @@
       "path": "netstandard.library/2.0.1",
       "hashPath": "netstandard.library.2.0.1.nupkg.sha512"
     },
-    "Newtonsoft.Json/13.0.1": {
+    "Newtonsoft.Json/13.0.2": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-ppPFpBcvxdsfUonNcvITKqLl3bqxWbDCZIzDWHzjpdAHRFfZe0Dw9HmA0+za13IdyrgJwpkDTDA9fHaxOrt20A==",
-      "path": "newtonsoft.json/13.0.1",
-      "hashPath": "newtonsoft.json.13.0.1.nupkg.sha512"
+      "sha512": "sha512-R2pZ3B0UjeyHShm9vG+Tu0EBb2lC8b0dFzV9gVn50ofHXh9Smjk6kTn7A/FdAsC8B5cKib1OnGYOXxRBz5XQDg==",
+      "path": "newtonsoft.json/13.0.2",
+      "hashPath": "newtonsoft.json.13.0.2.nupkg.sha512"
     },
     "Newtonsoft.Json.Bson/1.0.2": {
       "type": "package",
