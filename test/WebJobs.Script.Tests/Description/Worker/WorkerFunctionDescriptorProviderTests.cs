@@ -96,7 +96,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void BindingAttributeContainsExpression__InputBinding_EmptyConnection_NoRegex_FindsRegexMatch_ReturnsTrue()
+        public void BindingAttributeContainsExpression__InputBinding_EmptyConnection_NoRegex_FindsRegexMatch_ReturnsFalse()
         {
             var inputBindingJObject = JObject.Parse("{\"name\":\"myBlob\",\"direction\":\"In\",\"type\":\"blob\",\"blobPath\":\"input-container//file.txt\",\"connection\":\"\",\"properties\":{\"supportsDeferredBinding\":true}}");
             FunctionBinding inputBinding = TestHelpers.CreateBindingFromHost(_host, inputBindingJObject);
