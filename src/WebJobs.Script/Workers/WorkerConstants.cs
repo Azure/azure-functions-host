@@ -19,6 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         // Environment variables names
         public const string FunctionsWorkerDirectorySettingName = "FUNCTIONS_WORKER_DIRECTORY";
+        public const string FunctionsApplicationDirectorySettingName = "FUNCTIONS_APPLICATION_DIRECTORY";
 
         // Worker description constants
         public const string WorkerDescriptionDefaultExecutablePath = "defaultExecutablePath";

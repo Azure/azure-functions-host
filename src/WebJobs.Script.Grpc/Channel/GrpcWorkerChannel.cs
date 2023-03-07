@@ -589,8 +589,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     request.EnvironmentVariables.Add(entry.Key.ToString(), entry.Value.ToString());
                 }
             }
+
+            string scriptRoot = _applicationHostOptions.CurrentValue.ScriptPath;
             request.EnvironmentVariables.TryAdd(WorkerConstants.FunctionsWorkerDirectorySettingName, _workerConfig.Description.WorkerDirectory);
-            request.FunctionAppDirectory = _applicationHostOptions.CurrentValue.ScriptPath;
+            request.EnvironmentVariables.TryAdd(WorkerConstants.FunctionsApplicationDirectorySettingName, scriptRoot);
+            request.FunctionAppDirectory = scriptRoot;
 
             return request;
         }

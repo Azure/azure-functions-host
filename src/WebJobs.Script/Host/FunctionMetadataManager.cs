@@ -14,7 +14,6 @@ using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -51,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             // Every time script host is re-intializing, we also need to re-initialize
             // services that change with the scope of the script host.
-            scriptHostManager.HostInitializing += (s, e) =>
+            scriptHostManager.ActiveHostChanged += (s, e) =>
             {
                 InitializeServices();
             };
