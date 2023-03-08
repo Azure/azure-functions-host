@@ -52,7 +52,10 @@ namespace Microsoft.Azure.WebJobs.Script
             // services that change with the scope of the script host.
             scriptHostManager.ActiveHostChanged += (s, e) =>
             {
-                InitializeServices();
+                if (e.NewHost is not null)
+                {
+                    InitializeServices();
+                }
             };
         }
 
