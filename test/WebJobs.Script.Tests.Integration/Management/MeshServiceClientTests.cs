@@ -21,6 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
     public class MeshServiceClientTests
     {
         private const string MeshInitUri = "http://localhost:8954/";
+        private const string ContainerName = "MockContainerName";
         private readonly IMeshServiceClient _meshServiceClient;
         private readonly Mock<HttpMessageHandler> _handlerMock;
         private readonly TestEnvironment _environment;
@@ -30,8 +31,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             _handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
             _environment = new TestEnvironment();
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.MeshInitURI, MeshInitUri);
-            _meshServiceClient = new MeshServiceClient(new HttpClient(_handlerMock.Object), _environment,
-                NullLogger<MeshServiceClient>.Instance);
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, ContainerName);
+            _meshServiceClient = new MeshServiceClient(new HttpClient(_handlerMock.Object), _environment, NullLogger<MeshServiceClient>.Instance);
         }
 
         private static bool IsMountCifsRequest(HttpRequestMessage request, string targetPath)
@@ -39,7 +40,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             var formData = request.Content.ReadAsFormDataAsync().Result;
             return string.Equals(MeshInitUri, request.RequestUri.AbsoluteUri) &&
                    string.Equals("cifs", formData["operation"]) &&
-                   string.Equals(targetPath, formData["targetPath"]);
+                   string.Equals(targetPath, formData["targetPath"]) &&
+                   string.Equals(ContainerName, request.Headers.GetValues(ScriptConstants.ContainerInstanceHeader).FirstOrDefault());
         }
 
         private static bool IsMountFuseRequest(HttpRequestMessage request, string filePath, string targetPath)
@@ -48,14 +50,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             return string.Equals(MeshInitUri, request.RequestUri.AbsoluteUri) &&
                    string.Equals("squashfs", formData["operation"]) &&
                    string.Equals(filePath, formData["filePath"]) &&
-                   string.Equals(targetPath, formData["targetPath"]);
+                   string.Equals(targetPath, formData["targetPath"]) &&
+                   string.Equals(ContainerName, request.Headers.GetValues(ScriptConstants.ContainerInstanceHeader).FirstOrDefault());
         }
 
         private static bool IsPublishExecutionStatusRequest(HttpRequestMessage request, params ContainerFunctionExecutionActivity[] expectedActivities)
         {
             var formData = request.Content.ReadAsFormDataAsync().Result;
             if (string.Equals(MeshInitUri, request.RequestUri.AbsoluteUri) &&
-                string.Equals(MeshServiceClient.AddFES, formData["operation"]))
+                string.Equals(MeshServiceClient.AddFES, formData["operation"]) &&
+                string.Equals(ContainerName, request.Headers.GetValues(ScriptConstants.ContainerInstanceHeader).FirstOrDefault()))
             {
                 var activityContent = formData["content"];
                 var activities = JsonConvert.DeserializeObject<IEnumerable<ContainerFunctionExecutionActivity>>(activityContent);
