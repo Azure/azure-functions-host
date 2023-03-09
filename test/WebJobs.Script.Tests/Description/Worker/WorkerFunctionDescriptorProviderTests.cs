@@ -85,6 +85,39 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public void BindingAttributeContainsExpression__InputBinding_EmptyConnection_FindsRegexMatch_ReturnsTrue()
+        {
+            var inputBindingJObject = JObject.Parse("{\"name\":\"myBlob\",\"direction\":\"In\",\"type\":\"blob\",\"blobPath\":\"input-container//{id}.txt\",\"connection\":\"\",\"properties\":{\"supportsDeferredBinding\":true}}");
+            FunctionBinding inputBinding = TestHelpers.CreateBindingFromHost(_host, inputBindingJObject);
+            IEnumerable<FunctionBinding> bindings = new List<FunctionBinding>() { inputBinding };
+
+            bool result = _provider.BindingAttributeContainsExpression(bindings);
+            Assert.True(result);
+        }
+
+        [Fact]
+        public void BindingAttributeContainsExpression__InputBinding_EmptyConnection_NoRegex_FindsRegexMatch_ReturnsFalse()
+        {
+            var inputBindingJObject = JObject.Parse("{\"name\":\"myBlob\",\"direction\":\"In\",\"type\":\"blob\",\"blobPath\":\"input-container//file.txt\",\"connection\":\"\",\"properties\":{\"supportsDeferredBinding\":true}}");
+            FunctionBinding inputBinding = TestHelpers.CreateBindingFromHost(_host, inputBindingJObject);
+            IEnumerable<FunctionBinding> bindings = new List<FunctionBinding>() { inputBinding };
+
+            bool result = _provider.BindingAttributeContainsExpression(bindings);
+            Assert.False(result);
+        }
+
+        [Fact]
+        public void BindingAttributeContainsExpression__InputBinding_EmptyFields_FindsRegexMatch_ReturnsFalse()
+        {
+            var inputBindingJObject = JObject.Parse("{\"name\":\"myBlob\",\"direction\":\"In\",\"type\":\"blob\",\"blobPath\":\"\",\"connection\":\"\",\"properties\":{\"supportsDeferredBinding\":true}}");
+            FunctionBinding inputBinding = TestHelpers.CreateBindingFromHost(_host, inputBindingJObject);
+            IEnumerable<FunctionBinding> bindings = new List<FunctionBinding>() { inputBinding };
+
+            bool result = _provider.BindingAttributeContainsExpression(bindings);
+            Assert.False(result);
+        }
+
+        [Fact]
         public void BindingAttributeContainsExpression_OutputBinding_FindsRegexMatch_ReturnsTrue()
         {
             var outputBindingJObject = JObject.Parse("{\"name\":\"$return\",\"direction\":\"Out\",\"type\":\"blob\",\"blobPath\":\"output-container//{name}-output.txt\",\"connection\":\"AzureWebJobsStorage\",\"properties\":{}}");
@@ -93,6 +126,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             bool result = _provider.BindingAttributeContainsExpression(bindings);
             Assert.True(result);
+        }
+
+        [Fact]
+        public void BindingAttributeContainsExpression_OutputBinding_EmptyConnection_FindsRegexMatch_ReturnsTrue()
+        {
+            var outputBindingJObject = JObject.Parse("{\"name\":\"$return\",\"direction\":\"Out\",\"type\":\"blob\",\"blobPath\":\"output-container//{name}-output.txt\",\"connection\":\"\",\"properties\":{}}");
+            FunctionBinding outputBinding = TestHelpers.CreateBindingFromHost(_host, outputBindingJObject);
+            IEnumerable<FunctionBinding> bindings = new List<FunctionBinding>() { outputBinding };
+
+            bool result = _provider.BindingAttributeContainsExpression(bindings);
+            Assert.True(result);
+        }
+
+        [Fact]
+        public void BindingAttributeContainsExpression_OutputBinding_EmptyFields_FindsRegexMatch_ReturnsFalse()
+        {
+            var outputBindingJObject = JObject.Parse("{\"name\":\"$return\",\"direction\":\"Out\",\"type\":\"blob\",\"blobPath\":\"\",\"connection\":\"\",\"properties\":{}}");
+            FunctionBinding outputBinding = TestHelpers.CreateBindingFromHost(_host, outputBindingJObject);
+            IEnumerable<FunctionBinding> bindings = new List<FunctionBinding>() { outputBinding };
+
+            bool result = _provider.BindingAttributeContainsExpression(bindings);
+            Assert.False(result);
         }
 
         [Fact]
