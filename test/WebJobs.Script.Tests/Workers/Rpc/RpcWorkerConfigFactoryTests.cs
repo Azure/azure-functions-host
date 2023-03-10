@@ -130,7 +130,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 var workerConfigs = configFactory.GetConfigs();
                 var pythonWorkerConfig = workerConfigs.FirstOrDefault(w => w.Description.Language.Equals("python", StringComparison.OrdinalIgnoreCase));
                 var powershellWorkerConfig = workerConfigs.FirstOrDefault(w => w.Description.Language.Equals("powershell", StringComparison.OrdinalIgnoreCase));
-                Assert.Equal(4, workerConfigs.Count);
+                Assert.Equal(5, workerConfigs.Count);
                 Assert.NotNull(pythonWorkerConfig);
                 Assert.NotNull(powershellWorkerConfig);
                 Assert.Equal("3.8", pythonWorkerConfig.Description.DefaultRuntimeVersion);

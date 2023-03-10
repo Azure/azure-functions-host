@@ -176,10 +176,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Theory]
         [InlineData("nOde", RpcWorkerConstants.NodeLanguageWorkerName)]
         [InlineData("Node", RpcWorkerConstants.NodeLanguageWorkerName)]
-        [InlineData("PowerShell", RpcWorkerConstants.PowerShellLanguageWorkerName)]
-        [InlineData("pOwerShell", RpcWorkerConstants.PowerShellLanguageWorkerName)]
-        [InlineData("python", RpcWorkerConstants.PythonLanguageWorkerName)]
-        [InlineData("pythoN", RpcWorkerConstants.PythonLanguageWorkerName)]
+        [InlineData("java", RpcWorkerConstants.JavaLanguageWorkerName)]
+        [InlineData("JAvA", RpcWorkerConstants.JavaLanguageWorkerName)]
         public async Task SpecializeAsync_ReadOnly_KeepsProcessAlive(string runtime, string languageWorkerName)
         {
             var testMetricsLogger = new TestMetricsLogger();
@@ -221,7 +219,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             await _rpcWorkerChannelManager.SpecializeAsync();
 
-            // Wait for debouce task to start
+            // Wait for debounce task to start
             await TestHelpers.Await(() =>
             {
                 return testMetricsLogger.EventsBegan.Contains(MetricEventNames.SpecializationScheduleShutdownStandbyChannels)

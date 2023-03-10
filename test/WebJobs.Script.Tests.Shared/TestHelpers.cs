@@ -337,28 +337,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                         ProcessRestartInterval = restartInterval,
                         ProcessShutdownTimeout = shutdownTimeout
                     }
-                },
-                new RpcWorkerConfig
-                {
-                    Description = GetTestWorkerDescription("powershell", ".ps1", workerIndexing),
-                    CountOptions = new WorkerProcessCountOptions
-                    {
-                        ProcessCount = processCountValue,
-                        ProcessStartupInterval = startupInterval,
-                        ProcessRestartInterval = restartInterval,
-                        ProcessShutdownTimeout = shutdownTimeout
-                    }
-                },
-                new RpcWorkerConfig
-                {
-                    Description = GetTestWorkerDescription("python", ".py", workerIndexing),
-                    CountOptions = new WorkerProcessCountOptions
-                    {
-                        ProcessCount = processCountValue,
-                        ProcessStartupInterval = startupInterval,
-                        ProcessRestartInterval = restartInterval,
-                        ProcessShutdownTimeout = shutdownTimeout
-                    }
                 }
             };
 
