@@ -191,7 +191,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             IRpcWorkerChannel workerChannel = CreateTestChannel(languageWorkerName);
 
             await _rpcWorkerChannelManager.SpecializeAsync();
-            // Wait for debouce task to start
+            // Wait for debounce task to start
             await TestHelpers.Await(() =>
             {
                 return testMetricsLogger.EventsBegan.Contains(MetricEventNames.SpecializationScheduleShutdownStandbyChannels)
