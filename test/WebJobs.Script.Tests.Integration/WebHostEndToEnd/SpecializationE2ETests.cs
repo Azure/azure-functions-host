@@ -329,7 +329,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var scriptHostService = host.Services.GetService<WebJobsScriptHostService>();
             var channelFactory = host.Services.GetService<IRpcWorkerChannelFactory>();
             var workerOptionsPlaceholderMode = host.Services.GetService<IOptions<LanguageWorkerOptions>>();
-            Assert.Equal(4, workerOptionsPlaceholderMode.Value.WorkerConfigs.Count);
+            Assert.Equal(5, workerOptionsPlaceholderMode.Value.WorkerConfigs.Count);
             var rpcChannelInPlaceholderMode = (GrpcWorkerChannel)channelFactory.Create("/", "powershell", null, 0, workerOptionsPlaceholderMode.Value.WorkerConfigs);
             Assert.Equal(expectedPowerShellVersion, rpcChannelInPlaceholderMode.WorkerConfig.Description.DefaultRuntimeVersion);
 
