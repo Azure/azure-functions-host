@@ -19,7 +19,6 @@ using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Features;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -34,6 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             _next = next;
         }
 
+        // TODO: Confirm that only HttpTrigger requests would flow through here
         public async Task Invoke(HttpContext context)
         {
             if (_next != null)
@@ -54,15 +54,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
                 int nestedProxiesCount = GetNestedProxiesCount(context, functionExecution);
                 IActionResult result = await GetResultAsync(context, functionExecution);
-                if (nestedProxiesCount > 0)
-                {
-                    // if Proxy, the rest of the pipeline will be processed by Proxies in
-                    // case there are response overrides and what not.
-                    SetProxyResult(context, nestedProxiesCount, result);
-                    return;
-                }
-
-                ActionContext actionContext = new ActionContext(context, context.GetRouteData(), new ActionDescriptor());
 
                 // TODO: Create constant value for this var?
                 if (context.Items.TryGetValue("IsHttpProxying", out var value))
@@ -73,7 +64,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
                     }
                 }
 
-                // TODO: Skip this line and extraneous work to get to this step when HttpProxying
+                if (nestedProxiesCount > 0)
+                {
+                    // if Proxy, the rest of the pipeline will be processed by Proxies in
+                    // case there are response overrides and what not.
+                    SetProxyResult(context, nestedProxiesCount, result);
+                    return;
+                }
+
+                ActionContext actionContext = new ActionContext(context, context.GetRouteData(), new ActionDescriptor());
+
                 await result.ExecuteResultAsync(actionContext);
             }
         }
