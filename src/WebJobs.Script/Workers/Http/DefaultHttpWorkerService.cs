@@ -52,6 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         private static HttpClient CreateHttpClient(IOptions<HttpWorkerOptions> httpWorkerOptions)
         {
             HttpClientHandler handler = new ();
+            handler.UseCookies = false;
             handler.AllowAutoRedirect = !httpWorkerOptions.Value.EnableForwardingHttpRequest;
             return new (handler);
         }
