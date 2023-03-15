@@ -735,7 +735,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     context.CancellationToken.Register(() => SendInvocationCancel(invocationRequest.InvocationId));
                 }
 
-                if (!string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.EnableHttpProxying)))
+                if (!string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.EnableHttpProxying)) && context.FunctionMetadata.IsHttpInFunction())
                 {
                     var aspNetTask = _httpProxyService.Forward(context);
 

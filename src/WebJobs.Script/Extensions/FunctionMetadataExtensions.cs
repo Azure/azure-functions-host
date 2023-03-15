@@ -33,6 +33,16 @@ namespace Microsoft.Azure.WebJobs.Script
             return false;
         }
 
+        public static bool IsHttpInFunction(this FunctionMetadata metadata)
+        {
+            if (metadata.InputBindings.Any(b => string.Equals("httptrigger", b.Type, StringComparison.OrdinalIgnoreCase)))
+            {
+                return true;
+            }
+
+            return false;
+        }
+
         public static string GetFunctionId(this FunctionMetadata metadata)
         {
             if (!metadata.Properties.TryGetValue(FunctionIdKey, out object idObj)
