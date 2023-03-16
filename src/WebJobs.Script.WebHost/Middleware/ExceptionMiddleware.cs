@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             }
             catch (Exception ex)
             {
-                // exceptions throw by function code are handled/logged elsewhere
+                // Exceptions thrown by function code are handled/logged elsewhere.
                 // our goal here is to log exceptions coming from our own runtime
                 if (!(ex is FunctionInvocationException))
                 {
