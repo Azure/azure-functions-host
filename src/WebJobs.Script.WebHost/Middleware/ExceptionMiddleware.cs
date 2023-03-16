@@ -34,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
                 {
                     if (ex is TaskCanceledException)
                     {
-                        Logger.InvocationCancelled(_logger, ex);
+                        Logger.InvocationCanceled(_logger, ex);
                     }
                     else
                     {
