@@ -156,11 +156,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         }
 
         [Theory]
-        [InlineData(true, false, true)]
-        [InlineData(false, true, true)]
-        [InlineData(false, false, false)]
-        [InlineData(true, true, true)]
-        public void IsConsumption_ReturnsExpectedResult(bool isLinuxConsumption, bool isWindowsConsumption, bool expectedValue)
+        [InlineData(true, false, false, true)]
+        [InlineData(false, false, true, true)]
+        [InlineData(false, true, false, true)]
+        [InlineData(false, false, false, false)]
+        [InlineData(true, true, false, true)]
+        public void IsConsumptionSku_ReturnsExpectedResult(bool isLinuxConsumption, bool isWindowsConsumption, bool isFlexConsumption, bool expectedValue)
         {
             IEnvironment env = new TestEnvironment();
             if (isLinuxConsumption)
@@ -173,7 +174,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
                 env.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, ScriptConstants.DynamicSku);
             }
 
+            if (isFlexConsumption)
+            {
+                env.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, ScriptConstants.FlexConsumptionSku);
+            }
+
             Assert.Equal(expectedValue, env.IsConsumptionSku());
+        }
+
+        [Theory]
+        [InlineData("FlexConsumption", true)]
+        [InlineData("Dynamic", false)]
+        [InlineData("ElasticPremium", false)]
+        [InlineData("", false)]
+        public void IsFlexConsumptionSku_ReturnsExpectedResult(string sku, bool expected)
+        {
+            IEnvironment env = new TestEnvironment();
+            env.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, sku);
+            Assert.Equal(expected, env.IsFlexConsumptionSku());
         }
 
         [Theory]
