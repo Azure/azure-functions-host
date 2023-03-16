@@ -35,7 +35,23 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         public ValueTask<ForwarderError> Forward(ScriptInvocationContext context)
         {
+            if (context is null)
+            {
+                throw new ArgumentNullException(nameof(context));
+            }
+
+            if (context.Inputs is null)
+            {
+                throw new ArgumentNullException(nameof(context.Inputs));
+            }
+
             HttpRequest httpRequest = context.Inputs.FirstOrDefault(i => i.Val is HttpRequest).Val as HttpRequest;
+
+            if (httpRequest is null)
+            {
+                throw new InvalidOperationException($"Cannot proxy an HttpTrigger Function without an input of type {nameof(HttpRequest)}.");
+            }
+
             HttpContext httpContext = httpRequest.HttpContext;
 
             httpContext.Items.Add("IsHttpProxying", bool.TrueString);
