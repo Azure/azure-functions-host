@@ -218,7 +218,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             }
             catch (Exception ex)
             {
-                _workerProcessLogger.LogDebug(ex, "An exception was thrown while waiting for process {processId} to exit. It is possible that the process had already exited and this can be ignored.", Process?.Id);
+                _workerProcessLogger.LogDebug(ex, "An exception was thrown while waiting for a worker process to exit. It is possible that the process had already exited and this can be ignored.");
             }
         }
 

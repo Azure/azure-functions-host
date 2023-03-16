@@ -52,6 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         private static HttpClient CreateHttpClient(IOptions<HttpWorkerOptions> httpWorkerOptions)
         {
             HttpClientHandler handler = new();
+            handler.UseCookies = false;
             handler.AllowAutoRedirect = !httpWorkerOptions.Value.EnableForwardingHttpRequest;
             return new(handler);
         }
@@ -198,11 +199,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                     {
                         if (httpScriptInvocationResult.Outputs == null || !httpScriptInvocationResult.Outputs.Any())
                         {
-                            _logger.LogWarning("Outputs not set on http response for invocationId:{invocationId}", scriptInvocationContext.ExecutionContext.InvocationId);
+                            _logger.LogDebug("Outputs not set on http response for invocationId:{invocationId}", scriptInvocationContext.ExecutionContext.InvocationId);
                         }
                         if (httpScriptInvocationResult.ReturnValue == null)
                         {
-                            _logger.LogWarning("ReturnValue not set on http response for invocationId:{invocationId}", scriptInvocationContext.ExecutionContext.InvocationId);
+                            _logger.LogDebug("ReturnValue not set on http response for invocationId:{invocationId}", scriptInvocationContext.ExecutionContext.InvocationId);
                         }
 
                         ProcessLogsFromHttpResponse(scriptInvocationContext, httpScriptInvocationResult);

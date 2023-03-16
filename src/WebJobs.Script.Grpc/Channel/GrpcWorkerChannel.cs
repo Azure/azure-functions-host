@@ -139,7 +139,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         public IWorkerProcess WorkerProcess => _rpcWorkerProcess;
 
-        internal RpcWorkerConfig Config => _workerConfig;
+        public RpcWorkerConfig WorkerConfig => _workerConfig;
 
         private void ProcessItem(InboundGrpcEvent msg)
         {
@@ -360,6 +360,10 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _workerChannelLogger.LogDebug("Received FunctionEnvironmentReloadResponse from WorkerProcess with Pid: '{0}'", _rpcWorkerProcess.Id);
 
             LogWorkerMetadata(res.WorkerMetadata);
+
+            _workerConfig.Description.DefaultRuntimeVersion = _workerConfig.Description.DefaultRuntimeVersion ?? res?.WorkerMetadata?.RuntimeVersion;
+            _workerConfig.Description.DefaultRuntimeName = _workerConfig.Description.DefaultRuntimeName ?? res?.WorkerMetadata?.RuntimeName;
+
             UpdateCapabilities(res.Capabilities);
             _cancelCapabilityEnabled ??= !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.HandlesInvocationCancelMessage));
 
@@ -385,6 +389,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             // until specialization is done (env reload request). So these can be removed from worker init response code path.
             // to do to track this: https://github.com/Azure/azure-functions-host/issues/9019
             LogWorkerMetadata(_initMessage.WorkerMetadata);
+
+            _workerConfig.Description.DefaultRuntimeVersion = _workerConfig.Description.DefaultRuntimeVersion ?? _initMessage?.WorkerMetadata?.RuntimeVersion;
+            _workerConfig.Description.DefaultRuntimeName = _workerConfig.Description.DefaultRuntimeName ?? _initMessage?.WorkerMetadata?.RuntimeName;
 
             if (_initMessage.Result.IsFailure(out Exception exc))
             {
@@ -531,6 +538,41 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             return _reloadTask.Task;
         }
 
+        public void SendWorkerWarmupRequest()
+        {
+            bool capabilityEnabled = !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.HandlesWorkerWarmupMessage));
+            if (!capabilityEnabled)
+            {
+                _workerChannelLogger.LogDebug("Worker warmup capability not enabled");
+            }
+            else
+            {
+                _workerChannelLogger.LogDebug("Sending WorkerWarmupRequest to WorkerProcess with Pid: '{0}'", _rpcWorkerProcess.Id);
+
+                RegisterCallbackForNextGrpcMessage(MsgType.WorkerWarmupResponse, TimeSpan.FromMinutes(1), 1,
+                msg => ProcessWorkerWarmupResponse(msg.Message.WorkerWarmupResponse), HandleWorkerWarmupError);
+
+                var request = new WorkerWarmupRequest()
+                {
+                    WorkerDirectory = _workerConfig.Description.WorkerDirectory,
+                };
+
+                SendStreamingMessage(new StreamingMessage
+                {
+                    WorkerWarmupRequest = request
+                });
+            }
+        }
+
+        internal void ProcessWorkerWarmupResponse(WorkerWarmupResponse response)
+        {
+            _workerChannelLogger.LogDebug("Received WorkerWarmupResponse from WorkerProcess with Pid: '{0}'", _rpcWorkerProcess.Id);
+            if (response.Result.IsFailure(out Exception workerWarmupException))
+            {
+                _workerChannelLogger.LogError(workerWarmupException, "Worker warmup failed");
+            }
+        }
+
         internal FunctionEnvironmentReloadRequest GetFunctionEnvironmentReloadRequest(IDictionary processEnv)
         {
             foreach (var pair in _hostingConfigOptions.Value.Features)
@@ -547,8 +589,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     request.EnvironmentVariables.Add(entry.Key.ToString(), entry.Value.ToString());
                 }
             }
-            request.EnvironmentVariables.Add(WorkerConstants.FunctionsWorkerDirectorySettingName, _workerConfig.Description.WorkerDirectory);
-            request.FunctionAppDirectory = _applicationHostOptions.CurrentValue.ScriptPath;
+
+            string scriptRoot = _applicationHostOptions.CurrentValue.ScriptPath;
+            request.EnvironmentVariables.TryAdd(WorkerConstants.FunctionsWorkerDirectorySettingName, _workerConfig.Description.WorkerDirectory);
+            request.EnvironmentVariables.TryAdd(WorkerConstants.FunctionsApplicationDirectorySettingName, scriptRoot);
+            request.FunctionAppDirectory = scriptRoot;
 
             return request;
         }
@@ -1074,6 +1119,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 return;
             }
             _eventManager.Publish(new WorkerErrorEvent(_runtime, Id, exc));
+        }
+
+        private void HandleWorkerWarmupError(Exception exc)
+        {
+            _workerChannelLogger.LogError(exc, "Worker warmup failed");
         }
 
         private ValueTask SendStreamingMessageAsync(StreamingMessage msg)

@@ -16,6 +16,32 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 {
     public class FunctionsHostingConfigOptionsTest
     {
+        [Theory]
+        [InlineData("FEATURE1", "value1")]
+        [InlineData("FeAtUrE1", "value1")]
+        [InlineData("feature1", "value1")]
+        [InlineData("featuree1", null)]
+        public async Task Case_Insensitive(string key, string expectedValue)
+        {
+            using (TempDirectory tempDir = new TempDirectory())
+            {
+                IHost host = GetScriptHostBuilder(Path.Combine(tempDir.Path, "settings.txt"), $"feature1=value1,feature2=value2").Build();
+                var testService = host.Services.GetService<TestService>();
+
+                _ = Task.Run(async () =>
+                {
+                    await TestHelpers.Await(() =>
+                    {
+                        return testService.Options.Value.GetFeature(key) == expectedValue;
+                    });
+                    await host.StopAsync();
+                });
+
+                await host.RunAsync();
+                Assert.Equal(testService.Options.Value.GetFeature(key), expectedValue);
+            }
+        }
+
         [Fact]
         public async Task Inject_Succeded()
         {

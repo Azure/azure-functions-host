@@ -177,6 +177,69 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         }
 
         [Theory]
+        [InlineData(true, false, false, true)]
+        [InlineData(false, true, false, true)]
+        [InlineData(true, true, false, true)]
+        [InlineData(false, false, false, false)]
+        [InlineData(false, false, true, false)]
+        public void IsAnyLinuxConsumption_ReturnsExpectedResult(bool isLinuxConsumptionOnAtlas, bool isLinuxConsumptionOnLegion, bool isManagedAppEnvironment, bool expectedValue)
+        {
+            IEnvironment env = new TestEnvironment();
+            if (isLinuxConsumptionOnAtlas)
+            {
+                env.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, "RandomContainerName");
+            }
+
+            if (isLinuxConsumptionOnLegion)
+            {
+                env.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, "RandomContainerName");
+                env.SetEnvironmentVariable(EnvironmentSettingNames.LegionServiceHost, "RandomLegionServiceHostName");
+            }
+
+            if (isManagedAppEnvironment)
+            {
+                env.SetEnvironmentVariable(EnvironmentSettingNames.ManagedEnvironment, "true");
+            }
+
+            Assert.Equal(expectedValue, env.IsAnyLinuxConsumption());
+        }
+
+        [Theory]
+        [InlineData(true, false, true)]
+        [InlineData(false, true, true)]
+        [InlineData(false, false, false)]
+        public void IsAnyKubernetesEnvironment_ReturnsExpectedResult(bool isKubernetesManagedHosting, bool isManagedAppEnvironment, bool expectedValue)
+        {
+            IEnvironment env = new TestEnvironment();
+            if (isKubernetesManagedHosting)
+            {
+                env.SetEnvironmentVariable(KubernetesServiceHost, "10.0.0.1");
+                env.SetEnvironmentVariable(PodNamespace, "RandomPodNamespace");
+            }
+
+            if (isManagedAppEnvironment)
+            {
+                env.SetEnvironmentVariable(ManagedEnvironment, "true");
+            }
+
+            Assert.Equal(expectedValue, env.IsAnyKubernetesEnvironment());
+        }
+
+        [Theory]
+        [InlineData(true, true)]
+        [InlineData(false, false)]
+        public void IsManagedAppEnvironment_ReturnsExpectedResult(bool isManagedAppEnvironment, bool expectedValue)
+        {
+            IEnvironment env = new TestEnvironment();
+            if (isManagedAppEnvironment)
+            {
+                env.SetEnvironmentVariable(EnvironmentSettingNames.ManagedEnvironment, "true");
+            }
+
+            Assert.Equal(expectedValue, env.IsManagedAppEnvironment());
+        }
+
+        [Theory]
         [InlineData("~2", "true", true)]
         [InlineData("~2", "false", true)]
         [InlineData("~2", null, true)]
@@ -202,15 +265,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         }
 
         [Theory]
-        [InlineData("k8se-apps-ns", "10.0.0.1", true)]
-        [InlineData("k8se-apps", null, false)]
-        [InlineData(null, "10.0.0.1", false)]
-        [InlineData(null, null, false)]
-        public void IsKubernetesManagedHosting_ReturnsExpectedResult(string podNamespace, string kubernetesServiceHost, bool expected)
+        [InlineData("k8se-apps-ns", "10.0.0.1", false, true)]
+        [InlineData("k8se-apps", null, false, false)]
+        [InlineData(null, "10.0.0.1", false, false)]
+        [InlineData(null, null, true, false)]
+        [InlineData("k8se-apps", "10.0.0.1", true, false)]
+        public void IsKubernetesManagedHosting_ReturnsExpectedResult(string podNamespace, string kubernetesServiceHost, bool isManagedAppEnvironment, bool expected)
         {
             var environment = new TestEnvironment();
             environment.SetEnvironmentVariable(KubernetesServiceHost, kubernetesServiceHost);
             environment.SetEnvironmentVariable(PodNamespace, podNamespace);
+            if (isManagedAppEnvironment)
+            {
+                environment.SetEnvironmentVariable(ManagedEnvironment, "true");
+            }
+
             Assert.Equal(expected, environment.IsKubernetesManagedHosting());
         }
 

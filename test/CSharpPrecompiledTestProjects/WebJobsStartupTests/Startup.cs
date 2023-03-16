@@ -27,6 +27,12 @@ namespace WebJobsStartupTests
                 {
                     config.GetSection("MyOptions").Bind(options);
                 });
+
+            string message = Environment.GetEnvironmentVariable("SERVICE_THROW");
+            if (message != null)
+            {
+                throw new InvalidOperationException(message);
+            }
         }
 
         public void Configure(WebJobsBuilderContext context, IWebJobsConfigurationBuilder builder)
@@ -39,6 +45,12 @@ namespace WebJobsStartupTests
                 { "SomeOtherKey", "SomeOtherValue" },
                 { "Cron", "0 0 0 1 1 0" }
             });
+
+            string message = Environment.GetEnvironmentVariable("CONFIG_THROW");
+            if (message != null)
+            {
+                throw new InvalidOperationException(message);
+            }
         }
 
         private static void ValidateContext(WebJobsBuilderContext context)

@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly ILogger _logger;
         private readonly IEnvironment _environment;
         private readonly IWebHostRpcWorkerChannelManager _channelManager;
-        private readonly string _workerRuntime;
+        private string _workerRuntime;
         private ImmutableArray<FunctionMetadata> _functions;
 
         public WorkerFunctionMetadataProvider(
@@ -43,8 +43,12 @@ namespace Microsoft.Azure.WebJobs.Script
         public ImmutableDictionary<string, ImmutableArray<string>> FunctionErrors
            => _functionErrors.ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray());
 
-        public async Task<FunctionMetadataResult> GetFunctionMetadataAsync(IEnumerable<RpcWorkerConfig> workerConfigs, IEnvironment environment, bool forceRefresh)
+        public async Task<FunctionMetadataResult> GetFunctionMetadataAsync(IEnumerable<RpcWorkerConfig> workerConfigs, bool forceRefresh)
         {
+            _workerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
+
+            _logger.LogInformation("Fetching metadata for workerRuntime: {workerRuntime}", _workerRuntime);
+
             IEnumerable<FunctionMetadata> functions = new List<FunctionMetadata>();
             _logger.FunctionMetadataProviderParsingFunctions();
 
@@ -91,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.Script
                             _logger.FunctionMetadataProviderFunctionFound(_functions.IsDefault ? 0 : _functions.Count());
 
                             // Validate if the app has functions in legacy format and add in logs to inform about the mixed app
-                            _ = Task.Delay(TimeSpan.FromMinutes(1)).ContinueWith(t => ValidateFunctionAppFormat(_scriptApplicationHostOptions.Value.ScriptPath, _logger, environment));
+                            _ = Task.Delay(TimeSpan.FromMinutes(1)).ContinueWith(t => ValidateFunctionAppFormat(_scriptApplicationHostOptions.Value.ScriptPath, _logger, _environment));
 
                             break;
                         }
