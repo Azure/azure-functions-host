@@ -57,6 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 foreach (var envVar in processEnvVariables)
                 {
                     startInfo.EnvironmentVariables[envVar.Key] = envVar.Value;
+                    startInfo.FileName = startInfo.FileName.Replace($"%{envVar.Key}%", envVar.Value);
                     startInfo.Arguments = startInfo.Arguments.Replace($"%{envVar.Key}%", envVar.Value);
                 }
                 startInfo.Arguments = SanitizeExpandedArgument(startInfo.Arguments);
