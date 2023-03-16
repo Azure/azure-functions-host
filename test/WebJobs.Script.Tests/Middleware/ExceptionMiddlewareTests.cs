@@ -111,6 +111,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
             }
         }
 
+        [Fact]
+        public async Task Invoke_HandlesInvocationCancelled()
+        {
+            var ex = new TaskCanceledException();
+
+            async Task ThrowException(HttpContext context)
+            {
+                await Task.Delay(100);
+                throw ex;
+            }
+
+            using (var server = GetTestServer(c => ThrowException(c)))
+            {
+                var client = server.CreateClient();
+                HttpResponseMessage response = await client.GetAsync(string.Empty);
+
+                var logs = _loggerProvider.GetAllLogMessages().Where(p => p.Category.Contains(nameof(ExceptionMiddleware)));
+                Assert.Collection(logs,
+                    m =>
+                    {
+                        Assert.Equal("An invocation request was cancelled before it was sent to the worker.", m.FormattedMessage);
+                        Assert.Same(ex, m.Exception);
+                        Assert.Equal("InvocationCancelled", m.EventId.Name);
+                    });
+            }
+        }
+
         private TestServer GetTestServer(Func<HttpContext, Task> callback)
         {
             // The custom middleware relies on the host starting the request (thus invoking OnStarting),
