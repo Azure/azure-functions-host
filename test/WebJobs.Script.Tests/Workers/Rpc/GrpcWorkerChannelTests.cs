@@ -444,11 +444,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
-        public async Task SendInvocationRequest_CancellationAlreadyRequested_ResultSourceCancelled()
+        public async Task SendInvocationRequest_CancellationAlreadyRequested_ResultSourceCanceled()
         {
             var cancellationWaitTimeMs = 3000;
             var invocationId = Guid.NewGuid();
-            var expectedCancellationLog = $"Cancellation has been requested. The invocation request with id '{invocationId}' is cancelled and will not be sent to the worker.";
+            var expectedCancellationLog = $"Cancellation has been requested. The invocation request with id '{invocationId}' is canceled and will not be sent to the worker.";
 
             var cts = new CancellationTokenSource();
             cts.CancelAfter(cancellationWaitTimeMs);

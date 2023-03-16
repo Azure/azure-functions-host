@@ -16,14 +16,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             private static readonly Action<ILogger, Exception> _unhandledHostError =
                 LoggerMessage.Define(LogLevel.Error, new EventId(2, nameof(UnhandledHostError)), "An unhandled host error has occurred.");
 
-            private static readonly Action<ILogger, Exception> _invocationCancelled =
-                LoggerMessage.Define(LogLevel.Warning, new EventId(3, nameof(InvocationCancelled)), "An invocation request was cancelled before it was sent to the worker.");
+            private static readonly Action<ILogger, Exception> _invocationCanceled =
+                LoggerMessage.Define(LogLevel.Warning, new EventId(3, nameof(InvocationCanceled)), "An invocation request was canceled before it was sent to the worker.");
 
             public static void ResponseStarted(ILogger logger) => _responseStarted(logger, null);
 
             public static void UnhandledHostError(ILogger logger, Exception ex) => _unhandledHostError(logger, ex);
 
-            public static void InvocationCancelled(ILogger logger, Exception ex) => _invocationCancelled(logger, ex);
+            public static void InvocationCanceled(ILogger logger, Exception ex) => _invocationCanceled(logger, ex);
         }
     }
 }

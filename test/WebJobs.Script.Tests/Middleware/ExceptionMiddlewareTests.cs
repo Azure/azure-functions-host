@@ -112,7 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
         }
 
         [Fact]
-        public async Task Invoke_HandlesInvocationCancelled()
+        public async Task Invoke_HandlesInvocationCanceled()
         {
             var ex = new TaskCanceledException();
 
@@ -131,9 +131,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
                 Assert.Collection(logs,
                     m =>
                     {
-                        Assert.Equal("An invocation request was cancelled before it was sent to the worker.", m.FormattedMessage);
+                        Assert.Equal("An invocation request was canceled before it was sent to the worker.", m.FormattedMessage);
                         Assert.Same(ex, m.Exception);
-                        Assert.Equal("InvocationCancelled", m.EventId.Name);
+                        Assert.Equal("InvocationCanceled", m.EventId.Name);
                     });
             }
         }

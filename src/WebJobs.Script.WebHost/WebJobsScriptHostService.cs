@@ -180,7 +180,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
             catch (OperationCanceledException ex)
             {
-                _logger.LogWarning("Host startup operation has been cancelled", ex);
+                _logger.LogWarning("Host startup operation has been canceled", ex);
 
                 if (cancellationToken.IsCancellationRequested)
                 {
