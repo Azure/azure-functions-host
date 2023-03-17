@@ -41,7 +41,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public void Configure(LanguageWorkerOptions options)
         {
             string workerRuntime = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
-            if (!string.IsNullOrEmpty(workerRuntime) && workerRuntime.Equals(RpcWorkerConstants.DotNetLanguageWorkerName, System.StringComparison.OrdinalIgnoreCase))
+
+            // Parsing worker.config.json should always be done in case of multi language worker
+            if (!string.IsNullOrEmpty(workerRuntime) &&
+                workerRuntime.Equals(RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase) &&
+                !_environment.IsMultiLanguageRuntimeEnvironment())
             {
                 // Skip parsing worker.config.json files for dotnet in-proc apps
                 options.WorkerConfigs = new List<RpcWorkerConfig>();
