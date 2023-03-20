@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script
     internal class WorkerFunctionMetadataProvider : IWorkerFunctionMetadataProvider
     {
         private readonly Dictionary<string, ICollection<string>> _functionErrors = new Dictionary<string, ICollection<string>>();
-        private readonly IOptions<ScriptApplicationHostOptions> _scriptApplicationHostOptions;
+        private readonly IOptions<ScriptJobHostOptions> _scriptOptions;
         private readonly ILogger _logger;
         private readonly IEnvironment _environment;
         private readonly IWebHostRpcWorkerChannelManager _channelManager;
@@ -28,12 +28,12 @@ namespace Microsoft.Azure.WebJobs.Script
         private ImmutableArray<FunctionMetadata> _functions;
 
         public WorkerFunctionMetadataProvider(
-            IOptions<ScriptApplicationHostOptions> scriptOptions,
+            IOptions<ScriptJobHostOptions> scriptOptions,
             ILogger<WorkerFunctionMetadataProvider> logger,
             IEnvironment environment,
             IWebHostRpcWorkerChannelManager webHostRpcWorkerChannelManager)
         {
-            _scriptApplicationHostOptions = scriptOptions;
+            _scriptOptions = scriptOptions;
             _logger = logger;
             _environment = environment;
             _channelManager = webHostRpcWorkerChannelManager;
@@ -95,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.Script
                             _logger.FunctionMetadataProviderFunctionFound(_functions.IsDefault ? 0 : _functions.Count());
 
                             // Validate if the app has functions in legacy format and add in logs to inform about the mixed app
-                            _ = Task.Delay(TimeSpan.FromMinutes(1)).ContinueWith(t => ValidateFunctionAppFormat(_scriptApplicationHostOptions.Value.ScriptPath, _logger, _environment));
+                            _ = Task.Delay(TimeSpan.FromMinutes(1)).ContinueWith(t => ValidateFunctionAppFormat(_scriptOptions.Value.RootScriptPath, _logger, _environment));
 
                             break;
                         }
