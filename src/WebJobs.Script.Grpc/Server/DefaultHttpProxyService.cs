@@ -12,8 +12,9 @@ using Yarp.ReverseProxy.Forwarder;
 
 namespace Microsoft.Azure.WebJobs.Script.Grpc
 {
-    internal class DefaultHttpProxyService : IHttpProxyService
+    internal class DefaultHttpProxyService : IHttpProxyService, IDisposable
     {
+        private SocketsHttpHandler _handler;
         private IHttpForwarder _httpForwarder;
         private HttpMessageInvoker _messageInvoker;
         private ForwarderRequestConfig _forwarderRequestConfig;
@@ -23,14 +24,20 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         {
             _httpForwarder = httpForwarder;
 
-            var handler = new SocketsHttpHandler();
-            _messageInvoker = new HttpMessageInvoker(handler);
+            _handler = new SocketsHttpHandler();
+            _messageInvoker = new HttpMessageInvoker(_handler);
             _forwarderRequestConfig = new ForwarderRequestConfig();
 
             // TODO: Update this logic. Port should come through configuration.
             var port = Environment.GetEnvironmentVariable("AZURE_FUNCTIONS_HTTP_PROXY_PORT") ?? "5555";
 
             _proxyEndpoint = "http://localhost:" + port;
+        }
+
+        public void Dispose()
+        {
+            _handler?.Dispose();
+            _messageInvoker?.Dispose();
         }
 
         public ValueTask<ForwarderError> Forward(ScriptInvocationContext context)
@@ -42,14 +49,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             if (context.Inputs is null)
             {
-                throw new ArgumentNullException(nameof(context.Inputs));
+                throw new InvalidOperationException($"The function {context.FunctionMetadata.Name} can not be evaluated since it has no inputs.");
             }
 
             HttpRequest httpRequest = context.Inputs.FirstOrDefault(i => i.Val is HttpRequest).Val as HttpRequest;
 
             if (httpRequest is null)
             {
-                throw new InvalidOperationException($"Cannot proxy an HttpTrigger Function without an input of type {nameof(HttpRequest)}.");
+                throw new InvalidOperationException($"Cannot proxy the HttpTrigger function {context.FunctionMetadata.Name} without an input of type {nameof(HttpRequest)}.");
             }
 
             HttpContext httpContext = httpRequest.HttpContext;
