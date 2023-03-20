@@ -852,17 +852,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
-        [InlineData(true, true, false)]
-        [InlineData(true, false, false)]
+        [InlineData(false, true, false)]
         [InlineData(false, false, false)]
-        [InlineData(false, true, true)]
-        public void VerifyWorkerIndexingDecisionLogic(bool disableWorkerIndexingFeatureFlag, bool workerIndexingConfigProperty, bool expected)
+        [InlineData(true, false, false)]
+        [InlineData(true, true, true)]
+        public void VerifyWorkerIndexingDecisionLogic(bool workerIndexingFeatureFlag, bool workerIndexingConfigProperty, bool expected)
         {
             var testEnv = new TestEnvironment();
             testEnv.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.PythonLanguageWorkerName);
-            if (disableWorkerIndexingFeatureFlag)
+            if (workerIndexingFeatureFlag)
             {
-                testEnv.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagDisableWorkerIndexing);
+                testEnv.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing);
             }
             RpcWorkerConfig workerConfig = new RpcWorkerConfig() { Description = TestHelpers.GetTestWorkerDescription("python", "none", workerIndexingConfigProperty) };
             bool workerShouldIndex = Utility.CanWorkerIndex(new List<RpcWorkerConfig>() { workerConfig }, testEnv);
@@ -876,9 +876,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var testEnv = new TestEnvironment();
             testEnv.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.PythonLanguageWorkerName);
-            if (!workerIndexingFeatureFlag)
+            if (workerIndexingFeatureFlag)
             {
-                testEnv.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagDisableWorkerIndexing);
+                testEnv.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing);
             }
             bool workerShouldIndex = Utility.CanWorkerIndex(null, testEnv);
             Assert.Equal(expected, workerShouldIndex);
@@ -891,9 +891,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var testEnv = new TestEnvironment();
             testEnv.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.PythonLanguageWorkerName);
-            if (!workerIndexingFeatureFlag)
+            if (workerIndexingFeatureFlag)
             {
-                testEnv.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagDisableWorkerIndexing);
+                testEnv.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing);
             }
             RpcWorkerConfig workerConfig = new RpcWorkerConfig();
             bool workerShouldIndex = Utility.CanWorkerIndex(new List<RpcWorkerConfig>() { workerConfig }, testEnv);
@@ -907,9 +907,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var testEnv = new TestEnvironment();
             testEnv.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.PythonLanguageWorkerName);
-            if (!workerIndexingFeatureFlag)
+            if (workerIndexingFeatureFlag)
             {
-                testEnv.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagDisableWorkerIndexing);
+                testEnv.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing);
             }
             RpcWorkerConfig workerConfig = new RpcWorkerConfig()
             {
