@@ -14,6 +14,8 @@ namespace Microsoft.Azure.WebJobs.Script
         private const string IsDisabledKey = "IsDisabled";
         private const string IsCodelessKey = "IsCodeless";
         private const string FunctionIdKey = "FunctionId";
+        private const string HttpTriggerKey = "HttpTrigger";
+        private const string HttpOutputKey = "Http";
 
         public static bool IsHttpInAndOutFunction(this FunctionMetadata metadata)
         {
@@ -24,13 +26,18 @@ namespace Microsoft.Azure.WebJobs.Script
 
             BindingMetadata inputBindingMetadata = metadata.InputBindings.ElementAt(0);
             BindingMetadata outputBindingMetadata = metadata.OutputBindings.ElementAt(0);
-            if (string.Equals("httptrigger", inputBindingMetadata.Type, StringComparison.OrdinalIgnoreCase) &&
-                string.Equals("http", outputBindingMetadata.Type, StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(HttpTriggerKey, inputBindingMetadata.Type, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(HttpOutputKey, outputBindingMetadata.Type, StringComparison.OrdinalIgnoreCase))
             {
                 return true;
             }
 
             return false;
+        }
+
+        public static bool IsHttpTriggerFunction(this FunctionMetadata metadata)
+        {
+            return metadata.InputBindings.Any(b => string.Equals(HttpTriggerKey, b.Type, StringComparison.OrdinalIgnoreCase));
         }
 
         public static string GetFunctionId(this FunctionMetadata metadata)

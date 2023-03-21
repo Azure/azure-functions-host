@@ -17,6 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             services.AddSingleton<IRpcServer, AspNetCoreGrpcServer>();
 
             services.AddHttpForwarder();
+            services.AddSingleton<IHttpProxyService, DefaultHttpProxyService>();
 
             return services;
         }

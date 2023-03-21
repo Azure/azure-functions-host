@@ -31,7 +31,6 @@ using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Yarp.ReverseProxy.Forwarder;
@@ -85,7 +84,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private bool _isSharedMemoryDataTransferEnabled;
         private bool? _cancelCapabilityEnabled;
         private bool _isWorkerApplicationInsightsLoggingEnabled;
-        private IHttpForwarder _httpForwarder;
+        private IHttpProxyService _httpProxyService;
 
         private System.Timers.Timer _timer;
 
@@ -102,7 +101,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             ISharedMemoryManager sharedMemoryManager,
             IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions,
             IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
-            IHttpForwarder httpForwarder)
+            IHttpProxyService httpProxyService)
         {
             _workerId = workerId;
             _eventManager = eventManager;
@@ -118,7 +117,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _processInbound = state => ProcessItem((InboundGrpcEvent)state);
             _hostingConfigOptions = hostingConfigOptions;
 
-            _httpForwarder = httpForwarder;
+            _httpProxyService = httpProxyService;
             _workerCapabilities = new GrpcCapabilities(_workerChannelLogger);
 
             if (!_eventManager.TryGetGrpcChannels(workerId, out var inbound, out var outbound))
@@ -746,29 +745,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     context.CancellationToken.Register(() => SendInvocationCancel(invocationRequest.InvocationId));
                 }
 
-                if (!string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.EnableHttpProxying)))
+                if (!string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.EnableHttpProxying)) && context.FunctionMetadata.IsHttpTriggerFunction())
                 {
-                    var handler = new SocketsHttpHandler();
-                    var invoker = new HttpMessageInvoker(handler);
-                    var options = new ForwarderRequestConfig();
-                    HttpRequest httpRequest = context.Inputs.FirstOrDefault(i => i.Val is HttpRequest).Val as HttpRequest;
-                    HttpContext httpContext = httpRequest.HttpContext;
-
-                    // add IsHttpProxying to HttpContext Items (verify this is internal or not?)
-                    httpContext.Items.Add("IsHttpProxying", bool.TrueString);
-
-                    // add invocation id as correlation id
-                    // TODO: add "invocation-id" as a constant somewhere / maybe find a better name
-                    httpRequest.Headers.TryAdd("invocation-id", context.ExecutionContext.InvocationId.ToString());
-
-                    var port = Environment.GetEnvironmentVariable("Azure_Functions_HttpProxyingPort");
-
-                    if (port is null)
-                    {
-                        port = "5555";
-                    }
-
-                    var aspNetTask = _httpForwarder.SendAsync(httpContext, "http://localhost:" + port, invoker, options);
+                    var aspNetTask = _httpProxyService.Forward(context);
 
                     context.Properties.Add("HttpProxyingTask", aspNetTask);
                 }
