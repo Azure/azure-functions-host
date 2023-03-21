@@ -28,18 +28,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             }
             catch (Exception ex)
             {
-                // Exceptions thrown by function code are handled/logged elsewhere.
-                // our goal here is to log exceptions coming from our own runtime
                 if (!(ex is FunctionInvocationException))
                 {
-                    if (ex is TaskCanceledException)
-                    {
-                        Logger.InvocationCanceled(_logger, ex);
-                    }
-                    else
-                    {
-                        Logger.UnhandledHostError(_logger, ex);
-                    }
+                    // exceptions throw by function code are handled/logged elsewhere
+                    // our goal here is to log exceptions coming from our own runtime
+                    Logger.UnhandledHostError(_logger, ex);
                 }
 
                 // We can't do anything if the response has already started, just abort.
