@@ -556,6 +556,63 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
+        public async Task SendLoadRequests_SkipParameterBindingData()
+        {
+            await CreateDefaultWorkerChannel();
+            _metricsLogger.ClearCollections();
+
+            var binding = new BindingMetadata()
+            {
+                Name = "abc",
+                Type = "BlobTrigger"
+            };
+
+            binding.Properties.Add(ScriptConstants.SkipDeferredBindingKey, true);
+            binding.Properties.Add(ScriptConstants.SupportsDeferredBindingKey, true);
+
+            IEnumerable<FunctionMetadata> functionMetadata = GetTestFunctionsList("node");
+            foreach (var function in functionMetadata)
+            {
+                function.Bindings.Add(binding);
+            }
+
+            _workerChannel.SetupFunctionInvocationBuffers(functionMetadata);
+            _workerChannel.SendFunctionLoadRequests(null, TimeSpan.FromMinutes(5));
+            await Task.Delay(500);
+            AreExpectedMetricsGenerated();
+            Assert.Equal(0, _metricsLogger.LoggedEvents.Count(e => e.Contains(MetricEventNames.FunctionBindingDeferred)));
+        }
+
+        [Fact]
+        public async Task SendLoadRequests_SupportParameterBindingData()
+        {
+            await CreateDefaultWorkerChannel();
+            _metricsLogger.ClearCollections();
+
+            var binding = new BindingMetadata()
+            {
+                Name = "abc",
+                Type = "BlobTrigger"
+            };
+
+            binding.Properties.Add(ScriptConstants.SupportsDeferredBindingKey, true);
+
+            IEnumerable<FunctionMetadata> functionMetadata = GetTestFunctionsList("node");
+            foreach (var function in functionMetadata)
+            {
+                function.Bindings.Add(binding);
+            }
+
+            _workerChannel.SetupFunctionInvocationBuffers(functionMetadata);
+            _workerChannel.SendFunctionLoadRequests(null, TimeSpan.FromMinutes(5));
+            await Task.Delay(500);
+            AreExpectedMetricsGenerated();
+            Assert.Equal(2, _metricsLogger.LoggedEvents.Count(e => e.Contains(MetricEventNames.FunctionBindingDeferred)));
+            Assert.Equal(1, _metricsLogger.LoggedEvents.Count(e => e.Contains($"{MetricEventNames.FunctionBindingDeferred}_js1")));
+            Assert.Equal(1, _metricsLogger.LoggedEvents.Count(e => e.Contains($"{MetricEventNames.FunctionBindingDeferred}_js2")));
+        }
+
+        [Fact]
         public async Task SendLoadRequestCollection_PublishesOutboundEvents()
         {
             await CreateDefaultWorkerChannel(capabilities: new Dictionary<string, string>() { { RpcWorkerConstants.SupportsLoadResponseCollection, "true" } });
@@ -702,7 +759,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 Environment.SetEnvironmentVariable("TestNull", null);
                 Environment.SetEnvironmentVariable("TestEmpty", string.Empty);
                 Environment.SetEnvironmentVariable("TestValid", "TestValue");
-                _testFunctionRpcService.AutoReply(StreamingMessage.ContentOneofCase.FunctionEnvironmentReloadRequest);
+                _testFunctionRpcService.AutoReply(StreamingMessage.ContentOneofCase.FunctionEnvironmentReloadRequest, workerSupportsSpecialization: true);
                 var pending = _workerChannel.SendFunctionEnvironmentReloadRequest();
                 await Task.Delay(500);
                 await pending; // this can timeout
@@ -718,6 +775,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             ShowOutput(traces);
             var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, "Sending FunctionEnvironmentReloadRequest to WorkerProcess with Pid: '910'"));
             Assert.Equal(1, functionLoadLogs.Count());
+
+            // for specialization use case, env reload response include worker metadata and capabilities.
+            var metatadataLog = traces.Where(m => string.Equals(m.FormattedMessage,
+                @"Worker metadata: { ""runtimeName"": "".NET"", ""runtimeVersion"": ""7.0"", ""workerVersion"": ""1.0.0"", ""workerBitness"": ""x64"" }"));
+            var capabilityUpdateLog = traces.Where(m => string.Equals(m.FormattedMessage,
+                @"Updating capabilities: { ""RpcHttpBodyOnly"": ""True"", ""TypedDataCollection"": ""True"" }"));
+            Assert.Single(metatadataLog);
+            Assert.Single(capabilityUpdateLog);
         }
 
         [Fact]

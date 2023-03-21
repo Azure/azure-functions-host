@@ -711,5 +711,54 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             Assert.Equal(typedData.ModelBindingData, returned_typedata.ModelBindingData);
         }
+
+        [Fact]
+        public void ToModelBindingDataArray_Creates_Valid_BindingData()
+        {
+            var logger = MockNullLoggerFactory.CreateLogger();
+            var capabilities = new GrpcCapabilities(logger);
+
+            var binaryData = new BinaryData("hello world");
+            var parameterBindingData = new ParameterBindingData("1.0", "CosmosDB", binaryData, "application/json");
+            var parameterBindingDataArray = new ParameterBindingData[] { parameterBindingData, parameterBindingData };
+
+            TypedData returned_typedData = parameterBindingDataArray.ToModelBindingDataArray();
+
+            var modelBindingData = new ModelBindingData
+            {
+                Version = parameterBindingData.Version,
+                ContentType = parameterBindingData.ContentType,
+                Source = parameterBindingData.Source,
+                Content = ByteString.CopyFrom(parameterBindingData.Content)
+            };
+
+            var collectionModelBindingData = new CollectionModelBindingData();
+            collectionModelBindingData.ModelBindingData.Add(modelBindingData);
+            collectionModelBindingData.ModelBindingData.Add(modelBindingData);
+
+            TypedData typedData = new TypedData();
+            typedData.CollectionModelBindingData = collectionModelBindingData;
+
+            Assert.Equal(2, returned_typedData.CollectionModelBindingData.ModelBindingData.Count);
+            Assert.Equal(typedData.CollectionModelBindingData.ModelBindingData.First(), returned_typedData.CollectionModelBindingData.ModelBindingData.First());
+        }
+
+        [Fact]
+        public void ToModelBindingData_EmptyAndNullArray_Creates_Valid_BindingData()
+        {
+            var parameterBindingDataEmptyArray = new ParameterBindingData[] { };
+            var parameterBindingDataNullArray = new ParameterBindingData[] { null };
+
+            TypedData returned_emptyTypedData = parameterBindingDataEmptyArray.ToModelBindingDataArray();
+            TypedData returned_nullTypedData = parameterBindingDataNullArray.ToModelBindingDataArray();
+
+            var collectionModelBindingData = new CollectionModelBindingData();
+
+            TypedData typedData = new TypedData();
+            typedData.CollectionModelBindingData = collectionModelBindingData;
+
+            Assert.Equal(0, returned_emptyTypedData.CollectionModelBindingData.ModelBindingData.Count);
+            Assert.Equal(0, returned_nullTypedData.CollectionModelBindingData.ModelBindingData.Count);
+        }
     }
 }

@@ -105,6 +105,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AntaresPlatformInternal = "x-ms-platform-internal";
         public const string AzureVersionHeader = "x-ms-version";
         public const string XIdentityHeader = "X-IDENTITY-HEADER";
+        public const string ContainerInstanceHeader = "fx-current-instance";
         public const string DynamicSku = "Dynamic";
         public const string ElasticPremiumSku = "ElasticPremium";
         public const string DefaultProductionSlotName = "production";
@@ -120,10 +121,11 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string FeatureFlagEnableDiagnosticEventLogging = "EnableDiagnosticEventLogging";
         public const string FeatureFlagDisableDiagnosticEventLogging = "DisableDiagnosticEventLogging";
         public const string FeatureFlagDisableMergedWebHostScriptHostConfiguration = "DisableMergedConfiguration";
-        public const string FeatureFlagDisableWorkerIndexing = "DisableWorkerIndexing";
+        public const string FeatureFlagEnableWorkerIndexing = "EnableWorkerIndexing";
         public const string FeatureFlagEnableDebugTracing = "EnableDebugTracing";
         public const string FeatureFlagEnableProxies = "EnableProxies";
-        public const string FeatureFlagEnableLinuxEPExecutionCount = "EnableLinuxFEC";
+        public const string HostingConfigDisableLinuxAppServiceDetailedExecutionEvents = "DisableLinuxExecutionDetails";
+        public const string HostingConfigDisableLinuxAppServiceExecutionEventLogBackoff = "DisableLinuxLogBackoff";
 
         public const string AdminJwtValidAudienceFormat = "https://{0}.azurewebsites.net/azurefunctions";
         public const string AdminJwtValidIssuerFormat = "https://{0}.scm.azurewebsites.net";

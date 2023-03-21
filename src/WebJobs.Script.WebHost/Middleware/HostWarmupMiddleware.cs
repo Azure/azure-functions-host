@@ -7,15 +7,20 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Extensions;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Diagnostics.JitTrace;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 {
     public class HostWarmupMiddleware
     {
+        private readonly IWebHostRpcWorkerChannelManager _webHostRpcWorkerChannelManager;
+        private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions;
         private readonly RequestDelegate _next;
         private readonly IScriptWebHostEnvironment _webHostEnvironment;
         private readonly IEnvironment _environment;
@@ -27,7 +32,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
         private static readonly PathString _warmupRoutePath = new PathString($"/api/{WarmUpConstants.FunctionName}");
         private static readonly PathString _warmupRouteAlternatePath = new PathString($"/api/{WarmUpConstants.AlternateRoute}");
 
-        public HostWarmupMiddleware(RequestDelegate next, IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment, IScriptHostManager hostManager, ILogger<HostWarmupMiddleware> logger)
+        public HostWarmupMiddleware(
+            RequestDelegate next,
+            IScriptWebHostEnvironment webHostEnvironment,
+            IEnvironment environment,
+            IScriptHostManager hostManager,
+            ILogger<HostWarmupMiddleware> logger,
+            IWebHostRpcWorkerChannelManager rpcWorkerChannelManager,
+            IOptions<FunctionsHostingConfigOptions> hostingConfigOptions)
         {
             _next = next;
             _webHostEnvironment = webHostEnvironment;
@@ -35,6 +47,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             _hostManager = hostManager;
             _logger = logger;
             _assemblyLocalPath = Path.GetDirectoryName(new Uri(typeof(HostWarmupMiddleware).Assembly.Location).LocalPath);
+            _webHostRpcWorkerChannelManager = rpcWorkerChannelManager ?? throw new ArgumentNullException(nameof(rpcWorkerChannelManager));
+            _hostingConfigOptions = hostingConfigOptions;
         }
 
         public Task Invoke(HttpContext httpContext)
@@ -65,9 +79,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
             ReadRuntimeAssemblyFiles();
 
-            await WarmUp(httpContext.Request);
+            await HostWarmupAsync(httpContext.Request);
+
+            await WorkerWarmupAsync();
 
             await _next.Invoke(httpContext);
+        }
+
+        private async Task WorkerWarmupAsync()
+        {
+            if (_hostingConfigOptions.Value.WorkerWarmupEnabled)
+            {
+                await _webHostRpcWorkerChannelManager.WorkerWarmupAsync();
+            }
         }
 
         internal void ReadRuntimeAssemblyFiles()
@@ -133,7 +157,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             }
         }
 
-        public async Task WarmUp(HttpRequest request)
+        public async Task HostWarmupAsync(HttpRequest request)
         {
             if (request.Query.TryGetValue("restart", out StringValues value) && string.Compare("1", value) == 0)
             {

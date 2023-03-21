@@ -59,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var defaultProvider = new FunctionMetadataProvider(_logger, _workerFunctionMetadataProvider.Object, _hostFunctionMetadataProvider.Object);
 
             FunctionMetadataResult result = new FunctionMetadataResult(true, functionMetadataCollection.ToImmutableArray());
-            _workerFunctionMetadataProvider.Setup(m => m.GetFunctionMetadataAsync(workerConfigs, environment, false)).Returns(Task.FromResult(result));
+            _workerFunctionMetadataProvider.Setup(m => m.GetFunctionMetadataAsync(workerConfigs, false)).Returns(Task.FromResult(result));
             _hostFunctionMetadataProvider.Setup(m => m.GetFunctionMetadataAsync(workerConfigs, environment, false)).Returns(Task.FromResult(functionMetadataCollection.ToImmutableArray()));
 
             // Act
@@ -84,7 +84,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             functionMetadataCollection.Add(GetTestFunctionMetadata());
 
             var workerConfigs = TestHelpers.GetTestWorkerConfigs().ToImmutableArray();
-            workerConfigs.ToList().ForEach(config => config.Description.WorkerIndexing = "false");
+            workerConfigs.ToList().ForEach(config => config.Description.WorkerIndexing = "true");
             var scriptjobhostoptions = new ScriptJobHostOptions();
             scriptjobhostoptions.RootScriptPath = Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "..", "sample", "node");
 

@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 
@@ -12,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
 
         public FunctionsHostingConfigOptions()
         {
-            _features = new Dictionary<string, string>();
+            _features = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         }
 
         /// <summary>
@@ -28,6 +29,44 @@ namespace Microsoft.Azure.WebJobs.Script.Config
             get
             {
                 return GetFeature(RpcWorkerConstants.FunctionsWorkerDynamicConcurrencyEnabled) == "1";
+            }
+        }
+
+        /// <summary>
+        /// Gets a value indicating whether language workers warmup feature is enabled in the hosting config.
+        /// </summary>
+        public bool WorkerWarmupEnabled
+        {
+            get
+            {
+                return GetFeature(RpcWorkerConstants.WorkerWarmupEnabled) == "1";
+            }
+        }
+
+        /// <summary>
+        /// Gets a value indicating whether Linux Log Backoff is disabled in the hosting config.
+        /// </summary>
+        public bool DisableLinuxAppServiceLogBackoff
+        {
+            get
+            {
+                return GetFeature(ScriptConstants.HostingConfigDisableLinuxAppServiceExecutionEventLogBackoff) == "1";
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether Linux Appservice/EP Detailed Execution Event is disabled in the hosting config.
+        /// </summary>
+        public bool DisableLinuxAppServiceExecutionDetails
+        {
+            get
+            {
+                return GetFeature(ScriptConstants.HostingConfigDisableLinuxAppServiceDetailedExecutionEvents) == "1";
+            }
+
+            set
+            {
+               _features[ScriptConstants.HostingConfigDisableLinuxAppServiceDetailedExecutionEvents] = value ? "1" : "0";
             }
         }
 

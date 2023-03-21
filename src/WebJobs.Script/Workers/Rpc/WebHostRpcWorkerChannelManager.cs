@@ -1,5 +1,5 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+// Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
 using System.Collections.Concurrent;
@@ -124,7 +124,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             if (_workerRuntime != null && rpcWorkerChannel != null)
             {
-                if (UsePlaceholderChannel(_workerRuntime))
+                if (UsePlaceholderChannel(rpcWorkerChannel))
                 {
                     _logger.LogDebug("Loading environment variables for runtime: {runtime}", _workerRuntime);
                     await rpcWorkerChannel.SendFunctionEnvironmentReloadRequest();
@@ -140,8 +140,26 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _logger.LogDebug("Completed language worker channel specialization");
         }
 
-        private bool UsePlaceholderChannel(string workerRuntime)
+        public async Task WorkerWarmupAsync()
         {
+            _workerRuntime = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
+
+            if (_workerRuntime == null)
+            {
+                return;
+            }
+
+            IRpcWorkerChannel rpcWorkerChannel = await GetChannelAsync(_workerRuntime);
+            if (rpcWorkerChannel != null)
+            {
+                rpcWorkerChannel.SendWorkerWarmupRequest();
+            }
+        }
+
+        private bool UsePlaceholderChannel(IRpcWorkerChannel channel)
+        {
+            string workerRuntime = channel?.WorkerConfig?.Description?.Language;
+
             if (string.IsNullOrEmpty(workerRuntime))
             {
                 return false;
@@ -152,6 +170,26 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             if (!string.IsNullOrEmpty(workerArguments))
             {
                 return false;
+            }
+
+            if (workerRuntime.Equals(RpcWorkerConstants.DotNetIsolatedLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
+            {
+                bool placeholderEnabled = _environment.UsePlaceholderDotNetIsolated();
+                _logger.LogDebug("UsePlaceholderDotNetIsolated: {placeholderEnabled}", placeholderEnabled);
+
+                if (!placeholderEnabled)
+                {
+                    return false;
+                }
+
+                // Do not specialize if the placeholder is 6.0 but the site is 7.0 (for example).
+                var currentWorkerRuntimeVersion = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName);
+                channel.WorkerProcess.Process.StartInfo.Environment.TryGetValue(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, out string placeholderWorkerRuntimeVersion);
+                bool versionMatches = string.Equals(currentWorkerRuntimeVersion, placeholderWorkerRuntimeVersion, StringComparison.OrdinalIgnoreCase);
+                _logger.LogDebug("Placeholder runtime version: '{placeholderWorkerRuntimeVersion}'. Site runtime version: '{currentWorkerRuntimeVersion}'. Match: {versionMatches}",
+                    placeholderWorkerRuntimeVersion, currentWorkerRuntimeVersion, versionMatches);
+
+                return versionMatches;
             }
 
             // Special case: node and PowerShell apps must be read-only to use the placeholder mode channel

@@ -53,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     continue;
                 }
 
-                var retValue = function.Parameters.Where(x => x.Name == ScriptConstants.SystemReturnParameterName).FirstOrDefault();
+                var retValue = function.Parameters.FirstOrDefault(x => x.Name == ScriptConstants.SystemReturnParameterName);
                 var parameters = function.Parameters.Where(x => x != retValue).ToArray();
 
                 MethodBuilder methodBuilder = tb.DefineMethod(function.Name, MethodAttributes.Public | MethodAttributes.Static);

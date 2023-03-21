@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Azure;
 using Azure.Storage.Blobs;
 using Microsoft.Azure.WebJobs.Host.Storage;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Properties;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
@@ -117,15 +118,21 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             string message = string.Format(Resources.HostIdCollisionFormat, hostId);
+
             if (level == LogLevel.Warning)
             {
                 _logger.LogWarning(message);
+
+                DiagnosticEventLoggerExtensions.LogDiagnosticEventInformation(_logger, DiagnosticEventConstants.HostIdCollisionErrorCode, message, DiagnosticEventConstants.HostIdCollisionHelpLink);
             }
             else
             {
-                // we only allow Warning/Error levels to be specified, so anything other than
-                // Warning is treated as Error
+                // We only allow Warning/Error levels to be specified,
+                // so anything other than Warning is treated as Error.
                 _logger.LogError(message);
+
+                DiagnosticEventLoggerExtensions.LogDiagnosticEventError(_logger, DiagnosticEventConstants.HostIdCollisionErrorCode, message, DiagnosticEventConstants.HostIdCollisionHelpLink, new InvalidOperationException(message));
+
                 _applicationLifetime.StopApplication();
             }
         }

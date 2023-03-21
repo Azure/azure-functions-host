@@ -1,5 +1,5 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+// Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
 using System.Diagnostics;
@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             }
             _logger = loggerFactory.CreateLogger<DefaultWorkerProcessFactory>();
             _environment = environment;
-       }
+        }
 
         public virtual Process CreateWorkerProcess(WorkerContext context)
         {
@@ -57,6 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 foreach (var envVar in processEnvVariables)
                 {
                     startInfo.EnvironmentVariables[envVar.Key] = envVar.Value;
+                    startInfo.FileName = startInfo.FileName.Replace($"%{envVar.Key}%", envVar.Value);
                     startInfo.Arguments = startInfo.Arguments.Replace($"%{envVar.Key}%", envVar.Value);
                 }
                 startInfo.Arguments = SanitizeExpandedArgument(startInfo.Arguments);

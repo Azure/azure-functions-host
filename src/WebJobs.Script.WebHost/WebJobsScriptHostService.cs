@@ -178,8 +178,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 await StartHostAsync(tokenSource.Token);
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException ex)
             {
+                _logger.LogWarning("Host startup operation has been cancelled", ex);
+
                 if (cancellationToken.IsCancellationRequested)
                 {
                     _logger.ScriptHostServiceInitCanceledByRuntime();
@@ -198,9 +200,24 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 // Check for marker file indicating a zip package failure, and if found stop the application.
                 // We never want to run with an incorrect file system.
                 string path = Path.Combine(_applicationHostOptions.CurrentValue.ScriptPath, ScriptConstants.RunFromPackageFailedFileName);
+
                 if (File.Exists(path))
                 {
-                    _logger.LogError($"Shutting down host due to presence of {path}");
+                    string errorPrefix = $"Shutting down host due to presence of {path}.";
+                    string errorSuffix = string.Empty;
+                    try
+                    {
+                        string fileContent = File.ReadAllText(path);
+                        errorSuffix = $" File content: {fileContent}";
+                    }
+                    catch (Exception ex)
+                    {
+                        errorSuffix = $" Error reading {ScriptConstants.RunFromPackageFailedFileName} file content: {ex.Message}";
+                    }
+                    finally
+                    {
+                        _logger.LogError(errorPrefix + errorSuffix);
+                    }
                     _applicationLifetime.StopApplication();
                 }
             }

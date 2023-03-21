@@ -135,6 +135,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsSecretStorageType)).Returns("blob");
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.KubernetesServiceHost)).Returns("");
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.PodNamespace)).Returns("");
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.ManagedEnvironment)).Returns((string)null);
 
             _hostNameProvider = new HostNameProvider(_mockEnvironment.Object);
 
@@ -830,8 +831,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         {
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.KubernetesServiceHost)).Returns(kubernetesServiceHost);
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.PodNamespace)).Returns("POD_NAMESPACE");
-            _mockEnvironment.Setup(p => p.GetEnvironmentVariable("BUILD_SERVICE_HOSTNAME"))
-                .Returns("");
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable("BUILD_SERVICE_HOSTNAME")).Returns("");
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable("FUNCTIONS_API_SERVER")).Returns("");
+
             var httpRequest = _functionsSyncManager.BuildSetTriggersRequest();
             Assert.Equal(expectedSyncTriggersUri, httpRequest.RequestUri.AbsoluteUri);
             Assert.Equal(HttpMethod.Post, httpRequest.Method);

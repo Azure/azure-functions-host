@@ -52,6 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         // function level events
         public const string FunctionInvokeLatency = "function.invoke.latency";
         public const string FunctionBindingTypeFormat = "function.binding.{0}";
+        public const string FunctionBindingDeferred = "function.binding.deferred";
         public const string FunctionCompileLatencyByLanguageFormat = "function.compile.{0}.latency";
         public const string FunctionInvokeThrottled = "function.invoke.throttled";
         public const string FunctionUserLog = "function.userlog";

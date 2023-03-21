@@ -153,7 +153,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var workerConfigs = TestReadWorkerProviderFromConfig(configs, testLogger, testMetricsLogger);
             AreRequiredMetricsEmitted(testMetricsLogger);
             var logs = testLogger.GetLogMessages();
-            var errorLog = logs.Where(log => log.Level == LogLevel.Error).FirstOrDefault();
+            var errorLog = logs.FirstOrDefault(log => log.Level == LogLevel.Error);
             Assert.NotNull(errorLog);
             Assert.NotNull(errorLog.Exception);
             Assert.True(errorLog.FormattedMessage.Contains("Failed to initialize"));

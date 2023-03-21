@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
@@ -11,7 +10,6 @@ using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
-using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
@@ -20,6 +18,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 {
     public class TestRpcWorkerChannel : IRpcWorkerChannel, IDisposable
     {
+        private readonly RpcWorkerConfig _workerConfig;
+
         private string _workerId;
         private bool _isWebhostChannel;
         private bool _throwOnProcessStartUp;
@@ -31,7 +31,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         private HashSet<string> _executingInvocations;
         private bool _isDisposed;
 
-        public TestRpcWorkerChannel(string workerId, string runtime = null, IScriptEventManager eventManager = null, ILogger testLogger = null, bool isWebhostChannel = false, bool throwOnProcessStartUp = false)
+        public TestRpcWorkerChannel(string workerId, string runtime = null, IScriptEventManager eventManager = null, ILogger testLogger = null,
+            bool isWebhostChannel = false, bool throwOnProcessStartUp = false, RpcWorkerConfig workerConfig = null)
         {
             _workerId = workerId;
             _isWebhostChannel = isWebhostChannel;
@@ -42,6 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _executionContexts = new List<Task>();
             _executingInvocations = new HashSet<string>();
             _isDisposed = false;
+            _workerConfig = workerConfig;
         }
 
         public string Id => _workerId;
@@ -49,6 +51,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public bool IsDisposed => _isDisposed;
 
         public IWorkerProcess WorkerProcess => null;
+
+        public RpcWorkerConfig WorkerConfig => _workerConfig;
 
         public IDictionary<string, BufferBlock<ScriptInvocationContext>> FunctionInputBuffers => throw new NotImplementedException();
 
@@ -161,6 +165,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public Task<List<RawFunctionMetadata>> GetFunctionMetadata()
         {
             return null;
+        }
+
+        public void SendWorkerWarmupRequest()
+        {
+            _testLogger.LogInformation("SendWorkerWarmupRequest called");
+            return;
         }
     }
 }

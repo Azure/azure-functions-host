@@ -173,5 +173,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("Value2", (string)collection[1]);
             Assert.Equal("Value3", (string)collection[2]);
         }
+
+        [Fact]
+        public async Task BindParameterBindingDataAsync()
+        {
+            string contentString = "hello world";
+            ParameterBindingData bindingData = new("1.0.0", "AzureStorageBlob", BinaryData.FromString(contentString), "application/json");
+
+            var binderMock = new Mock<Binder>(MockBehavior.Strict);
+            var attributes = new Attribute[] { new BlobAttribute("test") };
+            binderMock.Setup(p => p.BindAsync<ParameterBindingData>(attributes, CancellationToken.None)).ReturnsAsync(bindingData);
+
+            BindingContext bindingContext = new BindingContext
+            {
+                Attributes = attributes,
+                Binder = binderMock.Object
+            };
+
+            await FunctionBinding.BindParameterBindingDataAsync(bindingContext);
+
+            Assert.Equal(bindingData, bindingContext.Value);
+        }
     }
 }

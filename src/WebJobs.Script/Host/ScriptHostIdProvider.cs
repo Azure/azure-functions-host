@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script
             // If the user has explicitly set the HostID via host.json, it will overwrite
             // what we set here
             string hostId = null;
-            if (environment.IsAppService() || environment.IsKubernetesManagedHosting())
+            if (environment.IsAppService() || environment.IsAnyKubernetesEnvironment())
             {
                 string uniqueSlotName = environment?.GetAzureWebsiteUniqueSlotName();
                 if (!string.IsNullOrEmpty(uniqueSlotName))

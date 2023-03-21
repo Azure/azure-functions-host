@@ -5,13 +5,12 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
-using Microsoft.Azure.WebJobs.Script.Tests.Workers;
-using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
-using static Microsoft.Azure.WebJobs.Script.ScriptConstants;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
 {
@@ -21,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
 
         private readonly LinuxAppServiceEventGenerator _generator;
         private readonly List<string> _events;
-        private readonly Dictionary<string, MockLinuxAppServiceFileLogger> _loggers;
+        private IOptions<FunctionsHostingConfigOptions> _functionsHostingConfigOptions;
 
         public LinuxAppServiceEventGeneratorTests()
         {
@@ -31,27 +30,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
                 _events.Add(s);
             };
 
-            _loggers = new Dictionary<string, MockLinuxAppServiceFileLogger>
-            {
-                [LinuxEventGenerator.FunctionsLogsCategory] =
-                    new MockLinuxAppServiceFileLogger(LinuxEventGenerator.FunctionsLogsCategory, string.Empty, null),
-                [LinuxEventGenerator.FunctionsMetricsCategory] =
-                    new MockLinuxAppServiceFileLogger(LinuxEventGenerator.FunctionsMetricsCategory, string.Empty, null),
-                [LinuxEventGenerator.FunctionsDetailsCategory] =
-                    new MockLinuxAppServiceFileLogger(LinuxEventGenerator.FunctionsDetailsCategory, string.Empty, null),
-                [LinuxEventGenerator.FunctionsExecutionEventsCategory] =
-                    new MockLinuxAppServiceFileLogger(LinuxEventGenerator.FunctionsExecutionEventsCategory, string.Empty, null)
-            };
+            var loggerFactoryMock = new MockLinuxAppServiceFileLoggerFactory();
 
-            var loggerFactoryMock = new Mock<LinuxAppServiceFileLoggerFactory>(MockBehavior.Strict);
-            loggerFactoryMock.Setup(f => f.GetOrCreate(It.IsAny<string>())).Returns<string>(s => _loggers[s]);
+            _functionsHostingConfigOptions = Options.Create(new FunctionsHostingConfigOptions());
 
             var environmentMock = new Mock<IEnvironment>();
             environmentMock.Setup(f => f.GetEnvironmentVariable(It.Is<string>(v => v == "WEBSITE_HOSTNAME")))
                 .Returns<string>(s => _hostNameDefault);
 
             var hostNameProvider = new HostNameProvider(environmentMock.Object);
-            _generator = new LinuxAppServiceEventGenerator(loggerFactoryMock.Object, hostNameProvider, writer);
+            _generator = new LinuxAppServiceEventGenerator(loggerFactoryMock, hostNameProvider, _functionsHostingConfigOptions, writer);
         }
 
         public static string UnNormalize(string normalized)
@@ -68,7 +56,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         {
             _generator.LogFunctionTraceEvent(level, subscriptionId, appName, functionName, eventName, source, details, summary, exceptionType, exceptionMessage, functionInvocationId, hostInstanceId, activityId, runtimeSiteName, slotName, DateTime.UtcNow);
 
-            var evt = _loggers[LinuxEventGenerator.FunctionsLogsCategory].Events.Single();
+            var logger = _generator.FunctionsLogsCategoryLogger as MockLinuxAppServiceFileLogger;
+            var evt = logger.Events.Single();
 
             var regex = new Regex(LinuxAppServiceEventGenerator.TraceEventRegex);
             var match = regex.Match(evt);
@@ -103,7 +92,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         {
             _generator.LogFunctionMetricEvent(subscriptionId, appName, functionName, eventName, average, minimum, maximum, count, DateTime.Now, data, runtimeSiteName, slotName);
 
-            string evt = _loggers[LinuxEventGenerator.FunctionsMetricsCategory].Events.Single();
+            var logger = _generator.FunctionsMetricsCategoryLogger as MockLinuxAppServiceFileLogger;
+            var evt = logger.Events.Single();
 
             Regex regex = new Regex(LinuxAppServiceEventGenerator.MetricEventRegex);
             var match = regex.Match(evt);
@@ -133,7 +123,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         {
             _generator.LogFunctionDetailsEvent(siteName, functionName, inputBindings, outputBindings, scriptType, isDisabled);
 
-            string evt = _loggers[LinuxEventGenerator.FunctionsDetailsCategory].Events.Single();
+            var logger = _generator.FunctionsDetailsCategoryLogger as MockLinuxAppServiceFileLogger;
+            var evt = logger.Events.Single();
 
             Regex regex = new Regex(LinuxAppServiceEventGenerator.DetailsEventRegex);
             var match = regex.Match(evt);
@@ -179,46 +170,43 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         [Theory]
         [MemberData(nameof(LinuxEventGeneratorTestData.GetFunctionExecutionEvents), MemberType = typeof(LinuxEventGeneratorTestData))]
         public void ParseFunctionExecutionEvents(string executionId, string siteName, int concurrency, string functionName, string invocationId,
-            string executionStage, long executionTimeSpan, bool success, bool featureFlagEnabled)
+            string executionStage, long executionTimeSpan, bool success, bool detailedExecutionEventsDisabled)
         {
-            TestScopedEnvironmentVariable featureFlags = null;
-            try
+            if (detailedExecutionEventsDisabled)
             {
-                if (featureFlagEnabled)
-                {
-                    featureFlags = new TestScopedEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, FeatureFlagEnableLinuxEPExecutionCount);
-                }
-                _generator.LogFunctionExecutionEvent(executionId, siteName, concurrency, functionName, invocationId, executionStage, executionTimeSpan, success);
-                string evt = _loggers[LinuxEventGenerator.FunctionsExecutionEventsCategory].Events.Single();
-
-                if (featureFlagEnabled)
-                {
-                    Regex regex = new Regex(LinuxAppServiceEventGenerator.ExecutionEventRegex);
-                    var match = regex.Match(evt);
-
-                    Assert.True(match.Success);
-                    Assert.Equal(10, match.Groups.Count);
-
-                    var groupMatches = match.Groups.Cast<Group>().Select(p => p.Value).Skip(1).ToArray();
-                    Assert.Collection(groupMatches,
-                        p => Assert.Equal(executionId, p),
-                        p => Assert.Equal(siteName, p),
-                        p => Assert.Equal(concurrency.ToString(), p),
-                        p => Assert.Equal(functionName, p),
-                        p => Assert.Equal(invocationId, p),
-                        p => Assert.Equal(executionStage, p),
-                        p => Assert.Equal(executionTimeSpan.ToString(), p),
-                        p => Assert.True(Convert.ToBoolean(p)),
-                        p => Assert.True(DateTime.TryParse(p, out DateTime dt)));
-                }
-                else
-                {
-                    Assert.True(DateTime.TryParse(evt, out DateTime dt));
-                }
+                _functionsHostingConfigOptions.Value.DisableLinuxAppServiceExecutionDetails = true;
             }
-            finally
+            else
             {
-                featureFlags?.Dispose();
+                _functionsHostingConfigOptions.Value.DisableLinuxAppServiceExecutionDetails = false;
+            }
+            _generator.LogFunctionExecutionEvent(executionId, siteName, concurrency, functionName, invocationId, executionStage, executionTimeSpan, success);
+            var logger = _generator.FunctionsExecutionEventsCategoryLogger as MockLinuxAppServiceFileLogger;
+            var evt = logger.Events.Single();
+
+            if (!detailedExecutionEventsDisabled)
+            {
+                Regex regex = new Regex(LinuxAppServiceEventGenerator.ExecutionEventRegex);
+                var match = regex.Match(evt);
+
+                Assert.True(match.Success);
+                Assert.Equal(10, match.Groups.Count);
+
+                var groupMatches = match.Groups.Cast<Group>().Select(p => p.Value).Skip(1).ToArray();
+                Assert.Collection(groupMatches,
+                    p => Assert.Equal(executionId, p),
+                    p => Assert.Equal(siteName, p),
+                    p => Assert.Equal(concurrency.ToString(), p),
+                    p => Assert.Equal(functionName, p),
+                    p => Assert.Equal(invocationId, p),
+                    p => Assert.Equal(executionStage, p),
+                    p => Assert.Equal(executionTimeSpan.ToString(), p),
+                    p => Assert.True(Convert.ToBoolean(p)),
+                    p => Assert.True(DateTime.TryParse(p, out DateTime dt)));
+            }
+            else
+            {
+                Assert.True(DateTime.TryParse(evt, out DateTime dt));
             }
         }
     }

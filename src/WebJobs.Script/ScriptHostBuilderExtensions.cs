@@ -4,7 +4,11 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights.Channel;
+using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.ApplicationInsights.Extensibility.Implementation;
 using Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
@@ -209,7 +213,16 @@ namespace Microsoft.Azure.WebJobs.Script
                     // Only set our external startup if we're not suppressing host initialization
                     // as we don't want to load user assemblies otherwise.
                     var locator = context.Properties.GetAndRemove<ScriptStartupTypeLocator>(StartupTypeLocatorKey);
-                    webJobsBuilder.UseExternalStartup(locator, webJobsBuilderContext, loggerFactory);
+
+                    try
+                    {
+                        webJobsBuilder.UseExternalStartup(locator, webJobsBuilderContext, loggerFactory);
+                    }
+                    catch (Exception ex)
+                    {
+                        string appInsightsConnStr = context.Configuration[EnvironmentSettingNames.AppInsightsConnectionString];
+                        RecordAndThrowExternalStartupException("Error configuring services in an external startup class.", ex, loggerFactory, appInsightsConnStr);
+                    }
                 }
 
                 configureWebJobs?.Invoke(webJobsBuilder);
@@ -226,7 +239,19 @@ namespace Microsoft.Azure.WebJobs.Script
                     };
 
                     // Delay this call so we can call the customer's setup last.
-                    context.Properties[DelayedConfigurationActionKey] = new Action<IWebJobsStartupTypeLocator>(locator => webJobsConfigBuilder.UseExternalConfigurationStartup(locator, webJobsBuilderContext, loggerFactory));
+                    context.Properties[DelayedConfigurationActionKey] = new Action<IWebJobsStartupTypeLocator>(locator =>
+                    {
+                        try
+                        {
+                            webJobsConfigBuilder.UseExternalConfigurationStartup(locator, webJobsBuilderContext, loggerFactory);
+                        }
+                        catch (Exception ex)
+                        {
+                            // Go directly to the environment; We have no valid configuration from the customer at this point.
+                            string appInsightsConnStr = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AppInsightsConnectionString);
+                            RecordAndThrowExternalStartupException("Error building configuration in an external startup class.", ex, loggerFactory, appInsightsConnStr);
+                        }
+                    });
                 }
             });
 
@@ -475,6 +500,33 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 throw new InvalidOperationException($"The key '{key}' does not exist in the dictionary.");
             }
+        }
+
+        private static void RecordAndThrowExternalStartupException(string message, Exception ex, ILoggerFactory loggerFactory, string appInsightsConnStr)
+        {
+            var startupEx = new ExternalStartupException(message, ex);
+
+            var logger = loggerFactory.CreateLogger(LogCategories.Startup);
+            logger.LogDiagnosticEventError(DiagnosticEventConstants.ExternalStartupErrorCode, message, DiagnosticEventConstants.ExternalStartupErrorHelpLink, startupEx);
+
+            // Send the error to App Insights if possible. This is happening during ScriptHost construction so we
+            // have no existing TelemetryClient to use. Create a one-off client and flush it ASAP.
+            if (appInsightsConnStr is not null)
+            {
+                using TelemetryConfiguration telemetryConfiguration = new()
+                {
+                    ConnectionString = appInsightsConnStr,
+                    TelemetryChannel = new InMemoryChannel()
+                };
+
+                TelemetryClient telemetryClient = new(telemetryConfiguration);
+                telemetryClient.Context.GetInternalContext().SdkVersion = new ApplicationInsightsSdkVersionProvider().GetSdkVersion();
+                telemetryClient.TrackTrace(startupEx.ToString(), SeverityLevel.Error);
+                telemetryClient.TrackException(startupEx);
+                telemetryClient.Flush();
+            }
+
+            throw startupEx;
         }
     }
 }

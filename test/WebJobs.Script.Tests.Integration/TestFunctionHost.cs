@@ -93,6 +93,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 .ConfigureLogging(b =>
                 {
                     b.AddProvider(_webHostLoggerProvider);
+                    b.AddFilter<TestLoggerProvider>("Host", LogLevel.Trace);
+                    b.AddFilter<TestLoggerProvider>("Microsoft.Azure.WebJobs", LogLevel.Trace);
                 })
                 .ConfigureServices(services =>
                   {

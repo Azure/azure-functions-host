@@ -21,6 +21,7 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.Grpc.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc.Extensions;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
@@ -78,7 +79,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private TaskCompletionSource<List<RawFunctionMetadata>> _functionsIndexingTask = new TaskCompletionSource<List<RawFunctionMetadata>>(TaskCreationOptions.RunContinuationsAsynchronously);
         private TimeSpan _functionLoadTimeout = TimeSpan.FromMinutes(1);
         private bool _isSharedMemoryDataTransferEnabled;
-        private bool _cancelCapabilityEnabled;
+        private bool? _cancelCapabilityEnabled;
         private bool _isWorkerApplicationInsightsLoggingEnabled;
 
         private System.Timers.Timer _timer;
@@ -138,7 +139,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         public IWorkerProcess WorkerProcess => _rpcWorkerProcess;
 
-        internal RpcWorkerConfig Config => _workerConfig;
+        public RpcWorkerConfig WorkerConfig => _workerConfig;
 
         private void ProcessItem(InboundGrpcEvent msg)
         {
@@ -357,6 +358,15 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         internal void FunctionEnvironmentReloadResponse(FunctionEnvironmentReloadResponse res, IDisposable latencyEvent)
         {
             _workerChannelLogger.LogDebug("Received FunctionEnvironmentReloadResponse from WorkerProcess with Pid: '{0}'", _rpcWorkerProcess.Id);
+
+            LogWorkerMetadata(res.WorkerMetadata);
+
+            _workerConfig.Description.DefaultRuntimeVersion = _workerConfig.Description.DefaultRuntimeVersion ?? res?.WorkerMetadata?.RuntimeVersion;
+            _workerConfig.Description.DefaultRuntimeName = _workerConfig.Description.DefaultRuntimeName ?? res?.WorkerMetadata?.RuntimeName;
+
+            UpdateCapabilities(res.Capabilities);
+            _cancelCapabilityEnabled ??= !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.HandlesInvocationCancelMessage));
+
             if (res.Result.IsFailure(out Exception reloadEnvironmentVariablesException))
             {
                 _workerChannelLogger.LogError(reloadEnvironmentVariablesException, "Failed to reload environment variables");
@@ -375,13 +385,13 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _initMessage = initEvent.Message.WorkerInitResponse;
             _workerChannelLogger.LogDebug("Worker capabilities: {capabilities}", _initMessage.Capabilities);
 
-            if (_initMessage.WorkerMetadata != null)
-            {
-                _initMessage.UpdateWorkerMetadata(_workerConfig);
-                var workerMetadata = _initMessage.WorkerMetadata.ToString();
-                _metricsLogger.LogEvent(MetricEventNames.WorkerMetadata, functionName: null, workerMetadata);
-                _workerChannelLogger.LogDebug("Worker metadata: {workerMetadata}", workerMetadata);
-            }
+            // In placeholder scenario, the capabilities and worker metadata will not be available
+            // until specialization is done (env reload request). So these can be removed from worker init response code path.
+            // to do to track this: https://github.com/Azure/azure-functions-host/issues/9019
+            LogWorkerMetadata(_initMessage.WorkerMetadata);
+
+            _workerConfig.Description.DefaultRuntimeVersion = _workerConfig.Description.DefaultRuntimeVersion ?? _initMessage?.WorkerMetadata?.RuntimeVersion;
+            _workerConfig.Description.DefaultRuntimeName = _workerConfig.Description.DefaultRuntimeName ?? _initMessage?.WorkerMetadata?.RuntimeName;
 
             if (_initMessage.Result.IsFailure(out Exception exc))
             {
@@ -395,7 +405,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             UpdateCapabilities(_initMessage.Capabilities);
 
             _isSharedMemoryDataTransferEnabled = IsSharedMemoryDataTransferEnabled();
-            _cancelCapabilityEnabled = !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.HandlesInvocationCancelMessage));
+            _cancelCapabilityEnabled ??= !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.HandlesInvocationCancelMessage));
 
             if (!_isSharedMemoryDataTransferEnabled)
             {
@@ -411,6 +421,19 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
 
             _workerInitTask.TrySetResult(true);
+        }
+
+        private void LogWorkerMetadata(WorkerMetadata workerMetadata)
+        {
+            if (workerMetadata == null)
+            {
+                return;
+            }
+
+            workerMetadata.UpdateWorkerMetadata(_workerConfig);
+            var workerMetadataString = workerMetadata.ToString();
+            _metricsLogger.LogEvent(MetricEventNames.WorkerMetadata, functionName: null, workerMetadataString);
+            _workerChannelLogger.LogDebug("Worker metadata: {workerMetadata}", workerMetadataString);
         }
 
         // Allow tests to add capabilities, even if not directly supported by the worker.
@@ -515,6 +538,41 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             return _reloadTask.Task;
         }
 
+        public void SendWorkerWarmupRequest()
+        {
+            bool capabilityEnabled = !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.HandlesWorkerWarmupMessage));
+            if (!capabilityEnabled)
+            {
+                _workerChannelLogger.LogDebug("Worker warmup capability not enabled");
+            }
+            else
+            {
+                _workerChannelLogger.LogDebug("Sending WorkerWarmupRequest to WorkerProcess with Pid: '{0}'", _rpcWorkerProcess.Id);
+
+                RegisterCallbackForNextGrpcMessage(MsgType.WorkerWarmupResponse, TimeSpan.FromMinutes(1), 1,
+                msg => ProcessWorkerWarmupResponse(msg.Message.WorkerWarmupResponse), HandleWorkerWarmupError);
+
+                var request = new WorkerWarmupRequest()
+                {
+                    WorkerDirectory = _workerConfig.Description.WorkerDirectory,
+                };
+
+                SendStreamingMessage(new StreamingMessage
+                {
+                    WorkerWarmupRequest = request
+                });
+            }
+        }
+
+        internal void ProcessWorkerWarmupResponse(WorkerWarmupResponse response)
+        {
+            _workerChannelLogger.LogDebug("Received WorkerWarmupResponse from WorkerProcess with Pid: '{0}'", _rpcWorkerProcess.Id);
+            if (response.Result.IsFailure(out Exception workerWarmupException))
+            {
+                _workerChannelLogger.LogError(workerWarmupException, "Worker warmup failed");
+            }
+        }
+
         internal FunctionEnvironmentReloadRequest GetFunctionEnvironmentReloadRequest(IDictionary processEnv)
         {
             foreach (var pair in _hostingConfigOptions.Value.Features)
@@ -531,8 +589,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     request.EnvironmentVariables.Add(entry.Key.ToString(), entry.Value.ToString());
                 }
             }
-            request.EnvironmentVariables.Add(WorkerConstants.FunctionsWorkerDirectorySettingName, _workerConfig.Description.WorkerDirectory);
-            request.FunctionAppDirectory = _applicationHostOptions.CurrentValue.ScriptPath;
+
+            string scriptRoot = _applicationHostOptions.CurrentValue.ScriptPath;
+            request.EnvironmentVariables.TryAdd(WorkerConstants.FunctionsWorkerDirectorySettingName, _workerConfig.Description.WorkerDirectory);
+            request.EnvironmentVariables.TryAdd(WorkerConstants.FunctionsApplicationDirectorySettingName, scriptRoot);
+            request.FunctionAppDirectory = scriptRoot;
 
             return request;
         }
@@ -575,6 +636,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 BindingInfo bindingInfo = binding.ToBindingInfo();
 
                 request.Metadata.Bindings.Add(binding.Name, bindingInfo);
+
+                if (binding.SupportsDeferredBinding() && !binding.SkipDeferredBinding())
+                {
+                    _metricsLogger.LogEvent(MetricEventNames.FunctionBindingDeferred, functionName: metadata.Name);
+                }
             }
 
             foreach (var property in metadata.Properties)
@@ -668,7 +734,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     InvocationRequest = invocationRequest
                 });
 
-                if (_cancelCapabilityEnabled)
+                if (_cancelCapabilityEnabled != null && _cancelCapabilityEnabled.Value)
                 {
                     context.CancellationToken.Register(() => SendInvocationCancel(invocationRequest.InvocationId));
                 }
@@ -1053,6 +1119,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 return;
             }
             _eventManager.Publish(new WorkerErrorEvent(_runtime, Id, exc));
+        }
+
+        private void HandleWorkerWarmupError(Exception exc)
+        {
+            _workerChannelLogger.LogError(exc, "Worker warmup failed");
         }
 
         private ValueTask SendStreamingMessageAsync(StreamingMessage msg)

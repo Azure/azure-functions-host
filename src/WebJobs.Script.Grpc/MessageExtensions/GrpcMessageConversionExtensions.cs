@@ -56,6 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     string str => new TypedData() { String = str },
                     double dbl => new TypedData() { Double = dbl },
                     ParameterBindingData bindingData => bindingData.ToModelBindingData(),
+                    ParameterBindingData[] bindingDataArray => bindingDataArray.ToModelBindingDataArray(),
                     byte[][] arrBytes when IsTypedDataCollectionSupported(capabilities) => arrBytes.ToRpcByteArray(),
                     string[] arrStr when IsTypedDataCollectionSupported(capabilities) => arrStr.ToRpcStringArray(
                                                             ShouldIncludeEmptyEntriesInMessagePayload(capabilities)),
@@ -82,6 +83,21 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             };
 
             return typedData;
+        }
+
+        internal static TypedData ToModelBindingDataArray(this ParameterBindingData[] dataArray)
+        {
+            var collectionModelBindingData = new CollectionModelBindingData();
+
+            foreach (ParameterBindingData element in dataArray)
+            {
+                if (element != null)
+                {
+                    collectionModelBindingData.ModelBindingData.Add(element.ToModelBindingData().ModelBindingData);
+                }
+            }
+
+            return new TypedData() { CollectionModelBindingData = collectionModelBindingData };
         }
 
         internal static async Task<TypedData> ToRpcHttp(this HttpRequest request, ILogger logger, GrpcCapabilities capabilities)

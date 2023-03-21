@@ -48,7 +48,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
                 testHttpInvocationResult.ReturnValue = "Hello return";
             }
             var result = testHttpInvocationResult.ToScriptInvocationResult(testInvocationContext);
-            Assert.Null(result.Return);
+            if (includeReturnValue)
+            {
+                Assert.Equal(testHttpInvocationResult.ReturnValue, result.Return);
+            }
+            else
+            {
+                Assert.Null(result.Return);
+            }
             ExpandoObject output = result.Outputs["res"] as ExpandoObject;
             output.TryGetValue<object>("Body", out var resResult, ignoreCase: true);
             Assert.Equal("my world", resResult);
