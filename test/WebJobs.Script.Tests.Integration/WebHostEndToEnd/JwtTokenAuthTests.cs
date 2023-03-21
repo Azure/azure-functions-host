@@ -1,73 +1,42 @@
-﻿using Microsoft.Azure.WebJobs.Script.WebHost;
-using Microsoft.Azure.WebJobs.Script.WebHost.Management;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
-using Newtonsoft.Json;
-using System;
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Azure.WebJobs.Script.WebHost.Management;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
 {
     /// <summary>
-    /// Tests verifying the Static Web Apps deployment configuration.
+    /// Tests for our JWT token auth handler.
     /// </summary>
-    public class SWAEndToEndTests : IClassFixture<SWAEndToEndTests.TestFixture>
+    public class JwtTokenAuthTests : IClassFixture<JwtTokenAuthTests.TestFixture>
     {
         private TestFixture _fixture;
 
-        public SWAEndToEndTests(TestFixture fixture)
+        public JwtTokenAuthTests(TestFixture fixture)
         {
             _fixture = fixture;
         }
 
-        [Fact]
-        public void NoStorageConfigured_SecretsDisabled()
-        {
-            Assert.Null(Environment.GetEnvironmentVariable("AzureWebJobsStorage"));
-            Assert.False(_fixture.Host.SecretManagerProvider.SecretsEnabled);
-        }
-
-        [Fact]
-        public async Task InvokeFunction_AnonymousLevel_Succeeds()
-        {
-            var code = "test";
-
-            // send along a code query param, and ensure that the invocation succeeds
-            // the token isn't interpreted as a function key in this case since keys are disabled
-            var content = new StringContent(JsonConvert.SerializeObject(new { scenario = "staticWebApp" }));
-            var response = await _fixture.Host.HttpClient.PostAsync($"api/HttpTrigger-Scenarios?code={code}", content);
-            response.EnsureSuccessStatusCode();
-
-            var responseBody = await response.Content.ReadAsStringAsync();
-            Assert.Equal(code, responseBody);
-        }
-
-        [Fact]
-        public async Task InvokeFunction_FunctionLevel_NoAuthToken_Fails()
-        {
-            // the function declares an auth level of Function, so invocations should fail
-            var response = await _fixture.Host.HttpClient.GetAsync("api/HttpTrigger-FunctionAuth?code=test");
-            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-
-            response = await _fixture.Host.HttpClient.GetAsync("api/HttpTrigger-FunctionAuth");
-            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-        }
-
         [Theory]
         [InlineData(nameof(HttpRequestHeader.Authorization))]
+        [InlineData(nameof(HttpRequestHeader.Authorization), ScriptConstants.AdminJwtAppServiceIssuer, ScriptConstants.AdminJwtAppServiceIssuer)]
         [InlineData(ScriptConstants.SiteTokenHeaderName)]
-        public async Task InvokeFunction_FunctionLevel_ValidToken_Succeeds(string headerName)
+        [InlineData(ScriptConstants.SiteTokenHeaderName, ScriptConstants.AdminJwtAppServiceIssuer, ScriptConstants.AdminJwtAppServiceIssuer)]
+        public async Task InvokeAdminApi_ValidToken_Succeeds(string headerName, string audience = null, string issuer = null)
         {
-            // if an admin token is passed, the function invocation succeeds
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "api/HttpTrigger-FunctionAuth?code=test");
-            string token = _fixture.Host.GenerateAdminJwtToken();
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "admin/host/status");
+            string token = _fixture.Host.GenerateAdminJwtToken(audience, issuer);
 
             if (string.Compare(nameof(HttpRequestHeader.Authorization), headerName) == 0)
             {
@@ -82,24 +51,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             response.EnsureSuccessStatusCode();
         }
 
-        [Fact]
-        public async Task SyncTriggers_Succeeds()
+        [Theory]
+        [InlineData(nameof(HttpRequestHeader.Authorization))]
+        [InlineData(ScriptConstants.SiteTokenHeaderName)]
+        public async Task InvokeAdminApi_InvalidToken_Fails(string headerName)
         {
-            _fixture.Host.ClearLogMessages();
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "admin/host/status");
+            string token = _fixture.Host.GenerateAdminJwtToken("invalid", "invalid");
 
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, "admin/host/synctriggers");
-            string token = _fixture.Host.GenerateAdminJwtToken();
-            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            if (string.Compare(nameof(HttpRequestHeader.Authorization), headerName) == 0)
+            {
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            }
+            else
+            {
+                request.Headers.Add(headerName, token);
+            }
 
             var response = await _fixture.Host.HttpClient.SendAsync(request);
-
-            // the sync request will fail because we're not running in Antares and can't
-            // communicate with the FE, but it suffices to verify that we attempted to send the request
-            var logs = _fixture.Host.GetScriptHostLogMessages().Where(p => p.Category == typeof(FunctionsSyncManager).FullName).ToArray();
-            var log = logs[0].FormattedMessage;
-            Assert.True(log.StartsWith("Making SyncTriggers request"));
-            Assert.True(log.Contains("HttpTrigger-FunctionAuth"));
-            Assert.True(log.Contains("HttpTrigger-Scenarios"));
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         }
 
         public class TestFixture : EndToEndTestFixture
@@ -163,5 +133,4 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             }
         }
     }
-
 }

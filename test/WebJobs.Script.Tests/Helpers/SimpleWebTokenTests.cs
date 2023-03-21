@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Helpers
             catch (Exception ex)
             {
                 Assert.IsType<InvalidOperationException>(ex);
-                Assert.Contains("WEBSITE_AUTH_ENCRYPTION_KEY", ex.Message);
+                Assert.Equal("No encryption key defined in the environment.", ex.Message);
             }
         }
 

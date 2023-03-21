@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
@@ -138,7 +139,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             environment.SetEnvironmentVariable(EnvironmentSettingNames.KubernetesServiceHost, "http://localhost:80");
             environment.SetEnvironmentVariable(EnvironmentSettingNames.PodNamespace, "k8se-apps");
 
-            var ex = await Assert.ThrowsAsync<System.Exception>(async () =>
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
             {
                 await (podController.Assign(encryptedHostAssignmentContext));
             });
