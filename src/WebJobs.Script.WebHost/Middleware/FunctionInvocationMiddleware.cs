@@ -128,7 +128,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
                 using (logger.BeginScope(scopeState))
                 {
                     var applicationLifetime = context.RequestServices.GetService<IApplicationLifetime>();
-                    CancellationToken cancellationToken = applicationLifetime != null ? applicationLifetime.ApplicationStopping : CancellationToken.None;
+                    CancellationToken cancellationToken = context.RequestAborted;
+
                     await functionExecution.ExecuteAsync(context.Request, cancellationToken);
 
                     if (context.Items.TryGetValue(ScriptConstants.AzureFunctionsDuplicateHttpHeadersKey, out object value))
