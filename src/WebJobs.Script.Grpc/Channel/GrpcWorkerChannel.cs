@@ -10,6 +10,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Reactive.Linq;
+using System.Reflection.Metadata;
 using System.Text;
 using System.Threading;
 using System.Threading.Channels;
@@ -417,6 +418,12 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 appInsightsWorkerEnabled))
             {
                 _isWorkerApplicationInsightsLoggingEnabled = true;
+            }
+
+            // If http proxying is enabled, we need to get the proxying endpoint of this worker
+            if (!string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.EnableHttpProxying)))
+            {
+                _initMessage.WorkerMetadata.CustomProperties.GetValueOrDefault(RpcWorkerConstants.HttpProxyPortKey);
             }
 
             _workerInitTask.TrySetResult(true);
