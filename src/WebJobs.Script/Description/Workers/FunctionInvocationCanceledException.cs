@@ -9,6 +9,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     public class FunctionInvocationCanceledException : FunctionInvocationException
     {
         public FunctionInvocationCanceledException(string invocationId, Exception innerException)
-            : base($"The invocation request with id '{invocationId}' has been cancelled.", innerException) { }
+            : base($"The invocation request with id '{invocationId}' was canceled before the request was sent to the worker.", innerException) { }
     }
 }

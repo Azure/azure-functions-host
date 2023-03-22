@@ -716,29 +716,28 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 }
 
                 // do not send an invocation request if cancellation has been requested
-                if (true)
+                if (context.CancellationToken.IsCancellationRequested)
                 {
-                    await Task.Delay(100);
                     _workerChannelLogger.LogWarning("Cancellation has been requested. The invocation request with id '{invocationId}' is canceled and will not be sent to the worker.", invocationId);
                     context.ResultSource.TrySetCanceled();
                     return;
                 }
 
-                // var invocationRequest = await context.ToRpcInvocationRequest(_workerChannelLogger, _workerCapabilities, _isSharedMemoryDataTransferEnabled, _sharedMemoryManager);
-                // AddAdditionalTraceContext(invocationRequest.TraceContext.Attributes, context);
-                // _executingInvocations.TryAdd(invocationRequest.InvocationId, context);
+                var invocationRequest = await context.ToRpcInvocationRequest(_workerChannelLogger, _workerCapabilities, _isSharedMemoryDataTransferEnabled, _sharedMemoryManager);
+                AddAdditionalTraceContext(invocationRequest.TraceContext.Attributes, context);
+                _executingInvocations.TryAdd(invocationRequest.InvocationId, context);
 
-                // _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvoked, Id), functionName: context.FunctionMetadata.Name);
+                _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvoked, Id), functionName: context.FunctionMetadata.Name);
 
-                // await SendStreamingMessageAsync(new StreamingMessage
-                // {
-                //     InvocationRequest = invocationRequest
-                // });
+                await SendStreamingMessageAsync(new StreamingMessage
+                {
+                    InvocationRequest = invocationRequest
+                });
 
-                // if (_cancelCapabilityEnabled != null && _cancelCapabilityEnabled.Value)
-                // {
-                //     context.CancellationToken.Register(() => SendInvocationCancel(invocationRequest.InvocationId));
-                // }
+                if (_cancelCapabilityEnabled != null && _cancelCapabilityEnabled.Value)
+                {
+                    context.CancellationToken.Register(() => SendInvocationCancel(invocationRequest.InvocationId));
+                }
             }
             catch (Exception invokeEx)
             {
