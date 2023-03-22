@@ -95,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             try
             {
-                _logger.LogTrace($"Sending invocation id:{invocationId}");
+                _logger.LogTrace("Sending invocation id: '{id}", invocationId);
 
                 await _functionDispatcher.InvokeAsync(invocationContext);
                 result = await invocationContext.ResultSource.Task;
