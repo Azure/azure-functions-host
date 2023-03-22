@@ -129,11 +129,16 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 {
                     return attribute.GetType()
                                     .GetProperties(BindingFlags.Instance | BindingFlags.Public)
-                                    .Any(prop => prop.PropertyType == typeof(string) && _expressionRegex.IsMatch((string)prop.GetValue(attribute)));
+                                    .Any(prop => prop.PropertyType == typeof(string) && IsMatch((string)prop.GetValue(attribute)));
                 }
             }
 
             return false;
+        }
+
+        private bool IsMatch(string value)
+        {
+            return string.IsNullOrEmpty(value) ? false : _expressionRegex.IsMatch(value);
         }
     }
 }

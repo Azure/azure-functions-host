@@ -188,10 +188,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             _rpcWorkerChannelManager = new WebHostRpcWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, _rpcWorkerChannelFactory, _optionsMonitor, testMetricsLogger, _workerOptionsMonitor, _emptyConfig, _workerProfileManager);
 
+            var workerConfigs = _workerOptionsMonitor.CurrentValue.WorkerConfigs;
+            workerConfigs.Add(new RpcWorkerConfig
+            {
+                Description = TestHelpers.GetTestWorkerDescription("powershell", ".ps1", workerIndexing: true),
+                CountOptions = new WorkerProcessCountOptions()
+            });
+            workerConfigs.Add(new RpcWorkerConfig
+            {
+                Description = TestHelpers.GetTestWorkerDescription("python", ".py", workerIndexing: true),
+                CountOptions = new WorkerProcessCountOptions()
+            });
+
             IRpcWorkerChannel workerChannel = CreateTestChannel(languageWorkerName);
 
             await _rpcWorkerChannelManager.SpecializeAsync();
-            // Wait for debouce task to start
+            // Wait for debounce task to start
             await TestHelpers.Await(() =>
             {
                 return testMetricsLogger.EventsBegan.Contains(MetricEventNames.SpecializationScheduleShutdownStandbyChannels)
@@ -221,7 +233,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             await _rpcWorkerChannelManager.SpecializeAsync();
 
-            // Wait for debouce task to start
+            // Wait for debounce task to start
             await TestHelpers.Await(() =>
             {
                 return testMetricsLogger.EventsBegan.Contains(MetricEventNames.SpecializationScheduleShutdownStandbyChannels)
@@ -461,7 +473,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
         private IRpcWorkerChannel CreateTestChannel(string language)
         {
-            var testChannel = _rpcWorkerChannelFactory.Create(_scriptRootPath, language, null, 0, _workerOptionsMonitor.CurrentValue.WorkerConfigs);
+            return CreateTestChannel(language, _workerOptionsMonitor.CurrentValue.WorkerConfigs);
+        }
+
+        private IRpcWorkerChannel CreateTestChannel(string language, IList<RpcWorkerConfig> workerConfigs)
+        {
+            var testChannel = _rpcWorkerChannelFactory.Create(_scriptRootPath, language, null, 0, workerConfigs);
             _rpcWorkerChannelManager.AddOrUpdateWorkerChannels(language, testChannel);
             _rpcWorkerChannelManager.SetInitializedWorkerChannel(language, testChannel);
             return testChannel;

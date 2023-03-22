@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Extensions.Hosting;
@@ -47,7 +48,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
             _allListenersSubscription = DiagnosticListener.AllListeners.Subscribe(delegate (DiagnosticListener listener)
             {
-                if (listener.Name.StartsWith(ScriptConstants.HostDiagnosticSourcePrefix))
+                if (listener.Name.StartsWith(ScriptConstants.HostDiagnosticSourcePrefix)
+                    || listener.Name.StartsWith(ApplicationInsightsDiagnosticConstants.ApplicationInsightsDiagnosticSourcePrefix))
                 {
                     lock (_listenerSubscriptions)
                     {
@@ -63,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                             _listenerSubscriptions.Add(listener.Name, listenerSubscription);
                         }
 
-                        _logger.LogInformation("Subscribed to host diagnostic source '{sourceName}'", listener.Name);
+                        _logger.LogInformation("Subscribed to diagnostic source '{sourceName}'", listener.Name);
                     }
                 }
             });

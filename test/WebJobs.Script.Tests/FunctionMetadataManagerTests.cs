@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
@@ -49,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData(null)]
         public void IsScriptFileDetermined_ScriptFile_Emtpy_False(string scriptFile)
         {
-            _mockScriptHostManager.Raise(m => m.HostInitializing += null, new EventArgs());
+            _mockScriptHostManager.Raise(m => m.ActiveHostChanged += null, new ActiveHostChangedEventArgs(null, new Mock<IHost>().Object));
             FunctionMetadata functionMetadata = GetTestFunctionMetadata(scriptFile);
             Assert.False(_testFunctionMetadataManager.IsScriptFileDetermined(functionMetadata));
         }
@@ -71,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             FunctionMetadataManager testFunctionMetadataManager = TestFunctionMetadataManager.GetFunctionMetadataManager(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), managerMock,
                 mockFunctionMetadataProvider.Object, new List<IFunctionProvider>(), new OptionsWrapper<HttpWorkerOptions>(_defaultHttpWorkerOptions), MockNullLoggerFactory.CreateLoggerFactory(), new TestOptionsMonitor<LanguageWorkerOptions>(TestHelpers.GetTestLanguageWorkerOptions()));
 
-            managerMock.Raise(m => m.HostInitializing += null, new EventArgs());
+            managerMock.Raise(m => m.ActiveHostChanged += null, new ActiveHostChangedEventArgs(null, new Mock<IHost>().Object));
             Assert.Empty(testFunctionMetadataManager.LoadFunctionMetadata());
 
             Assert.True(testFunctionMetadataManager.Errors.Count == 1);
@@ -105,7 +106,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             FunctionMetadataManager testFunctionMetadataManager = TestFunctionMetadataManager.GetFunctionMetadataManager(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), managerMock,
                 mockFunctionMetadataProvider.Object, new List<IFunctionProvider>() { mockFunctionProvider.Object }, new OptionsWrapper<HttpWorkerOptions>(_defaultHttpWorkerOptions), MockNullLoggerFactory.CreateLoggerFactory(), new TestOptionsMonitor<LanguageWorkerOptions>(TestHelpers.GetTestLanguageWorkerOptions()));
 
-            managerMock.Raise(m => m.HostInitializing += null, new EventArgs());
+            managerMock.Raise(m => m.ActiveHostChanged += null, new ActiveHostChangedEventArgs(null, new Mock<IHost>().Object));
 
             testFunctionMetadataManager.LoadFunctionMetadata();
 
@@ -129,7 +130,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.True(testFunctionMetadataManager.IsScriptFileDetermined(testMetadata));
 
-            managerMock.Raise(m => m.HostInitializing += null, new EventArgs());
+            managerMock.Raise(m => m.ActiveHostChanged += null, new ActiveHostChangedEventArgs(null, new Mock<IHost>().Object));
 
             Assert.False(testFunctionMetadataManager.IsScriptFileDetermined(testMetadata));
         }

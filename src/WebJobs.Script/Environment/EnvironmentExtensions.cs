@@ -36,6 +36,11 @@ namespace Microsoft.Azure.WebJobs.Script
             return environment.GetEnvironmentVariable(AzureWebsitePlaceholderMode) == "1";
         }
 
+        public static bool UsePlaceholderDotNetIsolated(this IEnvironment environment)
+        {
+            return environment.GetEnvironmentVariable(AzureWebsiteUsePlaceholderDotNetIsolated) == "1";
+        }
+
         public static bool IsLegacyPlaceholderTemplateSite(this IEnvironment environment)
         {
             string siteName = environment.GetEnvironmentVariable(AzureWebsiteName);
@@ -385,7 +390,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             if (!isMultiLanguageEnabled.HasValue)
             {
-                isMultiLanguageEnabled = environment.IsLogicApp() && FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableMultiLanguageWorker, environment);
+                isMultiLanguageEnabled = environment.IsLogicApp();
             }
             return isMultiLanguageEnabled.Value;
         }
@@ -623,7 +628,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static bool IsTargetBasedScalingEnabled(this IEnvironment environment)
         {
-            return string.Equals(environment.GetEnvironmentVariable(TargetBaseScalingEnabled), "1");
+            return !string.Equals(environment.GetEnvironmentVariable(TargetBaseScalingEnabled), "0");
         }
     }
 }
