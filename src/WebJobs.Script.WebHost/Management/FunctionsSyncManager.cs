@@ -707,7 +707,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 var requestId = Guid.NewGuid().ToString();
                 request.Headers.Add(ScriptConstants.AntaresLogIdHeaderName, requestId);
                 request.Headers.Add("User-Agent", ScriptConstants.FunctionsUserAgent);
-                request.Headers.Add(ScriptConstants.SiteTokenHeaderName, token);
+                request.Headers.Add(ScriptConstants.SiteRestrictedTokenHeaderName, token);
                 request.Content = new StringContent(content, Encoding.UTF8, "application/json");
 
                 if (_environment.IsKubernetesManagedHosting())

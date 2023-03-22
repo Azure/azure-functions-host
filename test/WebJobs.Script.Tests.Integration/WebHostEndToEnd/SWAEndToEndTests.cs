@@ -1,5 +1,6 @@
 ﻿using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
+using Microsoft.Azure.WebJobs.Script.WebHost.Security;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -60,13 +61,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         }
 
-        [Fact]
-        public async Task InvokeFunction_FunctionLevel_ValidToken_Succeeds()
+        [Theory]
+        [InlineData(nameof(HttpRequestHeader.Authorization))]
+        [InlineData(ScriptConstants.SiteTokenHeaderName)]
+        public async Task InvokeFunction_FunctionLevel_ValidToken_Succeeds(string headerName)
         {
             // if an admin token is passed, the function invocation succeeds
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "api/HttpTrigger-FunctionAuth?code=test");
             string token = _fixture.Host.GenerateAdminJwtToken();
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            if (string.Compare(nameof(HttpRequestHeader.Authorization), headerName) == 0)
+            {
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            }
+            else
+            {
+                request.Headers.Add(headerName, token);
+            }
 
             var response = await _fixture.Host.HttpClient.SendAsync(request);
             response.EnsureSuccessStatusCode();

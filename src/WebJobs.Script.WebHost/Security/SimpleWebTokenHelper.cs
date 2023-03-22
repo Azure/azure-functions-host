@@ -24,10 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security
 
         internal static string Encrypt(string value, byte[] key = null, IEnvironment environment = null)
         {
-            if (key == null)
-            {
-                TryGetEncryptionKey(environment, EnvironmentSettingNames.WebSiteAuthEncryptionKey, out key);
-            }
+            key = key ?? SecretsUtility.GetEncryptionKey(environment);
 
             using (var aes = new AesManaged { Key = key })
             {
@@ -86,19 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security
 
         public static string Decrypt(string value, IEnvironment environment = null)
         {
-            if ((environment != null) && environment.IsKubernetesManagedHosting())
-            {
-                var encryptionKey = GetPodEncryptionKey(environment);
-                return Decrypt(encryptionKey, value);
-            }
-            // Use WebSiteAuthEncryptionKey if available else fallback to ContainerEncryptionKey.
-            // Until the container is specialized to a specific site WebSiteAuthEncryptionKey will not be available.
-            byte[] key;
-            if (!TryGetEncryptionKey(environment, EnvironmentSettingNames.WebSiteAuthEncryptionKey, out key, false))
-            {
-                TryGetEncryptionKey(environment, EnvironmentSettingNames.ContainerEncryptionKey, out key);
-            }
-
+            byte[] key = SecretsUtility.GetEncryptionKey(environment);
             return Decrypt(key, value);
         }
 
@@ -135,51 +120,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security
             {
                 return Convert.ToBase64String(sha256.ComputeHash(key));
             }
-        }
-
-        private static bool TryGetEncryptionKey(IEnvironment environment, string keyName, out byte[] encryptionKey, bool throwIfFailed = true)
-        {
-            environment = environment ?? SystemEnvironment.Instance;
-
-            encryptionKey = null;
-            var hexOrBase64 = environment.GetEnvironmentVariable(keyName);
-            if (string.IsNullOrEmpty(hexOrBase64))
-            {
-                if (throwIfFailed)
-                {
-                    throw new InvalidOperationException($"No {keyName} defined in the environment");
-                }
-
-                return false;
-            }
-
-            encryptionKey = hexOrBase64.ToKeyBytes();
-
-            return true;
-        }
-
-        private static byte[] GetPodEncryptionKey(IEnvironment environment)
-        {
-            var podEncryptionKey = environment.GetEnvironmentVariable(EnvironmentSettingNames.PodEncryptionKey);
-            if (string.IsNullOrEmpty(podEncryptionKey))
-            {
-                throw new Exception("Pod encryption key is empty.");
-            }
-            return Convert.FromBase64String(podEncryptionKey);
-        }
-
-        public static byte[] ToKeyBytes(this string hexOrBase64)
-        {
-            // only support 32 bytes (256 bits) key length
-            if (hexOrBase64.Length == 64)
-            {
-                return Enumerable.Range(0, hexOrBase64.Length)
-                    .Where(x => x % 2 == 0)
-                    .Select(x => Convert.ToByte(hexOrBase64.Substring(x, 2), 16))
-                    .ToArray();
-            }
-
-            return Convert.FromBase64String(hexOrBase64);
         }
     }
 }

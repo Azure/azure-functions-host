@@ -289,7 +289,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
             // add the required authentication headers
             request.Headers.Add(ContainerNameHeader, _containerName);
             request.Headers.Add(HostNameHeader, _hostNameProvider.Value);
-            request.Headers.Add(ScriptConstants.SiteTokenHeaderName, token);
+            request.Headers.Add(ScriptConstants.SiteRestrictedTokenHeaderName, token);
             request.Headers.Add(StampNameHeader, _stampName);
 
             return request;
