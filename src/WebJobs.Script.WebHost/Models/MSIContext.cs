@@ -12,5 +12,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
         public string MSISecret { get; set; }
 
         public IEnumerable<ManagedServiceIdentity> Identities { get; set; }
+
+        public ManagedServiceIdentity SystemAssignedIdentity { get; set; }
+
+        public IEnumerable<ManagedServiceIdentity> UserAssignedIdentities { get; set; }
+
+        public IEnumerable<ManagedServiceIdentity> DelegatedIdentities { get; set; }
     }
 }

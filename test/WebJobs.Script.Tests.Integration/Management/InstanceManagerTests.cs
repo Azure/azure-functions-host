@@ -619,6 +619,56 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         }
 
         [Fact]
+        public async Task SpecializeMsiSidecar_RequiredPropertiesInPayload()
+        {
+            var environment = new Dictionary<string, string>()
+            {
+                { EnvironmentSettingNames.MsiEndpoint, "http://localhost:8081" },
+                { EnvironmentSettingNames.MsiSecret, "secret" }
+            };
+            var assignmentContext = new HostAssignmentContext
+            {
+                SiteId = 1234,
+                SiteName = "TestSite",
+                Environment = environment,
+                IsWarmupRequest = false,
+                MSIContext = new MSIContext()
+                {
+                    SiteName = "TestSite",
+                    MSISecret = "TestSecret1234",
+                    Identities = new[] { new ManagedServiceIdentity() },
+                    SystemAssignedIdentity = new ManagedServiceIdentity(),
+                    DelegatedIdentities = new[] { new ManagedServiceIdentity() },
+                    UserAssignedIdentities = new[] { new ManagedServiceIdentity() },
+                }
+            };
+
+            static async void verifyProperties(HttpRequestMessage request, CancellationToken token)
+            {
+                var requestContent = await request.Content.ReadAsStringAsync(token);
+                var msiContext = JsonConvert.DeserializeObject<MSIContext>(requestContent);
+                Assert.NotNull(msiContext);
+                Assert.NotNull(msiContext.Identities);
+                Assert.NotNull(msiContext.SystemAssignedIdentity);
+                Assert.NotNull(msiContext.UserAssignedIdentities);
+                Assert.NotNull(msiContext.DelegatedIdentities);
+                Assert.True(!string.IsNullOrEmpty(msiContext.MSISecret));
+                Assert.True(!string.IsNullOrEmpty(msiContext.SiteName));
+            }
+
+            var instanceManager = GetInstanceManagerForMSISpecialization(assignmentContext, HttpStatusCode.OK, null, customAction: verifyProperties);
+
+            string error = await instanceManager.SpecializeMSISidecar(assignmentContext);
+            Assert.Null(error);
+
+            var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
+            Assert.Collection(logs,
+                p => Assert.StartsWith("MSI enabled status: True", p),
+                p => Assert.StartsWith("Specializing sidecar at http://localhost:8081", p),
+                p => Assert.StartsWith("Specialize MSI sidecar returned OK", p));
+        }
+
+        [Fact]
         public async Task SpecializeMSISidecar_NoOp_ForWarmup_Request()
         {
             var environment = new Dictionary<string, string>()
@@ -1252,7 +1302,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         }
 
         private AtlasInstanceManager GetInstanceManagerForMSISpecialization(HostAssignmentContext hostAssignmentContext,
-            HttpStatusCode httpStatusCode, IMeshServiceClient meshServiceClient)
+            HttpStatusCode httpStatusCode, IMeshServiceClient meshServiceClient, Action<HttpRequestMessage, CancellationToken> customAction = null)
         {
             var handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
 
@@ -1262,7 +1312,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 ItExpr.Is<HttpRequestMessage>(request => request.Method == HttpMethod.Post
                                                          && request.RequestUri.AbsoluteUri.Equals(msiEndpoint)
                                                          && request.Content != null),
-                ItExpr.IsAny<CancellationToken>()).ReturnsAsync(new HttpResponseMessage
+                ItExpr.IsAny<CancellationToken>())
+                .Callback<HttpRequestMessage, CancellationToken>((request, token) => customAction?.Invoke(request, token))
+                .ReturnsAsync(new HttpResponseMessage
                 {
                     StatusCode = httpStatusCode
                 });
