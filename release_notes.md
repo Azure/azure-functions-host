@@ -9,6 +9,7 @@
 - Update Java Worker Version to [2.10.0](https://github.com/Azure/azure-functions-java-worker/releases/tag/2.10.0)
 - Update PowerShell Worker 7.2 to 4.0.2719 [Release Note](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.2719)
 - Update Node.js Worker Version to [3.6.0](https://github.com/Azure/azure-functions-nodejs-worker/releases/tag/v3.6.0)
+- Update Node.js Worker Version to [3.6.1](https://github.com/Azure/azure-functions-nodejs-worker/releases/tag/v3.6.1)
 - Upgrade PowerShell language worker 7.0 to 4.0.2733 [Release Note](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.2733)
 - Support for HttpContext.RequestAborted cancellation token for Http requests (#9159)
 
