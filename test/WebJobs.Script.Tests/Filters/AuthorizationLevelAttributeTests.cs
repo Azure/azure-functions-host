@@ -8,6 +8,7 @@ using System.Net;
 using System.Net.Http;
 using System.Reflection;
 using System.Security.Cryptography;
+using System.ServiceModel.Channels;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -498,10 +499,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private static string EncryptSimpleWebToken(string value, byte[] key = null)
         {
-            if (key == null)
-            {
-                SimpleWebTokenHelper.TryGetEncryptionKey(EnvironmentSettingNames.WebsiteAuthEncryptionKey, out key);
-            }
+            key = key ?? SecretsUtility.GetEncryptionKey();
 
             using (var aes = new AesManaged { Key = key })
             {

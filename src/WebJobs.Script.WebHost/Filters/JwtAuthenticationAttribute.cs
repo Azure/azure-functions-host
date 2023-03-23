@@ -2,6 +2,8 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Threading;
@@ -9,8 +11,8 @@ using System.Threading.Tasks;
 using System.Web.Http.Filters;
 using Microsoft.Azure.Web.DataProtection;
 using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.IdentityModel.Tokens;
-using static Microsoft.Azure.WebJobs.Script.Config.ScriptSettingsManager;
 using static Microsoft.Azure.WebJobs.Script.EnvironmentSettingNames;
 using static Microsoft.Azure.WebJobs.Script.ScriptConstants;
 
@@ -23,23 +25,50 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
 
         public Task AuthenticateAsync(HttpAuthenticationContext context, CancellationToken cancellationToken)
         {
-            AuthenticationHeaderValue authorization = context.Request.Headers.Authorization;
-
-            if (authorization != null && string.Equals(authorization.Scheme, "Bearer", StringComparison.OrdinalIgnoreCase))
+            // By default, tokens are passed via the standard Authorization Bearer header. However we also support
+            // passing tokens via the x-ms-site-token header.
+            string token = null;
+            if (context.Request.Headers.TryGetValues(ScriptConstants.SiteTokenHeaderName, out IEnumerable<string> values))
             {
-                string defaultKey = Util.GetDefaultKeyValue();
-                if (defaultKey != null)
+                token = values.FirstOrDefault();
+            }
+            else
+            {
+                // check the standard Authorization header
+                AuthenticationHeaderValue authorization = context.Request.Headers.Authorization;
+                if (authorization != null && string.Equals(authorization.Scheme, "Bearer", StringComparison.OrdinalIgnoreCase))
+                {
+                    token = authorization.Parameter;
+                }
+            }
+
+            if (!string.IsNullOrEmpty(token))
+            {
+                if (SecretsUtility.TryGetEncryptionKey(out string key))
                 {
                     var validationParameters = new TokenValidationParameters()
                     {
-                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(defaultKey)),
+                        IssuerSigningKeys = new SecurityKey[]
+                        {
+                            new SymmetricSecurityKey(key.ToKeyBytes()),
+                            new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key))
+                        },
                         ValidateAudience = true,
                         ValidateIssuer = true,
-                        ValidAudience = string.Format(AdminJwtValidAudienceFormat, Instance.GetSetting(AzureWebsiteName)),
-                        ValidIssuer = string.Format(AdminJwtValidIssuerFormat, Instance.GetSetting(AzureWebsiteName))
+                        ValidAudiences = new string[]
+                        {
+                            string.Format(AdminJwtSiteFunctionsValidAudienceFormat, ScriptSettingsManager.Instance.GetSetting(AzureWebsiteName)),
+                            string.Format(AdminJwtSiteValidAudienceFormat, ScriptSettingsManager.Instance.GetSetting(AzureWebsiteName))
+                        },
+                        ValidIssuers = new string[]
+                        {
+                            AdminJwtAppServiceIssuer,
+                            string.Format(AdminJwtScmValidIssuerFormat, ScriptSettingsManager.Instance.GetSetting(AzureWebsiteName)),
+                            string.Format(AdminJwtSiteValidIssuerFormat, ScriptSettingsManager.Instance.GetSetting(AzureWebsiteName))
+                        }
                     };
 
-                    if (JwtGenerator.IsTokenValid(authorization.Parameter, validationParameters))
+                    if (JwtGenerator.IsTokenValid(token, validationParameters))
                     {
                         context.Request.SetAuthorizationLevel(AuthorizationLevel.Admin);
                     }
