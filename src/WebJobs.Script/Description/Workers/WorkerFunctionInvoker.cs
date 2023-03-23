@@ -102,14 +102,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
                 await BindOutputsAsync(triggerValue, context.Binder, result);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (invocationContext.ResultSource.Task.IsCanceled)
             {
-                if (invocationContext.ResultSource.Task.IsCanceled)
-                {
-                    throw new FunctionInvocationCanceledException(invocationId, ex);
-                }
-
-                // Otherwise let it fall back to ExceptionMiddleware with no change
+                // Only catch the exception when the task is cancelled, otherwise let it be handled by the ExceptionMiddleware
+                throw new FunctionInvocationCanceledException(invocationId, ex);
             }
 
             return result.Return;
