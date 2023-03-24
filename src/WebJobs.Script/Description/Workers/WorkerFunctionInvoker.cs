@@ -99,7 +99,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             try
             {
                 result = await invocationContext.ResultSource.Task;
-
             }
             catch (TaskCanceledException ex)
             {
