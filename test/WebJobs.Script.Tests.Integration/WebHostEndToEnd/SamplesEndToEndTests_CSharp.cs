@@ -27,6 +27,7 @@ using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using NuGet.Common;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
@@ -42,6 +43,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         {
             _fixture = fixture;
             _settingsManager = ScriptSettingsManager.Instance;
+        }
+
+        [Fact]
+        public async Task HostAdminApis_ValidAdminToken_Succeeds()
+        {
+            // verify with SWT
+            string uri = "admin/host/status";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
+            string token = SimpleWebTokenHelper.CreateToken(DateTime.UtcNow.AddMinutes(1));
+            request.Headers.Add(ScriptConstants.SiteRestrictedTokenHeaderName, token);
+            HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            // verify with JWT
+            request = new HttpRequestMessage(HttpMethod.Get, uri);
+            token = _fixture.Host.GenerateAdminJwtToken();
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            response = await _fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         }
 
         [Fact]
@@ -75,13 +95,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
                 // verify the token is valid by invoking an admin API
                 request = new HttpRequestMessage(HttpMethod.Get, "admin/host/status");
-                request.Headers.Add(ScriptConstants.SiteTokenHeaderName, token);
+                request.Headers.Add(ScriptConstants.SiteRestrictedTokenHeaderName, token);
                 response = await _fixture.Host.HttpClient.SendAsync(request);
                 Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
                 // verify it can't be used to invoke user functions
                 request = new HttpRequestMessage(HttpMethod.Get, uri);
-                request.Headers.Add(ScriptConstants.SiteTokenHeaderName, token);
+                request.Headers.Add(ScriptConstants.SiteRestrictedTokenHeaderName, token);
                 response = await _fixture.Host.HttpClient.SendAsync(request);
                 Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
             }
@@ -1125,11 +1145,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
                 // The legacy http tests use sync IO so explicitly allow this
                 var environment = new TestEnvironment();
+                string testSiteName = "somewebsite";
                 environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagAllowSynchronousIO);
-                environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName, "somewebsite");
+                environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName, testSiteName);
                 environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId, "e777fde04dea4eb931d5e5f06e65b4fdf5b375aed60af41dd7b491cf5792e01b");
                 environment.SetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformVersionWindows, "89.0.7.73");
                 environment.SetEnvironmentVariable(EnvironmentSettingNames.AntaresComputerName, "RD281878FCB8E7");
+
+                // have to set these statically here because some APIs in the host aren't going through IEnvironment
+                string key = TestHelpers.GenerateKeyHexString();
+                Environment.SetEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey, key);
+                Environment.SetEnvironmentVariable("AzureWebEncryptionKey", key);
+                Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName, testSiteName);
 
                 services.AddSingleton<IEnvironment>(_ => environment);
             }
