@@ -103,7 +103,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     configBuilder.Add(new HostJsonFileConfigurationSource(applicationOptions, SystemEnvironment.Instance, loggerFactory, metricsLogger));
                 }
-                // Adding hsoting config into job host configuration
+                // Adding hosting config into job host configuration
                 IConfiguration scriptHostConfiguration = applicationOptions.RootServiceProvider.GetService<IConfiguration>();
                 if (scriptHostConfiguration != null)
                 {

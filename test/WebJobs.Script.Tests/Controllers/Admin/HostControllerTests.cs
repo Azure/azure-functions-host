@@ -357,49 +357,5 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(expectedBody.State, (result.Value as ResumeStatus).State);
             scriptHostManagerMock.Verify(p => p.RestartHostAsync(It.IsAny<CancellationToken>()), Times.Never());
         }
-
-        //private ScaleManager CreateScaleManager()
-        //{
-        //    Mock<IScaleMonitorManager> scaleMonitorManager = new Mock<IScaleMonitorManager>();
-        //    Mock<IScaleMonitor> scaleMonitorMock = new Mock<IScaleMonitor>();
-        //    scaleMonitorMock.Setup(x => x.GetScaleStatus(It.IsAny<ScaleStatusContext>())).Returns(new ScaleStatus() { Vote = ScaleVote.ScaleIn });
-        //    scaleMonitorMock.Setup(x => x.Descriptor).Returns(new ScaleMonitorDescriptor("test", "test"));
-        //    scaleMonitorManager.Setup(x => x.GetMonitors()).Returns(new List<IScaleMonitor>() { scaleMonitorMock.Object });
-        //    Mock<ITargetScalerManager> targetScalerManager = new Mock<ITargetScalerManager>();
-        //    targetScalerManager.Setup(x => x.GetTargetScalers()).Returns(new List<ITargetScaler>());
-        //    Mock<IScaleMetricsRepository> mockScaleMetricsRepository = new Mock<IScaleMetricsRepository>();
-        //    mockScaleMetricsRepository.Setup(x => x.ReadMetricsAsync(It.IsAny<IEnumerable<IScaleMonitor>>())).Returns(() =>
-        //    {
-        //        var dic = new Dictionary<IScaleMonitor, IList<ScaleMetrics>>()
-        //        {
-        //            { scaleMonitorMock.Object, new List<ScaleMetrics>() { new ScaleMetrics() } }
-        //        };
-
-        //        return Task.FromResult((IDictionary<IScaleMonitor, IList<ScaleMetrics>>)dic);
-        //    });
-        //    Mock<IConcurrencyStatusRepository> concurrencyStatusRepository = new Mock<IConcurrencyStatusRepository>();
-        //    concurrencyStatusRepository.Setup(x => x.ReadAsync(It.IsAny<CancellationToken>())).Returns(() =>
-        //    {
-        //        return null;
-        //    });
-
-        //    IOptions<ScaleOptions> scaleOptions = Options.Create<ScaleOptions>(new ScaleOptions()
-        //    {
-        //        IsRuntimeScalingEnabled = true,
-        //        ScaleMetricsSampleInterval = TimeSpan.FromMilliseconds(1000)
-        //    });
-
-        //    ConfigurationBuilder configurationBuilder = new ConfigurationBuilder();
-        //    TestLoggerProvider testLoggerProvider = new TestLoggerProvider();
-
-        //    return new ScaleManager(
-        //        scaleMonitorManager.Object,
-        //        targetScalerManager.Object,
-        //        mockScaleMetricsRepository.Object,
-        //        concurrencyStatusRepository.Object,
-        //        scaleOptions,
-        //        _loggerFactory,
-        //        configurationBuilder.Build());
-        //}
     }
 }
