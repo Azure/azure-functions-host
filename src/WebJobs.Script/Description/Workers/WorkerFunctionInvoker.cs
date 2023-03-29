@@ -100,7 +100,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 result = await invocationContext.ResultSource.Task;
             }
-            catch (TaskCanceledException ex)
+            catch (OperationCanceledException ex)
             {
                 // Only catch the exception when the task is cancelled, otherwise let it be handled by the ExceptionMiddleware
                 throw new FunctionInvocationCanceledException(invocationId, ex);
