@@ -55,8 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
                 int nestedProxiesCount = GetNestedProxiesCount(context, functionExecution);
                 IActionResult result = await GetResultAsync(context, functionExecution);
 
-                // TODO: Create constant value for this var?
-                if (context.Items.TryGetValue("IsHttpProxying", out var value))
+                if (context.Items.TryGetValue(ScriptConstants.IsHttpProxyingEnabled, out var value))
                 {
                     if (value.ToString() == bool.TrueString)
                     {

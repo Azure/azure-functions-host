@@ -222,5 +222,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public static readonly string LiveLogsSessionAIKey = "#AzFuncLiveLogsSessionId";
 
         public static readonly string FunctionsHostingConfigSectionName = "FunctionsHostingConfig";
+
+        // HTTP Proxying constants
+        public static readonly string IsHttpProxyingEnabled = "IsHttpProxying";
     }
 }

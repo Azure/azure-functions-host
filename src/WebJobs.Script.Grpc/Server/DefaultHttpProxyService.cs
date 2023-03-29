@@ -8,6 +8,7 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Yarp.ReverseProxy.Forwarder;
 
 namespace Microsoft.Azure.WebJobs.Script.Grpc
@@ -18,7 +19,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private IHttpForwarder _httpForwarder;
         private HttpMessageInvoker _messageInvoker;
         private ForwarderRequestConfig _forwarderRequestConfig;
-        private string _proxyEndpoint;
 
         public DefaultHttpProxyService(IHttpForwarder httpForwarder)
         {
@@ -56,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             HttpContext httpContext = httpRequest.HttpContext;
 
-            httpContext.Items.Add("IsHttpProxying", bool.TrueString);
+            httpContext.Items.Add(RpcWorkerConstants.IsHttpProxyingEnabled, bool.TrueString);
 
             // add invocation id as correlation id
             // TODO: add "invocation-id" as a constant somewhere / maybe find a better name
