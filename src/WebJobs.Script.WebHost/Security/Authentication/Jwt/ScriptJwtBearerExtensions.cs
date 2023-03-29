@@ -3,6 +3,7 @@
 
 using System.Linq;
 using System.Security.Claims;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authentication;
@@ -73,21 +74,26 @@ namespace Microsoft.Extensions.DependencyInjection
         private static TokenValidationParameters CreateTokenValidationParameters()
         {
             var result = new TokenValidationParameters();
-            if (SecretsUtility.TryGetEncryptionKey(out byte[] key))
+            if (SecretsUtility.TryGetEncryptionKey(out string key))
             {
-                // TODO: Once ScriptSettingsManager is gone, Audience and Issuer shouold be pulled from configuration.
-                result.IssuerSigningKey = new SymmetricSecurityKey(key);
+                // TODO: Once ScriptSettingsManager is gone, Audience and Issuer should be pulled from configuration.
+                result.IssuerSigningKeys = new SecurityKey[]
+                {
+                    new SymmetricSecurityKey(key.ToKeyBytes()),
+                    new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key))
+                };
                 result.ValidateAudience = true;
                 result.ValidateIssuer = true;
                 result.ValidAudiences = new string[]
                 {
-                    string.Format(AdminJwtValidAudienceFormat, ScriptSettingsManager.Instance.GetSetting(AzureWebsiteName)),
-                    AdminJwtAppServiceIssuer
+                    string.Format(AdminJwtSiteFunctionsValidAudienceFormat, ScriptSettingsManager.Instance.GetSetting(AzureWebsiteName)),
+                    string.Format(AdminJwtSiteValidAudienceFormat, ScriptSettingsManager.Instance.GetSetting(AzureWebsiteName))
                 };
                 result.ValidIssuers = new string[]
                 {
-                    string.Format(AdminJwtValidIssuerFormat, ScriptSettingsManager.Instance.GetSetting(AzureWebsiteName)),
-                    AdminJwtAppServiceIssuer
+                    AdminJwtAppServiceIssuer,
+                    string.Format(AdminJwtScmValidIssuerFormat, ScriptSettingsManager.Instance.GetSetting(AzureWebsiteName)),
+                    string.Format(AdminJwtSiteValidIssuerFormat, ScriptSettingsManager.Instance.GetSetting(AzureWebsiteName))
                 };
             }
 

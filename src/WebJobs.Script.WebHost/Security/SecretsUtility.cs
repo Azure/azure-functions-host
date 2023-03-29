@@ -19,16 +19,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return secretsPath + $".{ScriptConstants.Snapshot}.{timeStamp}.json";
         }
 
-        public static bool TryGetEncryptionKey(out byte[] key, IEnvironment environment = null)
+        public static bool TryGetEncryptionKey(out string key, IEnvironment environment = null)
         {
             environment = environment ?? SystemEnvironment.Instance;
 
             if (environment.IsKubernetesManagedHosting())
             {
-                var podEncryptionKey = environment.GetEnvironmentVariable(EnvironmentSettingNames.PodEncryptionKey);
-                if (!string.IsNullOrEmpty(podEncryptionKey))
+                key = environment.GetEnvironmentVariable(EnvironmentSettingNames.PodEncryptionKey);
+                if (!string.IsNullOrEmpty(key))
                 {
-                    key = Convert.FromBase64String(podEncryptionKey);
                     return true;
                 }
             }
@@ -42,19 +41,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
 
             // Fall back to using DataProtection APIs to get the key
-            string defaultKey = Util.GetDefaultKeyValue();
-            if (!string.IsNullOrEmpty(defaultKey))
+            key = Util.GetDefaultKeyValue();
+            if (!string.IsNullOrEmpty(key))
             {
-                key = defaultKey.ToKeyBytes();
                 return true;
             }
 
             return false;
         }
 
-        public static byte[] GetEncryptionKey(IEnvironment environment = null)
+        public static string GetEncryptionKeyValue(IEnvironment environment = null)
         {
-            if (TryGetEncryptionKey(out byte[] key, environment))
+            if (TryGetEncryptionKey(out string key, environment))
             {
                 return key;
             }
@@ -62,6 +60,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 throw new InvalidOperationException($"No encryption key defined in the environment.");
             }
+        }
+
+        public static byte[] GetEncryptionKey(IEnvironment environment = null)
+        {
+            string key = GetEncryptionKeyValue(environment);
+            return key.ToKeyBytes();
         }
 
         public static byte[] ToKeyBytes(this string hexOrBase64)
@@ -78,18 +82,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return Convert.FromBase64String(hexOrBase64);
         }
 
-        private static bool TryGetEncryptionKey(IEnvironment environment, string keyName, out byte[] encryptionKey)
+        private static bool TryGetEncryptionKey(IEnvironment environment, string keyName, out string encryptionKey)
         {
-            encryptionKey = null;
-            var hexOrBase64 = environment.GetEnvironmentVariable(keyName);
-            if (string.IsNullOrEmpty(hexOrBase64))
-            {
-                return false;
-            }
-
-            encryptionKey = hexOrBase64.ToKeyBytes();
-
-            return true;
+            encryptionKey = environment.GetEnvironmentVariable(keyName);
+            return !string.IsNullOrEmpty(encryptionKey);
         }
     }
 }
