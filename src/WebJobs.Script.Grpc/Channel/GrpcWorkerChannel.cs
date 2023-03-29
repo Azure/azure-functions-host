@@ -86,6 +86,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private bool? _cancelCapabilityEnabled;
         private bool _isWorkerApplicationInsightsLoggingEnabled;
         private IHttpProxyService _httpProxyService;
+        private string _httpProxyEndpoint;
 
         private System.Timers.Timer _timer;
 
@@ -421,9 +422,10 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
 
             // If http proxying is enabled, we need to get the proxying endpoint of this worker
-            if (!string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.EnableHttpProxying)))
+            var proxyPort = _workerCapabilities.GetCapabilityState(RpcWorkerConstants.HttpProxyingPort);
+            if (!string.IsNullOrEmpty(proxyPort))
             {
-                _initMessage.WorkerMetadata.CustomProperties.GetValueOrDefault(RpcWorkerConstants.HttpProxyPortKey);
+                _httpProxyEndpoint = "http://localhost:" + proxyPort;
             }
 
             _workerInitTask.TrySetResult(true);
@@ -742,9 +744,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     context.CancellationToken.Register(() => SendInvocationCancel(invocationRequest.InvocationId));
                 }
 
-                if (!string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.EnableHttpProxying)) && context.FunctionMetadata.IsHttpTriggerFunction())
+                if (!string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.HttpProxyingPort)) && context.FunctionMetadata.IsHttpTriggerFunction())
                 {
-                    var aspNetTask = _httpProxyService.Forward(context);
+                    var aspNetTask = _httpProxyService.Forward(context, _httpProxyEndpoint);
 
                     context.Properties.Add("HttpProxyingTask", aspNetTask);
                 }

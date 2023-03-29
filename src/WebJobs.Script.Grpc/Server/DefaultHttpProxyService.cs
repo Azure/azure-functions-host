@@ -27,11 +27,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _handler = new SocketsHttpHandler();
             _messageInvoker = new HttpMessageInvoker(_handler);
             _forwarderRequestConfig = new ForwarderRequestConfig();
-
-            // TODO: Update this logic. Port should come through configuration.
-            var port = Environment.GetEnvironmentVariable("AZURE_FUNCTIONS_HTTP_PROXY_PORT") ?? "5555";
-
-            _proxyEndpoint = "http://localhost:" + port;
         }
 
         public void Dispose()
@@ -40,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _messageInvoker?.Dispose();
         }
 
-        public ValueTask<ForwarderError> Forward(ScriptInvocationContext context)
+        public ValueTask<ForwarderError> Forward(ScriptInvocationContext context, string httpProxyEndpoint)
         {
             if (context is null)
             {
@@ -67,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             // TODO: add "invocation-id" as a constant somewhere / maybe find a better name
             httpRequest.Headers.TryAdd("invocation-id", context.ExecutionContext.InvocationId.ToString());
 
-            var aspNetTask = _httpForwarder.SendAsync(httpContext, _proxyEndpoint, _messageInvoker, _forwarderRequestConfig);
+            var aspNetTask = _httpForwarder.SendAsync(httpContext, httpProxyEndpoint, _messageInvoker, _forwarderRequestConfig);
 
             return aspNetTask;
         }
