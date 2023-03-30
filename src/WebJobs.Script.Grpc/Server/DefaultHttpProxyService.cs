@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _messageInvoker?.Dispose();
         }
 
-        public ValueTask<ForwarderError> Forward(ScriptInvocationContext context, string httpProxyEndpoint)
+        public ValueTask<ForwarderError> Forward(ScriptInvocationContext context, Uri httpUri)
         {
             if (context is null)
             {
@@ -62,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             // TODO: add "invocation-id" as a constant somewhere / maybe find a better name
             httpRequest.Headers.TryAdd("invocation-id", context.ExecutionContext.InvocationId.ToString());
 
-            var aspNetTask = _httpForwarder.SendAsync(httpContext, httpProxyEndpoint, _messageInvoker, _forwarderRequestConfig);
+            var aspNetTask = _httpForwarder.SendAsync(httpContext, httpUri.ToString(), _messageInvoker, _forwarderRequestConfig);
 
             return aspNetTask;
         }
