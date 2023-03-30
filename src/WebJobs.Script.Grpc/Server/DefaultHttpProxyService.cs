@@ -59,8 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             httpContext.Items.Add(RpcWorkerConstants.IsHttpProxyingEnabled, bool.TrueString);
 
             // add invocation id as correlation id
-            // TODO: add "invocation-id" as a constant somewhere / maybe find a better name
-            httpRequest.Headers.TryAdd("invocation-id", context.ExecutionContext.InvocationId.ToString());
+            httpRequest.Headers.TryAdd(ScriptConstants.HttpProxyCorrelationHeader, context.ExecutionContext.InvocationId.ToString());
 
             var aspNetTask = _httpForwarder.SendAsync(httpContext, httpUri.ToString(), _messageInvoker, _forwarderRequestConfig);
 
