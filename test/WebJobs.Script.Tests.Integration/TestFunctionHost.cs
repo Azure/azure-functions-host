@@ -409,14 +409,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             return await response.Content.ReadAsAsync<HostStatus>();
         }
 
-        public string GenerateAdminJwtToken(string audience = null, string issuer = null)
+        public string GenerateAdminJwtToken(string audience = null, string issuer = null, byte[] key = null)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
-            byte[] key = SecretsUtility.GetEncryptionKey();
+            key = key ?? SecretsUtility.GetEncryptionKey();
             var tokenDescriptor = new SecurityTokenDescriptor
             {
-                Audience = audience ?? string.Format(ScriptConstants.AdminJwtValidAudienceFormat, Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName)),
-                Issuer = issuer ?? string.Format(ScriptConstants.AdminJwtValidIssuerFormat, Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName)),
+                Audience = audience ?? string.Format(ScriptConstants.AdminJwtSiteFunctionsValidAudienceFormat, Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName)),
+                Issuer = issuer ?? string.Format(ScriptConstants.AdminJwtScmValidIssuerFormat, Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName)),
                 Expires = DateTime.UtcNow.AddHours(1),
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
             };

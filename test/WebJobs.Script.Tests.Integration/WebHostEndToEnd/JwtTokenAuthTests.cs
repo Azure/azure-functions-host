@@ -6,6 +6,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
@@ -30,10 +31,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
 
         [Theory]
         [InlineData(nameof(HttpRequestHeader.Authorization))]
-        [InlineData(nameof(HttpRequestHeader.Authorization), ScriptConstants.AdminJwtAppServiceIssuer, ScriptConstants.AdminJwtAppServiceIssuer)]
+        [InlineData(nameof(HttpRequestHeader.Authorization), "https://appservice.core.azurewebsites.net", "https://testsite.azurewebsites.net")]
+        [InlineData(nameof(HttpRequestHeader.Authorization), "https://appservice.core.azurewebsites.net", "https://testsite.azurewebsites.net/azurefunctions")]
+        [InlineData(nameof(HttpRequestHeader.Authorization), "https://testsite.scm.azurewebsites.net", "https://testsite.azurewebsites.net")]
+        [InlineData(nameof(HttpRequestHeader.Authorization), "https://testsite.scm.azurewebsites.net", "https://testsite.azurewebsites.net/azurefunctions")]
+        [InlineData(nameof(HttpRequestHeader.Authorization), "https://testsite.azurewebsites.net", "https://testsite.azurewebsites.net")]
         [InlineData(ScriptConstants.SiteTokenHeaderName)]
-        [InlineData(ScriptConstants.SiteTokenHeaderName, ScriptConstants.AdminJwtAppServiceIssuer, ScriptConstants.AdminJwtAppServiceIssuer)]
-        public async Task InvokeAdminApi_ValidToken_Succeeds(string headerName, string audience = null, string issuer = null)
+        [InlineData(ScriptConstants.SiteTokenHeaderName, "https://appservice.core.azurewebsites.net", "https://testsite.azurewebsites.net")]
+        [InlineData(ScriptConstants.SiteTokenHeaderName, "https://appservice.core.azurewebsites.net", "https://testsite.azurewebsites.net/azurefunctions")]
+        [InlineData(ScriptConstants.SiteTokenHeaderName, "https://testsite.scm.azurewebsites.net", "https://testsite.azurewebsites.net")]
+        [InlineData(ScriptConstants.SiteTokenHeaderName, "https://testsite.scm.azurewebsites.net", "https://testsite.azurewebsites.net/azurefunctions")]
+        [InlineData(ScriptConstants.SiteTokenHeaderName, "https://testsite.azurewebsites.net", "https://testsite.azurewebsites.net")]
+        public async Task InvokeAdminApi_ValidToken_Succeeds(string headerName, string issuer = null, string audience = null)
         {
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "admin/host/status");
             string token = _fixture.Host.GenerateAdminJwtToken(audience, issuer);
@@ -70,6 +79,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
 
             var response = await _fixture.Host.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task InvokeAdminApi_ValidToken_UTF8Encoding_Succeeds()
+        {
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "admin/host/status");
+            string key = SecretsUtility.GetEncryptionKeyValue();
+            string token = _fixture.Host.GenerateAdminJwtToken(key: Encoding.UTF8.GetBytes(key));
+            request.Headers.Add(ScriptConstants.SiteTokenHeaderName, token);
+
+            var response = await _fixture.Host.HttpClient.SendAsync(request);
+            response.EnsureSuccessStatusCode();
         }
 
         public class TestFixture : EndToEndTestFixture
