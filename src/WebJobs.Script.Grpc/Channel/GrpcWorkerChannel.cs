@@ -8,9 +8,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Net.Http;
 using System.Reactive.Linq;
-using System.Reflection.Metadata;
 using System.Text;
 using System.Threading;
 using System.Threading.Channels;
@@ -18,7 +16,6 @@ using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Google.Protobuf.Collections;
 using Google.Protobuf.WellKnownTypes;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -926,14 +923,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             {
                 if (invokeResponse.Result.IsInvocationSuccess(context.ResultSource, capabilityEnabled))
                 {
-                    // TODO: We need to check if the Asp.Net pipeline completed successfully or not
                     if (context.Properties.TryGetValue("HttpProxyingTask", out ValueTask<ForwarderError> httpProxyTask))
                     {
                         ForwarderError httpProxyTaskResult = await httpProxyTask;
 
                         if (httpProxyTaskResult is not ForwarderError.None)
                         {
-                            // how do we handle this error if Functions pipeline suceeded and this failed?
+                            // TODO: Understand scenarios where function invocation succeeds but there is an error proxying
+                            // need to investigate different ForwarderErrors and consider how they will be relayed through other services and to users
                         }
                     }
 

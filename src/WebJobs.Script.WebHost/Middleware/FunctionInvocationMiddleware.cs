@@ -72,7 +72,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
                 }
 
                 ActionContext actionContext = new ActionContext(context, context.GetRouteData(), new ActionDescriptor());
-
                 await result.ExecuteResultAsync(actionContext);
             }
         }
