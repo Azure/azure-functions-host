@@ -8,6 +8,7 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Yarp.ReverseProxy.Forwarder;
 
 namespace Microsoft.Azure.WebJobs.Script.Grpc
@@ -18,7 +19,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private IHttpForwarder _httpForwarder;
         private HttpMessageInvoker _messageInvoker;
         private ForwarderRequestConfig _forwarderRequestConfig;
-        private string _proxyEndpoint;
 
         public DefaultHttpProxyService(IHttpForwarder httpForwarder)
         {
@@ -27,11 +27,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _handler = new SocketsHttpHandler();
             _messageInvoker = new HttpMessageInvoker(_handler);
             _forwarderRequestConfig = new ForwarderRequestConfig();
-
-            // TODO: Update this logic. Port should come through configuration.
-            var port = Environment.GetEnvironmentVariable("AZURE_FUNCTIONS_HTTP_PROXY_PORT") ?? "5555";
-
-            _proxyEndpoint = "http://localhost:" + port;
         }
 
         public void Dispose()
@@ -40,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _messageInvoker?.Dispose();
         }
 
-        public ValueTask<ForwarderError> Forward(ScriptInvocationContext context)
+        public ValueTask<ForwarderError> Forward(ScriptInvocationContext context, Uri httpUri)
         {
             if (context is null)
             {
@@ -61,13 +56,12 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             HttpContext httpContext = httpRequest.HttpContext;
 
-            httpContext.Items.Add("IsHttpProxying", bool.TrueString);
+            httpContext.Items.Add(ScriptConstants.IsHttpProxyingEnabled, bool.TrueString);
 
             // add invocation id as correlation id
-            // TODO: add "invocation-id" as a constant somewhere / maybe find a better name
-            httpRequest.Headers.TryAdd("invocation-id", context.ExecutionContext.InvocationId.ToString());
+            httpRequest.Headers.TryAdd(ScriptConstants.HttpProxyCorrelationHeader, context.ExecutionContext.InvocationId.ToString());
 
-            var aspNetTask = _httpForwarder.SendAsync(httpContext, _proxyEndpoint, _messageInvoker, _forwarderRequestConfig);
+            var aspNetTask = _httpForwarder.SendAsync(httpContext, httpUri.ToString(), _messageInvoker, _forwarderRequestConfig);
 
             return aspNetTask;
         }
