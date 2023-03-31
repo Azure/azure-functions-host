@@ -87,6 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private bool _isWorkerApplicationInsightsLoggingEnabled;
         private IHttpProxyService _httpProxyService;
         private Uri _httpProxyEndpoint;
+        private bool _isHttpProxyingWorker = false;
 
         private System.Timers.Timer _timer;
 
@@ -426,6 +427,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             if (!string.IsNullOrEmpty(httpUri))
             {
                 _httpProxyEndpoint = new Uri(httpUri);
+                _isHttpProxyingWorker = true;
             }
 
             _workerInitTask.TrySetResult(true);
@@ -744,7 +746,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     context.CancellationToken.Register(() => SendInvocationCancel(invocationRequest.InvocationId));
                 }
 
-                if (!string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.HttpUri)) && context.FunctionMetadata.IsHttpTriggerFunction())
+                if (_isHttpProxyingWorker && context.FunctionMetadata.IsHttpTriggerFunction())
                 {
                     var aspNetTask = _httpProxyService.Forward(context, _httpProxyEndpoint);
 

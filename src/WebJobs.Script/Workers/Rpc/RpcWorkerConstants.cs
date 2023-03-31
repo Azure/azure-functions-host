@@ -78,8 +78,5 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         // Language worker warmup
         public const string WorkerWarmupEnabled = "WORKER_WARMUP_ENABLED";
-
-        // HTTP Proxying
-        public const string IsHttpProxyingEnabled = "IsHttpProxying";
     }
 }
