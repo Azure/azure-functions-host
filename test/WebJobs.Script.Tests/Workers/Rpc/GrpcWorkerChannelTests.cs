@@ -57,6 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         private readonly IOptions<WorkerConcurrencyOptions> _workerConcurrencyOptions;
         private readonly ITestOutputHelper _testOutput;
         private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions;
+        private readonly IHttpProxyService _httpProxyService;
         private GrpcWorkerChannel _workerChannel;
 
         public GrpcWorkerChannelTests(ITestOutputHelper testOutput)
@@ -118,7 +119,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _hostOptionsMonitor,
                _sharedMemoryManager,
                _workerConcurrencyOptions,
-               _hostingConfigOptions);
+               _hostingConfigOptions,
+               _httpProxyService);
 
             if (autoStart)
             {
@@ -284,7 +286,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _hostOptionsMonitor,
                _sharedMemoryManager,
                _workerConcurrencyOptions,
-               _hostingConfigOptions);
+               _hostingConfigOptions,
+               _httpProxyService);
             await Assert.ThrowsAsync<FileNotFoundException>(async () => await _workerChannel.StartWorkerProcessAsync(CancellationToken.None));
         }
 
@@ -508,7 +511,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _hostOptionsMonitor,
                _sharedMemoryManager,
                _workerConcurrencyOptions,
-               _hostingConfigOptions);
+               _hostingConfigOptions,
+               _httpProxyService);
             channel.SetupFunctionInvocationBuffers(GetTestFunctionsList("node"));
             ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(invocationId, resultSource);
             await channel.SendInvocationRequest(scriptInvocationContext);
@@ -1170,7 +1174,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _hostOptionsMonitor,
                _sharedMemoryManager,
                _workerConcurrencyOptions,
-               _hostingConfigOptions);
+               _hostingConfigOptions,
+               _httpProxyService);
 
             IEnumerable<TimeSpan> latencyHistory = null;
 
@@ -1209,7 +1214,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _hostOptionsMonitor,
                _sharedMemoryManager,
                _workerConcurrencyOptions,
-               _hostingConfigOptions);
+               _hostingConfigOptions,
+               _httpProxyService);
 
             // wait 10 seconds
             await Task.Delay(10000);
