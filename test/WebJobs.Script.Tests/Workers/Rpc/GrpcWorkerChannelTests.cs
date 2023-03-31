@@ -57,6 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         private readonly IOptions<WorkerConcurrencyOptions> _workerConcurrencyOptions;
         private readonly ITestOutputHelper _testOutput;
         private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions;
+        private readonly Mock<IHttpProxyService> _mockHttpProxyService = new Mock<IHttpProxyService>();
         private readonly IHttpProxyService _httpProxyService;
         private GrpcWorkerChannel _workerChannel;
 
@@ -103,6 +104,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _testEnvironment.SetEnvironmentVariable("APPLICATIONINSIGHTS_ENABLE_AGENT", "true");
 
             _hostingConfigOptions = Options.Create(new FunctionsHostingConfigOptions());
+
+            _httpProxyService = _mockHttpProxyService.Object;
         }
 
         private Task CreateDefaultWorkerChannel(bool autoStart = true, IDictionary<string, string> capabilities = null)
