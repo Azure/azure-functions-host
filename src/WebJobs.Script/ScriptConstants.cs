@@ -95,7 +95,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AntaresLogIdHeaderName = "X-ARR-LOG-ID";
         public const string AntaresScaleOutHeaderName = "X-FUNCTION-SCALEOUT";
         public const string AntaresColdStartHeaderName = "X-MS-COLDSTART";
-        public const string SiteTokenHeaderName = "x-ms-site-restricted-token";
+        public const string SiteTokenHeaderName = "x-ms-site-token";
+        public const string SiteRestrictedTokenHeaderName = "x-ms-site-restricted-token";
         public const string EasyAuthIdentityHeader = "x-ms-client-principal";
         public const string AntaresPlatformInternal = "x-ms-platform-internal";
         public const string AzureVersionHeader = "x-ms-version";
@@ -123,8 +124,11 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string FeatureFlagEnableMultiLanguageWorker = "EnableMultiLanguageWorker";
         public const string FeatureFlagEnableLinuxEPExecutionCount = "EnableLinuxFEC";
 
-        public const string AdminJwtValidAudienceFormat = "https://{0}.azurewebsites.net/azurefunctions";
-        public const string AdminJwtValidIssuerFormat = "https://{0}.scm.azurewebsites.net";
+        public const string AdminJwtSiteFunctionsValidAudienceFormat = "https://{0}.azurewebsites.net/azurefunctions";
+        public const string AdminJwtSiteValidAudienceFormat = "https://{0}.azurewebsites.net";
+        public const string AdminJwtScmValidIssuerFormat = "https://{0}.scm.azurewebsites.net";
+        public const string AdminJwtSiteValidIssuerFormat = "https://{0}.azurewebsites.net";
+        public const string AdminJwtAppServiceIssuer = "https://appservice.core.azurewebsites.net";
 
         public const string AzureFunctionsSystemDirectoryName = ".azurefunctions";
         public const string HttpMethodConstraintName = "httpMethod";

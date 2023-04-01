@@ -12,20 +12,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Helpers
     public class SimpleWebTokenTests : IDisposable
     {
         [Fact]
-        public void EncryptShouldThrowIdNoEncryptionKeyDefined()
+        public void EncryptShouldThrowIfNoEncryptionKeyDefined()
         {
             // Make sure WEBSITE_AUTH_ENCRYPTION_KEY is empty
             Environment.SetEnvironmentVariable("WEBSITE_AUTH_ENCRYPTION_KEY", string.Empty);
 
-            try
+            var ex = Assert.Throws<InvalidOperationException>(() =>
             {
                 SimpleWebTokenHelper.Encrypt("value");
-            }
-            catch (Exception ex)
-            {
-                Assert.IsType<InvalidOperationException>(ex);
-                Assert.Contains("WEBSITE_AUTH_ENCRYPTION_KEY", ex.Message);
-            }
+            });
+            Assert.Equal("No encryption key defined in the environment.", ex.Message);
         }
 
         [Theory]

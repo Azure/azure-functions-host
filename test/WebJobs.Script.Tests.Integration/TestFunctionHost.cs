@@ -15,7 +15,6 @@ using System.Xml;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
-using Microsoft.Azure.Web.DataProtection;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Models;
@@ -404,15 +403,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             return await response.Content.ReadAsAsync<HostStatus>();
         }
 
-        public string GenerateAdminJwtToken()
+        public string GenerateAdminJwtToken(string audience = null, string issuer = null, byte[] key = null)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
-            string defaultKey = Util.GetDefaultKeyValue();
-            var key = Encoding.ASCII.GetBytes(defaultKey);
+            key = key ?? SecretsUtility.GetEncryptionKey();
             var tokenDescriptor = new SecurityTokenDescriptor
             {
-                Audience = string.Format(ScriptConstants.AdminJwtValidAudienceFormat, Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName)),
-                Issuer = string.Format(ScriptConstants.AdminJwtValidIssuerFormat, Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName)),
+                Audience = audience ?? string.Format(ScriptConstants.AdminJwtSiteFunctionsValidAudienceFormat, Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName)),
+                Issuer = issuer ?? string.Format(ScriptConstants.AdminJwtScmValidIssuerFormat, Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName)),
                 Expires = DateTime.UtcNow.AddHours(1),
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
             };
