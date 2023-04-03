@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IdentityModel.Tokens.Jwt;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -15,7 +14,6 @@ using System.Xml;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
-using Microsoft.Azure.Web.DataProtection;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Models;
@@ -24,6 +22,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
+using Microsoft.Azure.WebJobs.Script.WebHost.Security;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
@@ -34,7 +33,6 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.Tokens;
 using Microsoft.WebJobs.Script.Tests;
 using Newtonsoft.Json.Linq;
 using IApplicationLifetime = Microsoft.AspNetCore.Hosting.IApplicationLifetime;
@@ -411,19 +409,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public string GenerateAdminJwtToken(string audience = null, string issuer = null, byte[] key = null)
         {
-            var tokenHandler = new JwtSecurityTokenHandler();
-            key = key ?? SecretsUtility.GetEncryptionKey();
-            var tokenDescriptor = new SecurityTokenDescriptor
-            {
-                Audience = audience ?? string.Format(ScriptConstants.AdminJwtSiteFunctionsValidAudienceFormat, Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName)),
-                Issuer = issuer ?? string.Format(ScriptConstants.AdminJwtScmValidIssuerFormat, Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName)),
-                Expires = DateTime.UtcNow.AddHours(1),
-                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
-            };
-            var token = tokenHandler.CreateToken(tokenDescriptor);
-            string tokenHeaderValue = tokenHandler.WriteToken(token);
+            audience = audience ?? string.Format(ScriptConstants.SiteAzureFunctionsUriFormat, Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName));
+            issuer = issuer ?? string.Format(ScriptConstants.ScmSiteUriFormat, Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName));
 
-            return tokenHeaderValue;
+            return JwtTokenHelper.CreateToken(DateTime.UtcNow.AddHours(1), audience, issuer, key);
         }
 
         public void Dispose()
