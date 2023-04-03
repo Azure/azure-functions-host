@@ -3,9 +3,6 @@
 
 using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Script.Configuration;
-using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
-using Microsoft.Extensions.Configuration;
-using Moq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
@@ -20,11 +17,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         public void ScaleOptionsSetup_Works_As_Expected(bool runtimeScaleMonitoringEnabled, bool targetBaseScalingEnabled)
         {
             var testEnvironment = new TestEnvironment();
-            var testMetricLogger = new TestMetricsLogger();
-            var configurationBuilder = new ConfigurationBuilder()
-                .Add(new ScriptEnvironmentVariablesConfigurationSource());
-            var configuration = configurationBuilder.Build();
-            var testProfileManager = new Mock<IWorkerProfileManager>();
 
             if (runtimeScaleMonitoringEnabled)
             {
@@ -43,7 +35,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             if (runtimeScaleMonitoringEnabled)
             {
                 Assert.Equal(runtimeScaleMonitoringEnabled, options.IsRuntimeScalingEnabled);
-                testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsRuntimeScaleMonitoringEnabled, "1");
             }
             if (!targetBaseScalingEnabled)
             {
