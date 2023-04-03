@@ -65,6 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string ColdStartEventName = "ColdStart";
         public const string ShutdownRecoveryEventName = "ShutdownRecovery";
 
+        public const string SiteRestrictedTokenHeaderName = "x-ms-site-restricted-token";
         public const string SiteTokenHeaderName = "x-ms-site-token";
         public const string AntaresARMRequestTrackingIdHeader = "x-ms-arm-request-tracking-id";
         public const string AntaresARMExtensionsRouteHeader = "X-MS-VIA-EXTENSIONS-ROUTE";
@@ -83,11 +84,10 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string FeatureFlagDisableShadowCopy = "DisableShadowCopy";
         public const string FeatureFlagsEnableDynamicExtensionLoading = "EnableDynamicExtensionLoading";
 
-        public const string AdminJwtSiteFunctionsValidAudienceFormat = "https://{0}.azurewebsites.net/azurefunctions";
-        public const string AdminJwtSiteValidAudienceFormat = "https://{0}.azurewebsites.net";
-        public const string AdminJwtScmValidIssuerFormat = "https://{0}.scm.azurewebsites.net";
-        public const string AdminJwtSiteValidIssuerFormat = "https://{0}.azurewebsites.net";
-        public const string AdminJwtAppServiceIssuer = "https://appservice.core.azurewebsites.net";
+        public const string SiteAzureFunctionsUriFormat = "https://{0}.azurewebsites.net/azurefunctions";
+        public const string ScmSiteUriFormat = "https://{0}.scm.azurewebsites.net";
+        public const string SiteUriFormat = "https://{0}.azurewebsites.net";
+        public const string AppServiceCoreUri = "https://appservice.core.azurewebsites.net";
 
         public const string SwaggerFileName = "swagger.json";
         public const string AzureFunctionsSystemDirectoryName = ".azurefunctions";

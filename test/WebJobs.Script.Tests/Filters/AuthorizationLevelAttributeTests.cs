@@ -406,7 +406,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var attribute = new AuthorizationLevelAttribute(AuthorizationLevel.Admin);
 
             HttpRequestMessage request = new HttpRequestMessage();
-            request.Headers.Add(AuthorizationLevelAttribute.ArmTokenHeaderName, token);
+            request.Headers.Add(ScriptConstants.SiteRestrictedTokenHeaderName, token);
             var actionContext = CreateActionContext(typeof(TestController).GetMethod(nameof(TestController.Get)), HttpConfig);
             actionContext.ControllerContext.Request = request;
 
@@ -429,7 +429,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var attribute = new AuthorizationLevelAttribute(AuthorizationLevel.Admin);
 
             HttpRequestMessage request = new HttpRequestMessage();
-            request.Headers.Add(AuthorizationLevelAttribute.ArmTokenHeaderName, token);
+            request.Headers.Add(ScriptConstants.SiteRestrictedTokenHeaderName, token);
             var actionContext = CreateActionContext(typeof(TestController).GetMethod(nameof(TestController.Get)), HttpConfig);
             actionContext.ControllerContext.Request = request;
 
@@ -453,7 +453,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var attribute = new AuthorizationLevelAttribute(AuthorizationLevel.Admin);
 
             HttpRequestMessage request = new HttpRequestMessage();
-            request.Headers.Add(AuthorizationLevelAttribute.ArmTokenHeaderName, token);
+            request.Headers.Add(ScriptConstants.SiteRestrictedTokenHeaderName, token);
             var actionContext = CreateActionContext(typeof(TestController).GetMethod(nameof(TestController.Get)), HttpConfig);
             actionContext.ControllerContext.Request = request;
 

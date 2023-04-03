@@ -54,8 +54,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Filters
         [InlineData(ScriptConstants.SiteTokenHeaderName, "https://testsite.azurewebsites.net", "https://testsite.azurewebsites.net")]
         public async Task AuthenticateAsync_WithValidToken_SetsAdminAuthorizationLevel(string headerName, string issuer = null, string audience = null)
         {
-            issuer = issuer ?? string.Format(AdminJwtScmValidIssuerFormat, Instance.GetSetting(AzureWebsiteName));
-            audience = audience ?? string.Format(AdminJwtSiteFunctionsValidAudienceFormat, Instance.GetSetting(AzureWebsiteName));
+            issuer = issuer ?? string.Format(ScmSiteUriFormat, Instance.GetSetting(AzureWebsiteName));
+            audience = audience ?? string.Format(SiteAzureFunctionsUriFormat, Instance.GetSetting(AzureWebsiteName));
 
             string token = JwtGenerator.GenerateToken(issuer, audience, expires: DateTime.UtcNow.AddMinutes(10));
 
@@ -68,8 +68,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Filters
         [InlineData(10, null, "invalid")]
         public async Task AuthenticateAsync_InvalidToken_DoesNotSetAuthorizationLevel(int expiry, string issuer = null, string audience = null)
         {
-            issuer = issuer ?? string.Format(AdminJwtScmValidIssuerFormat, Instance.GetSetting(AzureWebsiteName));
-            audience = audience ?? string.Format(AdminJwtSiteFunctionsValidAudienceFormat, Instance.GetSetting(AzureWebsiteName));
+            issuer = issuer ?? string.Format(ScmSiteUriFormat, Instance.GetSetting(AzureWebsiteName));
+            audience = audience ?? string.Format(SiteAzureFunctionsUriFormat, Instance.GetSetting(AzureWebsiteName));
 
             string token = JwtGenerator.GenerateToken(issuer, audience, expires: DateTime.UtcNow.AddMinutes(expiry), notBefore: DateTime.UtcNow.AddHours(-1));
 
@@ -79,8 +79,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Filters
         [Fact]
         public async Task AuthenticateAsync_WithValidToken_Base64Encoding_SetsAdminAuthorizationLevel()
         {
-            string issuer = string.Format(AdminJwtScmValidIssuerFormat, Instance.GetSetting(AzureWebsiteName));
-            string audience = string.Format(AdminJwtSiteFunctionsValidAudienceFormat, Instance.GetSetting(AzureWebsiteName));
+            string issuer = string.Format(ScmSiteUriFormat, Instance.GetSetting(AzureWebsiteName));
+            string audience = string.Format(SiteUriFormat, Instance.GetSetting(AzureWebsiteName));
 
             string key = SecretsUtility.GetEncryptionKeyValue();
             var signingCredentials = new SigningCredentials(new SymmetricSecurityKey(key.ToKeyBytes()), "http://www.w3.org/2001/04/xmldsig-more#hmac-sha256");

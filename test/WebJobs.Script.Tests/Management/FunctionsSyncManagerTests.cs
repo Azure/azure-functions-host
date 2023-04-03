@@ -238,6 +238,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 // verify expected headers
                 Assert.Equal(ScriptConstants.FunctionsUserAgent, _mockHttpHandler.LastRequest.Headers.UserAgent.ToString());
                 Assert.True(_mockHttpHandler.LastRequest.Headers.Contains(ScriptConstants.AntaresLogIdHeaderName));
+                Assert.NotEmpty(_mockHttpHandler.LastRequest.Headers.GetValues(ScriptConstants.SiteRestrictedTokenHeaderName));
+                Assert.NotEmpty(_mockHttpHandler.LastRequest.Headers.GetValues(ScriptConstants.SiteTokenHeaderName));
 
                 if (cacheEnabled)
                 {

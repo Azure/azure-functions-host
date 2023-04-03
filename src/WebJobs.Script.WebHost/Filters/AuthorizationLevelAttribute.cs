@@ -20,7 +20,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
     public class AuthorizationLevelAttribute : AuthorizationFilterAttribute
     {
         public const string FunctionsKeyHeaderName = "x-functions-key";
-        public const string ArmTokenHeaderName = "x-ms-site-restricted-token";
 
         public AuthorizationLevelAttribute(AuthorizationLevel level)
         {
@@ -94,7 +93,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
 
         internal static string GetArmTokenHeader(HttpActionContext actionContext)
         {
-            if (actionContext.Request.Headers.TryGetValues(ArmTokenHeaderName, out IEnumerable<string> values))
+            if (actionContext.Request.Headers.TryGetValues(ScriptConstants.SiteRestrictedTokenHeaderName, out IEnumerable<string> values))
             {
                 return values.First();
             }
