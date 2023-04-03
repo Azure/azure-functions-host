@@ -428,10 +428,17 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             // If http proxying is enabled, we need to get the proxying endpoint of this worker
             var httpUri = _workerCapabilities.GetCapabilityState(RpcWorkerConstants.HttpUri);
-            if (!string.IsNullOrEmpty(httpUri))
+            if (!string.IsNullOrEmpty(httpUri) && FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableHttpProxying))
             {
-                _httpProxyEndpoint = new Uri(httpUri);
-                _isHttpProxyingWorker = true;
+                try
+                {
+                    _httpProxyEndpoint = new Uri(httpUri);
+                    _isHttpProxyingWorker = true;
+                }
+                catch (Exception ex)
+                {
+                    HandleWorkerInitError(ex);
+                }
             }
 
             _workerInitTask.TrySetResult(true);
