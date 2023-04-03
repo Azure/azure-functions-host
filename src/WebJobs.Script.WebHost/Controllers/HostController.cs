@@ -327,7 +327,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             {
                 // This case should never happen. Because this action is marked RequiresRunningHost,
                 // it's only invoked when the host is running, and if it's running, we'll have access
-                // to the FunctionsScaleManager.
+                // to the IScriptHostManager.
                 return StatusCode(StatusCodes.Status503ServiceUnavailable);
             }
         }

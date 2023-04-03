@@ -167,7 +167,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task GetScaleStatus_FunctionsScaleManager_Null_ReturnsServiceUnavailable()
+        public async Task GetScaleStatus_IScaleStatusProvider_Null_ReturnsServiceUnavailable()
         {
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsRuntimeScaleMonitoringEnabled)).Returns("1");
 
