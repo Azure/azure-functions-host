@@ -86,14 +86,14 @@ namespace Microsoft.Extensions.DependencyInjection
                 result.ValidateIssuer = true;
                 result.ValidAudiences = new string[]
                 {
-                    string.Format(AdminJwtSiteFunctionsValidAudienceFormat, ScriptSettingsManager.Instance.GetSetting(AzureWebsiteName)),
-                    string.Format(AdminJwtSiteValidAudienceFormat, ScriptSettingsManager.Instance.GetSetting(AzureWebsiteName))
+                    string.Format(SiteAzureFunctionsUriFormat, ScriptSettingsManager.Instance.GetSetting(AzureWebsiteName)),
+                    string.Format(SiteUriFormat, ScriptSettingsManager.Instance.GetSetting(AzureWebsiteName))
                 };
                 result.ValidIssuers = new string[]
                 {
-                    AdminJwtAppServiceIssuer,
-                    string.Format(AdminJwtScmValidIssuerFormat, ScriptSettingsManager.Instance.GetSetting(AzureWebsiteName)),
-                    string.Format(AdminJwtSiteValidIssuerFormat, ScriptSettingsManager.Instance.GetSetting(AzureWebsiteName))
+                    AppServiceCoreUri,
+                    string.Format(ScmSiteUriFormat, ScriptSettingsManager.Instance.GetSetting(AzureWebsiteName)),
+                    string.Format(SiteUriFormat, ScriptSettingsManager.Instance.GetSetting(AzureWebsiteName))
                 };
             }
 
