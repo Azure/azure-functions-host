@@ -23,10 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security
 
         internal static string Encrypt(string value, byte[] key = null)
         {
-            if (key == null)
-            {
-                TryGetEncryptionKey(EnvironmentSettingNames.WebsiteAuthEncryptionKey, out key);
-            }
+            key = key ?? SecretsUtility.GetEncryptionKey();
 
             using (var aes = new AesManaged { Key = key })
             {
@@ -97,8 +94,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security
 
         public static bool ValidateToken(string token, DateTime dateTime)
         {
-            // Use WebSiteAuthEncryptionKey if available.
-            TryGetEncryptionKey(EnvironmentSettingNames.WebsiteAuthEncryptionKey, out byte[] key);
+            byte[] key = SecretsUtility.GetEncryptionKey();
 
             var data = Decrypt(key, token);
 
@@ -119,39 +115,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security
             {
                 return Convert.ToBase64String(sha256.ComputeHash(key));
             }
-        }
-
-        public static bool TryGetEncryptionKey(string keyName, out byte[] encryptionKey, bool throwIfFailed = true)
-        {
-            encryptionKey = null;
-            var hexOrBase64 = Environment.GetEnvironmentVariable(keyName);
-            if (string.IsNullOrEmpty(hexOrBase64))
-            {
-                if (throwIfFailed)
-                {
-                    throw new InvalidOperationException($"No {keyName} defined in the environment");
-                }
-
-                return false;
-            }
-
-            encryptionKey = hexOrBase64.ToKeyBytes();
-
-            return true;
-        }
-
-        public static byte[] ToKeyBytes(this string hexOrBase64)
-        {
-            // only support 32 bytes (256 bits) key length
-            if (hexOrBase64.Length == 64)
-            {
-                return Enumerable.Range(0, hexOrBase64.Length)
-                    .Where(x => x % 2 == 0)
-                    .Select(x => Convert.ToByte(hexOrBase64.Substring(x, 2), 16))
-                    .ToArray();
-            }
-
-            return Convert.FromBase64String(hexOrBase64);
         }
     }
 }
