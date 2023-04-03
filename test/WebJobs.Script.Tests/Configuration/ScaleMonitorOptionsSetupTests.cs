@@ -14,7 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         [InlineData(false, true)]
         [InlineData(true, false)]
         [InlineData(false, false)]
-        public void ScaleOptionsSetup_Works_As_Expected(bool runtimeScaleMonitoringEnabled, bool targetBaseScalingEnabled)
+        public void ScaleOptionsSetup_ConfiguresExpectedDefaults(bool runtimeScaleMonitoringEnabled, bool targetBaseScalingEnabled)
         {
             var testEnvironment = new TestEnvironment();
 
