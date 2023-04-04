@@ -10,6 +10,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 {
     public interface IHttpProxyService
     {
-        public ValueTask<ForwarderError> Forward(ScriptInvocationContext context, Uri httpUri);
+        public ValueTask<ForwarderError> ForwardAsync(ScriptInvocationContext context, Uri httpUri);
     }
 }

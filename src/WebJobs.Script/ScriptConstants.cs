@@ -229,7 +229,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         // HTTP Proxying constants
         public static readonly string HttpProxyingEnabled = "HttpProxyingEnabled";
-        public static readonly string HttpProxyCorrelationHeader = "x-invocation-id";
+        public static readonly string HttpProxyCorrelationHeader = "x-ms-invocation-id";
         public static readonly string HttpProxyTask = "HttpProxyTask";
     }
 }

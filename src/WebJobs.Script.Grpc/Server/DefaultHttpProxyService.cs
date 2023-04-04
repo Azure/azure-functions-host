@@ -15,14 +15,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 {
     internal class DefaultHttpProxyService : IHttpProxyService, IDisposable
     {
-        private SocketsHttpHandler _handler;
-        private IHttpForwarder _httpForwarder;
-        private HttpMessageInvoker _messageInvoker;
-        private ForwarderRequestConfig _forwarderRequestConfig;
+        private readonly SocketsHttpHandler _handler;
+        private readonly IHttpForwarder _httpForwarder;
+        private readonly HttpMessageInvoker _messageInvoker;
+        private readonly ForwarderRequestConfig _forwarderRequestConfig;
 
         public DefaultHttpProxyService(IHttpForwarder httpForwarder)
         {
-            _httpForwarder = httpForwarder;
+            _httpForwarder = httpForwarder ?? throw new ArgumentNullException(nameof(httpForwarder));
 
             _handler = new SocketsHttpHandler();
             _messageInvoker = new HttpMessageInvoker(_handler);
@@ -35,12 +35,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _messageInvoker?.Dispose();
         }
 
-        public ValueTask<ForwarderError> Forward(ScriptInvocationContext context, Uri httpUri)
+        public ValueTask<ForwarderError> ForwardAsync(ScriptInvocationContext context, Uri httpUri)
         {
-            if (context is null)
-            {
-                throw new ArgumentNullException(nameof(context));
-            }
+            ArgumentNullException.ThrowIfNull(context);
 
             if (context.Inputs is null || context.Inputs?.Count() == 0)
             {
