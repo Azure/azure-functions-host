@@ -54,6 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public const string HandlesInvocationCancelMessage = "HandlesInvocationCancelMessage";
         public const string HandlesWorkerWarmupMessage = "HandlesWorkerWarmupMessage";
         public const string WorkerApplicationInsightsLoggingEnabled = nameof(WorkerApplicationInsightsLoggingEnabled);
+        public const string HttpUri = "HttpUri";
 
         /// <summary>
         /// Indicates whether empty entries in the trigger message should be included when sending RpcInvocation data to OOP workers.

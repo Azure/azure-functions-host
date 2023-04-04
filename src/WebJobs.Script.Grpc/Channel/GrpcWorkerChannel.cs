@@ -31,6 +31,7 @@ using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Yarp.ReverseProxy.Forwarder;
 
 using static Microsoft.Azure.WebJobs.Script.Grpc.Messages.RpcLog.Types;
 using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
@@ -81,7 +82,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private bool _isSharedMemoryDataTransferEnabled;
         private bool? _cancelCapabilityEnabled;
         private bool _isWorkerApplicationInsightsLoggingEnabled;
-
+        private IHttpProxyService _httpProxyService;
+        private Uri _httpProxyEndpoint;
         private System.Timers.Timer _timer;
 
         internal GrpcWorkerChannel(
@@ -96,7 +98,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions,
             ISharedMemoryManager sharedMemoryManager,
             IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions,
-            IOptions<FunctionsHostingConfigOptions> hostingConfigOptions)
+            IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
+            IHttpProxyService httpProxyService)
         {
             _workerId = workerId;
             _eventManager = eventManager;
@@ -112,6 +115,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _processInbound = state => ProcessItem((InboundGrpcEvent)state);
             _hostingConfigOptions = hostingConfigOptions;
 
+            _httpProxyService = httpProxyService;
             _workerCapabilities = new GrpcCapabilities(_workerChannelLogger);
 
             if (!_eventManager.TryGetGrpcChannels(workerId, out var inbound, out var outbound))
@@ -132,6 +136,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             _state = RpcWorkerChannelState.Default;
         }
+
+        private bool IsHttpProxyingWorker => _httpProxyEndpoint is not null;
 
         public string Id => _workerId;
 
@@ -418,6 +424,20 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 appInsightsWorkerEnabled))
             {
                 _isWorkerApplicationInsightsLoggingEnabled = true;
+            }
+
+            // If http proxying is enabled, we need to get the proxying endpoint of this worker
+            var httpUri = _workerCapabilities.GetCapabilityState(RpcWorkerConstants.HttpUri);
+            if (!string.IsNullOrEmpty(httpUri) && FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableHttpProxying))
+            {
+                try
+                {
+                    _httpProxyEndpoint = new Uri(httpUri);
+                }
+                catch (Exception ex)
+                {
+                    HandleWorkerInitError(ex);
+                }
             }
 
             _workerInitTask.TrySetResult(true);
@@ -738,6 +758,13 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 {
                     context.CancellationToken.Register(() => SendInvocationCancel(invocationRequest.InvocationId));
                 }
+
+                if (IsHttpProxyingWorker && FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableHttpProxying) && context.FunctionMetadata.IsHttpTriggerFunction())
+                {
+                    var aspNetTask = _httpProxyService.ForwardAsync(context, _httpProxyEndpoint).AsTask();
+
+                    context.Properties.Add(ScriptConstants.HttpProxyTask, aspNetTask);
+                }
             }
             catch (Exception invokeEx)
             {
@@ -902,6 +929,20 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             {
                 if (invokeResponse.Result.IsInvocationSuccess(context.ResultSource, capabilityEnabled))
                 {
+                    if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableHttpProxying) && IsHttpProxyingWorker)
+                    {
+                        if (context.Properties.TryGetValue(ScriptConstants.HttpProxyTask, out Task<ForwarderError> httpProxyTask))
+                        {
+                            ForwarderError httpProxyTaskResult = await httpProxyTask;
+
+                            if (httpProxyTaskResult is not ForwarderError.None)
+                            {
+                                // TODO: Understand scenarios where function invocation succeeds but there is an error proxying
+                                // need to investigate different ForwarderErrors and consider how they will be relayed through other services and to users
+                            }
+                        }
+                    }
+
                     _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvokeSucceeded, Id));
 
                     try

@@ -125,6 +125,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string FeatureFlagEnableWorkerIndexing = "EnableWorkerIndexing";
         public const string FeatureFlagEnableDebugTracing = "EnableDebugTracing";
         public const string FeatureFlagEnableProxies = "EnableProxies";
+        public const string FeatureFlagEnableHttpProxying = "EnableHttpProxying";
         public const string HostingConfigDisableLinuxAppServiceDetailedExecutionEvents = "DisableLinuxExecutionDetails";
         public const string HostingConfigDisableLinuxAppServiceExecutionEventLogBackoff = "DisableLinuxLogBackoff";
 
@@ -225,5 +226,10 @@ namespace Microsoft.Azure.WebJobs.Script
         public static readonly string LiveLogsSessionAIKey = "#AzFuncLiveLogsSessionId";
 
         public static readonly string FunctionsHostingConfigSectionName = "FunctionsHostingConfig";
+
+        // HTTP Proxying constants
+        public static readonly string HttpProxyingEnabled = "HttpProxyingEnabled";
+        public static readonly string HttpProxyCorrelationHeader = "x-ms-invocation-id";
+        public static readonly string HttpProxyTask = "HttpProxyTask";
     }
 }
