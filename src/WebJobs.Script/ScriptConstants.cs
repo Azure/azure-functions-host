@@ -129,11 +129,10 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string HostingConfigDisableLinuxAppServiceDetailedExecutionEvents = "DisableLinuxExecutionDetails";
         public const string HostingConfigDisableLinuxAppServiceExecutionEventLogBackoff = "DisableLinuxLogBackoff";
 
-        public const string AdminJwtSiteFunctionsValidAudienceFormat = "https://{0}.azurewebsites.net/azurefunctions";
-        public const string AdminJwtSiteValidAudienceFormat = "https://{0}.azurewebsites.net";
-        public const string AdminJwtScmValidIssuerFormat = "https://{0}.scm.azurewebsites.net";
-        public const string AdminJwtSiteValidIssuerFormat = "https://{0}.azurewebsites.net";
-        public const string AdminJwtAppServiceIssuer = "https://appservice.core.azurewebsites.net";
+        public const string SiteAzureFunctionsUriFormat = "https://{0}.azurewebsites.net/azurefunctions";
+        public const string ScmSiteUriFormat = "https://{0}.scm.azurewebsites.net";
+        public const string SiteUriFormat = "https://{0}.azurewebsites.net";
+        public const string AppServiceCoreUri = "https://appservice.core.azurewebsites.net";
 
         public const string AzureFunctionsSystemDirectoryName = ".azurefunctions";
         public const string HttpMethodConstraintName = "httpMethod";
