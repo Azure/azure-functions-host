@@ -519,6 +519,7 @@
     <Compile Include="Management\WebFunctionsManager.cs" />
     <Compile Include="Models\FunctionMetadataResponse.cs" />
     <Compile Include="ResourceContainsSecretsAttribute.cs" />
+    <Compile Include="Security\JwtTokenHelper.cs" />
     <Compile Include="Security\SecretsUtility.cs" />
     <Compile Include="Security\SimpleWebTokenHelper.cs" />
     <Compile Include="StandbyManager.cs" />

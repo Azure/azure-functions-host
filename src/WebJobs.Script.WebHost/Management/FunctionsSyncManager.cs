@@ -420,7 +420,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         // of triggers. It'll verify app ownership using a SWT token valid for 5 minutes. It should be plenty.
         private async Task<(bool, string)> SetTriggersAsync(string content)
         {
-            var token = SimpleWebTokenHelper.CreateToken(DateTime.UtcNow.AddMinutes(5));
+            string swtToken = SimpleWebTokenHelper.CreateToken(DateTime.UtcNow.AddMinutes(5));
+            string jwtToken = JwtTokenHelper.CreateToken(DateTime.UtcNow.AddMinutes(5));
 
             string sanitizedContentString = content;
             if (ArmCacheEnabled)
@@ -439,7 +440,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 var requestId = Guid.NewGuid().ToString();
                 request.Headers.Add(ScriptConstants.AntaresLogIdHeaderName, requestId);
                 request.Headers.Add("User-Agent", ScriptConstants.FunctionsUserAgent);
-                request.Headers.Add("x-ms-site-restricted-token", token);
+                request.Headers.Add(ScriptConstants.SiteRestrictedTokenHeaderName, swtToken);
+                request.Headers.Add(ScriptConstants.SiteTokenHeaderName, jwtToken);
                 request.Content = new StringContent(content, Encoding.UTF8, "application/json");
 
                 string message = $"Making SyncTriggers request (RequestId={requestId}, Uri={request.RequestUri.ToString()}, Content={sanitizedContentString}).";
