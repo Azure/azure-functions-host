@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 throw new ArgumentNullException(nameof(context));
             }
 
-            if (context.Inputs is null)
+            if (context.Inputs is null || context.Inputs?.Count() == 0)
             {
                 throw new InvalidOperationException($"The function {context.FunctionMetadata.Name} can not be evaluated since it has no inputs.");
             }
@@ -56,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             HttpContext httpContext = httpRequest.HttpContext;
 
-            httpContext.Items.Add(ScriptConstants.IsHttpProxyingEnabled, bool.TrueString);
+            httpContext.Items.Add(ScriptConstants.HttpProxyingEnabled, bool.TrueString);
 
             // add invocation id as correlation id
             httpRequest.Headers.TryAdd(ScriptConstants.HttpProxyCorrelationHeader, context.ExecutionContext.InvocationId.ToString());

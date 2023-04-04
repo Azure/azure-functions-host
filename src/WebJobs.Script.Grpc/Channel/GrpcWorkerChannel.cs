@@ -764,7 +764,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 {
                     var aspNetTask = _httpProxyService.Forward(context, _httpProxyEndpoint);
 
-                    context.Properties.Add("HttpProxyingTask", aspNetTask);
+                    context.Properties.Add(ScriptConstants.HttpProxyTask, aspNetTask);
                 }
             }
             catch (Exception invokeEx)
@@ -930,7 +930,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             {
                 if (invokeResponse.Result.IsInvocationSuccess(context.ResultSource, capabilityEnabled))
                 {
-                    if (context.Properties.TryGetValue("HttpProxyingTask", out ValueTask<ForwarderError> httpProxyTask))
+                    if (context.Properties.TryGetValue(ScriptConstants.HttpProxyTask, out ValueTask<ForwarderError> httpProxyTask))
                     {
                         ForwarderError httpProxyTaskResult = await httpProxyTask;
 

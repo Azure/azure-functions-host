@@ -228,7 +228,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public static readonly string FunctionsHostingConfigSectionName = "FunctionsHostingConfig";
 
         // HTTP Proxying constants
-        public static readonly string IsHttpProxyingEnabled = "IsHttpProxying";
+        public static readonly string HttpProxyingEnabled = "HttpProxyingEnabled";
         public static readonly string HttpProxyCorrelationHeader = "x-invocation-id";
+        public static readonly string HttpProxyTask = "HttpProxyTask";
     }
 }
