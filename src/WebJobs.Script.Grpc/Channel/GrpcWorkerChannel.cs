@@ -759,9 +759,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     context.CancellationToken.Register(() => SendInvocationCancel(invocationRequest.InvocationId));
                 }
 
-                if (IsHttpProxyingWorker && context.FunctionMetadata.IsHttpTriggerFunction())
+                if (IsHttpProxyingWorker && FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableHttpProxying) && context.FunctionMetadata.IsHttpTriggerFunction())
                 {
-                    var aspNetTask = _httpProxyService.ForwardAsync(context, _httpProxyEndpoint);
+                    var aspNetTask = _httpProxyService.ForwardAsync(context, _httpProxyEndpoint).AsTask();
 
                     context.Properties.Add(ScriptConstants.HttpProxyTask, aspNetTask);
                 }
@@ -929,14 +929,17 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             {
                 if (invokeResponse.Result.IsInvocationSuccess(context.ResultSource, capabilityEnabled))
                 {
-                    if (context.Properties.TryGetValue(ScriptConstants.HttpProxyTask, out ValueTask<ForwarderError> httpProxyTask))
+                    if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableHttpProxying) && IsHttpProxyingWorker)
                     {
-                        ForwarderError httpProxyTaskResult = await httpProxyTask;
-
-                        if (httpProxyTaskResult is not ForwarderError.None)
+                        if (context.Properties.TryGetValue(ScriptConstants.HttpProxyTask, out Task<ForwarderError> httpProxyTask))
                         {
-                            // TODO: Understand scenarios where function invocation succeeds but there is an error proxying
-                            // need to investigate different ForwarderErrors and consider how they will be relayed through other services and to users
+                            ForwarderError httpProxyTaskResult = await httpProxyTask;
+
+                            if (httpProxyTaskResult is not ForwarderError.None)
+                            {
+                                // TODO: Understand scenarios where function invocation succeeds but there is an error proxying
+                                // need to investigate different ForwarderErrors and consider how they will be relayed through other services and to users
+                            }
                         }
                     }
 
