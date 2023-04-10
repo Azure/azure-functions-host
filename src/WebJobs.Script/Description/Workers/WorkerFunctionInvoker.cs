@@ -91,11 +91,23 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             };
 
             string invocationId = context.ExecutionContext.InvocationId.ToString();
-            _logger.LogTrace($"Sending invocation id:{invocationId}");
+            ScriptInvocationResult result = new();
+
+            _logger.LogTrace("Sending invocation id: '{id}", invocationId);
             await _functionDispatcher.InvokeAsync(invocationContext);
-            var result = await invocationContext.ResultSource.Task;
+
+            try
+            {
+                result = await invocationContext.ResultSource.Task;
+            }
+            catch (OperationCanceledException ex)
+            {
+                // Only catch the exception when the task is cancelled, otherwise let it be handled by the ExceptionMiddleware
+                throw new FunctionInvocationCanceledException(invocationId, ex);
+            }
 
             await BindOutputsAsync(triggerValue, context.Binder, result);
+
             return result.Return;
         }
 
