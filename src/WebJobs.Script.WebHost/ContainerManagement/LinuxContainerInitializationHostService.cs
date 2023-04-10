@@ -47,10 +47,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
                 _logger.LogInformation("Container has (re)started. Waiting for specialization");
             }
         }
-        
+
         private async Task ApplyStartContextIfPresent()
         {
-            var startContext = await GetStartContextOrNullAsync2();
+            var startContext = await GetStartContextOrNullAsync();
 
             if (!string.IsNullOrEmpty(startContext))
             {
@@ -79,7 +79,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
 
         private async Task ApplyStartContextIfPresent2()
         {
-            var startContext = await GetStartContextOrNullAsync();
+            var startContext = GetStartContextOrNullAsync2();
 
             if (!string.IsNullOrEmpty(startContext))
             {
@@ -129,7 +129,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
             return startContext;
         }
 
-        private async Task<string> GetStartContextOrNullAsync2()
+        private string GetStartContextOrNullAsync2()
         {
             _logger.LogInformation("GetStartContextOrNullAsync2");
             // read files in path: /CONTAINER_SPECIALIZATION_CONTEXT_MOUNT_PATH/Context.txt
@@ -153,6 +153,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
                 {
                     Console.WriteLine("The file does not exist.");
                 }
+                Thread.Sleep(30000);
             }
 
             // var startContext = _environment.GetEnvironmentVariable(EnvironmentSettingNames.ContainerStartContext);
