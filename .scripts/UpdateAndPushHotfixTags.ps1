@@ -1,10 +1,10 @@
 # The below variables are passed via ADO
 $listOfTags = "$(commaSeparatedListOfTags)".split(",")
 $commitID = "$(commitId)"
+git checkout dev
+git pull
 foreach ($tag in $listOfTags)
 {
-    git checkout dev
-    git pull
     git checkout "v$tag"
     git cherry-pick $commitID
     if (!$(tag).StartsWith("release"))
