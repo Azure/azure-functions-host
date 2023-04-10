@@ -3,7 +3,7 @@ git config --global user.name "azfuncgh"
 # The below variables are passed via ADO
 $githubToken = "$(GithubPATazfuncgh)"
 $listOfTags = "$(commaSeparatedListOfTags)".split(",")
-$commitID = "$(commitId)"
+$commitID = "$(ReleaseMergeCommitId)"
 git clone https://$githubToken@github.com/Azure/azure-functions-host
 git checkout dev
 git pull
