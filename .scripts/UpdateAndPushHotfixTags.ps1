@@ -1,4 +1,6 @@
 # The below variables are passed via ADO
+git config --global user.email "azfuncgh@github.com"
+git config --global user.name "azfuncgh"
 $listOfTags = "$(commaSeparatedListOfTags)".split(",")
 $commitID = "$(commitId)"
 git checkout dev
