@@ -43,11 +43,41 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
             }
             else if (_environment.IsLinuxConsumptionOnLegion())
             {
+                await ApplyStartContextIfPresent2();
                 _logger.LogInformation("Container has (re)started. Waiting for specialization");
             }
         }
-
+        //run this in a loop
         private async Task ApplyStartContextIfPresent()
+        {
+            var startContext = await GetStartContextOrNullAsync2();
+
+            if (!string.IsNullOrEmpty(startContext))
+            {
+                _logger.LogInformation("Applying host context");
+                _logger.LogInformation($"[TEST][HOST] startContext: {startContext}");
+
+                var encryptedAssignmentContext = JsonConvert.DeserializeObject<EncryptedHostAssignmentContext>(startContext);
+                var assignmentContext = _startupContextProvider.SetContext(encryptedAssignmentContext);
+
+                var msiError = await _instanceManager.SpecializeMSISidecar(assignmentContext);
+                if (!string.IsNullOrEmpty(msiError))
+                {
+                    // Log and continue specializing even in case of failures.
+                    // There will be other mechanisms to recover the container.
+                    _logger.LogError("MSI Specialization failed with '{msiError}'", msiError);
+                }
+
+                bool success = _instanceManager.StartAssignment(assignmentContext);
+                _logger.LogInformation($"StartAssignment invoked (Success={success})");
+            }
+            else
+            {
+                _logger.LogInformation("No host context specified. Waiting for host assignment");
+            }
+        }
+
+        private async Task ApplyStartContextIfPresent2()
         {
             var startContext = await GetStartContextOrNullAsync();
 
@@ -97,6 +127,55 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
             }
 
             return startContext;
+        }
+
+        private async Task<string> GetStartContextOrNullAsync2()
+        {
+            _logger.LogInformation("GetStartContextOrNullAsync2");
+            // read files in path: /CONTAINER_SPECIALIZATION_CONTEXT_MOUNT_PATH/Context.txt
+
+            var contextFile = "CONTAINER_SPECIALIZATION_CONTEXT_MOUNT_PATH/Context.txt";
+            
+            while (true)
+            {
+                string[] filePaths = Directory.GetFiles("/CONTAINER_SPECIALIZATION_CONTEXT_MOUNT_PATH");
+                foreach (string filePath in filePaths)
+                {
+                    _logger.LogInformation($"[TEST][HOST] file: {Path.GetFileName(filePath)}");
+                }
+
+                if (File.Exists(contextFile))
+                {
+                    _logger.LogInformation($"The file exists.");
+                    string contents = File.ReadAllText(contextFile);
+                    _logger.LogInformation(contents);
+                }
+                else
+                {
+                    Console.WriteLine("The file does not exist.");
+                }
+            }
+
+            // var startContext = _environment.GetEnvironmentVariable(EnvironmentSettingNames.ContainerStartContext);
+
+            // // Container start context is not available directly
+            // if (string.IsNullOrEmpty(startContext))
+            // {
+            //     // Check if the context is available in blob
+            //     var sasUri = _environment.GetEnvironmentVariable(EnvironmentSettingNames.ContainerStartContextSasUri);
+
+            //     if (!string.IsNullOrEmpty(sasUri))
+            //     {
+            //         _logger.LogInformation("Host context specified via CONTAINER_START_CONTEXT_SAS_URI");
+            //         startContext = await GetAssignmentContextFromSasUri(sasUri);
+            //     }
+            // }
+            // else
+            // {
+            //     _logger.LogInformation("Host context specified via CONTAINER_START_CONTEXT");
+            // }
+
+            // return startContext;
         }
 
         private async Task<string> GetAssignmentContextFromSasUri(string sasUri)
