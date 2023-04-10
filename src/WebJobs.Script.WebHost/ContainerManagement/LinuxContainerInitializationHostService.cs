@@ -47,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
                 _logger.LogInformation("Container has (re)started. Waiting for specialization");
             }
         }
-        //run this in a loop
+        
         private async Task ApplyStartContextIfPresent()
         {
             var startContext = await GetStartContextOrNullAsync2();
@@ -135,7 +135,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
             // read files in path: /CONTAINER_SPECIALIZATION_CONTEXT_MOUNT_PATH/Context.txt
 
             var contextFile = "CONTAINER_SPECIALIZATION_CONTEXT_MOUNT_PATH/Context.txt";
-            
             while (true)
             {
                 string[] filePaths = Directory.GetFiles("/CONTAINER_SPECIALIZATION_CONTEXT_MOUNT_PATH");
