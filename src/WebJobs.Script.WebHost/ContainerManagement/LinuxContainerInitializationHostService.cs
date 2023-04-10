@@ -134,10 +134,25 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
             _logger.LogInformation("GetStartContextOrNullAsync2");
             // read files in path: /CONTAINER_SPECIALIZATION_CONTEXT_MOUNT_PATH/Context.txt
 
-            var contextFile = "CONTAINER_SPECIALIZATION_CONTEXT_MOUNT_PATH/Context.txt";
+            var contextFile = "/mnt/CONTAINER_SPECIALIZATION_CONTEXT_MOUNT_PATH/Context.txt";
+            string path = Directory.GetCurrentDirectory();
+            _logger.LogInformation(path);
+
+            DirectoryInfo di = new DirectoryInfo(".");
+            foreach (FileInfo file in di.GetFiles())
+            {
+                 _logger.LogInformation(file.Name);
+            }
+
+            string[] filePaths2 = Directory.GetFiles("/mnt");
+            foreach (string filePath2 in filePaths2)
+            {
+                _logger.LogInformation($"[TEST][HOST] file: {Path.GetFileName(filePath2)}");
+            }
+
             while (true)
             {
-                string[] filePaths = Directory.GetFiles("/CONTAINER_SPECIALIZATION_CONTEXT_MOUNT_PATH");
+                string[] filePaths = Directory.GetFiles("/mnt/CONTAINER_SPECIALIZATION_CONTEXT_MOUNT_PATH");
                 foreach (string filePath in filePaths)
                 {
                     _logger.LogInformation($"[TEST][HOST] file: {Path.GetFileName(filePath)}");
