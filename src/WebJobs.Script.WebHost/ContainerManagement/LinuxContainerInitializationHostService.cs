@@ -159,7 +159,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
                     {
                         _logger.LogInformation($"[TEST][HOST] {e.ToString()}");
                     }
-
                 }
             }
 
