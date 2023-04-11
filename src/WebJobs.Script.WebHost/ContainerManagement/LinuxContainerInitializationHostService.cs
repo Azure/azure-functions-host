@@ -45,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
             {
                 await ApplyStartContextIfPresent2();
                 _logger.LogInformation("Container has (re)started. Waiting for specialization");
-                Checkctx();
+                //Checkctx();
             }
         }
 
@@ -168,32 +168,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
 
             try
             {
-                if (Directory.Exists("/mnt"))
-                {
-                    _logger.LogInformation("[TEST][HOST] /mnt Directory exists");
-                    string[] filePaths2 = Directory.GetFiles("/mnt");
-                    _logger.LogInformation("[TEST][HOST] GetStartContextOrNullAsync2 1");
-                    foreach (string filePath2 in filePaths2)
-                    {
-                        _logger.LogInformation("[TEST][HOST] file exists");
-                        try
-                        {
-                            _logger.LogInformation($"[TEST][HOST] file: {Path.GetFileName(filePath2)}");
-                        }
-                        catch (Exception e)
-                        {
-                            _logger.LogInformation($"[TEST][HOST] 3.5 {e.ToString()}");
-                        }
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                _logger.LogInformation($"[TEST][HOST] 3 {e.ToString()}");
-            }
-
-            try
-            {
                 if (Directory.Exists("/container-specialization-context"))
                 {
                     _logger.LogInformation("[TEST][HOST] /container-specialization-context Directory exists");
@@ -256,108 +230,87 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
             //Thread.Sleep(30000);
             //_logger.LogInformation($"[TEST][HOST] Fake Assign here");
             return string.Empty;
-
-            // var startContext = _environment.GetEnvironmentVariable(EnvironmentSettingNames.ContainerStartContext);
-
-            // // Container start context is not available directly
-            // if (string.IsNullOrEmpty(startContext))
-            // {
-            //     // Check if the context is available in blob
-            //     var sasUri = _environment.GetEnvironmentVariable(EnvironmentSettingNames.ContainerStartContextSasUri);
-
-            //     if (!string.IsNullOrEmpty(sasUri))
-            //     {
-            //         _logger.LogInformation("Host context specified via CONTAINER_START_CONTEXT_SAS_URI");
-            //         startContext = await GetAssignmentContextFromSasUri(sasUri);
-            //     }
-            // }
-            // else
-            // {
-            //     _logger.LogInformation("Host context specified via CONTAINER_START_CONTEXT");
-            // }
-
-            // return startContext;
         }
 
-        private void Checkctx()
-        {
-            _logger.LogInformation("Checkctx");
-            // read files in path: /CONTAINER_SPECIALIZATION_CONTEXT_MOUNT_PATH/Context.txt
+        //private void Checkctx()
+        //{
+        //    _logger.LogInformation("Checkctx");
+        //    // read files in path: /CONTAINER_SPECIALIZATION_CONTEXT_MOUNT_PATH/Context.txt
 
-            try
-            {
-                DirectoryInfo dir = new DirectoryInfo("/");
-                var logoutput = "[TEST][HOST] Checkctx() / base directory Directory: ";
-                foreach (DirectoryInfo file in dir.GetDirectories())
-                {
-                    logoutput += file.Name;
-                }
-                _logger.LogInformation(logoutput);
-            }
-            catch (Exception e)
-            {
-                _logger.LogInformation($"[TEST][HOST] 2 {e.ToString()}");
-            }
+        //    try
+        //    {
+        //        DirectoryInfo dir = new DirectoryInfo("/");
+        //        var logoutput = "[TEST][HOST] Checkctx() / base directory Directory: ";
+        //        foreach (DirectoryInfo file in dir.GetDirectories())
+        //        {
+        //            logoutput += file.Name;
+        //        }
+        //        _logger.LogInformation(logoutput);
+        //    }
+        //    catch (Exception e)
+        //    {
+        //        _logger.LogInformation($"[TEST][HOST] 2 {e.ToString()}");
+        //    }
 
-            while (true)
-            {
-                _logger.LogInformation("[TEST][HOST] Checkctx() Checking context path");
-                var contextFile = "/container-specialization-context/Context.txt";
-                if (Directory.Exists("/container-specialization-context"))
-                {
-                    _logger.LogInformation("[TEST][HOST] Checkctx() /container-specialization-context Directory exists");
-                    string[] filePaths3 = Directory.GetFiles("/container-specialization-context");
-                    _logger.LogInformation("[TEST][HOST] Checkctx() 2");
-                    foreach (string file in filePaths3)
-                    {
-                        try
-                        {
-                            _logger.LogInformation($"[TEST][HOST] Checkctx() /container-specialization-context file: {Path.GetFileName(file)}");
-                        }
-                        catch (Exception e)
-                        {
-                            _logger.LogInformation($"[TEST][HOST] 4.5 {e.ToString()}");
-                        }
-                    }
+        //    while (true)
+        //    {
+        //        _logger.LogInformation("[TEST][HOST] Checkctx() Checking context path");
+        //        var contextFile = "/container-specialization-context/Context.txt";
+        //        if (Directory.Exists("/container-specialization-context"))
+        //        {
+        //            _logger.LogInformation("[TEST][HOST] Checkctx() /container-specialization-context Directory exists");
+        //            string[] filePaths3 = Directory.GetFiles("/container-specialization-context");
+        //            _logger.LogInformation("[TEST][HOST] Checkctx() 2");
+        //            foreach (string file in filePaths3)
+        //            {
+        //                try
+        //                {
+        //                    _logger.LogInformation($"[TEST][HOST] Checkctx() /container-specialization-context file: {Path.GetFileName(file)}");
+        //                }
+        //                catch (Exception e)
+        //                {
+        //                    _logger.LogInformation($"[TEST][HOST] 4.5 {e.ToString()}");
+        //                }
+        //            }
 
-                    if (File.Exists(contextFile))
-                    {
-                        _logger.LogInformation($"[TEST][HOST] Checkctx() The file exists!!!");
-                        string contents = File.ReadAllText(contextFile);
-                        _logger.LogInformation($"[TEST][HOST] Checkctx() {contents}");
-                        break;
-                    }
-                    else
-                    {
-                        _logger.LogInformation($"[TEST][HOST] The file {contextFile} does not exist.");
-                    }
-                }
-                Thread.Sleep(30000);
-            }
-            Thread.Sleep(30000);
-            _logger.LogInformation($"[TEST][HOST] Fake Assign here");
+        //            if (File.Exists(contextFile))
+        //            {
+        //                _logger.LogInformation($"[TEST][HOST] Checkctx() The file exists!!!");
+        //                string contents = File.ReadAllText(contextFile);
+        //                _logger.LogInformation($"[TEST][HOST] Checkctx() {contents}");
+        //                break;
+        //            }
+        //            else
+        //            {
+        //                _logger.LogInformation($"[TEST][HOST] The file {contextFile} does not exist.");
+        //            }
+        //        }
+        //        Thread.Sleep(30000);
+        //    }
+        //    Thread.Sleep(30000);
+        //    _logger.LogInformation($"[TEST][HOST] Fake Assign here");
 
-            // var startContext = _environment.GetEnvironmentVariable(EnvironmentSettingNames.ContainerStartContext);
+        //    // var startContext = _environment.GetEnvironmentVariable(EnvironmentSettingNames.ContainerStartContext);
 
-            // // Container start context is not available directly
-            // if (string.IsNullOrEmpty(startContext))
-            // {
-            //     // Check if the context is available in blob
-            //     var sasUri = _environment.GetEnvironmentVariable(EnvironmentSettingNames.ContainerStartContextSasUri);
+        //    // // Container start context is not available directly
+        //    // if (string.IsNullOrEmpty(startContext))
+        //    // {
+        //    //     // Check if the context is available in blob
+        //    //     var sasUri = _environment.GetEnvironmentVariable(EnvironmentSettingNames.ContainerStartContextSasUri);
 
-            //     if (!string.IsNullOrEmpty(sasUri))
-            //     {
-            //         _logger.LogInformation("Host context specified via CONTAINER_START_CONTEXT_SAS_URI");
-            //         startContext = await GetAssignmentContextFromSasUri(sasUri);
-            //     }
-            // }
-            // else
-            // {
-            //     _logger.LogInformation("Host context specified via CONTAINER_START_CONTEXT");
-            // }
+        //    //     if (!string.IsNullOrEmpty(sasUri))
+        //    //     {
+        //    //         _logger.LogInformation("Host context specified via CONTAINER_START_CONTEXT_SAS_URI");
+        //    //         startContext = await GetAssignmentContextFromSasUri(sasUri);
+        //    //     }
+        //    // }
+        //    // else
+        //    // {
+        //    //     _logger.LogInformation("Host context specified via CONTAINER_START_CONTEXT");
+        //    // }
 
-            // return startContext;
-        }
+        //    // return startContext;
+        //}
 
         private async Task<string> GetAssignmentContextFromSasUri(string sasUri)
         {
