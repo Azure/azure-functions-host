@@ -154,10 +154,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
             try
             {
                 DirectoryInfo dir = new DirectoryInfo("/");
+                var logoutput = "[TEST][HOST] / base directory Directory: ";
                 foreach (DirectoryInfo file in dir.GetDirectories())
                 {
-                    _logger.LogInformation($"[TEST][HOST] / base directory Directory: {file.Name}");
+                    logoutput += file.Name;
                 }
+                _logger.LogInformation(logoutput);
             }
             catch (Exception e)
             {
