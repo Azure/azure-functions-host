@@ -154,7 +154,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
                 }
             }
 
-            return "Check";
+            return "";
 
             // while (true)
             // {
