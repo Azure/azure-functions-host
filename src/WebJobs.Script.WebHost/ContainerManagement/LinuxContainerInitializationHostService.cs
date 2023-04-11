@@ -134,7 +134,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
             _logger.LogInformation("GetStartContextOrNullAsync2");
             // read files in path: /CONTAINER_SPECIALIZATION_CONTEXT_MOUNT_PATH/Context.txt
 
-            var contextFile = "/mnt/CONTAINER_SPECIALIZATION_CONTEXT_MOUNT_PATH/Context.txt";
+            //var contextFile = "/mnt/CONTAINER_SPECIALIZATION_CONTEXT_MOUNT_PATH/Context.txt";
             string path = Directory.GetCurrentDirectory();
             _logger.LogInformation($"[TEST][HOST] pwd: {path}");
 
@@ -144,15 +144,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
                  _logger.LogInformation($"[TEST][HOST] base directory files: {file.Name}");
             }
 
-            if(Directory.Exists("/mnt")) 
-            { 
-                _logger.LogInformation("/mnt Directory exists"); 
+            if (Directory.Exists("/mnt"))
+            {
+                _logger.LogInformation("/mnt Directory exists");
                 string[] filePaths2 = Directory.GetFiles("/mnt");
                 foreach (string filePath2 in filePaths2)
                 {
                     _logger.LogInformation($"[TEST][HOST] file: {Path.GetFileName(filePath2)}");
                 }
             }
+
+            return "Check";
 
             // while (true)
             // {
