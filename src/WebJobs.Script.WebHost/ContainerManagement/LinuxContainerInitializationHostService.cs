@@ -136,40 +136,44 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
 
             var contextFile = "/mnt/CONTAINER_SPECIALIZATION_CONTEXT_MOUNT_PATH/Context.txt";
             string path = Directory.GetCurrentDirectory();
-            _logger.LogInformation(path);
+            _logger.LogInformation($"[TEST][HOST] pwd: {path}");
 
             DirectoryInfo di = new DirectoryInfo(".");
             foreach (FileInfo file in di.GetFiles())
             {
-                 _logger.LogInformation(file.Name);
+                 _logger.LogInformation($"[TEST][HOST] base directory files: {file.Name}");
             }
 
-            string[] filePaths2 = Directory.GetFiles("/mnt");
-            foreach (string filePath2 in filePaths2)
-            {
-                _logger.LogInformation($"[TEST][HOST] file: {Path.GetFileName(filePath2)}");
+            if(Directory.Exists("/mnt")) 
+            { 
+                _logger.LogInformation("/mnt Directory exists"); 
+                string[] filePaths2 = Directory.GetFiles("/mnt");
+                foreach (string filePath2 in filePaths2)
+                {
+                    _logger.LogInformation($"[TEST][HOST] file: {Path.GetFileName(filePath2)}");
+                }
             }
 
-            while (true)
-            {
-                string[] filePaths = Directory.GetFiles("/mnt/CONTAINER_SPECIALIZATION_CONTEXT_MOUNT_PATH");
-                foreach (string filePath in filePaths)
-                {
-                    _logger.LogInformation($"[TEST][HOST] file: {Path.GetFileName(filePath)}");
-                }
+            // while (true)
+            // {
+            //     string[] filePaths = Directory.GetFiles("/mnt/CONTAINER_SPECIALIZATION_CONTEXT_MOUNT_PATH");
+            //     foreach (string filePath in filePaths)
+            //     {
+            //         _logger.LogInformation($"[TEST][HOST] file: {Path.GetFileName(filePath)}");
+            //     }
 
-                if (File.Exists(contextFile))
-                {
-                    _logger.LogInformation($"The file exists.");
-                    string contents = File.ReadAllText(contextFile);
-                    _logger.LogInformation(contents);
-                }
-                else
-                {
-                    Console.WriteLine("The file does not exist.");
-                }
-                Thread.Sleep(30000);
-            }
+            //     if (File.Exists(contextFile))
+            //     {
+            //         _logger.LogInformation($"The file exists.");
+            //         string contents = File.ReadAllText(contextFile);
+            //         _logger.LogInformation(contents);
+            //     }
+            //     else
+            //     {
+            //         Console.WriteLine("The file does not exist.");
+            //     }
+            //     Thread.Sleep(30000);
+            // }
 
             // var startContext = _environment.GetEnvironmentVariable(EnvironmentSettingNames.ContainerStartContext);
 
