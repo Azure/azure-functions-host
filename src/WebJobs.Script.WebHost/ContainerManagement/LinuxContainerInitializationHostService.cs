@@ -218,42 +218,42 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
                 _logger.LogInformation($"[TEST][HOST] 4 {e.ToString()}");
             }
 
-            while (true)
-            {
-                _logger.LogInformation("[TEST][HOST] Checking context path");
-                if (Directory.Exists("/container-specialization-context"))
-                {
-                    _logger.LogInformation("[TEST][HOST] /container-specialization-context Directory exists");
-                    string[] filePaths3 = Directory.GetFiles("/container-specialization-context");
-                    _logger.LogInformation("[TEST][HOST] GetStartContextOrNullAsync2 2");
-                    foreach (string file in filePaths3)
-                    {
-                        try
-                        {
-                            _logger.LogInformation($"[TEST][HOST] /container-specialization-context file: {Path.GetFileName(file)}");
-                        }
-                        catch (Exception e)
-                        {
-                            _logger.LogInformation($"[TEST][HOST] 4.5 {e.ToString()}");
-                        }
-                    }
+            //while (true)
+            //{
+            //    _logger.LogInformation("[TEST][HOST] Checking context path");
+            //    if (Directory.Exists("/container-specialization-context"))
+            //    {
+            //        _logger.LogInformation("[TEST][HOST] /container-specialization-context Directory exists");
+            //        string[] filePaths3 = Directory.GetFiles("/container-specialization-context");
+            //        _logger.LogInformation("[TEST][HOST] GetStartContextOrNullAsync2 2");
+            //        foreach (string file in filePaths3)
+            //        {
+            //            try
+            //            {
+            //                _logger.LogInformation($"[TEST][HOST] /container-specialization-context file: {Path.GetFileName(file)}");
+            //            }
+            //            catch (Exception e)
+            //            {
+            //                _logger.LogInformation($"[TEST][HOST] 4.5 {e.ToString()}");
+            //            }
+            //        }
 
-                    if (File.Exists(contextFile))
-                    {
-                        _logger.LogInformation($"[TEST][HOST] The file exists!!!");
-                        string contents = File.ReadAllText(contextFile);
-                        _logger.LogInformation($"[TEST][HOST] {contents}");
-                        break;
-                    }
-                    else
-                    {
-                        _logger.LogInformation($"[TEST][HOST] The file {contextFile} does not exist.");
-                    }
-                }
-                Thread.Sleep(30000);
-            }
-            Thread.Sleep(30000);
-            _logger.LogInformation($"[TEST][HOST] Fake Assign here");
+            //        if (File.Exists(contextFile))
+            //        {
+            //            _logger.LogInformation($"[TEST][HOST] The file exists!!!");
+            //            string contents = File.ReadAllText(contextFile);
+            //            _logger.LogInformation($"[TEST][HOST] {contents}");
+            //            break;
+            //        }
+            //        else
+            //        {
+            //            _logger.LogInformation($"[TEST][HOST] The file {contextFile} does not exist.");
+            //        }
+            //    }
+            //    Thread.Sleep(30000);
+            //}
+            //Thread.Sleep(30000);
+            //_logger.LogInformation($"[TEST][HOST] Fake Assign here");
             return string.Empty;
 
             // var startContext = _environment.GetEnvironmentVariable(EnvironmentSettingNames.ContainerStartContext);
