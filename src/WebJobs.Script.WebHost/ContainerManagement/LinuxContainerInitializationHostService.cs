@@ -138,35 +138,89 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
             string path = Directory.GetCurrentDirectory();
             _logger.LogInformation($"[TEST][HOST] pwd: {path}");
 
-            DirectoryInfo di = new DirectoryInfo(".");
-            foreach (FileInfo file in di.GetFiles())
+            try
             {
-                 _logger.LogInformation($"[TEST][HOST] base directory files: {file.Name}");
+                DirectoryInfo di = new DirectoryInfo(".");
+                foreach (FileInfo file in di.GetFiles())
+                {
+                    _logger.LogInformation($"[TEST][HOST] . base directory files: {file.Name}");
+                }
+            }
+            catch (Exception e)
+            {
+                _logger.LogInformation($"[TEST][HOST] 1 {e.ToString()}");
             }
 
-            if (Directory.Exists("/mnt"))
+            try
             {
-                _logger.LogInformation("[TEST][HOST] /mnt Directory exists");
-                string[] filePaths2 = Directory.GetFiles("/mnt");
-                _logger.LogInformation("[TEST][HOST] GetStartContextOrNullAsync2 1");
-                foreach (string filePath2 in filePaths2)
+                DirectoryInfo dir = new DirectoryInfo("/");
+                foreach (FileInfo file in dir.GetFiles())
                 {
-                    try
+                    _logger.LogInformation($"[TEST][HOST] / base directory files: {file.Name}");
+                }
+            }
+            catch (Exception e)
+            {
+                _logger.LogInformation($"[TEST][HOST] 2 {e.ToString()}");
+            }
+
+            try
+            {
+                if (Directory.Exists("/mnt"))
+                {
+                    _logger.LogInformation("[TEST][HOST] /mnt Directory exists");
+                    string[] filePaths2 = Directory.GetFiles("/mnt");
+                    _logger.LogInformation("[TEST][HOST] GetStartContextOrNullAsync2 1");
+                    foreach (string filePath2 in filePaths2)
                     {
-                        _logger.LogInformation($"[TEST][HOST] file: {Path.GetFileName(filePath2)}");
-                    }
-                    catch (Exception e)
-                    {
-                        _logger.LogInformation($"[TEST][HOST] {e.ToString()}");
+                        _logger.LogInformation("[TEST][HOST] file exists");
+                        try
+                        {
+                            _logger.LogInformation($"[TEST][HOST] file: {Path.GetFileName(filePath2)}");
+                        }
+                        catch (Exception e)
+                        {
+                            _logger.LogInformation($"[TEST][HOST] 3.5 {e.ToString()}");
+                        }
                     }
                 }
+            }
+            catch (Exception e)
+            {
+                _logger.LogInformation($"[TEST][HOST] 3 {e.ToString()}");
+            }
+
+            try
+            {
+                if (Directory.Exists("/container-specialization-context"))
+                {
+                    _logger.LogInformation("[TEST][HOST] /container-specialization-context Directory exists");
+                    string[] filePaths3 = Directory.GetFiles("/container-specialization-context");
+                    _logger.LogInformation("[TEST][HOST] GetStartContextOrNullAsync2 2");
+                    foreach (string filePath2 in filePaths3)
+                    {
+                        _logger.LogInformation("[TEST][HOST] /container-specialization-context file exists");
+                        try
+                        {
+                            _logger.LogInformation($"[TEST][HOST] /container-specialization-context file: {Path.GetFileName(filePath2)}");
+                        }
+                        catch (Exception e)
+                        {
+                            _logger.LogInformation($"[TEST][HOST] 4.5 {e.ToString()}");
+                        }
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                _logger.LogInformation($"[TEST][HOST] 4 {e.ToString()}");
             }
 
             return string.Empty;
 
             // while (true)
             // {
-            //     string[] filePaths = Directory.GetFiles("/mnt/CONTAINER_SPECIALIZATION_CONTEXT_MOUNT_PATH");
+            //     string[] filePaths = Directory.GetFiles("/mnt/container-specialization-context");
             //     foreach (string filePath in filePaths)
             //     {
             //         _logger.LogInformation($"[TEST][HOST] file: {Path.GetFileName(filePath)}");
