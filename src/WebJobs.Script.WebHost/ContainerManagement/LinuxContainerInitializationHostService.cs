@@ -134,16 +134,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
             _logger.LogInformation("GetStartContextOrNullAsync2");
             // read files in path: /CONTAINER_SPECIALIZATION_CONTEXT_MOUNT_PATH/Context.txt
 
-            //var contextFile = "/mnt/CONTAINER_SPECIALIZATION_CONTEXT_MOUNT_PATH/Context.txt";
+            var contextFile = "/container-specialization-context/Context.txt";
             string path = Directory.GetCurrentDirectory();
             _logger.LogInformation($"[TEST][HOST] pwd: {path}");
 
             try
             {
                 DirectoryInfo di = new DirectoryInfo(".");
-                foreach (FileInfo file in di.GetFiles())
+                foreach (DirectoryInfo file in di.GetDirectories())
                 {
-                    _logger.LogInformation($"[TEST][HOST] . base directory files: {file.Name}");
+                    _logger.LogInformation($"[TEST][HOST] . base directory Directory: {file.Name}");
                 }
             }
             catch (Exception e)
@@ -154,9 +154,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
             try
             {
                 DirectoryInfo dir = new DirectoryInfo("/");
-                foreach (FileInfo file in dir.GetFiles())
+                foreach (DirectoryInfo file in dir.GetDirectories())
                 {
-                    _logger.LogInformation($"[TEST][HOST] / base directory files: {file.Name}");
+                    _logger.LogInformation($"[TEST][HOST] / base directory Directory: {file.Name}");
                 }
             }
             catch (Exception e)
@@ -216,28 +216,39 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
                 _logger.LogInformation($"[TEST][HOST] 4 {e.ToString()}");
             }
 
+            while (true)
+            {
+                _logger.LogInformation("[TEST][HOST] /container-specialization-context Directory exists");
+                string[] filePaths3 = Directory.GetFiles("/container-specialization-context");
+                _logger.LogInformation("[TEST][HOST] GetStartContextOrNullAsync2 2");
+                foreach (string file in filePaths3)
+                {
+                    try
+                    {
+                        _logger.LogInformation($"[TEST][HOST] /container-specialization-context file: {Path.GetFileName(file)}");
+                    }
+                    catch (Exception e)
+                    {
+                        _logger.LogInformation($"[TEST][HOST] 4.5 {e.ToString()}");
+                    }
+                }
+
+                if (File.Exists(contextFile))
+                {
+                    _logger.LogInformation($"[TEST][HOST] The file exists!!!");
+                    string contents = File.ReadAllText(contextFile);
+                    _logger.LogInformation($"[TEST][HOST] {contents}");
+                    break;
+                }
+                else
+                {
+                    Console.WriteLine("The file does not exist.");
+                }
+                Thread.Sleep(30000);
+            }
+            Thread.Sleep(30000);
+            _logger.LogInformation($"[TEST][HOST] Fake Assign here");
             return string.Empty;
-
-            // while (true)
-            // {
-            //     string[] filePaths = Directory.GetFiles("/mnt/container-specialization-context");
-            //     foreach (string filePath in filePaths)
-            //     {
-            //         _logger.LogInformation($"[TEST][HOST] file: {Path.GetFileName(filePath)}");
-            //     }
-
-            //     if (File.Exists(contextFile))
-            //     {
-            //         _logger.LogInformation($"The file exists.");
-            //         string contents = File.ReadAllText(contextFile);
-            //         _logger.LogInformation(contents);
-            //     }
-            //     else
-            //     {
-            //         Console.WriteLine("The file does not exist.");
-            //     }
-            //     Thread.Sleep(30000);
-            // }
 
             // var startContext = _environment.GetEnvironmentVariable(EnvironmentSettingNames.ContainerStartContext);
 
