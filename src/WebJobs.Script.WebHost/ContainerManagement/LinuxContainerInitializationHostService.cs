@@ -146,11 +146,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
 
             if (Directory.Exists("/mnt"))
             {
-                _logger.LogInformation("/mnt Directory exists");
+                _logger.LogInformation("[TEST][HOST] /mnt Directory exists");
                 string[] filePaths2 = Directory.GetFiles("/mnt");
+                _logger.LogInformation("[TEST][HOST] GetStartContextOrNullAsync2 1");
                 foreach (string filePath2 in filePaths2)
                 {
-                    _logger.LogInformation($"[TEST][HOST] file: {Path.GetFileName(filePath2)}");
+                    try
+                    {
+                        _logger.LogInformation($"[TEST][HOST] file: {Path.GetFileName(filePath2)}");
+                    }
+                    catch (Exception e)
+                    {
+                        _logger.LogInformation($"[TEST][HOST] {e.ToString()}");
+                    }
+
                 }
             }
 
