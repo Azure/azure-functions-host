@@ -112,6 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
             else
             {
                 await FlushFunctionExecutionActivities();
+                Checkctx();
                 SetTimerInterval(_flushIntervalMs);
             }
         }
