@@ -92,6 +92,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             Assert.Equal(request.Headers.GetValues(LinuxContainerMetricsPublisher.ContainerNameHeader).Single(), _containerName);
             Assert.Equal(request.Headers.GetValues(LinuxContainerMetricsPublisher.HostNameHeader).Single(), _testHostName);
             Assert.Equal(request.Headers.GetValues(LinuxContainerMetricsPublisher.StampNameHeader).Single(), _testStampName);
+            Assert.NotEmpty(request.Headers.GetValues(ScriptConstants.SiteRestrictedTokenHeaderName));
             Assert.NotEmpty(request.Headers.GetValues(ScriptConstants.SiteTokenHeaderName));
 
             Assert.Equal(request.RequestUri.Host, _testIpAddress);

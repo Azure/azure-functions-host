@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security.Authentication
         private AuthenticateResult HandleAuthenticate()
         {
             string token = null;
-            if (!Context.Request.Headers.TryGetValue(ScriptConstants.SiteTokenHeaderName, out StringValues values))
+            if (!Context.Request.Headers.TryGetValue(ScriptConstants.SiteRestrictedTokenHeaderName, out StringValues values))
             {
                 return AuthenticateResult.NoResult();
             }

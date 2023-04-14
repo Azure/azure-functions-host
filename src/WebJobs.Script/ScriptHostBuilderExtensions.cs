@@ -12,6 +12,7 @@ using Microsoft.ApplicationInsights.Extensibility.Implementation;
 using Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Hosting;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
@@ -101,6 +102,12 @@ namespace Microsoft.Azure.WebJobs.Script
                 if (!context.Properties.ContainsKey(ScriptConstants.SkipHostJsonConfigurationKey))
                 {
                     configBuilder.Add(new HostJsonFileConfigurationSource(applicationOptions, SystemEnvironment.Instance, loggerFactory, metricsLogger));
+                }
+                // Adding hosting config into job host configuration
+                IConfiguration scriptHostConfiguration = applicationOptions.RootServiceProvider.GetService<IConfiguration>();
+                if (scriptHostConfiguration != null)
+                {
+                    configBuilder.AddConfiguration(scriptHostConfiguration.GetSection(ScriptConstants.FunctionsHostingConfigSectionName));
                 }
             });
 
@@ -306,13 +313,7 @@ namespace Microsoft.Azure.WebJobs.Script
                          .GetSection(ConfigurationSectionNames.Aggregator)
                          .Bind(o);
                     });
-                services.AddOptions<ScaleOptions>()
-                    .Configure<IConfiguration>((o, c) =>
-                    {
-                        c.GetSection(ConfigurationSectionNames.JobHost)
-                         .GetSection(ConfigurationSectionNames.Scale)
-                         .Bind(o);
-                    });
+                services.ConfigureOptions<ScaleOptionsSetup>();
 
                 services.AddSingleton<IFileLoggingStatusManager, FileLoggingStatusManager>();
 
@@ -327,12 +328,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
 
                 services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, FunctionInvocationDispatcherShutdownManager>());
-
-                if (SystemEnvironment.Instance.IsRuntimeScaleMonitoringEnabled())
-                {
-                    services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, FunctionsScaleMonitorService>());
-                }
-                services.TryAddSingleton<FunctionsScaleManager>();
 
                 services.AddSingleton<IHostOptionsProvider, HostOptionsProvider>();
             });

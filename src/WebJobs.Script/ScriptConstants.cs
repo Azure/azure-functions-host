@@ -100,7 +100,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AntaresLogIdHeaderName = "X-ARR-LOG-ID";
         public const string AntaresScaleOutHeaderName = "X-FUNCTION-SCALEOUT";
         public const string AntaresColdStartHeaderName = "X-MS-COLDSTART";
-        public const string SiteTokenHeaderName = "x-ms-site-restricted-token";
+        public const string SiteRestrictedTokenHeaderName = "x-ms-site-restricted-token";
+        public const string SiteTokenHeaderName = "x-ms-site-token";
         public const string EasyAuthIdentityHeader = "x-ms-client-principal";
         public const string AntaresPlatformInternal = "x-ms-platform-internal";
         public const string AzureVersionHeader = "x-ms-version";
@@ -124,11 +125,14 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string FeatureFlagEnableWorkerIndexing = "EnableWorkerIndexing";
         public const string FeatureFlagEnableDebugTracing = "EnableDebugTracing";
         public const string FeatureFlagEnableProxies = "EnableProxies";
+        public const string FeatureFlagEnableHttpProxying = "EnableHttpProxying";
         public const string HostingConfigDisableLinuxAppServiceDetailedExecutionEvents = "DisableLinuxExecutionDetails";
         public const string HostingConfigDisableLinuxAppServiceExecutionEventLogBackoff = "DisableLinuxLogBackoff";
 
-        public const string AdminJwtValidAudienceFormat = "https://{0}.azurewebsites.net/azurefunctions";
-        public const string AdminJwtValidIssuerFormat = "https://{0}.scm.azurewebsites.net";
+        public const string SiteAzureFunctionsUriFormat = "https://{0}.azurewebsites.net/azurefunctions";
+        public const string ScmSiteUriFormat = "https://{0}.scm.azurewebsites.net";
+        public const string SiteUriFormat = "https://{0}.azurewebsites.net";
+        public const string AppServiceCoreUri = "https://appservice.core.azurewebsites.net";
 
         public const string AzureFunctionsSystemDirectoryName = ".azurefunctions";
         public const string HttpMethodConstraintName = "httpMethod";
@@ -165,7 +169,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string LinuxMetricEventStreamName = "MS_FUNCTION_METRICS";
         public const string LinuxFunctionDetailsEventStreamName = "MS_FUNCTION_DETAILS";
         public const string LinuxAzureMonitorEventStreamName = "MS_FUNCTION_AZURE_MONITOR_EVENT";
-        public const string LinuxMSISpecializationStem = "/api/specialize?api-version=2017-09-01";
+        public const string LinuxMSISpecializationStem = "/api/specialize?api-version=2022-01-01";
 
         public const string DurableTaskPropertyName = "durableTask";
         public const string DurableTaskHubName = "HubName";
@@ -221,5 +225,10 @@ namespace Microsoft.Azure.WebJobs.Script
         public static readonly string LiveLogsSessionAIKey = "#AzFuncLiveLogsSessionId";
 
         public static readonly string FunctionsHostingConfigSectionName = "FunctionsHostingConfig";
+
+        // HTTP Proxying constants
+        public static readonly string HttpProxyingEnabled = "HttpProxyingEnabled";
+        public static readonly string HttpProxyCorrelationHeader = "x-ms-invocation-id";
+        public static readonly string HttpProxyTask = "HttpProxyTask";
     }
 }

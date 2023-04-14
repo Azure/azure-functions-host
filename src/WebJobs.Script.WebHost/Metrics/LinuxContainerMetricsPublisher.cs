@@ -284,12 +284,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
                 Content = new ObjectContent<TContent>(content, new JsonMediaTypeFormatter())
             };
 
-            var token = SimpleWebTokenHelper.CreateToken(DateTime.UtcNow.AddMinutes(5));
+            string swtToken = SimpleWebTokenHelper.CreateToken(DateTime.UtcNow.AddMinutes(5));
+            string jwtToken = JwtTokenHelper.CreateToken(DateTime.UtcNow.AddMinutes(5));
 
             // add the required authentication headers
             request.Headers.Add(ContainerNameHeader, _containerName);
             request.Headers.Add(HostNameHeader, _hostNameProvider.Value);
-            request.Headers.Add(ScriptConstants.SiteTokenHeaderName, token);
+            request.Headers.Add(ScriptConstants.SiteRestrictedTokenHeaderName, swtToken);
+            request.Headers.Add(ScriptConstants.SiteTokenHeaderName, jwtToken);
             request.Headers.Add(StampNameHeader, _stampName);
 
             return request;

@@ -33,6 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             _next = next;
         }
 
+        // TODO: Confirm that only HttpTrigger requests would flow through here
         public async Task Invoke(HttpContext context)
         {
             if (_next != null)
@@ -52,6 +53,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
                 int nestedProxiesCount = GetNestedProxiesCount(context, functionExecution);
                 IActionResult result = await GetResultAsync(context, functionExecution);
+
+                if (context.Items.TryGetValue(ScriptConstants.HttpProxyingEnabled, out var value))
+                {
+                    if (value?.ToString() == bool.TrueString)
+                    {
+                        return;
+                    }
+                }
+
                 if (nestedProxiesCount > 0)
                 {
                     // if Proxy, the rest of the pipeline will be processed by Proxies in
@@ -128,7 +138,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
                 using (logger.BeginScope(scopeState))
                 {
                     var applicationLifetime = context.RequestServices.GetService<IApplicationLifetime>();
-                    CancellationToken cancellationToken = applicationLifetime != null ? applicationLifetime.ApplicationStopping : CancellationToken.None;
+                    CancellationToken cancellationToken = context.RequestAborted;
+
                     await functionExecution.ExecuteAsync(context.Request, cancellationToken);
 
                     if (context.Items.TryGetValue(ScriptConstants.AzureFunctionsDuplicateHttpHeadersKey, out object value))

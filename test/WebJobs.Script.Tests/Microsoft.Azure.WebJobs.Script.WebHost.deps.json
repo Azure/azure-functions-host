@@ -118,7 +118,7 @@
       "Azure.Storage.Common/12.12.0": {
         "dependencies": {
           "Azure.Core": "1.25.0",
-          "System.IO.Hashing": "6.0.0"
+          "System.IO.Hashing": "7.0.0"
         },
         "runtime": {
           "lib/netstandard2.0/Azure.Storage.Common.dll": {
@@ -2190,11 +2190,11 @@
           "System.Runtime": "4.3.1"
         }
       },
-      "System.IO.Hashing/6.0.0": {
+      "System.IO.Hashing/7.0.0": {
         "runtime": {
           "lib/net6.0/System.IO.Hashing.dll": {
-            "assemblyVersion": "6.0.0.0",
-            "fileVersion": "6.0.21.52210"
+            "assemblyVersion": "7.0.0.0",
+            "fileVersion": "7.0.22.51805"
           }
         }
       },
@@ -2905,6 +2905,17 @@
           "System.Xml.XmlDocument": "4.3.0"
         }
       },
+      "Yarp.ReverseProxy/2.0.0": {
+        "dependencies": {
+          "System.IO.Hashing": "7.0.0"
+        },
+        "runtime": {
+          "lib/net6.0/Yarp.ReverseProxy.dll": {
+            "assemblyVersion": "2.0.0.0",
+            "fileVersion": "2.0.23.11306"
+          }
+        }
+      },
       "Microsoft.Azure.WebJobs.Script/4.17.0": {
         "dependencies": {
           "Azure.Core": "1.25.0",
@@ -2956,7 +2967,8 @@
           "Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel": "2.21.0",
           "Microsoft.Azure.WebJobs.Script": "4.17.0",
           "System.IO.FileSystem.Primitives": "4.3.0",
-          "System.Threading.Channels": "6.0.0"
+          "System.Threading.Channels": "6.0.0",
+          "Yarp.ReverseProxy": "2.0.0"
         },
         "runtime": {
           "Microsoft.Azure.WebJobs.Script.Grpc.dll": {}
@@ -4484,12 +4496,12 @@
       "path": "system.io.filesystem.primitives/4.3.0",
       "hashPath": "system.io.filesystem.primitives.4.3.0.nupkg.sha512"
     },
-    "System.IO.Hashing/6.0.0": {
+    "System.IO.Hashing/7.0.0": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-Rfm2jYCaUeGysFEZjDe7j1R4x6Z6BzumS/vUT5a1AA/AWJuGX71PoGB0RmpyX3VmrGqVnAwtfMn39OHR8Y/5+g==",
-      "path": "system.io.hashing/6.0.0",
-      "hashPath": "system.io.hashing.6.0.0.nupkg.sha512"
+      "sha512": "sha512-sDnWM0N3AMCa86LrKTWeF3BZLD2sgWyYUc7HL6z4+xyDZNQRwzmxbo4qP2rX2MqC+Sy1/gOSRDah5ltxY5jPxw==",
+      "path": "system.io.hashing/7.0.0",
+      "hashPath": "system.io.hashing.7.0.0.nupkg.sha512"
     },
     "System.Linq/4.3.0": {
       "type": "package",
@@ -4980,6 +4992,13 @@
       "sha512": "sha512-MYoTCP7EZ98RrANESW05J5ZwskKDoN0AuZ06ZflnowE50LTpbR5yRg3tHckTVm5j/m47stuGgCrCHWePyHS70Q==",
       "path": "system.xml.xmlserializer/4.3.0",
       "hashPath": "system.xml.xmlserializer.4.3.0.nupkg.sha512"
+    },
+    "Yarp.ReverseProxy/2.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-9yMPNkJRPn/hHssKKf7eucF5o1f0nIrQ9QlSybR2RPdO4+Ws3aDd8qAg40YFZMbZKIIqtE3u4fCkXO8vNwm0yQ==",
+      "path": "yarp.reverseproxy/2.0.0",
+      "hashPath": "yarp.reverseproxy.2.0.0.nupkg.sha512"
     },
     "Microsoft.Azure.WebJobs.Script/4.17.0": {
       "type": "project",

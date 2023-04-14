@@ -166,6 +166,7 @@
 
   <ItemGroup>
     <Folder Include="Description\DotNet\TestFiles\DepsFiles\" />
+    <Folder Include="Scale\" />
   </ItemGroup>
 
   <Import Project="..\..\build\GrpcTestFix.targets" />
