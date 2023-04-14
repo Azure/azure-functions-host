@@ -37,6 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string WebSiteAuthEncryptionKey = "WEBSITE_AUTH_ENCRYPTION_KEY";
         public const string ContainerEncryptionKey = "CONTAINER_ENCRYPTION_KEY";
         public const string ConsoleLoggingDisabled = "CONSOLE_LOGGING_DISABLED";
+        public const string ConsoleLoggingBufferSize = "CONSOLE_LOGGING_BUFFER_SIZE";
         public const string SkipSslValidation = "SCM_SKIP_SSL_VALIDATION";
         public const string EnvironmentNameKey = "AZURE_FUNCTIONS_ENVIRONMENT";
         public const string FunctionsV2CompatibilityModeKey = "FUNCTIONS_V2_COMPATIBILITY_MODE";

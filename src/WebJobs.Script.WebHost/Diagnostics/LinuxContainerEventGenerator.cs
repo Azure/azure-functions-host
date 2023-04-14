@@ -2,6 +2,9 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Threading;
+using System.Threading.Channels;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
@@ -13,18 +16,47 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly Action<string> _writeEvent;
         private readonly bool _consoleEnabled = true;
         private readonly IEnvironment _environment;
+        private readonly Channel<string> _consoleBuffer;
+        private readonly Task _consoleBufferReadLoop;
         private string _containerName;
         private string _stampName;
         private string _tenantId;
 
         public LinuxContainerEventGenerator(IEnvironment environment, Action<string> writeEvent = null)
         {
-            _writeEvent = writeEvent ?? ConsoleWriter;
-            _environment = environment;
             if (Environment.GetEnvironmentVariable(EnvironmentSettingNames.ConsoleLoggingDisabled) == "1")
             {
                 _consoleEnabled = false;
             }
+
+            if (writeEvent == null)
+            {
+                // We are going to used stdout, but do we write directly or use a buffer?
+                _consoleBuffer = Environment.GetEnvironmentVariable(EnvironmentSettingNames.ConsoleLoggingBufferSize) switch
+                {
+                    "-1" => Channel.CreateUnbounded<string>(), // buffer size of -1 indicates that buffer should be enabled but unbounded
+                    var s when int.TryParse(s, out int i) && i > 0 => Channel.CreateBounded<string>(i),
+                    _ => null // do not buffer in all other cases
+                };
+
+                if (_consoleEnabled == false)
+                {
+                    writeEvent = (string s) => { };
+                }
+                else if (_consoleBuffer == null)
+                {
+                    writeEvent = Console.WriteLine;
+                }
+                else
+                {
+                    writeEvent = WriteToConsoleBuffer;
+                    _consoleBufferReadLoop = ProcessConsoleBuffer();
+                }
+            }
+
+            _writeEvent = writeEvent;
+            _environment = environment;
+
             _containerName = _environment.GetEnvironmentVariable(EnvironmentSettingNames.ContainerName)?.ToUpperInvariant();
         }
 
@@ -96,11 +128,36 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         {
         }
 
-        private void ConsoleWriter(string evt)
+        private void WriteToConsoleBuffer(string evt)
         {
-            if (_consoleEnabled)
+            try
             {
+                while (_consoleBuffer.Writer.TryWrite(evt) == false)
+                {
+                    var cts = new CancellationTokenSource();
+                    cts.CancelAfter(TimeSpan.FromSeconds(1));
+
+                    // Buffer is currently full, wait until writing is permitted.
+                    // This is the downside of using channels, we are on a sync code path and so we have to block on this task
+                    if (_consoleBuffer.Writer.WaitToWriteAsync(cts.Token).AsTask().Result == false)
+                    {
+                        // The buffer is not usable anymore, just write direct to console
+                        Console.WriteLine(evt);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogUnhandledException(ex);
                 Console.WriteLine(evt);
+            }
+        }
+
+        private async Task ProcessConsoleBuffer()
+        {
+            await foreach (var line in _consoleBuffer.Reader.ReadAllAsync())
+            {
+                Console.WriteLine(line);
             }
         }
 
