@@ -17,6 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly bool _consoleEnabled = true;
         private readonly IEnvironment _environment;
         private readonly Channel<string> _consoleBuffer;
+        private readonly TimeSpan _consoleBufferTimeout = TimeSpan.FromSeconds(1);
         private readonly Task _consoleBufferReadLoop;
         private string _containerName;
         private string _stampName;
@@ -134,20 +135,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             {
                 while (_consoleBuffer.Writer.TryWrite(evt) == false)
                 {
-                    var cts = new CancellationTokenSource();
-                    cts.CancelAfter(TimeSpan.FromSeconds(1));
-
                     // Buffer is currently full, wait until writing is permitted.
                     // This is the downside of using channels, we are on a sync code path and so we have to block on this task
-                    if (_consoleBuffer.Writer.WaitToWriteAsync(cts.Token).AsTask().Result == false)
+                    var writeTask = _consoleBuffer.Writer.WaitToWriteAsync().AsTask();
+                    if (writeTask.WaitAsync(_consoleBufferTimeout).Result == false)
                     {
                         // The buffer is not usable anymore, just write direct to console
                         Console.WriteLine(evt);
+                        break;
                     }
                 }
             }
             catch (Exception ex)
             {
+                // Most likely a task cancellation exception from the timeout expiring, but regardless we handle it the same way:
+                // dump the raw exception and write the event to the console directly
                 LogUnhandledException(ex);
                 Console.WriteLine(evt);
             }
@@ -168,7 +170,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public static void LogUnhandledException(Exception e)
         {
-            var linuxContainerEventGenerator = new LinuxContainerEventGenerator(SystemEnvironment.Instance);
+            // This is a fallback to console logging codepath. Force the generator to just write to console directly.
+            var linuxContainerEventGenerator = new LinuxContainerEventGenerator(SystemEnvironment.Instance, Console.WriteLine);
             linuxContainerEventGenerator.LogFunctionTraceEvent(LogLevel.Error,
                 SystemEnvironment.Instance.GetSubscriptionId() ?? string.Empty,
                 SystemEnvironment.Instance.GetAzureWebsiteUniqueSlotName() ?? string.Empty, string.Empty, string.Empty,
