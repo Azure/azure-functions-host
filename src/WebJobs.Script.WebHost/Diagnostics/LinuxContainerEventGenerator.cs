@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Text;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
@@ -19,6 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly Channel<string> _consoleBuffer;
         private readonly TimeSpan _consoleBufferTimeout = TimeSpan.FromSeconds(1);
         private readonly Task _consoleBufferReadLoop;
+        private readonly bool _consoleBufferBatched = false;
         private string _containerName;
         private string _stampName;
         private string _tenantId;
@@ -50,6 +52,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 }
                 else
                 {
+                    _consoleBufferBatched = Environment.GetEnvironmentVariable(EnvironmentSettingNames.ConsoleLoggingBufferBatched) switch
+                    {
+                        "1" => true,
+                        _ => false
+                    };
+
                     writeEvent = WriteToConsoleBuffer;
                     _consoleBufferReadLoop = ProcessConsoleBuffer();
                 }
@@ -157,9 +165,27 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         private async Task ProcessConsoleBuffer()
         {
-            await foreach (var line in _consoleBuffer.Reader.ReadAllAsync())
+            if (_consoleBufferBatched)
             {
-                Console.WriteLine(line);
+                var builder = new StringBuilder();
+
+                while (true)
+                {
+                    await _consoleBuffer.Reader.WaitToReadAsync();
+                    while (_consoleBuffer.Reader.TryRead(out var line))
+                    {
+                        builder.AppendLine(line);
+                    }
+                    Console.WriteLine(builder.ToString());
+                    builder.Clear();
+                }
+            }
+            else
+            {
+                await foreach (var line in _consoleBuffer.Reader.ReadAllAsync())
+                {
+                    Console.WriteLine(line);
+                }
             }
         }
 
