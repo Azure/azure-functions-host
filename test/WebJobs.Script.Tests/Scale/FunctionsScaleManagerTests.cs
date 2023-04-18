@@ -18,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
     {
         private readonly FunctionsScaleManager _scaleManager;
         private readonly Mock<IScaleMonitorManager> _monitorManagerMock;
-        private readonly Mock<IScaleMetricsRepository> _metricsRepositoryMock;
+        private readonly Mock<Script.Scale.IScaleMetricsRepository> _metricsRepositoryMock;
         private readonly TestLoggerProvider _loggerProvider;
         private readonly List<IScaleMonitor> _monitors;
         private readonly ILogger _testLogger;
@@ -33,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
 
             _monitorManagerMock = new Mock<IScaleMonitorManager>(MockBehavior.Strict);
             _monitorManagerMock.Setup(p => p.GetMonitors()).Returns(() => _monitors);
-            _metricsRepositoryMock = new Mock<IScaleMetricsRepository>(MockBehavior.Strict);
+            _metricsRepositoryMock = new Mock<Script.Scale.IScaleMetricsRepository>(MockBehavior.Strict);
 
             _scaleManager = new FunctionsScaleManager(_monitorManagerMock.Object, _metricsRepositoryMock.Object, loggerFactory);
         }
