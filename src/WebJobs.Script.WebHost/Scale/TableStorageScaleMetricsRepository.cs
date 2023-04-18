@@ -20,7 +20,7 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
-    public class TableStorageScaleMetricsRepository : IScaleMetricsRepository
+    public class TableStorageScaleMetricsRepository : Script.Scale.IScaleMetricsRepository
     {
         internal const string TableNamePrefix = "AzureFunctionsScaleMetrics";
         internal const string MonitorIdPropertyName = "MonitorId";
