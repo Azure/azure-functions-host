@@ -10,10 +10,12 @@ using System.Linq;
 using System.Net.Http;
 using System.Resources;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Extensions.Logging;
+using Microsoft.WindowsAzure.Storage.Shared.Protocol;
 using Newtonsoft.Json;
 using NuGet.Versioning;
 
@@ -23,16 +25,18 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
     {
         private readonly IEnvironment _environment;
         private readonly ExtensionBundleOptions _options;
+        private readonly FunctionsHostingConfigOptions _configOption;
         private readonly ILogger _logger;
         private readonly string _cdnUri;
         private string _extensionBundleVersion;
 
-        public ExtensionBundleManager(ExtensionBundleOptions options, IEnvironment environment, ILoggerFactory loggerFactory)
+        public ExtensionBundleManager(ExtensionBundleOptions options, IEnvironment environment, ILoggerFactory loggerFactory, FunctionsHostingConfigOptions configOption)
         {
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _logger = loggerFactory.CreateLogger<ExtensionBundleManager>() ?? throw new ArgumentNullException(nameof(loggerFactory));
             _cdnUri = _environment.GetEnvironmentVariable(EnvironmentSettingNames.ExtensionBundleSourceUri) ?? ScriptConstants.ExtensionBundleDefaultSourceUri;
             _options = options ?? throw new ArgumentNullException(nameof(options));
+            _configOption = configOption ?? throw new ArgumentNullException(nameof(configOption));
         }
 
         public async Task<ExtensionBundleDetails> GetExtensionBundleDetails()
@@ -128,7 +132,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
                 if (FileUtility.DirectoryExists(path))
                 {
                     var bundleDirectories = FileUtility.EnumerateDirectories(path);
-                    string version = FindBestVersionMatch(_options.Version, bundleDirectories);
+                    string version = FindBestVersionMatch(_options.Version, bundleDirectories, _options.Id, _configOption);
 
                     if (!string.IsNullOrEmpty(version))
                     {
@@ -236,7 +240,8 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
 
             var content = await response.Content.ReadAsStringAsync();
             var bundleVersions = JsonConvert.DeserializeObject<IEnumerable<string>>(content);
-            var matchingBundleVersion = FindBestVersionMatch(_options.Version, bundleVersions);
+
+            var matchingBundleVersion = FindBestVersionMatch(_options.Version, bundleVersions, _options.Id, _configOption);
 
             if (string.IsNullOrEmpty(matchingBundleVersion))
             {
@@ -246,7 +251,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
             return matchingBundleVersion;
         }
 
-        private static string FindBestVersionMatch(VersionRange versionRange, IEnumerable<string> versions)
+        internal static string FindBestVersionMatch(VersionRange versionRange, IEnumerable<string> versions, string bundleId, FunctionsHostingConfigOptions configOption)
         {
             var bundleVersions = versions.Select(p =>
             {
@@ -259,7 +264,29 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
                 return version;
             }).Where(v => v != null);
 
-            return bundleVersions.OrderByDescending(version => version.Version).FirstOrDefault()?.ToString();
+            var matchingVersion = bundleVersions.OrderByDescending(version => version.Version).FirstOrDefault();
+
+            if (bundleId != ScriptConstants.DefaultExtensionBundleId)
+            {
+                return matchingVersion?.ToString();
+            }
+
+            var maximumBundleV3Version = NuGetVersion.Parse(configOption.MaximumSupportedBundleV3Version);
+            matchingVersion = matchingVersion?.Major == 3 && matchingVersion > maximumBundleV3Version
+                            ? maximumBundleV3Version
+                            : matchingVersion;
+
+            var maximumBundleV4Version = NuGetVersion.Parse(configOption.MaximumSupportedBundleV4Version);
+            matchingVersion = matchingVersion?.Major == 4 && matchingVersion > maximumBundleV4Version
+                            ? maximumBundleV4Version
+                            : matchingVersion;
+
+            if (matchingVersion?.Major > 4)
+            {
+                throw new HostInitializationException($"Referenced bundle {bundleId} of version {matchingVersion} does not meet the requirements for maximum supported version for extension bundle. Update your extension bundle reference in host.json to reference bundle version {maximumBundleV4Version} or lower.");
+            }
+
+            return matchingVersion?.ToString();
         }
 
         public async Task<string> GetExtensionBundleBinPathAsync()

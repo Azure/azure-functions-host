@@ -32,6 +32,28 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         }
 
         /// <summary>
+        /// Gets the highest version of extension bundle v4 supported
+        /// </summary>
+        public string MaximumSupportedBundleV3Version
+        {
+            get
+            {
+                return GetFeature(ScriptConstants.MaximumSupportedBundleV3Version) ?? "3.19.0";
+            }
+        }
+
+        /// <summary>
+        /// Gets the highest version of extension bundle v3 supported
+        /// </summary>
+        public string MaximumSupportedBundleV4Version
+        {
+            get
+            {
+                return GetFeature(ScriptConstants.MaximumSupportedBundleV4Version) ?? "4.2.0";
+            }
+        }
+
+        /// <summary>
         /// Gets feature by name.
         /// </summary>
         /// <param name="name">Feature name.</param>
