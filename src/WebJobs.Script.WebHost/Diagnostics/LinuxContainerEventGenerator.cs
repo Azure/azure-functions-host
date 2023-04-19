@@ -13,54 +13,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
     internal class LinuxContainerEventGenerator : LinuxEventGenerator
     {
         private const int MaxDetailsLength = 10000;
-        private static readonly Lazy<LinuxContainerEventGenerator> _Lazy = new Lazy<LinuxContainerEventGenerator>(() => new LinuxContainerEventGenerator(SystemEnvironment.Instance));
+        private static readonly Lazy<LinuxContainerEventGenerator> _Lazy = new Lazy<LinuxContainerEventGenerator>(() => new LinuxContainerEventGenerator(SystemEnvironment.Instance, Console.WriteLine));
         private readonly Action<string> _writeEvent;
-        private readonly bool _consoleEnabled = true;
+        private readonly ConsoleWriter _consoleWriter;
         private readonly IEnvironment _environment;
-        private readonly Channel<string> _consoleBuffer;
-        private readonly TimeSpan _consoleBufferTimeout = TimeSpan.FromSeconds(1);
-        private readonly Task _consoleBufferReadLoop;
-        private readonly bool _consoleBufferBatched = false;
         private string _containerName;
         private string _stampName;
         private string _tenantId;
 
         public LinuxContainerEventGenerator(IEnvironment environment, Action<string> writeEvent = null)
         {
-            if (Environment.GetEnvironmentVariable(EnvironmentSettingNames.ConsoleLoggingDisabled) == "1")
-            {
-                _consoleEnabled = false;
-            }
-
             if (writeEvent == null)
             {
-                // We are going to used stdout, but do we write directly or use a buffer?
-                _consoleBuffer = Environment.GetEnvironmentVariable(EnvironmentSettingNames.ConsoleLoggingBufferSize) switch
-                {
-                    "-1" => Channel.CreateUnbounded<string>(), // buffer size of -1 indicates that buffer should be enabled but unbounded
-                    var s when int.TryParse(s, out int i) && i > 0 => Channel.CreateBounded<string>(i),
-                    _ => null // do not buffer in all other cases
-                };
-
-                if (_consoleEnabled == false)
-                {
-                    writeEvent = (string s) => { };
-                }
-                else if (_consoleBuffer == null)
-                {
-                    writeEvent = Console.WriteLine;
-                }
-                else
-                {
-                    _consoleBufferBatched = Environment.GetEnvironmentVariable(EnvironmentSettingNames.ConsoleLoggingBufferBatched) switch
-                    {
-                        "1" => true,
-                        _ => false
-                    };
-
-                    writeEvent = WriteToConsoleBuffer;
-                    _consoleBufferReadLoop = ProcessConsoleBuffer();
-                }
+                _consoleWriter = new ConsoleWriter(environment, LogUnhandledException);
+                writeEvent = _consoleWriter.WriteHandler;
             }
 
             _writeEvent = writeEvent;
@@ -135,58 +101,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public override void LogFunctionExecutionEvent(string executionId, string siteName, int concurrency, string functionName, string invocationId, string executionStage, long executionTimeSpan, bool success)
         {
-        }
-
-        private void WriteToConsoleBuffer(string evt)
-        {
-            try
-            {
-                while (_consoleBuffer.Writer.TryWrite(evt) == false)
-                {
-                    // Buffer is currently full, wait until writing is permitted.
-                    // This is the downside of using channels, we are on a sync code path and so we have to block on this task
-                    var writeTask = _consoleBuffer.Writer.WaitToWriteAsync().AsTask();
-                    if (writeTask.WaitAsync(_consoleBufferTimeout).Result == false)
-                    {
-                        // The buffer is not usable anymore, just write direct to console
-                        Console.WriteLine(evt);
-                        break;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                // Most likely a task cancellation exception from the timeout expiring, but regardless we handle it the same way:
-                // dump the raw exception and write the event to the console directly
-                LogUnhandledException(ex);
-                Console.WriteLine(evt);
-            }
-        }
-
-        private async Task ProcessConsoleBuffer()
-        {
-            if (_consoleBufferBatched)
-            {
-                var builder = new StringBuilder();
-
-                while (true)
-                {
-                    await _consoleBuffer.Reader.WaitToReadAsync();
-                    while (_consoleBuffer.Reader.TryRead(out var line))
-                    {
-                        builder.AppendLine(line);
-                    }
-                    Console.WriteLine(builder.ToString());
-                    builder.Clear();
-                }
-            }
-            else
-            {
-                await foreach (var line in _consoleBuffer.Reader.ReadAllAsync())
-                {
-                    Console.WriteLine(line);
-                }
-            }
         }
 
         public override void LogAzureMonitorDiagnosticLogEvent(LogLevel level, string resourceId, string operationName, string category, string regionName, string properties)
