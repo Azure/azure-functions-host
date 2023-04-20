@@ -8,17 +8,22 @@ using System.Threading.Tasks;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
-    public class ConsoleWriter
+    internal class ConsoleWriter
     {
         private readonly bool _consoleEnabled = true;
         private readonly Channel<string> _consoleBuffer;
-        private readonly TimeSpan _consoleBufferTimeout = TimeSpan.FromSeconds(1);
+        private readonly TimeSpan _consoleBufferTimeout;
         private readonly Task _consoleBufferReadLoop;
         private readonly bool _consoleBufferBatched = false;
         private readonly Action<string> _writeEvent;
         private readonly Action<Exception> _unhandledExceptionHandler;
 
         public ConsoleWriter(IEnvironment environment, Action<Exception> unhandledExceptionHandler)
+            : this(environment, unhandledExceptionHandler, consoleBufferTimeout: TimeSpan.FromSeconds(1), autoStart: true)
+        {
+        }
+
+        internal ConsoleWriter(IEnvironment environment, Action<Exception> unhandledExceptionHandler, TimeSpan consoleBufferTimeout, bool autoStart)
         {
             if (environment.GetEnvironmentVariable(EnvironmentSettingNames.ConsoleLoggingDisabled) == "1")
             {
@@ -50,7 +55,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 };
 
                 _writeEvent = WriteToConsoleBuffer;
-                _consoleBufferReadLoop = ProcessConsoleBuffer();
+                _consoleBufferTimeout = consoleBufferTimeout;
+
+                if (autoStart)
+                {
+                    _consoleBufferReadLoop = ProcessConsoleBufferAsync();
+                }
             }
 
             _unhandledExceptionHandler = unhandledExceptionHandler;
@@ -85,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             }
         }
 
-        private async Task ProcessConsoleBuffer()
+        internal async Task ProcessConsoleBufferAsync()
         {
             if (_consoleBufferBatched)
             {
@@ -104,7 +114,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     {
                         builder.AppendLine(line);
                     }
-                    Console.WriteLine(builder.ToString());
+                    Console.Write(builder.ToString());
                     builder.Clear();
                 }
             }
