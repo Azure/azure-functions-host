@@ -929,24 +929,26 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             {
                 if (invokeResponse.Result.IsInvocationSuccess(context.ResultSource, capabilityEnabled))
                 {
-                    if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableHttpProxying) && IsHttpProxyingWorker)
-                    {
-                        if (context.Properties.TryGetValue(ScriptConstants.HttpProxyTask, out Task<ForwarderError> httpProxyTask))
-                        {
-                            ForwarderError httpProxyTaskResult = await httpProxyTask;
-
-                            if (httpProxyTaskResult is not ForwarderError.None)
-                            {
-                                // TODO: Understand scenarios where function invocation succeeds but there is an error proxying
-                                // need to investigate different ForwarderErrors and consider how they will be relayed through other services and to users
-                            }
-                        }
-                    }
-
                     _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvokeSucceeded, Id));
 
                     try
                     {
+                        if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableHttpProxying) && IsHttpProxyingWorker)
+                        {
+                            if (context.Properties.TryGetValue(ScriptConstants.HttpProxyTask, out Task<ForwarderError> httpProxyTask))
+                            {
+                                ForwarderError httpProxyTaskResult = await httpProxyTask;
+
+                                //testing error with hard coded value
+                                httpProxyTaskResult = ForwarderError.ResponseBodyClient;
+
+                                if (httpProxyTaskResult is not ForwarderError.None)
+                                {
+                                    throw new InvalidOperationException($"Failed to proxy request with ForwarderError: {nameof(httpProxyTaskResult)}.");
+                                }
+                            }
+                        }
+
                         StringBuilder logBuilder = new StringBuilder();
                         bool usedSharedMemory = false;
 
