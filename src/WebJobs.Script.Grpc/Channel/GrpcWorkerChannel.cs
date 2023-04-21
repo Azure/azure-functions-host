@@ -738,7 +738,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 // do not send an invocation request if cancellation has been requested
                 if (context.CancellationToken.IsCancellationRequested)
                 {
-                    _workerChannelLogger.LogWarning("Cancellation has been requested. The invocation request with id '{invocationId}' is cancelled and will not be sent to the worker.", invocationId);
+                    _workerChannelLogger.LogWarning("Cancellation has been requested. The invocation request with id '{invocationId}' is canceled and will not be sent to the worker.", invocationId);
                     context.ResultSource.TrySetCanceled();
                     return;
                 }
