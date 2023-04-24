@@ -347,6 +347,7 @@ jobs:
     inputs:
       packageType: 'sdk'
       version: '3.1.x'
+      installationPath: 'C:\Program Files\dotnet'
       performMultiLevelLookup: true
   - task: PowerShell@2
     displayName: 'dotnet --info'
