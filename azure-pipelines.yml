@@ -348,6 +348,11 @@ jobs:
       packageType: 'sdk'
       version: '3.1.x'
       performMultiLevelLookup: true
+  - task: PowerShell@2
+    displayName: 'dotnet --info'
+    inputs:
+      targetType: 'inline'
+      script: '& dotnet --info'
   - task: DotNetCoreCLI@2
     displayName: 'Unit Tests'
     inputs:
