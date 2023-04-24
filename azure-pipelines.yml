@@ -346,14 +346,15 @@ jobs:
   - task: UseDotNet@2
     inputs:
       packageType: 'sdk'
-      version: '3.1.x'
-      installationPath: 'C:\Program Files\dotnet'
+      version: '3.1.x'      
       performMultiLevelLookup: true
   - task: PowerShell@2
     displayName: 'dotnet --info'
     inputs:
       targetType: 'inline'
-      script: '& dotnet --info'
+      script: |
+        Write-Host $Env:PATH
+        & dotnet --info
   - task: DotNetCoreCLI@2
     displayName: 'Unit Tests'
     inputs:
@@ -375,7 +376,15 @@ jobs:
     inputs:
       packageType: 'sdk'
       version: '3.1.x'
+      installationPath: 'C:\Program Files\dotnet'
       performMultiLevelLookup: true
+  - task: PowerShell@2
+    displayName: 'dotnet --info'
+    inputs:
+      targetType: 'inline'
+      script: |
+        Write-Host $Env:PATH
+        & dotnet --info
   - task: UseNode@1
     inputs:
       version: '10.x'
