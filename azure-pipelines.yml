@@ -57,11 +57,7 @@ jobs:
     demands:
       - ImageOverride -equals MMS2019TLS
   steps:
-  - task: UseDotNet@2
-    inputs:
-      packageType: 'sdk'
-      version: '3.1.x'
-      performMultiLevelLookup: true
+  - template: build/install-dotnet.yml
   - task: UseDotNet@2
     displayName: 'Install .NET Core 2.1 runtime'
     inputs:
@@ -343,11 +339,7 @@ jobs:
     demands:
       - ImageOverride -equals MMS2019TLS
   steps:
-  - task: UseDotNet@2
-    inputs:
-      packageType: 'sdk'
-      version: '3.1.x'
-      performMultiLevelLookup: true
+  - template: build/install-dotnet.yml
   - task: DotNetCoreCLI@2
     displayName: 'Unit Tests'
     inputs:
@@ -365,11 +357,7 @@ jobs:
     demands:
       - ImageOverride -equals MMS2019TLS
   steps:
-  - task: UseDotNet@2
-    inputs:
-      packageType: 'sdk'
-      version: '3.1.x'
-      performMultiLevelLookup: true
+  - template: build/install-dotnet.yml
   - task: UseNode@1
     inputs:
       version: '10.x'
@@ -425,17 +413,13 @@ jobs:
     demands:
       - ImageOverride -equals MMS2019TLS
   steps:
-  - task: UseDotNet@2
-    inputs:
-      packageType: 'sdk'
-      version: '3.1.x'
-      performMultiLevelLookup: true
+  - template: build/install-dotnet.yml
   - task: UseDotNet@2
     displayName: 'Install .NET Core 2.1 runtime (tests)'
     inputs:
       packageType: runtime
       version: 2.1.x
-      performMultiLevelLookup: true      
+      performMultiLevelLookup: true   
   - task: UseNode@1
     inputs:
       version: '10.x'
