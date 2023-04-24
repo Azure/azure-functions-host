@@ -43,15 +43,54 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
             }
             else if (_environment.IsLinuxConsumptionOnLegion())
             {
-                await ApplyStartContextIfPresent2();
+                await ApplyStartContextIfPresentOnLegion();
                 _logger.LogInformation("Container has (re)started. Waiting for specialization");
                 //Checkctx();
             }
         }
 
+        // TEST ONSTART
+        // Wait 10 minutes before starting host in here
+        // Encrypt the container start context that I would be using and save it into the emptydir volume (Do this from main.go)
+        // Start the host
+
+        // 1. Create another LinuxContainerInitializationHostService for Legion (follow the same pattern as InstanceManager)
+        //      OR
+        //  Just use the current if/else if method on start (let's do this)
+        // 2. ApplyStartContextIfPresent():
+
         private async Task ApplyStartContextIfPresent()
         {
             var startContext = await GetStartContextOrNullAsync();
+
+            if (!string.IsNullOrEmpty(startContext))
+            {
+                _logger.LogInformation("Applying host context");
+                _logger.LogInformation($"[TEST][HOST] startContext: {startContext}");
+
+                var encryptedAssignmentContext = JsonConvert.DeserializeObject<EncryptedHostAssignmentContext>(startContext);
+                var assignmentContext = _startupContextProvider.SetContext(encryptedAssignmentContext);
+
+                var msiError = await _instanceManager.SpecializeMSISidecar(assignmentContext);
+                if (!string.IsNullOrEmpty(msiError))
+                {
+                    // Log and continue specializing even in case of failures.
+                    // There will be other mechanisms to recover the container.
+                    _logger.LogError("MSI Specialization failed with '{msiError}'", msiError);
+                }
+
+                bool success = _instanceManager.StartAssignment(assignmentContext);
+                _logger.LogInformation($"StartAssignment invoked (Success={success})");
+            }
+            else
+            {
+                _logger.LogInformation("No host context specified. Waiting for host assignment");
+            }
+        }
+
+        private async Task ApplyStartContextIfPresentOnLegion()
+        {
+            var startContext = GetStartContextOrNullAsyncOnLegion();
 
             if (!string.IsNullOrEmpty(startContext))
             {
@@ -191,126 +230,70 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
             {
                 _logger.LogInformation($"[TEST][HOST] 4 {e.ToString()}");
             }
-
-            //while (true)
-            //{
-            //    _logger.LogInformation("[TEST][HOST] Checking context path");
-            //    var contextFile = "/container-specialization-context/Context.txt";
-            //    if (Directory.Exists("/container-specialization-context"))
-            //    {
-            //        _logger.LogInformation("[TEST][HOST] /container-specialization-context Directory exists");
-            //        string[] filePaths3 = Directory.GetFiles("/container-specialization-context");
-            //        _logger.LogInformation("[TEST][HOST] GetStartContextOrNullAsync2 2");
-            //        foreach (string file in filePaths3)
-            //        {
-            //            try
-            //            {
-            //                _logger.LogInformation($"[TEST][HOST] /container-specialization-context file: {Path.GetFileName(file)}");
-            //            }
-            //            catch (Exception e)
-            //            {
-            //                _logger.LogInformation($"[TEST][HOST] 4.5 {e.ToString()}");
-            //            }
-            //        }
-
-            //        if (File.Exists(contextFile))
-            //        {
-            //            _logger.LogInformation($"[TEST][HOST] The file exists!!!");
-            //            string contents = File.ReadAllText(contextFile);
-            //            _logger.LogInformation($"[TEST][HOST] {contents}");
-            //            break;
-            //        }
-            //        else
-            //        {
-            //            _logger.LogInformation($"[TEST][HOST] The file {contextFile} does not exist.");
-            //        }
-            //    }
-            //    Thread.Sleep(30000);
-            //}
-            //Thread.Sleep(30000);
-            //_logger.LogInformation($"[TEST][HOST] Fake Assign here");
             return string.Empty;
         }
 
-        //private void Checkctx()
-        //{
-        //    _logger.LogInformation("Checkctx");
-        //    // read files in path: /CONTAINER_SPECIALIZATION_CONTEXT_MOUNT_PATH/Context.txt
+        private string GetStartContextOrNullAsyncOnLegion()
+        {
+            _logger.LogInformation("GetStartContextOrNullAsyncOnLegion");
+            // read files in path: /CONTAINER_SPECIALIZATION_CONTEXT_MOUNT_PATH/Context.txt
 
-        //    try
-        //    {
-        //        DirectoryInfo dir = new DirectoryInfo("/");
-        //        var logoutput = "[TEST][HOST] Checkctx() / base directory Directory: ";
-        //        foreach (DirectoryInfo file in dir.GetDirectories())
-        //        {
-        //            logoutput += file.Name;
-        //        }
-        //        _logger.LogInformation(logoutput);
-        //    }
-        //    catch (Exception e)
-        //    {
-        //        _logger.LogInformation($"[TEST][HOST] 2 {e.ToString()}");
-        //    }
+            string path = Directory.GetCurrentDirectory();
+            _logger.LogInformation($"[TEST][HOST] pwd: {path}");
 
-        //    while (true)
-        //    {
-        //        _logger.LogInformation("[TEST][HOST] Checkctx() Checking context path");
-        //        var contextFile = "/container-specialization-context/Context.txt";
-        //        if (Directory.Exists("/container-specialization-context"))
-        //        {
-        //            _logger.LogInformation("[TEST][HOST] Checkctx() /container-specialization-context Directory exists");
-        //            string[] filePaths3 = Directory.GetFiles("/container-specialization-context");
-        //            _logger.LogInformation("[TEST][HOST] Checkctx() 2");
-        //            foreach (string file in filePaths3)
-        //            {
-        //                try
-        //                {
-        //                    _logger.LogInformation($"[TEST][HOST] Checkctx() /container-specialization-context file: {Path.GetFileName(file)}");
-        //                }
-        //                catch (Exception e)
-        //                {
-        //                    _logger.LogInformation($"[TEST][HOST] 4.5 {e.ToString()}");
-        //                }
-        //            }
+            try
+            {
+                DirectoryInfo dir = new DirectoryInfo("/");
+                var logoutput = "[TEST][HOST] / base directory Directory: ";
+                foreach (DirectoryInfo file in dir.GetDirectories())
+                {
+                    logoutput += file.Name;
+                }
+                _logger.LogInformation(logoutput);
+            }
+            catch (Exception e)
+            {
+                _logger.LogInformation($"[TEST][HOST] 2 {e.ToString()}");
+            }
 
-        //            if (File.Exists(contextFile))
-        //            {
-        //                _logger.LogInformation($"[TEST][HOST] Checkctx() The file exists!!!");
-        //                string contents = File.ReadAllText(contextFile);
-        //                _logger.LogInformation($"[TEST][HOST] Checkctx() {contents}");
-        //                break;
-        //            }
-        //            else
-        //            {
-        //                _logger.LogInformation($"[TEST][HOST] The file {contextFile} does not exist.");
-        //            }
-        //        }
-        //        Thread.Sleep(30000);
-        //    }
-        //    Thread.Sleep(30000);
-        //    _logger.LogInformation($"[TEST][HOST] Fake Assign here");
-
-        //    // var startContext = _environment.GetEnvironmentVariable(EnvironmentSettingNames.ContainerStartContext);
-
-        //    // // Container start context is not available directly
-        //    // if (string.IsNullOrEmpty(startContext))
-        //    // {
-        //    //     // Check if the context is available in blob
-        //    //     var sasUri = _environment.GetEnvironmentVariable(EnvironmentSettingNames.ContainerStartContextSasUri);
-
-        //    //     if (!string.IsNullOrEmpty(sasUri))
-        //    //     {
-        //    //         _logger.LogInformation("Host context specified via CONTAINER_START_CONTEXT_SAS_URI");
-        //    //         startContext = await GetAssignmentContextFromSasUri(sasUri);
-        //    //     }
-        //    // }
-        //    // else
-        //    // {
-        //    //     _logger.LogInformation("Host context specified via CONTAINER_START_CONTEXT");
-        //    // }
-
-        //    // return startContext;
-        //}
+            try
+            {
+                if (Directory.Exists("/container-specialization-context"))
+                {
+                    _logger.LogInformation("[TEST][HOST] /container-specialization-context Directory exists");
+                    string[] filePaths3 = Directory.GetFiles("/container-specialization-context");
+                    _logger.LogInformation("[TEST][HOST] GetStartContextOrNullAsync2 2");
+                    foreach (string filePath2 in filePaths3)
+                    {
+                        _logger.LogInformation("[TEST][HOST] /container-specialization-context file exists");
+                        try
+                        {
+                            _logger.LogInformation($"[TEST][HOST] /container-specialization-context file: {Path.GetFileName(filePath2)}");
+                        }
+                        catch (Exception e)
+                        {
+                            _logger.LogInformation($"[TEST][HOST] 4.5 {e.ToString()}");
+                        }
+                    }
+                    if (File.Exists("/container-specialization-context/Context.txt"))
+                    {
+                        _logger.LogInformation($"[TEST][HOST] The file exists!!!");
+                        string contents = File.ReadAllText("/container-specialization-context/Context.txt");
+                        _logger.LogInformation($"[TEST][HOST] {contents}");
+                        return contents;
+                    }
+                    else
+                    {
+                        _logger.LogInformation($"[TEST][HOST] The file /container-specialization-context/Context.txt does not exist.");
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                _logger.LogInformation($"[TEST][HOST] 4 {e.ToString()}");
+            }
+            return string.Empty;
+        }
 
         private async Task<string> GetAssignmentContextFromSasUri(string sasUri)
         {
