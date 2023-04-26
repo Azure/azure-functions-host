@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script
         string GetEnvironmentVariable(string name);
 
         /// <summary>
-        /// Creates, modifies, or deletes an environment variable stored in the current <see cref="IEnvironment"/>
+        /// Creates, modifies, or deletes an environment variable stored in the current <see cref="IEnvironment"/>.
         /// </summary>
         /// <param name="name">The environment variable name.</param>
         /// <param name="value">The value to assign to the variable.</param>
