@@ -939,12 +939,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                             {
                                 ForwarderError httpProxyTaskResult = await httpProxyTask;
 
-                                //testing error with hard coded value
-                                httpProxyTaskResult = ForwarderError.ResponseBodyClient;
-
                                 if (httpProxyTaskResult is not ForwarderError.None)
                                 {
-                                    throw new InvalidOperationException($"Failed to proxy request with ForwarderError: {nameof(httpProxyTaskResult)}.");
+                                    throw new InvalidOperationException($"Failed to proxy request with ForwarderError: {httpProxyTaskResult}");
                                 }
                             }
                         }
