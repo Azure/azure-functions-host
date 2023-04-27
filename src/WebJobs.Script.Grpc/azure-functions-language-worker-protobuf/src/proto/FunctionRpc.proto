@@ -720,7 +720,6 @@ message RpcRetryOptions
   //  -1 means to retry indefinitely.
   int32 max_retry_count = 2;
 
-<<<<<<< HEAD
   // The delay that's used between retries when you're using a fixed delay strategy.
   google.protobuf.Duration delay_interval = 3;
 
@@ -731,14 +730,4 @@ message RpcRetryOptions
   google.protobuf.Duration maximum_interval = 5;
 
   RetryStrategy retry_strategy = 6;
-=======
-  // The delay that's used between retries when you're using a fixedDelay strategy.
-  google.protobuf.Duration delay_interval = 3;
-
-  // The minimum retry delay when you're using an exponentialBackoff strategy
-  google.protobuf.Duration minimum_interval = 4;
-
-  // The maximum retry delay when you're using an exponentialBackoff strategy
-  google.protobuf.Duration maximum_interval = 5;
->>>>>>> 391ff51d8 (duration fix)
 }
