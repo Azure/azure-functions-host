@@ -10,11 +10,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
     internal class ConsoleWriter
     {
-        private readonly bool _consoleEnabled = true;
         private readonly Channel<string> _consoleBuffer;
         private readonly TimeSpan _consoleBufferTimeout;
         private readonly Task _consoleBufferReadLoop;
-        private readonly bool _consoleBufferBatched = false;
         private readonly Action<string> _writeEvent;
         private readonly Action<Exception> _unhandledExceptionHandler;
 
@@ -25,42 +23,39 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         internal ConsoleWriter(IEnvironment environment, Action<Exception> unhandledExceptionHandler, TimeSpan consoleBufferTimeout, bool autoStart)
         {
-            if (environment.GetEnvironmentVariable(EnvironmentSettingNames.ConsoleLoggingDisabled) == "1")
-            {
-                _consoleEnabled = false;
-            }
+            bool consoleEnabled = environment.GetEnvironmentVariable(EnvironmentSettingNames.ConsoleLoggingDisabled) != "1";
 
-            // We are going to used stdout, but do we write directly or use a buffer?
-            _consoleBuffer = environment.GetEnvironmentVariable(EnvironmentSettingNames.ConsoleLoggingBufferSize) switch
+            if (consoleEnabled)
             {
-                "-1" => Channel.CreateUnbounded<string>(), // buffer size of -1 indicates that buffer should be enabled but unbounded
-                var s when int.TryParse(s, out int i) && i > 0 => Channel.CreateBounded<string>(i),
-                _ => null // do not buffer in all other cases
-            };
+                // We are going to used stdout, but do we write directly or use a buffer?
+                _consoleBuffer = environment.GetEnvironmentVariable(EnvironmentSettingNames.ConsoleLoggingBufferSize) switch
+                {
+                    "-1" => Channel.CreateUnbounded<string>(), // buffer size of -1 indicates that buffer should be enabled but unbounded
+                    var s when int.TryParse(s, out int i) && i > 0 => Channel.CreateBounded<string>(i),
+                    _ => null // do not buffer in all other cases
+                };
 
-            if (_consoleEnabled == false)
-            {
-                _writeEvent = (string s) => { };
-            }
-            else if (_consoleBuffer == null)
-            {
-                _writeEvent = Console.WriteLine;
+                if (_consoleBuffer == null)
+                {
+                    _writeEvent = Console.WriteLine;
+                }
+                else
+                {
+                    _writeEvent = WriteToConsoleBuffer;
+                    _consoleBufferTimeout = consoleBufferTimeout;
+                    if (autoStart)
+                    {
+                        _consoleBufferReadLoop = environment.GetEnvironmentVariable(EnvironmentSettingNames.ConsoleLoggingBufferBatched) switch
+                        {
+                            "1" => ProcessConsoleBufferBatchedAsync(),
+                            _ => ProcessConsoleBufferAsync()
+                        };
+                    }
+                }
             }
             else
             {
-                _consoleBufferBatched = environment.GetEnvironmentVariable(EnvironmentSettingNames.ConsoleLoggingBufferBatched) switch
-                {
-                    "1" => true,
-                    _ => false
-                };
-
-                _writeEvent = WriteToConsoleBuffer;
-                _consoleBufferTimeout = consoleBufferTimeout;
-
-                if (autoStart)
-                {
-                    _consoleBufferReadLoop = ProcessConsoleBufferAsync();
-                }
+                _writeEvent = (string s) => { };
             }
 
             _unhandledExceptionHandler = unhandledExceptionHandler;
@@ -97,32 +92,47 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         internal async Task ProcessConsoleBufferAsync()
         {
-            if (_consoleBufferBatched)
+            await foreach (var line in _consoleBuffer.Reader.ReadAllAsync())
             {
-                var builder = new StringBuilder();
-
-                while (true)
-                {
-                    if (await _consoleBuffer.Reader.WaitToReadAsync() == false)
-                    {
-                        // The buffer has been completed and does not allow further reads.
-                        // Currently this should not be possible, but safest thing to do is break out of the loop.
-                        break;
-                    }
-
-                    while (_consoleBuffer.Reader.TryRead(out var line))
-                    {
-                        builder.AppendLine(line);
-                    }
-                    Console.Write(builder.ToString());
-                    builder.Clear();
-                }
+                Console.WriteLine(line);
             }
-            else
+        }
+
+        internal async Task ProcessConsoleBufferBatchedAsync()
+        {
+            var builder = new StringBuilder();
+
+            while (true)
             {
-                await foreach (var line in _consoleBuffer.Reader.ReadAllAsync())
+                if (await _consoleBuffer.Reader.WaitToReadAsync() == false)
                 {
-                    Console.WriteLine(line);
+                    // The buffer has been completed and does not allow further reads.
+                    // Currently this should not be possible, but safest thing to do is break out of the loop.
+                    break;
+                }
+
+                if (_consoleBuffer.Reader.TryRead(out string line1))
+                {
+                    // Can we synchronously read multiple lines?
+                    // If yes, use the string builder to batch them together into a single write
+                    // If no, just write the single line without using the builder;
+                    if (_consoleBuffer.Reader.TryRead(out string line2))
+                    {
+                        builder.AppendLine(line1);
+                        builder.AppendLine(line2);
+
+                        while (_consoleBuffer.Reader.TryRead(out string nextLine))
+                        {
+                            builder.AppendLine(nextLine);
+                        }
+
+                        Console.Write(builder.ToString());
+                        builder.Clear();
+                    }
+                    else
+                    {
+                        Console.WriteLine(line1);
+                    }
                 }
             }
         }
