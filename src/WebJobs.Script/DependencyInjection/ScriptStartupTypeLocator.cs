@@ -38,12 +38,12 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
         private readonly IMetricsLogger _metricsLogger;
         private readonly Lazy<IEnumerable<Type>> _startupTypes;
         private readonly IOptionsMonitor<LanguageWorkerOptions> _languageWorkerOptions;
-
+        private IWebHostRpcWorkerChannelManager _channelManager;
         private static readonly ExtensionRequirementsInfo _extensionRequirements = DependencyHelper.GetExtensionRequirements();
         private static string[] _builtinExtensionAssemblies = GetBuiltinExtensionAssemblies();
 
         public ScriptStartupTypeLocator(string rootScriptPath, ILogger<ScriptStartupTypeLocator> logger, IExtensionBundleManager extensionBundleManager,
-            IFunctionMetadataManager functionMetadataManager, IMetricsLogger metricsLogger, IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions)
+            IFunctionMetadataManager functionMetadataManager, IMetricsLogger metricsLogger, IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions, WebHostRpcWorkerChannelManager channelManager)
         {
             _rootScriptPath = rootScriptPath ?? throw new ArgumentNullException(nameof(rootScriptPath));
             _extensionBundleManager = extensionBundleManager ?? throw new ArgumentNullException(nameof(extensionBundleManager));
@@ -52,6 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
             _metricsLogger = metricsLogger;
             _startupTypes = new Lazy<IEnumerable<Type>>(() => GetExtensionsStartupTypesAsync().ConfigureAwait(false).GetAwaiter().GetResult());
             _languageWorkerOptions = languageWorkerOptions;
+            _channelManager = channelManager;
         }
 
         private static string[] GetBuiltinExtensionAssemblies()
@@ -89,7 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
                 ExtensionBundleDetails bundleDetails = await _extensionBundleManager.GetExtensionBundleDetails();
                 ValidateBundleRequirements(bundleDetails);
 
-                var functionMetadataCollection = _functionMetadataManager.GetFunctionMetadata(forceRefresh: true, includeCustomProviders: false);
+                var functionMetadataCollection = _functionMetadataManager.GetFunctionMetadata(forceRefresh: true, includeCustomProviders: false, channelManager: _channelManager);
                 bindingsSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
                 // Generate a Hashset of all the binding types used in the function app

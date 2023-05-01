@@ -4,6 +4,7 @@
 using System.Collections.Immutable;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Workers;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -11,8 +12,8 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         ImmutableDictionary<string, ImmutableArray<string>> Errors { get; }
 
-        ImmutableArray<FunctionMetadata> GetFunctionMetadata(bool forceRefresh = false, bool applyAllowlist = true, bool includeCustomProviders = true);
+        ImmutableArray<FunctionMetadata> GetFunctionMetadata(bool forceRefresh = false, bool applyAllowlist = true, bool includeCustomProviders = true, IWebHostRpcWorkerChannelManager channelManager = null);
 
-        bool TryGetFunctionMetadata(string functionName, out FunctionMetadata functionMetadata, bool forceRefresh = false);
+        bool TryGetFunctionMetadata(string functionName, out FunctionMetadata functionMetadata, bool forceRefresh = false, IWebHostRpcWorkerChannelManager channelManager = null);
     }
 }

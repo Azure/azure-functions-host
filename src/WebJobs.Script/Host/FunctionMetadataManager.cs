@@ -61,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public ImmutableDictionary<string, ImmutableArray<string>> Errors { get; private set; }
 
-        public bool TryGetFunctionMetadata(string functionName, out FunctionMetadata functionMetadata, bool forceRefresh)
+        public bool TryGetFunctionMetadata(string functionName, out FunctionMetadata functionMetadata, bool forceRefresh, IWebHostRpcWorkerChannelManager channelManager = null)
         {
             if (forceRefresh)
             {
@@ -84,11 +84,11 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <param name="applyAllowList">Apply functions allow list filter.</param>
         /// <param name="includeCustomProviders">Include any metadata provided by IFunctionProvider when loading the metadata</param>
         /// <returns> An Immmutable array of FunctionMetadata.</returns>
-        public ImmutableArray<FunctionMetadata> GetFunctionMetadata(bool forceRefresh, bool applyAllowList = true, bool includeCustomProviders = true)
+        public ImmutableArray<FunctionMetadata> GetFunctionMetadata(bool forceRefresh, bool applyAllowList = true, bool includeCustomProviders = true, IWebHostRpcWorkerChannelManager channelManager = null)
         {
             if (forceRefresh || _servicesReset || _functionMetadataArray.IsDefaultOrEmpty)
             {
-                _functionMetadataArray = LoadFunctionMetadata(forceRefresh, includeCustomProviders);
+                _functionMetadataArray = LoadFunctionMetadata(forceRefresh, includeCustomProviders, channelManager: channelManager);
                 _logger.FunctionMetadataManagerFunctionsLoaded(ApplyAllowList(_functionMetadataArray).Count());
                 _servicesReset = false;
             }
@@ -125,7 +125,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <summary>
         /// Read all functions and populate function metadata.
         /// </summary>
-        internal ImmutableArray<FunctionMetadata> LoadFunctionMetadata(bool forceRefresh = false, bool includeCustomProviders = true, IFunctionInvocationDispatcher dispatcher = null)
+        internal ImmutableArray<FunctionMetadata> LoadFunctionMetadata(bool forceRefresh = false, bool includeCustomProviders = true, IFunctionInvocationDispatcher dispatcher = null, IWebHostRpcWorkerChannelManager channelManager = null)
         {
             _functionMetadataMap.Clear();
 
@@ -135,7 +135,7 @@ namespace Microsoft.Azure.WebJobs.Script
             ImmutableArray<FunctionMetadata> immutableFunctionMetadata;
             var workerConfigs = _languageWorkerOptions.CurrentValue.WorkerConfigs;
 
-            immutableFunctionMetadata = _functionMetadataProvider.GetFunctionMetadataAsync(workerConfigs, SystemEnvironment.Instance, forceRefresh).GetAwaiter().GetResult();
+            immutableFunctionMetadata = _functionMetadataProvider.GetFunctionMetadataAsync(workerConfigs, SystemEnvironment.Instance, forceRefresh, channelManager).GetAwaiter().GetResult();
 
             var functionMetadataList = new List<FunctionMetadata>();
             _functionErrors = new Dictionary<string, ICollection<string>>();

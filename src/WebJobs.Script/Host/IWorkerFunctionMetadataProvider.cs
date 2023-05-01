@@ -18,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <summary>
         /// Attempts to get function metadata from Out-of-Proc language workers
         /// </summary>
-        /// <returns>FunctionMetadataResult that either contains the function metadata or indicates that a fall back option for fetching metadata should be used</returns>
-        Task<FunctionMetadataResult> GetFunctionMetadataAsync(IEnumerable<RpcWorkerConfig> workerConfigs, bool forceRefresh = false);
+        /// <returns>FunctionMetadataResult that either contains the function metadata or indicates that a fall back option for fetching metadata should be used. </returns>
+        Task<FunctionMetadataResult> GetFunctionMetadataAsync(IEnumerable<RpcWorkerConfig> workerConfigs, bool forceRefresh = false, IWebHostRpcWorkerChannelManager channelManager = null);
     }
 }

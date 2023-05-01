@@ -49,6 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         private const string BundleManagerKey = "MS_BundleManager";
         private const string StartupTypeLocatorKey = "MS_StartupTypeLocator";
+        private const string ChannelManager = "MS_ChannelManager";
         private const string DelayedConfigurationActionKey = "MS_DelayedConfigurationAction";
         private const string ConfigurationSnapshotKey = "MS_ConfigurationSnapshot";
 
@@ -124,12 +125,29 @@ namespace Microsoft.Azure.WebJobs.Script
                 var metadataServiceManager = applicationOptions.RootServiceProvider.GetService<IFunctionMetadataManager>();
                 var languageWorkerOptions = applicationOptions.RootServiceProvider.GetService<IOptionsMonitor<LanguageWorkerOptions>>();
 
-                var locator = new ScriptStartupTypeLocator(applicationOptions.ScriptPath, loggerFactory.CreateLogger<ScriptStartupTypeLocator>(), bundleManager, metadataServiceManager, metricsLogger, languageWorkerOptions);
+                var eventManager = applicationOptions.RootServiceProvider.GetService<IScriptEventManager>();
+                var metricsLogger = applicationOptions.RootServiceProvider.GetService<IMetricsLogger>();
+                var rpcWorkerChannelFactory = applicationOptions.RootServiceProvider.GetService<IRpcWorkerChannelFactory>();
+                var workerProfileManager = applicationOptions.RootServiceProvider.GetService<IWorkerProfileManager>();
+                var options = applicationOptions.RootServiceProvider.GetService<IOptionsMonitor<ScriptApplicationHostOptions>>();
+
+                var channelManager = new WebHostRpcWorkerChannelManager(eventManager,
+                    SystemEnvironment.Instance,
+                    loggerFactory,
+                    rpcWorkerChannelFactory,
+                    options,
+                    metricsLogger,
+                    languageWorkerOptions,
+                    config,
+                    workerProfileManager);
+
+                var locator = new ScriptStartupTypeLocator(applicationOptions.ScriptPath, loggerFactory.CreateLogger<ScriptStartupTypeLocator>(), bundleManager, metadataServiceManager, metricsLogger, languageWorkerOptions, channelManager);
 
                 // The locator (and thus the bundle manager) need to be created now in order to configure app configuration.
                 // Store them so they do not need to be re-created later when configuring services.
                 context.Properties[BundleManagerKey] = bundleManager;
                 context.Properties[StartupTypeLocatorKey] = locator;
+                context.Properties[ChannelManager] = channelManager;
 
                 // If we're skipping host initialization, this key will not exist and this will also be skipped.
                 if (context.Properties.TryGetValue(DelayedConfigurationActionKey, out object actionObject) &&
@@ -207,6 +225,9 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 var bundleManager = context.Properties.GetAndRemove<IExtensionBundleManager>(BundleManagerKey);
                 webJobsBuilder.Services.AddSingleton<IExtensionBundleManager>(_ => bundleManager);
+
+                var channelManager = context.Properties.GetAndRemove<IWebHostRpcWorkerChannelManager>(ChannelManager);
+                webJobsBuilder.Services.AddSingleton<IWebHostRpcWorkerChannelManager>(_ => channelManager);
 
                 if (!skipHostInitialization)
                 {
@@ -355,7 +376,6 @@ namespace Microsoft.Azure.WebJobs.Script
             services.TryAddSingleton<IWorkerConsoleLogSource, WorkerConsoleLogSource>();
             services.AddSingleton<IWorkerProcessFactory, DefaultWorkerProcessFactory>();
             services.AddSingleton<IRpcWorkerProcessFactory, RpcWorkerProcessFactory>();
-            services.TryAddSingleton<IWebHostRpcWorkerChannelManager, WebHostRpcWorkerChannelManager>();
             services.TryAddSingleton<IDebugManager, DebugManager>();
             services.TryAddSingleton<IDebugStateProvider, DebugStateProvider>();
             services.TryAddSingleton<IEnvironment>(SystemEnvironment.Instance);

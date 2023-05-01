@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public ImmutableDictionary<string, ImmutableArray<string>> FunctionErrors { get; private set; }
 
-        public async Task<ImmutableArray<FunctionMetadata>> GetFunctionMetadataAsync(IEnumerable<RpcWorkerConfig> workerConfigs, IEnvironment environment, bool forceRefresh = false)
+        public async Task<ImmutableArray<FunctionMetadata>> GetFunctionMetadataAsync(IEnumerable<RpcWorkerConfig> workerConfigs, IEnvironment environment, bool forceRefresh = false, IWebHostRpcWorkerChannelManager channelManager = null)
         {
             bool workerIndexing = Utility.CanWorkerIndex(workerConfigs, _environment);
             if (!workerIndexing)
@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             _logger.LogInformation("Worker indexing is enabled");
 
-            FunctionMetadataResult functionMetadataResult = await _workerFunctionMetadataProvider?.GetFunctionMetadataAsync(workerConfigs, forceRefresh);
+            FunctionMetadataResult functionMetadataResult = await _workerFunctionMetadataProvider?.GetFunctionMetadataAsync(workerConfigs, forceRefresh, channelManager);
             FunctionErrors = _workerFunctionMetadataProvider.FunctionErrors;
 
             if (functionMetadataResult.UseDefaultMetadataIndexing)

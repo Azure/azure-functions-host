@@ -23,27 +23,26 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IOptions<ScriptJobHostOptions> _scriptOptions;
         private readonly ILogger _logger;
         private readonly IEnvironment _environment;
-        private readonly IWebHostRpcWorkerChannelManager _channelManager;
+        //private readonly IWebHostRpcWorkerChannelManager _channelManager;
         private string _workerRuntime;
         private ImmutableArray<FunctionMetadata> _functions;
 
         public WorkerFunctionMetadataProvider(
             IOptions<ScriptJobHostOptions> scriptOptions,
             ILogger<WorkerFunctionMetadataProvider> logger,
-            IEnvironment environment,
-            IWebHostRpcWorkerChannelManager webHostRpcWorkerChannelManager)
+            IEnvironment environment)
         {
             _scriptOptions = scriptOptions;
             _logger = logger;
             _environment = environment;
-            _channelManager = webHostRpcWorkerChannelManager;
+            //_channelManager = webHostRpcWorkerChannelManager;
             _workerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
         }
 
         public ImmutableDictionary<string, ImmutableArray<string>> FunctionErrors
            => _functionErrors.ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray());
 
-        public async Task<FunctionMetadataResult> GetFunctionMetadataAsync(IEnumerable<RpcWorkerConfig> workerConfigs, bool forceRefresh)
+        public async Task<FunctionMetadataResult> GetFunctionMetadataAsync(IEnumerable<RpcWorkerConfig> workerConfigs, bool forceRefresh, IWebHostRpcWorkerChannelManager channelManager = null)
         {
             _workerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
 
@@ -56,17 +55,17 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 IEnumerable<RawFunctionMetadata> rawFunctions = new List<RawFunctionMetadata>();
 
-                if (_channelManager == null)
-                {
-                    throw new InvalidOperationException(nameof(_channelManager));
-                }
+                //if (_channelManager == null)
+                //{
+                //    throw new InvalidOperationException(nameof(_channelManager));
+                //}
 
-                var channels = _channelManager.GetChannels(_workerRuntime);
+                var channels = channelManager.GetChannels(_workerRuntime);
 
                 if (channels?.Any() != true)
                 {
-                    await _channelManager.InitializeChannelAsync(_workerRuntime);
-                    channels = _channelManager.GetChannels(_workerRuntime);
+                    await channelManager.InitializeChannelAsync(_workerRuntime);
+                    channels = channelManager.GetChannels(_workerRuntime);
                 }
                 // start up GRPC channels
 
@@ -102,7 +101,7 @@ namespace Microsoft.Azure.WebJobs.Script
                         catch (Exception ex)
                         {
                             _logger.LogWarning(ex, "Removing errored webhost language worker channel for runtime: {workerRuntime} workerId:{workerId}", _workerRuntime, workerId);
-                            await _channelManager.ShutdownChannelIfExistsAsync(_workerRuntime, workerId, ex);
+                            await channelManager.ShutdownChannelIfExistsAsync(_workerRuntime, workerId, ex);
                         }
                     }
                 }
