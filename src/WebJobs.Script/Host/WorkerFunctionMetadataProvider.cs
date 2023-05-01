@@ -61,6 +61,14 @@ namespace Microsoft.Azure.WebJobs.Script
                     throw new InvalidOperationException(nameof(_channelManager));
                 }
 
+                // forceRefresh will always be false for dotnet and dotnet-isolated.
+                // We should not have any channels when specializing with with non readonly file system for node, python and powershell
+                // However we would have channles and would need to shut them down in case of hot reload
+                if (forceRefresh && Utility.CanWorkerIndex(workerConfigs, _environment) && !_scriptOptions.Value.IsFileSystemReadOnly)
+                {
+                    _channelManager.ShutdownChannels();
+                }
+
                 var channels = _channelManager.GetChannels(_workerRuntime);
 
                 if (channels?.Any() != true)

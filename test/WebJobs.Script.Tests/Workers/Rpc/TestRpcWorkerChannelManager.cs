@@ -78,6 +78,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             return Task.CompletedTask;
         }
 
+        public void ShutdownChannels()
+        {
+            return;
+        }
+
         public void ShutdownProcessRegistry()
         {
         }

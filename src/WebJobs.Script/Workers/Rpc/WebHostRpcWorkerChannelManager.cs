@@ -289,6 +289,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         public Task ShutdownChannelsAsync()
         {
+            ShutdownChannels();
+            return Task.CompletedTask;
+        }
+
+        public void ShutdownChannels()
+        {
             foreach (string runtime in _workerChannels.Keys)
             {
                 _logger.LogInformation("Shutting down language worker channels for runtime:{runtime}", runtime);
@@ -314,7 +320,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     }
                 }
             }
-            return Task.CompletedTask;
         }
 
         internal void AddOrUpdateWorkerChannels(string initializedRuntime, IRpcWorkerChannel initializedLanguageWorkerChannel)
