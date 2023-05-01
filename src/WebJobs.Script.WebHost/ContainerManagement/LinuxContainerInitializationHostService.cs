@@ -41,9 +41,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
 
         private async Task ApplyStartContextIfPresent(CancellationToken cancellationToken)
         {
-            var startContext = await GetStartContextOrNullAsync(cancellationToken);
+            (bool hasStartContext, string startContext) = await TryGetStartContextOrNullAsync(cancellationToken);
 
-            if (!string.IsNullOrEmpty(startContext))
+            if (hasStartContext && !string.IsNullOrEmpty(startContext))
             {
                 _logger.LogInformation("Applying host context");
 
@@ -60,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
             }
         }
 
-        public abstract Task<string> GetStartContextOrNullAsync(CancellationToken cancellationToken);
+        public abstract Task<(bool HasStartContext, string StartContext)> TryGetStartContextOrNullAsync(CancellationToken cancellationToken);
 
         protected abstract Task SpecializeMSISideCar(HostAssignmentContext assignmentContext);
 
