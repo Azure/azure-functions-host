@@ -84,7 +84,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <param name="applyAllowList">Apply functions allow list filter.</param>
         /// <param name="includeCustomProviders">Include any metadata provided by IFunctionProvider when loading the metadata</param>
         /// <returns> An Immmutable array of FunctionMetadata.</returns>
-        public ImmutableArray<FunctionMetadata> GetFunctionMetadata(bool forceRefresh, bool applyAllowList = true, bool includeCustomProviders = true)
+        public ImmutableArray<FunctionMetadata> GetFunctionMetadata(bool forceRefresh, bool applyAllowList = true, bool includeCustomProviders = true, IList<RpcWorkerConfig> workerConfigs = null)
         {
             if (forceRefresh || _servicesReset || _functionMetadataArray.IsDefaultOrEmpty)
             {
@@ -125,7 +125,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <summary>
         /// Read all functions and populate function metadata.
         /// </summary>
-        internal ImmutableArray<FunctionMetadata> LoadFunctionMetadata(bool forceRefresh = false, bool includeCustomProviders = true, IFunctionInvocationDispatcher dispatcher = null)
+        internal ImmutableArray<FunctionMetadata> LoadFunctionMetadata(bool forceRefresh = false, bool includeCustomProviders = true, IFunctionInvocationDispatcher dispatcher = null, IList<RpcWorkerConfig> workerConfigs = null)
         {
             _functionMetadataMap.Clear();
 
@@ -133,7 +133,7 @@ namespace Microsoft.Azure.WebJobs.Script
             _logger.FunctionMetadataManagerLoadingFunctionsMetadata();
 
             ImmutableArray<FunctionMetadata> immutableFunctionMetadata;
-            var workerConfigs = _languageWorkerOptions.CurrentValue.WorkerConfigs;
+            workerConfigs = workerConfigs ?? _languageWorkerOptions.CurrentValue.WorkerConfigs;
 
             immutableFunctionMetadata = _functionMetadataProvider.GetFunctionMetadataAsync(workerConfigs, SystemEnvironment.Instance, forceRefresh).GetAwaiter().GetResult();
 

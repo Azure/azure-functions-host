@@ -283,7 +283,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 var workerConfigs = _languageWorkerOptions.CurrentValue.WorkerConfigs;
 
                 // Generate Functions
-                IEnumerable<FunctionMetadata> functionMetadataList = GetFunctionsMetadata();
+                IEnumerable<FunctionMetadata> functionMetadataList = GetFunctionsMetadata(workerConfigs);
 
                 if (!_environment.IsPlaceholderModeEnabled())
                 {
@@ -363,11 +363,11 @@ namespace Microsoft.Azure.WebJobs.Script
         /// Gets metadata collection of functions and proxies configured.
         /// </summary>
         /// <returns>A metadata collection of functions and proxies configured.</returns>
-        private IEnumerable<FunctionMetadata> GetFunctionsMetadata()
+        private IEnumerable<FunctionMetadata> GetFunctionsMetadata(IList<RpcWorkerConfig> workerConfigs)
         {
             IEnumerable<FunctionMetadata> functionMetadata;
 
-            functionMetadata = _functionMetadataManager.GetFunctionMetadata(forceRefresh: false);
+            functionMetadata = _functionMetadataManager.GetFunctionMetadata(forceRefresh: false, configs: workerConfigs);
             _workerRuntime ??= Utility.GetWorkerRuntime(functionMetadata);
             foreach (var error in _functionMetadataManager.Errors)
             {
