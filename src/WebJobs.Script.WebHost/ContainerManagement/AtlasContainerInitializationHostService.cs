@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
             _startupContextProvider = startupContextProvider;
         }
 
-        public override async Task<string> GetStartContextOrNullAsync(CancellationToken cancellationToken)
+        public override async Task<(bool HasStartContext, string StartContext)> TryGetStartContextOrNullAsync(CancellationToken cancellationToken)
         {
             _cancellationToken = cancellationToken;
             _logger.LogInformation("[TEST] GetStartContextOrNullAsyncOnAtlas"); //debugging
@@ -54,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
                 _logger.LogInformation("Host context specified via CONTAINER_START_CONTEXT");
             }
 
-            return startContext;
+            return (string.IsNullOrEmpty(startContext), startContext);
         }
 
         protected override async Task SpecializeMSISideCar(HostAssignmentContext assignmentContext)

@@ -27,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
             _logger = logger;
         }
 
-        public override Task<string> GetStartContextOrNullAsync(CancellationToken cancellationToken)
+        public override Task<(bool HasStartContext, string StartContext)> TryGetStartContextOrNullAsync(CancellationToken cancellationToken)
         {
             _logger.LogInformation("[TEST] GetStartContextOrNullAsyncOnLegion");
 
@@ -39,14 +39,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
             if (string.IsNullOrEmpty(containerSpecializationContextMountPath))
             {
                 _logger.LogWarning("containerSpecializationContextMountPath is Null or Empty");
-                return Task.FromResult<string>(null);
+                return Task.FromResult((false, string.Empty));
             }
 
             // The CONTAINER_SPECIALIZATION_CONTEXT_MOUNT_PATH emptyDir volume should be mounted by Legion during pod creation
             if (!Directory.Exists(containerSpecializationContextMountPath))
             {
                 _logger.LogWarning("Container Specialization Context Mount Does Not Exist");
-                return Task.FromResult<string>(null);
+                return Task.FromResult((false, string.Empty));
             }
 
             string contextFilePath = Path.Combine(containerSpecializationContextMountPath, ContextFile);
@@ -57,9 +57,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
                 _logger.LogInformation($"Previous Start Context Found");
                 try
                 {
-                    string contents = File.ReadAllText(contextFilePath);
-                    _logger.LogInformation($"[TEST] contents: {contents}");
-                    return Task.FromResult<string>(contents);
+                    var startContext = File.ReadAllText(contextFilePath);
+                    _logger.LogInformation($"[TEST] contents: {startContext}");
+                    return Task.FromResult((true, startContext));
                 }
                 catch (Exception e)
                 {
@@ -67,7 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
                 }
             }
 
-            return Task.FromResult<string>(null);
+            return Task.FromResult((false, string.Empty));
         }
 
         // No-op
