@@ -180,7 +180,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 return new FunctionMetadataProvider(
                     sp.GetRequiredService<ILogger<FunctionMetadataProvider>>(),
                     ActivatorUtilities.CreateInstance<WorkerFunctionMetadataProvider>(sp),
-                    ActivatorUtilities.CreateInstance<HostFunctionMetadataProvider>(sp));
+                    ActivatorUtilities.CreateInstance<HostFunctionMetadataProvider>(sp),
+                    sp.GetRequiredService<FunctionsHostingConfigOptions>());
             });
 
             // Core script host services

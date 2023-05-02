@@ -924,28 +924,32 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        public static bool CanWorkerIndex(IEnumerable<RpcWorkerConfig> workerConfigs, IEnvironment environment)
+        public static bool CanWorkerIndex(IEnumerable<RpcWorkerConfig> workerConfigs, IEnvironment environment, FunctionsHostingConfigOptions functionsHostingConfigOptions)
         {
-            if (!FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableWorkerIndexing, environment))
+            string appName = environment.GetAzureWebsiteUniqueSlotName();
+            bool workerIndexingEnabled = FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableWorkerIndexing, environment)
+                                          || (functionsHostingConfigOptions.WorkerIndexingEnabled
+                                          && !functionsHostingConfigOptions.WorkerIndexingDisabledApps.ToLowerInvariant().Split("|").Contains(appName));
+
+            if (!workerIndexingEnabled)
             {
                 return false;
             }
 
+            bool workerIndexingAvailable = false;
             if (workerConfigs != null && !environment.IsMultiLanguageRuntimeEnvironment())
             {
                 var workerRuntime = environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
                 var workerConfig = workerConfigs.FirstOrDefault(c => c.Description?.Language != null && c.Description.Language.Equals(workerRuntime, StringComparison.InvariantCultureIgnoreCase));
 
                 // if feature flag is enabled and workerConfig.WorkerIndexing == true, then return true
-                if (workerConfig != null
+                workerIndexingAvailable = workerConfig != null
                         && workerConfig.Description != null
                         && workerConfig.Description.WorkerIndexing != null
-                        && workerConfig.Description.WorkerIndexing.Equals("true", StringComparison.OrdinalIgnoreCase))
-                {
-                    return true;
-                }
+                        && workerConfig.Description.WorkerIndexing.Equals("true", StringComparison.OrdinalIgnoreCase);
             }
-            return false;
+
+            return workerIndexingEnabled && workerIndexingAvailable;
         }
 
         public static void LogAutorestGeneratedJsonIfExists(string rootScriptPath, ILogger logger)

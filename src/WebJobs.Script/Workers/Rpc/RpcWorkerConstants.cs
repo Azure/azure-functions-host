@@ -81,5 +81,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public const string DotNetCoreDebugEngine = ".NETCore";
         public const string DotNetFrameworkDebugEngine = ".NETFramework";
         public const string DotNetFramework = "Framework";
+
+        public const string WorkerIndexingEnabled = "WORKER_INDEXING_ENABLED";
+        public const string WorkerIndexingDisabled = "WORKER_INDEXING_DISABLED";
     }
 }
