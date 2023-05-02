@@ -181,7 +181,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     sp.GetRequiredService<ILogger<FunctionMetadataProvider>>(),
                     ActivatorUtilities.CreateInstance<WorkerFunctionMetadataProvider>(sp),
                     ActivatorUtilities.CreateInstance<HostFunctionMetadataProvider>(sp),
-                    sp.GetRequiredService<FunctionsHostingConfigOptions>());
+                    sp.GetRequiredService<IOptionsMonitor<FunctionsHostingConfigOptions>>());
             });
 
             // Core script host services

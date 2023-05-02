@@ -21,12 +21,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private IWorkerFunctionMetadataProvider _workerFunctionMetadataProvider;
         private IHostFunctionMetadataProvider _hostFunctionMetadataProvider;
 
-        public FunctionMetadataProvider(ILogger<FunctionMetadataProvider> logger, IWorkerFunctionMetadataProvider workerFunctionMetadataProvider, IHostFunctionMetadataProvider hostFunctionMetadataProvider, FunctionsHostingConfigOptions functionsHostingConfigOptions)
+        public FunctionMetadataProvider(ILogger<FunctionMetadataProvider> logger, IWorkerFunctionMetadataProvider workerFunctionMetadataProvider, IHostFunctionMetadataProvider hostFunctionMetadataProvider, IOptionsMonitor<FunctionsHostingConfigOptions> functionsHostingConfigOptions)
         {
             _logger = logger;
             _workerFunctionMetadataProvider = workerFunctionMetadataProvider;
             _hostFunctionMetadataProvider = hostFunctionMetadataProvider;
-            _functionsHostingConfigOptions = functionsHostingConfigOptions;
+            _functionsHostingConfigOptions = functionsHostingConfigOptions.CurrentValue;
             _environment = SystemEnvironment.Instance;
         }
 
