@@ -61,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         {
             get
             {
-                return GetFeature(RpcWorkerConstants.WorkerIndexingDisabled) ?? string.Empty;
+                return GetFeature(RpcWorkerConstants.WorkerIndexingDisabledApps) ?? string.Empty;
             }
         }
 

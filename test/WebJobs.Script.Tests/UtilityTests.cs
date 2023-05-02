@@ -908,11 +908,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Theory]
         [InlineData(false, true, true, "", true)]
         [InlineData(false, true, true, "NonApp|AppName", false)]
-        [InlineData(false, false, true, "NonApp|AnotherAppName", true)]
+        [InlineData(false, true, true, "NonApp|AnotherAppName", true)]
         [InlineData(false, true, true, "nonapp|AppName", false)]
         [InlineData(false, true, true, "appname", false)]
         [InlineData(false, true, true, "nonapp|appname", false)]
-        [InlineData(false, false, true, "NonApp|anotherAppname", true)]
+        [InlineData(false, true, true, "NonApp|anotherAppname", true)]
         public void VerifyDisabledAppConfigHonored(bool workerIndexingFeatureFlag, bool workerIndexingConfigProperty, bool enabledHostingConfig, string disabledHostingConfig, bool expected)
         {
             VerifyCanWorkerIndexUtility(workerIndexingFeatureFlag, workerIndexingConfigProperty, enabledHostingConfig, disabledHostingConfig, expected);
@@ -937,7 +937,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 hostingOptions.Features.Add(RpcWorkerConstants.WorkerIndexingEnabled, "1");
             }
 
-            hostingOptions.Features.Add(RpcWorkerConstants.WorkerIndexingDisabled, disabledHostingConfig);
+            hostingOptions.Features.Add(RpcWorkerConstants.WorkerIndexingDisabledApps, disabledHostingConfig);
 
             bool workerShouldIndex = Utility.CanWorkerIndex(new List<RpcWorkerConfig>() { workerConfig }, testEnv, hostingOptions);
             Assert.Equal(expected, workerShouldIndex);
