@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
@@ -16,14 +17,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     {
         private readonly IEnvironment _environment;
         private readonly ILogger<FunctionMetadataProvider> _logger;
+        private readonly FunctionsHostingConfigOptions _functionsHostingConfigOptions;
         private IWorkerFunctionMetadataProvider _workerFunctionMetadataProvider;
         private IHostFunctionMetadataProvider _hostFunctionMetadataProvider;
 
-        public FunctionMetadataProvider(ILogger<FunctionMetadataProvider> logger, IWorkerFunctionMetadataProvider workerFunctionMetadataProvider, IHostFunctionMetadataProvider hostFunctionMetadataProvider)
+        public FunctionMetadataProvider(ILogger<FunctionMetadataProvider> logger, IWorkerFunctionMetadataProvider workerFunctionMetadataProvider, IHostFunctionMetadataProvider hostFunctionMetadataProvider, IOptions<FunctionsHostingConfigOptions> functionsHostingConfigOptions)
         {
             _logger = logger;
             _workerFunctionMetadataProvider = workerFunctionMetadataProvider;
             _hostFunctionMetadataProvider = hostFunctionMetadataProvider;
+            _functionsHostingConfigOptions = functionsHostingConfigOptions.Value;
             _environment = SystemEnvironment.Instance;
         }
 
@@ -31,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public async Task<ImmutableArray<FunctionMetadata>> GetFunctionMetadataAsync(IEnumerable<RpcWorkerConfig> workerConfigs, IEnvironment environment, bool forceRefresh = false)
         {
-            bool workerIndexing = Utility.CanWorkerIndex(workerConfigs, _environment);
+            bool workerIndexing = Utility.CanWorkerIndex(workerConfigs, _environment, _functionsHostingConfigOptions);
             if (!workerIndexing)
             {
                 return await GetMetadataFromHostProvider(workerConfigs, environment, forceRefresh);
