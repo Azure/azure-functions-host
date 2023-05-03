@@ -85,6 +85,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private IHttpProxyService _httpProxyService;
         private Uri _httpProxyEndpoint;
         private System.Timers.Timer _timer;
+        private bool _functionMetadataRequestSent = false;
 
         internal GrpcWorkerChannel(
             string workerId,
@@ -540,6 +541,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         public Task SendFunctionEnvironmentReloadRequest()
         {
             _functionsIndexingTask = new TaskCompletionSource<List<RawFunctionMetadata>>(TaskCreationOptions.RunContinuationsAsynchronously);
+            _functionMetadataRequestSent = false;
+
             _workerChannelLogger.LogDebug("Sending FunctionEnvironmentReloadRequest to WorkerProcess with Pid: '{0}'", _rpcWorkerProcess.Id);
             IDisposable latencyEvent = _metricsLogger.LatencyEvent(MetricEventNames.SpecializationEnvironmentReloadRequestResponse);
 
@@ -795,22 +798,27 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         internal Task<List<RawFunctionMetadata>> SendFunctionMetadataRequest()
         {
-            // reset indexing task when in case we need to send another request
-            _functionsIndexingTask = new TaskCompletionSource<List<RawFunctionMetadata>>(TaskCreationOptions.RunContinuationsAsynchronously);
+            _workerChannelLogger.LogDebug("Fetching worker metadata, FunctionMetadataReceived set to: {functionMetadataReceived}", _functionMetadataRequestSent);
 
-            RegisterCallbackForNextGrpcMessage(MsgType.FunctionMetadataResponse, _functionLoadTimeout, 1,
-                msg => ProcessFunctionMetadataResponses(msg.Message.FunctionMetadataResponse), HandleWorkerMetadataRequestError);
-
-            _workerChannelLogger.LogDebug("Sending WorkerMetadataRequest to {language} worker with worker ID {workerID}", _runtime, _workerId);
-
-            // sends the function app directory path to worker for indexing
-            SendStreamingMessage(new StreamingMessage
+            if (!_functionMetadataRequestSent)
             {
-                FunctionsMetadataRequest = new FunctionsMetadataRequest()
+                RegisterCallbackForNextGrpcMessage(MsgType.FunctionMetadataResponse, _functionLoadTimeout, 1,
+                    msg => ProcessFunctionMetadataResponses(msg.Message.FunctionMetadataResponse), HandleWorkerMetadataRequestError);
+
+                _workerChannelLogger.LogDebug("Sending WorkerMetadataRequest to {language} worker with worker ID {workerID}", _runtime, _workerId);
+
+                // sends the function app directory path to worker for indexing
+                SendStreamingMessage(new StreamingMessage
                 {
-                    FunctionAppDirectory = _applicationHostOptions.CurrentValue.ScriptPath
-                }
-            });
+                    FunctionsMetadataRequest = new FunctionsMetadataRequest()
+                    {
+                        FunctionAppDirectory = _applicationHostOptions.CurrentValue.ScriptPath
+                    }
+                });
+
+                _functionMetadataRequestSent = true;
+            }
+
             return _functionsIndexingTask.Task;
         }
 
