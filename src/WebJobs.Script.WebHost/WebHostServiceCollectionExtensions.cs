@@ -177,11 +177,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             services.AddSingleton<IFunctionMetadataProvider>(sp =>
             {
-                return new FunctionMetadataProvider(
+                return ActivatorUtilities.CreateInstance<FunctionMetadataProvider>(
+                    sp,
                     sp.GetRequiredService<ILogger<FunctionMetadataProvider>>(),
                     ActivatorUtilities.CreateInstance<WorkerFunctionMetadataProvider>(sp),
                     ActivatorUtilities.CreateInstance<HostFunctionMetadataProvider>(sp),
-                    sp.GetRequiredService<IOptionsMonitor<FunctionsHostingConfigOptions>>());
+                    sp.GetRequiredService<IOptions<FunctionsHostingConfigOptions>>());
             });
 
             // Core script host services

@@ -924,12 +924,17 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
+        // EnableWorkerIndexing set through AzureWebjobsFeatuerFlag always take precdence
+        // if AzureWebjobsFeatuerFlag is not set then WORKER_INDEXING_ENABLED hosting config controls stamplevel enablement
+        // if WORKER_INDEXING_ENABLED is set and WORKER_INDEXING_DISABLED contains the customers app name worker indexing is then disabled for that customer only
+        // Also Worker indexing is disabled for Logic apps
         public static bool CanWorkerIndex(IEnumerable<RpcWorkerConfig> workerConfigs, IEnvironment environment, FunctionsHostingConfigOptions functionsHostingConfigOptions)
         {
             string appName = environment.GetAzureWebsiteUniqueSlotName();
             bool workerIndexingEnabled = FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableWorkerIndexing, environment)
                                           || (functionsHostingConfigOptions.WorkerIndexingEnabled
-                                          && !functionsHostingConfigOptions.WorkerIndexingDisabledApps.ToLowerInvariant().Split("|").Contains(appName));
+                                          && !functionsHostingConfigOptions.WorkerIndexingDisabledApps.ToLowerInvariant().Split("|").Contains(appName)
+                                           && !environment.IsLogicApp());
 
             if (!workerIndexingEnabled)
             {
@@ -937,7 +942,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             bool workerIndexingAvailable = false;
-            if (workerConfigs != null && !environment.IsMultiLanguageRuntimeEnvironment())
+            if (workerConfigs != null)
             {
                 var workerRuntime = environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
                 var workerConfig = workerConfigs.FirstOrDefault(c => c.Description?.Language != null && c.Description.Language.Equals(workerRuntime, StringComparison.InvariantCultureIgnoreCase));

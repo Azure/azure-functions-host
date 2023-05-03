@@ -913,6 +913,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData(false, true, true, "appname", false)]
         [InlineData(false, true, true, "nonapp|appname", false)]
         [InlineData(false, true, true, "NonApp|anotherAppname", true)]
+        [InlineData(false, false, true, "NonApp", false)]
+        [InlineData(false, false, true, "AppName", false)]
+        [InlineData(false, false, false, "Appname", false)]
+        [InlineData(false, true, false, "AppName", false)]
+        [InlineData(false, true, true, "AppName", false)]
         public void VerifyDisabledAppConfigHonored(bool workerIndexingFeatureFlag, bool workerIndexingConfigProperty, bool enabledHostingConfig, string disabledHostingConfig, bool expected)
         {
             VerifyCanWorkerIndexUtility(workerIndexingFeatureFlag, workerIndexingConfigProperty, enabledHostingConfig, disabledHostingConfig, expected);
