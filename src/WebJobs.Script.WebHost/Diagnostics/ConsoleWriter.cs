@@ -33,8 +33,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 _consoleBuffer = environment.GetEnvironmentVariable(EnvironmentSettingNames.ConsoleLoggingBufferSize) switch
                 {
                     "-1" => Channel.CreateUnbounded<string>(),              // buffer size of -1 indicates that buffer should be enabled but unbounded
+                    "0" => null,                                            // buffer size of 0 indicates that buffer should be disabled
                     var s when int.TryParse(s, out int i) && i > 0 => Channel.CreateBounded<string>(i),
-                    _ => null,                                              // default behavior is do not use the buffer
+                    _ => Channel.CreateBounded<string>(DefaultBufferSize),  // default behavior is to use buffer with default size
                 };
 
                 if (_consoleBuffer == null)
