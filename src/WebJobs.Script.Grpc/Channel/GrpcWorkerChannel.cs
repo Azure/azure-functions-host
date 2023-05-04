@@ -31,6 +31,7 @@ using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Newtonsoft.Json;
 using Yarp.ReverseProxy.Forwarder;
 
 using static Microsoft.Azure.WebJobs.Script.Grpc.Messages.RpcLog.Types;
@@ -862,6 +863,25 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                         Name = metadata.Name,
                         Language = metadata.Language
                     };
+
+                    if (metadata.Retry is not null)
+                    {
+                        functionMetadata.Retry = new RetryOptions
+                        {
+                            MaxRetryCount = metadata.Retry.MaxRetryCount,
+                            Strategy = metadata.Retry.RetryStrategy.ToRetryStrategy()
+                        };
+
+                        if (functionMetadata.Retry.Strategy is RetryStrategy.FixedDelay)
+                        {
+                            functionMetadata.Retry.DelayInterval = metadata.Retry.DelayInterval.ToTimeSpan();
+                        }
+                        else
+                        {
+                            functionMetadata.Retry.MinimumInterval = metadata.Retry.MinimumInterval.ToTimeSpan();
+                            functionMetadata.Retry.MaximumInterval = metadata.Retry.MaximumInterval.ToTimeSpan();
+                        }
+                    }
 
                     functionMetadata.SetFunctionId(metadata.FunctionId);
 

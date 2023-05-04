@@ -357,6 +357,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             return typedData;
         }
 
+        internal static RetryStrategy ToRetryStrategy(this Retry.Types.RetryStrategy retry) =>
+            retry switch
+            {
+                Retry.Types.RetryStrategy.FixedDelay => RetryStrategy.FixedDelay,
+                Retry.Types.RetryStrategy.ExponentialBackoff => RetryStrategy.ExponentialBackoff,
+                _ => throw new InvalidOperationException($"Unknown RpcDataType: {retry}")
+            };
+
         private static bool ShouldIncludeEmptyEntriesInMessagePayload(GrpcCapabilities capabilities)
         {
             return !string.IsNullOrWhiteSpace(capabilities.GetCapabilityState(RpcWorkerConstants.IncludeEmptyEntriesInMessagePayload));
