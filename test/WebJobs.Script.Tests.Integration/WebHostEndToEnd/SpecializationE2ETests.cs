@@ -728,6 +728,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     b.AddProvider(_loggerProvider);
                     b.AddFilter<TestLoggerProvider>("Microsoft.Azure.WebJobs", LogLevel.Debug);
+                    b.AddFilter<TestLoggerProvider>("Worker", LogLevel.Debug);
                 })
                 .ConfigureAppConfiguration(c =>
                 {
