@@ -93,7 +93,7 @@ namespace WebJobsStartupTests
         {
             if (_config is ConfigurationRoot root)
             {
-                if (root.Providers.Count() != 7)
+                if (root.Providers.Count() != 8)
                 {
                     return false;
                 }
