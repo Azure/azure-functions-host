@@ -318,13 +318,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsExtensionVersion, "~3");
             _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteZipDeployment, "1");
 
+            _optionsMonitor.CurrentValue.IsFileSystemReadOnly = true;
+
+            var workerConfigs = _workerOptionsMonitor.CurrentValue.WorkerConfigs;
+            workerConfigs.Add(new RpcWorkerConfig
+            {
+                Description = TestHelpers.GetTestWorkerDescription("powershell", ".ps1", workerIndexing: true),
+                CountOptions = new WorkerProcessCountOptions()
+            });
+            workerConfigs.Add(new RpcWorkerConfig
+            {
+                Description = TestHelpers.GetTestWorkerDescription("python", ".py", workerIndexing: true),
+                CountOptions = new WorkerProcessCountOptions()
+            });
+
             var config = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string>
                 {
                     [$"{RpcWorkerConstants.LanguageWorkersSectionName}:{languageWorkerName}:{WorkerConstants.WorkerDescriptionArguments}"] = argument
                 })
                 .Build();
-            _rpcWorkerChannelManager = CreateChannelManager(metrics: testMetricsLogger);
+            _rpcWorkerChannelManager = CreateChannelManager(metrics: testMetricsLogger, config: config);
 
             IRpcWorkerChannel workerChannel = CreateTestChannel(languageWorkerName);
 
@@ -426,7 +440,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             var rpcWorkerChannelFactory = new TestRpcWorkerChannelFactory(_eventManager, null, _scriptRootPath, throwOnProcessStartUp: true);
             var rpcWorkerChannelManager = CreateChannelManager(rpcWorkerChannelFactory);
-            var rpcWorkerChannel = await rpcWorkerChannelManager.InitializeLanguageWorkerChannel(null, "test", _scriptRootPath);
+            var rpcWorkerChannel = await rpcWorkerChannelManager.InitializeLanguageWorkerChannel(_languageWorkerOptions.WorkerConfigs, "test", _scriptRootPath);
             var ex = await Assert.ThrowsAsync<AggregateException>(async () => await rpcWorkerChannelManager.GetChannelAsync("test"));
             Assert.Contains("Process startup failed", ex.InnerException.Message);
         }
@@ -448,11 +462,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.True(functionLoadLogs.Count() == 1);
         }
 
-        private WebHostRpcWorkerChannelManager CreateChannelManager(IRpcWorkerChannelFactory channelFactory = null, IMetricsLogger metrics = null)
+        private WebHostRpcWorkerChannelManager CreateChannelManager(IRpcWorkerChannelFactory channelFactory = null, IMetricsLogger metrics = null,
+            IConfiguration config = null)
         {
             metrics ??= new TestMetricsLogger();
             channelFactory ??= _rpcWorkerChannelFactory;
-            return new WebHostRpcWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, channelFactory, _optionsMonitor, metrics, _emptyConfig, _workerProfileManager);
+            config ??= _emptyConfig;
+            return new WebHostRpcWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, channelFactory,
+                _optionsMonitor, metrics, config, _workerProfileManager);
         }
 
         private bool AreRequiredMetricsEmitted(TestMetricsLogger metricsLogger)
