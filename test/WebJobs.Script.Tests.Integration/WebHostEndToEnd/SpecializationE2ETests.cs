@@ -44,6 +44,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private static SemaphoreSlim _buildCount;
 
         private static readonly string _standbyPath = Path.Combine(Path.GetTempPath(), "functions", "standby", "wwwroot");
+        private static readonly string _scriptRootConfigPath = ConfigurationPath.Combine(ConfigurationSectionNames.WebHost, nameof(ScriptApplicationHostOptions.ScriptPath));
+
         private const string _specializedScriptRoot = @"TestScripts\CSharp";
 
         private readonly TestEnvironment _environment;
@@ -564,7 +566,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
                     _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
 
-
                     // This value is available now
                     using (new TestScopedEnvironmentVariable("AzureFunctionsJobHost__InternalSasBlobContainer", fakeSasUri.ToString()))
                     using (new TestScopedEnvironmentVariable("AzureWebJobsStorage", storageValue))
@@ -586,20 +587,53 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
+        [Fact]
+        public async Task DotnetIsolatedSpecialization()
+        {
+            _environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "dotnet-isolated");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing);
+
+            var builder = CreateStandbyHostBuilder("Function1");
+
+            builder.ConfigureAppConfiguration(config =>
+            {
+                config.AddInMemoryCollection(new Dictionary<string, string>
+                {
+                    { _scriptRootConfigPath, Path.GetFullPath(@"..\..\..\..\DotNetIsolated60\bin\Debug\net6.0") },
+                });
+            });
+
+            using var testServer = new TestServer(builder);
+
+            var client = testServer.CreateClient();
+            var response = await client.GetAsync("api/warmup");
+            response.EnsureSuccessStatusCode();
+
+            // Validate that the channel is set up with native worker
+            var webChannelManager = testServer.Services.GetService<IWebHostRpcWorkerChannelManager>();
+            var channel = await webChannelManager.GetChannels("dotnet-isolated").Single().Value.Task;
+            Assert.Contains("FunctionsNetHost.exe", channel.WorkerProcess.Process.StartInfo.FileName);
+
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+
+            response = await client.GetAsync("api/function1");
+            response.EnsureSuccessStatusCode();
+        }
+
         private IWebHostBuilder CreateStandbyHostBuilder(params string[] functions)
         {
-            string scriptRootConfigPath = ConfigurationPath.Combine(ConfigurationSectionNames.WebHost, nameof(ScriptApplicationHostOptions.ScriptPath));
-
             var builder = Program.CreateWebHostBuilder()
                 .ConfigureLogging(b =>
                 {
                     b.AddProvider(_loggerProvider);
+                    b.AddFilter<TestLoggerProvider>(null, LogLevel.Debug);
                 })
                 .ConfigureAppConfiguration(c =>
                 {
                     c.AddInMemoryCollection(new Dictionary<string, string>
                     {
-                        { scriptRootConfigPath, _specializedScriptRoot }
+                        { _scriptRootConfigPath, _specializedScriptRoot }
                     });
                 })
                 .ConfigureServices((bc, s) =>
@@ -614,6 +648,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 })
                 .ConfigureScriptHostServices(s =>
                 {
+                    s.AddLogging(logging =>
+                    {
+                        logging.AddProvider(_loggerProvider);
+                    });
+
                     s.PostConfigure<ScriptJobHostOptions>(o =>
                     {
                         // Only load the function we care about, but not during standby

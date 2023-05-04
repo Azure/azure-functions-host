@@ -1,7 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
@@ -9,7 +8,6 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -27,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _workerFunctionMetadataProvider = workerFunctionMetadataProvider;
             _hostFunctionMetadataProvider = hostFunctionMetadataProvider;
             _functionsHostingConfigOptions = functionsHostingConfigOptions.Value;
-            _environment = SystemEnvironment.Instance;
+            _environment = environment;
         }
 
         public ImmutableDictionary<string, ImmutableArray<string>> FunctionErrors { get; private set; }
