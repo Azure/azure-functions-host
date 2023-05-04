@@ -61,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security
 
             var iv = Convert.FromBase64String(parts[0]);
             var data = Convert.FromBase64String(parts[1]);
-            var base64KeyHash = parts.Length == 3 ? parts[2] : null;
+            var base64KeyHash = parts.Length == 4 ? parts[3] : null;
 
             if (!string.IsNullOrEmpty(base64KeyHash) && !string.Equals(GetSHA256Base64String(encryptionKey), base64KeyHash))
             {
