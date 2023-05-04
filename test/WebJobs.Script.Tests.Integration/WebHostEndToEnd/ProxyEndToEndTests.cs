@@ -412,7 +412,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 };
 
                 var hostProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, new TestMetricsLogger());
-                var provider = new FunctionMetadataProvider(NullLogger<FunctionMetadataProvider>.Instance, null, hostProvider, new OptionsWrapper<FunctionsHostingConfigOptions>(new FunctionsHostingConfigOptions()));
+                var provider = new FunctionMetadataProvider(NullLogger<FunctionMetadataProvider>.Instance, null, hostProvider, new OptionsWrapper<FunctionsHostingConfigOptions>(new FunctionsHostingConfigOptions()), SystemEnvironment.Instance);
 
                 TestHost = new TestFunctionHost(HostOptions.ScriptPath, HostOptions.LogPath,
                     configureScriptHostServices: services =>
