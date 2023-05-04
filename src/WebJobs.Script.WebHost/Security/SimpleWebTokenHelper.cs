@@ -54,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security
         public static string Decrypt(byte[] encryptionKey, string value)
         {
             var parts = value.Split(new[] { '.' }, StringSplitOptions.RemoveEmptyEntries);
-            if (parts.Length != 3 && parts.Length != 4)
+            if (parts.Length != 2 && parts.Length != 3 && parts.Length != 4)
             {
                 throw new InvalidOperationException("Malformed token.");
             }
@@ -65,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security
 
             if (!string.IsNullOrEmpty(base64KeyHash) && !string.Equals(GetSHA256Base64String(encryptionKey), base64KeyHash))
             {
-                throw new InvalidOperationException(string.Format("Key with hash {0} does not exist.", base64KeyHash));
+                throw new InvalidOperationException(string.Format("Key with hash {0} does not exist. {1}", base64KeyHash, GetSHA256Base64String(encryptionKey)));
             }
 
             using (var aes = Aes.Create())
