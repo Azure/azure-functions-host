@@ -47,6 +47,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private static readonly string _standbyPath = Path.Combine(Path.GetTempPath(), "functions", "standby", "wwwroot");
         private static readonly string _scriptRootConfigPath = ConfigurationPath.Combine(ConfigurationSectionNames.WebHost, nameof(ScriptApplicationHostOptions.ScriptPath));
 
+        private static readonly string _dotnetIsolated60Path = Path.GetFullPath(@"..\..\..\..\DotNetIsolated60\bin\Debug\net6.0");
+
         private const string _specializedScriptRoot = @"TestScripts\CSharp";
 
         private readonly TestEnvironment _environment;
@@ -591,9 +593,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task DotNetIsolated_PlaceholderHit()
         {
-            var builder = InitializeDotNetIsolatedPlaceholderBuilder(() =>
-            {
-            });
+            var builder = InitializeDotNetIsolatedPlaceholderBuilder();
 
             using var testServer = new TestServer(builder);
 
@@ -699,8 +699,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Throws<InvalidOperationException>(() => placeholderChannel.WorkerProcess.Process.Id);
         }
 
+        private static void BuildDotnetIsolated60()
+        {
+            var p = Process.Start("dotnet", $"build {_dotnetIsolated60Path}/../../..");
+            p.WaitForExit();
+        }
+
         private IWebHostBuilder InitializeDotNetIsolatedPlaceholderBuilder(Action additionalSetup = null)
         {
+            BuildDotnetIsolated60();
+
             _environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "dotnet-isolated");
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteUsePlaceholderDotNetIsolated, "1");
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing);
@@ -714,7 +722,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 config.AddInMemoryCollection(new Dictionary<string, string>
                 {
-                    { _scriptRootConfigPath, Path.GetFullPath(@"..\..\..\..\DotNetIsolated60\bin\Debug\net6.0") },
+                    { _scriptRootConfigPath, _dotnetIsolated60Path },
                 });
             });
 
