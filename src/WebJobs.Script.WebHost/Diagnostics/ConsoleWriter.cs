@@ -15,8 +15,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly Channel<string> _consoleBuffer;
         private readonly TimeSpan _consoleBufferTimeout;
         private readonly Task _consoleBufferReadLoop;
-        private readonly Action<string> _writeEvent;
         private readonly Action<Exception> _exceptionhandler;
+        private Action<string> _writeEvent;
 
         public ConsoleWriter(IEnvironment environment, Action<Exception> unhandledExceptionHandler)
             : this(environment, unhandledExceptionHandler, consoleBufferTimeout: DefaultConsoleBufferTimeout, autoStart: true)
@@ -48,11 +48,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     _consoleBufferTimeout = consoleBufferTimeout;
                     if (autoStart)
                     {
-                        _consoleBufferReadLoop = environment.GetEnvironmentVariable(EnvironmentSettingNames.ConsoleLoggingBufferBatched) switch
+                        bool batched = environment.GetEnvironmentVariable(EnvironmentSettingNames.ConsoleLoggingBufferBatched) switch
                         {
-                            "0" => ProcessConsoleBufferAsync(),             // disable batching by setting to 0
-                            _ => ProcessConsoleBufferBatchedAsync(),        // default behavior is batched
+                            "0" => false,     // disable batching by setting to 0
+                            _ => true,        // default behavior is batched
                         };
+
+                        _consoleBufferReadLoop = ProcessConsoleBufferAsync(batched);
                     }
                 }
             }
@@ -64,7 +66,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _exceptionhandler = exceptionHandler;
         }
 
-        public Action<string> WriteHandler => _writeEvent;
+        public void WriteHandler(string evt)
+        {
+            _writeEvent(evt);
+        }
 
         private void WriteToConsoleBuffer(string evt)
         {
@@ -93,13 +98,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             }
         }
 
-        internal async Task ProcessConsoleBufferAsync()
+        internal async Task ProcessConsoleBufferAsync(bool batched)
         {
             try
             {
-                await foreach (var line in _consoleBuffer.Reader.ReadAllAsync())
+                if (batched)
                 {
-                    Console.WriteLine(line);
+                    await ProcessConsoleBufferBatchedAsync();
+                }
+                else
+                {
+                    await ProcessConsoleBufferNonBatchedAsync();
                 }
             }
             catch (Exception ex)
@@ -109,60 +118,59 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             }
             finally
             {
-                // if this has failed for any reason, complete the buffer so that everything falls back to console
+                // if this has failed for any reason, fall everything back to console
                 _consoleBuffer.Writer.Complete();
+                _writeEvent = Console.WriteLine;
             }
         }
 
-        internal async Task ProcessConsoleBufferBatchedAsync()
+        private async Task ProcessConsoleBufferNonBatchedAsync()
         {
-            try
+            await foreach (var line in _consoleBuffer.Reader.ReadAllAsync())
             {
-                var builder = new StringBuilder();
+                Console.WriteLine(line);
+            }
+        }
 
-                while (true)
+        private async Task ProcessConsoleBufferBatchedAsync()
+        {
+            const int MaxBatchSize = 200;
+            var builder = new StringBuilder();
+
+            while (true)
+            {
+                if (await _consoleBuffer.Reader.WaitToReadAsync() == false)
                 {
-                    if (await _consoleBuffer.Reader.WaitToReadAsync() == false)
+                    // The buffer has been completed and does not allow further reads.
+                    // Currently this should not be possible, but safest thing to do is break out of the loop.
+                    break;
+                }
+
+                if (_consoleBuffer.Reader.TryRead(out string line1))
+                {
+                    // Can we synchronously read multiple lines?
+                    // If yes, use the string builder to batch them together into a single write
+                    // If no, just write the single line without using the builder;
+                    if (_consoleBuffer.Reader.TryRead(out string line2))
                     {
-                        // The buffer has been completed and does not allow further reads.
-                        // Currently this should not be possible, but safest thing to do is break out of the loop.
-                        break;
+                        builder.AppendLine(line1);
+                        builder.AppendLine(line2);
+                        int lines = 2;
+
+                        while (_consoleBuffer.Reader.TryRead(out string nextLine) && lines < MaxBatchSize)
+                        {
+                            builder.AppendLine(nextLine);
+                            lines++;
+                        }
+
+                        Console.Write(builder.ToString());
+                        builder.Clear();
                     }
-
-                    if (_consoleBuffer.Reader.TryRead(out string line1))
+                    else
                     {
-                        // Can we synchronously read multiple lines?
-                        // If yes, use the string builder to batch them together into a single write
-                        // If no, just write the single line without using the builder;
-                        if (_consoleBuffer.Reader.TryRead(out string line2))
-                        {
-                            builder.AppendLine(line1);
-                            builder.AppendLine(line2);
-
-                            while (_consoleBuffer.Reader.TryRead(out string nextLine))
-                            {
-                                builder.AppendLine(nextLine);
-                            }
-
-                            Console.Write(builder.ToString());
-                            builder.Clear();
-                        }
-                        else
-                        {
-                            Console.WriteLine(line1);
-                        }
+                        Console.WriteLine(line1);
                     }
                 }
-            }
-            catch (Exception ex)
-            {
-                // Not sure what can fail here, but there is nothing else monitoring this task so just log the exception
-                _exceptionhandler(ex);
-            }
-            finally
-            {
-                // if this has failed for any reason, complete the buffer so that everything falls back to console
-                _consoleBuffer.Writer.Complete();
             }
         }
     }

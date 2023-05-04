@@ -174,7 +174,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             await Task.Delay(TimeSpan.FromMilliseconds(10));
             Assert.False(logTask.IsCompleted);
 
-            var logProcessingTask = consoleWriter.ProcessConsoleBufferAsync();
+            var logProcessingTask = consoleWriter.ProcessConsoleBufferAsync(batched: true);
             await Task.Delay(TimeSpan.FromMilliseconds(10));
             Assert.True(logTask.IsCompleted);
 
