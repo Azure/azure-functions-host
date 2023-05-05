@@ -61,6 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     throw new InvalidOperationException(nameof(_channelManager));
                 }
 
+                // Scenario: Restart worker for hot reload on a readwrite file system
                 // We reuse the worker started in placeholderMode only when the fileSystem is readonly
                 // otherwise we shutdown the channel in which case the channel should not have any channels anyway
                 // forceRefresh in only true once in the script host intialization flow.

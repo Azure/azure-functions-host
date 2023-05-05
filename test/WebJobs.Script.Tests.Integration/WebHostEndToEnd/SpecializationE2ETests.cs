@@ -274,15 +274,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var response = await client.GetAsync("api/warmup");
             response.EnsureSuccessStatusCode();
 
-            // Validate that the channel is set up with native worker
             var webChannelManager = testServer.Services.GetService<IWebHostRpcWorkerChannelManager>();
             var channel = await webChannelManager.GetChannels("node").Single().Value.Task;
-            var dotnetProcessId = channel.WorkerProcess.Process.Id;
+            var processId = channel.WorkerProcess.Process.Id;
 
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
 
-            //await _pauseBeforeHostBuild.WaitAsync(10000);
             response = await client.GetAsync("api/HttpTriggerNoAuth");
             response.EnsureSuccessStatusCode();
             var responseContent = await response.Content.ReadAsStringAsync();
@@ -291,8 +289,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             responseContent.Contains(content);
 
             channel = await webChannelManager.GetChannels("node").Single().Value.Task;
-            var newDotnetProcessId = channel.WorkerProcess.Process.Id;
-            Assert.NotEqual(dotnetProcessId, newDotnetProcessId);
+            var newProcessId = channel.WorkerProcess.Process.Id;
+            Assert.NotEqual(processId, newProcessId);
             Assert.Contains(content, responseContent);
 
             var indexJS = Path.GetFullPath(@"TestScripts\NodeWithBundles\HttpTriggerNoAuth\index.js");
@@ -322,7 +320,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             channel = await webChannelManager.GetChannels("node").Single().Value.Task;
             var hotReloadProcessId = channel.WorkerProcess.Process.Id;
-            Assert.NotEqual(hotReloadProcessId, newDotnetProcessId);
+            Assert.NotEqual(hotReloadProcessId, newProcessId);
             Assert.Contains(newContent, responseContent);
         }
 
@@ -352,10 +350,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var placeholderContext = FunctionAssemblyLoadContext.Shared;
 
-            // Validate that the channel is set up with native worker
             var webChannelManager = testServer.Services.GetService<IWebHostRpcWorkerChannelManager>();
             var channel = await webChannelManager.GetChannels("node").Single().Value.Task;
-            var dotnetProcessId = channel.WorkerProcess.Process.Id;
+            var processId = channel.WorkerProcess.Process.Id;
 
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
@@ -365,9 +362,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             response.EnsureSuccessStatusCode();
 
             channel = await webChannelManager.GetChannels("node").Single().Value.Task;
-            var newDotnetProcessId = channel.WorkerProcess.Process.Id;
-            Assert.NotEqual(dotnetProcessId, newDotnetProcessId);
+            var newProcessId = channel.WorkerProcess.Process.Id;
+            Assert.NotEqual(processId, newProcessId);
         }
+
 
         [Fact]
         public async Task Specialization_UsePlaceholderWorkerforReadOnlyFileSystem()
@@ -394,10 +392,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var response = await client.GetAsync("api/warmup");
             response.EnsureSuccessStatusCode();
 
-            // Validate that the channel is set up with native worker
             var webChannelManager = testServer.Services.GetService<IWebHostRpcWorkerChannelManager>();
             var channel = await webChannelManager.GetChannels("node").Single().Value.Task;
-            var dotnetProcessId = channel.WorkerProcess.Process.Id;
+            var processId = channel.WorkerProcess.Process.Id;
 
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteRunFromPackage, "1");
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
@@ -407,8 +404,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             response.EnsureSuccessStatusCode();
 
             channel = await webChannelManager.GetChannels("node").Single().Value.Task;
-            var newDotnetProcessId = channel.WorkerProcess.Process.Id;
-            Assert.Equal(dotnetProcessId, newDotnetProcessId);
+            var newProcessId = channel.WorkerProcess.Process.Id;
+            Assert.Equal(processId, newProcessId);
         }
 
         [Fact]
