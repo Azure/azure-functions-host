@@ -93,7 +93,7 @@ namespace WebJobsStartupTests
         {
             if (_config is ConfigurationRoot root)
             {
-                if (root.Providers.Count() != 7)
+                if (root.Providers.Count() != 8)
                 {
                     return false;
                 }
@@ -101,15 +101,15 @@ namespace WebJobsStartupTests
                 int i = 0;
 
                 return
-                    root.Providers.ElementAt(i++) is ChainedConfigurationProvider &&
-                    root.Providers.ElementAt(i++) is MemoryConfigurationProvider &&
-                    root.Providers.ElementAt(i++).GetType().Name.StartsWith("HostJsonFile") &&
-                    root.Providers.ElementAt(i++) is JsonConfigurationProvider &&
-                    root.Providers.ElementAt(i++) is EnvironmentVariablesConfigurationProvider &&
-                    root.Providers.ElementAt(i++) is MemoryConfigurationProvider && // From Startup.cs
-                    root.Providers.ElementAt(i++) is JsonConfigurationProvider; // From test settings; Always runs last in tests.
+                root.Providers.ElementAt(i++) is ChainedConfigurationProvider &&
+                root.Providers.ElementAt(i++) is MemoryConfigurationProvider &&
+                root.Providers.ElementAt(i++).GetType().Name.StartsWith("HostJsonFile") &&
+                root.Providers.ElementAt(i++).GetType().Name.StartsWith("FunctionsHostingConfigProvider") &&
+                root.Providers.ElementAt(i++) is JsonConfigurationProvider &&
+                root.Providers.ElementAt(i++) is EnvironmentVariablesConfigurationProvider &&
+                root.Providers.ElementAt(i++) is MemoryConfigurationProvider && // From Startup.cs
+                           root.Providers.ElementAt(i++) is JsonConfigurationProvider; // From test settings; Always runs last in tests.
             }
-
             return false;
         }
     }
