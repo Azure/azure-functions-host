@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         }
 
         /// <summary>
-        /// Gets the highest version of extension bundle v4 supported
+        /// Gets the highest version of extension bundle v3 supported
         /// </summary>
         public string MaximumSupportedBundleV3Version
         {
@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         }
 
         /// <summary>
-        /// Gets the highest version of extension bundle v3 supported
+        /// Gets the highest version of extension bundle v4 supported
         /// </summary>
         public string MaximumSupportedBundleV4Version
         {
