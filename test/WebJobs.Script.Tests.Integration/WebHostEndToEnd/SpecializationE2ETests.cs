@@ -274,8 +274,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var response = await client.GetAsync("api/warmup");
             response.EnsureSuccessStatusCode();
 
-            var placeholderContext = FunctionAssemblyLoadContext.Shared;
-
             // Validate that the channel is set up with native worker
             var webChannelManager = testServer.Services.GetService<IWebHostRpcWorkerChannelManager>();
             var channel = await webChannelManager.GetChannels("node").Single().Value.Task;
@@ -304,7 +302,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string updatedContent = fileContent.Replace(content, newContent);
             File.WriteAllText(indexJS, updatedContent);
 
-            await Task.Delay(1000);
+            var manager = testServer.Host.Services.GetService<IScriptHostManager>();
+            var hostService = manager as WebJobsScriptHostService;
+
+            await TestHelpers.Await(() =>
+            {
+                return hostService.State == ScriptHostState.Default;
+            }, 5000);
+
+            await TestHelpers.Await(() =>
+            {
+                return hostService.State == ScriptHostState.Running;
+            }, 5000);
 
             response = await client.GetAsync("api/HttpTriggerNoAuth");
             response.EnsureSuccessStatusCode();
