@@ -3,7 +3,6 @@
 
 using System;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Configuration
@@ -15,7 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
         private readonly IOptions<ScriptApplicationHostOptions> _applicationHostOptions;
 
         internal static readonly TimeSpan MinFunctionTimeout = TimeSpan.FromSeconds(1);
-        internal static readonly TimeSpan DefaultFunctionTimeoutDynamic = TimeSpan.FromMinutes(5);
+        internal static readonly TimeSpan DefaultConsumptionFunctionTimeout = TimeSpan.FromMinutes(5);
         internal static readonly TimeSpan MaxFunctionTimeoutDynamic = TimeSpan.FromMinutes(10);
         internal static readonly TimeSpan DefaultFunctionTimeout = TimeSpan.FromMinutes(30);
 
@@ -79,11 +78,11 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
         {
             if (options.FunctionTimeout == null)
             {
-                options.FunctionTimeout = _environment.IsConsumptionSku() ? DefaultFunctionTimeoutDynamic : DefaultFunctionTimeout;
+                options.FunctionTimeout = (_environment.IsConsumptionSku() && !_environment.IsFlexConsumptionSku()) ? DefaultConsumptionFunctionTimeout : DefaultFunctionTimeout;
             }
-            else if (!_environment.IsConsumptionSku() && TimeSpan.Compare(options.FunctionTimeout.Value, TimeSpan.FromDays(-1)) == 0)
+            else if (SkuSupportsUnboundedTimeout(_environment) && TimeSpan.Compare(options.FunctionTimeout.Value, TimeSpan.FromDays(-1)) == 0)
             {
-                // If a value of -1 is specified on a dedicated host, it should result in an infinite timeout
+                // A value of -1 is translated to an infinite timeout for skus that support it
                 options.FunctionTimeout = null;
             }
             else
@@ -96,17 +95,25 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
         {
             if (timeoutValue != null)
             {
+                // determine the maximum allowed timeout based on SKU
                 var maxTimeout = TimeSpan.MaxValue;
-                if (_environment.IsConsumptionSku())
+                if (!SkuSupportsUnboundedTimeout(_environment))
                 {
                     maxTimeout = MaxFunctionTimeoutDynamic;
                 }
+
+                // verify the configured timeout is in bounds
                 if (timeoutValue < MinFunctionTimeout || timeoutValue > maxTimeout)
                 {
                     string message = $"{nameof(options.FunctionTimeout)} must be greater than {MinFunctionTimeout} and less than {maxTimeout}.";
                     throw new ArgumentException(message);
                 }
             }
+        }
+
+        private bool SkuSupportsUnboundedTimeout(IEnvironment environment)
+        {
+            return !environment.IsConsumptionSku() || environment.IsFlexConsumptionSku();
         }
     }
 }
