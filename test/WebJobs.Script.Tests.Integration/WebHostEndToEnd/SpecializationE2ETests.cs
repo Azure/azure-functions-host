@@ -32,6 +32,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
+using TestFunctions;
 using Xunit;
 using Xunit.Abstractions;
 using IApplicationLifetime = Microsoft.AspNetCore.Hosting.IApplicationLifetime;
@@ -247,6 +248,158 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 Assert.NotSame(placeholderContext, specializedContext);
             }
+        }
+
+        [Fact]
+        public async Task ForNonReadOnlyFileSystem_RestartWorkerForSpecializationAndHotReload()
+        {
+            _environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "node");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing);
+
+            var builder = CreateStandbyHostBuilder("HttpTriggerNoAuth");
+
+            builder.ConfigureAppConfiguration(config =>
+            {
+                string scriptRootConfigPath = ConfigurationPath.Combine(ConfigurationSectionNames.WebHost, nameof(ScriptApplicationHostOptions.ScriptPath));
+                config.AddInMemoryCollection(new Dictionary<string, string>
+                {
+                    { _scriptRootConfigPath, Path.GetFullPath(@"TestScripts\NodeWithBundles") }
+                });
+            });
+
+            using var testServer = new TestServer(builder);
+
+            var client = testServer.CreateClient();
+
+            var response = await client.GetAsync("api/warmup");
+            response.EnsureSuccessStatusCode();
+
+            var placeholderContext = FunctionAssemblyLoadContext.Shared;
+
+            // Validate that the channel is set up with native worker
+            var webChannelManager = testServer.Services.GetService<IWebHostRpcWorkerChannelManager>();
+            var channel = await webChannelManager.GetChannels("node").Single().Value.Task;
+            var dotnetProcessId = channel.WorkerProcess.Process.Id;
+
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+
+            //await _pauseBeforeHostBuild.WaitAsync(10000);
+            response = await client.GetAsync("api/HttpTriggerNoAuth");
+            response.EnsureSuccessStatusCode();
+            var responseContent = await response.Content.ReadAsStringAsync();
+
+            string content = "Node.js HttpTrigger function invoked.";
+            responseContent.Contains(content);
+
+            channel = await webChannelManager.GetChannels("node").Single().Value.Task;
+            var newDotnetProcessId = channel.WorkerProcess.Process.Id;
+            Assert.NotEqual(dotnetProcessId, newDotnetProcessId);
+            Assert.Contains(content, responseContent);
+
+            var indexJS = Path.GetFullPath(@"TestScripts\NodeWithBundles\HttpTriggerNoAuth\index.js");
+
+            string fileContent = File.ReadAllText(indexJS);
+            string newContent = "Updated Node.js HttpTrigger function invoked.";
+            string updatedContent = fileContent.Replace(content, newContent);
+            File.WriteAllText(indexJS, updatedContent);
+
+            await Task.Delay(1000);
+
+            response = await client.GetAsync("api/HttpTriggerNoAuth");
+            response.EnsureSuccessStatusCode();
+            responseContent = await response.Content.ReadAsStringAsync();
+            responseContent.Contains(newContent);
+
+            channel = await webChannelManager.GetChannels("node").Single().Value.Task;
+            var hotReloadProcessId = channel.WorkerProcess.Process.Id;
+            Assert.NotEqual(hotReloadProcessId, newDotnetProcessId);
+            Assert.Contains(newContent, responseContent);
+        }
+
+        [Fact]
+        public async Task Specialization_RestartsWorkerForNonReadOnlyFileSystem()
+        {
+            _environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "node");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing);
+
+            var builder = CreateStandbyHostBuilder("HttpTriggerNoAuth");
+
+            builder.ConfigureAppConfiguration(config =>
+            {
+                string scriptRootConfigPath = ConfigurationPath.Combine(ConfigurationSectionNames.WebHost, nameof(ScriptApplicationHostOptions.ScriptPath));
+                config.AddInMemoryCollection(new Dictionary<string, string>
+                {
+                    { _scriptRootConfigPath, Path.GetFullPath(@"TestScripts\NodeWithBundles") }
+                });
+            });
+
+            using var testServer = new TestServer(builder);
+
+            var client = testServer.CreateClient();
+
+            var response = await client.GetAsync("api/warmup");
+            response.EnsureSuccessStatusCode();
+
+            var placeholderContext = FunctionAssemblyLoadContext.Shared;
+
+            // Validate that the channel is set up with native worker
+            var webChannelManager = testServer.Services.GetService<IWebHostRpcWorkerChannelManager>();
+            var channel = await webChannelManager.GetChannels("node").Single().Value.Task;
+            var dotnetProcessId = channel.WorkerProcess.Process.Id;
+
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+
+            //await _pauseBeforeHostBuild.WaitAsync(10000);
+            response = await client.GetAsync("api/HttpTriggerNoAuth");
+            response.EnsureSuccessStatusCode();
+
+            channel = await webChannelManager.GetChannels("node").Single().Value.Task;
+            var newDotnetProcessId = channel.WorkerProcess.Process.Id;
+            Assert.NotEqual(dotnetProcessId, newDotnetProcessId);
+        }
+
+        [Fact]
+        public async Task Specialization_UsePlaceholderWorkerforReadOnlyFileSystem()
+        {
+            _environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "node");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing);
+
+            var builder = CreateStandbyHostBuilder("HttpTriggerNoAuth");
+            string isFileSystemReadOnly = ConfigurationPath.Combine(ConfigurationSectionNames.WebHost, nameof(ScriptApplicationHostOptions.IsFileSystemReadOnly));
+
+            builder.ConfigureAppConfiguration(config =>
+                {
+                    config.AddInMemoryCollection(new Dictionary<string, string>
+                    {
+                        { _scriptRootConfigPath, Path.GetFullPath(@"TestScripts\NodeWithBundles") }
+                    });
+                });
+
+
+            using var testServer = new TestServer(builder);
+
+            var client = testServer.CreateClient();
+
+            var response = await client.GetAsync("api/warmup");
+            response.EnsureSuccessStatusCode();
+
+            // Validate that the channel is set up with native worker
+            var webChannelManager = testServer.Services.GetService<IWebHostRpcWorkerChannelManager>();
+            var channel = await webChannelManager.GetChannels("node").Single().Value.Task;
+            var dotnetProcessId = channel.WorkerProcess.Process.Id;
+
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteRunFromPackage, "1");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+
+            response = await client.GetAsync("api/HttpTriggerNoAuth");
+            response.EnsureSuccessStatusCode();
+
+            channel = await webChannelManager.GetChannels("node").Single().Value.Task;
+            var newDotnetProcessId = channel.WorkerProcess.Process.Id;
+            Assert.Equal(dotnetProcessId, newDotnetProcessId);
         }
 
         [Fact]
