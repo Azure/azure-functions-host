@@ -14,6 +14,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Extensions.Configuration;
@@ -384,10 +385,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
             Assert.Null(await manager.GetExtensionBundlePath(httpClient));
         }
 
+        [Theory]
+        [InlineData("[3.*, 4.0.0)", "3.19.0")]
+        [InlineData("[4.*, 5.0.0)", "4.2.0")]
+        [InlineData("[4.*, 5.0.0)", null)]
+        public void LimitMaxVersion(string versionRange, string version)
+        {
+            var range = VersionRange.Parse(versionRange);
+            var resolvedVersion = ExtensionBundleManager.FindBestVersionMatch(range, new List<string>()
+            { "3.7.0", "3.10.0", "3.11.0", "3.15.0", "3.14.0", "2.16.0", "3.13.0", "3.12.0", "3.9.1", "2.12.1", "2.18.0", "3.16.0", "2.19.0", "3.17.0", "4.0.2", "2.20.0", "3.18.0", "4.1.0", "4.2.0", "2.21.0", "3.19.0", "3.19.2", "4.3.0", "3.20.0" },
+            ScriptConstants.DefaultExtensionBundleId, new FunctionsHostingConfigOptions());
+
+            if (string.IsNullOrEmpty(version))
+            {
+                Assert.Equal("4.3.0", resolvedVersion);
+            }
+        }
+
         private ExtensionBundleManager GetExtensionBundleManager(ExtensionBundleOptions bundleOptions, TestEnvironment environment = null)
         {
             environment = environment ?? new TestEnvironment();
-            return new ExtensionBundleManager(bundleOptions, environment, MockNullLoggerFactory.CreateLoggerFactory());
+            return new ExtensionBundleManager(bundleOptions, environment, MockNullLoggerFactory.CreateLoggerFactory(), new FunctionsHostingConfigOptions());
         }
 
         private TestEnvironment GetTestAppServiceEnvironment()
