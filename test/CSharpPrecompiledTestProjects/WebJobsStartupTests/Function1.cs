@@ -99,7 +99,7 @@ namespace WebJobsStartupTests
                 }
 
                 int i = 0;
-                
+
                 return
                 root.Providers.ElementAt(i++) is ChainedConfigurationProvider &&
                 root.Providers.ElementAt(i++) is MemoryConfigurationProvider &&
@@ -113,3 +113,4 @@ namespace WebJobsStartupTests
             return false;
         }
     }
+}
