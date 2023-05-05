@@ -10,12 +10,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
     internal class ConsoleWriter
     {
-        private const int DefaultBufferSize = 1000;
+        // A typical out-of-proc function execution will generate 8 log lines.
+        // A single core container can potentially get around 1K RPS at the higher end, so this is about 1 second of buffer in the extreme case.
+        // A typical log line is around 300 bytes, so this is about 2.4MB of buffer in the extreme case.
+        private const int DefaultBufferSize = 8000;
+
         private static readonly TimeSpan DefaultConsoleBufferTimeout = TimeSpan.FromSeconds(1);
         private readonly Channel<string> _consoleBuffer;
         private readonly TimeSpan _consoleBufferTimeout;
-        private readonly Task _consoleBufferReadLoop;
         private readonly Action<Exception> _exceptionhandler;
+        private Task _consoleBufferReadLoop;
         private Action<string> _writeEvent;
 
         public ConsoleWriter(IEnvironment environment, Action<Exception> unhandledExceptionHandler)
@@ -54,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                             _ => true,        // default behavior is batched
                         };
 
-                        _consoleBufferReadLoop = ProcessConsoleBufferAsync(batched);
+                        StartProcessingBuffer(batched);
                     }
                 }
             }
@@ -98,7 +102,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             }
         }
 
-        internal async Task ProcessConsoleBufferAsync(bool batched)
+        internal void StartProcessingBuffer(bool batched)
+        {
+            // intentional no-op if the task is already running
+            if (_consoleBufferReadLoop == null || _consoleBufferReadLoop.IsCompleted)
+            {
+                _consoleBufferReadLoop = ProcessConsoleBufferAsync(batched);
+            }
+        }
+
+        private async Task ProcessConsoleBufferAsync(bool batched)
         {
             try
             {
@@ -119,8 +132,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             finally
             {
                 // if this has failed for any reason, fall everything back to console
-                _consoleBuffer.Writer.Complete();
                 _writeEvent = Console.WriteLine;
+                _consoleBuffer.Writer.Complete();
             }
         }
 
@@ -134,7 +147,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         private async Task ProcessConsoleBufferBatchedAsync()
         {
-            const int MaxBatchSize = 200;
             var builder = new StringBuilder();
 
             while (true)
@@ -157,7 +169,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                         builder.AppendLine(line2);
                         int lines = 2;
 
-                        while (_consoleBuffer.Reader.TryRead(out string nextLine) && lines < MaxBatchSize)
+                        while (_consoleBuffer.Reader.TryRead(out string nextLine) && lines < DefaultBufferSize)
                         {
                             builder.AppendLine(nextLine);
                             lines++;
