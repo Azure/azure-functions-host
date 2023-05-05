@@ -135,7 +135,7 @@ namespace Microsoft.Azure.WebJobs.Script
             ImmutableArray<FunctionMetadata> immutableFunctionMetadata;
             var workerConfigs = _languageWorkerOptions.CurrentValue.WorkerConfigs;
 
-            immutableFunctionMetadata = _functionMetadataProvider.GetFunctionMetadataAsync(workerConfigs, SystemEnvironment.Instance, forceRefresh).GetAwaiter().GetResult();
+            immutableFunctionMetadata = _functionMetadataProvider.GetFunctionMetadataAsync(workerConfigs, _environment, forceRefresh).GetAwaiter().GetResult();
 
             var functionMetadataList = new List<FunctionMetadata>();
             _functionErrors = new Dictionary<string, ICollection<string>>();

@@ -21,6 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly IMetricsLogger _metricsLogger;
         private readonly IServiceProvider _serviceProvider;
         private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions;
+        private readonly IEnvironment _environment;
 
         public RpcWorkerProcessFactory(IRpcServer rpcServer,
                                        IScriptEventManager eventManager,
@@ -30,7 +31,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                                        IWorkerConsoleLogSource consoleLogSource,
                                        IMetricsLogger metricsLogger,
                                        IServiceProvider serviceProvider,
-                                       IOptions<FunctionsHostingConfigOptions> hostingConfigOptions)
+                                       IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
+                                       IEnvironment environment)
         {
             _loggerFactory = loggerFactory;
             _eventManager = eventManager;
@@ -41,12 +43,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _metricsLogger = metricsLogger;
             _serviceProvider = serviceProvider;
             _hostingConfigOptions = hostingConfigOptions;
+            _environment = environment;
         }
 
         public IWorkerProcess Create(string workerId, string runtime, string scriptRootPath, RpcWorkerConfig workerConfig)
         {
             ILogger workerProcessLogger = _loggerFactory.CreateLogger($"Worker.rpcWorkerProcess.{runtime}.{workerId}");
-            return new RpcWorkerProcess(runtime, workerId, scriptRootPath, _rpcServer.Uri, workerConfig, _eventManager, _workerProcessFactory, _processRegistry, workerProcessLogger, _consoleLogSource, _metricsLogger, _serviceProvider, _hostingConfigOptions);
+            return new RpcWorkerProcess(runtime, workerId, scriptRootPath, _rpcServer.Uri, workerConfig, _eventManager, _workerProcessFactory, _processRegistry, workerProcessLogger, _consoleLogSource, _metricsLogger, _serviceProvider, _hostingConfigOptions, _environment);
         }
     }
 }

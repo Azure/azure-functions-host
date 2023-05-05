@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -45,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             return null;
         }
 
-        public async Task<IRpcWorkerChannel> InitializeChannelAsync(string language)
+        public async Task<IRpcWorkerChannel> InitializeChannelAsync(IEnumerable<RpcWorkerConfig> workerConfigs, string language)
         {
             var metricsLogger = new Mock<IMetricsLogger>();
             IRpcWorkerChannel workerChannel = _testLanguageWorkerChannelFactory.Create(_scriptRootPath, language, metricsLogger.Object, 0, TestHelpers.GetTestWorkerConfigs());

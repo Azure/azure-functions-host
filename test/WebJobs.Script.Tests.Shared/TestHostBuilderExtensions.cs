@@ -103,7 +103,7 @@ namespace Microsoft.WebJobs.Script.Tests
 
             var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, metricsLogger);
             var hostingOptionsMonitor = TestHelpers.CreateOptionsMonitor(new FunctionsHostingConfigOptions());
-            var defaultProvider = new FunctionMetadataProvider(NullLogger<FunctionMetadataProvider>.Instance, null, metadataProvider, new OptionsWrapper<FunctionsHostingConfigOptions>(new FunctionsHostingConfigOptions()));
+            var defaultProvider = new FunctionMetadataProvider(NullLogger<FunctionMetadataProvider>.Instance, null, metadataProvider, new OptionsWrapper<FunctionsHostingConfigOptions>(new FunctionsHostingConfigOptions()), SystemEnvironment.Instance);
             var metadataManager = TestFunctionMetadataManager.GetFunctionMetadataManager(new OptionsWrapper<ScriptJobHostOptions>(new ScriptJobHostOptions()), defaultProvider, new List<IFunctionProvider>(), new OptionsWrapper<HttpWorkerOptions>(new HttpWorkerOptions()), new NullLoggerFactory(), new TestOptionsMonitor<LanguageWorkerOptions>(TestHelpers.GetTestLanguageWorkerOptions()));
             services.AddSingleton<IFunctionMetadataManager>(metadataManager);
             services.AddSingleton<IFunctionMetadataProvider>(defaultProvider);

@@ -65,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 if (channels?.Any() != true)
                 {
-                    await _channelManager.InitializeChannelAsync(_workerRuntime);
+                    await _channelManager.InitializeChannelAsync(workerConfigs, _workerRuntime);
                     channels = _channelManager.GetChannels(_workerRuntime);
                 }
                 // start up GRPC channels
@@ -162,7 +162,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     Utility.ValidateName(function.Name);
 
-                    function.Language = SystemEnvironment.Instance.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
+                    function.Language = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
 
                     // skip function directory validation because this involves reading function.json
 

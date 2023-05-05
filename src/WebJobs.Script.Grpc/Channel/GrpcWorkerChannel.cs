@@ -845,7 +845,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                         FunctionDirectory = metadata.Directory,
                         ScriptFile = metadata.ScriptFile,
                         EntryPoint = metadata.EntryPoint,
-                        Name = metadata.Name
+                        Name = metadata.Name,
+                        Language = metadata.Language
                     };
 
                     functionMetadata.SetFunctionId(metadata.FunctionId);

@@ -18,12 +18,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly IWebHostRpcWorkerChannelManager _webHostRpcWorkerChannelManager;
         private readonly IRpcServer _rpcServer;
         private readonly ILogger _logger;
+        private readonly IOptionsMonitor<LanguageWorkerOptions> _languageWorkerOptions;
 
         private readonly string _workerRuntime;
         private readonly int _rpcServerShutdownTimeoutInMilliseconds;
         private HashSet<string> _placeholderLanguageWorkersList = new HashSet<string>();
 
-        public RpcInitializationService(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IEnvironment environment, IRpcServer rpcServer, IWebHostRpcWorkerChannelManager rpcWorkerChannelManager, ILogger<RpcInitializationService> logger)
+        public RpcInitializationService(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IEnvironment environment, IRpcServer rpcServer,
+            IWebHostRpcWorkerChannelManager rpcWorkerChannelManager, ILogger<RpcInitializationService> logger, IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions)
         {
             _applicationHostOptions = applicationHostOptions ?? throw new ArgumentNullException(nameof(applicationHostOptions));
             _logger = logger;
@@ -33,6 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _webHostRpcWorkerChannelManager = rpcWorkerChannelManager ?? throw new ArgumentNullException(nameof(rpcWorkerChannelManager));
             _workerRuntime = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
             _placeholderLanguageWorkersList = _environment.GetLanguageWorkerListToStartInPlaceholder();
+            _languageWorkerOptions = languageWorkerOptions;
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
@@ -116,7 +119,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 if (_placeholderLanguageWorkersList.Count() != 0)
                 {
                     return Task.WhenAll(_placeholderLanguageWorkersList.Select(runtime =>
-                    _webHostRpcWorkerChannelManager.InitializeChannelAsync(runtime)));
+                    _webHostRpcWorkerChannelManager.InitializeChannelAsync(_languageWorkerOptions.CurrentValue.WorkerConfigs, runtime)));
                 }
             }
             return Task.CompletedTask;
