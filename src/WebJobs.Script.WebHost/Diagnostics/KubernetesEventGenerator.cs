@@ -51,9 +51,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public override void LogFunctionMetricEvent(string subscriptionId, string appName, string functionName, string eventName, long average, long minimum, long maximum, long count, DateTime eventTimestamp, string data, string runtimeSiteName, string slotName)
         {
-            // Set event type to MS_FUNCTION_LOGS to send these events as part of infra logs.
+            // Set event type to MS_FUNCTION_METRICS to send these events as part of infra logs.
             JObject metricEvent = new JObject();
-            metricEvent.Add("EventType", ScriptConstants.LinuxLogEventStreamName);
+            metricEvent.Add("EventType", ScriptConstants.LinuxMetricEventStreamName);
             metricEvent.Add("SubscriptionId", subscriptionId);
             metricEvent.Add("AppName", appName);
             metricEvent.Add("FunctionName", functionName);
