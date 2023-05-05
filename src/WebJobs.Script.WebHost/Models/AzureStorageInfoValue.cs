@@ -83,7 +83,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
             }
 
             var parts = environmentVariable.Value?.Split(new[] { '|' }, StringSplitOptions.RemoveEmptyEntries);
-            if (parts == null || parts.Length != 4)
+            if (parts == null)
+            {
+                return null;
+            }
+
+            if (parts.Length != 4 && parts.Length != 5)
             {
                 return null;
             }
