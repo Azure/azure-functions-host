@@ -671,7 +671,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             if (addWebhostChannel)
             {
-                testWebHostLanguageWorkerChannelManager.InitializeChannelAsync(null, "java");
+                testWebHostLanguageWorkerChannelManager.InitializeChannelAsync(workerConfigOptions.WorkerConfigs, "java");
             }
             if (mockwebHostLanguageWorkerChannelManager != null)
             {
