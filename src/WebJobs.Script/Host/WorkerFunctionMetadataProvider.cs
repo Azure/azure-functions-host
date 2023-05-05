@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script
     internal class WorkerFunctionMetadataProvider : IWorkerFunctionMetadataProvider
     {
         private readonly Dictionary<string, ICollection<string>> _functionErrors = new Dictionary<string, ICollection<string>>();
-        private readonly IOptions<ScriptJobHostOptions> _scriptOptions;
+        private readonly IOptionsMonitor<ScriptApplicationHostOptions> _scriptOptions;
         private readonly ILogger _logger;
         private readonly IEnvironment _environment;
         private readonly IWebHostRpcWorkerChannelManager _channelManager;
@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private ImmutableArray<FunctionMetadata> _functions;
 
         public WorkerFunctionMetadataProvider(
-            IOptions<ScriptJobHostOptions> scriptOptions,
+            IOptionsMonitor<ScriptApplicationHostOptions> scriptOptions,
             ILogger<WorkerFunctionMetadataProvider> logger,
             IEnvironment environment,
             IWebHostRpcWorkerChannelManager webHostRpcWorkerChannelManager)
@@ -59,6 +59,16 @@ namespace Microsoft.Azure.WebJobs.Script
                 if (_channelManager == null)
                 {
                     throw new InvalidOperationException(nameof(_channelManager));
+                }
+
+                // Scenario: Restart worker for hot reload on a readwrite file system
+                // We reuse the worker started in placeholderMode only when the fileSystem is readonly
+                // otherwise we shutdown the channel in which case the channel should not have any channels anyway
+                // forceRefresh in only true once in the script host intialization flow.
+                // forceRefresh will be false when bundle is not used (dotnet and dotnet-isolated).
+                if (!_environment.IsPlaceholderModeEnabled() && forceRefresh && !_scriptOptions.CurrentValue.IsFileSystemReadOnly)
+                {
+                    _channelManager.ShutdownChannelsAsync().GetAwaiter().GetResult();
                 }
 
                 var channels = _channelManager.GetChannels(_workerRuntime);
@@ -95,7 +105,7 @@ namespace Microsoft.Azure.WebJobs.Script
                             _logger.FunctionMetadataProviderFunctionFound(_functions.IsDefault ? 0 : _functions.Count());
 
                             // Validate if the app has functions in legacy format and add in logs to inform about the mixed app
-                            _ = Task.Delay(TimeSpan.FromMinutes(1)).ContinueWith(t => ValidateFunctionAppFormat(_scriptOptions.Value.RootScriptPath, _logger, _environment));
+                            _ = Task.Delay(TimeSpan.FromMinutes(1)).ContinueWith(t => ValidateFunctionAppFormat(_scriptOptions.CurrentValue.ScriptPath, _logger, _environment));
 
                             break;
                         }
