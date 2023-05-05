@@ -1,7 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
@@ -21,13 +20,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private IWorkerFunctionMetadataProvider _workerFunctionMetadataProvider;
         private IHostFunctionMetadataProvider _hostFunctionMetadataProvider;
 
-        public FunctionMetadataProvider(ILogger<FunctionMetadataProvider> logger, IWorkerFunctionMetadataProvider workerFunctionMetadataProvider, IHostFunctionMetadataProvider hostFunctionMetadataProvider, IOptions<FunctionsHostingConfigOptions> functionsHostingConfigOptions)
+        public FunctionMetadataProvider(ILogger<FunctionMetadataProvider> logger, IWorkerFunctionMetadataProvider workerFunctionMetadataProvider, IHostFunctionMetadataProvider hostFunctionMetadataProvider,
+            IOptions<FunctionsHostingConfigOptions> functionsHostingConfigOptions, IEnvironment environment)
         {
             _logger = logger;
             _workerFunctionMetadataProvider = workerFunctionMetadataProvider;
             _hostFunctionMetadataProvider = hostFunctionMetadataProvider;
             _functionsHostingConfigOptions = functionsHostingConfigOptions.Value;
-            _environment = SystemEnvironment.Instance;
+            _environment = environment;
         }
 
         public ImmutableDictionary<string, ImmutableArray<string>> FunctionErrors { get; private set; }
