@@ -119,6 +119,10 @@ namespace Microsoft.Azure.WebJobs.Script
             _servicesReset = true;
         }
 
+        /// <summary>
+        /// This is the worker configuration created in the jobhost scope during placeholder initialization
+        /// This is used as a fallback incase the config is not passed down from previous method call.
+        /// </summary>
         private IList<RpcWorkerConfig> GetFallbackWorkerConfig()
         {
             return _serviceProvider.GetService<IOptionsMonitor<LanguageWorkerOptions>>().CurrentValue.WorkerConfigs;
