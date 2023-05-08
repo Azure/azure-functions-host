@@ -31,7 +31,6 @@ using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Newtonsoft.Json;
 using Yarp.ReverseProxy.Forwarder;
 
 using static Microsoft.Azure.WebJobs.Script.Grpc.Messages.RpcLog.Types;

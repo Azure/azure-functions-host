@@ -9,7 +9,7 @@ option go_package ="github.com/Azure/azure-functions-go-worker/internal/rpc";
 
 package AzureFunctionsRpcMessages;
 
-import "google/protobuf/duration.proto";  
+import "google/protobuf/duration.proto";
 import "identity/ClaimsIdentityRpc.proto";
 import "shared/NullableTypes.proto";
 
