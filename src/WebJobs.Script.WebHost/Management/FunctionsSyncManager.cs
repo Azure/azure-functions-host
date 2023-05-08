@@ -727,8 +727,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
                 _logger.LogDebug($"Making SyncTriggers request (RequestId={requestId}, Uri={request.RequestUri.ToString()}, Content={sanitizedContentString}).");
 
-                var response = await _httpClient.SendAsync(request);
+                HttpResponseMessage response;
+                if (_environment.IsManagedAppEnvironment() && _environment.GetEnvironmentVariable(EnvironmentSettingNames.SkipSslValidation) == "1")
+                {
+                    var handler = new HttpClientHandler
+                    {
+                        ServerCertificateCustomValidationCallback = (sender, cert, chain, sslPolicyErrors) => true
+                    };
 
+                    // Create an HttpClient with the custom handler
+                    var httpClient = new HttpClient(handler);
+                    response = await httpClient.SendAsync(request);
+                }
+                else
+                {
+                    response = await _httpClient.SendAsync(request);
+                }
                 if (response.IsSuccessStatusCode)
                 {
                     _logger.LogDebug("SyncTriggers call succeeded.");
