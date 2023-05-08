@@ -2,10 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Text;
-using System.Threading;
-using System.Threading.Channels;
-using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
@@ -16,6 +12,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private static readonly Lazy<LinuxContainerEventGenerator> _Lazy = new Lazy<LinuxContainerEventGenerator>(() => new LinuxContainerEventGenerator(SystemEnvironment.Instance, Console.WriteLine));
         private readonly Action<string> _writeEvent;
         private readonly ConsoleWriter _consoleWriter;
+        private readonly ConsoleLoggerProcessor _loggerProcessor;
+        private readonly BlockingCollectionConsoleWriter _blockingCollectionConsoleWriter;
         private readonly IEnvironment _environment;
         private string _containerName;
         private string _stampName;
@@ -25,8 +23,26 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         {
             if (writeEvent == null)
             {
-                _consoleWriter = new ConsoleWriter(environment, LogUnhandledException);
-                writeEvent = _consoleWriter.WriteHandler;
+                string mode = environment.GetEnvironmentVariable("CONSOLE_LOGGING_MODE") ?? string.Empty;
+                if (mode == string.Empty)
+                {
+                    writeEvent = Console.WriteLine;
+                }
+                else if (mode == "channel")
+                {
+                    _consoleWriter = new ConsoleWriter(environment, LogUnhandledException);
+                    writeEvent = _consoleWriter.WriteHandler;
+                }
+                else if (mode == "blocking-collection")
+                {
+                    _blockingCollectionConsoleWriter = new BlockingCollectionConsoleWriter(environment, LogUnhandledException);
+                    writeEvent = _blockingCollectionConsoleWriter.WriteHandler;
+                }
+                else if (mode == "queue-with-monitor")
+                {
+                    _loggerProcessor = new ConsoleLoggerProcessor(environment);
+                    writeEvent = _loggerProcessor.EnqueueMessage;
+                }
             }
 
             _writeEvent = writeEvent;
