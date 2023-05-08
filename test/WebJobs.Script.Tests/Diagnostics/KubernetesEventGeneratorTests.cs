@@ -73,7 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
 
             DateTime dt;
             Assert.Collection(jObject.Properties(),
-                p => Assert.Equal(ScriptConstants.LinuxLogEventStreamName, p.Value),
+                p => Assert.Equal(ScriptConstants.LinuxMetricEventStreamName, p.Value),
                 p => Assert.Equal(subscriptionId, p.Value),
                 p => Assert.Equal(appName, p.Value),
                 p => Assert.Equal(functionName, p.Value),
