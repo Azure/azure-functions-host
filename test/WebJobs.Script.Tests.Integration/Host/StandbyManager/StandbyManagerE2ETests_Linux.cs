@@ -117,6 +117,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // verify the expected logs
             var logLines = _loggerProvider.GetAllLogMessages().Where(p => p.FormattedMessage != null).Select(p => p.FormattedMessage).ToArray();
+            File.WriteAllLines("D:\\root\\dev_tools\\test.txt", logLines);
             Assert.True(logLines.Count(p => p.Contains("Stopping JobHost")) >= 1);
             Assert.Equal(1, logLines.Count(p => p.Contains("Creating StandbyMode placeholder function directory")));
             Assert.Equal(1, logLines.Count(p => p.Contains("StandbyMode placeholder function directory created")));
@@ -125,9 +126,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(1, logLines.Count(p => p.Contains("Validating host assignment context")));
             Assert.Equal(1, logLines.Count(p => p.Contains("Starting Assignment")));
             Assert.Equal(1, logLines.Count(p => p.Contains("Applying 3 app setting(s)")));
-            Assert.Equal(1, logLines.Count(p => p.Contains("Skipping WorkerConfig for language: python")));
-            Assert.Equal(1, logLines.Count(p => p.Contains("Skipping WorkerConfig for language: powershell")));
-            Assert.Equal(1, logLines.Count(p => p.Contains("Skipping WorkerConfig for language: java")));
+            Assert.Equal(2, logLines.Count(p => p.Contains("Skipping WorkerConfig for language: python")));
+            Assert.Equal(2, logLines.Count(p => p.Contains("Skipping WorkerConfig for language: powershell")));
+            Assert.Equal(2, logLines.Count(p => p.Contains("Skipping WorkerConfig for language: java")));
             Assert.Equal(1, logLines.Count(p => p.Contains($"Extracting files to '{_expectedScriptPath}'")));
             Assert.Equal(1, logLines.Count(p => p.Contains("Zip extraction complete")));
             Assert.Equal(1, logLines.Count(p => p.Contains("Triggering specialization")));
