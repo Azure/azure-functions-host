@@ -193,10 +193,15 @@ namespace Microsoft.Azure.WebJobs.Script
                         }
                     }
 
-                    // retry option validation
+                    // populate retry options if json string representation is provided
                     if (!string.IsNullOrEmpty(rawFunction.RetryOptions))
                     {
                         function.Retry = JObject.Parse(rawFunction.RetryOptions).ToObject<RetryOptions>();
+                    }
+
+                    // retry option validation
+                    if (function.Retry is not null)
+                    {
                         Utility.ValidateRetryOptions(function.Retry);
                     }
 

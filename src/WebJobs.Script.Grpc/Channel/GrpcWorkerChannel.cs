@@ -864,22 +864,22 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                         Language = metadata.Language
                     };
 
-                    if (metadata.Retry is not null)
+                    if (metadata.RetryOptions is not null)
                     {
                         functionMetadata.Retry = new RetryOptions
                         {
-                            MaxRetryCount = metadata.Retry.MaxRetryCount,
-                            Strategy = metadata.Retry.RetryStrategy.ToRetryStrategy()
+                            MaxRetryCount = metadata.RetryOptions.MaxRetryCount,
+                            Strategy = metadata.RetryOptions.RetryStrategy.ToRetryStrategy()
                         };
 
                         if (functionMetadata.Retry.Strategy is RetryStrategy.FixedDelay)
                         {
-                            functionMetadata.Retry.DelayInterval = metadata.Retry.DelayInterval.ToTimeSpan();
+                            functionMetadata.Retry.DelayInterval = metadata.RetryOptions.DelayInterval?.ToTimeSpan();
                         }
                         else
                         {
-                            functionMetadata.Retry.MinimumInterval = metadata.Retry.MinimumInterval.ToTimeSpan();
-                            functionMetadata.Retry.MaximumInterval = metadata.Retry.MaximumInterval.ToTimeSpan();
+                            functionMetadata.Retry.MinimumInterval = metadata.RetryOptions.MinimumInterval?.ToTimeSpan();
+                            functionMetadata.Retry.MaximumInterval = metadata.RetryOptions.MaximumInterval?.ToTimeSpan();
                         }
                     }
 
