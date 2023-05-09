@@ -63,25 +63,39 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
             if (msiEnabled)
             {
-                if (context.MSIContext == null)
+                if (context.MSIContext == null && context.EncryptedMSIContext == null)
                 {
-                    _logger.LogWarning("Skipping specialization of MSI sidecar since MSIContext was absent");
+                    _logger.LogWarning("Skipping specialization of MSI sidecar since MSIContext and EncryptedMSIContext were absent");
                     await _meshServiceClient.NotifyHealthEvent(ContainerHealthEventType.Fatal, this.GetType(),
-                        "Could not specialize MSI sidecar since MSIContext was empty");
+                        "Could not specialize MSI sidecar since MSIContext and EncryptedMSIContext were empty");
                 }
                 else
                 {
                     using (_metricsLogger.LatencyEvent(MetricEventNames.LinuxContainerSpecializationMSIInit))
                     {
                         var uri = new Uri(endpoint);
-                        var address = $"http://{uri.Host}:{uri.Port}{ScriptConstants.LinuxMSISpecializationStem}";
+                        var addressStem = context.EncryptedMSIContext == null ?
+                            ScriptConstants.LinuxMSISpecializationStem :
+                            ScriptConstants.LinuxNewMSISpecializationStem;
 
+                        var address = $"http://{uri.Host}:{uri.Port}{addressStem}";
                         _logger.LogDebug($"Specializing sidecar at {address}");
+
+                        StringContent payload;
+                        if (context.EncryptedMSIContext == null)
+                        {
+                            payload = new StringContent(JsonConvert.SerializeObject(context.MSIContext),
+                                    Encoding.UTF8, "application/json");
+                        }
+                        else
+                        {
+                            payload = new StringContent(JsonConvert.SerializeObject(context.EncryptedMSIContext),
+                                    Encoding.UTF8, "application/json");
+                        }
 
                         var requestMessage = new HttpRequestMessage(HttpMethod.Post, address)
                         {
-                            Content = new StringContent(JsonConvert.SerializeObject(context.MSIContext),
-                                Encoding.UTF8, "application/json")
+                            Content = payload
                         };
 
                         var response = await _client.SendAsync(requestMessage);

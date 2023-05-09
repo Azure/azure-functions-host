@@ -27,6 +27,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
         [JsonProperty("MSISpecializationPayload")]
         public MSIContext MSIContext { get; set; }
 
+        [JsonProperty("EncryptedMSISpecializationPayload")]
+        public string EncryptedMSIContext { get; set; }
+
         [JsonProperty("CorsSpecializationPayload")]
         public CorsSettings CorsSettings { get; set; }
 
