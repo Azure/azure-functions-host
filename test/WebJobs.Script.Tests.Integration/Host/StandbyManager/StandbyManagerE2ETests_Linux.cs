@@ -117,7 +117,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // verify the expected logs
             var logLines = _loggerProvider.GetAllLogMessages().Where(p => p.FormattedMessage != null).Select(p => p.FormattedMessage).ToArray();
-            File.WriteAllLines("D:\\root\\dev_tools\\test.txt", logLines);
             Assert.True(logLines.Count(p => p.Contains("Stopping JobHost")) >= 1);
             Assert.Equal(1, logLines.Count(p => p.Contains("Creating StandbyMode placeholder function directory")));
             Assert.Equal(1, logLines.Count(p => p.Contains("StandbyMode placeholder function directory created")));
