@@ -47,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         {
             try
             {
-                Console.Write(entry);
+                Console.WriteLine(entry);
             }
             catch
             {
