@@ -367,7 +367,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             IEnumerable<FunctionMetadata> functionMetadata;
 
-            functionMetadata = _functionMetadataManager.GetFunctionMetadata(forceRefresh: false);
+            functionMetadata = _functionMetadataManager.GetFunctionMetadata(forceRefresh: false, workerConfigs: _languageWorkerOptions.CurrentValue.WorkerConfigs);
             _workerRuntime ??= Utility.GetWorkerRuntime(functionMetadata);
             foreach (var error in _functionMetadataManager.Errors)
             {
