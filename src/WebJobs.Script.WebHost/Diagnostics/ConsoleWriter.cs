@@ -11,8 +11,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
     internal class ConsoleWriter
     {
         // A typical out-of-proc function execution will generate 8 log lines.
-        // A single core container can potentially get around 1K RPS at the higher end, so this is about 1 second of buffer in the extreme case.
-        // A typical log line is around 300 bytes, so this is about 2.4MB of buffer in the extreme case.
+        // A single core container can potentially get around 1K RPS at the higher end, and a typical log line is around 300 bytes
+        // So in the extreme case, this is about 1 second of buffer and should be less than 3MB
         private const int DefaultBufferSize = 8000;
 
         private static readonly TimeSpan DefaultConsoleBufferTimeout = TimeSpan.FromSeconds(1);
