@@ -804,21 +804,24 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             {
                 lock (_metadataLock)
                 {
-                    RegisterCallbackForNextGrpcMessage(MsgType.FunctionMetadataResponse, _functionLoadTimeout, 1,
+                    if (!_functionMetadataRequestSent)
+                    {
+                        RegisterCallbackForNextGrpcMessage(MsgType.FunctionMetadataResponse, _functionLoadTimeout, 1,
                     msg => ProcessFunctionMetadataResponses(msg.Message.FunctionMetadataResponse), HandleWorkerMetadataRequestError);
 
-                    _workerChannelLogger.LogDebug("Sending WorkerMetadataRequest to {language} worker with worker ID {workerID}", _runtime, _workerId);
+                        _workerChannelLogger.LogDebug("Sending WorkerMetadataRequest to {language} worker with worker ID {workerID}", _runtime, _workerId);
 
-                    // sends the function app directory path to worker for indexing
-                    SendStreamingMessage(new StreamingMessage
-                    {
-                        FunctionsMetadataRequest = new FunctionsMetadataRequest()
+                        // sends the function app directory path to worker for indexing
+                        SendStreamingMessage(new StreamingMessage
                         {
-                            FunctionAppDirectory = _applicationHostOptions.CurrentValue.ScriptPath
-                        }
-                    });
+                            FunctionsMetadataRequest = new FunctionsMetadataRequest()
+                            {
+                                FunctionAppDirectory = _applicationHostOptions.CurrentValue.ScriptPath
+                            }
+                        });
 
-                    _functionMetadataRequestSent = true;
+                        _functionMetadataRequestSent = true;
+                    }
                 }
             }
 
