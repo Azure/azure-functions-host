@@ -52,6 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private readonly IOptions<WorkerConcurrencyOptions> _workerConcurrencyOptions;
         private readonly WaitCallback _processInbound;
         private readonly object _syncLock = new object();
+        private readonly object _metadataLock = new object();
         private readonly Dictionary<MsgType, Queue<PendingItem>> _pendingActions = new();
         private readonly ChannelWriter<OutboundGrpcEvent> _outbound;
         private readonly ChannelReader<InboundGrpcEvent> _inbound;
@@ -799,24 +800,26 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         internal Task<List<RawFunctionMetadata>> SendFunctionMetadataRequest()
         {
             _workerChannelLogger.LogDebug("Fetching worker metadata, FunctionMetadataReceived set to: {functionMetadataReceived}", _functionMetadataRequestSent);
-
             if (!_functionMetadataRequestSent)
             {
-                RegisterCallbackForNextGrpcMessage(MsgType.FunctionMetadataResponse, _functionLoadTimeout, 1,
+                lock (_metadataLock)
+                {
+                    RegisterCallbackForNextGrpcMessage(MsgType.FunctionMetadataResponse, _functionLoadTimeout, 1,
                     msg => ProcessFunctionMetadataResponses(msg.Message.FunctionMetadataResponse), HandleWorkerMetadataRequestError);
 
-                _workerChannelLogger.LogDebug("Sending WorkerMetadataRequest to {language} worker with worker ID {workerID}", _runtime, _workerId);
+                    _workerChannelLogger.LogDebug("Sending WorkerMetadataRequest to {language} worker with worker ID {workerID}", _runtime, _workerId);
 
-                // sends the function app directory path to worker for indexing
-                SendStreamingMessage(new StreamingMessage
-                {
-                    FunctionsMetadataRequest = new FunctionsMetadataRequest()
+                    // sends the function app directory path to worker for indexing
+                    SendStreamingMessage(new StreamingMessage
                     {
-                        FunctionAppDirectory = _applicationHostOptions.CurrentValue.ScriptPath
-                    }
-                });
+                        FunctionsMetadataRequest = new FunctionsMetadataRequest()
+                        {
+                            FunctionAppDirectory = _applicationHostOptions.CurrentValue.ScriptPath
+                        }
+                    });
 
-                _functionMetadataRequestSent = true;
+                    _functionMetadataRequestSent = true;
+                }
             }
 
             return _functionsIndexingTask.Task;
