@@ -983,6 +983,19 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
                     try
                     {
+                        if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableHttpProxying) && IsHttpProxyingWorker)
+                        {
+                            if (context.Properties.TryGetValue(ScriptConstants.HttpProxyTask, out Task<ForwarderError> httpProxyTask))
+                            {
+                                ForwarderError httpProxyTaskResult = await httpProxyTask;
+
+                                if (httpProxyTaskResult is not ForwarderError.None)
+                                {
+                                    throw new InvalidOperationException($"Failed to proxy request with ForwarderError: {httpProxyTaskResult}");
+                                }
+                            }
+                        }
+
                         StringBuilder logBuilder = new StringBuilder();
                         bool usedSharedMemory = false;
 
