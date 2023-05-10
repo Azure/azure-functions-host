@@ -9,7 +9,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
     public interface IWebHostRpcWorkerChannelManager
     {
-        Task<IRpcWorkerChannel> InitializeChannelAsync(string language);
+        Task<IRpcWorkerChannel> InitializeChannelAsync(IEnumerable<RpcWorkerConfig> workerConfigs, string language);
 
         Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>> GetChannels(string language);
 

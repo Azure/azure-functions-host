@@ -21,7 +21,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly ILogger _logger = null;
         private readonly TimeSpan workerInitTimeout = TimeSpan.FromSeconds(30);
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions = null;
-        private readonly IOptionsMonitor<LanguageWorkerOptions> _languageWorkerOptions = null;
         private readonly IScriptEventManager _eventManager = null;
         private readonly IEnvironment _environment;
         private readonly ILoggerFactory _loggerFactory = null;
@@ -39,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                                               ILoggerFactory loggerFactory,
                                               IRpcWorkerChannelFactory rpcWorkerChannelFactory,
                                               IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions,
-                                              IMetricsLogger metricsLogger, IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions,
+                                              IMetricsLogger metricsLogger,
                                               IConfiguration config,
                                               IWorkerProfileManager workerProfileManager)
         {
@@ -52,26 +51,25 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _rpcWorkerChannelFactory = rpcWorkerChannelFactory;
             _logger = loggerFactory.CreateLogger<WebHostRpcWorkerChannelManager>();
             _applicationHostOptions = applicationHostOptions;
-            _languageWorkerOptions = languageWorkerOptions;
 
             _shutdownStandbyWorkerChannels = ScheduleShutdownStandbyChannels;
             _shutdownStandbyWorkerChannels = _shutdownStandbyWorkerChannels.Debounce(milliseconds: 5000);
         }
 
-        public Task<IRpcWorkerChannel> InitializeChannelAsync(string runtime)
+        public Task<IRpcWorkerChannel> InitializeChannelAsync(IEnumerable<RpcWorkerConfig> workerConfigs, string runtime)
         {
             _logger?.LogDebug("Initializing language worker channel for runtime:{runtime}", runtime);
-            return InitializeLanguageWorkerChannel(runtime, _applicationHostOptions.CurrentValue.ScriptPath);
+            return InitializeLanguageWorkerChannel(workerConfigs, runtime, _applicationHostOptions.CurrentValue.ScriptPath);
         }
 
-        internal async Task<IRpcWorkerChannel> InitializeLanguageWorkerChannel(string runtime, string scriptRootPath)
+        internal async Task<IRpcWorkerChannel> InitializeLanguageWorkerChannel(IEnumerable<RpcWorkerConfig> workerConfigs, string runtime, string scriptRootPath)
         {
             IRpcWorkerChannel rpcWorkerChannel = null;
             string workerId = Guid.NewGuid().ToString();
             _logger.LogDebug("Creating language worker channel for runtime:{runtime}", runtime);
             try
             {
-                rpcWorkerChannel = _rpcWorkerChannelFactory.Create(scriptRootPath, runtime, _metricsLogger, 0, _languageWorkerOptions.CurrentValue.WorkerConfigs);
+                rpcWorkerChannel = _rpcWorkerChannelFactory.Create(scriptRootPath, runtime, _metricsLogger, 0, workerConfigs);
                 AddOrUpdateWorkerChannels(runtime, rpcWorkerChannel);
                 await rpcWorkerChannel.StartWorkerProcessAsync().ContinueWith(processStartTask =>
                 {

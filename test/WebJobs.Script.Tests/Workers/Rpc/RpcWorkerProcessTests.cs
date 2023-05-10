@@ -56,7 +56,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 languageWorkerConsoleLogSource.Object,
                 new TestMetricsLogger(),
                 serviceProviderMock.Object,
-                _functionsHostingConfigOptions);
+                _functionsHostingConfigOptions,
+                testEnv);
         }
 
         [Fact]

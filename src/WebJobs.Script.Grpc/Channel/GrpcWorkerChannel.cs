@@ -52,6 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private readonly IOptions<WorkerConcurrencyOptions> _workerConcurrencyOptions;
         private readonly WaitCallback _processInbound;
         private readonly object _syncLock = new object();
+        private readonly object _metadataLock = new object();
         private readonly Dictionary<MsgType, Queue<PendingItem>> _pendingActions = new();
         private readonly ChannelWriter<OutboundGrpcEvent> _outbound;
         private readonly ChannelReader<InboundGrpcEvent> _inbound;
@@ -85,6 +86,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private IHttpProxyService _httpProxyService;
         private Uri _httpProxyEndpoint;
         private System.Timers.Timer _timer;
+        private bool _functionMetadataRequestSent = false;
 
         internal GrpcWorkerChannel(
             string workerId,
@@ -540,6 +542,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         public Task SendFunctionEnvironmentReloadRequest()
         {
             _functionsIndexingTask = new TaskCompletionSource<List<RawFunctionMetadata>>(TaskCreationOptions.RunContinuationsAsynchronously);
+            _functionMetadataRequestSent = false;
+
             _workerChannelLogger.LogDebug("Sending FunctionEnvironmentReloadRequest to WorkerProcess with Pid: '{0}'", _rpcWorkerProcess.Id);
             IDisposable latencyEvent = _metricsLogger.LatencyEvent(MetricEventNames.SpecializationEnvironmentReloadRequestResponse);
 
@@ -795,22 +799,32 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         internal Task<List<RawFunctionMetadata>> SendFunctionMetadataRequest()
         {
-            // reset indexing task when in case we need to send another request
-            _functionsIndexingTask = new TaskCompletionSource<List<RawFunctionMetadata>>(TaskCreationOptions.RunContinuationsAsynchronously);
-
-            RegisterCallbackForNextGrpcMessage(MsgType.FunctionMetadataResponse, _functionLoadTimeout, 1,
-                msg => ProcessFunctionMetadataResponses(msg.Message.FunctionMetadataResponse), HandleWorkerMetadataRequestError);
-
-            _workerChannelLogger.LogDebug("Sending WorkerMetadataRequest to {language} worker with worker ID {workerID}", _runtime, _workerId);
-
-            // sends the function app directory path to worker for indexing
-            SendStreamingMessage(new StreamingMessage
+            _workerChannelLogger.LogDebug("Fetching worker metadata, FunctionMetadataReceived set to: {functionMetadataReceived}", _functionMetadataRequestSent);
+            if (!_functionMetadataRequestSent)
             {
-                FunctionsMetadataRequest = new FunctionsMetadataRequest()
+                lock (_metadataLock)
                 {
-                    FunctionAppDirectory = _applicationHostOptions.CurrentValue.ScriptPath
+                    if (!_functionMetadataRequestSent)
+                    {
+                        RegisterCallbackForNextGrpcMessage(MsgType.FunctionMetadataResponse, _functionLoadTimeout, 1,
+                    msg => ProcessFunctionMetadataResponses(msg.Message.FunctionMetadataResponse), HandleWorkerMetadataRequestError);
+
+                        _workerChannelLogger.LogDebug("Sending WorkerMetadataRequest to {language} worker with worker ID {workerID}", _runtime, _workerId);
+
+                        // sends the function app directory path to worker for indexing
+                        SendStreamingMessage(new StreamingMessage
+                        {
+                            FunctionsMetadataRequest = new FunctionsMetadataRequest()
+                            {
+                                FunctionAppDirectory = _applicationHostOptions.CurrentValue.ScriptPath
+                            }
+                        });
+
+                        _functionMetadataRequestSent = true;
+                    }
                 }
-            });
+            }
+
             return _functionsIndexingTask.Task;
         }
 
@@ -845,7 +859,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                         FunctionDirectory = metadata.Directory,
                         ScriptFile = metadata.ScriptFile,
                         EntryPoint = metadata.EntryPoint,
-                        Name = metadata.Name
+                        Name = metadata.Name,
+                        Language = metadata.Language
                     };
 
                     functionMetadata.SetFunctionId(metadata.FunctionId);
