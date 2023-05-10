@@ -2,7 +2,9 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using Microsoft.Azure.AppService.Proxy.Common.Extensions;
 
 namespace Microsoft.Azure.WebJobs.Script.Config
 {
@@ -12,18 +14,52 @@ namespace Microsoft.Azure.WebJobs.Script.Config
     /// </summary>
     public static class FeatureFlags
     {
+        private static readonly object _cacheLock = new();
+        private static HashSet<string> _featureFlags;
+
+        // for testing
+        internal static HashSet<string> InternalCache
+        {
+            get { return _featureFlags; }
+            set { _featureFlags = value; }
+        }
+
         public static bool IsEnabled(string name) => IsEnabled(name, SystemEnvironment.Instance);
 
         public static bool IsEnabled(string name, IEnvironment environment)
         {
-            string featureFlags = environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags);
-            if (!string.IsNullOrEmpty(featureFlags))
+            if (_featureFlags is not null)
             {
-                string[] flags = featureFlags.Split(',');
+                return _featureFlags.Contains(name);
+            }
+
+            var flags = GetFeatureFlags(environment);
+
+            if (environment.IsPlaceholderModeEnabled())
+            {
+                // if in placeholder mode, do not cache
                 return flags.Contains(name, StringComparer.OrdinalIgnoreCase);
             }
 
-            return false;
+            // initialize the cache if not in placeholder mode
+            lock (_cacheLock)
+            {
+                if (_featureFlags is null)
+                {
+                    var featureFlagsTemp = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    featureFlagsTemp.AddRange(flags);
+
+                    _featureFlags = featureFlagsTemp;
+                }
+            }
+
+            return _featureFlags.Contains(name);
+        }
+
+        private static string[] GetFeatureFlags(IEnvironment environment)
+        {
+            string featureFlags = environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags) ?? string.Empty;
+            return featureFlags.Split(',');
         }
     }
 }
