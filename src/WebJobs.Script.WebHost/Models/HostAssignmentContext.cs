@@ -132,6 +132,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
             foreach (var pair in Environment)
             {
                 environment.SetEnvironmentVariable(pair.Key, pair.Value);
+                logger.LogInformation($"key: {pair.Key}, value: {pair.Value}");
             }
             if (CorsSettings != null)
             {
