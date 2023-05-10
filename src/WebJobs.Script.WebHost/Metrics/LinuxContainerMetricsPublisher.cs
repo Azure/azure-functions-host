@@ -287,8 +287,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
             string swtToken = SimpleWebTokenHelper.CreateToken(DateTime.UtcNow.AddMinutes(5));
             string jwtToken = JwtTokenHelper.CreateToken(DateTime.UtcNow.AddMinutes(5));
 
-            _logger.LogInformation(string.Format("[TEST] swt {0}", swtToken));
-            _logger.LogInformation(string.Format("[TEST] jwt {0}", jwtToken));
+            // _logger.LogInformation(string.Format("[TEST] swt {0}", swtToken));
+            // _logger.LogInformation(string.Format("[TEST] jwt {0}", jwtToken));
 
             // add the required authentication headers
             request.Headers.Add(ContainerNameHeader, _containerName);
