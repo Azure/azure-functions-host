@@ -116,7 +116,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 }
                 else if (environment.IsAnyKubernetesEnvironment())
                 {
-                    return new KubernetesEventGenerator();
+                    return new LinuxContainerEventGenerator(environment);
                 }
                 else
                 {
