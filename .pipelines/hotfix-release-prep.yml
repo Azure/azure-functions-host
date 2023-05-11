@@ -1,92 +1,15 @@
-steps:
-- task: ManualIntervention@8
-  displayName: 'Create a work item for the hotfix'
-  inputs:
-    instructions: |
-     Create a work item to track the hotfix.
-     
-     URL: https://azfunc.visualstudio.com/Azure%20Functions/_workitems/recentlyupdated/
-     
-     Example:
-     https://azfunc.visualstudio.com/Azure%20Functions/_workitems/edit/1695/
-     
-     Include:
-     Summary
-     Impact (type of resources, #apps, #subs etc.)
-     Timeline
-     Mitigation
-     Next steps/ fixes
-- task: ManualIntervention@8
-  displayName: 'Merge fix into dev'
-  inputs:
-    instructions: |
-     Ensure the fix for this regression is merged into dev before proceeding.
-     
-     Once it is merged, navigate to the PR and grab the merge commit ID. Update the ReleaseMergeCommitID variable in this release to be that commit ID.
-     
-     When that is done, continue.
-- task: ManualIntervention@8
-  displayName: 'Assemble list of versions to hotfix'
-  inputs:
-    instructions: |
-     Work with the release team to determine which versions of the host need the hotfix. 
-     
-     Navigate to aka.ms/funcreldashboard to see potential versions.
-     
-     Once you have the list, update the commaSeparatedListOfTags variable in the following format (host versions are examples, fill them in with your own):
-     
-     4.1.0,4.2.0,4.3.0
-     
-     Then, hit resume. The next step will determine if there are any releases that are not in prod, but cut off from dev, that need the hotfix.
-- task: PowerShell@2
-  displayName: 'Detect hotfix versions not in prod'
-  inputs:
-    targetType: filePath
-    filePath: './$(System.DefaultWorkingDirectory)/_Azure_azure-functions-host/.scripts/DetectHotfixHostVersions.ps1'
-- task: ManualIntervention@8
-  displayName: 'Add any releases to commaSeparatedListOfTags'
-  inputs:
-    instructions: |
-     If the previous task found any releases, add the word "release" to the end of the commaSeparatedListOfTags variable. Like so:
-     
-     4.1.0,4.2.0,4.3.0,release
-     
-     Once that is done, click resume.
-- task: ManualIntervention@8
-  displayName: 'Generate hotfix tags'
-  inputs:
-    instructions: |
-     The next step generates the hotfix tags.
-     
-     Here are the automated steps.
-     
-     a. Pulls the latest from dev
-     b. Checks out the tag
-     c. Cherry-picks the hotfix commit
-     d. Tags the changes as tag+minor version (e.g. 4.5.1)
-     e. Pushes the tag to origin
-     
-     Ensure that your list of releases is correct. If it is, hit resume.
-- task: PowerShell@2
-  displayName: 'PowerShell Script'
-  inputs:
-    targetType: filePath
-    filePath: './$(System.DefaultWorkingDirectory)/_Azure_azure-functions-host/.scripts/DetectHotfixHostVersions.ps1'
-- task: ManualIntervention@8
-  displayName: 'Check build pipeline'
-  inputs:
-    instructions: |
-     A build will kick off here for each tag. Ensure one is running for each tag.
-     
-     https://azfunc.visualstudio.com/Azure%20Functions/_build?definitionId=37
-     
-     Once it passes, click continue.
-- task: ManualIntervention@8
-  displayName: 'Check release pipeline'
-  inputs:
-    instructions: |
-     The passing build will generate a release pipeline here.
-     
-     https://azfunc.visualstudio.com/Azure%20Functions/_release?_a=releases&view=mine&definitionId=20
-     
-     Use that to continue the hotfix for each tag.
+trigger: none
+variables:
+- group: HotfixDefaultSecrets
+stages:
+- stage: Run
+  jobs:
+  - job: Create hotfix tags
+    pool:
+      vmImage: 'windows-latest'
+    steps:
+    - task: PowerShell@2
+      displayName: 'PowerShell Script'
+      inputs:
+        targetType: filePath
+        filePath: './$(System.DefaultWorkingDirectory)/_Azure_azure-functions-host/.scripts/DetectHotfixHostVersions.ps1'
