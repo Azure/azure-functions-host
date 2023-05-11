@@ -90,7 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         {
             string currentUtcTime = DateTime.UtcNow.ToString();
             bool detailedExecutionEventsDisabled = _functionsHostingConfigOptions.Value.DisableLinuxAppServiceExecutionDetails;
-            if (!detailedExecutionEventsDisabled)
+            if (detailedExecutionEventsDisabled)
             {
                 string log = string.Join(",", executionId, siteName, concurrency.ToString(), functionName, invocationId, executionStage, executionTimeSpan.ToString(), success.ToString(), currentUtcTime);
                 WriteEvent(_functionsExecutionEventsCategoryLogger.Value, log);
