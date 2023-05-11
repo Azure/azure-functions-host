@@ -30,17 +30,15 @@ namespace Microsoft.Azure.WebJobs.Script
         private bool _servicesReset = false;
         private ILogger _logger;
         private IOptions<ScriptJobHostOptions> _scriptOptions;
-        private IOptionsMonitor<LanguageWorkerOptions> _languageWorkerOptions;
         private ImmutableArray<FunctionMetadata> _functionMetadataArray;
         private Dictionary<string, ICollection<string>> _functionErrors = new Dictionary<string, ICollection<string>>();
         private ConcurrentDictionary<string, FunctionMetadata> _functionMetadataMap = new ConcurrentDictionary<string, FunctionMetadata>(StringComparer.OrdinalIgnoreCase);
 
         public FunctionMetadataManager(IOptions<ScriptJobHostOptions> scriptOptions, IFunctionMetadataProvider functionMetadataProvider,
             IOptions<HttpWorkerOptions> httpWorkerOptions, IScriptHostManager scriptHostManager, ILoggerFactory loggerFactory,
-            IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions, IEnvironment environment)
+            IEnvironment environment)
         {
             _scriptOptions = scriptOptions;
-            _languageWorkerOptions = languageWorkerOptions;
             _serviceProvider = scriptHostManager as IServiceProvider;
             _functionMetadataProvider = functionMetadataProvider;
             _loggerFactory = loggerFactory;
@@ -84,11 +82,11 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <param name="applyAllowList">Apply functions allow list filter.</param>
         /// <param name="includeCustomProviders">Include any metadata provided by IFunctionProvider when loading the metadata</param>
         /// <returns> An Immmutable array of FunctionMetadata.</returns>
-        public ImmutableArray<FunctionMetadata> GetFunctionMetadata(bool forceRefresh, bool applyAllowList = true, bool includeCustomProviders = true)
+        public ImmutableArray<FunctionMetadata> GetFunctionMetadata(bool forceRefresh, bool applyAllowList = true, bool includeCustomProviders = true, IList<RpcWorkerConfig> workerConfigs = null)
         {
             if (forceRefresh || _servicesReset || _functionMetadataArray.IsDefaultOrEmpty)
             {
-                _functionMetadataArray = LoadFunctionMetadata(forceRefresh, includeCustomProviders);
+                _functionMetadataArray = LoadFunctionMetadata(forceRefresh, includeCustomProviders, workerConfigs: workerConfigs);
                 _logger.FunctionMetadataManagerFunctionsLoaded(ApplyAllowList(_functionMetadataArray).Count());
                 _servicesReset = false;
             }
@@ -114,7 +112,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
             _isHttpWorker = _serviceProvider.GetService<IOptions<HttpWorkerOptions>>()?.Value?.Description != null;
             _scriptOptions = _serviceProvider.GetService<IOptions<ScriptJobHostOptions>>();
-            _languageWorkerOptions = _serviceProvider.GetService<IOptionsMonitor<LanguageWorkerOptions>>();
 
             // Resetting the logger switches the logger scope to Script Host level,
             // also making the logs available to Application Insights
@@ -123,19 +120,29 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
+        /// This is the worker configuration created in the jobhost scope during placeholder initialization
+        /// This is used as a fallback incase the config is not passed down from previous method call.
+        /// </summary>
+        private IList<RpcWorkerConfig> GetFallbackWorkerConfig()
+        {
+            return _serviceProvider.GetService<IOptionsMonitor<LanguageWorkerOptions>>().CurrentValue.WorkerConfigs;
+        }
+
+        /// <summary>
         /// Read all functions and populate function metadata.
         /// </summary>
-        internal ImmutableArray<FunctionMetadata> LoadFunctionMetadata(bool forceRefresh = false, bool includeCustomProviders = true, IFunctionInvocationDispatcher dispatcher = null)
+        internal ImmutableArray<FunctionMetadata> LoadFunctionMetadata(bool forceRefresh = false, bool includeCustomProviders = true, IFunctionInvocationDispatcher dispatcher = null, IList<RpcWorkerConfig> workerConfigs = null)
         {
+            workerConfigs ??= GetFallbackWorkerConfig();
+
             _functionMetadataMap.Clear();
 
             ICollection<string> functionsAllowList = _scriptOptions?.Value?.Functions;
             _logger.FunctionMetadataManagerLoadingFunctionsMetadata();
 
             ImmutableArray<FunctionMetadata> immutableFunctionMetadata;
-            var workerConfigs = _languageWorkerOptions.CurrentValue.WorkerConfigs;
 
-            immutableFunctionMetadata = _functionMetadataProvider.GetFunctionMetadataAsync(workerConfigs, SystemEnvironment.Instance, forceRefresh).GetAwaiter().GetResult();
+            immutableFunctionMetadata = _functionMetadataProvider.GetFunctionMetadataAsync(workerConfigs, _environment, forceRefresh).GetAwaiter().GetResult();
 
             var functionMetadataList = new List<FunctionMetadata>();
             _functionErrors = new Dictionary<string, ICollection<string>>();

@@ -11,8 +11,10 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
@@ -20,6 +22,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Newtonsoft.Json.Linq;
+using NuGet.Versioning;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -865,7 +868,83 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 testEnv.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing);
             }
             RpcWorkerConfig workerConfig = new RpcWorkerConfig() { Description = TestHelpers.GetTestWorkerDescription("python", "none", workerIndexingConfigProperty) };
-            bool workerShouldIndex = Utility.CanWorkerIndex(new List<RpcWorkerConfig>() { workerConfig }, testEnv);
+            bool workerShouldIndex = Utility.CanWorkerIndex(new List<RpcWorkerConfig>() { workerConfig }, testEnv, new FunctionsHostingConfigOptions());
+            Assert.Equal(expected, workerShouldIndex);
+        }
+
+        [Theory]
+        [InlineData(true, true, false, "", true)]
+        [InlineData(true, true, true, "NonApp", true)]
+        [InlineData(true, true, true, "AppName", true)]
+        [InlineData(true, true, false, "NonApp", true)]
+        [InlineData(true, true, false, "AppName", true)]
+        public void VerifyWorkerIndexingFeatureFlagTakesPrecedence(bool workerIndexingFeatureFlag, bool workerIndexingConfigProperty, bool enabledHostingConfig, string disabledHostingConfig, bool expected)
+        {
+            VerifyCanWorkerIndexUtility(workerIndexingFeatureFlag, workerIndexingConfigProperty, enabledHostingConfig, disabledHostingConfig, expected);
+        }
+
+        [Theory]
+        [InlineData(true, false, false, "", false)]
+        [InlineData(true, false, true, "NonApp", false)]
+        [InlineData(true, false, true, "AppName", false)]
+        [InlineData(true, false, false, "NonApp", false)]
+        [InlineData(true, false, false, "AppName", false)]
+        [InlineData(true, true, false, "AppName", true)]
+        public void VerifyWorkerConfigTakesPrecedence(bool workerIndexingFeatureFlag, bool workerIndexingConfigProperty, bool enabledHostingConfig, string disabledHostingConfig, bool expected)
+        {
+            VerifyCanWorkerIndexUtility(workerIndexingFeatureFlag, workerIndexingConfigProperty, enabledHostingConfig, disabledHostingConfig, expected);
+        }
+
+        [Theory]
+        [InlineData(false, true, true, "", true)]
+        [InlineData(false, true, true, "NonApp", true)]
+        [InlineData(false, true, false, "NonApp", false)]
+        [InlineData(false, false, false, "NonApp", false)]
+        public void VerifyStampLevelHostingConfigHonored(bool workerIndexingFeatureFlag, bool workerIndexingConfigProperty, bool enabledHostingConfig, string disabledHostingConfig, bool expected)
+        {
+            VerifyCanWorkerIndexUtility(workerIndexingFeatureFlag, workerIndexingConfigProperty, enabledHostingConfig, disabledHostingConfig, expected);
+        }
+
+        [Theory]
+        [InlineData(false, true, true, "", true)]
+        [InlineData(false, true, true, "NonApp|AppName", false)]
+        [InlineData(false, true, true, "NonApp|AnotherAppName", true)]
+        [InlineData(false, true, true, "nonapp|AppName", false)]
+        [InlineData(false, true, true, "appname", false)]
+        [InlineData(false, true, true, "nonapp|appname", false)]
+        [InlineData(false, true, true, "NonApp|anotherAppname", true)]
+        [InlineData(false, false, true, "NonApp", false)]
+        [InlineData(false, false, true, "AppName", false)]
+        [InlineData(false, false, false, "Appname", false)]
+        [InlineData(false, true, false, "AppName", false)]
+        [InlineData(false, true, true, "AppName", false)]
+        public void VerifyDisabledAppConfigHonored(bool workerIndexingFeatureFlag, bool workerIndexingConfigProperty, bool enabledHostingConfig, string disabledHostingConfig, bool expected)
+        {
+            VerifyCanWorkerIndexUtility(workerIndexingFeatureFlag, workerIndexingConfigProperty, enabledHostingConfig, disabledHostingConfig, expected);
+        }
+
+        private void VerifyCanWorkerIndexUtility(bool workerIndexingFeatureFlag, bool workerIndexingConfigProperty, bool enabledHostingConfig, string disabledHostingConfig, bool expected)
+        {
+            var testEnv = new TestEnvironment();
+            testEnv.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.PythonLanguageWorkerName);
+            string appName = "AppName";
+            if (workerIndexingFeatureFlag)
+            {
+                testEnv.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing);
+            }
+
+            testEnv.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName, appName);
+
+            RpcWorkerConfig workerConfig = new RpcWorkerConfig() { Description = TestHelpers.GetTestWorkerDescription("python", "none", workerIndexingConfigProperty) };
+            var hostingOptions = new FunctionsHostingConfigOptions();
+            if (enabledHostingConfig)
+            {
+                hostingOptions.Features.Add(RpcWorkerConstants.WorkerIndexingEnabled, "1");
+            }
+
+            hostingOptions.Features.Add(RpcWorkerConstants.WorkerIndexingDisabledApps, disabledHostingConfig);
+
+            bool workerShouldIndex = Utility.CanWorkerIndex(new List<RpcWorkerConfig>() { workerConfig }, testEnv, hostingOptions);
             Assert.Equal(expected, workerShouldIndex);
         }
 
@@ -880,7 +959,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 testEnv.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing);
             }
-            bool workerShouldIndex = Utility.CanWorkerIndex(null, testEnv);
+            bool workerShouldIndex = Utility.CanWorkerIndex(null, testEnv, new FunctionsHostingConfigOptions());
             Assert.Equal(expected, workerShouldIndex);
         }
 
@@ -896,7 +975,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 testEnv.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing);
             }
             RpcWorkerConfig workerConfig = new RpcWorkerConfig();
-            bool workerShouldIndex = Utility.CanWorkerIndex(new List<RpcWorkerConfig>() { workerConfig }, testEnv);
+            bool workerShouldIndex = Utility.CanWorkerIndex(new List<RpcWorkerConfig>() { workerConfig }, testEnv, new FunctionsHostingConfigOptions());
             Assert.Equal(expected, workerShouldIndex);
         }
 
@@ -921,7 +1000,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     WorkerIndexing = null
                 }
             };
-            bool workerShouldIndex = Utility.CanWorkerIndex(new List<RpcWorkerConfig>() { workerConfig }, testEnv);
+            bool workerShouldIndex = Utility.CanWorkerIndex(new List<RpcWorkerConfig>() { workerConfig }, testEnv, new FunctionsHostingConfigOptions());
             Assert.Equal(expected, workerShouldIndex);
         }
 

@@ -201,14 +201,26 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
-        /// Gets a value indicating whether the application is running in a Windows or Linux Consumption (dynamic)
+        /// Gets a value indicating whether the application is running in one of our consumption SKUs (e.g.  Windows or Linux Consumption (Dynamic),
+        /// or Flex Consumption).
         /// App Service environment.
         /// </summary>
         /// <param name="environment">The environment to verify.</param>
-        /// <returns><see cref="true"/> if running in a Windows or Linux Consumption App Service app; otherwise, false.</returns>
+        /// <returns><see cref="true"/> if running in one of our Consumption SKUs, false otherwise.</returns>
         public static bool IsConsumptionSku(this IEnvironment environment)
         {
-            return IsWindowsConsumption(environment) || IsAnyLinuxConsumption(environment);
+            return IsWindowsConsumption(environment) || IsAnyLinuxConsumption(environment) || IsFlexConsumptionSku(environment);
+        }
+
+        /// <summary>
+        /// Gets a value indicating whether the application is running in the Flex Consumption Sku.
+        /// </summary>
+        /// <param name="environment">The environment to verify.</param>
+        /// <returns><see cref="true"/> if running in the FlexConsumption Sku, false otherwise.</returns>
+        public static bool IsFlexConsumptionSku(this IEnvironment environment)
+        {
+            string value = environment.GetEnvironmentVariable(AzureWebsiteSku);
+            return string.Equals(value, ScriptConstants.FlexConsumptionSku, StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>

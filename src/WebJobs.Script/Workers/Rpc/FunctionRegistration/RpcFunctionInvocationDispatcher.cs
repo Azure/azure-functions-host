@@ -172,7 +172,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             foreach (string language in languages)
             {
                 _logger.LogDebug("Creating new webhost language worker channel for runtime:{workerRuntime}.", language);
-                IRpcWorkerChannel workerChannel = await _webHostLanguageWorkerChannelManager.InitializeChannelAsync(language);
+                IRpcWorkerChannel workerChannel = await _webHostLanguageWorkerChannelManager.InitializeChannelAsync(_workerConfigs, language);
 
                 // if the worker is indexing, we will not have function metadata yet. So, we cannot set up invocation buffers or send load requests
                 workerChannel.SetupFunctionInvocationBuffers(_functions);

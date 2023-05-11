@@ -136,11 +136,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.KubernetesServiceHost)).Returns("");
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.PodNamespace)).Returns("");
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.ManagedEnvironment)).Returns((string)null);
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName)).Returns((string)null);
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSlotName)).Returns((string)null);
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags)).Returns((string)null);
 
             _hostNameProvider = new HostNameProvider(_mockEnvironment.Object);
 
             var functionMetadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, new TestMetricsLogger());
-            var defaultProvider = new FunctionMetadataProvider(NullLogger<FunctionMetadataProvider>.Instance, null, functionMetadataProvider);
+            var defaultProvider = new FunctionMetadataProvider(NullLogger<FunctionMetadataProvider>.Instance, null, functionMetadataProvider, new OptionsWrapper<FunctionsHostingConfigOptions>(new FunctionsHostingConfigOptions()), _mockEnvironment.Object);
             var functionMetadataManager = TestFunctionMetadataManager.GetFunctionMetadataManager(new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions), defaultProvider, null, new OptionsWrapper<HttpWorkerOptions>(new HttpWorkerOptions()), loggerFactory, new TestOptionsMonitor<LanguageWorkerOptions>(CreateLanguageWorkerConfigSettings()));
 
             _scriptHostManager = new TestScriptHostService(configuration);

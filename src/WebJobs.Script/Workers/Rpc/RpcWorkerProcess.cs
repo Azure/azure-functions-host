@@ -23,6 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly WorkerProcessArguments _workerProcessArguments;
         private readonly string _workerDirectory;
         private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions;
+        private readonly IEnvironment _environment;
 
         internal RpcWorkerProcess(string runtime,
                                        string workerId,
@@ -36,7 +37,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                                        IWorkerConsoleLogSource consoleLogSource,
                                        IMetricsLogger metricsLogger,
                                        IServiceProvider serviceProvider,
-                                       IOptions<FunctionsHostingConfigOptions> hostingConfigOptions)
+                                       IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
+                                       IEnvironment environment)
             : base(eventManager, processRegistry, workerProcessLogger, consoleLogSource, metricsLogger, serviceProvider, rpcWorkerConfig.Description.UseStdErrorStreamForErrorsOnly)
         {
             _runtime = runtime;
@@ -49,6 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _workerProcessArguments = rpcWorkerConfig.Arguments;
             _workerDirectory = rpcWorkerConfig.Description.WorkerDirectory;
             _hostingConfigOptions = hostingConfigOptions;
+            _environment = environment;
         }
 
         internal override Process CreateWorkerProcess()
@@ -56,6 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             var workerContext = new RpcWorkerContext(Guid.NewGuid().ToString(), RpcWorkerConstants.DefaultMaxMessageLengthBytes, _workerId, _workerProcessArguments, _scriptRootPath, _serverUri);
             workerContext.EnvironmentVariables.Add(WorkerConstants.FunctionsWorkerDirectorySettingName, _workerDirectory);
             workerContext.EnvironmentVariables.Add(WorkerConstants.FunctionsApplicationDirectorySettingName, _scriptRootPath);
+            workerContext.EnvironmentVariables.Add(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName));
             foreach (var pair in _hostingConfigOptions.Value.Features)
             {
                 workerContext.EnvironmentVariables[pair.Key] = pair.Value;

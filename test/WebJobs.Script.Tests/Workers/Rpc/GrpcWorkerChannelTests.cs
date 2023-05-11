@@ -1303,6 +1303,54 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             }
         }
 
+        [Fact]
+        public async Task GetFunctionMetadata_MultipleCalls_ReturnSameTask()
+        {
+            using var block1 = new SemaphoreSlim(0, 1);
+            using var block2 = new SemaphoreSlim(0, 1);
+            int count = 0;
+
+            await CreateDefaultWorkerChannel();
+
+            _testFunctionRpcService.OnMessage(StreamingMessage.ContentOneofCase.FunctionsMetadataRequest,
+                async _ =>
+                {
+                    if (Interlocked.Increment(ref count) == 1)
+                    {
+                        // notify the second request it can start
+                        block2.Release();
+
+                        // make the first call sit and wait until we know we've issued the second
+                        await block1.WaitAsync();
+                    }
+
+                    _testFunctionRpcService.PublishWorkerMetadataResponse("TestFunctionId1", null, null, false, false, false);
+                });
+
+            var functionsTask1 = _workerChannel.GetFunctionMetadata();
+            await Task.Yield();
+
+            // wait until the first request has made it to the callback before issuing the second
+            await block2.WaitAsync();
+
+            var functionsTask2 = _workerChannel.GetFunctionMetadata();
+            await Task.Yield();
+
+            // now that both requests have been made, let the first return
+            block1.Release();
+
+            //Assert.Same(functionsTask1, functionsTask2);
+
+            var allTask = Task.WhenAll(functionsTask1, functionsTask2);
+            var timeoutTask = Task.Delay(5000);
+
+            // the timeout should never fire
+            var completedTask = await Task.WhenAny(allTask, timeoutTask);
+
+            Assert.True(completedTask == allTask, "Timed out waiting for tasks to complete");
+            Assert.Same(functionsTask1, functionsTask2);
+        }
+
         private IEnumerable<FunctionMetadata> GetTestFunctionsList(string runtime, bool addWorkerProperties = false)
         {
             var metadata1 = new FunctionMetadata()

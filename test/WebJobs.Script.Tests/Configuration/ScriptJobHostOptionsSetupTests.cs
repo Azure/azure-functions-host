@@ -76,72 +76,40 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             Assert.Contains("mySecondFile.ext", options.WatchFiles);
         }
 
-        [Fact(Skip = "ApplyConfiguration no longer exists. Validate logic (moved to HostJsonFileConfigurationSource)")]
-        public void Configure_AllowPartialHostStartup()
-        {
-            //var settings = new Dictionary<string, string>
-            //{
-            //    { ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "fileWatchingEnabled"), "true" }
-            //};
-
-            //var options = new ScriptHostOptions();
-
-            //// Validate default (this should be in another test - migrated here for now)
-            //Assert.True(options.FileWatchingEnabled);
-
-            //Assert.True(options.HostConfig.AllowPartialHostStartup);
-
-            //// explicit setting can override our default
-            //scriptConfig = new ScriptHostConfiguration();
-            //config["allowPartialHostStartup"] = new JValue(true);
-            //ScriptHost.ApplyConfiguration(config, scriptConfig);
-            //Assert.True(scriptConfig.HostConfig.AllowPartialHostStartup);
-
-            //// explicit setting can override our default
-            //scriptConfig = new ScriptHostConfiguration();
-            //config["allowPartialHostStartup"] = new JValue(false);
-            //ScriptHost.ApplyConfiguration(config, scriptConfig);
-            //Assert.False(scriptConfig.HostConfig.AllowPartialHostStartup);
-        }
-
         [Theory]
-        [InlineData(true, false)]
-        [InlineData(false, true)]
-        [InlineData(true, true)]
-        public void Configure_AppliesDefaults_IfDynamic(bool isLinuxConsumption, bool isWindowsConsumption)
+        [InlineData(ScriptConstants.DynamicSku, false)]
+        [InlineData(ScriptConstants.DynamicSku, true)]
+        [InlineData("", true)]
+        public void Configure_AppliesShorterConsumptionTimeoutDefault_ForExpectedSkus(string sku, bool isLinux)
         {
-            var settings = new Dictionary<string, string>();
-
             var environment = new TestEnvironment();
-            if (isLinuxConsumption)
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, sku);
+            if (isLinux)
             {
                 environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, "RandomContainerName");
             }
-
-            if (isWindowsConsumption)
-            {
-                environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, ScriptConstants.DynamicSku);
-            }
-
+            var settings = new Dictionary<string, string>();
             var options = GetConfiguredOptions(settings, environment);
 
-            Assert.Equal(ScriptJobHostOptionsSetup.DefaultFunctionTimeoutDynamic, options.FunctionTimeout);
+            Assert.True(environment.IsConsumptionSku());
+            Assert.Equal(ScriptJobHostOptionsSetup.DefaultConsumptionFunctionTimeout, options.FunctionTimeout);
+        }
 
-            // When functionTimeout is set as null
-            settings.Add(ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "functionTimeout"), string.Empty);
+        [Theory]
+        [InlineData("")]
+        [InlineData(ScriptConstants.FlexConsumptionSku)]
+        [InlineData(ScriptConstants.ElasticPremiumSku)]
+        public void Configure_AppliesLongerDedicatedTimeoutDefault_ForExpectedSkus(string sku)
+        {
+            var environment = new TestEnvironment();
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, sku);
 
-            options = GetConfiguredOptions(settings, environment);
-            Assert.Equal(ScriptJobHostOptionsSetup.DefaultFunctionTimeoutDynamic, options.FunctionTimeout);
-
-            // TODO: DI Need to ensure JobHostOptions is correctly configured
-            //var timeoutConfig = options.HostOptions.FunctionTimeout;
-            //Assert.NotNull(timeoutConfig);
-            //Assert.True(timeoutConfig.ThrowOnTimeout);
-            //Assert.Equal(scriptConfig.FunctionTimeout.Value, timeoutConfig.Timeout);
+            var options = GetConfiguredOptions(new Dictionary<string, string>());
+            Assert.Equal(ScriptJobHostOptionsSetup.DefaultFunctionTimeout, options.FunctionTimeout);
         }
 
         [Fact]
-        public void Configure_AppliesTimeout()
+        public void Configure_AppliesConfiguredTimeout()
         {
             var settings = new Dictionary<string, string>
             {
@@ -230,24 +198,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             Assert.Equal(maxIntervalTimeSpan, options.Retry.MaximumInterval);
         }
 
-        [Fact]
-        public void Configure_TimeoutDefaultsNull_IfNotDynamic()
-        {
-            var options = GetConfiguredOptions(new Dictionary<string, string>());
-            Assert.Equal(ScriptJobHostOptionsSetup.DefaultFunctionTimeout, options.FunctionTimeout);
-
-            // When functionTimeout is set as null
-            var settings = new Dictionary<string, string>
-            {
-                { ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "functionTimeout"), string.Empty }
-            };
-
-            options = GetConfiguredOptions(settings);
-            Assert.Equal(ScriptJobHostOptionsSetup.DefaultFunctionTimeout, options.FunctionTimeout);
-        }
-
-        [Fact]
-        public void Configure_NoMaxTimeoutLimits_IfNotDynamic()
+        [Theory]
+        [InlineData(ScriptConstants.ElasticPremiumSku)]
+        [InlineData(ScriptConstants.FlexConsumptionSku)]
+        [InlineData("")]
+        public void Configure_NoMaxTimeoutLimits_ForSomeSkus(string sku)
         {
             var timeout = ScriptJobHostOptionsSetup.MaxFunctionTimeoutDynamic + TimeSpan.FromMinutes(10);
             string configPath = ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "functionTimeout");
@@ -255,25 +210,32 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             {
                 { configPath, timeout.ToString() }
             };
+            var environment = new TestEnvironment();
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, sku);
 
-            var options = GetConfiguredOptions(settings);
+            var options = GetConfiguredOptions(settings, environment);
             Assert.Equal(timeout, options.FunctionTimeout);
         }
 
-        [Fact]
-        public void Configure_AppliesInfiniteTimeout_IfNotDynamic()
+        [Theory]
+        [InlineData(ScriptConstants.ElasticPremiumSku)]
+        [InlineData(ScriptConstants.FlexConsumptionSku)]
+        [InlineData("")]
+        public void Configure_AppliesInfiniteTimeout_ForSomeSkus(string sku)
         {
             var settings = new Dictionary<string, string>
             {
                 { ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "functionTimeout"), "-1" }
             };
+            var environment = new TestEnvironment();
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, sku);
 
-            var options = GetConfiguredOptions(settings);
+            var options = GetConfiguredOptions(settings, environment);
             Assert.Equal(null, options.FunctionTimeout);
         }
 
         [Fact]
-        public void Configure_AppliesTimeoutLimits_IfDynamic()
+        public void Configure_AppliesExpectedTimeoutLimits_ForDynamicSku()
         {
             string configPath = ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "functionTimeout");
             var settings = new Dictionary<string, string>
@@ -282,7 +244,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             };
 
             var environment = new TestEnvironment();
-            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, "Dynamic");
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, ScriptConstants.DynamicSku);
 
             var ex = Assert.Throws<ArgumentException>(() => GetConfiguredOptions(settings, environment));
             var expectedMessage = "FunctionTimeout must be greater than 00:00:01 and less than 00:10:00.";
@@ -298,7 +260,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         }
 
         [Fact]
-        public void Configure_MinTimeoutLimit_IfNotDynamic()
+        public void Configure_AppliesMinTimeoutLimit_ForAllSkus()
         {
             string configPath = ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "functionTimeout");
             var settings = new Dictionary<string, string>

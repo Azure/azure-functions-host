@@ -15,6 +15,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost;
@@ -477,9 +478,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var managerServiceProvider = manager as IServiceProvider;
 
             var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, new TestMetricsLogger());
-            var defaultProvider = new FunctionMetadataProvider(NullLogger<FunctionMetadataProvider>.Instance, null, metadataProvider);
+            var defaultProvider = new FunctionMetadataProvider(NullLogger<FunctionMetadataProvider>.Instance, null, metadataProvider, new OptionsWrapper<FunctionsHostingConfigOptions>(new FunctionsHostingConfigOptions()), SystemEnvironment.Instance);
             var metadataManager = new FunctionMetadataManager(managerServiceProvider.GetService<IOptions<ScriptJobHostOptions>>(), defaultProvider,
-                managerServiceProvider.GetService<IOptions<HttpWorkerOptions>>(), manager, factory, new TestOptionsMonitor<LanguageWorkerOptions>(workerOptions), environment);
+                managerServiceProvider.GetService<IOptions<HttpWorkerOptions>>(), manager, factory, environment);
 
             return metadataManager;
         }

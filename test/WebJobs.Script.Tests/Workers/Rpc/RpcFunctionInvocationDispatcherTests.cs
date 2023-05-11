@@ -8,11 +8,9 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
-using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -673,7 +671,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             if (addWebhostChannel)
             {
-                testWebHostLanguageWorkerChannelManager.InitializeChannelAsync("java");
+                testWebHostLanguageWorkerChannelManager.InitializeChannelAsync(workerConfigOptions.WorkerConfigs, "java");
             }
             if (mockwebHostLanguageWorkerChannelManager != null)
             {

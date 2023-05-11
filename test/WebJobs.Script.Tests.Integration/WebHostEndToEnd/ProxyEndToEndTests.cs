@@ -9,8 +9,6 @@ using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Web.Http;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.TestHost;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Management.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost;
@@ -414,7 +412,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 };
 
                 var hostProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, new TestMetricsLogger());
-                var provider = new FunctionMetadataProvider(NullLogger<FunctionMetadataProvider>.Instance, null, hostProvider);
+                var provider = new FunctionMetadataProvider(NullLogger<FunctionMetadataProvider>.Instance, null, hostProvider, new OptionsWrapper<FunctionsHostingConfigOptions>(new FunctionsHostingConfigOptions()), SystemEnvironment.Instance);
 
                 TestHost = new TestFunctionHost(HostOptions.ScriptPath, HostOptions.LogPath,
                     configureScriptHostServices: services =>
