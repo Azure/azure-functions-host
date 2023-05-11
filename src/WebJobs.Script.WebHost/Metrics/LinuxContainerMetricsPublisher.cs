@@ -284,11 +284,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
                 Content = new ObjectContent<TContent>(content, new JsonMediaTypeFormatter())
             };
 
+            IEnvironment environment = SystemEnvironment.Instance;
+
+            // get the environment variable value of EnvironmentSettingNames.WebSiteAuthEncryptionKey
+            var webSiteAuthEncryptionKey = environment.GetEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey);
+            var containerEncryptionKey = environment.GetEnvironmentVariable(EnvironmentSettingNames.ContainerEncryptionKey);
+
+            _logger.LogInformation($"[TEST] [HOST] WebSiteAuthEncryptionKey: {webSiteAuthEncryptionKey}");
+            _logger.LogInformation($"[TEST] [HOST] ContainerEncryptionKey: {containerEncryptionKey}");
+
             string swtToken = SimpleWebTokenHelper.CreateToken(DateTime.UtcNow.AddMinutes(5));
             string jwtToken = JwtTokenHelper.CreateToken(DateTime.UtcNow.AddMinutes(5));
 
-            // _logger.LogInformation(string.Format("[TEST] swt {0}", swtToken));
-            // _logger.LogInformation(string.Format("[TEST] jwt {0}", jwtToken));
+            _logger.LogInformation(string.Format("[TEST] swt {0}", swtToken));
+            _logger.LogInformation(string.Format("[TEST] jwt {0}", jwtToken));
 
             // add the required authentication headers
             request.Headers.Add(ContainerNameHeader, _containerName);
