@@ -89,8 +89,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                         }
                         else
                         {
-                            payload = new StringContent(JsonConvert.SerializeObject(context.EncryptedMSIContext),
-                                    Encoding.UTF8, "application/json");
+                            payload = new StringContent(context.EncryptedMSIContext, Encoding.UTF8);
                         }
 
                         var requestMessage = new HttpRequestMessage(HttpMethod.Post, address)
