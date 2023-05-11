@@ -8,13 +8,14 @@ using System.IO.Abstractions;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Runtime.Loader;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Moq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
-    public class FunctionAssemblyLoadContextTests
+    public class FunctionAssemblyLoadContextTests : IDisposable
     {
         [Theory]
         [InlineData("Microsoft.Azure.WebJobs, Version=3.0.0.0")]
@@ -188,6 +189,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     OSPlatform.Linux
                 },
             };
+        }
+
+        public void Dispose()
+        {
+            FeatureFlags.InternalCache = null;
         }
     }
 }

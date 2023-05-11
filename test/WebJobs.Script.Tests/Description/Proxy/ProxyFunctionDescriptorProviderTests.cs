@@ -7,7 +7,6 @@ using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
-using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -173,6 +172,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             if (disposing)
             {
                 _scriptHost?.Dispose();
+                FeatureFlags.InternalCache = null;
             }
         }
 

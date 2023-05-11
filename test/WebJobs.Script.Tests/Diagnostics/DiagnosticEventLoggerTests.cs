@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
@@ -12,7 +13,7 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
 {
-    public class DiagnosticEventLoggerTests
+    public class DiagnosticEventLoggerTests : IDisposable
     {
         [Fact]
         public void DiagnosticEventLogger_OnlyLogsMessages_WithRequiredProperties()
@@ -86,6 +87,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             }
 
             Assert.Empty(repository.Events);
+        }
+
+        public void Dispose()
+        {
+            FeatureFlags.InternalCache = null;
         }
 
         public class TestDiagnosticEventRepositoryFactory : IDiagnosticEventRepositoryFactory

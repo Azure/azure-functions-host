@@ -14,7 +14,6 @@ using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
-using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
@@ -22,7 +21,6 @@ using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Newtonsoft.Json.Linq;
-using NuGet.Versioning;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -60,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public IDictionary<string, string> Properties { get; set; }
     }
 
-    public class UtilityTests
+    public class UtilityTests : IDisposable
     {
         private TestLogger _testLogger = new TestLogger("test");
 
@@ -1034,6 +1032,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string tempDirectory = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
             FileUtility.EnsureDirectoryExists(tempDirectory);
             return tempDirectory;
+        }
+
+        public void Dispose()
+        {
+            FeatureFlags.InternalCache = null;
         }
     }
 }

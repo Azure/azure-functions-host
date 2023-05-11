@@ -27,14 +27,13 @@ using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using NuGet.Common;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 {
     [Trait(TestTraits.Category, TestTraits.EndToEnd)]
     [Trait(TestTraits.Group, TestTraits.SamplesEndToEnd)]
-    public class SamplesEndToEndTests_CSharp : IClassFixture<SamplesEndToEndTests_CSharp.TestFixture>
+    public class SamplesEndToEndTests_CSharp : IClassFixture<SamplesEndToEndTests_CSharp.TestFixture>, IDisposable
     {
         private readonly ScriptSettingsManager _settingsManager;
         private TestFixture _fixture;
@@ -189,7 +188,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 }
 
                 HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
-                
+
                 if (addAuthKey)
                 {
                     await this._fixture.AddMasterKey(request);
@@ -1127,6 +1126,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 }";
             string easyAuthHeaderValue = Convert.ToBase64String(Encoding.UTF8.GetBytes(userIdentityJson));
             request.Headers.Add("x-ms-client-principal", easyAuthHeaderValue);
+        }
+
+        public void Dispose()
+        {
+            FeatureFlags.InternalCache = null;
         }
 
         public class TestFixture : EndToEndTestFixture

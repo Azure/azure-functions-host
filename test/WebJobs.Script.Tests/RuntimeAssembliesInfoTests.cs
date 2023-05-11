@@ -2,15 +2,13 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
-    public class RuntimeAssembliesInfoTests
+    public class RuntimeAssembliesInfoTests : IDisposable
     {
         [Fact]
         public void Reset_WithUnloadedAssemblies_ReturnsFalse()
@@ -41,13 +39,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void Reset_WithLoadedAssemblies_ChangedRules_ReturnsTrue()
         {
             var environment = new TestEnvironment();
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+
             var runtimeAssembliesInfo = new RuntimeAssembliesInfo(environment);
 
             // Cause a load
             var originalAssemblies = runtimeAssembliesInfo.Assemblies;
 
-            // Change environment
+            // Change environment; simulate specialization
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagRelaxedAssemblyUnification);
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, null);
 
             bool result = runtimeAssembliesInfo.ResetIfStale();
 
@@ -75,6 +76,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.NotNull(assemblies);
             Assert.Null(assembly);
+        }
+
+        public void Dispose()
+        {
+            FeatureFlags.InternalCache = null;
         }
     }
 }

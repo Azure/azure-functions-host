@@ -7,6 +7,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.Options;
@@ -16,7 +17,7 @@ using static Microsoft.Azure.WebJobs.Script.ScriptConstants;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
 {
-    public class DiagnosticListenerServiceTests
+    public class DiagnosticListenerServiceTests : IDisposable
     {
         /// <summary>
         /// This test ensures that:
@@ -115,6 +116,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         [Fact]
         public async Task StandbyChanges_TriggerFeatureEvaluation()
         {
+            var placeholderMode = new TestScopedEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+
             Action<StandbyOptions, string> action = null;
             void ChangeCallback(Action<StandbyOptions, string> callback)
             {
@@ -139,6 +142,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
 
             Assert.False(source.IsEnabled(eventName));
 
+            // remove placeholder var to force re-evaluation of feature flag
+            placeholderMode.Dispose();
+
             using var featureFlags = new TestScopedEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, FeatureFlagEnableDebugTracing);
 
             // Invoke change callback
@@ -162,6 +168,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
                 }
             }
             return count;
+        }
+
+        public void Dispose()
+        {
+            FeatureFlags.InternalCache = null;
         }
     }
 }
