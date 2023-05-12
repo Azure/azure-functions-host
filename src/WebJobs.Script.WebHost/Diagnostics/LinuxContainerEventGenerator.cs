@@ -2,15 +2,11 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Text;
-using System.Threading;
-using System.Threading.Channels;
-using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
-    internal class LinuxContainerEventGenerator : LinuxEventGenerator
+    internal class LinuxContainerEventGenerator : LinuxEventGenerator, IDisposable
     {
         private const int MaxDetailsLength = 10000;
         private static readonly Lazy<LinuxContainerEventGenerator> _Lazy = new Lazy<LinuxContainerEventGenerator>(() => new LinuxContainerEventGenerator(SystemEnvironment.Instance, Console.WriteLine));
@@ -20,6 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private string _containerName;
         private string _stampName;
         private string _tenantId;
+        private bool _disposed;
 
         public LinuxContainerEventGenerator(IEnvironment environment, Action<string> writeEvent = null)
         {
@@ -151,6 +148,24 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 runtimeSiteName: SystemEnvironment.Instance.GetRuntimeSiteName() ?? string.Empty,
                 slotName: SystemEnvironment.Instance.GetSlotName() ?? string.Empty,
                 eventTimestamp: DateTime.UtcNow);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposed)
+            {
+                if (disposing)
+                {
+                    _consoleWriter?.Dispose();
+                }
+                _disposed = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }
