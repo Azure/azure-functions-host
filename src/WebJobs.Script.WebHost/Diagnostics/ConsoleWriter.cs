@@ -3,7 +3,6 @@
 
 using System;
 using System.Text;
-using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 
@@ -80,30 +79,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         private void WriteToConsoleBuffer(string evt)
         {
-            try
+            if (_consoleBuffer.Writer.TryWrite(evt) == false)
             {
-                if (_consoleBuffer.Writer.TryWrite(evt) == false)
-                {
-                    // Buffer is currently full, wait until writing is permitted.
-                    using var source = new CancellationTokenSource(_consoleBufferTimeout);
-                    var writeTask = _consoleBuffer.Writer.WriteAsync(evt, source.Token);
-
-                    // This is the downside of using channels, we are on a sync code path and so we have to block on this task if we want to wait for the buffer to clear.
-                    if (writeTask.IsCompleted)
-                    {
-                        writeTask.GetAwaiter().GetResult();
-                    }
-                    else
-                    {
-                        writeTask.AsTask().GetAwaiter().GetResult();
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                // Most likely a task cancellation exception from the timeout expiring, but regardless we use the handler
-                // dump the raw exception and write the event to the console directly
-                _exceptionhandler(ex);
                 Console.WriteLine(evt);
             }
         }
