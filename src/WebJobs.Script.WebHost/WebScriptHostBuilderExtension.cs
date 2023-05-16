@@ -123,7 +123,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         // EasyAuth must go after CORS, as CORS preflight requests can happen before authentication
                         services.TryAddEnumerable(ServiceDescriptor.Singleton<IJobHostHttpMiddleware, JobHostEasyAuthMiddleware>());
                     }
-                    services.TryAddSingleton<Script.Scale.IScaleMetricsRepository, TableStorageScaleMetricsRepository>();
+                    services.TryAddSingleton<IScaleMetricsRepository, TableStorageScaleMetricsRepository>();
 
                     services.TryAddEnumerable(ServiceDescriptor.Singleton<IConcurrencyThrottleProvider, WorkerChannelThrottleProvider>());
 

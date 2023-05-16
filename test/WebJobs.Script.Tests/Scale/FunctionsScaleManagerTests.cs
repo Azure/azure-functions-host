@@ -18,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
     {
         private readonly FunctionsScaleManager _scaleManager;
         private readonly Mock<IScaleMonitorManager> _monitorManagerMock;
-        private readonly Mock<Script.Scale.IScaleMetricsRepository> _metricsRepositoryMock;
+        private readonly Mock<IScaleMetricsRepository> _metricsRepositoryMock;
         private readonly TestLoggerProvider _loggerProvider;
         private readonly List<IScaleMonitor> _monitors;
         private readonly ILogger _testLogger;

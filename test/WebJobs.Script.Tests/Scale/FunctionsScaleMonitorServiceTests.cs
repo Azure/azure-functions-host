@@ -194,7 +194,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
         }
     }
 
-    public class TestMetricsRepository : Script.Scale.IScaleMetricsRepository
+    public class TestMetricsRepository : IScaleMetricsRepository
     {
         private int _count;
 
