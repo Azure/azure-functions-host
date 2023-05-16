@@ -14,6 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly ConsoleWriter _consoleWriter;
         private readonly ConsoleLoggerProcessor _loggerProcessor;
         private readonly BlockingCollectionConsoleWriter _blockingCollectionConsoleWriter;
+        private readonly ConsoleConcurrentQueueLogger _consoleConcurrentQueueLogger;
         private readonly IEnvironment _environment;
         private string _containerName;
         private string _stampName;
@@ -30,16 +31,25 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 }
                 else if (mode == "channel")
                 {
+                    Console.WriteLine("Using channel logging mode.");
                     _consoleWriter = new ConsoleWriter(environment, LogUnhandledException);
                     writeEvent = _consoleWriter.WriteHandler;
                 }
+                else if (mode == "concurrent-queue")
+                {
+                    Console.WriteLine("Using concurrent queue logging mode.");
+                    _consoleConcurrentQueueLogger = new ConsoleConcurrentQueueLogger(environment, LogUnhandledException);
+                    writeEvent = _consoleConcurrentQueueLogger.WriteHandler;
+                }
                 else if (mode == "blocking-collection")
                 {
+                    Console.WriteLine("Using blocking collection logging mode.");
                     _blockingCollectionConsoleWriter = new BlockingCollectionConsoleWriter(environment, LogUnhandledException);
                     writeEvent = _blockingCollectionConsoleWriter.WriteHandler;
                 }
                 else if (mode == "queue-with-monitor")
                 {
+                    Console.WriteLine("Using queue with monitor logging mode.");
                     _loggerProcessor = new ConsoleLoggerProcessor(environment);
                     writeEvent = _loggerProcessor.EnqueueMessage;
                 }

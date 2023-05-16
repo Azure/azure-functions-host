@@ -276,7 +276,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IMeshServiceClient>(s =>
             {
                 var environment = s.GetService<IEnvironment>();
-                if (environment.IsAnyLinuxConsumption())
+                if (environment.IsLinuxConsumptionOnAtlas())
                 {
                     var httpClientFactory = s.GetService<IHttpClientFactory>();
                     var logger = s.GetService<ILogger<MeshServiceClient>>();
@@ -289,7 +289,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<LinuxContainerActivityPublisher>(s =>
             {
                 var environment = s.GetService<IEnvironment>();
-                if (environment.IsAnyLinuxConsumption())
+                if (environment.IsLinuxConsumptionOnAtlas())
                 {
                     var logger = s.GetService<ILogger<LinuxContainerActivityPublisher>>();
                     var meshInitServiceClient = s.GetService<IMeshServiceClient>();
@@ -303,7 +303,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IHostedService>(s =>
             {
                 var environment = s.GetService<IEnvironment>();
-                if (environment.IsAnyLinuxConsumption())
+                if (environment.IsLinuxConsumptionOnAtlas())
                 {
                     return s.GetRequiredService<LinuxContainerActivityPublisher>();
                 }
@@ -314,7 +314,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<ILinuxContainerActivityPublisher>(s =>
             {
                 var environment = s.GetService<IEnvironment>();
-                if (environment.IsAnyLinuxConsumption())
+                if (environment.IsLinuxConsumptionOnAtlas())
                 {
                     return s.GetRequiredService<LinuxContainerActivityPublisher>();
                 }
