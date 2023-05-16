@@ -33,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
 
             _monitorManagerMock = new Mock<IScaleMonitorManager>(MockBehavior.Strict);
             _monitorManagerMock.Setup(p => p.GetMonitors()).Returns(() => _monitors);
-            _metricsRepositoryMock = new Mock<Script.Scale.IScaleMetricsRepository>(MockBehavior.Strict);
+            _metricsRepositoryMock = new Mock<IScaleMetricsRepository>(MockBehavior.Strict);
 
             _scaleManager = new FunctionsScaleManager(_monitorManagerMock.Object, _metricsRepositoryMock.Object, loggerFactory);
         }
