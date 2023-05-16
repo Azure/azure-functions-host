@@ -1022,6 +1022,90 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(resultValue, expectedValueResult);
         }
 
+        [Fact]
+        public void ValidateRetryOptions_ThrowsWhenMaxRetryIsNull()
+        {
+            var retryOptions = new RetryOptions
+            {
+                Strategy = RetryStrategy.FixedDelay
+            };
+
+            Assert.False(IsValidateRetryOptionsSuccess(retryOptions));
+        }
+
+        [Fact]
+        public void ValidateRetryOptions_ThrowsWhenFixedDelayArgsNull()
+        {
+            var retryOptions = new RetryOptions
+            {
+                Strategy = RetryStrategy.FixedDelay,
+                MaxRetryCount = 5
+            };
+
+            Assert.False(IsValidateRetryOptionsSuccess(retryOptions));
+        }
+
+        [Fact]
+        public void ValidateRetryOptions_ThrowsWhenExponentialBackoffArgsNull()
+        {
+            var retryOptions1 = new RetryOptions
+            {
+                Strategy = RetryStrategy.ExponentialBackoff,
+                MaxRetryCount = 5,
+                MinimumInterval = TimeSpan.FromSeconds(5)
+            };
+
+            var retryOptions2 = new RetryOptions
+            {
+                Strategy = RetryStrategy.ExponentialBackoff,
+                MaxRetryCount = 5,
+                MaximumInterval = TimeSpan.MaxValue
+            };
+
+            Assert.False(IsValidateRetryOptionsSuccess(retryOptions1));
+            Assert.False(IsValidateRetryOptionsSuccess(retryOptions2));
+        }
+
+        [Fact]
+        public void ValidateRetryOptions_FixedDelaySuccess()
+        {
+            var retryOptions = new RetryOptions
+            {
+                Strategy = RetryStrategy.FixedDelay,
+                MaxRetryCount = 5,
+                DelayInterval = TimeSpan.FromSeconds(600)
+            };
+
+            Assert.True(IsValidateRetryOptionsSuccess(retryOptions));
+        }
+
+        [Fact]
+        public void ValidateRetryOptions_ExponentialBackoffSucess()
+        {
+            var retryOptions = new RetryOptions
+            {
+                Strategy = RetryStrategy.ExponentialBackoff,
+                MaxRetryCount = 5,
+                MinimumInterval = TimeSpan.FromSeconds(10),
+                MaximumInterval = TimeSpan.MaxValue
+            };
+
+            Assert.True(IsValidateRetryOptionsSuccess(retryOptions));
+        }
+
+        private static bool IsValidateRetryOptionsSuccess(RetryOptions retryOptions)
+        {
+            try
+            {
+                Utility.ValidateRetryOptions(retryOptions);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         private static void VerifyLogLevel(IList<LogMessage> allLogs, string msg, LogLevel expectedLevel)
         {
             var message = allLogs.FirstOrDefault(l => l.FormattedMessage.Contains(msg));
