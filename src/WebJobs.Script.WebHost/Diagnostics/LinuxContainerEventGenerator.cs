@@ -24,8 +24,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         {
             if (writeEvent == null)
             {
+                bool consoleEnabled = environment.GetEnvironmentVariable(EnvironmentSettingNames.ConsoleLoggingDisabled) != "1";
                 string mode = environment.GetEnvironmentVariable("CONSOLE_LOGGING_MODE") ?? string.Empty;
-                if (mode == string.Empty)
+
+                if (consoleEnabled == false)
+                {
+                    writeEvent = (s) => { };
+                }
+                else if (mode == string.Empty)
                 {
                     writeEvent = Console.WriteLine;
                 }

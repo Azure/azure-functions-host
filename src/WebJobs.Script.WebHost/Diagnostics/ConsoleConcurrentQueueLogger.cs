@@ -10,7 +10,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
     internal class ConsoleConcurrentQueueLogger
     {
-        private static readonly TimeSpan DefaultConsoleBufferTimeout = TimeSpan.FromMilliseconds(100);
+        private static readonly TimeSpan DefaultConsoleBufferTimeout = TimeSpan.FromSeconds(1);
         private readonly ConcurrentQueue<string> _consoleBuffer;
         private readonly TimeSpan _consoleBufferTimeout;
         private readonly Action<Exception> _exceptionhandler;
@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _consoleBufferTimeout = consoleBufferTimeout;
 
             _writeResetEvent = new ManualResetEvent(true);
-            _readResetEvent = new ManualResetEvent(false);
+            _readResetEvent = new ManualResetEvent(true);
 
             _writeEvent = WriteToConsoleBuffer;
             if (autoStart)
@@ -108,6 +108,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             {
                 if (_consoleBuffer.TryDequeue(out string line1))
                 {
+                    _writeResetEvent.Set();
+
                     // Can we synchronously read multiple lines?
                     // If yes, use the string builder to batch them together into a single write
                     // If no, just write the single line without using the builder;
