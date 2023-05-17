@@ -337,6 +337,9 @@ message RpcFunctionMetadata {
   // A flag indicating if managed dependency is enabled or not
   bool managed_dependency_enabled = 14;
 
+  // The optional function execution retry strategy to use on invocation failures.
+  RpcRetryOptions retry_options = 15;
+
   // Properties for function metadata
   // They're usually specific to a worker and largely passed along to the controller API for use
   // outside the host
@@ -697,4 +700,31 @@ message ModelBindingData
 // Used to encapsulate collection model_binding_data
 message CollectionModelBindingData {
   repeated ModelBindingData model_binding_data = 1;
+}
+
+// Retry policy which the worker sends the host when the worker indexes
+// a function.
+message RpcRetryOptions
+{
+  // The retry strategy to use. Valid values are fixed delay or exponential backoff.
+  enum RetryStrategy
+  {
+      exponential_backoff = 0;
+      fixed_delay = 1;
+  }
+
+  // The maximum number of retries allowed per function execution.
+  //  -1 means to retry indefinitely.
+  int32 max_retry_count = 2;
+
+  // The delay that's used between retries when you're using a fixed delay strategy.
+  google.protobuf.Duration delay_interval = 3;
+
+  // The minimum retry delay when you're using an exponential backoff strategy
+  google.protobuf.Duration minimum_interval = 4;
+
+  // The maximum retry delay when you're using an exponential backoff strategy
+  google.protobuf.Duration maximum_interval = 5;
+
+  RetryStrategy retry_strategy = 6;
 }
