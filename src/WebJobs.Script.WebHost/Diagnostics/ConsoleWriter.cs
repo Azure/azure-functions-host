@@ -3,6 +3,7 @@
 
 using System;
 using System.Text;
+using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 
@@ -15,11 +16,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         // So in the extreme case, this is about 1 second of buffer and should be less than 3MB
         private const int DefaultBufferSize = 8000;
 
+        // Because we read the log lines in batches from the buffer and write them to the console in one go,
+        // we can influence the latency distribution by controlling how much of the buffer we will process in one pass.
+        // If we set this to 1, the P50 latency will be low, but the P99 latency will be high.
+        // If we set this to a large value, it keeps the P99 latency under control but the P50 degrades.
+        // In local testing with a console attached, processing 1/10th of the buffer size per iteration yields single digit P50 while keeping P99 under 100ms.
+        private const int SingleWriteBufferDenominator = 10;
+
         private static readonly TimeSpan DisposeTimeout = TimeSpan.FromSeconds(5);
         private static readonly TimeSpan DefaultConsoleBufferTimeout = TimeSpan.FromSeconds(1);
+        private readonly ManualResetEvent _writeResetEvent;
         private readonly Channel<string> _consoleBuffer;
         private readonly TimeSpan _consoleBufferTimeout;
         private readonly Action<Exception> _exceptionhandler;
+        private readonly int _maxLinesPerWrite;
         private Task _consoleBufferReadLoop;
         private Action<string> _writeEvent;
         private bool _disposed;
@@ -35,32 +45,29 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
             if (consoleEnabled)
             {
-                // We are going to used stdout, but do we write directly or use a buffer?
-                _consoleBuffer = environment.GetEnvironmentVariable(EnvironmentSettingNames.ConsoleLoggingBufferSize) switch
+                int maxBufferSize = environment.GetEnvironmentVariable(EnvironmentSettingNames.ConsoleLoggingBufferSize) switch
                 {
-                    "-1" => Channel.CreateUnbounded<string>(new UnboundedChannelOptions() { SingleReader = true, SingleWriter = false }),           // buffer size of -1 indicates that buffer should be enabled but unbounded
-                    "0" => null,                                                                                                                    // buffer size of 0 indicates that buffer should be disabled
-                    var s when int.TryParse(s, out int i) && i > 0 => Channel.CreateBounded<string>(i),
-                    _ => Channel.CreateBounded<string>(new BoundedChannelOptions(DefaultBufferSize) { SingleReader = true, SingleWriter = false }), // default behavior is to use buffer with default size
+                    var s when int.TryParse(s, out int i) && i >= 0 => i,
+                    var s when int.TryParse(s, out int i) && i < 0 => throw new ArgumentOutOfRangeException(nameof(EnvironmentSettingNames.ConsoleLoggingBufferSize), "Console buffer size cannot be negative"),
+                    _ => DefaultBufferSize,
                 };
 
-                if (_consoleBuffer == null)
+                if (maxBufferSize == 0)
                 {
+                    // buffer size was set to zero - disable it
                     _writeEvent = Console.WriteLine;
                 }
                 else
                 {
+                    _consoleBuffer = Channel.CreateBounded<string>(new BoundedChannelOptions(maxBufferSize) { SingleReader = true, SingleWriter = false });
                     _writeEvent = WriteToConsoleBuffer;
                     _consoleBufferTimeout = consoleBufferTimeout;
+                    _writeResetEvent = new ManualResetEvent(true);
+                    _maxLinesPerWrite = maxBufferSize / SingleWriteBufferDenominator;
+
                     if (autoStart)
                     {
-                        bool batched = environment.GetEnvironmentVariable(EnvironmentSettingNames.ConsoleLoggingBufferBatched) switch
-                        {
-                            "0" => false,     // disable batching by setting to 0
-                            _ => true,        // default behavior is batched
-                        };
-
-                        StartProcessingBuffer(batched);
+                        StartProcessingBuffer();
                     }
                 }
             }
@@ -81,30 +88,60 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         {
             if (_consoleBuffer.Writer.TryWrite(evt) == false)
             {
-                Console.WriteLine(evt);
+                _writeResetEvent.Reset();
+                if (_writeResetEvent.WaitOne(_consoleBufferTimeout) == false || _consoleBuffer.Writer.TryWrite(evt) == false)
+                {
+                    // We have either timed out or the buffer was full again, so just write directly to console
+                    Console.WriteLine(evt);
+                }
             }
         }
 
-        internal void StartProcessingBuffer(bool batched)
+        internal void StartProcessingBuffer()
         {
             // intentional no-op if the task is already running
             if (_consoleBufferReadLoop == null || _consoleBufferReadLoop.IsCompleted)
             {
-                _consoleBufferReadLoop = ProcessConsoleBufferAsync(batched);
+                _consoleBufferReadLoop = ProcessConsoleBufferAsync();
             }
         }
 
-        private async Task ProcessConsoleBufferAsync(bool batched)
+        private async Task ProcessConsoleBufferAsync()
         {
             try
             {
-                if (batched)
+                var builder = new StringBuilder();
+
+                while (await _consoleBuffer.Reader.WaitToReadAsync())
                 {
-                    await ProcessConsoleBufferBatchedAsync();
-                }
-                else
-                {
-                    await ProcessConsoleBufferNonBatchedAsync();
+                    if (_consoleBuffer.Reader.TryRead(out string line1))
+                    {
+                        _writeResetEvent.Set();
+
+                        // Can we synchronously read multiple lines?
+                        // If yes, use the string builder to batch them together into a single write
+                        // If no, just write the single line without using the builder;
+                        if (_consoleBuffer.Reader.TryRead(out string line2))
+                        {
+                            builder.AppendLine(line1);
+                            builder.AppendLine(line2);
+                            int lines = 2;
+
+                            while (lines < _maxLinesPerWrite && _consoleBuffer.Reader.TryRead(out string nextLine))
+                            {
+                                builder.AppendLine(nextLine);
+                                lines++;
+                            }
+
+                            _writeResetEvent.Set();
+                            Console.Write(builder.ToString());
+                            builder.Clear();
+                        }
+                        else
+                        {
+                            Console.WriteLine(line1);
+                        }
+                    }
                 }
             }
             catch (Exception ex)
@@ -120,48 +157,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             }
         }
 
-        private async Task ProcessConsoleBufferNonBatchedAsync()
-        {
-            await foreach (var line in _consoleBuffer.Reader.ReadAllAsync())
-            {
-                Console.WriteLine(line);
-            }
-        }
-
-        private async Task ProcessConsoleBufferBatchedAsync()
-        {
-            var builder = new StringBuilder();
-
-            while (await _consoleBuffer.Reader.WaitToReadAsync())
-            {
-                if (_consoleBuffer.Reader.TryRead(out string line1))
-                {
-                    // Can we synchronously read multiple lines?
-                    // If yes, use the string builder to batch them together into a single write
-                    // If no, just write the single line without using the builder;
-                    if (_consoleBuffer.Reader.TryRead(out string line2))
-                    {
-                        builder.AppendLine(line1);
-                        builder.AppendLine(line2);
-                        int lines = 2;
-
-                        while (lines < DefaultBufferSize && _consoleBuffer.Reader.TryRead(out string nextLine))
-                        {
-                            builder.AppendLine(nextLine);
-                            lines++;
-                        }
-
-                        Console.Write(builder.ToString());
-                        builder.Clear();
-                    }
-                    else
-                    {
-                        Console.WriteLine(line1);
-                    }
-                }
-            }
-        }
-
         protected virtual void Dispose(bool disposing)
         {
             if (!_disposed)
@@ -173,6 +168,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                         _consoleBuffer.Writer.TryComplete();
                         _consoleBufferReadLoop.Wait(DisposeTimeout);
                     }
+
+                    _writeResetEvent?.Dispose();
                 }
 
                 _disposed = true;
