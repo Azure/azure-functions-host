@@ -171,7 +171,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string LinuxFunctionDetailsEventStreamName = "MS_FUNCTION_DETAILS";
         public const string LinuxAzureMonitorEventStreamName = "MS_FUNCTION_AZURE_MONITOR_EVENT";
         public const string LinuxMSISpecializationStem = "/api/specialize?api-version=2022-01-01";
-        public const string LinuxNewMSISpecializationStem = "/api/specialize?api-version=2023-05-01";
+        public const string LinuxNewMSISpecializationStem = "/api/specialize/encrypted?api-version=2023-05-01";
 
         public const string DurableTaskPropertyName = "durableTask";
         public const string DurableTaskHubName = "HubName";
