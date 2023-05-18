@@ -234,10 +234,10 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
-        /// Lookup a function by name
+        /// Lookup a function by name.
         /// </summary>
-        /// <param name="name">name of function</param>
-        /// <returns>function or null if not found</returns>
+        /// <param name="name">name of function.</param>
+        /// <returns>function or null if not found.</returns>
         public FunctionDescriptor GetFunctionOrNull(string name)
         {
             return Functions.FirstOrDefault(p => string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase));

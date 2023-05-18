@@ -80,7 +80,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         /// <param name="forceRefresh">Forces reload from all providers.</param>
         /// <param name="applyAllowList">Apply functions allow list filter.</param>
-        /// <param name="includeCustomProviders">Include any metadata provided by IFunctionProvider when loading the metadata</param>
+        /// <param name="includeCustomProviders">Include any metadata provided by IFunctionProvider when loading the metadata.</param>
         /// <returns> An Immmutable array of FunctionMetadata.</returns>
         public ImmutableArray<FunctionMetadata> GetFunctionMetadata(bool forceRefresh, bool applyAllowList = true, bool includeCustomProviders = true, IList<RpcWorkerConfig> workerConfigs = null)
         {

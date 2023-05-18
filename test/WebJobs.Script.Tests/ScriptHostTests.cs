@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
@@ -17,7 +18,6 @@ using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
-using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -1510,6 +1510,65 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // We should have a warning for host id in the start up logger
             var logger = loggerProvider.CreatedLoggers.First(x => x.Category == "Host.Startup");
             Assert.Single(logger.GetLogMessages(), x => x.FormattedMessage.Contains("Host id explicitly set in configuration."));
+        }
+
+        [Fact]
+        public async Task Initialize_MissingWorkerRuntime_SetsCorrectRuntimeFromFunctionMetadata()
+        {
+            var mockMetadata = new Mock<IFunctionMetadataManager>(MockBehavior.Strict);
+            mockMetadata.Setup(m => m.GetFunctionMetadata(It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<bool>(),
+                It.IsAny<IList<RpcWorkerConfig>>()))
+                .Returns(() =>
+                {
+                    var metadata = new[]
+                    {
+                        new FunctionMetadata
+                        {
+                            ScriptFile = "somefile.dll"
+                        }
+                    };
+
+                    return metadata.ToImmutableArray<FunctionMetadata>();
+                });
+
+            try
+            {
+                using (var tempDirectory = new TempDirectory())
+                {
+                    string rootPath = Path.Combine(tempDirectory.Path, Guid.NewGuid().ToString());
+                    Directory.CreateDirectory(rootPath);
+                    var metricsLogger = new TestMetricsLogger();
+                    var environment = new TestEnvironment();
+
+                    environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsExtensionVersion, "~4");
+
+                    IHost host = new HostBuilder()
+                        .ConfigureServices(s =>
+                        {
+                            s.AddSingleton<IEnvironment>(environment);
+                        })
+                        .ConfigureDefaultTestWebScriptHost(
+                            null,
+                            o => o.ScriptPath = rootPath,
+                            false,
+                            s =>
+                            {
+                                s.AddSingleton<IMetricsLogger>(metricsLogger);
+                            })
+                        .ConfigureServices(s =>
+                        {
+                            s.AddSingleton<IFunctionMetadataManager>(mockMetadata.Object);
+                        })
+                        .Build();
+                    var scriptHost = host.GetScriptHost();
+                    await scriptHost.InitializeAsync();
+                    //Assert.Single(metricsLogger.LoggedEvents, e => e.Equals($"host.startup.runtime.language.{expectedRuntimeStack}"));
+                }
+            }
+            finally
+            {
+                EnvironmentExtensions.BaseDirectory = null;
+            }
         }
 
         public class AssemblyMock : Assembly

@@ -203,7 +203,7 @@ namespace Microsoft.Azure.WebJobs.Script
         // These two implementations must stay in sync!
 
         /// <summary>
-        /// Determines which script should be considered the "primary" entry point script. Returns null if Primary script file cannot be determined
+        /// Determines which script should be considered the "primary" entry point script. Returns null if Primary script file cannot be determined.
         /// </summary>
         internal static string DeterminePrimaryScriptFile(string scriptFile, string scriptDirectory, IFileSystem fileSystem = null)
         {
