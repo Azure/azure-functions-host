@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.IO.Abstractions;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
@@ -17,7 +18,6 @@ using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
-using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -1510,6 +1510,97 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // We should have a warning for host id in the start up logger
             var logger = loggerProvider.CreatedLoggers.First(x => x.Category == "Host.Startup");
             Assert.Single(logger.GetLogMessages(), x => x.FormattedMessage.Contains("Host id explicitly set in configuration."));
+        }
+
+        [Theory]
+        [InlineData("main.py", "python", "python")]
+        [InlineData("app.dll", "dotnet", DotNetScriptTypes.DotNetAssembly)] // if FUNCTIONS_WORKER_RUNTIME is missing, assume dotnet
+        public async Task Initialize_MissingWorkerRuntime_SetsCorrectRuntimeFromFunctionMetadata(string scriptFile, string expectedMetricLanguage, string expectedMetadataLanguage)
+        {
+            IFileSystem CreateFileSystem(string rootPath)
+            {
+                var fullFileSystem = new FileSystem();
+                var fileSystem = new Mock<IFileSystem>();
+                var fileBase = new Mock<FileBase>();
+                var dirBase = new Mock<DirectoryBase>();
+
+                fileSystem.SetupGet(f => f.Path).Returns(fullFileSystem.Path);
+                fileSystem.SetupGet(f => f.File).Returns(fileBase.Object);
+
+                var hostjson = """
+                    {
+                        "version": "2.0"
+                    }
+                    """;
+                fileBase.Setup(f => f.ReadAllText(Path.Combine(rootPath, "host.json"))).Returns(hostjson);
+
+                fileSystem.SetupGet(f => f.Directory).Returns(dirBase.Object);
+
+                dirBase.Setup(d => d.Exists(rootPath)).Returns(true);
+                dirBase.Setup(d => d.EnumerateDirectories(rootPath))
+                    .Returns(new[]
+                    {
+                        Path.Combine(rootPath, "function1"),
+                    });
+
+                var function1 = $$"""
+                    {
+                        "scriptFile": "{{scriptFile}}",
+                        "bindings": [
+                            {
+                                "type": "httpTrigger",
+                                "direction": "in",
+                                "name": "test"
+                            }
+                        ]
+                    }
+                    """;
+                fileBase.Setup(f => f.ReadAllText(Path.Combine(rootPath, @"function1", "function.json"))).Returns(function1);
+
+                fileBase.Setup(f => f.Exists(Path.Combine(rootPath, @"function1", "function.json"))).Returns(true);
+                fileBase.Setup(f => f.Exists(Path.Combine(rootPath, @"function1", scriptFile))).Returns(true);
+
+                return fileSystem.Object;
+            }
+
+            try
+            {
+                string rootPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+                var metricsLogger = new TestMetricsLogger();
+                var environment = new TestEnvironment();
+
+                FileUtility.Instance = CreateFileSystem(rootPath);
+
+                IHost host = new HostBuilder()
+                    .ConfigureServices(s =>
+                    {
+                        s.AddSingleton<IEnvironment>(environment);
+                    })
+                    .ConfigureDefaultTestWebScriptHost(null, o => o.ScriptPath = rootPath, false, s =>
+                    {
+                        s.AddSingleton<IMetricsLogger>(metricsLogger);
+                    })
+                    .Build();
+
+                var scriptHost = host.GetScriptHost();
+                await scriptHost.InitializeAsync();
+
+                Assert.Contains($"host.startup.runtime.language.{expectedMetricLanguage}", metricsLogger.LoggedEvents);
+
+                // Previous bug incorrectly chose dotnet-isolated as the Language for C# precompiled functions
+                // if FUNCTIONS_WORKER_RUNTIME was missing
+                var metadataManager = host.Services.GetService<IFunctionMetadataManager>();
+                var metadata = metadataManager.GetFunctionMetadata();
+                foreach (var functionMetadata in metadata)
+                {
+                    Assert.Equal(expectedMetadataLanguage, functionMetadata.Language);
+                }
+            }
+            finally
+            {
+                FileUtility.Instance = null;
+                EnvironmentExtensions.BaseDirectory = null;
+            }
         }
 
         public class AssemblyMock : Assembly

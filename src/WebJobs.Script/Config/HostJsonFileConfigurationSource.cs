@@ -198,7 +198,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                     JObject hostConfigObject;
                     try
                     {
-                        string json = File.ReadAllText(configFilePath);
+                        string json = FileUtility.Instance.File.ReadAllText(configFilePath);
                         hostConfigObject = JObject.Parse(json);
                     }
                     catch (JsonException ex)

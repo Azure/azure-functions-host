@@ -89,6 +89,17 @@ namespace WebJobsStartupTests
         {
         }
 
+        [FunctionName("Echo")]
+        public IActionResult Echo([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = null)] HttpRequest req)
+        {
+            if (req.Query.TryGetValue("echo", out var value))
+            {
+                return new OkObjectResult(value.Single());
+            }
+
+            return new BadRequestResult();
+        }
+
         private static bool ValidateConfig(IConfiguration _config)
         {
             if (_config is ConfigurationRoot root)
