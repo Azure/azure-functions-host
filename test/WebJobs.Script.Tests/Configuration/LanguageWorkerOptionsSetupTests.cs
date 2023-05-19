@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             if (string.IsNullOrEmpty(workerRuntime))
             {
-                Assert.Equal(5, options.WorkerConfigs.Count);
+                Assert.Equal(4, options.WorkerConfigs.Count);
             }
             else if (workerRuntime.Equals(RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
             {
