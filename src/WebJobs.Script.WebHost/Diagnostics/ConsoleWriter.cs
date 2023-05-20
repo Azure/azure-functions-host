@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         // we can influence the latency distribution by controlling how much of the buffer we will process in one pass.
         // If we set this to 1, the P50 latency will be low, but the P99 latency will be high.
         // If we set this to a large value, it keeps the P99 latency under control but the P50 degrades.
-        // In local testing with a console attached, processing 1/10th of the buffer size per iteration yields single digit P50 while keeping P99 under 100ms.
+        // In local testing with a console attached, processing 1/10th of the buffer size per iteration yields P50 under 10ms with P99 under 100ms.
         private const int SingleWriteBufferDenominator = 10;
 
         private static readonly TimeSpan DisposeTimeout = TimeSpan.FromSeconds(5);
