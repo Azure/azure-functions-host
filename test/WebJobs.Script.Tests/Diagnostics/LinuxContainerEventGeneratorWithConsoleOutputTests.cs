@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             Console.SetOut(standardOutput);
         }
 
-        private IEnvironment CreateEnvironment(bool consoleDisabled = false, int? bufferSize = null, bool? batched = null)
+        private IEnvironment CreateEnvironment(bool consoleDisabled = false, int? bufferSize = null)
         {
             var mockEnvironment = new Mock<IEnvironment>(MockBehavior.Strict);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.ContainerName)).Returns(_containerName);
@@ -45,13 +45,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
 
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.ConsoleLoggingDisabled)).Returns(consoleDisabled ? "1" : "0");
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.ConsoleLoggingBufferSize)).Returns(bufferSize?.ToString());
-            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.ConsoleLoggingBufferBatched)).Returns(
-                batched switch
-                {
-                    null => null,
-                    true => "1",
-                    false => "0",
-                });
             return mockEnvironment.Object;
         }
 
@@ -86,12 +79,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             Assert.Equal($"MS_FUNCTION_LOGS 4,C37E3412-86D1-4B93-BC5A-A2AE09D26C2D,TestApp,TestFunction,TestEvent,TestSource,\"These are the details, lots of details\",\"This is the summary, a great summary\",{ScriptHost.Version},{timestamp.ToString("O")},TestExceptionType,\"Test exception message, with details\",E2D5A6ED-4CE3-4CFD-8878-FD4814F0A1F3,3AD41658-1C4E-4C9D-B0B9-24F2BDAE2829,F0AAA9AD-C3A6-48B9-A75E-57BB280EBB53,TEST-CONTAINER,test-stamp,test-tenant,TestRuntimeSiteName,TestSlotName", output);
         }
 
-        [Theory]
-        [InlineData(false)]
-        [InlineData(true)]
-        public async Task SingleEventBuffer(bool batched)
+        [Fact]
+        public async Task SingleEventBuffer()
         {
-            var env = CreateEnvironment(bufferSize: 10, batched: batched);
+            var env = CreateEnvironment(bufferSize: 10);
             var generator = new LinuxContainerEventGenerator(env);
 
             var timestamp = DateTime.Parse("2023-04-19T14:12:00.0000000Z");
@@ -105,12 +96,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             Assert.Equal($"MS_FUNCTION_LOGS 4,C37E3412-86D1-4B93-BC5A-A2AE09D26C2D,TestApp,TestFunction,TestEvent,TestSource,\"These are the details, lots of details\",\"This is the summary, a great summary\",{ScriptHost.Version},{timestamp.ToString("O")},TestExceptionType,\"Test exception message, with details\",E2D5A6ED-4CE3-4CFD-8878-FD4814F0A1F3,3AD41658-1C4E-4C9D-B0B9-24F2BDAE2829,F0AAA9AD-C3A6-48B9-A75E-57BB280EBB53,TEST-CONTAINER,test-stamp,test-tenant,TestRuntimeSiteName,TestSlotName", output);
         }
 
-        [Theory]
-        [InlineData(false)]
-        [InlineData(true)]
-        public async Task MultipleEventsBuffered(bool batched)
+        [Fact]
+        public async Task MultipleEventsBuffered()
         {
-            var env = CreateEnvironment(bufferSize: 10, batched: batched);
+            var env = CreateEnvironment(bufferSize: 10);
             var generator = new LinuxContainerEventGenerator(env);
 
             var timestamp = DateTime.Parse("2023-04-19T14:12:00.0000000Z");
@@ -130,13 +119,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             Assert.Equal($"MS_FUNCTION_LOGS 4,C37E3412-86D1-4B93-BC5A-A2AE09D26C2D,TestApp,TestFunction3,TestEvent,TestSource,\"These are the details, lots of details\",\"This is the summary, a great summary\",{ScriptHost.Version},{timestamp.ToString("O")},TestExceptionType,\"Test exception message, with details\",E2D5A6ED-4CE3-4CFD-8878-FD4814F0A1F3,3AD41658-1C4E-4C9D-B0B9-24F2BDAE2829,F0AAA9AD-C3A6-48B9-A75E-57BB280EBB53,TEST-CONTAINER,test-stamp,test-tenant,TestRuntimeSiteName,TestSlotName", output[2]);
         }
 
-        [Theory]
-        [InlineData(false)]
-        [InlineData(true)]
-        public void MultipleEventsWithTinyBuffer_WritesDirectlyToConsoleOnTimeout(bool batched)
+        [Fact]
+        public void MultipleEventsWithTinyBuffer_WritesDirectlyToConsoleOnTimeout()
         {
             // setup in a state where the buffer isn't being processed and can only hold two messages
-            var env = CreateEnvironment(bufferSize: 2, batched: batched);
+            var env = CreateEnvironment(bufferSize: 2);
             var consoleWriter = new ConsoleWriter(env, LinuxContainerEventGenerator.LogUnhandledException, consoleBufferTimeout: TimeSpan.FromMilliseconds(10), autoStart: false);
             var generator = new LinuxContainerEventGenerator(env, consoleWriter);
 
@@ -160,7 +147,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         public async Task WritesLogsDirectlyWhenBufferIsFull()
         {
             // setup in a state where the buffer isn't being processed and can only hold two messages
-            var env = CreateEnvironment(bufferSize: 2, batched: true);
+            var env = CreateEnvironment(bufferSize: 2);
             var consoleWriter = new ConsoleWriter(env, LinuxContainerEventGenerator.LogUnhandledException, consoleBufferTimeout: TimeSpan.FromMilliseconds(500), autoStart: false);
             var generator = new LinuxContainerEventGenerator(env, consoleWriter);
 
@@ -172,7 +159,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             generator.LogFunctionTraceEvent(LogLevel.Information, "C37E3412-86D1-4B93-BC5A-A2AE09D26C2D", "TestApp", "TestFunction3", "TestEvent", "TestSource", "These are the details, lots of details", "This is the summary, a great summary", "TestExceptionType", "Test exception message, with details", "E2D5A6ED-4CE3-4CFD-8878-FD4814F0A1F3", "3AD41658-1C4E-4C9D-B0B9-24F2BDAE2829", "F0AAA9AD-C3A6-48B9-A75E-57BB280EBB53", "TestRuntimeSiteName", "TestSlotName", timestamp);
             await Task.Delay(TimeSpan.FromMilliseconds(10));
 
-            consoleWriter.StartProcessingBuffer(batched: true);
+            consoleWriter.StartProcessingBuffer();
             await Task.Delay(TimeSpan.FromMilliseconds(50));
 
             using var sr = new StreamReader(_consoleOut);
@@ -190,7 +177,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         [Fact]
         public async Task FlushesBufferOnDispose()
         {
-            var env = CreateEnvironment(bufferSize: 10, batched: true);
+            var env = CreateEnvironment(bufferSize: 10);
             var consoleWriter = new ConsoleWriter(env, LinuxContainerEventGenerator.LogUnhandledException, consoleBufferTimeout: TimeSpan.FromMilliseconds(500), autoStart: true);
             var generator = new LinuxContainerEventGenerator(env, consoleWriter);
 
