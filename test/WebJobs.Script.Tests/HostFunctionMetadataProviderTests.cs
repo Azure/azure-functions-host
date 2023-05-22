@@ -4,11 +4,13 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Abstractions;
 using System.IO.Abstractions.TestingHelpers;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Extensions.Logging.Abstractions;
+using Moq;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
@@ -99,16 +101,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
-        [InlineData("node", "test.js", false)]
-        [InlineData("java", "test.jar", false)]
-        [InlineData("CSharp", "test.cs", false)]
-        [InlineData("CSharp", "test.csx", false)]
-        [InlineData("dllWorker", "test.dll", true)] // The test "dllWorker" will claim ".dll" extensions before falling back to DotNetAssembly
-        [InlineData("DotNetAssembly", "test.dll", false)]
-        [InlineData(null, "test.x", false)]
-        public void ParseLanguage_Returns_ExpectedLanguage(string language, string scriptFile, bool includeDllWorker)
+        [InlineData("node", "test.js")]
+        [InlineData("java", "test.jar")]
+        [InlineData("CSharp", "test.cs")]
+        [InlineData("CSharp", "test.csx")]
+        [InlineData("DotNetAssembly", "test.dll")]
+        [InlineData(null, "test.x")]
+        public void ParseLanguage_Returns_ExpectedLanguage(string expectedLanguage, string scriptFile)
         {
-            Assert.Equal(language, HostFunctionMetadataProvider.ParseLanguage(scriptFile, TestHelpers.GetTestWorkerConfigs(includeDllWorker: includeDllWorker)));
+            var configs = TestHelpers.GetTestWorkerConfigs();
+            Assert.Equal(expectedLanguage, HostFunctionMetadataProvider.ParseLanguage(scriptFile, configs, isDirect: false));
+        }
+
+        [Theory]
+        [InlineData("dllWorker", false)] // when not direct, use the worker that claims "dll"
+        [InlineData("DotNetAssembly", true)] // when direct, do not consult worker configs and fallback to in-proc
+        public void ParseLanguage_WithDllWorker_Returns_ExpectedLanguage(string expectedLanguage, bool isDirect)
+        {
+            // The logic when a worker claims "dll" is unique because in-proc also claims dll, so test it separately
+            var scriptFile = "test.dll";
+            var configs = TestHelpers.GetTestWorkerConfigs(includeDllWorker: true);
+            Assert.Equal(expectedLanguage, HostFunctionMetadataProvider.ParseLanguage(scriptFile, configs, isDirect));
         }
 
         [Theory]
@@ -120,7 +133,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData(null)]
         public void ParseLanguage_HttpWorker_Returns_Null(string scriptFile)
         {
-            Assert.Null(HostFunctionMetadataProvider.ParseLanguage(scriptFile, TestHelpers.GetTestWorkerConfigsNoLanguage()));
+            Assert.Null(HostFunctionMetadataProvider.ParseLanguage(scriptFile, TestHelpers.GetTestWorkerConfigsNoLanguage(), isDirect: false));
         }
 
         [Fact]
@@ -290,6 +303,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var fileSystem = new MockFileSystem(files);
             string scriptFile = HostFunctionMetadataProvider.DeterminePrimaryScriptFile(scriptFileName, @"c:\functions", fileSystem);
             Assert.Equal(@"c:\functions\queueTrigger.py", scriptFile, StringComparer.OrdinalIgnoreCase);
+        }
+
+        [Fact]
+        public void ParseFunctionMetadata_AttributeConfigSource_ResolvesToDotNetAssembly()
+        {
+            var functionJson = new
+            {
+                configurationSource = "attributes",
+                scriptFile = "test.dll",
+                bindings = new[] { new { } }
+            };
+            var json = JObject.FromObject(functionJson);
+            var scriptRoot = Path.Combine(Path.GetTempPath(), Path.GetTempFileName());
+
+            var fullFileSystem = new FileSystem();
+            var fileSystemMock = new Mock<IFileSystem>();
+            var fileBaseMock = new Mock<FileBase>();
+            fileSystemMock.Setup(f => f.Path).Returns(fullFileSystem.Path);
+            fileSystemMock.Setup(f => f.File).Returns(fileBaseMock.Object);
+            fileBaseMock.Setup(f => f.Exists(It.IsAny<string>())).Returns(true);
+
+            var workerConfigs = TestHelpers.GetTestWorkerConfigs(includeDllWorker: true);
+
+            var metadata = HostFunctionMetadataProvider.ParseFunctionMetadata("Function1", json, scriptRoot, fileSystemMock.Object, workerConfigs);
+            Assert.Equal(DotNetScriptTypes.DotNetAssembly, metadata.Language);
         }
     }
 }

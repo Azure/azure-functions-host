@@ -119,7 +119,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        private FunctionMetadata ParseFunctionMetadata(string functionName, JObject configMetadata, string scriptDirectory, IFileSystem fileSystem, IEnumerable<RpcWorkerConfig> workerConfigs)
+        internal static FunctionMetadata ParseFunctionMetadata(string functionName, JObject configMetadata, string scriptDirectory, IFileSystem fileSystem, IEnumerable<RpcWorkerConfig> workerConfigs)
         {
             var functionMetadata = new FunctionMetadata
             {
@@ -142,23 +142,22 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
             }
 
-            JToken isDirect;
-            if (configMetadata.TryGetValue("configurationSource", StringComparison.OrdinalIgnoreCase, out isDirect))
+            if (configMetadata.TryGetValue("configurationSource", StringComparison.OrdinalIgnoreCase, out JToken configurationSourceJson))
             {
-                var isDirectValue = isDirect.ToString();
-                if (string.Equals(isDirectValue, "attributes", StringComparison.OrdinalIgnoreCase))
+                var configurationSourceValue = configurationSourceJson.ToString();
+                if (string.Equals(configurationSourceValue, "attributes", StringComparison.OrdinalIgnoreCase))
                 {
                     functionMetadata.SetIsDirect(true);
                 }
-                else if (!string.Equals(isDirectValue, "config", StringComparison.OrdinalIgnoreCase))
+                else if (!string.Equals(configurationSourceValue, "config", StringComparison.OrdinalIgnoreCase))
                 {
-                    throw new FormatException($"Illegal value '{isDirectValue}' for 'configurationSource' property in {functionMetadata.Name}'.");
+                    throw new FormatException($"Illegal value '{configurationSourceValue}' for 'configurationSource' property in {functionMetadata.Name}'.");
                 }
             }
             functionMetadata.ScriptFile = DeterminePrimaryScriptFile((string)configMetadata["scriptFile"], scriptDirectory, fileSystem);
             if (!string.IsNullOrWhiteSpace(functionMetadata.ScriptFile))
             {
-                functionMetadata.Language = ParseLanguage(functionMetadata.ScriptFile, workerConfigs);
+                functionMetadata.Language = ParseLanguage(functionMetadata.ScriptFile, workerConfigs, functionMetadata.IsDirect());
             }
             functionMetadata.EntryPoint = (string)configMetadata["entryPoint"];
 
@@ -169,7 +168,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return functionMetadata;
         }
 
-        internal static string ParseLanguage(string scriptFilePath, IEnumerable<RpcWorkerConfig> workerConfigs)
+        internal static string ParseLanguage(string scriptFilePath, IEnumerable<RpcWorkerConfig> workerConfigs, bool isDirect)
         {
             // scriptFilePath is not required for HttpWorker
             if (string.IsNullOrEmpty(scriptFilePath))
@@ -179,10 +178,14 @@ namespace Microsoft.Azure.WebJobs.Script
 
             // determine the script type based on the primary script file extension
             string extension = Path.GetExtension(scriptFilePath).ToLowerInvariant().TrimStart('.');
-            var workerConfig = workerConfigs.FirstOrDefault(config => config.Description.Extensions.Contains("." + extension));
-            if (workerConfig != null)
+
+            if (!isDirect)
             {
-                return workerConfig.Description.Language;
+                var workerConfig = workerConfigs.FirstOrDefault(config => config.Description.Extensions.Contains("." + extension));
+                if (workerConfig != null)
+                {
+                    return workerConfig.Description.Language;
+                }
             }
 
             // If no worker claimed these extensions, use in-proc.
@@ -203,11 +206,11 @@ namespace Microsoft.Azure.WebJobs.Script
         // These two implementations must stay in sync!
 
         /// <summary>
-        /// Determines which script should be considered the "primary" entry point script. Returns null if Primary script file cannot be determined
+        /// Determines which script should be considered the "primary" entry point script. Returns null if Primary script file cannot be determined.
         /// </summary>
         internal static string DeterminePrimaryScriptFile(string scriptFile, string scriptDirectory, IFileSystem fileSystem = null)
         {
-            fileSystem = fileSystem ?? FileUtility.Instance;
+            fileSystem ??= FileUtility.Instance;
 
             // First see if there is an explicit primary file indicated
             // in config. If so use that.
