@@ -9,13 +9,8 @@ using System.Threading.Tasks;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
-    internal class ConsoleWriter : IDisposable
+    internal sealed class BufferedConsoleWriter : IDisposable
     {
-        // A typical out-of-proc function execution will generate 8 log lines.
-        // A single core container can potentially get around 1K RPS at the higher end, and a typical log line is around 300 bytes
-        // So in the extreme case, this is about 1 second of buffer and should be less than 3MB
-        private const int DefaultBufferSize = 8000;
-
         // Because we read the log lines in batches from the buffer and write them to the console in one go,
         // we can influence the latency distribution by controlling how much of the buffer we will process in one pass.
         // If we set this to 1, the P50 latency will be low, but the P99 latency will be high.
@@ -34,46 +29,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private Action<string> _writeEvent;
         private bool _disposed;
 
-        public ConsoleWriter(IEnvironment environment, Action<Exception> unhandledExceptionHandler)
-            : this(environment, unhandledExceptionHandler, consoleBufferTimeout: DefaultConsoleBufferTimeout, autoStart: true)
+        public BufferedConsoleWriter(int bufferSize, Action<Exception> exceptionHandler)
+            : this(bufferSize, exceptionHandler, consoleBufferTimeout: DefaultConsoleBufferTimeout, autoStart: true)
         {
         }
 
-        internal ConsoleWriter(IEnvironment environment, Action<Exception> exceptionHandler, TimeSpan consoleBufferTimeout, bool autoStart)
+        internal BufferedConsoleWriter(int bufferSize, Action<Exception> exceptionHandler, TimeSpan consoleBufferTimeout, bool autoStart)
         {
-            bool consoleEnabled = environment.GetEnvironmentVariable(EnvironmentSettingNames.ConsoleLoggingDisabled) != "1";
+            _consoleBuffer = Channel.CreateBounded<string>(new BoundedChannelOptions(bufferSize) { SingleReader = true, SingleWriter = false });
+            _writeEvent = WriteToConsoleBuffer;
+            _consoleBufferTimeout = consoleBufferTimeout;
+            _writeResetEvent = new ManualResetEvent(true);
+            _maxLinesPerWrite = bufferSize / SingleWriteBufferDenominator;
 
-            if (consoleEnabled)
+            if (autoStart)
             {
-                int maxBufferSize = environment.GetEnvironmentVariable(EnvironmentSettingNames.ConsoleLoggingBufferSize) switch
-                {
-                    var s when int.TryParse(s, out int i) && i >= 0 => i,
-                    var s when int.TryParse(s, out int i) && i < 0 => throw new ArgumentOutOfRangeException(nameof(EnvironmentSettingNames.ConsoleLoggingBufferSize), "Console buffer size cannot be negative"),
-                    _ => DefaultBufferSize,
-                };
-
-                if (maxBufferSize == 0)
-                {
-                    // buffer size was set to zero - disable it
-                    _writeEvent = Console.WriteLine;
-                }
-                else
-                {
-                    _consoleBuffer = Channel.CreateBounded<string>(new BoundedChannelOptions(maxBufferSize) { SingleReader = true, SingleWriter = false });
-                    _writeEvent = WriteToConsoleBuffer;
-                    _consoleBufferTimeout = consoleBufferTimeout;
-                    _writeResetEvent = new ManualResetEvent(true);
-                    _maxLinesPerWrite = maxBufferSize / SingleWriteBufferDenominator;
-
-                    if (autoStart)
-                    {
-                        StartProcessingBuffer();
-                    }
-                }
-            }
-            else
-            {
-                _writeEvent = (string s) => { };
+                StartProcessingBuffer();
             }
 
             _exceptionhandler = exceptionHandler;
@@ -86,12 +57,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         private void WriteToConsoleBuffer(string evt)
         {
-            if (_consoleBuffer.Writer.TryWrite(evt) == false)
+            if (!_consoleBuffer.Writer.TryWrite(evt))
             {
                 _writeResetEvent.Reset();
-                if (_writeResetEvent.WaitOne(_consoleBufferTimeout) == false || _consoleBuffer.Writer.TryWrite(evt) == false)
+                bool waitFailed = !_writeResetEvent.WaitOne(_consoleBufferTimeout);
+
+                // If the wait failed, write to the console. Otherwise, try the writing again - if that fails, write to the console.
+                if (waitFailed || !_consoleBuffer.Writer.TryWrite(evt))
                 {
-                    // We have either timed out or the buffer was full again, so just write directly to console
                     Console.WriteLine(evt);
                 }
             }
@@ -157,28 +130,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             }
         }
 
-        protected virtual void Dispose(bool disposing)
+        public void Dispose()
         {
             if (!_disposed)
             {
-                if (disposing)
+                if (_consoleBuffer != null)
                 {
-                    if (_consoleBuffer != null)
-                    {
-                        _consoleBuffer.Writer.TryComplete();
-                        _consoleBufferReadLoop.Wait(DisposeTimeout);
-                    }
-
-                    _writeResetEvent?.Dispose();
+                    _consoleBuffer.Writer.TryComplete();
+                    _consoleBufferReadLoop.Wait(DisposeTimeout);
                 }
 
+                _writeResetEvent?.Dispose();
                 _disposed = true;
             }
-        }
 
-        public void Dispose()
-        {
-            Dispose(disposing: true);
             GC.SuppressFinalize(this);
         }
     }

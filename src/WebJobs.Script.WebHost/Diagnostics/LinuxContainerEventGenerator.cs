@@ -2,7 +2,9 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
@@ -11,19 +13,38 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private const int MaxDetailsLength = 10000;
         private static readonly Lazy<LinuxContainerEventGenerator> _Lazy = new Lazy<LinuxContainerEventGenerator>(() => new LinuxContainerEventGenerator(SystemEnvironment.Instance, Console.WriteLine));
         private readonly Action<string> _writeEvent;
-        private readonly ConsoleWriter _consoleWriter;
+        private readonly BufferedConsoleWriter _consoleWriter;
         private readonly IEnvironment _environment;
         private string _containerName;
         private string _stampName;
         private string _tenantId;
         private bool _disposed;
 
-        public LinuxContainerEventGenerator(IEnvironment environment, Action<string> writeEvent = null)
+        public LinuxContainerEventGenerator(IEnvironment environment, IOptions<ConsoleLoggingOptions> consoleLoggingOptions)
+        {
+            if (consoleLoggingOptions.Value.LoggingDisabled)
+            {
+                _writeEvent = (string s) => { };
+            }
+            else if (!consoleLoggingOptions.Value.BufferEnabled)
+            {
+                _writeEvent = Console.WriteLine;
+            }
+            else
+            {
+                _consoleWriter = new BufferedConsoleWriter(consoleLoggingOptions.Value.BufferSize, LogUnhandledException);
+                _writeEvent = _consoleWriter.WriteHandler;
+            }
+
+            _environment = environment;
+            _containerName = _environment.GetEnvironmentVariable(EnvironmentSettingNames.ContainerName)?.ToUpperInvariant();
+        }
+
+        public LinuxContainerEventGenerator(IEnvironment environment, Action<string> writeEvent)
         {
             if (writeEvent == null)
             {
-                _consoleWriter = new ConsoleWriter(environment, LogUnhandledException);
-                writeEvent = _consoleWriter.WriteHandler;
+                throw new ArgumentNullException(nameof(writeEvent));
             }
 
             _writeEvent = writeEvent;
@@ -33,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         }
 
         // For testing
-        internal LinuxContainerEventGenerator(IEnvironment environment, ConsoleWriter consoleWriter)
+        internal LinuxContainerEventGenerator(IEnvironment environment, BufferedConsoleWriter consoleWriter)
         {
             _environment = environment;
             _consoleWriter = consoleWriter;

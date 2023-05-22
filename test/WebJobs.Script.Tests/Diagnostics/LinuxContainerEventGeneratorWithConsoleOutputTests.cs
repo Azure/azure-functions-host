@@ -6,8 +6,10 @@ using System.IO;
 using System.IO.Abstractions.TestingHelpers;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
 
@@ -35,24 +37,44 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             Console.SetOut(standardOutput);
         }
 
-        private IEnvironment CreateEnvironment(bool consoleDisabled = false, int? bufferSize = null)
+        private IEnvironment CreateEnvironment()
         {
             var mockEnvironment = new Mock<IEnvironment>(MockBehavior.Strict);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.ContainerName)).Returns(_containerName);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.WebSiteHomeStampName)).Returns(_stampName);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.WebSiteStampDeploymentId)).Returns(_tenantId);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.LinuxNodeIpAddress)).Returns(_testNodeAddress);
-
-            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.ConsoleLoggingDisabled)).Returns(consoleDisabled ? "1" : "0");
-            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.ConsoleLoggingBufferSize)).Returns(bufferSize?.ToString());
             return mockEnvironment.Object;
+        }
+
+        private IOptions<ConsoleLoggingOptions> CreateLoggingOptions(bool? consoleDisabled = null, bool? bufferEnabled = null, int? bufferSize = null)
+        {
+            var options = new ConsoleLoggingOptions();
+
+            if (consoleDisabled != null)
+            {
+                options.LoggingDisabled = consoleDisabled.Value;
+            }
+
+            if (bufferEnabled != null)
+            {
+                options.BufferEnabled = bufferEnabled.Value;
+            }
+
+            if (bufferSize != null)
+            {
+                options.BufferSize = bufferSize.Value;
+            }
+
+            return Options.Create(options);
         }
 
         [Fact]
         public void GenerateNothingWhenDisabled()
         {
-            var env = CreateEnvironment(consoleDisabled: true);
-            var generator = new LinuxContainerEventGenerator(env);
+            var options = CreateLoggingOptions(consoleDisabled: true);
+            var env = CreateEnvironment();
+            var generator = new LinuxContainerEventGenerator(env, options);
 
             generator.LogFunctionTraceEvent(LogLevel.Information, "C37E3412-86D1-4B93-BC5A-A2AE09D26C2D", "TestApp", "TestFunction", "TestEvent", "TestSource", "These are the details, lots of details", "This is the summary, a great summary", "TestExceptionType", "Test exception message, with details", "E2D5A6ED-4CE3-4CFD-8878-FD4814F0A1F3", "3AD41658-1C4E-4C9D-B0B9-24F2BDAE2829", "F0AAA9AD-C3A6-48B9-A75E-57BB280EBB53", "TestRuntimeSiteName", "TestSlotName", DateTime.Now);
 
@@ -66,8 +88,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         [Fact]
         public void SingleEventNoBuffer()
         {
-            var env = CreateEnvironment(bufferSize: 0);
-            var generator = new LinuxContainerEventGenerator(env);
+            var options = CreateLoggingOptions(bufferEnabled: false);
+            var env = CreateEnvironment();
+            var generator = new LinuxContainerEventGenerator(env, options);
 
             var timestamp = DateTime.Parse("2023-04-19T14:12:00.0000000Z");
             generator.LogFunctionTraceEvent(LogLevel.Information, "C37E3412-86D1-4B93-BC5A-A2AE09D26C2D", "TestApp", "TestFunction", "TestEvent", "TestSource", "These are the details, lots of details", "This is the summary, a great summary", "TestExceptionType", "Test exception message, with details", "E2D5A6ED-4CE3-4CFD-8878-FD4814F0A1F3", "3AD41658-1C4E-4C9D-B0B9-24F2BDAE2829", "F0AAA9AD-C3A6-48B9-A75E-57BB280EBB53", "TestRuntimeSiteName", "TestSlotName", timestamp);
@@ -82,8 +105,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         [Fact]
         public async Task SingleEventBuffer()
         {
-            var env = CreateEnvironment(bufferSize: 10);
-            var generator = new LinuxContainerEventGenerator(env);
+            var options = CreateLoggingOptions(bufferSize: 10);
+            var env = CreateEnvironment();
+            var generator = new LinuxContainerEventGenerator(env, options);
 
             var timestamp = DateTime.Parse("2023-04-19T14:12:00.0000000Z");
             generator.LogFunctionTraceEvent(LogLevel.Information, "C37E3412-86D1-4B93-BC5A-A2AE09D26C2D", "TestApp", "TestFunction", "TestEvent", "TestSource", "These are the details, lots of details", "This is the summary, a great summary", "TestExceptionType", "Test exception message, with details", "E2D5A6ED-4CE3-4CFD-8878-FD4814F0A1F3", "3AD41658-1C4E-4C9D-B0B9-24F2BDAE2829", "F0AAA9AD-C3A6-48B9-A75E-57BB280EBB53", "TestRuntimeSiteName", "TestSlotName", timestamp);
@@ -99,8 +123,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         [Fact]
         public async Task MultipleEventsBuffered()
         {
-            var env = CreateEnvironment(bufferSize: 10);
-            var generator = new LinuxContainerEventGenerator(env);
+            var options = CreateLoggingOptions(bufferSize: 10);
+            var env = CreateEnvironment();
+            var generator = new LinuxContainerEventGenerator(env, options);
 
             var timestamp = DateTime.Parse("2023-04-19T14:12:00.0000000Z");
             generator.LogFunctionTraceEvent(LogLevel.Information, "C37E3412-86D1-4B93-BC5A-A2AE09D26C2D", "TestApp", "TestFunction1", "TestEvent", "TestSource", "These are the details, lots of details", "This is the summary, a great summary", "TestExceptionType", "Test exception message, with details", "E2D5A6ED-4CE3-4CFD-8878-FD4814F0A1F3", "3AD41658-1C4E-4C9D-B0B9-24F2BDAE2829", "F0AAA9AD-C3A6-48B9-A75E-57BB280EBB53", "TestRuntimeSiteName", "TestSlotName", timestamp);
@@ -123,8 +148,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         public void MultipleEventsWithTinyBuffer_WritesDirectlyToConsoleOnTimeout()
         {
             // setup in a state where the buffer isn't being processed and can only hold two messages
-            var env = CreateEnvironment(bufferSize: 2);
-            var consoleWriter = new ConsoleWriter(env, LinuxContainerEventGenerator.LogUnhandledException, consoleBufferTimeout: TimeSpan.FromMilliseconds(10), autoStart: false);
+            var env = CreateEnvironment();
+            var consoleWriter = new BufferedConsoleWriter(bufferSize: 2, LinuxContainerEventGenerator.LogUnhandledException, consoleBufferTimeout: TimeSpan.FromMilliseconds(10), autoStart: false);
             var generator = new LinuxContainerEventGenerator(env, consoleWriter);
 
             var timestamp = DateTime.Parse("2023-04-19T14:12:00.0000000Z");
@@ -146,9 +171,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         [Fact]
         public async Task WritesLogsDirectlyWhenBufferIsFull()
         {
+            var env = CreateEnvironment();
             // setup in a state where the buffer isn't being processed and can only hold two messages
-            var env = CreateEnvironment(bufferSize: 2);
-            var consoleWriter = new ConsoleWriter(env, LinuxContainerEventGenerator.LogUnhandledException, consoleBufferTimeout: TimeSpan.FromMilliseconds(500), autoStart: false);
+            var consoleWriter = new BufferedConsoleWriter(bufferSize: 2, LinuxContainerEventGenerator.LogUnhandledException, consoleBufferTimeout: TimeSpan.FromMilliseconds(500), autoStart: false);
             var generator = new LinuxContainerEventGenerator(env, consoleWriter);
 
             var timestamp = DateTime.Parse("2023-04-19T14:12:00.0000000Z");
@@ -177,8 +202,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         [Fact]
         public async Task FlushesBufferOnDispose()
         {
-            var env = CreateEnvironment(bufferSize: 10);
-            var consoleWriter = new ConsoleWriter(env, LinuxContainerEventGenerator.LogUnhandledException, consoleBufferTimeout: TimeSpan.FromMilliseconds(500), autoStart: true);
+            var env = CreateEnvironment();
+            var consoleWriter = new BufferedConsoleWriter(bufferSize: 10, LinuxContainerEventGenerator.LogUnhandledException, consoleBufferTimeout: TimeSpan.FromMilliseconds(500), autoStart: true);
             var generator = new LinuxContainerEventGenerator(env, consoleWriter);
 
             // Setup console output that will block until we release the semaphore.
