@@ -26,13 +26,16 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IMetricsLogger _metricsLogger;
         private readonly Dictionary<string, ICollection<string>> _functionErrors = new Dictionary<string, ICollection<string>>();
         private readonly ILogger _logger;
+        private readonly IEnvironment _environment;
         private ImmutableArray<FunctionMetadata> _functions;
 
-        public HostFunctionMetadataProvider(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger<HostFunctionMetadataProvider> logger, IMetricsLogger metricsLogger)
+        public HostFunctionMetadataProvider(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger<HostFunctionMetadataProvider> logger,
+            IMetricsLogger metricsLogger, IEnvironment environment)
         {
             _applicationHostOptions = applicationHostOptions;
             _metricsLogger = metricsLogger;
             _logger = logger;
+            _environment = environment;
         }
 
         public ImmutableDictionary<string, ImmutableArray<string>> FunctionErrors
@@ -100,7 +103,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
                     JObject functionConfig = JObject.Parse(json);
 
-                    return ParseFunctionMetadata(functionName, functionConfig, functionDirectory, fileSystem, workerConfigs);
+                    return ParseFunctionMetadata(functionName, functionConfig, functionDirectory, fileSystem,
+                        workerConfigs, _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime));
                 }
                 catch (Exception ex)
                 {
@@ -119,7 +123,8 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        internal static FunctionMetadata ParseFunctionMetadata(string functionName, JObject configMetadata, string scriptDirectory, IFileSystem fileSystem, IEnumerable<RpcWorkerConfig> workerConfigs)
+        internal static FunctionMetadata ParseFunctionMetadata(string functionName, JObject configMetadata, string scriptDirectory, IFileSystem fileSystem,
+            IEnumerable<RpcWorkerConfig> workerConfigs, string functionsWorkerRuntime)
         {
             var functionMetadata = new FunctionMetadata
             {
@@ -157,7 +162,7 @@ namespace Microsoft.Azure.WebJobs.Script
             functionMetadata.ScriptFile = DeterminePrimaryScriptFile((string)configMetadata["scriptFile"], scriptDirectory, fileSystem);
             if (!string.IsNullOrWhiteSpace(functionMetadata.ScriptFile))
             {
-                functionMetadata.Language = ParseLanguage(functionMetadata.ScriptFile, workerConfigs, functionMetadata.IsDirect());
+                functionMetadata.Language = ParseLanguage(functionMetadata.ScriptFile, workerConfigs, functionsWorkerRuntime);
             }
             functionMetadata.EntryPoint = (string)configMetadata["entryPoint"];
 
@@ -168,7 +173,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return functionMetadata;
         }
 
-        internal static string ParseLanguage(string scriptFilePath, IEnumerable<RpcWorkerConfig> workerConfigs, bool isDirect)
+        internal static string ParseLanguage(string scriptFilePath, IEnumerable<RpcWorkerConfig> workerConfigs, string functionsWorkerRuntime)
         {
             // scriptFilePath is not required for HttpWorker
             if (string.IsNullOrEmpty(scriptFilePath))
@@ -179,7 +184,14 @@ namespace Microsoft.Azure.WebJobs.Script
             // determine the script type based on the primary script file extension
             string extension = Path.GetExtension(scriptFilePath).ToLowerInvariant().TrimStart('.');
 
-            if (!isDirect)
+            // In the special case of a null FUNCTIONS_WORKER_RUNTIME and an extension of "dll",
+            // we want to skip the worker config check (to prevent the dotnet-isolated worker from
+            // being chosen) and allow in-proc handling to be used.
+            // Other notes:
+            // - when dotnet-isolated, the FUNCTIONS_WORKER_RUNTIME is required to be set to "dotnet-isolated"
+            // - when FUNCTIONS_WORKER_RUNTIME is set to "dotnet", workerConfigs is empty so this correctly falls
+            //   through to choose DotNetAssembly with a "dll" extension
+            if (!(functionsWorkerRuntime is null && extension == "dll"))
             {
                 var workerConfig = workerConfigs.FirstOrDefault(config => config.Description.Extensions.Contains("." + extension));
                 if (workerConfig != null)

@@ -9,6 +9,7 @@ using System.IO.Abstractions.TestingHelpers;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Newtonsoft.Json.Linq;
@@ -33,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string functionsPath = Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "..", "sample", "node");
             _scriptApplicationHostOptions.ScriptPath = functionsPath;
             var optionsMonitor = TestHelpers.CreateOptionsMonitor(_scriptApplicationHostOptions);
-            var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, _testMetricsLogger);
+            var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, _testMetricsLogger, SystemEnvironment.Instance);
             var workerConfigs = TestHelpers.GetTestWorkerConfigs();
 
             Assert.Equal(18, metadataProvider.GetFunctionMetadataAsync(workerConfigs, SystemEnvironment.Instance, false).Result.Length);
@@ -46,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string functionsPath = Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "..", "sample", "PythonWorkerIndexing");
             _scriptApplicationHostOptions.ScriptPath = functionsPath;
             var optionsMonitor = TestHelpers.CreateOptionsMonitor(_scriptApplicationHostOptions);
-            var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, _testMetricsLogger);
+            var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, _testMetricsLogger, SystemEnvironment.Instance);
             var workerConfigs = TestHelpers.GetTestWorkerConfigs();
             Assert.Equal(0, metadataProvider.GetFunctionMetadataAsync(workerConfigs, SystemEnvironment.Instance, false).Result.Length);
         }
@@ -57,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string functionsPath = Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "..", "sample", "noderetry");
             _scriptApplicationHostOptions.ScriptPath = functionsPath;
             var optionsMonitor = TestHelpers.CreateOptionsMonitor(_scriptApplicationHostOptions);
-            var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, _testMetricsLogger);
+            var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, _testMetricsLogger, SystemEnvironment.Instance);
             var workerConfigs = TestHelpers.GetTestWorkerConfigs();
             var functionMetadatas = metadataProvider.GetFunctionMetadataAsync(workerConfigs, SystemEnvironment.Instance, false).Result;
 
@@ -110,18 +111,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void ParseLanguage_Returns_ExpectedLanguage(string expectedLanguage, string scriptFile)
         {
             var configs = TestHelpers.GetTestWorkerConfigs();
-            Assert.Equal(expectedLanguage, HostFunctionMetadataProvider.ParseLanguage(scriptFile, configs, isDirect: false));
+            Assert.Equal(expectedLanguage, HostFunctionMetadataProvider.ParseLanguage(scriptFile, configs, null));
         }
 
         [Theory]
-        [InlineData("dllWorker", false)] // when not direct, use the worker that claims "dll"
-        [InlineData("DotNetAssembly", true)] // when direct, do not consult worker configs and fallback to in-proc
-        public void ParseLanguage_WithDllWorker_Returns_ExpectedLanguage(string expectedLanguage, bool isDirect)
+        [InlineData("dllWorker", "dllWorker")] // when FUNCTIONS_WORKER_RUNTIME is set, use the worker
+        [InlineData("DotNetAssembly", null)] // when direct, do not consult worker configs and fallback to in-proc
+        public void ParseLanguage_WithDllWorker_Returns_ExpectedLanguage(string expectedLanguage, string functionsWorkerRuntime)
         {
             // The logic when a worker claims "dll" is unique because in-proc also claims dll, so test it separately
             var scriptFile = "test.dll";
             var configs = TestHelpers.GetTestWorkerConfigs(includeDllWorker: true);
-            Assert.Equal(expectedLanguage, HostFunctionMetadataProvider.ParseLanguage(scriptFile, configs, isDirect));
+            Assert.Equal(expectedLanguage, HostFunctionMetadataProvider.ParseLanguage(scriptFile, configs, functionsWorkerRuntime));
         }
 
         [Theory]
@@ -133,7 +134,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData(null)]
         public void ParseLanguage_HttpWorker_Returns_Null(string scriptFile)
         {
-            Assert.Null(HostFunctionMetadataProvider.ParseLanguage(scriptFile, TestHelpers.GetTestWorkerConfigsNoLanguage(), isDirect: false));
+            // for these tests, we just care that the FUNCTIONS_WORKER_RUNTIME isn't null or empty
+            Assert.Null(HostFunctionMetadataProvider.ParseLanguage(scriptFile, TestHelpers.GetTestWorkerConfigsNoLanguage(), functionsWorkerRuntime: "any"));
         }
 
         [Fact]
@@ -305,13 +307,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(@"c:\functions\queueTrigger.py", scriptFile, StringComparer.OrdinalIgnoreCase);
         }
 
-        [Fact]
-        public void ParseFunctionMetadata_AttributeConfigSource_ResolvesToDotNetAssembly()
+        [Theory]
+        [InlineData("app.dll", "dotnet", DotNetScriptTypes.DotNetAssembly)]
+        [InlineData("app.dll", null, DotNetScriptTypes.DotNetAssembly)]
+        [InlineData("app.dll", "any", "dllWorker")]
+        public void ParseFunctionMetadata_ResolvesCorrectDotNetLanguage(string scriptFile, string functionsWorkerRuntime, string expectedLanguage)
         {
             var functionJson = new
             {
-                configurationSource = "attributes",
-                scriptFile = "test.dll",
+                scriptFile,
                 bindings = new[] { new { } }
             };
             var json = JObject.FromObject(functionJson);
@@ -324,10 +328,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             fileSystemMock.Setup(f => f.File).Returns(fileBaseMock.Object);
             fileBaseMock.Setup(f => f.Exists(It.IsAny<string>())).Returns(true);
 
-            var workerConfigs = TestHelpers.GetTestWorkerConfigs(includeDllWorker: true);
+            IList<RpcWorkerConfig> workerConfigs = new List<RpcWorkerConfig>();
+            // dotnet skips parsing the worker configs so that in-proc (DotNetAssembly) is chosen
+            if (functionsWorkerRuntime != "dotnet")
+            {
+                workerConfigs = TestHelpers.GetTestWorkerConfigs(includeDllWorker: true);
+            }
 
-            var metadata = HostFunctionMetadataProvider.ParseFunctionMetadata("Function1", json, scriptRoot, fileSystemMock.Object, workerConfigs);
-            Assert.Equal(DotNetScriptTypes.DotNetAssembly, metadata.Language);
+            var metadata = HostFunctionMetadataProvider.ParseFunctionMetadata("Function1", json, scriptRoot, fileSystemMock.Object, workerConfigs, functionsWorkerRuntime);
+            Assert.Equal(expectedLanguage, metadata.Language);
         }
     }
 }

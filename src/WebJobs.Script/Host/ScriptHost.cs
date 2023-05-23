@@ -275,9 +275,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 PreInitialize();
                 HostInitializing?.Invoke(this, EventArgs.Empty);
 
-                // get worker config information and check to see if worker should index or not
-                var workerConfigs = _languageWorkerOptions.CurrentValue.WorkerConfigs;
-
                 // Generate Functions
                 IEnumerable<FunctionMetadata> functionMetadataList = GetFunctionsMetadata();
 

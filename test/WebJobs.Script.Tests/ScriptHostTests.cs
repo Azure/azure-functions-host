@@ -1513,9 +1513,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
-        [InlineData("main.py", "python", "python")]
-        [InlineData("app.dll", "dotnet", DotNetScriptTypes.DotNetAssembly)] // if FUNCTIONS_WORKER_RUNTIME is missing, assume dotnet
-        public async Task Initialize_MissingWorkerRuntime_SetsCorrectRuntimeFromFunctionMetadata(string scriptFile, string expectedMetricLanguage, string expectedMetadataLanguage)
+        [InlineData("python", "main.py", "python", "python")]
+        [InlineData("dotnet-isolated", "app.dll", "dotnet-isolated", "dotnet-isolated")]
+        [InlineData("dotnet", "app.dll", "dotnet", DotNetScriptTypes.DotNetAssembly)]
+        [InlineData(null, "app.dll", "dotnet", DotNetScriptTypes.DotNetAssembly)] // if FUNCTIONS_WORKER_RUNTIME is missing, assume dotnet
+        public async Task Initialize_MissingWorkerRuntime_SetsCorrectRuntimeFromFunctionMetadata(string functionsWorkerRuntime, string scriptFile, string expectedMetricLanguage, string expectedMetadataLanguage)
         {
             IFileSystem CreateFileSystem(string rootPath)
             {
@@ -1568,17 +1570,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 string rootPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
                 var metricsLogger = new TestMetricsLogger();
                 var environment = new TestEnvironment();
+                environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, functionsWorkerRuntime);
 
                 FileUtility.Instance = CreateFileSystem(rootPath);
 
                 IHost host = new HostBuilder()
+                    .ConfigureDefaultTestWebScriptHost(null, o => o.ScriptPath = rootPath, false,
+                    configureRootServices: s =>
+                    {
+                        s.AddSingleton<IMetricsLogger>(metricsLogger);
+                        s.AddSingleton<IEnvironment>(environment);
+                    })
                     .ConfigureServices(s =>
                     {
                         s.AddSingleton<IEnvironment>(environment);
-                    })
-                    .ConfigureDefaultTestWebScriptHost(null, o => o.ScriptPath = rootPath, false, s =>
-                    {
-                        s.AddSingleton<IMetricsLogger>(metricsLogger);
                     })
                     .Build();
 
