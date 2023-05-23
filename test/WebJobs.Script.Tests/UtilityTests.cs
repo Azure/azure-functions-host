@@ -1030,7 +1030,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Strategy = RetryStrategy.FixedDelay
             };
 
-            Assert.False(IsValidateRetryOptionsSuccess(retryOptions));
+            var ex = Assert.Throws<ArgumentNullException>(() => Utility.ValidateRetryOptions(retryOptions));
+            Assert.Equal("Value cannot be null. (Parameter 'MaxRetryCount')", ex.Message);
         }
 
         [Fact]
@@ -1042,7 +1043,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 MaxRetryCount = 5
             };
 
-            Assert.False(IsValidateRetryOptionsSuccess(retryOptions));
+            var ex = Assert.Throws<ArgumentNullException>(() => Utility.ValidateRetryOptions(retryOptions));
+            Assert.Equal("Value cannot be null. (Parameter 'DelayInterval')", ex.Message);
         }
 
         [Fact]
@@ -1062,8 +1064,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 MaximumInterval = TimeSpan.MaxValue
             };
 
-            Assert.False(IsValidateRetryOptionsSuccess(retryOptions1));
-            Assert.False(IsValidateRetryOptionsSuccess(retryOptions2));
+            var ex1 = Assert.Throws<ArgumentNullException>(() => Utility.ValidateRetryOptions(retryOptions1));
+            Assert.Equal("Value cannot be null. (Parameter 'MaximumInterval')", ex1.Message);
+
+            var ex2 = Assert.Throws<ArgumentNullException>(() => Utility.ValidateRetryOptions(retryOptions2));
+            Assert.Equal("Value cannot be null. (Parameter 'MinimumInterval')", ex2.Message);
         }
 
         [Fact]
@@ -1076,11 +1081,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 DelayInterval = TimeSpan.FromSeconds(600)
             };
 
-            Assert.True(IsValidateRetryOptionsSuccess(retryOptions));
+            Utility.ValidateRetryOptions(retryOptions);
         }
 
         [Fact]
-        public void ValidateRetryOptions_ExponentialBackoffSucess()
+        public void ValidateRetryOptions_ExponentialBackoffSuccess()
         {
             var retryOptions = new RetryOptions
             {
@@ -1090,20 +1095,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 MaximumInterval = TimeSpan.MaxValue
             };
 
-            Assert.True(IsValidateRetryOptionsSuccess(retryOptions));
-        }
-
-        private static bool IsValidateRetryOptionsSuccess(RetryOptions retryOptions)
-        {
-            try
-            {
-                Utility.ValidateRetryOptions(retryOptions);
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
+            Utility.ValidateRetryOptions(retryOptions);
         }
 
         private static void VerifyLogLevel(IList<LogMessage> allLogs, string msg, LogLevel expectedLevel)
