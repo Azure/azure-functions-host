@@ -44,6 +44,28 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         }
 
         /// <summary>
+        /// Gets a value indicating whether worker indexing feature is enabled in the hosting config.
+        /// </summary>
+        public bool WorkerIndexingEnabled
+        {
+            get
+            {
+                return GetFeature(RpcWorkerConstants.WorkerIndexingEnabled) == "1";
+            }
+        }
+
+        /// <summary>
+        /// Gets a string delimited by '|' that contains the name of the apps with worker indexing disabled.
+        /// </summary>
+        public string WorkerIndexingDisabledApps
+        {
+            get
+            {
+                return GetFeature(RpcWorkerConstants.WorkerIndexingDisabledApps) ?? string.Empty;
+            }
+        }
+
+        /// <summary>
         /// Gets a value indicating whether Linux Log Backoff is disabled in the hosting config.
         /// </summary>
         public bool DisableLinuxAppServiceLogBackoff

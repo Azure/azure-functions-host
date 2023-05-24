@@ -175,13 +175,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // Language Worker Hosted Services need to be intialized before WebJobsScriptHostService
             ScriptHostBuilderExtensions.AddCommonServices(services);
 
-            services.AddSingleton<IFunctionMetadataProvider>(sp =>
-            {
-                return new FunctionMetadataProvider(
-                    sp.GetRequiredService<ILogger<FunctionMetadataProvider>>(),
-                    ActivatorUtilities.CreateInstance<WorkerFunctionMetadataProvider>(sp),
-                    ActivatorUtilities.CreateInstance<HostFunctionMetadataProvider>(sp));
-            });
+            services.AddSingleton<IWorkerFunctionMetadataProvider, WorkerFunctionMetadataProvider>();
+            services.AddSingleton<IHostFunctionMetadataProvider, HostFunctionMetadataProvider>();
+            services.AddSingleton<IFunctionMetadataProvider, FunctionMetadataProvider>();
 
             // Core script host services
             services.AddSingleton<WebJobsScriptHostService>();
@@ -208,7 +204,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IOptionsChangeTokenSource<ScriptApplicationHostOptions>, ScriptApplicationHostOptionsChangeTokenSource>();
 
             services.ConfigureOptions<StandbyOptionsSetup>();
-            services.ConfigureOptions<LanguageWorkerOptionsSetup>();
+            services.ConfigureOptionsWithChangeTokenSource<LanguageWorkerOptions, LanguageWorkerOptionsSetup, SpecializationChangeTokenSource<LanguageWorkerOptions>>();
             services.ConfigureOptionsWithChangeTokenSource<AppServiceOptions, AppServiceOptionsSetup, SpecializationChangeTokenSource<AppServiceOptions>>();
             services.ConfigureOptionsWithChangeTokenSource<HttpBodyControlOptions, HttpBodyControlOptionsSetup, SpecializationChangeTokenSource<HttpBodyControlOptions>>();
             services.ConfigureOptions<FunctionsHostingConfigOptionsSetup>();
