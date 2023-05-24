@@ -709,7 +709,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         /// Remove the <see cref="IHost"/> instance from the live instances collection,
         /// allowing it to finish currently executing functions before stopping and disposing of it.
         /// </summary>
-        /// <param name="instance">The <see cref="IHost"/> instance to remove</param>
+        /// <param name="instance">The <see cref="IHost"/> instance to remove.</param>
         private async Task Orphan(IHost instance, CancellationToken cancellationToken = default)
         {
             if (instance == null)

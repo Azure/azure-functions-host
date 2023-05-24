@@ -15,14 +15,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public void CleanDisposal()
         {
-            var server = new AspNetCoreGrpcServer(new Mock<FunctionRpc.FunctionRpcBase>().Object, new TestScriptEventManager(), NullLogger<AspNetCoreGrpcServer>.Instance);
+            var server = new AspNetCoreGrpcServer(new Mock<FunctionRpc.FunctionRpcBase>().Object, new TestScriptEventManager(), null, NullLogger<AspNetCoreGrpcServer>.Instance);
             server.Dispose();
         }
 
         [Fact]
         public async Task CleanDisposalAsync()
         {
-            var server = new AspNetCoreGrpcServer(new Mock<FunctionRpc.FunctionRpcBase>().Object, new TestScriptEventManager(), NullLogger<AspNetCoreGrpcServer>.Instance);
+            var server = new AspNetCoreGrpcServer(new Mock<FunctionRpc.FunctionRpcBase>().Object, new TestScriptEventManager(), null, NullLogger<AspNetCoreGrpcServer>.Instance);
             await server.DisposeAsync();
         }
     }
