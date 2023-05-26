@@ -65,10 +65,7 @@ namespace Microsoft.WebJobs.Script.Tests
             services.AddSingleton<IMetricsLogger>(metricsLogger);
             services.AddWebJobsScriptHostRouting();
             services.AddLogging();
-            services.AddFunctionMetadataManager(webHostOptions, metricsLogger);
-
-            var sp = services.BuildServiceProvider();
-            var man = sp.GetService<IFunctionMetadataManager>();
+            services.AddFunctionMetadataManager();
 
             configureRootServices?.Invoke(services);
 
@@ -100,7 +97,7 @@ namespace Microsoft.WebJobs.Script.Tests
             return services.AddSingleton<T>(mock.Object);
         }
 
-        private static IServiceCollection AddFunctionMetadataManager(this IServiceCollection services, ScriptApplicationHostOptions options, IMetricsLogger metricsLogger)
+        private static IServiceCollection AddFunctionMetadataManager(this IServiceCollection services)
         {
             AddMockedSingleton<IWorkerFunctionMetadataProvider>(services);
             services.AddSingleton<IHostFunctionMetadataProvider, HostFunctionMetadataProvider>();
