@@ -19,7 +19,8 @@ namespace Microsoft.Azure.WebJobs.Script.Config
 
         public bool LoggingDisabled { get; set; }
 
-        public bool BufferEnabled { get; set; }
+        // Use BufferSize = 0 to disable the buffer
+        public bool BufferEnabled { get; internal set; }
 
         public int BufferSize { get; set; }
     }

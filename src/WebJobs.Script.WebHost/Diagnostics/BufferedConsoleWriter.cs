@@ -70,6 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             }
         }
 
+        // internal only for testing - should only be used from the constructor, not intended for concurrent callers.
         internal void StartProcessingBuffer()
         {
             // intentional no-op if the task is already running

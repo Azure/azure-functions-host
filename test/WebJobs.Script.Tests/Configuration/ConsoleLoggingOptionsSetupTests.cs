@@ -88,5 +88,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             Assert.Equal(100, options.BufferSize);
         }
+
+        [Fact]
+        public void ConsoleLoggingOptionsSetup_DoesNotOverwriteCustomBufferSizeIfNotSet()
+        {
+            var settings = new Dictionary<string, string>();
+
+            IConfiguration config = new ConfigurationBuilder()
+               .AddInMemoryCollection(settings)
+               .Build();
+
+            ConsoleLoggingOptionsSetup setup = new ConsoleLoggingOptionsSetup(config);
+            ConsoleLoggingOptions options = new ConsoleLoggingOptions { BufferSize = 100 };
+            setup.Configure(options);
+
+            Assert.Equal(100, options.BufferSize);
+        }
     }
 }
