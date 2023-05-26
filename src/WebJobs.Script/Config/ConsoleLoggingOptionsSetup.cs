@@ -20,14 +20,17 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         {
             options.LoggingDisabled = _configuration.GetValue<int>(EnvironmentSettingNames.ConsoleLoggingDisabled) == 1;
 
-            int bufferSize = _configuration.GetValue<int>(EnvironmentSettingNames.ConsoleLoggingBufferSize, ConsoleLoggingOptions.DefaultBufferSize);
-            if (bufferSize < 0)
+            int? bufferSize = _configuration.GetValue<int?>(EnvironmentSettingNames.ConsoleLoggingBufferSize);
+            if (bufferSize != null)
             {
-                throw new ArgumentOutOfRangeException(nameof(EnvironmentSettingNames.ConsoleLoggingBufferSize), "Console buffer size cannot be negative");
-            }
+                if (bufferSize < 0)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(EnvironmentSettingNames.ConsoleLoggingBufferSize), "Console buffer size cannot be negative");
+                }
 
-            options.BufferEnabled = bufferSize > 0;
-            options.BufferSize = bufferSize;
+                options.BufferEnabled = bufferSize > 0;
+                options.BufferSize = bufferSize.Value;
+            }
         }
     }
 }
