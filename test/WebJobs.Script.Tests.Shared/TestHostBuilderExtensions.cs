@@ -2,12 +2,9 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Script;
-using Microsoft.Azure.WebJobs.Script.Config;
-using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Tests;
@@ -15,12 +12,10 @@ using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Workers;
-using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
 using IApplicationLifetime = Microsoft.AspNetCore.Hosting.IApplicationLifetime;
@@ -48,6 +43,13 @@ namespace Microsoft.WebJobs.Script.Tests
 
             // Register root services
             var services = new ServiceCollection();
+            services.AddOptions<ScriptApplicationHostOptions>()
+                .Configure(o =>
+                {
+                    o.IsSelfHost = webHostOptions.IsSelfHost;
+                    o.ScriptPath = webHostOptions.ScriptPath;
+                    o.LogPath = webHostOptions.LogPath;
+                });
             AddMockedSingleton<IDebugStateProvider>(services);
             AddMockedSingleton<IScriptHostManager>(services);
             AddMockedSingleton<IEnvironment>(services);
@@ -63,7 +65,8 @@ namespace Microsoft.WebJobs.Script.Tests
             services.AddSingleton<IMetricsLogger>(metricsLogger);
             services.AddWebJobsScriptHostRouting();
             services.AddLogging();
-            services.AddFunctionMetadataManager(webHostOptions, metricsLogger);
+            services.AddFunctionMetadataManager();
+
             configureRootServices?.Invoke(services);
 
             var rootProvider = new WebHostServiceProvider(services);
@@ -94,19 +97,23 @@ namespace Microsoft.WebJobs.Script.Tests
             return services.AddSingleton<T>(mock.Object);
         }
 
-        private static IServiceCollection AddFunctionMetadataManager(this IServiceCollection services, ScriptApplicationHostOptions options, IMetricsLogger metricsLogger)
+        private static IServiceCollection AddFunctionMetadataManager(this IServiceCollection services)
         {
-            var factory = new TestOptionsFactory<ScriptApplicationHostOptions>(options);
-            var source = new TestChangeTokenSource<ScriptApplicationHostOptions>();
-            var changeTokens = new[] { source };
-            var optionsMonitor = new OptionsMonitor<ScriptApplicationHostOptions>(factory, changeTokens, factory);
+            AddMockedSingleton<IWorkerFunctionMetadataProvider>(services);
+            services.AddSingleton<IHostFunctionMetadataProvider, HostFunctionMetadataProvider>();
+            services.AddSingleton<IFunctionMetadataProvider, FunctionMetadataProvider>();
 
-            var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, metricsLogger);
-            var hostingOptionsMonitor = TestHelpers.CreateOptionsMonitor(new FunctionsHostingConfigOptions());
-            var defaultProvider = new FunctionMetadataProvider(NullLogger<FunctionMetadataProvider>.Instance, null, metadataProvider, new OptionsWrapper<FunctionsHostingConfigOptions>(new FunctionsHostingConfigOptions()), SystemEnvironment.Instance);
-            var metadataManager = TestFunctionMetadataManager.GetFunctionMetadataManager(new OptionsWrapper<ScriptJobHostOptions>(new ScriptJobHostOptions()), defaultProvider, new List<IFunctionProvider>(), new OptionsWrapper<HttpWorkerOptions>(new HttpWorkerOptions()), new NullLoggerFactory(), new TestOptionsMonitor<LanguageWorkerOptions>(TestHelpers.GetTestLanguageWorkerOptions()));
-            services.AddSingleton<IFunctionMetadataManager>(metadataManager);
-            services.AddSingleton<IFunctionMetadataProvider>(defaultProvider);
+            services.AddSingleton<IScriptHostManager>(s =>
+            {
+                var managerMock = new Mock<IScriptHostManager>();
+                managerMock
+                    .As<IServiceProvider>()
+                    .Setup(m => m.GetService(typeof(IOptionsMonitor<LanguageWorkerOptions>)))
+                    .Returns(s.GetService<IOptionsMonitor<LanguageWorkerOptions>>);
+                return managerMock.Object;
+            });
+
+            services.AddSingleton<IFunctionMetadataManager, FunctionMetadataManager>();
 
             return services;
         }

@@ -26,13 +26,16 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IMetricsLogger _metricsLogger;
         private readonly Dictionary<string, ICollection<string>> _functionErrors = new Dictionary<string, ICollection<string>>();
         private readonly ILogger _logger;
+        private readonly IEnvironment _environment;
         private ImmutableArray<FunctionMetadata> _functions;
 
-        public HostFunctionMetadataProvider(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger<HostFunctionMetadataProvider> logger, IMetricsLogger metricsLogger)
+        public HostFunctionMetadataProvider(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger<HostFunctionMetadataProvider> logger,
+            IMetricsLogger metricsLogger, IEnvironment environment)
         {
             _applicationHostOptions = applicationHostOptions;
             _metricsLogger = metricsLogger;
             _logger = logger;
+            _environment = environment;
         }
 
         public ImmutableDictionary<string, ImmutableArray<string>> FunctionErrors
@@ -100,7 +103,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
                     JObject functionConfig = JObject.Parse(json);
 
-                    return ParseFunctionMetadata(functionName, functionConfig, functionDirectory, fileSystem, workerConfigs);
+                    return ParseFunctionMetadata(functionName, functionConfig, functionDirectory, fileSystem,
+                        workerConfigs, _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime));
                 }
                 catch (Exception ex)
                 {
@@ -119,7 +123,8 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        private FunctionMetadata ParseFunctionMetadata(string functionName, JObject configMetadata, string scriptDirectory, IFileSystem fileSystem, IEnumerable<RpcWorkerConfig> workerConfigs)
+        internal static FunctionMetadata ParseFunctionMetadata(string functionName, JObject configMetadata, string scriptDirectory, IFileSystem fileSystem,
+            IEnumerable<RpcWorkerConfig> workerConfigs, string functionsWorkerRuntime)
         {
             var functionMetadata = new FunctionMetadata
             {
@@ -142,23 +147,22 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
             }
 
-            JToken isDirect;
-            if (configMetadata.TryGetValue("configurationSource", StringComparison.OrdinalIgnoreCase, out isDirect))
+            if (configMetadata.TryGetValue("configurationSource", StringComparison.OrdinalIgnoreCase, out JToken configurationSourceJson))
             {
-                var isDirectValue = isDirect.ToString();
-                if (string.Equals(isDirectValue, "attributes", StringComparison.OrdinalIgnoreCase))
+                var configurationSourceValue = configurationSourceJson.ToString();
+                if (string.Equals(configurationSourceValue, "attributes", StringComparison.OrdinalIgnoreCase))
                 {
                     functionMetadata.SetIsDirect(true);
                 }
-                else if (!string.Equals(isDirectValue, "config", StringComparison.OrdinalIgnoreCase))
+                else if (!string.Equals(configurationSourceValue, "config", StringComparison.OrdinalIgnoreCase))
                 {
-                    throw new FormatException($"Illegal value '{isDirectValue}' for 'configurationSource' property in {functionMetadata.Name}'.");
+                    throw new FormatException($"Illegal value '{configurationSourceValue}' for 'configurationSource' property in {functionMetadata.Name}'.");
                 }
             }
             functionMetadata.ScriptFile = DeterminePrimaryScriptFile((string)configMetadata["scriptFile"], scriptDirectory, fileSystem);
             if (!string.IsNullOrWhiteSpace(functionMetadata.ScriptFile))
             {
-                functionMetadata.Language = ParseLanguage(functionMetadata.ScriptFile, workerConfigs);
+                functionMetadata.Language = ParseLanguage(functionMetadata.ScriptFile, workerConfigs, functionsWorkerRuntime);
             }
             functionMetadata.EntryPoint = (string)configMetadata["entryPoint"];
 
@@ -169,7 +173,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return functionMetadata;
         }
 
-        internal static string ParseLanguage(string scriptFilePath, IEnumerable<RpcWorkerConfig> workerConfigs)
+        internal static string ParseLanguage(string scriptFilePath, IEnumerable<RpcWorkerConfig> workerConfigs, string functionsWorkerRuntime)
         {
             // scriptFilePath is not required for HttpWorker
             if (string.IsNullOrEmpty(scriptFilePath))
@@ -179,7 +183,20 @@ namespace Microsoft.Azure.WebJobs.Script
 
             // determine the script type based on the primary script file extension
             string extension = Path.GetExtension(scriptFilePath).ToLowerInvariant().TrimStart('.');
-            var workerConfig = workerConfigs.FirstOrDefault(config => config.Description.Extensions.Contains("." + extension));
+
+            // In the special case of a null `functionsWorkerRuntime` and an extension of "dll",
+            // we want to short-circuit the worker config check (to prevent the dotnet-isolated worker from
+            // being chosen) and allow in-proc handling to be used.
+            // Other notes:
+            // - when dotnet-isolated, the `functionsWorkerRuntime` is required to be set to "dotnet-isolated"
+            // - when `functionsWorkerRuntime` is set to "dotnet", workerConfigs is empty so this correctly falls
+            //   through to choose DotNetAssembly with a "dll" extension
+            if (functionsWorkerRuntime is null && string.Equals(extension, "dll", StringComparison.OrdinalIgnoreCase))
+            {
+                return DotNetScriptTypes.DotNetAssembly;
+            }
+
+            var workerConfig = workerConfigs.FirstOrDefault(config => config.Description.Extensions.Contains($".{extension}", StringComparer.OrdinalIgnoreCase));
             if (workerConfig != null)
             {
                 return workerConfig.Description.Language;
@@ -203,11 +220,11 @@ namespace Microsoft.Azure.WebJobs.Script
         // These two implementations must stay in sync!
 
         /// <summary>
-        /// Determines which script should be considered the "primary" entry point script. Returns null if Primary script file cannot be determined
+        /// Determines which script should be considered the "primary" entry point script. Returns null if Primary script file cannot be determined.
         /// </summary>
         internal static string DeterminePrimaryScriptFile(string scriptFile, string scriptDirectory, IFileSystem fileSystem = null)
         {
-            fileSystem = fileSystem ?? FileUtility.Instance;
+            fileSystem ??= FileUtility.Instance;
 
             // First see if there is an explicit primary file indicated
             // in config. If so use that.
