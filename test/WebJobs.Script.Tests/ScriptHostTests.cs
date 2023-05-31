@@ -1565,20 +1565,35 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             try
             {
-                string rootPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+                string rootPath = Path.Combine(Path.GetTempPath(), nameof(Initialize_MissingWorkerRuntime_SetsCorrectRuntimeFromFunctionMetadata));
                 var metricsLogger = new TestMetricsLogger();
                 var environment = new TestEnvironment();
 
                 FileUtility.Instance = CreateFileSystem(rootPath);
+
+                TaskCompletionSource<bool> processCreated = new();
+                var processFactoryMock = new Mock<IRpcWorkerProcessFactory>(MockBehavior.Strict);
+                processFactoryMock.Setup(m => m.Create(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<RpcWorkerConfig>()))
+                    .Callback(() =>
+                    {
+                        // this happens as a fire-and-forget, so we'll need to wait to avoid races
+                        processCreated.SetResult(true);
+                    });
 
                 IHost host = new HostBuilder()
                     .ConfigureServices(s =>
                     {
                         s.AddSingleton<IEnvironment>(environment);
                     })
-                    .ConfigureDefaultTestWebScriptHost(null, o => o.ScriptPath = rootPath, false, s =>
+                    .ConfigureDefaultTestWebScriptHost(null, o => o.ScriptPath = rootPath, false,
+                    configureRootServices: s =>
                     {
                         s.AddSingleton<IMetricsLogger>(metricsLogger);
+
+                        // Mock out the worker process factory so we don't actually start a worker.
+                        // Doing this via IConfigureBuilder to ensure it correctly overrides the default.
+                        s.AddSingleton<IConfigureBuilder<IServiceCollection>>(
+                            new DelegatedConfigureBuilder<IServiceCollection>(c => c.AddSingleton(processFactoryMock.Object)));
                     })
                     .Build();
 
@@ -1586,6 +1601,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 await scriptHost.InitializeAsync();
 
                 Assert.Contains($"host.startup.runtime.language.{expectedMetricLanguage}", metricsLogger.LoggedEvents);
+
+                // In-proc does not start the language worker process
+                if (expectedMetricLanguage != "dotnet")
+                {
+                    await processCreated.Task;
+                    processFactoryMock.Verify(m => m.Create(It.IsAny<string>(), expectedMetadataLanguage, rootPath, It.IsAny<RpcWorkerConfig>()), Times.Once);
+                }
 
                 // Previous bug incorrectly chose dotnet-isolated as the Language for C# precompiled functions
                 // if FUNCTIONS_WORKER_RUNTIME was missing
