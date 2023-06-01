@@ -7,6 +7,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web.Http.Controllers;
@@ -15,6 +16,7 @@ using Microsoft.Azure.Web.DataProtection;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
+using Microsoft.Azure.WebJobs.Script.WebHost.Security;
 using Microsoft.IdentityModel.Tokens;
 using Xunit;
 using static Microsoft.Azure.WebJobs.Script.Config.ScriptSettingsManager;
@@ -26,6 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Filters
     public class JwtAuthenticationAttributeTests : IDisposable
     {
         private const string TestKeyValue = "0F75CA46E7EBDD39E4CA6B074D1F9A5972B849A55F91A248";
+        private const string PlatformDefaultKeyValue = "B77F872A341F8970D50F093E1FA924777A5A61CCABC63C2A";
         private const string TestAppName = "testsite";
         private TestScopedEnvironmentVariable _testEnv;
 
@@ -34,6 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Filters
             var values = new Dictionary<string, string>
             {
                 { "AzureWebEncryptionKey", TestKeyValue },
+                { EnvironmentSettingNames.WebsiteAuthEncryptionKey, PlatformDefaultKeyValue },
                 { AzureWebsiteName, TestAppName }
             };
             _testEnv = new TestScopedEnvironmentVariable(values);
@@ -56,10 +60,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Filters
         {
             issuer = issuer ?? string.Format(ScmSiteUriFormat, Instance.GetSetting(AzureWebsiteName));
             audience = audience ?? string.Format(SiteAzureFunctionsUriFormat, Instance.GetSetting(AzureWebsiteName));
-
-            string token = JwtGenerator.GenerateToken(issuer, audience, expires: DateTime.UtcNow.AddMinutes(10));
+            string token = JwtTokenHelper.CreateToken(DateTime.UtcNow.AddMinutes(10), audience, issuer);
 
             await AuthenticateAsync(token, headerName, AuthorizationLevel.Admin);
+        }
+
+        [Theory]
+        [InlineData("AzureWebEncryptionKey", true)]
+        [InlineData("AzureWebEncryptionKey", false)]
+        [InlineData(EnvironmentSettingNames.WebsiteAuthEncryptionKey, true)]
+        public async Task AuthenticateAsync_WithValidToken_WithSupportedKeyConfigurations_SetsAdminAuthorizationLevel(string keyName, bool hexEncoding)
+        {
+            string issuer = "https://testsite.azurewebsites.net";
+            string audience = "https://testsite.azurewebsites.net";
+
+            string keyValue = Environment.GetEnvironmentVariable(keyName);
+            byte[] key = hexEncoding ? keyValue.ToKeyBytes() : Encoding.UTF8.GetBytes(keyValue);
+            string token = JwtTokenHelper.CreateToken(DateTime.UtcNow.AddMinutes(10), audience, issuer, key);
+
+            await AuthenticateAsync(token, ScriptConstants.SiteTokenHeaderName, AuthorizationLevel.Admin);
         }
 
         [Theory]
