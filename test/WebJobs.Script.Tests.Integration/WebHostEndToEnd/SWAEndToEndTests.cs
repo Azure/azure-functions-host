@@ -1,10 +1,6 @@
-﻿using Microsoft.Azure.WebJobs.Script.WebHost;
-using Microsoft.Azure.WebJobs.Script.WebHost.Management;
-using Microsoft.Azure.WebJobs.Script.WebHost.Security;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
-using Newtonsoft.Json;
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,6 +8,12 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Azure.WebJobs.Script.WebHost.Management;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Newtonsoft.Json;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
@@ -68,7 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
         {
             // if an admin token is passed, the function invocation succeeds
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "api/HttpTrigger-FunctionAuth?code=test");
-            string token = _fixture.Host.GenerateAdminJwtToken();
+            string token = GetSWAAdminJwtToken();
 
             if (string.Compare(nameof(HttpRequestHeader.Authorization), headerName) == 0)
             {
@@ -81,6 +83,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
 
             var response = await _fixture.Host.HttpClient.SendAsync(request);
             response.EnsureSuccessStatusCode();
+        }
+
+        private string GetSWAAdminJwtToken()
+        {
+            // Ensure we use AzureWebEncryptionKey to generate tokens, as that's what SWA does
+            string keyValue = _fixture.SWAEncryptionKey;
+            byte[] keyBytes = keyValue.ToKeyBytes();
+            string token = _fixture.Host.GenerateAdminJwtToken(key: keyBytes);
+
+            return token;
         }
 
         [Fact]
@@ -109,18 +121,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
 
             public TestFixture() : base(@"TestScripts\CSharp", "csharp", RpcWorkerConstants.DotNetLanguageWorkerName, addTestSettings: false)
             {
+                // SWA generates their own key and sets via AzureWebEncryptionKey
+                // This should take precedence over the default key
                 var testKeyBytes = TestHelpers.GenerateKeyBytes();
                 var testKey = TestHelpers.GenerateKeyHexString(testKeyBytes);
+                SWAEncryptionKey = testKey;
+
+                // Default key provisioned by Antares and available via WEBSITE_AUTH_ENCRYPTION_KEY
+                var defaultTestKeyBytes = TestHelpers.GenerateKeyBytes();
+                var defaultTestKey = TestHelpers.GenerateKeyHexString(defaultTestKeyBytes);
 
                 var settings = new Dictionary<string, string>()
                 {
                     { "AzureWebEncryptionKey", testKey },
-                    { EnvironmentSettingNames.WebSiteAuthEncryptionKey, testKey },
+                    { EnvironmentSettingNames.WebSiteAuthEncryptionKey, defaultTestKey },
                     { "AzureWebJobsStorage", null },
                     { EnvironmentSettingNames.AzureWebsiteName, "testsite" }
                 };
                 _scopedEnvironment = new TestScopedEnvironmentVariable(settings);
             }
+
+            public string SWAEncryptionKey { get; }
 
             public override void ConfigureScriptHost(IWebJobsBuilder webJobsBuilder)
             {
