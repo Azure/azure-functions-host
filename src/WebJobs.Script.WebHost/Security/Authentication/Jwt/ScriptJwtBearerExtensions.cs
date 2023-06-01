@@ -1,9 +1,9 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authentication;
@@ -73,15 +73,11 @@ namespace Microsoft.Extensions.DependencyInjection
 
         private static TokenValidationParameters CreateTokenValidationParameters()
         {
+            var signingKeys = SecretsUtility.GetTokenIssuerSigningKeys();
             var result = new TokenValidationParameters();
-            if (SecretsUtility.TryGetEncryptionKey(out string key))
+            if (signingKeys.Length > 0)
             {
-                // TODO: Once ScriptSettingsManager is gone, Audience and Issuer should be pulled from configuration.
-                result.IssuerSigningKeys = new SecurityKey[]
-                {
-                    new SymmetricSecurityKey(key.ToKeyBytes()),
-                    new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key))
-                };
+                result.IssuerSigningKeys = signingKeys;
                 result.ValidateAudience = true;
                 result.ValidateIssuer = true;
                 result.ValidAudiences = new string[]
