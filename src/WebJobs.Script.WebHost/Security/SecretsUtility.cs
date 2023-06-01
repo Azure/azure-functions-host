@@ -109,6 +109,30 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return Convert.FromBase64String(hexOrBase64);
         }
 
+        public static SymmetricSecurityKey[] GetTokenIssuerSigningKeys()
+        {
+            List<SymmetricSecurityKey> signingKeys = new List<SymmetricSecurityKey>();
+
+            // first we want to use the DataProtection APIs to get the default key,
+            // which will return any user specified AzureWebEncryptionKey with precedence
+            // over the platform default key
+            string defaultKey = Util.GetDefaultKeyValue();
+            if (defaultKey != null)
+            {
+                signingKeys.Add(new SymmetricSecurityKey(defaultKey.ToKeyBytes()));
+                signingKeys.Add(new SymmetricSecurityKey(Encoding.UTF8.GetBytes(defaultKey)));
+            }
+
+            // next we want to ensure a key is also added for the platform default key
+            // if it wasn't already added above
+            if (SecretsUtility.TryGetEncryptionKey(out string key) && !string.Equals(key, defaultKey))
+            {
+                signingKeys.Add(new SymmetricSecurityKey(key.ToKeyBytes()));
+            }
+
+            return signingKeys.ToArray();
+        }
+
         private static bool TryGetEncryptionKey(IEnvironment environment, string keyName, out string encryptionKey)
         {
             encryptionKey = environment.GetEnvironmentVariable(keyName);
