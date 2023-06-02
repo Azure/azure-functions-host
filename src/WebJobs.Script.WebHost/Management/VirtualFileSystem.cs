@@ -61,6 +61,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         {
             string localFilePath = GetLocalFilePath(request);
 
+            if (!PathAccessAllowed(localFilePath))
+            {
+                return Task.FromResult(CreateResponse(HttpStatusCode.Forbidden));
+            }
+
             if (VfsSpecialFolders.TryHandleRequest(request, localFilePath, out HttpResponseMessage response))
             {
                 return Task.FromResult(response);
@@ -111,6 +116,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         {
             var localFilePath = GetLocalFilePath(request);
 
+            if (!PathAccessAllowed(localFilePath))
+            {
+                return Task.FromResult(CreateResponse(HttpStatusCode.Forbidden));
+            }
+
             if (VfsSpecialFolders.TryHandleRequest(request, localFilePath, out HttpResponseMessage response))
             {
                 return Task.FromResult(response);
@@ -139,6 +149,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         public virtual Task<HttpResponseMessage> DeleteItem(HttpRequest request, bool recursive = false)
         {
             string localFilePath = GetLocalFilePath(request);
+
+            if (!PathAccessAllowed(localFilePath))
+            {
+                return Task.FromResult(CreateResponse(HttpStatusCode.Forbidden));
+            }
 
             if (VfsSpecialFolders.TryHandleRequest(request, localFilePath, out HttpResponseMessage response))
             {
@@ -632,6 +647,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 response.Content = new StringContent(content, Encoding.UTF8, "application/json");
             }
             return response;
+        }
+
+        private static bool PathAccessAllowed(string path)
+        {
+            var homeEnv = ScriptSettingsManager.Instance.GetSetting(EnvironmentSettingNames.AzureWebsiteHomePath);
+            var homePath = Path.GetFullPath(homeEnv);
+            string wwwrootPath = Path.Combine(homePath, "site", "wwwroot");
+            return path.StartsWith(wwwrootPath, StringComparison.OrdinalIgnoreCase);
         }
     }
 }
