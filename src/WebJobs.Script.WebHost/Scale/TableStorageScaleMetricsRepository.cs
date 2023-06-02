@@ -17,6 +17,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Storage;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using IScaleMetricsRepository = Microsoft.Azure.WebJobs.Script.Scale.IScaleMetricsRepository;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {

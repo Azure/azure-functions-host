@@ -14,6 +14,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Xunit;
+using IScaleMetricsRepository = Microsoft.Azure.WebJobs.Script.Scale.IScaleMetricsRepository;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
 {
