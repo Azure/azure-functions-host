@@ -61,6 +61,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         {
             string localFilePath = GetLocalFilePath(request);
 
+            if (!PathAccessAllowed(localFilePath))
+            {
+                return Task.FromResult(CreateResponse(HttpStatusCode.Forbidden));
+            }
+
             if (VfsSpecialFolders.TryHandleRequest(request, localFilePath, out HttpResponseMessage response))
             {
                 return Task.FromResult(response);
@@ -111,6 +116,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         {
             var localFilePath = GetLocalFilePath(request);
 
+            if (!PathAccessAllowed(localFilePath))
+            {
+                return Task.FromResult(CreateResponse(HttpStatusCode.Forbidden));
+            }
+
             if (VfsSpecialFolders.TryHandleRequest(request, localFilePath, out HttpResponseMessage response))
             {
                 return Task.FromResult(response);
@@ -139,6 +149,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         public virtual Task<HttpResponseMessage> DeleteItem(HttpRequest request, bool recursive = false)
         {
             string localFilePath = GetLocalFilePath(request);
+
+            if (!PathAccessAllowed(localFilePath))
+            {
+                return Task.FromResult(CreateResponse(HttpStatusCode.Forbidden));
+            }
 
             if (VfsSpecialFolders.TryHandleRequest(request, localFilePath, out HttpResponseMessage response))
             {
@@ -632,6 +647,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 response.Content = new StringContent(content, Encoding.UTF8, "application/json");
             }
             return response;
+        }
+
+        private bool PathAccessAllowed(string path)
+        {
+            var home = ScriptSettingsManager.Instance.GetSetting(EnvironmentSettingNames.AzureWebsiteHomePath);
+            var sitePath = !string.IsNullOrEmpty(home) ? Path.Combine(Path.GetFullPath(home), "site", "wwwroot") : _options.CurrentValue.ScriptPath;
+            return path.StartsWith(sitePath, StringComparison.OrdinalIgnoreCase);
         }
     }
 }
