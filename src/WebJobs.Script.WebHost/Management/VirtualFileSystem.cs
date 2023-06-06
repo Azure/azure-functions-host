@@ -649,12 +649,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             return response;
         }
 
-        private static bool PathAccessAllowed(string path)
+        private bool PathAccessAllowed(string path)
         {
-            var homeEnv = ScriptSettingsManager.Instance.GetSetting(EnvironmentSettingNames.AzureWebsiteHomePath);
-            var homePath = Path.GetFullPath(homeEnv);
-            string wwwrootPath = Path.Combine(homePath, "site", "wwwroot");
-            return path.StartsWith(wwwrootPath, StringComparison.OrdinalIgnoreCase);
+            var home = ScriptSettingsManager.Instance.GetSetting(EnvironmentSettingNames.AzureWebsiteHomePath);
+            var sitePath = !string.IsNullOrEmpty(home) ? Path.Combine(Path.GetFullPath(home), "site", "wwwroot") : _options.CurrentValue.ScriptPath;
+            return path.StartsWith(sitePath, StringComparison.OrdinalIgnoreCase);
         }
     }
 }
