@@ -9,3 +9,4 @@
 - Update PowerShell Worker 7.4 to 4.0.2802 [Release Note](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.2802)
 - Fixing bug with placeholder misses in dotnet-isolated #9253
 - Update PowerShell Worker 7.0 to 4.0.2823 [Release Note](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.2823)
+- Add new Host to Worker RPC extensibility feature for out-of-proc workers. (#9292)
