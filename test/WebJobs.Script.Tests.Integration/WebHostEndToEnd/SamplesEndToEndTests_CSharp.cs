@@ -218,6 +218,32 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             }
         }
 
+
+
+        [Theory]
+        [InlineData("admin/vfs/site/wwwroot/host.json", HttpStatusCode.OK)]
+        [InlineData("admin/vfs/host.json", HttpStatusCode.Forbidden)]
+        public async Task AccessPathOutsideHome_ReturnsExpectedStatus(string uri, HttpStatusCode expectedStatus)
+        {
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
+            await this._fixture.AddMasterKey(request);
+
+            string nowString = DateTime.UtcNow.ToString("yyMMdd-HHmmss");
+            string home = Path.Combine(Path.GetTempPath(), nowString, "home");
+            string wwwroot = Path.Combine(home, "site", "wwwroot");
+            FileUtility.CopyDirectory(this._fixture.RootScriptPath, wwwroot);
+
+            using var envVars = new TestScopedEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath, home);
+            {
+                using (var httpClient = _fixture.Host.CreateHttpClient())
+                {
+                    HttpResponseMessage response = await httpClient.SendAsync(request);
+                    Assert.Equal(expectedStatus, response.StatusCode);
+                }
+
+            }
+        }
+
         [Theory]
         [InlineData("GET")]
         [InlineData("POST")]

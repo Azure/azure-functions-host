@@ -12,111 +12,123 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
 
         private static readonly Action<ILogger, Exception> _hostIdIsSet =
             LoggerMessage.Define(
-            LogLevel.Warning,
-            new EventId(400, nameof(HostIdIsSet)),
-            "Host id explicitly set in configuration. This is not a recommended configuration and may lead to unexpected behavior.");
+                LogLevel.Warning,
+                new EventId(400, nameof(HostIdIsSet)),
+                "Host id explicitly set in configuration. This is not a recommended configuration and may lead to unexpected behavior.");
 
         private static readonly Action<ILogger, string, string, Exception> _functionError =
             LoggerMessage.Define<string, string>(
-            LogLevel.Error,
-            new EventId(402, nameof(FunctionError)),
-            "The '{functionName}' function is in error: {errorMessage}");
+                LogLevel.Error,
+                new EventId(402, nameof(FunctionError)),
+                "The '{functionName}' function is in error: {errorMessage}");
 
         private static readonly Action<ILogger, Exception> _hostIsInPlaceholderMode =
             LoggerMessage.Define(
-            LogLevel.Debug,
-            new EventId(403, nameof(HostIsInPlaceholderMode)),
-            "Host is in placeholdermode");
+                LogLevel.Debug,
+                new EventId(403, nameof(HostIsInPlaceholderMode)),
+                "Host is in placeholdermode");
 
         private static readonly Action<ILogger, string, Exception> _addingDescriptorProviderForLanguage =
             LoggerMessage.Define<string>(
-            LogLevel.Debug,
-            new EventId(404, nameof(AddingDescriptorProviderForLanguage)),
-            "Adding Function descriptor provider for language {workerRuntime}.");
+                LogLevel.Debug,
+                new EventId(404, nameof(AddingDescriptorProviderForLanguage)),
+                "Adding Function descriptor provider for language {workerRuntime}.");
 
         private static readonly Action<ILogger, Exception> _creatingDescriptors =
             LoggerMessage.Define(
-            LogLevel.Debug,
-            new EventId(405, nameof(CreatingDescriptors)),
-            "Creating function descriptors.");
+                LogLevel.Debug,
+                new EventId(405, nameof(CreatingDescriptors)),
+                "Creating function descriptors.");
 
         private static readonly Action<ILogger, Exception> _descriptorsCreated =
             LoggerMessage.Define(
-            LogLevel.Debug,
-            new EventId(406, nameof(DescriptorsCreated)),
-            "Function descriptors created.");
+                LogLevel.Debug,
+                new EventId(406, nameof(DescriptorsCreated)),
+                "Function descriptors created.");
 
         private static readonly Action<ILogger, Exception> _errorPurgingLogFiles =
             LoggerMessage.Define(
-            LogLevel.Error,
-            new EventId(407, nameof(ErrorPurgingLogFiles)),
-            "An error occurred while purging log files");
+                LogLevel.Error,
+                new EventId(407, nameof(ErrorPurgingLogFiles)),
+                "An error occurred while purging log files");
 
         private static readonly Action<ILogger, string, Exception> _deletingLogDirectory =
             LoggerMessage.Define<string>(
-            LogLevel.Debug,
-            new EventId(408, nameof(DeletingLogDirectory)),
-            "Deleting log directory '{logDir}'");
+                LogLevel.Debug,
+                new EventId(408, nameof(DeletingLogDirectory)),
+                "Deleting log directory '{logDir}'");
 
         private static readonly Action<ILogger, string, string, Exception> _failedToLoadType =
             LoggerMessage.Define<string, string>(
-            LogLevel.Warning,
-            new EventId(409, nameof(FailedToLoadType)),
-            "Failed to load type '{typeName}' from '{path}'");
+                LogLevel.Warning,
+                new EventId(409, nameof(FailedToLoadType)),
+                "Failed to load type '{typeName}' from '{path}'");
 
         private static readonly Action<ILogger, string, Exception> _configurationError =
             LoggerMessage.Define<string>(
-            LogLevel.Information,
-            new EventId(410, nameof(ConfigurationError)),
-            "{message}");
+                LogLevel.Information,
+                new EventId(410, nameof(ConfigurationError)),
+                "{message}");
 
         private static readonly Action<ILogger, string, string, Exception> _versionRecommendation =
             LoggerMessage.Define<string, string>(
-            LogLevel.Warning,
-            new EventId(411, nameof(VersionRecommendation)),
-            "Site extension version currently set to '{extensionVersion}'. It is recommended that you target a major version (e.g. ~2) to avoid unintended upgrades. You can change that value by updating the '{settingName}' App Setting.");
+                LogLevel.Warning,
+                new EventId(411, nameof(VersionRecommendation)),
+                "Site extension version currently set to '{extensionVersion}'. It is recommended that you target a major version (e.g. ~2) to avoid unintended upgrades. You can change that value by updating the '{settingName}' App Setting.");
 
         private static readonly Action<ILogger, long, Exception> _scriptHostInitialized =
             LoggerMessage.Define<long>(
-            LogLevel.Information,
-            new EventId(412, nameof(ScriptHostInitialized)),
-            "Host initialized ({ms}ms)");
+                LogLevel.Information,
+                new EventId(412, nameof(ScriptHostInitialized)),
+                "Host initialized ({ms}ms)");
 
         private static readonly Action<ILogger, long, Exception> _scriptHostStarted =
             LoggerMessage.Define<long>(
-            LogLevel.Information,
-            new EventId(413, nameof(ScriptHostStarted)),
-            "Host started ({ms}ms)");
+                LogLevel.Information,
+                new EventId(413, nameof(ScriptHostStarted)),
+                "Host started ({ms}ms)");
 
         private static readonly Action<ILogger, Exception> _addingDescriptorProviderForHttpWorker =
            LoggerMessage.Define(
-           LogLevel.Debug,
-           new EventId(414, nameof(AddingDescriptorProviderForHttpWorker)),
-           "Adding Function descriptor provider for HttpWorker.");
+               LogLevel.Debug,
+               new EventId(414, nameof(AddingDescriptorProviderForHttpWorker)),
+               "Adding Function descriptor provider for HttpWorker.");
 
         private static readonly Action<ILogger, string, Exception> _stoppingScriptHost =
             LoggerMessage.Define<string>(
-            LogLevel.Debug,
-            new EventId(415, nameof(StoppingScriptHost)),
-            "Stopping ScriptHost instance '{hostInstanceId}'.");
+                LogLevel.Debug,
+                new EventId(415, nameof(StoppingScriptHost)),
+                "Stopping ScriptHost instance '{hostInstanceId}'.");
 
         private static readonly Action<ILogger, string, Exception> _stoppedScriptHost =
-          LoggerMessage.Define<string>(
-          LogLevel.Debug,
-          new EventId(416, nameof(StoppedScriptHost)),
-          "Stopped ScriptHost instance '{hostInstanceId}'.");
+            LoggerMessage.Define<string>(
+                LogLevel.Debug,
+                new EventId(416, nameof(StoppedScriptHost)),
+                "Stopped ScriptHost instance '{hostInstanceId}'.");
 
         private static readonly Action<ILogger, string, Exception> _disposingScriptHost =
-          LoggerMessage.Define<string>(
-          LogLevel.Debug,
-          new EventId(417, nameof(DisposingScriptHost)),
-          "Disposing ScriptHost instance '{hostInstanceId}'.");
+            LoggerMessage.Define<string>(
+                LogLevel.Debug,
+                new EventId(417, nameof(DisposingScriptHost)),
+                "Disposing ScriptHost instance '{hostInstanceId}'.");
 
         private static readonly Action<ILogger, string, Exception> _disposedScriptHost =
-          LoggerMessage.Define<string>(
-          LogLevel.Debug,
-          new EventId(418, nameof(DisposedScriptHost)),
-          "Disposed ScriptHost instance '{hostInstanceId}'.");
+            LoggerMessage.Define<string>(
+              LogLevel.Debug,
+              new EventId(418, nameof(DisposedScriptHost)),
+              "Disposed ScriptHost instance '{hostInstanceId}'.");
+
+        private static readonly Action<ILogger, string, Exception> _functionsWorkerRuntimeValue =
+            LoggerMessage.Define<string>(
+                LogLevel.Debug,
+                new EventId(419, nameof(FunctionsWorkerRuntimeValue)),
+                $"{EnvironmentSettingNames.FunctionWorkerRuntime} value: '{{workerRuntime}}'");
+
+        private static readonly Action<ILogger, string, Exception> _resolvedWorkerRuntimeFromMetadata =
+            LoggerMessage.Define<string>(
+                LogLevel.Debug,
+                new EventId(420, nameof(ResolvedWorkerRuntimeFromMetadata)),
+                $"{EnvironmentSettingNames.FunctionWorkerRuntime} is null. Resolved worker runtime from function metadata: '{{workerRuntime}}'");
 
         public static void HostIdIsSet(this ILogger logger)
         {
@@ -214,6 +226,16 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
         public static void DisposedScriptHost(this ILogger logger, string hostInstanceId)
         {
             _disposedScriptHost(logger, hostInstanceId, null);
+        }
+
+        public static void FunctionsWorkerRuntimeValue(this ILogger logger, string workerRuntime)
+        {
+            _functionsWorkerRuntimeValue(logger, workerRuntime, null);
+        }
+
+        public static void ResolvedWorkerRuntimeFromMetadata(this ILogger logger, string workerRuntime)
+        {
+            _resolvedWorkerRuntimeFromMetadata(logger, workerRuntime, null);
         }
     }
 }

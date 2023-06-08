@@ -88,10 +88,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
         private async Task WorkerWarmupAsync()
         {
-            if (_hostingConfigOptions.Value.WorkerWarmupEnabled)
-            {
-                await _webHostRpcWorkerChannelManager.WorkerWarmupAsync();
-            }
+            await _webHostRpcWorkerChannelManager.WorkerWarmupAsync();
         }
 
         internal void ReadRuntimeAssemblyFiles()

@@ -67,16 +67,15 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IEnvironment _environment;
         private readonly IFunctionDataCache _functionDataCache;
         private readonly IOptionsMonitor<LanguageWorkerOptions> _languageWorkerOptions;
+        private readonly ILogger _logger;
+        private readonly IPrimaryHostStateProvider _primaryHostStateProvider;
+        private readonly IList<IDisposable> _eventSubscriptions = new List<IDisposable>();
+        private readonly IFunctionInvocationDispatcher _functionDispatcher;
         private static readonly int _processId = Process.GetCurrentProcess().Id;
+        public static readonly string Version = GetAssemblyFileVersion(typeof(ScriptHost).Assembly);
 
         private ValueStopwatch _stopwatch;
-        private IPrimaryHostStateProvider _primaryHostStateProvider;
-        public static readonly string Version = GetAssemblyFileVersion(typeof(ScriptHost).Assembly);
         private ScriptSettingsManager _settingsManager;
-        private ILogger _logger = null;
-        private string _workerRuntime;
-        private IList<IDisposable> _eventSubscriptions = new List<IDisposable>();
-        private IFunctionInvocationDispatcher _functionDispatcher;
 
         // Specify the "builtin binding types". These are types that are directly accesible without needing an explicit load gesture.
         // This is the set of bindings we shipped prior to binding extensibility.
@@ -137,7 +136,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
             _hostLogPath = Path.Combine(ScriptOptions.RootLogPath, "Host");
 
-            _workerRuntime = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
             _languageWorkerOptions = languageWorkerOptions;
 
             _loggerFactory = loggerFactory;
@@ -234,10 +232,10 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
-        /// Lookup a function by name
+        /// Lookup a function by name.
         /// </summary>
-        /// <param name="name">name of function</param>
-        /// <returns>function or null if not found</returns>
+        /// <param name="name">name of function.</param>
+        /// <returns>function or null if not found.</returns>
         public FunctionDescriptor GetFunctionOrNull(string name)
         {
             return Functions.FirstOrDefault(p => string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase));
@@ -277,17 +275,21 @@ namespace Microsoft.Azure.WebJobs.Script
                 PreInitialize();
                 HostInitializing?.Invoke(this, EventArgs.Empty);
 
-                _workerRuntime = _workerRuntime ?? _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
-
-                // get worker config information and check to see if worker should index or not
-                var workerConfigs = _languageWorkerOptions.CurrentValue.WorkerConfigs;
-
                 // Generate Functions
                 IEnumerable<FunctionMetadata> functionMetadataList = GetFunctionsMetadata();
 
+                string workerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
+                _logger.FunctionsWorkerRuntimeValue(workerRuntime);
+
+                if (workerRuntime is null)
+                {
+                    workerRuntime = Utility.GetWorkerRuntime(functionMetadataList);
+                    _logger.ResolvedWorkerRuntimeFromMetadata(workerRuntime);
+                }
+
                 if (!_environment.IsPlaceholderModeEnabled())
                 {
-                    string runtimeStack = _workerRuntime;
+                    string runtimeStack = workerRuntime;
 
                     if (!string.IsNullOrEmpty(runtimeStack))
                     {
@@ -307,9 +309,9 @@ namespace Microsoft.Azure.WebJobs.Script
                     Utility.LogAutorestGeneratedJsonIfExists(ScriptOptions.RootScriptPath, _logger);
                 }
 
-                IsFunctionDataCacheEnabled = GetIsFunctionDataCacheEnabled();
+                IsFunctionDataCacheEnabled = GetIsFunctionDataCacheEnabled(workerRuntime);
 
-                await InitializeFunctionDescriptorsAsync(functionMetadataList, cancellationToken);
+                await InitializeFunctionDescriptorsAsync(functionMetadataList, workerRuntime, cancellationToken);
 
                 var filteredFunctionMetadata = functionMetadataList.Where(m => m.IsProxy() || !Utility.IsCodelessDotNetLanguageFunction(m));
                 await _functionDispatcher.InitializeAsync(Utility.GetValidFunctions(filteredFunctionMetadata, Functions), cancellationToken);
@@ -324,9 +326,9 @@ namespace Microsoft.Azure.WebJobs.Script
         /// if the setting was enabled, the app is using out-of-proc languages which communicate with the host over shared memory).
         /// </summary>
         /// <returns><see cref="true"/> if <see cref="IFunctionDataCache"/> can be used, <see cref="false"/> otherwise.</returns>
-        private bool GetIsFunctionDataCacheEnabled()
+        private bool GetIsFunctionDataCacheEnabled(string workerRuntime)
         {
-            if (Utility.IsDotNetLanguageFunction(_workerRuntime) ||
+            if (Utility.IsDotNetLanguageFunction(workerRuntime) ||
                 ContainsDotNetFunctionDescriptorProvider() ||
                 _functionDataCache == null)
             {
@@ -368,7 +370,7 @@ namespace Microsoft.Azure.WebJobs.Script
             IEnumerable<FunctionMetadata> functionMetadata;
 
             functionMetadata = _functionMetadataManager.GetFunctionMetadata(forceRefresh: false, workerConfigs: _languageWorkerOptions.CurrentValue.WorkerConfigs);
-            _workerRuntime ??= Utility.GetWorkerRuntime(functionMetadata);
+
             foreach (var error in _functionMetadataManager.Errors)
             {
                 FunctionErrors.Add(error.Key, error.Value.ToArray());
@@ -505,23 +507,23 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <summary>
         /// Initialize function descriptors from metadata.
         /// </summary>
-        internal async Task InitializeFunctionDescriptorsAsync(IEnumerable<FunctionMetadata> functionMetadata, CancellationToken cancellationToken)
+        internal async Task InitializeFunctionDescriptorsAsync(IEnumerable<FunctionMetadata> functionMetadata, string workerRuntime, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            AddFunctionDescriptors(functionMetadata);
+            AddFunctionDescriptors(functionMetadata, workerRuntime);
 
             Collection<FunctionDescriptor> functions;
             using (_metricsLogger.LatencyEvent(MetricEventNames.HostStartupGetFunctionDescriptorsLatency))
             {
                 _logger.CreatingDescriptors();
-                functions = await GetFunctionDescriptorsAsync(functionMetadata, _descriptorProviders, cancellationToken);
+                functions = await GetFunctionDescriptorsAsync(functionMetadata, _descriptorProviders, workerRuntime, cancellationToken);
                 _logger.DescriptorsCreated();
             }
             Functions = functions;
         }
 
-        private void AddFunctionDescriptors(IEnumerable<FunctionMetadata> functionMetadata)
+        private void AddFunctionDescriptors(IEnumerable<FunctionMetadata> functionMetadata, string workerRuntime)
         {
             if (_environment.IsPlaceholderModeEnabled())
             {
@@ -543,21 +545,21 @@ namespace Microsoft.Azure.WebJobs.Script
                 _logger.AddingDescriptorProviderForHttpWorker();
                 _descriptorProviders.Add(new HttpFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _functionDispatcher, _loggerFactory, _applicationLifetime, _httpWorkerOptions.InitializationTimeout));
             }
-            else if (string.Equals(_workerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
+            else if (string.Equals(workerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
             {
                 _logger.AddingDescriptorProviderForLanguage(RpcWorkerConstants.DotNetLanguageWorkerName);
                 _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, _loggerFactory));
             }
             else
             {
-                _logger.AddingDescriptorProviderForLanguage(_workerRuntime);
+                _logger.AddingDescriptorProviderForLanguage(workerRuntime);
 
-                var workerConfig = _languageWorkerOptions.CurrentValue.WorkerConfigs?.FirstOrDefault(c => c.Description.Language.Equals(_workerRuntime, StringComparison.OrdinalIgnoreCase));
+                var workerConfig = _languageWorkerOptions.CurrentValue.WorkerConfigs?.FirstOrDefault(c => c.Description.Language.Equals(workerRuntime, StringComparison.OrdinalIgnoreCase));
 
                 // If there's no worker config, use the default (for legacy behavior; mostly for tests).
                 TimeSpan initializationTimeout = workerConfig?.CountOptions?.InitializationTimeout ?? WorkerProcessCountOptions.DefaultInitializationTimeout;
 
-                _descriptorProviders.Add(new RpcFunctionDescriptorProvider(this, _workerRuntime, ScriptOptions, _bindingProviders,
+                _descriptorProviders.Add(new RpcFunctionDescriptorProvider(this, workerRuntime, ScriptOptions, _bindingProviders,
                     _functionDispatcher, _loggerFactory, _applicationLifetime, initializationTimeout));
             }
 
@@ -734,14 +736,14 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        internal async Task<Collection<FunctionDescriptor>> GetFunctionDescriptorsAsync(IEnumerable<FunctionMetadata> functions, IEnumerable<FunctionDescriptorProvider> descriptorProviders, CancellationToken cancellationToken)
+        internal async Task<Collection<FunctionDescriptor>> GetFunctionDescriptorsAsync(IEnumerable<FunctionMetadata> functions, IEnumerable<FunctionDescriptorProvider> descriptorProviders, string workerRuntime, CancellationToken cancellationToken)
         {
             Collection<FunctionDescriptor> functionDescriptors = new Collection<FunctionDescriptor>();
             if (!cancellationToken.IsCancellationRequested)
             {
                 var httpFunctions = new Dictionary<string, HttpTriggerAttribute>();
 
-                Utility.VerifyFunctionsMatchSpecifiedLanguage(functions, _workerRuntime, _environment.IsPlaceholderModeEnabled(), _isHttpWorker, cancellationToken);
+                Utility.VerifyFunctionsMatchSpecifiedLanguage(functions, workerRuntime, _environment.IsPlaceholderModeEnabled(), _isHttpWorker, cancellationToken);
 
                 foreach (FunctionMetadata metadata in functions)
                 {

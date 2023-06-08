@@ -85,7 +85,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var workerOptions = new LanguageWorkerOptions();
             FileUtility.Instance = fileSystem;
             _fileSystem = fileSystem;
-            var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, new TestMetricsLogger());
+            var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, new TestMetricsLogger(), SystemEnvironment.Instance);
             var defaultProvider = new FunctionMetadataProvider(NullLogger<FunctionMetadataProvider>.Instance, null, metadataProvider, new OptionsWrapper<FunctionsHostingConfigOptions>(new FunctionsHostingConfigOptions()), SystemEnvironment.Instance);
             var functionMetadataManager = TestFunctionMetadataManager.GetFunctionMetadataManager(new OptionsWrapper<ScriptJobHostOptions>(new ScriptJobHostOptions()), defaultProvider, null, new OptionsWrapper<HttpWorkerOptions>(new HttpWorkerOptions()), loggerFactory, new TestOptionsMonitor<LanguageWorkerOptions>(TestHelpers.GetTestLanguageWorkerOptions()));
 
