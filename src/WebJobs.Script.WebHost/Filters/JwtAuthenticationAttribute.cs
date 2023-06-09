@@ -44,15 +44,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
 
             if (!string.IsNullOrEmpty(token))
             {
-                if (SecretsUtility.TryGetEncryptionKey(out string key))
+                var signingKeys = SecretsUtility.GetTokenIssuerSigningKeys();
+                if (signingKeys.Length > 0)
                 {
                     var validationParameters = new TokenValidationParameters()
                     {
-                        IssuerSigningKeys = new SecurityKey[]
-                        {
-                            new SymmetricSecurityKey(key.ToKeyBytes()),
-                            new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key))
-                        },
+                        IssuerSigningKeys = signingKeys,
                         ValidateAudience = true,
                         ValidateIssuer = true,
                         ValidAudiences = new string[]
