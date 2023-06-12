@@ -619,7 +619,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         }
 
         [Fact]
-        public async Task SpecializeMSISidecar_Succeeds_EncryptedMSIContext()
+        public async Task SpecializeMSISidecar_Succeeds_EncryptedMSIContextWithoutProvidedEndpoint()
         {
             var environment = new Dictionary<string, string>()
             {
@@ -646,6 +646,38 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 p => Assert.StartsWith("MSI enabled status: True", p),
                 p => Assert.StartsWith("Using encrypted TokenService payload format", p),
                 p => Assert.Equal($"Specializing sidecar at http://localhost:8081{ScriptConstants.LinuxEncryptedTokenServiceSpecializationStem}", p),
+                p => Assert.StartsWith("Specialize MSI sidecar returned OK", p));
+        }
+
+        [Fact]
+        public async Task SpecializeMSISidecar_Succeeds_EncryptedMSIContextWithProvidedEndpoint()
+        {
+            var environment = new Dictionary<string, string>()
+            {
+                { EnvironmentSettingNames.MsiEndpoint, "http://localhost:8081" },
+                { EnvironmentSettingNames.MsiSecret, "secret" }
+            };
+            var assignmentContext = new HostAssignmentContext
+            {
+                SiteId = 1234,
+                SiteName = "TestSite",
+                Environment = environment,
+                IsWarmupRequest = false,
+                MSIContext = new MSIContext(),
+                EncryptedTokenServiceSpecializationPayload = "TestContext",
+                TokenServiceApiEndpoint = "/api/TestEndpoint"
+            };
+
+            var instanceManager = GetInstanceManagerForMSISpecialization(assignmentContext, HttpStatusCode.OK, null);
+
+            string error = await instanceManager.SpecializeMSISidecar(assignmentContext);
+            Assert.Null(error);
+
+            var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
+            Assert.Collection(logs,
+                p => Assert.StartsWith("MSI enabled status: True", p),
+                p => Assert.StartsWith("Using encrypted TokenService payload format", p),
+                p => Assert.Equal($"Specializing sidecar at http://localhost:8081{assignmentContext.TokenServiceApiEndpoint}", p),
                 p => Assert.StartsWith("Specialize MSI sidecar returned OK", p));
         }
 
@@ -1339,11 +1371,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var msiEndpoint = hostAssignmentContext.Environment[EnvironmentSettingNames.MsiEndpoint] + ScriptConstants.LinuxMSISpecializationStem;
 
-            var encryptedMsiEndpoint = hostAssignmentContext.Environment[EnvironmentSettingNames.MsiEndpoint] + ScriptConstants.LinuxEncryptedTokenServiceSpecializationStem;
+            var defaultEncryptedMsiEndpoint = hostAssignmentContext.Environment[EnvironmentSettingNames.MsiEndpoint] + ScriptConstants.LinuxEncryptedTokenServiceSpecializationStem;
+
+            var providedEncryptedMsiEndpoint = hostAssignmentContext.Environment[EnvironmentSettingNames.MsiEndpoint] + hostAssignmentContext.TokenServiceApiEndpoint;
 
             handlerMock.Protected().Setup<Task<HttpResponseMessage>>("SendAsync",
                 ItExpr.Is<HttpRequestMessage>(request => request.Method == HttpMethod.Post
-                                                         && (request.RequestUri.AbsoluteUri.Equals(msiEndpoint) || request.RequestUri.AbsoluteUri.Equals(encryptedMsiEndpoint))
+                                                         && (request.RequestUri.AbsoluteUri.Equals(msiEndpoint) 
+                                                            || request.RequestUri.AbsoluteUri.Equals(defaultEncryptedMsiEndpoint)
+                                                            || request.RequestUri.AbsoluteUri.Equals(providedEncryptedMsiEndpoint))
                                                          && request.Content != null),
                 ItExpr.IsAny<CancellationToken>())
                 .Callback<HttpRequestMessage, CancellationToken>((request, token) => customAction?.Invoke(request, token))

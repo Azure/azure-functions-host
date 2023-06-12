@@ -385,12 +385,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             {
                 _logger.LogDebug("Using encrypted TokenService payload format");
 
-                stem = ScriptConstants.LinuxEncryptedTokenServiceSpecializationStem;
-
-                if (!context.TokenServiceApiEndpoint.IsNullOrEmpty())
-                {
-                    stem = context.TokenServiceApiEndpoint;
-                }
+                // use default encrypted API endpoint if endpoint not provided in context
+                stem = context.TokenServiceApiEndpoint.IsNullOrEmpty()
+                    ? ScriptConstants.LinuxEncryptedTokenServiceSpecializationStem
+                    : context.TokenServiceApiEndpoint;
             }
 
             return stem;
