@@ -15,6 +15,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
@@ -63,33 +64,31 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
             if (msiEnabled)
             {
-                if (context.MSIContext == null && context.EncryptedMSIContext == null)
+                if (context.MSIContext == null && context.EncryptedTokenServiceSpecializationPayload == null)
                 {
-                    _logger.LogWarning("Skipping specialization of MSI sidecar since MSIContext and EncryptedMSIContext were absent");
+                    _logger.LogWarning("Skipping specialization of MSI sidecar since MSIContext and EncryptedTokenServiceSpecializationPayload were absent");
                     await _meshServiceClient.NotifyHealthEvent(ContainerHealthEventType.Fatal, this.GetType(),
-                        "Could not specialize MSI sidecar since MSIContext and EncryptedMSIContext were empty");
+                        "Could not specialize MSI sidecar since MSIContext and EncryptedTokenServiceSpecializationPayload were empty");
                 }
                 else
                 {
                     using (_metricsLogger.LatencyEvent(MetricEventNames.LinuxContainerSpecializationMSIInit))
                     {
                         var uri = new Uri(endpoint);
-                        var addressStem = context.EncryptedMSIContext == null ?
-                            ScriptConstants.LinuxMSISpecializationStem :
-                            ScriptConstants.LinuxNewMSISpecializationStem;
+                        var addressStem = GetMsiSpecializationRequestAddressStem(context);
 
                         var address = $"http://{uri.Host}:{uri.Port}{addressStem}";
                         _logger.LogDebug($"Specializing sidecar at {address}");
 
                         StringContent payload;
-                        if (context.EncryptedMSIContext == null)
+                        if (context.EncryptedTokenServiceSpecializationPayload.IsNullOrEmpty())
                         {
                             payload = new StringContent(JsonConvert.SerializeObject(context.MSIContext),
                                     Encoding.UTF8, "application/json");
                         }
                         else
                         {
-                            payload = new StringContent(context.EncryptedMSIContext, Encoding.UTF8);
+                            payload = new StringContent(context.EncryptedTokenServiceSpecializationPayload, Encoding.UTF8);
                         }
 
                         var requestMessage = new HttpRequestMessage(HttpMethod.Post, address)
@@ -376,6 +375,25 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 _logger.LogError(e, $"Failed to mount BYOS storage account {storageInfoValue.Id}");
                 return false;
             }
+        }
+
+        private string GetMsiSpecializationRequestAddressStem(HostAssignmentContext context)
+        {
+            var stem = ScriptConstants.LinuxMSISpecializationStem;
+
+            if (!context.EncryptedTokenServiceSpecializationPayload.IsNullOrEmpty())
+            {
+                _logger.LogDebug("Using encrypted TokenService payload format");
+
+                stem = ScriptConstants.LinuxEncryptedTokenServiceSpecializationStem;
+
+                if (!context.TokenServiceApiEndpoint.IsNullOrEmpty())
+                {
+                    stem = context.TokenServiceApiEndpoint;
+                }
+            }
+
+            return stem;
         }
     }
 }
