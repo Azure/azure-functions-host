@@ -43,7 +43,7 @@ namespace Microsoft.Extensions.DependencyInjection
                         // TODO: DI (FACAVAL) This will be fixed once the permanent fix is in place
                         if (_specialized == 0 && !SystemEnvironment.Instance.IsPlaceholderModeEnabled() && Interlocked.CompareExchange(ref _specialized, 1, 0) == 0)
                         {
-                            o.TokenValidationParameters = CreateTokenValidationParameters(GetValidAudiences());
+                            o.TokenValidationParameters = CreateTokenValidationParameters();
                         }
 
                         return Task.CompletedTask;
@@ -61,7 +61,7 @@ namespace Microsoft.Extensions.DependencyInjection
                     }
                 };
 
-                o.TokenValidationParameters = CreateTokenValidationParameters(GetValidAudiences());
+                o.TokenValidationParameters = CreateTokenValidationParameters();
 
                 // TODO: DI (FACAVAL) Remove this once the work above is completed.
                 if (!SystemEnvironment.Instance.IsPlaceholderModeEnabled())
@@ -89,7 +89,7 @@ namespace Microsoft.Extensions.DependencyInjection
             };
         }
 
-        private static TokenValidationParameters CreateTokenValidationParameters(string[] validAudiences)
+        public static TokenValidationParameters CreateTokenValidationParameters()
         {
             var signingKeys = SecretsUtility.GetTokenIssuerSigningKeys();
             var result = new TokenValidationParameters();
@@ -98,7 +98,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 result.IssuerSigningKeys = signingKeys;
                 result.ValidateAudience = true;
                 result.ValidateIssuer = true;
-                result.ValidAudiences = validAudiences;
+                result.ValidAudiences = GetValidAudiences();
                 result.ValidIssuers = new string[]
                 {
                     AppServiceCoreUri,
