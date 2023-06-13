@@ -29,11 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
 
         public override Task<(bool HasStartContext, string StartContext)> TryGetStartContextOrNullAsync(CancellationToken cancellationToken)
         {
-            _logger.LogInformation("[TEST] GetStartContextOrNullAsyncOnLegion");
-
             string containerSpecializationContextMountPath = _environment.GetEnvironmentVariable(EnvironmentSettingNames.ContainerSpecializationContextVolumePath);
-
-            _logger.LogInformation($"[TEST] ContainerSpecializationContextMountPath: {containerSpecializationContextMountPath}");
 
             // The CONTAINER_SPECIALIZATION_CONTEXT_MOUNT_PATH environment variable should be set during pod creation
             if (string.IsNullOrEmpty(containerSpecializationContextMountPath))
@@ -50,7 +46,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
             }
 
             string contextFilePath = Path.Combine(containerSpecializationContextMountPath, ContextFile);
-            _logger.LogInformation($"[TEST] contextFilePath: {contextFilePath}");
 
             if (File.Exists(contextFilePath))
             {
@@ -58,7 +53,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
                 try
                 {
                     var startContext = File.ReadAllText(contextFilePath);
-                    _logger.LogInformation($"[TEST] contents: {startContext}");
                     return Task.FromResult((true, startContext));
                 }
                 catch (Exception e)
