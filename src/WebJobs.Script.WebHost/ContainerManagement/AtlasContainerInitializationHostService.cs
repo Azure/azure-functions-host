@@ -34,7 +34,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
         public override async Task<(bool HasStartContext, string StartContext)> TryGetStartContextOrNullAsync(CancellationToken cancellationToken)
         {
             _cancellationToken = cancellationToken;
-            _logger.LogInformation("[TEST] GetStartContextOrNullAsyncOnAtlas"); //debugging
             var startContext = _environment.GetEnvironmentVariable(EnvironmentSettingNames.ContainerStartContext);
 
             // Container start context is not available directly
