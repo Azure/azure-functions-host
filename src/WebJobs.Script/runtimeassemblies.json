@@ -492,12 +492,20 @@
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
+      "name": "Microsoft.Azure.WebJobs.Extensions.Rpc",
+      "resolutionPolicy": "private"
+    },
+    {
       "name": "Microsoft.Azure.WebJobs.Extensions.Timers.Storage",
       "resolutionPolicy": "private"
     },
     {
       "name": "Microsoft.Azure.WebJobs.Host",
       "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Azure.WebJobs.Host.Rpc",
+      "resolutionPolicy": "runtimeVersion"
     },
     {
       "name": "Microsoft.Azure.WebJobs.Host.Storage",
