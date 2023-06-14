@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
+using Microsoft.Azure.AppService.Proxy.Common.Infra;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
@@ -285,7 +286,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
         }
 
-        public Task ShutdownChannelsAsync()
+        public async Task ShutdownChannelsAsync()
         {
             foreach (string runtime in _workerChannels.Keys)
             {
@@ -294,25 +295,34 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 {
                     foreach (string workerId in standbyChannels.Keys)
                     {
-                        standbyChannels[workerId]?.Task.ContinueWith(channelTask =>
+                        if (standbyChannels.TryGetValue(workerId, out TaskCompletionSource<IRpcWorkerChannel> channelTask))
                         {
-                            if (channelTask.Status == TaskStatus.Faulted)
+                            IRpcWorkerChannel workerChannel = null;
+
+                            try
                             {
-                                _logger.LogDebug(channelTask.Exception, "Removing errored worker channel");
+                                workerChannel = await channelTask.Task;
                             }
-                            else
+                            catch (Exception ex)
                             {
-                                IRpcWorkerChannel workerChannel = channelTask.Result;
-                                if (workerChannel != null)
+                                _logger.LogDebug(ex, "Removing errored worker channel");
+                            }
+
+                            if (workerChannel is IDisposable disposableWorkerChannel)
+                            {
+                                try
                                 {
-                                    (channelTask.Result as IDisposable)?.Dispose();
+                                    disposableWorkerChannel.Dispose();
+                                }
+                                catch (Exception ex)
+                                {
+                                    _logger.LogDebug(ex, "Error disposing worker channel");
                                 }
                             }
-                        });
+                        }
                     }
                 }
             }
-            return Task.CompletedTask;
         }
 
         internal void AddOrUpdateWorkerChannels(string initializedRuntime, IRpcWorkerChannel initializedLanguageWorkerChannel)
