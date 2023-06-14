@@ -53,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
                 _logger.LogInformation("Host context specified via CONTAINER_START_CONTEXT");
             }
 
-            return (string.IsNullOrEmpty(startContext), startContext);
+            return (!string.IsNullOrEmpty(startContext), startContext);
         }
 
         protected override async Task SpecializeMSISideCar(HostAssignmentContext assignmentContext)
