@@ -195,28 +195,37 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         }
 
         [Theory]
-        [InlineData(true, false, false, true)]
-        [InlineData(false, true, false, true)]
-        [InlineData(true, true, false, true)]
-        [InlineData(false, false, false, false)]
-        [InlineData(false, false, true, false)]
-        public void IsAnyLinuxConsumption_ReturnsExpectedResult(bool isLinuxConsumptionOnAtlas, bool isLinuxConsumptionOnLegion, bool isManagedAppEnvironment, bool expectedValue)
+        [InlineData(true, false, false, true, false)]
+        [InlineData(false, true, false, true, false)]
+        [InlineData(false, true, false, true, true)]
+        [InlineData(true, true, false, true, false)]
+        [InlineData(true, true, false, true, true)]
+        [InlineData(false, false, false, false, false)]
+        [InlineData(false, false, true, false, false)]
+        public void IsAnyLinuxConsumption_ReturnsExpectedResult(bool isLinuxConsumptionOnAtlas, bool isLinuxConsumptionOnLegion, bool isManagedAppEnvironment, bool expectedValue, bool setPodName)
         {
             IEnvironment env = new TestEnvironment();
             if (isLinuxConsumptionOnAtlas)
             {
-                env.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, "RandomContainerName");
+                env.SetEnvironmentVariable(ContainerName, "RandomContainerName");
             }
 
             if (isLinuxConsumptionOnLegion)
             {
-                env.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, "RandomContainerName");
-                env.SetEnvironmentVariable(EnvironmentSettingNames.LegionServiceHost, "RandomLegionServiceHostName");
+                if (setPodName)
+                {
+                    env.SetEnvironmentVariable(WebsitePodName, "RandomPodName");
+                }
+                else
+                {
+                    env.SetEnvironmentVariable(ContainerName, "RandomContainerName");
+                }
+                env.SetEnvironmentVariable(LegionServiceHost, "RandomLegionServiceHostName");
             }
 
             if (isManagedAppEnvironment)
             {
-                env.SetEnvironmentVariable(EnvironmentSettingNames.ManagedEnvironment, "true");
+                env.SetEnvironmentVariable(ManagedEnvironment, "true");
             }
 
             Assert.Equal(expectedValue, env.IsAnyLinuxConsumption());
