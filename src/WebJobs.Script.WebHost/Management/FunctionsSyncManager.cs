@@ -545,19 +545,24 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         // This is a stopgap approach to get the Durable extension version. It duplicates some logic in ExtensionManager.cs.
         private async Task<string> GetDurableMajorVersionAsync(JObject hostJson, ScriptJobHostOptions hostOptions)
         {
-            bool isUsingBundles = hostJson != null && hostJson.TryGetValue("extensionBundle", StringComparison.OrdinalIgnoreCase, out _);
+            JToken bundlesSection = null;
+            bool isUsingBundles = hostJson != null && hostJson.TryGetValue("extensionBundle", StringComparison.OrdinalIgnoreCase, out bundlesSection);
             if (isUsingBundles)
             {
-                // TODO: As of 2019-12-12, there are no extension bundles for version 2.x of Durable.
-                // This may change in the future.
-                return "1";
+                // From Functions runtime V4 onwards, only bundles >= V2.x is supported, which means the app should be using DF V2 or greater.
+                return "2";
             }
 
             string binPath = binPath = Path.Combine(hostOptions.RootScriptPath, "bin");
             string metadataFilePath = Path.Combine(binPath, ScriptConstants.ExtensionsMetadataFileName);
             if (!FileUtility.FileExists(metadataFilePath))
             {
-                return null;
+                // the .NET isolated worker places `extensions.csproj` at the root of the app. We try this location next.
+                metadataFilePath = Path.Combine(hostOptions.RootScriptPath, ScriptConstants.ExtensionsMetadataFileName);
+                if (!FileUtility.FileExists(metadataFilePath))
+                {
+                    return null;
+                }
             }
 
             var extensionMetadata = JObject.Parse(await FileUtility.ReadAsync(metadataFilePath));
