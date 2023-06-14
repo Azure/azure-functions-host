@@ -156,6 +156,117 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         }
 
         [Theory]
+        [InlineData(true, false, false, true)]
+        [InlineData(false, false, true, true)]
+        [InlineData(false, true, false, true)]
+        [InlineData(false, false, false, false)]
+        [InlineData(true, true, false, true)]
+        public void IsConsumptionSku_ReturnsExpectedResult(bool isLinuxConsumption, bool isWindowsConsumption, bool isFlexConsumption, bool expectedValue)
+        {
+            IEnvironment env = new TestEnvironment();
+            if (isLinuxConsumption)
+            {
+                env.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, "RandomContainerName");
+            }
+
+            if (isWindowsConsumption)
+            {
+                env.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, ScriptConstants.DynamicSku);
+            }
+
+            if (isFlexConsumption)
+            {
+                env.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, ScriptConstants.FlexConsumptionSku);
+            }
+
+            Assert.Equal(expectedValue, env.IsConsumptionSku());
+        }
+
+        [Theory]
+        [InlineData("FlexConsumption", true)]
+        [InlineData("Dynamic", false)]
+        [InlineData("ElasticPremium", false)]
+        [InlineData("", false)]
+        public void IsFlexConsumptionSku_ReturnsExpectedResult(string sku, bool expected)
+        {
+            IEnvironment env = new TestEnvironment();
+            env.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, sku);
+            Assert.Equal(expected, env.IsFlexConsumptionSku());
+        }
+
+        [Theory]
+        [InlineData(true, false, false, true, false)]
+        [InlineData(false, true, false, true, false)]
+        [InlineData(false, true, false, true, true)]
+        [InlineData(true, true, false, true, false)]
+        [InlineData(true, true, false, true, true)]
+        [InlineData(false, false, false, false, false)]
+        [InlineData(false, false, true, false, false)]
+        public void IsAnyLinuxConsumption_ReturnsExpectedResult(bool isLinuxConsumptionOnAtlas, bool isLinuxConsumptionOnLegion, bool isManagedAppEnvironment, bool expectedValue, bool setPodName)
+        {
+            IEnvironment env = new TestEnvironment();
+            if (isLinuxConsumptionOnAtlas)
+            {
+                env.SetEnvironmentVariable(ContainerName, "RandomContainerName");
+            }
+
+            if (isLinuxConsumptionOnLegion)
+            {
+                if (setPodName)
+                {
+                    env.SetEnvironmentVariable(WebsitePodName, "RandomPodName");
+                }
+                else
+                {
+                    env.SetEnvironmentVariable(ContainerName, "RandomContainerName");
+                }
+                env.SetEnvironmentVariable(LegionServiceHost, "RandomLegionServiceHostName");
+            }
+
+            if (isManagedAppEnvironment)
+            {
+                env.SetEnvironmentVariable(ManagedEnvironment, "true");
+            }
+
+            Assert.Equal(expectedValue, env.IsAnyLinuxConsumption());
+        }
+
+        [Theory]
+        [InlineData(true, false, true)]
+        [InlineData(false, true, true)]
+        [InlineData(false, false, false)]
+        public void IsAnyKubernetesEnvironment_ReturnsExpectedResult(bool isKubernetesManagedHosting, bool isManagedAppEnvironment, bool expectedValue)
+        {
+            IEnvironment env = new TestEnvironment();
+            if (isKubernetesManagedHosting)
+            {
+                env.SetEnvironmentVariable(KubernetesServiceHost, "10.0.0.1");
+                env.SetEnvironmentVariable(PodNamespace, "RandomPodNamespace");
+            }
+
+            if (isManagedAppEnvironment)
+            {
+                env.SetEnvironmentVariable(ManagedEnvironment, "true");
+            }
+
+            Assert.Equal(expectedValue, env.IsAnyKubernetesEnvironment());
+        }
+
+        [Theory]
+        [InlineData(true, true)]
+        [InlineData(false, false)]
+        public void IsManagedAppEnvironment_ReturnsExpectedResult(bool isManagedAppEnvironment, bool expectedValue)
+        {
+            IEnvironment env = new TestEnvironment();
+            if (isManagedAppEnvironment)
+            {
+                env.SetEnvironmentVariable(EnvironmentSettingNames.ManagedEnvironment, "true");
+            }
+
+            Assert.Equal(expectedValue, env.IsManagedAppEnvironment());
+        }
+
+        [Theory]
         [InlineData("~2", "true", true)]
         [InlineData("~2", "false", true)]
         [InlineData("~2", null, true)]

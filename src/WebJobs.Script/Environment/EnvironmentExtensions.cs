@@ -268,7 +268,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public static bool IsLinuxConsumptionOnLegion(this IEnvironment environment)
         {
             return !environment.IsAppService() &&
-                   !string.IsNullOrEmpty(environment.GetEnvironmentVariable(ContainerName)) &&
+                   (!string.IsNullOrEmpty(environment.GetEnvironmentVariable(ContainerName)) ||
+                   !string.IsNullOrEmpty(environment.GetEnvironmentVariable(WebsitePodName))) &&
                    !string.IsNullOrEmpty(environment.GetEnvironmentVariable(LegionServiceHost));
         }
 
