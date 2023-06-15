@@ -552,21 +552,31 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 return "2";
             }
 
-            // There's two places where `extensions.json` may be located
-            // (1) In the bin folder
-            // (2) In the app's root (for .NET isolated).
-            // We check them both
-            string binPath = binPath = Path.Combine(hostOptions.RootScriptPath, "bin");
+            // There's 3 directories where `extensions.json` may be located
+            // (1) In the bin folder of the script's root
+            // (2) In the script's root
+            // (3) In the system path (.azurefunctions) within the script's root
+            // We probe for extensions.csproj in all these locations, in order
 
-            // case (1)
-            string metadataFilePath = Path.Combine(binPath, ScriptConstants.ExtensionsMetadataFileName);
-            if (!FileUtility.FileExists(metadataFilePath))
+            // case 1: check in bin folder
+            var extensionsMetadataDirectory = Path.Combine(hostOptions.RootScriptPath, "bin");
+            string metadataFilePath = Path.Combine(extensionsMetadataDirectory, ScriptConstants.ExtensionsMetadataFileName);
+            if (!File.Exists(metadataFilePath))
             {
-                // case (2), for .NET isolated
-                metadataFilePath = Path.Combine(hostOptions.RootScriptPath, ScriptConstants.ExtensionsMetadataFileName);
-                if (!FileUtility.FileExists(metadataFilePath))
+                // case 2: check in script root
+                extensionsMetadataDirectory = hostOptions.RootScriptPath;
+                metadataFilePath = Path.Combine(extensionsMetadataDirectory, ScriptConstants.ExtensionsMetadataFileName);
+
+                if (!File.Exists(metadataFilePath))
                 {
-                    return null;
+                    // case 3: check in system path
+                    extensionsMetadataDirectory = Path.Combine(hostOptions.RootScriptPath, ScriptConstants.AzureFunctionsSystemDirectoryName);
+                    metadataFilePath = Path.Combine(extensionsMetadataDirectory, ScriptConstants.ExtensionsMetadataFileName);
+
+                    if (!File.Exists(metadataFilePath))
+                    {
+                        return null;
+                    }
                 }
             }
 
