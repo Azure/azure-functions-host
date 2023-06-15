@@ -547,13 +547,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private async Task<string> GetDurableMajorVersionAsync(JObject hostJson, ScriptJobHostOptions hostOptions)
         {
             string metadataFilePath;
+            bool isUsingBundles = hostJson != null && hostJson.TryGetValue("extensionBundle", StringComparison.OrdinalIgnoreCase, out _);
+            // This feature flag controls whether to opt out of the SyncTrigger metadata fix for OOProc DF apps from https://github.com/Azure/azure-functions-host/pull/9331
             if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagDisableOutOfProcCV2Scaling))
             {
-                bool isUsingBundles = hostJson != null && hostJson.TryGetValue("extensionBundle", StringComparison.OrdinalIgnoreCase, out _);
+                // using legacy behavior, which concludes that out of process DF apps (including .NET isolated) are using DF Extension V1.x
+                // as a result, the SyncTriggers payload for these apps will be missing some metadata like "taskHubName"
                 if (isUsingBundles)
                 {
-                    // TODO: As of 2019-12-12, there are no extension bundles for version 2.x of Durable.
-                    // This may change in the future.
                     return "1";
                 }
 
@@ -566,7 +567,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
             else
             {
-                bool isUsingBundles = hostJson != null && hostJson.TryGetValue("extensionBundle", StringComparison.OrdinalIgnoreCase, out _);
                 if (isUsingBundles)
                 {
                     // From Functions runtime V4 onwards, only bundles >= V2.x is supported, which implies the app should be using DF V2 or greater.
