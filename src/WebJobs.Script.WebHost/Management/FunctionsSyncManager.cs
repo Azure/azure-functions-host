@@ -14,6 +14,7 @@ using System.Threading.Tasks;
 using Azure.Storage.Blobs;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Storage;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Extensions;
@@ -545,37 +546,58 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         // This is a stopgap approach to get the Durable extension version. It duplicates some logic in ExtensionManager.cs.
         private async Task<string> GetDurableMajorVersionAsync(JObject hostJson, ScriptJobHostOptions hostOptions)
         {
-            bool isUsingBundles = hostJson != null && hostJson.TryGetValue("extensionBundle", StringComparison.OrdinalIgnoreCase, out _);
-            if (isUsingBundles)
+            string metadataFilePath;
+            if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagDisableOutOfProcCV2Scaling))
             {
-                // From Functions runtime V4 onwards, only bundles >= V2.x is supported, which implies the app should be using DF V2 or greater.
-                return "2";
+                bool isUsingBundles = hostJson != null && hostJson.TryGetValue("extensionBundle", StringComparison.OrdinalIgnoreCase, out _);
+                if (isUsingBundles)
+                {
+                    // TODO: As of 2019-12-12, there are no extension bundles for version 2.x of Durable.
+                    // This may change in the future.
+                    return "1";
+                }
+
+                string binPath = binPath = Path.Combine(hostOptions.RootScriptPath, "bin");
+                metadataFilePath = Path.Combine(binPath, ScriptConstants.ExtensionsMetadataFileName);
+                if (!FileUtility.FileExists(metadataFilePath))
+                {
+                    return null;
+                }
             }
-
-            // There's 3 directories where `extensions.json` may be located
-            // (1) In the bin folder of the script's root
-            // (2) In the script's root
-            // (3) In the system path (.azurefunctions) within the script's root
-            // We probe for extensions.csproj in all these locations, in order
-
-            // case 1: check in bin folder
-            var extensionsMetadataDirectory = Path.Combine(hostOptions.RootScriptPath, "bin");
-            string metadataFilePath = Path.Combine(extensionsMetadataDirectory, ScriptConstants.ExtensionsMetadataFileName);
-            if (!File.Exists(metadataFilePath))
+            else
             {
-                // case 2: check in script root
-                extensionsMetadataDirectory = hostOptions.RootScriptPath;
-                metadataFilePath = Path.Combine(extensionsMetadataDirectory, ScriptConstants.ExtensionsMetadataFileName);
+                bool isUsingBundles = hostJson != null && hostJson.TryGetValue("extensionBundle", StringComparison.OrdinalIgnoreCase, out _);
+                if (isUsingBundles)
+                {
+                    // From Functions runtime V4 onwards, only bundles >= V2.x is supported, which implies the app should be using DF V2 or greater.
+                    return "2";
+                }
 
+                // There's 3 directories where `extensions.json` may be located
+                // (1) In the bin folder of the script's root
+                // (2) In the script's root
+                // (3) In the system path (.azurefunctions) within the script's root
+                // We probe for extensions.csproj in all these locations, in order
+
+                // case 1: check in bin folder
+                var extensionsMetadataDirectory = Path.Combine(hostOptions.RootScriptPath, "bin");
+                metadataFilePath = Path.Combine(extensionsMetadataDirectory, ScriptConstants.ExtensionsMetadataFileName);
                 if (!File.Exists(metadataFilePath))
                 {
-                    // case 3: check in system path
-                    extensionsMetadataDirectory = Path.Combine(hostOptions.RootScriptPath, ScriptConstants.AzureFunctionsSystemDirectoryName);
+                    // case 2: check in script root
+                    extensionsMetadataDirectory = hostOptions.RootScriptPath;
                     metadataFilePath = Path.Combine(extensionsMetadataDirectory, ScriptConstants.ExtensionsMetadataFileName);
 
                     if (!File.Exists(metadataFilePath))
                     {
-                        return null;
+                        // case 3: check in system path
+                        extensionsMetadataDirectory = Path.Combine(hostOptions.RootScriptPath, ScriptConstants.AzureFunctionsSystemDirectoryName);
+                        metadataFilePath = Path.Combine(extensionsMetadataDirectory, ScriptConstants.ExtensionsMetadataFileName);
+
+                        if (!File.Exists(metadataFilePath))
+                        {
+                            return null;
+                        }
                     }
                 }
             }

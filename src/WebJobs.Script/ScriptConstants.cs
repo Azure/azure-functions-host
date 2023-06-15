@@ -129,6 +129,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string FeatureFlagEnableHttpProxying = "EnableHttpProxying";
         public const string HostingConfigDisableLinuxAppServiceDetailedExecutionEvents = "DisableLinuxExecutionDetails";
         public const string HostingConfigDisableLinuxAppServiceExecutionEventLogBackoff = "DisableLinuxLogBackoff";
+        public const string FeatureFlagDisableOutOfProcCV2Scaling = "DisableOutOfProcCV2Scaling";
 
         public const string SiteAzureFunctionsUriFormat = "https://{0}.azurewebsites.net/azurefunctions";
         public const string ScmSiteUriFormat = "https://{0}.scm.azurewebsites.net";
