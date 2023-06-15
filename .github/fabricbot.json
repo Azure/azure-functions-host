@@ -49,6 +49,14 @@
             "parameters": {
               "groupId": "5e166e3c073a740d04f89944"
             }
+          },
+          {
+            "name": "addToProject",
+            "parameters": {
+              "projectName": "Azure Functions - Host",
+              "isOrgProject": true,
+              "columnName": "No Status"
+            }
           }
         ],
         "eventType": "issue",

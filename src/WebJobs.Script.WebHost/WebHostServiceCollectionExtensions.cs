@@ -99,14 +99,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IEventGenerator>(p =>
             {
                 var environment = p.GetService<IEnvironment>();
-                if (environment.IsLinuxConsumptionOnAtlas())
+                if (environment.IsAnyLinuxConsumption())
                 {
-                    return new LinuxContainerEventGenerator(environment);
-                }
-                else if (environment.IsLinuxConsumptionOnLegion())
-                {
-                    //todo: Replace with legion specific logger
-                    return new LinuxContainerEventGenerator(environment);
+                    var consoleLoggingOptions = p.GetService<IOptions<ConsoleLoggingOptions>>();
+                    return new LinuxContainerEventGenerator(environment, consoleLoggingOptions);
                 }
                 else if (SystemEnvironment.Instance.IsLinuxAppService())
                 {
@@ -204,9 +200,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IOptionsChangeTokenSource<ScriptApplicationHostOptions>, ScriptApplicationHostOptionsChangeTokenSource>();
 
             services.ConfigureOptions<StandbyOptionsSetup>();
-            services.ConfigureOptions<LanguageWorkerOptionsSetup>();
+            services.ConfigureOptionsWithChangeTokenSource<LanguageWorkerOptions, LanguageWorkerOptionsSetup, SpecializationChangeTokenSource<LanguageWorkerOptions>>();
             services.ConfigureOptionsWithChangeTokenSource<AppServiceOptions, AppServiceOptionsSetup, SpecializationChangeTokenSource<AppServiceOptions>>();
             services.ConfigureOptionsWithChangeTokenSource<HttpBodyControlOptions, HttpBodyControlOptionsSetup, SpecializationChangeTokenSource<HttpBodyControlOptions>>();
+            services.ConfigureOptions<ConsoleLoggingOptionsSetup>();
             services.ConfigureOptions<FunctionsHostingConfigOptionsSetup>();
             if (configuration != null)
             {

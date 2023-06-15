@@ -2,29 +2,64 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
-    internal class LinuxContainerEventGenerator : LinuxEventGenerator
+    internal class LinuxContainerEventGenerator : LinuxEventGenerator, IDisposable
     {
         private const int MaxDetailsLength = 10000;
-        private static readonly Lazy<LinuxContainerEventGenerator> _Lazy = new Lazy<LinuxContainerEventGenerator>(() => new LinuxContainerEventGenerator(SystemEnvironment.Instance));
+        private static readonly Lazy<LinuxContainerEventGenerator> _Lazy = new Lazy<LinuxContainerEventGenerator>(() => new LinuxContainerEventGenerator(SystemEnvironment.Instance, Console.WriteLine));
         private readonly Action<string> _writeEvent;
-        private readonly bool _consoleEnabled = true;
+        private readonly BufferedConsoleWriter _consoleWriter;
         private readonly IEnvironment _environment;
         private string _containerName;
         private string _stampName;
         private string _tenantId;
+        private bool _disposed;
 
-        public LinuxContainerEventGenerator(IEnvironment environment, Action<string> writeEvent = null)
+        public LinuxContainerEventGenerator(IEnvironment environment, IOptions<ConsoleLoggingOptions> consoleLoggingOptions)
         {
-            _writeEvent = writeEvent ?? ConsoleWriter;
-            _environment = environment;
-            if (Environment.GetEnvironmentVariable(EnvironmentSettingNames.ConsoleLoggingDisabled) == "1")
+            if (consoleLoggingOptions.Value.LoggingDisabled)
             {
-                _consoleEnabled = false;
+                _writeEvent = (string s) => { };
             }
+            else if (!consoleLoggingOptions.Value.BufferEnabled)
+            {
+                _writeEvent = Console.WriteLine;
+            }
+            else
+            {
+                _consoleWriter = new BufferedConsoleWriter(consoleLoggingOptions.Value.BufferSize, LogUnhandledException);
+                _writeEvent = _consoleWriter.WriteHandler;
+            }
+
+            _environment = environment;
+            _containerName = _environment.GetEnvironmentVariable(EnvironmentSettingNames.ContainerName)?.ToUpperInvariant();
+        }
+
+        public LinuxContainerEventGenerator(IEnvironment environment, Action<string> writeEvent)
+        {
+            if (writeEvent == null)
+            {
+                throw new ArgumentNullException(nameof(writeEvent));
+            }
+
+            _writeEvent = writeEvent;
+            _environment = environment;
+
+            _containerName = _environment.GetEnvironmentVariable(EnvironmentSettingNames.ContainerName)?.ToUpperInvariant();
+        }
+
+        // For testing
+        internal LinuxContainerEventGenerator(IEnvironment environment, BufferedConsoleWriter consoleWriter)
+        {
+            _environment = environment;
+            _consoleWriter = consoleWriter;
+            _writeEvent = consoleWriter.WriteHandler;
+
             _containerName = _environment.GetEnvironmentVariable(EnvironmentSettingNames.ContainerName)?.ToUpperInvariant();
         }
 
@@ -96,14 +131,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         {
         }
 
-        private void ConsoleWriter(string evt)
-        {
-            if (_consoleEnabled)
-            {
-                Console.WriteLine(evt);
-            }
-        }
-
         public override void LogAzureMonitorDiagnosticLogEvent(LogLevel level, string resourceId, string operationName, string category, string regionName, string properties)
         {
             _writeEvent($"{ScriptConstants.LinuxAzureMonitorEventStreamName} {(int)ToEventLevel(level)},{resourceId},{operationName},{category},{regionName},{NormalizeString(properties.Replace("'", string.Empty))},{_containerName},{TenantId},{DateTime.UtcNow.ToString()}");
@@ -111,7 +138,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public static void LogUnhandledException(Exception e)
         {
-            var linuxContainerEventGenerator = new LinuxContainerEventGenerator(SystemEnvironment.Instance);
+            // This is a fallback to console logging codepath. Force the generator to just write to console directly.
+            var linuxContainerEventGenerator = new LinuxContainerEventGenerator(SystemEnvironment.Instance, Console.WriteLine);
             linuxContainerEventGenerator.LogFunctionTraceEvent(LogLevel.Error,
                 SystemEnvironment.Instance.GetSubscriptionId() ?? string.Empty,
                 SystemEnvironment.Instance.GetAzureWebsiteUniqueSlotName() ?? string.Empty, string.Empty, string.Empty,
@@ -141,6 +169,24 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 runtimeSiteName: SystemEnvironment.Instance.GetRuntimeSiteName() ?? string.Empty,
                 slotName: SystemEnvironment.Instance.GetSlotName() ?? string.Empty,
                 eventTimestamp: DateTime.UtcNow);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposed)
+            {
+                if (disposing)
+                {
+                    _consoleWriter?.Dispose();
+                }
+                _disposed = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }

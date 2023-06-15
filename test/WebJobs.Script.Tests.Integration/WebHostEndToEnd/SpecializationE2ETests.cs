@@ -17,6 +17,8 @@ using Microsoft.ApplicationInsights.Channel;
 using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Azure.Storage;
+using Microsoft.Azure.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Logging;
@@ -32,10 +34,10 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
-using TestFunctions;
 using Xunit;
 using Xunit.Abstractions;
 using IApplicationLifetime = Microsoft.AspNetCore.Hosting.IApplicationLifetime;
+using LogLevel = Microsoft.Extensions.Logging.LogLevel;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -409,6 +411,51 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task Specialization_RestartWorkerWithWorkerArguments()
+        {
+            _environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "node");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing);
+
+            var builder = CreateStandbyHostBuilder("HttpTriggerNoAuth");
+            string isFileSystemReadOnly = ConfigurationPath.Combine(ConfigurationSectionNames.WebHost, nameof(ScriptApplicationHostOptions.IsFileSystemReadOnly));
+
+            builder.ConfigureAppConfiguration(config =>
+            {
+                config.AddInMemoryCollection(new Dictionary<string, string>
+                {
+                    { _scriptRootConfigPath, Path.GetFullPath(@"TestScripts\NodeWithBundles") }
+                });
+            });
+
+            using var testServer = new TestServer(builder);
+
+            var client = testServer.CreateClient();
+
+            var response = await client.GetAsync("api/warmup");
+            response.EnsureSuccessStatusCode();
+
+            var webChannelManager = testServer.Services.GetService<IWebHostRpcWorkerChannelManager>();
+            var channel = await webChannelManager.GetChannels("node").Single().Value.Task;
+            var processId = channel.WorkerProcess.Process.Id;
+            Assert.DoesNotContain("--max-old-space-size=1272", channel.WorkerProcess.Process.StartInfo.Arguments);
+
+            // Use an actual env var here as it will be refreshed in config after specialization
+            using var envVars = new TestScopedEnvironmentVariable("languageWorkers:node:arguments", "--max-old-space-size=1272");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteRunFromPackage, "1");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteRunFromPackage, "1");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+
+            response = await client.GetAsync("api/HttpTriggerNoAuth");
+            response.EnsureSuccessStatusCode();
+
+            channel = await webChannelManager.GetChannels("node").Single().Value.Task;
+            var newProcessId = channel.WorkerProcess.Process.Id;
+            Assert.Contains("--max-old-space-size=1272", channel.WorkerProcess.Process.StartInfo.Arguments);
+            Assert.NotEqual(processId, newProcessId);
+        }
+
+        [Fact]
         public async Task Specialization_GCMode()
         {
             var builder = CreateStandbyHostBuilder("FunctionExecutionContext");
@@ -752,7 +799,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task DotNetIsolated_PlaceholderHit()
         {
-            var builder = InitializeDotNetIsolatedPlaceholderBuilder();
+            var builder = InitializeDotNetIsolatedPlaceholderBuilder("Function1");
 
             using var testServer = new TestServer(builder);
 
@@ -815,13 +862,87 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Contains("Shutting down placeholder worker. Worker is not compatible for runtime: dotnet-isolated", log);
         }
 
+        [Fact]
+        // Fix for https://github.com/Azure/azure-functions-host/issues/9288 
+        public async Task SpecializedSite_StopsHostBeforeWorker()
+        {
+            // this app has a QueueTrigger reading from "myqueue-items"
+            // add a few messages there before stopping the host
+            var storageValue = TestHelpers.GetTestConfiguration().GetWebJobsConnectionString("AzureWebJobsStorage");
+            CloudStorageAccount storageAccount = CloudStorageAccount.Parse(storageValue);
+            CloudQueueClient queueClient = storageAccount.CreateCloudQueueClient();
+            CloudQueue queue = queueClient.GetQueueReference("myqueue-items");
+            await queue.CreateIfNotExistsAsync();
+            await queue.ClearAsync();
+
+            var builder = InitializeDotNetIsolatedPlaceholderBuilder("Function1", "QueueFunction");
+
+            using var testServer = new TestServer(builder);
+
+            var client = testServer.CreateClient();
+            var response = await client.GetAsync("api/warmup");
+            response.EnsureSuccessStatusCode();
+
+            _environment.SetEnvironmentVariable("AzureWebJobsStorage", storageValue);
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+
+            response = await client.GetAsync("api/function1");
+            response.EnsureSuccessStatusCode();
+
+            var scriptHostManager = testServer.Services.GetService<IScriptHostManager>();
+
+            scriptHostManager.ActiveHostChanged += (object sender, ActiveHostChangedEventArgs e) =>
+            {
+                // for this test, this signals the host is about to shut down, so introduce an
+                // intentional delay to simulate a race condition
+                //
+                // there was a bug where we'd stop the worker channel and process before the host, resulting in
+                // a lot of "Did not find initialized language worker" errors due to a race between the process
+                // and listeners shutting down                
+                if (e.NewHost == null)
+                {
+                    Thread.Sleep(1000);
+                }
+            };
+
+            bool keepRunning = true;
+
+            Task messageTask = Task.Run(async () =>
+            {
+                while (keepRunning)
+                {
+                    await queue.AddMessageAsync(new CloudQueueMessage("test"));
+                }
+            });
+
+            // make sure the invocations are flowing before we stop the host
+            await TestHelpers.Await(() =>
+            {
+                int completed = _loggerProvider.GetAllLogMessages().Count(p => p.Category == "Function.QueueFunction" && p.EventId.Name == "FunctionCompleted");
+                return completed > 10;
+            });
+
+            await testServer.Host.StopAsync();
+
+            keepRunning = false;
+            await messageTask;
+            await queue.ClearAsync();
+
+            var completedLogs = _loggerProvider.GetAllLogMessages()
+                .Where(p => p.Category == "Function.QueueFunction")
+                .Where(p => p.EventId.Name == "FunctionCompleted");
+
+            Assert.NotEmpty(completedLogs.Where(p => p.Level == LogLevel.Information));
+            Assert.Empty(completedLogs.Where(p => p.Level == LogLevel.Error));
+        }
+
         private async Task DotNetIsolatedPlaceholderMiss(Action additionalSpecializedSetup = null)
         {
-            var builder = InitializeDotNetIsolatedPlaceholderBuilder(() =>
-            {
-                // remove WEBSITE_USE_PLACEHOLDER_DOTNETISOLATED
-                _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteUsePlaceholderDotNetIsolated, null);
-            });
+            var builder = InitializeDotNetIsolatedPlaceholderBuilder("Function1");
+
+            // remove WEBSITE_USE_PLACEHOLDER_DOTNETISOLATED
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteUsePlaceholderDotNetIsolated, null);
 
             using var testServer = new TestServer(builder);
 
@@ -864,7 +985,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             p.WaitForExit();
         }
 
-        private IWebHostBuilder InitializeDotNetIsolatedPlaceholderBuilder(Action additionalSetup = null)
+        private IWebHostBuilder InitializeDotNetIsolatedPlaceholderBuilder(params string[] functions)
         {
             BuildDotnetIsolated60();
 
@@ -873,9 +994,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing);
             _environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, "6.0");
 
-            additionalSetup?.Invoke();
-
-            var builder = CreateStandbyHostBuilder("Function1");
+            var builder = CreateStandbyHostBuilder(functions);
 
             builder.ConfigureAppConfiguration(config =>
             {

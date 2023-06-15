@@ -83,6 +83,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public string MasterKey { get; private set; }
 
+        public string RootScriptPath { get; private set; }
+
         protected virtual ExtensionPackageReference[] GetExtensionsToInstall()
         {
             return null;
@@ -173,6 +175,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
 
             MasterKey = await Host.GetMasterKeyAsync();
+            RootScriptPath = _copiedRootPath;
         }
 
         public virtual void ConfigureScriptHost(IWebJobsBuilder webJobsBuilder)

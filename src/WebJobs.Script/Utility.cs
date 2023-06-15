@@ -912,11 +912,11 @@ namespace Microsoft.Azure.WebJobs.Script
                 case RetryStrategy.ExponentialBackoff:
                     if (!retryOptions.MinimumInterval.HasValue)
                     {
-                        throw new ArgumentNullException(nameof(retryOptions.DelayInterval));
+                        throw new ArgumentNullException(nameof(retryOptions.MinimumInterval));
                     }
                     if (!retryOptions.MaximumInterval.HasValue)
                     {
-                        throw new ArgumentNullException(nameof(retryOptions.DelayInterval));
+                        throw new ArgumentNullException(nameof(retryOptions.MaximumInterval));
                     }
                     // ensure values specified to create ExponentialBackoffRetryAttribute are valid
                     _ = new ExponentialBackoffRetryAttribute(retryOptions.MaxRetryCount.Value, retryOptions.MinimumInterval.ToString(), retryOptions.MaximumInterval.ToString());

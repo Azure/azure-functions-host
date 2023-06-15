@@ -31,12 +31,14 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string FunctionsExtensionVersion = "FUNCTIONS_EXTENSION_VERSION";
         public const string FunctionWorkerRuntime = "FUNCTIONS_WORKER_RUNTIME";
         public const string ContainerName = "CONTAINER_NAME";
+        public const string WebsitePodName = "WEBSITE_POD_NAME";
         public const string LegionServiceHost = "LEGION_SERVICE_HOST";
         public const string WebSiteHomeStampName = "WEBSITE_HOME_STAMPNAME";
         public const string WebSiteStampDeploymentId = "WEBSITE_STAMP_DEPLOYMENT_ID";
         public const string WebSiteAuthEncryptionKey = "WEBSITE_AUTH_ENCRYPTION_KEY";
         public const string ContainerEncryptionKey = "CONTAINER_ENCRYPTION_KEY";
         public const string ConsoleLoggingDisabled = "CONSOLE_LOGGING_DISABLED";
+        public const string ConsoleLoggingBufferSize = "CONSOLE_LOGGING_BUFFER_SIZE";
         public const string SkipSslValidation = "SCM_SKIP_SSL_VALIDATION";
         public const string EnvironmentNameKey = "AZURE_FUNCTIONS_ENVIRONMENT";
         public const string FunctionsV2CompatibilityModeKey = "FUNCTIONS_V2_COMPATIBILITY_MODE";

@@ -9,8 +9,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
         private const string TestPathTemplate = "..\\..\\..\\..\\CSharpPrecompiledTestProjects\\{0}\\bin\\Debug\\netcoreapp3.1";
         private readonly IDisposable _dispose;
 
-        public CSharpPrecompiledEndToEndTestFixture(string testProjectName, IDictionary<string, string> envVars = null)
-            : base(string.Format(TestPathTemplate, testProjectName), testProjectName, "dotnet")
+        public CSharpPrecompiledEndToEndTestFixture(string testProjectName, IDictionary<string, string> envVars = null, string functionWorkerRuntime = "dotnet")
+            : base(string.Format(TestPathTemplate, testProjectName), testProjectName, functionWorkerRuntime)
         {
             if (envVars != null)
             {

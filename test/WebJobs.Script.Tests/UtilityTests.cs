@@ -1022,6 +1022,82 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(resultValue, expectedValueResult);
         }
 
+        [Fact]
+        public void ValidateRetryOptions_ThrowsWhenMaxRetryIsNull()
+        {
+            var retryOptions = new RetryOptions
+            {
+                Strategy = RetryStrategy.FixedDelay
+            };
+
+            var ex = Assert.Throws<ArgumentNullException>(() => Utility.ValidateRetryOptions(retryOptions));
+            Assert.Equal("Value cannot be null. (Parameter 'MaxRetryCount')", ex.Message);
+        }
+
+        [Fact]
+        public void ValidateRetryOptions_ThrowsWhenFixedDelayArgsNull()
+        {
+            var retryOptions = new RetryOptions
+            {
+                Strategy = RetryStrategy.FixedDelay,
+                MaxRetryCount = 5
+            };
+
+            var ex = Assert.Throws<ArgumentNullException>(() => Utility.ValidateRetryOptions(retryOptions));
+            Assert.Equal("Value cannot be null. (Parameter 'DelayInterval')", ex.Message);
+        }
+
+        [Fact]
+        public void ValidateRetryOptions_ThrowsWhenExponentialBackoffArgsNull()
+        {
+            var retryOptions1 = new RetryOptions
+            {
+                Strategy = RetryStrategy.ExponentialBackoff,
+                MaxRetryCount = 5,
+                MinimumInterval = TimeSpan.FromSeconds(5)
+            };
+
+            var retryOptions2 = new RetryOptions
+            {
+                Strategy = RetryStrategy.ExponentialBackoff,
+                MaxRetryCount = 5,
+                MaximumInterval = TimeSpan.MaxValue
+            };
+
+            var ex1 = Assert.Throws<ArgumentNullException>(() => Utility.ValidateRetryOptions(retryOptions1));
+            Assert.Equal("Value cannot be null. (Parameter 'MaximumInterval')", ex1.Message);
+
+            var ex2 = Assert.Throws<ArgumentNullException>(() => Utility.ValidateRetryOptions(retryOptions2));
+            Assert.Equal("Value cannot be null. (Parameter 'MinimumInterval')", ex2.Message);
+        }
+
+        [Fact]
+        public void ValidateRetryOptions_FixedDelaySuccess()
+        {
+            var retryOptions = new RetryOptions
+            {
+                Strategy = RetryStrategy.FixedDelay,
+                MaxRetryCount = 5,
+                DelayInterval = TimeSpan.FromSeconds(600)
+            };
+
+            Utility.ValidateRetryOptions(retryOptions);
+        }
+
+        [Fact]
+        public void ValidateRetryOptions_ExponentialBackoffSuccess()
+        {
+            var retryOptions = new RetryOptions
+            {
+                Strategy = RetryStrategy.ExponentialBackoff,
+                MaxRetryCount = 5,
+                MinimumInterval = TimeSpan.FromSeconds(10),
+                MaximumInterval = TimeSpan.MaxValue
+            };
+
+            Utility.ValidateRetryOptions(retryOptions);
+        }
+
         private static void VerifyLogLevel(IList<LogMessage> allLogs, string msg, LogLevel expectedLevel)
         {
             var message = allLogs.FirstOrDefault(l => l.FormattedMessage.Contains(msg));

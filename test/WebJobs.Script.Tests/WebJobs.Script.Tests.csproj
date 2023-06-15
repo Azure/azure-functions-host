@@ -6,6 +6,7 @@
     <IsPackable>false</IsPackable>
     <AssemblyName>Microsoft.Azure.WebJobs.Script.Tests</AssemblyName>
     <RootNamespace>Microsoft.Azure.WebJobs.Script.Tests</RootNamespace>
+    <LangVersion>preview</LangVersion>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <DefineConstants>TRACE;DEBUG;NETCOREAPP2_0;SCRIPT_TEST</DefineConstants>
