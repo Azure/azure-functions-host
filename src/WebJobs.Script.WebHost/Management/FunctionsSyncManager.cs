@@ -577,6 +577,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 // If the app is not using bundles, we look for extensions.json
                 string metadataDirectoryPath = ScriptStartupTypeLocator.FindExtensionsMetadataPath(hostOptions.RootScriptPath, out _);
                 metadataFilePath = Path.Combine(metadataDirectoryPath, ScriptConstants.ExtensionsMetadataFileName);
+                if (!FileUtility.FileExists(metadataFilePath))
+                {
+                    return null;
+                }
             }
 
             var extensionMetadata = JObject.Parse(await FileUtility.ReadAsync(metadataFilePath));
