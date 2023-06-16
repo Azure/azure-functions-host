@@ -125,7 +125,11 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
             }
             else
             {
-                extensionsMetadataPath = Utility.ResolveExtensionsMetadataPath(_rootScriptPath, out baseProbingPath);
+                extensionsMetadataPath = Path.Combine(_rootScriptPath, "bin");
+                if (Utility.TryResolveExtensionsMetadataPath(_rootScriptPath, out string resolvedPath, out baseProbingPath))
+                {
+                      extensionsMetadataPath = resolvedPath;
+                }
                 _logger.ScriptStartNotLoadingExtensionBundle(extensionsMetadataPath, bundleConfigured, isPrecompiledFunctionApp, isLegacyExtensionBundle);
             }
 
