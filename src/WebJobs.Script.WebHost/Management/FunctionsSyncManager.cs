@@ -15,6 +15,7 @@ using Azure.Storage.Blobs;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Extensions;
@@ -573,33 +574,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     return "2";
                 }
 
-                // There's 3 directories where `extensions.json` may be located
-                // (1) In the bin folder of the script's root
-                // (2) In the script's root
-                // (3) In the system path (.azurefunctions) within the script's root
-                // We probe for extensions.csproj in all these locations, in order
-
-                // case 1: check in bin folder
-                var extensionsMetadataDirectory = Path.Combine(hostOptions.RootScriptPath, "bin");
-                metadataFilePath = Path.Combine(extensionsMetadataDirectory, ScriptConstants.ExtensionsMetadataFileName);
-                if (!FileUtility.FileExists(metadataFilePath))
-                {
-                    // case 2: check in script root
-                    extensionsMetadataDirectory = hostOptions.RootScriptPath;
-                    metadataFilePath = Path.Combine(extensionsMetadataDirectory, ScriptConstants.ExtensionsMetadataFileName);
-
-                    if (!FileUtility.FileExists(metadataFilePath))
-                    {
-                        // case 3: check in system path
-                        extensionsMetadataDirectory = Path.Combine(hostOptions.RootScriptPath, ScriptConstants.AzureFunctionsSystemDirectoryName);
-                        metadataFilePath = Path.Combine(extensionsMetadataDirectory, ScriptConstants.ExtensionsMetadataFileName);
-
-                        if (!FileUtility.FileExists(metadataFilePath))
-                        {
-                            return null;
-                        }
-                    }
-                }
+                // If the app is not using bundles, we look for extensions.json
+                metadataFilePath = ScriptStartupTypeLocator.FindExtensionsMetadataPath(hostOptions.RootScriptPath, out _);
             }
 
             var extensionMetadata = JObject.Parse(await FileUtility.ReadAsync(metadataFilePath));
