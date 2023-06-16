@@ -582,19 +582,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 // case 1: check in bin folder
                 var extensionsMetadataDirectory = Path.Combine(hostOptions.RootScriptPath, "bin");
                 metadataFilePath = Path.Combine(extensionsMetadataDirectory, ScriptConstants.ExtensionsMetadataFileName);
-                if (!File.Exists(metadataFilePath))
+                if (!FileUtility.FileExists(metadataFilePath))
                 {
                     // case 2: check in script root
                     extensionsMetadataDirectory = hostOptions.RootScriptPath;
                     metadataFilePath = Path.Combine(extensionsMetadataDirectory, ScriptConstants.ExtensionsMetadataFileName);
 
-                    if (!File.Exists(metadataFilePath))
+                    if (!FileUtility.FileExists(metadataFilePath))
                     {
                         // case 3: check in system path
                         extensionsMetadataDirectory = Path.Combine(hostOptions.RootScriptPath, ScriptConstants.AzureFunctionsSystemDirectoryName);
                         metadataFilePath = Path.Combine(extensionsMetadataDirectory, ScriptConstants.ExtensionsMetadataFileName);
 
-                        if (!File.Exists(metadataFilePath))
+                        if (!FileUtility.FileExists(metadataFilePath))
                         {
                             return null;
                         }
