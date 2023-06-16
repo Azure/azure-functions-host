@@ -73,7 +73,7 @@ namespace Microsoft.Extensions.DependencyInjection
         private static string[] GetValidAudiences()
         {
             if (SystemEnvironment.Instance.IsPlaceholderModeEnabled() &&
-                SystemEnvironment.Instance.IsLinuxConsumptionOnLegion())
+                SystemEnvironment.Instance.IsFlexConsumptionSku())
             {
                 return new string[]
                 {

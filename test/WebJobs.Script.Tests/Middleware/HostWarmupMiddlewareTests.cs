@@ -53,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
             environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, "TestContainer");
             Assert.True(environment.IsAnyLinuxConsumption());
             Assert.True(environment.IsLinuxConsumptionOnAtlas());
-            Assert.False(environment.IsLinuxConsumptionOnLegion());
+            Assert.False(environment.IsFlexConsumptionSku());
             Assert.True(HostWarmupMiddleware.IsWarmUpRequest(request, hostEnvironment.InStandbyMode, environment));
 
             // Reset environment
@@ -68,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
             environment.SetEnvironmentVariable(EnvironmentSettingNames.LegionServiceHost, "1");
             Assert.True(environment.IsAnyLinuxConsumption());
             Assert.False(environment.IsLinuxConsumptionOnAtlas());
-            Assert.True(environment.IsLinuxConsumptionOnLegion());
+            Assert.True(environment.IsFlexConsumptionSku());
             Assert.True(HostWarmupMiddleware.IsWarmUpRequest(request, hostEnvironment.InStandbyMode, environment));
         }
 

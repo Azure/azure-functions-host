@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
             {
                 await ApplyStartContextIfPresent();
             }
-            else if (_environment.IsLinuxConsumptionOnLegion())
+            else if (_environment.IsFlexConsumptionSku())
             {
                 _logger.LogInformation("Container has (re)started. Waiting for specialization");
             }
