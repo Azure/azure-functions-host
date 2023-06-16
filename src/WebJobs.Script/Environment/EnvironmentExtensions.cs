@@ -220,7 +220,14 @@ namespace Microsoft.Azure.WebJobs.Script
         public static bool IsFlexConsumptionSku(this IEnvironment environment)
         {
             string value = environment.GetEnvironmentVariable(AzureWebsiteSku);
-            return string.Equals(value, ScriptConstants.FlexConsumptionSku, StringComparison.OrdinalIgnoreCase);
+            if (string.Equals(value, ScriptConstants.FlexConsumptionSku, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            // when in placeholder mode, site settings like SKU are not available
+            // to enable this check to run in both modes, we check additional settings
+            return environment.IsLinuxConsumptionOnLegion();
         }
 
         /// <summary>
@@ -299,7 +306,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <returns><see cref="true"/> if running in a Linux Consumption App Service app; otherwise, false.</returns>
         public static bool IsAnyLinuxConsumption(this IEnvironment environment)
         {
-            return (environment.IsLinuxConsumptionOnAtlas() || environment.IsLinuxConsumptionOnLegion()) && !environment.IsManagedAppEnvironment();
+            return (environment.IsLinuxConsumptionOnAtlas() || environment.IsFlexConsumptionSku()) && !environment.IsManagedAppEnvironment();
         }
 
         public static bool IsLinuxConsumptionOnAtlas(this IEnvironment environment)
@@ -309,7 +316,7 @@ namespace Microsoft.Azure.WebJobs.Script
                    string.IsNullOrEmpty(environment.GetEnvironmentVariable(LegionServiceHost));
         }
 
-        public static bool IsLinuxConsumptionOnLegion(this IEnvironment environment)
+        private static bool IsLinuxConsumptionOnLegion(this IEnvironment environment)
         {
             return !environment.IsAppService() &&
                    (!string.IsNullOrEmpty(environment.GetEnvironmentVariable(ContainerName)) ||
