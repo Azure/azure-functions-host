@@ -133,6 +133,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddTransient<VirtualFileSystem>();
             services.AddTransient<VirtualFileSystemMiddleware>();
 
+            if (SystemEnvironment.Instance.IsFlexConsumptionSku())
+            {
+                services.AddSingleton<IInstanceManager, LegionInstanceManager>();
+            }
+            else
+            {
+                // Default IInstanceManager
+                services.AddSingleton<IInstanceManager, AtlasInstanceManager>();
+            }
+
             // Logging and diagnostics
             services.AddSingleton<IMetricsLogger, WebHostMetricsLogger>();
 

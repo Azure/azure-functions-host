@@ -189,7 +189,37 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
-        /// Returns true if the app is running on Virtual Machine Scale Sets (VMSS)
+        /// Gets a value indicating whether the application is running in one of our consumption SKUs (e.g.  Windows or Linux Consumption (Dynamic),
+        /// or Flex Consumption).
+        /// App Service environment.
+        /// </summary>
+        /// <param name="environment">The environment to verify.</param>
+        /// <returns><see cref="true"/> if running in one of our Consumption SKUs, false otherwise.</returns>
+        public static bool IsConsumptionSku(this IEnvironment environment)
+        {
+            return IsWindowsConsumption(environment) || IsAnyLinuxConsumption(environment) || IsFlexConsumptionSku(environment);
+        }
+
+        /// <summary>
+        /// Gets a value indicating whether the application is running in the Flex Consumption Sku.
+        /// </summary>
+        /// <param name="environment">The environment to verify.</param>
+        /// <returns><see cref="true"/> if running in the FlexConsumption Sku, false otherwise.</returns>
+        public static bool IsFlexConsumptionSku(this IEnvironment environment)
+        {
+            string value = environment.GetEnvironmentVariable(AzureWebsiteSku);
+            if (string.Equals(value, ScriptConstants.FlexConsumptionSku, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            // when in placeholder mode, site settings like SKU are not available
+            // to enable this check to run in both modes, we check additional settings
+            return environment.IsLinuxConsumptionOnLegion();
+        }
+
+        /// <summary>
+        /// Returns true if the app is running on Virtual Machine Scale Sets (VMSS).
         /// </summary>
         public static bool IsVMSS(this IEnvironment environment)
         {
@@ -255,7 +285,11 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <returns><see cref="true"/> if running in a Linux Consumption App Service app; otherwise, false.</returns>
         public static bool IsAnyLinuxConsumption(this IEnvironment environment)
         {
+<<<<<<< HEAD
             return environment.IsLinuxConsumptionOnAtlas() || environment.IsLinuxConsumptionOnLegion();
+=======
+            return (environment.IsLinuxConsumptionOnAtlas() || environment.IsFlexConsumptionSku()) && !environment.IsManagedAppEnvironment();
+>>>>>>> f95cea5d7 (Unifying CV2 SKU/Environment checks (#9334))
         }
 
         public static bool IsLinuxConsumptionOnAtlas(this IEnvironment environment)
@@ -265,7 +299,7 @@ namespace Microsoft.Azure.WebJobs.Script
                    string.IsNullOrEmpty(environment.GetEnvironmentVariable(LegionServiceHost));
         }
 
-        public static bool IsLinuxConsumptionOnLegion(this IEnvironment environment)
+        private static bool IsLinuxConsumptionOnLegion(this IEnvironment environment)
         {
             return !environment.IsAppService() &&
                    (!string.IsNullOrEmpty(environment.GetEnvironmentVariable(ContainerName)) ||
