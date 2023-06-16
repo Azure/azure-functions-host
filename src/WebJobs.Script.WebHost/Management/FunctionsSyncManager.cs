@@ -549,7 +549,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             string metadataFilePath;
             bool isUsingBundles = hostJson != null && hostJson.TryGetValue("extensionBundle", StringComparison.OrdinalIgnoreCase, out _);
             // This feature flag controls whether to opt out of the SyncTrigger metadata fix for OOProc DF apps from https://github.com/Azure/azure-functions-host/pull/9331
-            if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagDisableOutOfProcCV2Scaling))
+            if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableLegacyDurableVersionCheck))
             {
                 // using legacy behavior, which concludes that out of process DF apps (including .NET isolated) are using DF Extension V1.x
                 // as a result, the SyncTriggers payload for these apps will be missing some metadata like "taskHubName"
