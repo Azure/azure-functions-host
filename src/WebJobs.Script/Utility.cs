@@ -782,6 +782,39 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
+        public static string ResolveExtensionsMetadataPath(string rootScriptPath, out string baseProbingPath)
+        {
+            baseProbingPath = null;
+            string extensionsMetadataPath = Path.Combine(rootScriptPath, "bin");
+
+            // Verify if the file exists and apply fallback paths
+            // The fallback order is:
+            //   1 - Script root
+            //       - If the system folder exists with metadata file at the root, use that as the base probing path
+            //   2 - System folder
+            if (!FileUtility.FileExists(Path.Combine(extensionsMetadataPath, ScriptConstants.ExtensionsMetadataFileName)))
+            {
+                string systemPath = Path.Combine(rootScriptPath, ScriptConstants.AzureFunctionsSystemDirectoryName);
+
+                if (FileUtility.FileExists(Path.Combine(rootScriptPath, ScriptConstants.ExtensionsMetadataFileName)))
+                {
+                    // As a fallback, allow extensions.json in the root path.
+                    extensionsMetadataPath = rootScriptPath;
+
+                    // If the system path exists, that should take precedence as the base probing path
+                    if (Directory.Exists(systemPath))
+                    {
+                        baseProbingPath = systemPath;
+                    }
+                }
+                else if (FileUtility.FileExists(Path.Combine(systemPath, ScriptConstants.ExtensionsMetadataFileName)))
+                {
+                    extensionsMetadataPath = systemPath;
+                }
+            }
+            return extensionsMetadataPath;
+        }
+
         public static bool TryCleanUrl(string url, out string cleaned)
         {
             cleaned = null;
