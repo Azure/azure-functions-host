@@ -782,17 +782,16 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        public static bool TryResolveExtensionsMetadataPath(string rootScriptPath, out string extensionMetadataPath, out string baseProbingPath)
+        public static bool TryResolveExtensionsMetadataPath(string rootScriptPath, out string extensionsMetadataPath, out string baseProbingPath)
         {
             baseProbingPath = null;
-            extensionMetadataPath = string.Empty;
 
             // Verify if the file exists and apply fallback paths
             // The fallback order is:
             //   1 - Script root
             //       - If the system folder exists with metadata file at the root, use that as the base probing path
             //   2 - System folder
-            string extensionsMetadataPath = Path.Combine(rootScriptPath, "bin");
+            extensionsMetadataPath = Path.Combine(rootScriptPath, "bin");
             if (!FileUtility.FileExists(Path.Combine(extensionsMetadataPath, ScriptConstants.ExtensionsMetadataFileName)))
             {
                 extensionsMetadataPath = null;
@@ -814,7 +813,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     extensionsMetadataPath = systemPath;
                 }
             }
-            bool foundMetadata = !string.IsNullOrEmpty(extensionMetadataPath);
+            bool foundMetadata = !string.IsNullOrEmpty(extensionsMetadataPath);
             return foundMetadata;
         }
 
