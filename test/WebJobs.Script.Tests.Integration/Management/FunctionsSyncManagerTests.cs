@@ -454,7 +454,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         }
 
         [Fact]
-        public async Task TrySyncTriggers_NoDurableTaskHub_UsesBundles_V1DefaultsPosted()
+        public async Task TrySyncTriggers_NoDurableTaskHub_UsesBundles_V2DefaultsPosted()
         {
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName)).Returns("TestHubValue");
 
@@ -474,7 +474,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 Assert.True(syncResult.Success, "SyncTriggers should return success true");
                 Assert.True(string.IsNullOrEmpty(syncResult.Error), "Error should be null or empty");
 
-                VerifyResultWithCacheOn(expectedTaskHub: null, connection: null);
+                VerifyResultWithCacheOn(expectedTaskHub: "TestHubValue", connection: null);
             }
 
         }

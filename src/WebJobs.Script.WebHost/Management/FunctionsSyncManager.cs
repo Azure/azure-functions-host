@@ -14,6 +14,8 @@ using System.Threading.Tasks;
 using Azure.Storage.Blobs;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Storage;
+using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Extensions;
@@ -447,6 +449,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 .WhenAll())
                 .Where(t => t != null);
 
+            // TODO: We should remove extension-specific logic from the Host. See: https://github.com/Azure/azure-functions-host/issues/5390
             if (triggers.Any(IsDurableTrigger))
             {
                 DurableConfig durableTaskConfig = await ReadDurableTaskConfig();
@@ -545,19 +548,39 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         // This is a stopgap approach to get the Durable extension version. It duplicates some logic in ExtensionManager.cs.
         private async Task<string> GetDurableMajorVersionAsync(JObject hostJson, ScriptJobHostOptions hostOptions)
         {
+            string metadataFilePath;
             bool isUsingBundles = hostJson != null && hostJson.TryGetValue("extensionBundle", StringComparison.OrdinalIgnoreCase, out _);
-            if (isUsingBundles)
+            // This feature flag controls whether to opt out of the SyncTrigger metadata fix for OOProc DF apps from https://github.com/Azure/azure-functions-host/pull/9331
+            if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableLegacyDurableVersionCheck))
             {
-                // TODO: As of 2019-12-12, there are no extension bundles for version 2.x of Durable.
-                // This may change in the future.
-                return "1";
-            }
+                // using legacy behavior, which concludes that out of process DF apps (including .NET isolated) are using DF Extension V1.x
+                // as a result, the SyncTriggers payload for these apps will be missing some metadata like "taskHubName"
+                if (isUsingBundles)
+                {
+                    return "1";
+                }
 
-            string binPath = binPath = Path.Combine(hostOptions.RootScriptPath, "bin");
-            string metadataFilePath = Path.Combine(binPath, ScriptConstants.ExtensionsMetadataFileName);
-            if (!FileUtility.FileExists(metadataFilePath))
+                string binPath = binPath = Path.Combine(hostOptions.RootScriptPath, "bin");
+                metadataFilePath = Path.Combine(binPath, ScriptConstants.ExtensionsMetadataFileName);
+                if (!FileUtility.FileExists(metadataFilePath))
+                {
+                    return null;
+                }
+            }
+            else
             {
-                return null;
+                if (isUsingBundles)
+                {
+                    // From Functions runtime V4 onwards, only bundles >= V2.x is supported, which implies the app should be using DF V2 or greater.
+                    return "2";
+                }
+
+                // If the app is not using bundles, we look for extensions.json
+                if (!Utility.TryResolveExtensionsMetadataPath(hostOptions.RootScriptPath, out string metadataDirectoryPath, out _))
+                {
+                    return null;
+                }
+                metadataFilePath = Path.Combine(metadataDirectoryPath, ScriptConstants.ExtensionsMetadataFileName);
             }
 
             var extensionMetadata = JObject.Parse(await FileUtility.ReadAsync(metadataFilePath));
