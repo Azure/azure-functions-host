@@ -449,6 +449,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 .WhenAll())
                 .Where(t => t != null);
 
+            // TODO: We should remove extension-specific logic from the Host. See: https://github.com/Azure/azure-functions-host/issues/5390
             if (triggers.Any(IsDurableTrigger))
             {
                 DurableConfig durableTaskConfig = await ReadDurableTaskConfig();
