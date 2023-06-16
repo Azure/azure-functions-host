@@ -814,7 +814,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     extensionsMetadataPath = systemPath;
                 }
             }
-            bool foundMetadata = string.IsNullOrEmpty(extensionMetadataPath);
+            bool foundMetadata = !string.IsNullOrEmpty(extensionMetadataPath);
             return foundMetadata;
         }
 
