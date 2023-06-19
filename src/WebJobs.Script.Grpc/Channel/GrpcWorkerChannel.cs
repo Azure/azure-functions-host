@@ -1261,23 +1261,51 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     _timer?.Dispose();
 
                     // unlink function inputs
-                    foreach (var link in _inputLinks)
+                    if (_inputLinks is not null)
                     {
-                        link.Dispose();
+                        foreach (var link in _inputLinks)
+                        {
+                            if (link is null)
+                            {
+                                // This log is temporarily added for diagnostic purposes.
+                                _workerChannelLogger.LogDebug("An input link is null. Skipping disposal.");
+                            }
+
+                            link?.Dispose();
+                        }
+                    }
+                    else
+                    {
+                        // This log is temporarily added for diagnostic purposes.
+                        _workerChannelLogger.LogDebug("The input links collection is null. Skipping disposal of any individual input links.");
                     }
 
                     (_rpcWorkerProcess as IDisposable)?.Dispose();
 
-                    foreach (var sub in _eventSubscriptions)
+                    if (_eventSubscriptions is not null)
                     {
-                        sub.Dispose();
+                        foreach (var sub in _eventSubscriptions)
+                        {
+                            if (sub is null)
+                            {
+                                // This log is temporarily added for diagnostic purposes.
+                                _workerChannelLogger.LogDebug("An event subscription is null. Skipping disposal.");
+                            }
+
+                            sub?.Dispose();
+                        }
+                    }
+                    else
+                    {
+                        // This log is temporarily added for diagnostic purposes.
+                        _workerChannelLogger.LogDebug("The event subscriptions collection is null. Skipping disposal of any individual subscriptions.");
                     }
 
                     // shut down the channels
                     _eventManager.RemoveGrpcChannels(_workerId);
                 }
-                _disposed = true;
             }
+            _disposed = true;
         }
 
         public void Dispose()

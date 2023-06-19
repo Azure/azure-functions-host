@@ -507,16 +507,29 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
 
             _logger.LogDebug("Attempting to dispose webhost or jobhost channel for workerId: '{channelId}', runtime: '{language}'", workerId, runtime);
-            bool isWebHostChannelDisposed = await _webHostLanguageWorkerChannelManager.ShutdownChannelIfExistsAsync(runtime, workerId, workerException);
-            bool isJobHostChannelDisposed = false;
-            if (!isWebHostChannelDisposed)
-            {
-                isJobHostChannelDisposed = await _jobHostLanguageWorkerChannelManager.ShutdownChannelIfExistsAsync(workerId, workerException);
-            }
 
-            if (!isWebHostChannelDisposed && !isJobHostChannelDisposed)
+            bool isWebHostChannelDisposed = false;
+            bool isJobHostChannelDisposed = false;
+
+            try
             {
-                _logger.LogDebug("Did not find WebHost or JobHost channel to dispose for workerId: '{channelId}', runtime: '{language}'", workerId, runtime);
+                isWebHostChannelDisposed = await _webHostLanguageWorkerChannelManager.ShutdownChannelIfExistsAsync(runtime, workerId, workerException);
+                if (!isWebHostChannelDisposed)
+                {
+                    isJobHostChannelDisposed = await _jobHostLanguageWorkerChannelManager.ShutdownChannelIfExistsAsync(workerId, workerException);
+                }
+
+                if (!isWebHostChannelDisposed && !isJobHostChannelDisposed)
+                {
+                    _logger.LogDebug("Did not find WebHost or JobHost channel to dispose for workerId: '{channelId}', runtime: '{language}'", workerId, runtime);
+                }
+            }
+            catch (Exception ex)
+            {
+                // If an exception was thrown while trying to shut down a channel, we're left in an undetermined state. The safest thing to do is
+                // to restart the entire host and let everything come back up from scratch.
+                _logger.LogError(ex, "Error while shutting down channel for workerId '{channelId}'. Shutting down and proactively recycling the Functions Host to recover.", workerId);
+                _applicationLifetime.StopApplication();
             }
 
             if (ShouldRestartWorkerChannel(runtime, isWebHostChannelDisposed, isJobHostChannelDisposed))
