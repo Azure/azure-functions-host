@@ -1304,8 +1304,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     // shut down the channels
                     _eventManager.RemoveGrpcChannels(_workerId);
                 }
+                _disposed = true;
             }
-            _disposed = true;
         }
 
         public void Dispose()
