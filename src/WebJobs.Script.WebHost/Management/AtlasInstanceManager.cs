@@ -81,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                         _logger.LogDebug($"Specializing sidecar at {address}");
 
                         StringContent payload;
-                        if (context.EncryptedTokenServiceSpecializationPayload.IsNullOrEmpty())
+                        if (string.IsNullOrEmpty(context.EncryptedTokenServiceSpecializationPayload))
                         {
                             payload = new StringContent(JsonConvert.SerializeObject(context.MSIContext),
                                     Encoding.UTF8, "application/json");
