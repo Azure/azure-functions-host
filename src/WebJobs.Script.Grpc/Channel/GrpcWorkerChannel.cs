@@ -981,7 +981,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
                     try
                     {
-                        if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableHttpProxying) && IsHttpProxyingWorker)
+                        if (IsHttpProxyingWorker)
                         {
                             if (context.Properties.TryGetValue(ScriptConstants.HttpProxyTask, out Task<ForwarderError> httpProxyTask))
                             {
