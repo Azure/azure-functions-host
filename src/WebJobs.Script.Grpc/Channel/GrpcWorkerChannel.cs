@@ -430,7 +430,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             // If http proxying is enabled, we need to get the proxying endpoint of this worker
             var httpUri = _workerCapabilities.GetCapabilityState(RpcWorkerConstants.HttpUri);
-            if (!string.IsNullOrEmpty(httpUri) && FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableHttpProxying))
+            if (!string.IsNullOrEmpty(httpUri))
             {
                 try
                 {
@@ -763,7 +763,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     context.CancellationToken.Register(() => SendInvocationCancel(invocationRequest.InvocationId));
                 }
 
-                if (IsHttpProxyingWorker && FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableHttpProxying) && context.FunctionMetadata.IsHttpTriggerFunction())
+                if (IsHttpProxyingWorker && context.FunctionMetadata.IsHttpTriggerFunction())
                 {
                     var aspNetTask = _httpProxyService.ForwardAsync(context, _httpProxyEndpoint).AsTask();
 
@@ -963,7 +963,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             {
                 if (invokeResponse.Result.IsInvocationSuccess(context.ResultSource, capabilityEnabled))
                 {
-                    if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableHttpProxying) && IsHttpProxyingWorker)
+                    if (IsHttpProxyingWorker)
                     {
                         if (context.Properties.TryGetValue(ScriptConstants.HttpProxyTask, out Task<ForwarderError> httpProxyTask))
                         {
