@@ -963,20 +963,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             {
                 if (invokeResponse.Result.IsInvocationSuccess(context.ResultSource, capabilityEnabled))
                 {
-                    if (IsHttpProxyingWorker)
-                    {
-                        if (context.Properties.TryGetValue(ScriptConstants.HttpProxyTask, out Task<ForwarderError> httpProxyTask))
-                        {
-                            ForwarderError httpProxyTaskResult = await httpProxyTask;
-
-                            if (httpProxyTaskResult is not ForwarderError.None)
-                            {
-                                // TODO: Understand scenarios where function invocation succeeds but there is an error proxying
-                                // need to investigate different ForwarderErrors and consider how they will be relayed through other services and to users
-                            }
-                        }
-                    }
-
                     _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvokeSucceeded, Id));
 
                     try
