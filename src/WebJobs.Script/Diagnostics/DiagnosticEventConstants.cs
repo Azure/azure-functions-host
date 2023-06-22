@@ -5,7 +5,7 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     internal static class DiagnosticEventConstants
     {
-        public const string HostIdCollisionErrorCode = "AZFD004";
+        public const string HostIdCollisionErrorCode = "AZFD0004";
         public const string HostIdCollisionHelpLink = "https://go.microsoft.com/fwlink/?linkid=2224100";
 
         public const string ExternalStartupErrorCode = "AZFD0005";
