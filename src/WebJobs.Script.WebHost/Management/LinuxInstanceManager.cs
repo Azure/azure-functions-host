@@ -113,6 +113,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 _logger.LogInformation("Applying {environmentCount} app setting(s)", assignmentContext.Environment.Count);
                 assignmentContext.ApplyAppSettings(_environment, _logger);
                 await ApplyContextAsync(assignmentContext);
+
+                _logger.LogError("anandagopal hack: Assign totally failed :P");
+                await _meshServiceClient.NotifyHealthEvent(ContainerHealthEventType.Fatal, GetType(), "Assign failed");
             }
             catch (Exception ex)
             {
