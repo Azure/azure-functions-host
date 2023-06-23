@@ -54,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security
         public static string Decrypt(byte[] encryptionKey, string value)
         {
             var parts = value.Split(new[] { '.' }, StringSplitOptions.RemoveEmptyEntries);
-            if (parts.Length != 2 && parts.Length != 3)
+            if (parts.Length != 2 && parts.Length != 3 && parts.Length != 4)
             {
                 throw new InvalidOperationException("Malformed token.");
             }
@@ -62,6 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security
             var iv = Convert.FromBase64String(parts[0]);
             var data = Convert.FromBase64String(parts[1]);
             var base64KeyHash = parts.Length == 3 ? parts[2] : null;
+            var signature = parts.Length >= 4 ? Convert.FromBase64String(parts[3]) : null;
 
             if (!string.IsNullOrEmpty(base64KeyHash) && !string.Equals(GetSHA256Base64String(encryptionKey), base64KeyHash))
             {
@@ -78,6 +79,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security
                     using (var binaryWriter = new BinaryWriter(cs))
                     {
                         binaryWriter.Write(data, 0, data.Length);
+                    }
+
+                    var input = ms.ToArray();
+                    if (signature != null && !signature.SequenceEqual(ComputeHMACSHA256(encryptionKey, input)))
+                    {
+                        throw new InvalidOperationException("Signature mismatches!");
                     }
 
                     return Encoding.UTF8.GetString(ms.ToArray());
@@ -123,6 +130,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security
             using (var sha256 = SHA256.Create())
             {
                 return Convert.ToBase64String(sha256.ComputeHash(key));
+            }
+        }
+
+        private static byte[] ComputeHMACSHA256(byte[] key, byte[] input)
+        {
+            using (var hmacSha256 = new HMACSHA256(key))
+            {
+                return hmacSha256.ComputeHash(input);
             }
         }
     }

@@ -73,13 +73,22 @@ namespace Microsoft.Extensions.DependencyInjection
 
         private static string[] GetValidAudiences()
         {
-            if (SystemEnvironment.Instance.IsPlaceholderModeEnabled() &&
-                SystemEnvironment.Instance.IsFlexConsumptionSku())
+            if (SystemEnvironment.Instance.IsPlaceholderModeEnabled())
             {
-                return new string[]
+                if (SystemEnvironment.Instance.IsFlexConsumptionSku())
                 {
-                    ScriptSettingsManager.Instance.GetSetting(WebsitePodName)
-                };
+                    return new string[]
+                    {
+                        ScriptSettingsManager.Instance.GetSetting(WebsitePodName)
+                    };
+                }
+                else if (SystemEnvironment.Instance.IsLinuxConsumptionOnAtlas())
+                {
+                    return new string[]
+                    {
+                        ScriptSettingsManager.Instance.GetSetting(ContainerName)
+                    };
+                }
             }
 
             return new string[]
