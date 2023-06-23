@@ -114,8 +114,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 assignmentContext.ApplyAppSettings(_environment, _logger);
                 await ApplyContextAsync(assignmentContext);
 
-                _logger.LogError("anandagopal hack: Assign totally failed :P");
-                await _meshServiceClient.NotifyHealthEvent(ContainerHealthEventType.Fatal, GetType(), "Assign failed");
+                throw new Exception("anandagopal hack: Assign totally failed :P");
             }
             catch (Exception ex)
             {
