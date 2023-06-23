@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.DependencyInjection;
+using NuGet.Configuration;
 using Xunit;
 using static Microsoft.Azure.WebJobs.Script.EnvironmentSettingNames;
 
@@ -14,13 +15,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
     public class ScriptJwtBearerExtensionsTests
     {
         [Theory]
-        [InlineData(true, true)]
-        [InlineData(true, false)]
-        [InlineData(false, true)]
-        [InlineData(false, false)]
-        public void CreateTokenValidationParameters_HasExpectedAudience(bool isPlaceholderModeEnabled, bool isLinuxConsumptionOnLegion)
+        [InlineData(true, true, false)]
+        [InlineData(true, false, false)]
+        [InlineData(false, true, false)]
+        [InlineData(false, false, false)]
+        [InlineData(true, false, true)]
+        [InlineData(false, false, true)]
+        public void CreateTokenValidationParameters_HasExpectedAudience(bool isPlaceholderModeEnabled, bool isLinuxConsumptionOnLegion, bool isLinuxConsumptionOnAtlas)
         {
             var podName = "RandomPodName";
+            var containerName = "RandomContainerName";
             var siteName = "RandomSiteName";
             ScriptSettingsManager.Instance.SetSetting(AzureWebsiteName, siteName);
             ScriptSettingsManager.Instance.SetSetting(WebsitePodName, podName);
@@ -34,6 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             {
                 ScriptSettingsManager.Instance.GetSetting(WebsitePodName)
             };
+            var expectedWithContainerName = new string[] { };
 
             var testData = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
@@ -49,6 +54,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
                 testData[LegionServiceHost] = "1";
             }
 
+            if (isLinuxConsumptionOnAtlas)
+            {
+                ScriptSettingsManager.Instance.SetSetting(ContainerName, containerName);
+                expectedWithContainerName = new string[]
+                {
+                    ScriptSettingsManager.Instance.GetSetting(ContainerName)
+                };
+                testData[AzureWebsiteInstanceId] = string.Empty;
+                testData[ContainerName] = containerName;
+            }
+
             testData[ContainerEncryptionKey] = Convert.ToBase64String(TestHelpers.GenerateKeyBytes());
             using (new TestScopedEnvironmentVariable(testData))
             {
@@ -61,12 +77,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
                     Assert.Equal(audiences.Count, expectedWithPodName.Length);
                     Assert.Equal(audiences[0], expectedWithPodName[0]);
                 }
+                else if (isPlaceholderModeEnabled &&
+                    isLinuxConsumptionOnAtlas)
+                {
+                    Assert.Equal(audiences.Count, expectedWithContainerName.Length);
+                    Assert.Equal(audiences[0], expectedWithContainerName[0]);
+                }
                 else
                 {
                     Assert.Equal(audiences.Count, expectedWithSiteName.Length);
                     Assert.True(audiences.Contains(expectedWithSiteName[0]));
                     Assert.True(audiences.Contains(expectedWithSiteName[1]));
                 }
+                ScriptSettingsManager.Instance.SetSetting(ContainerName, string.Empty);
             }
         }
     }

@@ -3,6 +3,7 @@
 
 using System;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security;
 using Xunit;
 
@@ -86,6 +87,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Helpers
             Environment.SetEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey, websiteAuthEncryptionStringKey);
 
             var token = SimpleWebTokenHelper.CreateToken(timeStamp, websiteAuthEncryptionKey);
+            Assert.True(SimpleWebTokenHelper.TryValidateToken(token, new SystemClock()));
+        }
+
+        [Fact]
+        public void Validate_Token_Checks_Signature_If_Signature_Is_Available()
+        {
+            var websiteAuthEncryptionKey = TestHelpers.GenerateKeyBytes();
+            var websiteAuthEncryptionStringKey = TestHelpers.GenerateKeyHexString(websiteAuthEncryptionKey);
+
+            var timeStamp = DateTime.UtcNow.AddHours(1);
+
+            Environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerEncryptionKey, string.Empty);
+            Environment.SetEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey, websiteAuthEncryptionStringKey);
+
+            //var token = SimpleWebTokenHelper.CreateToken(timeStamp, websiteAuthEncryptionKey);
+
+            var token = SimpleWebTokenHelper.Encrypt($"exp={timeStamp.Ticks}", websiteAuthEncryptionKey, includesSignature: true);
+
             Assert.True(SimpleWebTokenHelper.TryValidateToken(token, new SystemClock()));
         }
 

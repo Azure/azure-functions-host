@@ -15,14 +15,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security
         /// <summary>
         /// A SWT or a Simple Web Token is a token that's made of key=value pairs separated
         /// by &. We only specify expiration in ticks from now (exp={ticks})
-        /// The SWT is then returned as an encrypted string
+        /// The SWT is then returned as an encrypted string.
         /// </summary>
-        /// <param name="validUntil">Datetime for when the token should expire</param>
-        /// <param name="key">Optional key to encrypt the token with</param>
-        /// <returns>a SWT signed by this app</returns>
+        /// <param name="validUntil">Datetime for when the token should expire.</param>
+        /// <param name="key">Optional key to encrypt the token with.</param>
+        /// <returns>a SWT signed by this app.</returns>
         public static string CreateToken(DateTime validUntil, byte[] key = null) => Encrypt($"exp={validUntil.Ticks}", key);
 
-        internal static string Encrypt(string value, byte[] key = null, IEnvironment environment = null)
+        internal static string Encrypt(string value, byte[] key = null, IEnvironment environment = null, bool includesSignature = false)
         {
             key = key ?? SecretsUtility.GetEncryptionKey(environment);
 
@@ -45,8 +45,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security
                         cryptoStream.FlushFinalBlock();
                     }
 
-                    // return {iv}.{swt}.{sha236(key)}
-                    return string.Format("{0}.{1}.{2}", iv, Convert.ToBase64String(cipherStream.ToArray()), GetSHA256Base64String(aes.Key));
+                    if (includesSignature)
+                    {
+                        return $"{Convert.ToBase64String(aes.IV)}.{Convert.ToBase64String(cipherStream.ToArray())}.{GetSHA256Base64String(aes.Key)}.{Convert.ToBase64String(ComputeHMACSHA256(aes.Key, input))}";
+                    }
+                    else
+                    {
+                        // return {iv}.{swt}.{sha236(key)}
+                        return string.Format("{0}.{1}.{2}", iv, Convert.ToBase64String(cipherStream.ToArray()), GetSHA256Base64String(aes.Key));
+                    }
                 }
             }
         }
