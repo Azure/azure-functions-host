@@ -28,6 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             var siteName = "RandomSiteName";
             ScriptSettingsManager.Instance.SetSetting(AzureWebsiteName, siteName);
             ScriptSettingsManager.Instance.SetSetting(WebsitePodName, podName);
+            ScriptSettingsManager.Instance.SetSetting(ContainerName, string.Empty);
 
             var expectedWithSiteName = new string[]
             {
@@ -89,7 +90,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
                     Assert.True(audiences.Contains(expectedWithSiteName[0]));
                     Assert.True(audiences.Contains(expectedWithSiteName[1]));
                 }
-                ScriptSettingsManager.Instance.SetSetting(ContainerName, string.Empty);
             }
         }
     }
