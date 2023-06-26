@@ -41,6 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
 
         private async Task ApplyStartContextIfPresent(CancellationToken cancellationToken)
         {
+            _logger.LogInformation("[TEST] ApplyStartContextIfPresent");
             (bool hasStartContext, string startContext) = await TryGetStartContextOrNullAsync(cancellationToken);
 
             if (hasStartContext && !string.IsNullOrEmpty(startContext))
