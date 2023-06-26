@@ -69,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security
             var iv = Convert.FromBase64String(parts[0]);
             var data = Convert.FromBase64String(parts[1]);
             var base64KeyHash = parts.Length == 3 ? parts[2] : null;
-            var signature = parts.Length >= 4 ? Convert.FromBase64String(parts[3]) : null;
+            var signature = parts.Length == 4 ? Convert.FromBase64String(parts[3]) : null;
 
             if (!string.IsNullOrEmpty(base64KeyHash) && !string.Equals(GetSHA256Base64String(encryptionKey), base64KeyHash))
             {
@@ -94,7 +94,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security
                         throw new InvalidOperationException("Signature mismatches!");
                     }
 
-                    return Encoding.UTF8.GetString(ms.ToArray());
+                    return Encoding.UTF8.GetString(input);
                 }
             }
         }

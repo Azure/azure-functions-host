@@ -15,13 +15,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
     public class ScriptJwtBearerExtensionsTests
     {
         [Theory]
-        [InlineData(true, true, false)]
-        [InlineData(true, false, false)]
-        [InlineData(false, true, false)]
-        [InlineData(false, false, false)]
-        [InlineData(true, false, true)]
-        [InlineData(false, false, true)]
-        public void CreateTokenValidationParameters_HasExpectedAudience(bool isPlaceholderModeEnabled, bool isLinuxConsumptionOnLegion, bool isLinuxConsumptionOnAtlas)
+        [InlineData(true, true)]
+        [InlineData(true, false)]
+        [InlineData(false, true)]
+        [InlineData(false, false)]
+        public void CreateTokenValidationParameters_HasExpectedAudience(bool isPlaceholderModeEnabled, bool isLinuxConsumptionOnLegion)
         {
             var podName = "RandomPodName";
             var containerName = "RandomContainerName";
@@ -54,8 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
                 testData[WebsitePodName] = podName;
                 testData[LegionServiceHost] = "1";
             }
-
-            if (isLinuxConsumptionOnAtlas)
+            else
             {
                 ScriptSettingsManager.Instance.SetSetting(ContainerName, containerName);
                 expectedWithContainerName = new string[]
@@ -78,8 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
                     Assert.Equal(audiences.Count, expectedWithPodName.Length);
                     Assert.Equal(audiences[0], expectedWithPodName[0]);
                 }
-                else if (isPlaceholderModeEnabled &&
-                    isLinuxConsumptionOnAtlas)
+                else if (isPlaceholderModeEnabled)
                 {
                     Assert.Equal(audiences.Count, expectedWithContainerName.Length);
                     Assert.Equal(audiences[0], expectedWithContainerName[0]);
