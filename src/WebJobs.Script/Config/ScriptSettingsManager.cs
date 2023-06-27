@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         }
 
         /// <summary>
-        /// Gets a value indicating whether we are running in App Service
+        /// Gets a value indicating whether we are running in App Service.
         /// </summary>
         public virtual bool IsAppServiceEnvironment => !string.IsNullOrEmpty(GetSetting(EnvironmentSettingNames.AzureWebsiteInstanceId));
 

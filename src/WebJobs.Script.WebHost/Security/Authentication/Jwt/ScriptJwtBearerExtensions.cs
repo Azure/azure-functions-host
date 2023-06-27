@@ -70,7 +70,54 @@ namespace Microsoft.Extensions.DependencyInjection
                             }
                         });
 
+<<<<<<< HEAD
         private static TokenValidationParameters CreateTokenValidationParameters()
+=======
+                        c.Success();
+
+                        return Task.CompletedTask;
+                    }
+                };
+
+                o.TokenValidationParameters = CreateTokenValidationParameters();
+
+                // TODO: DI (FACAVAL) Remove this once the work above is completed.
+                if (!SystemEnvironment.Instance.IsPlaceholderModeEnabled())
+                {
+                    // We're not in standby mode, so flag as specialized
+                    _specialized = 1;
+                }
+            });
+
+        private static string[] GetValidAudiences()
+        {
+            if (SystemEnvironment.Instance.IsPlaceholderModeEnabled())
+            {
+                if (SystemEnvironment.Instance.IsFlexConsumptionSku())
+                {
+                    return new string[]
+                    {
+                        ScriptSettingsManager.Instance.GetSetting(WebsitePodName)
+                    };
+                }
+                else if (SystemEnvironment.Instance.IsLinuxConsumptionOnAtlas())
+                {
+                    return new string[]
+                    {
+                        ScriptSettingsManager.Instance.GetSetting(ContainerName)
+                    };
+                }
+            }
+
+            return new string[]
+            {
+                string.Format(SiteAzureFunctionsUriFormat, ScriptSettingsManager.Instance.GetSetting(AzureWebsiteName)),
+                string.Format(SiteUriFormat, ScriptSettingsManager.Instance.GetSetting(AzureWebsiteName))
+            };
+        }
+
+        public static TokenValidationParameters CreateTokenValidationParameters()
+>>>>>>> 6ca377582 (Use auth to decrypt signature and use container name for audience for… (#9348))
         {
             var signingKeys = SecretsUtility.GetTokenIssuerSigningKeys();
             var result = new TokenValidationParameters();
