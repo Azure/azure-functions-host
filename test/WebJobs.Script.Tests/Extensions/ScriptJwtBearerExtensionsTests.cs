@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.DependencyInjection;
+using NuGet.Configuration;
 using Xunit;
 using static Microsoft.Azure.WebJobs.Script.EnvironmentSettingNames;
 
@@ -21,9 +22,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         public void CreateTokenValidationParameters_HasExpectedAudience(bool isPlaceholderModeEnabled, bool isLinuxConsumptionOnLegion)
         {
             var podName = "RandomPodName";
+            var containerName = "RandomContainerName";
             var siteName = "RandomSiteName";
             ScriptSettingsManager.Instance.SetSetting(AzureWebsiteName, siteName);
             ScriptSettingsManager.Instance.SetSetting(WebsitePodName, podName);
+            ScriptSettingsManager.Instance.SetSetting(ContainerName, string.Empty);
 
             var expectedWithSiteName = new string[]
             {
@@ -34,6 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             {
                 ScriptSettingsManager.Instance.GetSetting(WebsitePodName)
             };
+            var expectedWithContainerName = new string[] { };
 
             var testData = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
@@ -48,6 +52,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
                 testData[WebsitePodName] = podName;
                 testData[LegionServiceHost] = "1";
             }
+            else
+            {
+                ScriptSettingsManager.Instance.SetSetting(ContainerName, containerName);
+                expectedWithContainerName = new string[]
+                {
+                    ScriptSettingsManager.Instance.GetSetting(ContainerName)
+                };
+                testData[AzureWebsiteInstanceId] = string.Empty;
+                testData[ContainerName] = containerName;
+            }
 
             testData[ContainerEncryptionKey] = Convert.ToBase64String(TestHelpers.GenerateKeyBytes());
             using (new TestScopedEnvironmentVariable(testData))
@@ -60,6 +74,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
                 {
                     Assert.Equal(audiences.Count, expectedWithPodName.Length);
                     Assert.Equal(audiences[0], expectedWithPodName[0]);
+                }
+                else if (isPlaceholderModeEnabled)
+                {
+                    Assert.Equal(audiences.Count, expectedWithContainerName.Length);
+                    Assert.Equal(audiences[0], expectedWithContainerName[0]);
                 }
                 else
                 {
