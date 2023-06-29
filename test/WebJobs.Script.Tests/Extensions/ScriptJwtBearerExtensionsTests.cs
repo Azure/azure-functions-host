@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.DependencyInjection;
-using NuGet.Configuration;
 using Xunit;
 using static Microsoft.Azure.WebJobs.Script.EnvironmentSettingNames;
 
@@ -24,22 +23,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             var podName = "RandomPodName";
             var containerName = "RandomContainerName";
             var siteName = "RandomSiteName";
-            ScriptSettingsManager.Instance.SetSetting(AzureWebsiteName, siteName);
-            ScriptSettingsManager.Instance.SetSetting(WebsitePodName, podName);
-            ScriptSettingsManager.Instance.SetSetting(ContainerName, string.Empty);
 
             var expectedWithSiteName = new string[]
             {
-                string.Format(ScriptConstants.SiteAzureFunctionsUriFormat, ScriptSettingsManager.Instance.GetSetting(AzureWebsiteName)),
-                string.Format(ScriptConstants.SiteUriFormat, ScriptSettingsManager.Instance.GetSetting(AzureWebsiteName))
+                string.Format(ScriptConstants.SiteAzureFunctionsUriFormat, siteName),
+                string.Format(ScriptConstants.SiteUriFormat, siteName)
             };
-            var expectedWithPodName = new string[]
-            {
-                ScriptSettingsManager.Instance.GetSetting(WebsitePodName)
-            };
-            var expectedWithContainerName = new string[] { };
+            var expectedWithPodName = new string[] { podName };
+            var expectedWithContainerName = Array.Empty<string>();
 
-            var testData = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var testData = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                [AzureWebsiteName] = siteName,
+                [WebsitePodName] = podName,
+                [ContainerName] = string.Empty
+            };
 
             if (isPlaceholderModeEnabled)
             {
@@ -54,17 +52,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             }
             else
             {
-                ScriptSettingsManager.Instance.SetSetting(ContainerName, containerName);
-                expectedWithContainerName = new string[]
-                {
-                    ScriptSettingsManager.Instance.GetSetting(ContainerName)
-                };
+                expectedWithContainerName = new string[] { containerName };
                 testData[AzureWebsiteInstanceId] = string.Empty;
                 testData[ContainerName] = containerName;
             }
 
             testData[ContainerEncryptionKey] = Convert.ToBase64String(TestHelpers.GenerateKeyBytes());
-            using (new TestScopedEnvironmentVariable(testData))
+            using (new TestScopedSettings(ScriptSettingsManager.Instance, testData))
             {
                 var tokenValidationParameters = ScriptJwtBearerExtensions.CreateTokenValidationParameters();
                 var audiences = tokenValidationParameters.ValidAudiences.ToList();
