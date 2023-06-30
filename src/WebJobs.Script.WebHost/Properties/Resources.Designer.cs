@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
     // class via a tool like ResGen or Visual Studio.
     // To add or remove a member, edit your .ResX file then rerun ResGen
     // with the /str option, or rebuild your VS project.
-    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "16.0.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "17.0.0.0")]
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
     internal class Resources {
@@ -317,6 +317,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
         internal static string UnauthorizedArmExtensionResourceRequest {
             get {
                 return ResourceManager.GetString("UnauthorizedArmExtensionResourceRequest", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Your function app has more than two non-decryptable secrets backups. If your function app reaches 10 non-decryptable secrets backups, your app will not be able to start unless the backup are deleted. Please follow our best practices to ensure that your app secrets are not being regenerated. For more information, please see aka.ms/function-app-secrets-best-practices.
+        /// </summary>
+        internal static string WarningTwoOrMoreSecretBackups {
+            get {
+                return ResourceManager.GetString("WarningTwoOrMoreSecretBackups", resourceCulture);
             }
         }
     }

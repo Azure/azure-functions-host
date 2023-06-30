@@ -313,4 +313,7 @@
   <data name="UnauthorizedArmExtensionResourceRequest" xml:space="preserve">
     <value>GET requests for this resource via the hostruntime extensions API are not authorized. Please use an alternate first class ARM API.</value>
   </data>
+  <data name="WarningTwoOrMoreSecretBackups" xml:space="preserve">
+    <value>Your function app has more than two non-decryptable secrets backups. If your function app reaches 10 non-decryptable secrets backups, your app will not be able to start unless the backup are deleted. Please follow our best practices to ensure that your app secrets are not being regenerated. For more information, please see aka.ms/function-app-secrets-best-practices</value>
+  </data>
 </root>

@@ -165,6 +165,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const int HostTimeoutSeconds = 30;
         public const int HostPollingIntervalMilliseconds = 25;
         public const int MaximumSecretBackupCount = 10;
+        public const int MaximumSecretBackupWarningCount = 2;
 
         public const string LinuxLogEventStreamName = "MS_FUNCTION_LOGS";
         public const string LinuxMetricEventStreamName = "MS_FUNCTION_METRICS";
