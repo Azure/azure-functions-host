@@ -7978,3 +7978,14 @@ string.Trim(char)~System.String,System.Private.CoreLib~1~0~Trim
 [System.Net.Http]System.Net.Http.HttpContent.CreateContentReadStreamAsync(CancellationToken)~System.Net.Http.HttpContent,System.Net.Http~1~0~CreateContentReadStreamAsync
 [System.Net.Http]System.Net.Http.HttpContent.get_Headers()~System.Net.Http.HttpContent,System.Net.Http~0~0~get_Headers
 [System.Net.Http]System.Net.Http.HttpMethod.get_Get()~System.Net.Http.HttpMethod,System.Net.Http~0~0~get_Get
+[Microsoft.Azure.WebJobs.Script.WebHost]Microsoft.Azure.WebJobs.Script.WebHost.Models.HostAssignmentContext+<>c.<GetBYOSEnvironmentVariables>b__54_0(KeyValuePair`2<string,string>)~Microsoft.Azure.WebJobs.Script.WebHost.Models.HostAssignmentContext+<>c,Microsoft.Azure.WebJobs.Script.WebHost~1~0~<GetBYOSEnvironmentVariables>b__54_0
+[Microsoft.Azure.WebJobs.Script]Microsoft.Azure.WebJobs.Script.ScriptHost+<StopAsyncCore>d__124.MoveNext()~Microsoft.Azure.WebJobs.Script.ScriptHost+<StopAsyncCore>d__124,Microsoft.Azure.WebJobs.Script~0~0~MoveNext
+[S.P.CoreLib]Interop+Kernel32.GetOverlappedResult(SafeFileHandle,NativeOverlapped*,int32&,bool)~Interop+Kernel32,System.Private.CoreLib~4~0~GetOverlappedResult
+[S.P.CoreLib]Interop+Kernel32.GetSystemInfo(SYSTEM_INFO&)~Interop+Kernel32,System.Private.CoreLib~1~0~GetSystemInfo
+[S.P.CoreLib]System.IO.RandomAccess..cctor()~System.IO.RandomAccess,System.Private.CoreLib~0~0~.cctor
+[S.P.CoreLib]System.IO.RandomAccess.<AllocateCallback>g__Callback|41_0(uint32,uint32,NativeOverlapped*)~System.IO.RandomAccess,System.Private.CoreLib~3~0~<AllocateCallback>g__Callback|41_0
+[S.P.CoreLib]System.IO.RandomAccess.GetNativeOverlappedForAsyncHandle(SafeFileHandle,int64,CallbackResetEvent)~System.IO.RandomAccess,System.Private.CoreLib~3~0~GetNativeOverlappedForAsyncHandle
+[S.P.CoreLib]System.IO.RandomAccess.WriteSyncUsingAsyncHandle(SafeFileHandle,ReadOnlySpan`1<uint8>,int64)~System.IO.RandomAccess,System.Private.CoreLib~3~0~WriteSyncUsingAsyncHandle
+[S.P.CoreLib]System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start<<StopAsyncCore>d__124>(<StopAsyncCore>d__124&)~System.Runtime.CompilerServices.AsyncMethodBuilderCore,System.Private.CoreLib~1~1:Microsoft.Azure.WebJobs.Script.ScriptHost+<StopAsyncCore>d__124,Microsoft.Azure.WebJobs.Script~Start
+[S.P.CoreLib]System.Runtime.CompilerServices.AsyncTaskMethodBuilder.Start<<StopAsyncCore>d__124>(<StopAsyncCore>d__124&)~System.Runtime.CompilerServices.AsyncTaskMethodBuilder,System.Private.CoreLib~1~1:Microsoft.Azure.WebJobs.Script.ScriptHost+<StopAsyncCore>d__124,Microsoft.Azure.WebJobs.Script~Start
+[S.P.CoreLib]System.Threading.ThreadPoolBoundHandle.AllocateNativeOverlapped(IOCompletionCallback,object,object,bool)~System.Threading.ThreadPoolBoundHandle,System.Private.CoreLib~4~0~AllocateNativeOverlapped
