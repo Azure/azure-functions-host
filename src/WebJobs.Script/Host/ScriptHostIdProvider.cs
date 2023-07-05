@@ -3,6 +3,7 @@
 
 using System;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -33,6 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script
             string hostId = _config[ConfigurationSectionNames.HostIdPath];
             if (hostId == null)
             {
+                // if the user hasn't configured an explicit ID, we generate the default ID.
                 HostIdResult result = GetDefaultHostId(_environment, _options.CurrentValue);
                 hostId = result.HostId;
                 if (result.IsTruncated && !result.IsLocal)
@@ -48,9 +50,22 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             HostIdResult result = new HostIdResult();
 
-            // We're setting the default here on the newly created configuration
-            // If the user has explicitly set the HostID via host.json, it will overwrite
-            // what we set here
+            if (environment.IsFlexConsumptionSku())
+            {
+                // in Flex Consumption, we use a Guid based host ID without truncation.
+                string uniqueSlotName = environment?.GetAzureWebsiteUniqueSlotName();
+                byte[] hash;
+                using (MD5 md5 = MD5.Create())
+                {
+                    hash = md5.ComputeHash(Encoding.UTF8.GetBytes(uniqueSlotName));
+                }
+
+                result.HostId = new Guid(hash).ToString().Replace("-", string.Empty).ToLowerInvariant();
+
+                return result;
+            }
+
+            // Note: HostIds must conform to the rules documented here: https://learn.microsoft.com/en-us/azure/azure-functions/functions-app-settings#azurefunctionswebhost__hostid
             string hostId = null;
             if (environment.IsAppService() || environment.IsAnyKubernetesEnvironment())
             {
