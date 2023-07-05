@@ -372,8 +372,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _workerConfig.Description.DefaultRuntimeVersion = _workerConfig.Description.DefaultRuntimeVersion ?? res?.WorkerMetadata?.RuntimeVersion;
             _workerConfig.Description.DefaultRuntimeName = _workerConfig.Description.DefaultRuntimeName ?? res?.WorkerMetadata?.RuntimeName;
 
-            UpdateCapabilities(res.Capabilities);
-            _cancelCapabilityEnabled ??= !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.HandlesInvocationCancelMessage));
+            ApplyCapabilities(res.Capabilities);
 
             if (res.Result.IsFailure(out Exception reloadEnvironmentVariablesException))
             {
@@ -410,7 +409,35 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             _state = _state | RpcWorkerChannelState.Initialized;
 
-            UpdateCapabilities(_initMessage.Capabilities);
+            ApplyCapabilities(_initMessage.Capabilities);
+
+            _workerInitTask.TrySetResult(true);
+        }
+
+        private void LogWorkerMetadata(WorkerMetadata workerMetadata)
+        {
+            if (workerMetadata == null)
+            {
+                return;
+            }
+
+            workerMetadata.UpdateWorkerMetadata(_workerConfig);
+            var workerMetadataString = workerMetadata.ToString();
+            _metricsLogger.LogEvent(MetricEventNames.WorkerMetadata, functionName: null, workerMetadataString);
+            _workerChannelLogger.LogDebug("Worker metadata: {workerMetadata}", workerMetadataString);
+        }
+
+        // Allow tests to add capabilities, even if not directly supported by the worker.
+        internal virtual void UpdateCapabilities(IDictionary<string, string> fields)
+        {
+            _workerCapabilities.UpdateCapabilities(fields);
+        }
+
+        // Helper method that updates and applies capabilities
+        // Used at worker initialization and environment reload (placeholder scenarios)
+        internal void ApplyCapabilities(IDictionary<string, string> capabilities)
+        {
+            UpdateCapabilities(capabilities);
 
             _isSharedMemoryDataTransferEnabled = IsSharedMemoryDataTransferEnabled();
             _cancelCapabilityEnabled ??= !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.HandlesInvocationCancelMessage));
@@ -441,27 +468,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     HandleWorkerInitError(ex);
                 }
             }
-
-            _workerInitTask.TrySetResult(true);
-        }
-
-        private void LogWorkerMetadata(WorkerMetadata workerMetadata)
-        {
-            if (workerMetadata == null)
-            {
-                return;
-            }
-
-            workerMetadata.UpdateWorkerMetadata(_workerConfig);
-            var workerMetadataString = workerMetadata.ToString();
-            _metricsLogger.LogEvent(MetricEventNames.WorkerMetadata, functionName: null, workerMetadataString);
-            _workerChannelLogger.LogDebug("Worker metadata: {workerMetadata}", workerMetadataString);
-        }
-
-        // Allow tests to add capabilities, even if not directly supported by the worker.
-        internal virtual void UpdateCapabilities(IDictionary<string, string> fields)
-        {
-            _workerCapabilities.UpdateCapabilities(fields);
         }
 
         public void SetupFunctionInvocationBuffers(IEnumerable<FunctionMetadata> functions)
