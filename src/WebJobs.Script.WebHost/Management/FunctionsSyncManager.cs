@@ -22,6 +22,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Extensions;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
@@ -315,23 +316,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             var triggersArray = new JArray(triggers);
             int count = triggersArray.Count;
 
+            // Form the base minimal result
+            string hostId = await _hostIdProvider.GetHostIdAsync(CancellationToken.None);
+            JObject result = GetMinimalPayload(hostId, triggersArray);
+
             if (!ArmCacheEnabled)
             {
-                // extended format is disabled - just return triggers
+                // extended format is disabled - just return minimal results
                 return new SyncTriggersPayload
                 {
-                    Content = JsonConvert.SerializeObject(triggersArray),
+                    Content = JsonConvert.SerializeObject(result),
                     Count = count
                 };
             }
 
-            // Add triggers to the payload
-            JObject result = new JObject();
-            result.Add("triggers", triggersArray);
-
             // Add all listable functions details to the payload
             JObject functions = new JObject();
-            string routePrefix = await WebFunctionsManager.GetRoutePrefix(hostOptions.RootScriptPath);
             var listableFunctions = _functionMetadataManager.GetFunctionMetadata().Where(m => !m.IsCodeless());
             var functionDetails = await WebFunctionsManager.GetFunctionMetadataResponse(listableFunctions, hostOptions, _hostNameProvider);
             result.Add("functions", new JArray(functionDetails.Select(p => JObject.FromObject(p))));
@@ -395,15 +395,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
             if (json.Length > ScriptConstants.MaxTriggersStringLength && !_environment.IsKubernetesManagedHosting())
             {
-                // The settriggers call to the FE enforces a max request size
-                // limit. If we're over limit, revert to the minimal triggers
-                // format.
+                // The settriggers call to the FE enforces a max request size limit.
+                // If we're over limit, revert to the minimal triggers format.
                 _logger.LogWarning($"SyncTriggers payload of length '{json.Length}' exceeds max length of '{ScriptConstants.MaxTriggersStringLength}'. Reverting to minimal format.");
-                return new SyncTriggersPayload
-                {
-                    Content = JsonConvert.SerializeObject(triggersArray),
-                    Count = count
-                };
+
+                var minimalResult = GetMinimalPayload(hostId, triggersArray);
+                json = JsonConvert.SerializeObject(minimalResult);
             }
 
             return new SyncTriggersPayload
@@ -411,6 +408,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 Content = json,
                 Count = count
             };
+        }
+
+        private JObject GetMinimalPayload(string hostId, JArray triggersArray)
+        {
+            JObject result = new JObject
+            {
+                { "triggers", triggersArray }
+            };
+
+            if (_environment.IsFlexConsumptionSku())
+            {
+                // Currently we're only sending the HostId for Flex Consumption. Eventually we'll do this for all SKUs.
+                // When the HostId is sent, ScaleController will use it directly rather than compute it itself.
+                result["hostId"] = hostId;
+            }
+
+            return result;
         }
 
         internal static async Task<JObject> GetHostJsonExtensionsAsync(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger logger)

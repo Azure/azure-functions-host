@@ -139,6 +139,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName)).Returns((string)null);
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSlotName)).Returns((string)null);
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags)).Returns((string)null);
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku)).Returns((string)ScriptConstants.DynamicSku);
 
             _hostNameProvider = new HostNameProvider(_mockEnvironment.Object);
 
@@ -152,7 +153,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             _functionsSyncManager = new FunctionsSyncManager(configuration, hostIdProviderMock.Object, optionsMonitor, loggerFactory.CreateLogger<FunctionsSyncManager>(), httpClientFactory, _secretManagerProviderMock.Object, _mockWebHostEnvironment.Object, _mockEnvironment.Object, _hostNameProvider, functionMetadataManager, azureBlobStorageProvider);
         }
 
-        private string GetExpectedSyncTriggersPayload(string postedConnection = DefaultTestConnection, string postedTaskHub = DefaultTestTaskHub, string durableVersion = "V2")
+        private string GetExpectedTriggersPayload(string postedConnection = DefaultTestConnection, string postedTaskHub = DefaultTestTaskHub, string durableVersion = "V2")
         {
             string taskHubSegment = postedTaskHub != null ? $",\"taskHubName\":\"{postedTaskHub}\"" : "";
             string storageProviderSegment = postedConnection != null && durableVersion == "V2" ? $",\"storageProvider\":{{\"connectionStringName\":\"DurableConnection\"}}" : "";
@@ -180,9 +181,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             }
         }
 
-        [Fact]
-        public async Task TrySyncTriggers_MaxSyncTriggersPayloadSize_Succeeds()
+        [Theory]
+        [InlineData(ScriptConstants.DynamicSku)]
+        [InlineData(ScriptConstants.FlexConsumptionSku)]
+        public async Task TrySyncTriggers_MaxSyncTriggersPayloadSize_Succeeds(string sku)
         {
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku)).Returns(sku);
+
             // create a dummy file that pushes us over size
             string maxString = new string('x', ScriptConstants.MaxTriggersStringLength + 1);
             _function1 = $"{{ bindings: [], test: '{maxString}'}}";
@@ -196,8 +201,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
                 string syncString = _contentBuilder.ToString();
                 Assert.True(syncString.Length < ScriptConstants.MaxTriggersStringLength);
-                var syncContent = JToken.Parse(syncString);
-                Assert.Equal(JTokenType.Array, syncContent.Type);
+                var syncContent = JObject.Parse(syncString);
+
+                if (_mockEnvironment.Object.IsFlexConsumptionSku())
+                {
+                    Assert.Equal(2, syncContent.Count);
+                    Assert.Equal("testhostid123", syncContent["hostId"]);
+                }
+                else
+                {
+                    Assert.Equal(1, syncContent.Count);
+                    Assert.Equal(null, syncContent["hostId"]);
+                }
+                
+                JArray triggers = (JArray)syncContent["triggers"];
+                Assert.Equal(2, triggers.Count);
             }
         }
 
@@ -256,13 +274,35 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             }
         }
 
+        [Theory]
+        [InlineData(ScriptConstants.DynamicSku)]
+        [InlineData(ScriptConstants.FlexConsumptionSku)]
+        public async Task TrySyncTriggers_PostsExpectedContent_BySku(string sku)
+        {
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku)).Returns(sku);
+
+            using (var env = new TestScopedEnvironmentVariable(_vars))
+            {
+                // Act
+                var syncResult = await _functionsSyncManager.TrySyncTriggersAsync();
+
+                // Assert
+                Assert.True(syncResult.Success, "SyncTriggers should return success true");
+                Assert.True(string.IsNullOrEmpty(syncResult.Error), "Error should be null or empty");
+
+                // verify expected headers
+                Assert.Equal(ScriptConstants.FunctionsUserAgent, _mockHttpHandler.LastRequest.Headers.UserAgent.ToString());
+                Assert.True(_mockHttpHandler.LastRequest.Headers.Contains(ScriptConstants.AntaresLogIdHeaderName));
+                Assert.NotEmpty(_mockHttpHandler.LastRequest.Headers.GetValues(ScriptConstants.SiteRestrictedTokenHeaderName));
+                Assert.NotEmpty(_mockHttpHandler.LastRequest.Headers.GetValues(ScriptConstants.SiteTokenHeaderName));
+
+                VerifyResultWithCacheOn(durableVersion: "V1");
+            }
+        }
+
         private void VerifyResultWithCacheOn(string connection = DefaultTestConnection, string expectedTaskHub = "TestHubValue", string durableVersion = "V2")
         {
-            string expectedSyncTriggersPayload = GetExpectedSyncTriggersPayload(postedConnection: connection, postedTaskHub: expectedTaskHub, durableVersion);
-            // verify triggers
-            var result = JObject.Parse(_contentBuilder.ToString());
-            var triggers = result["triggers"];
-            Assert.Equal(expectedSyncTriggersPayload, triggers.ToString(Formatting.None));
+            var result = VerifyResultCommon(connection, expectedTaskHub, durableVersion);
 
             // verify functions
             var functions = (JArray)result["functions"];
@@ -285,31 +325,55 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.Equal("function1", function1Secrets["name"]);
             Assert.Equal("aaa", (string)function1Secrets["secrets"]["TestFunctionKey1"]);
             Assert.Equal("bbb", (string)function1Secrets["secrets"]["TestFunctionKey2"]);
+        }
+
+        private void VerifyResultWithCacheOff(string durableVersion)
+        {
+            var result = VerifyResultCommon(durableVersion: durableVersion);
+
+            Assert.Null(result["functions"]);
+        }
+
+        public JObject VerifyResultCommon(string connection = DefaultTestConnection, string expectedTaskHub = "TestHubValue", string durableVersion = "V2")
+        {
+            string expectedTriggersPayload = GetExpectedTriggersPayload(postedConnection: connection, postedTaskHub: expectedTaskHub, durableVersion);
+
+            var result = JObject.Parse(_contentBuilder.ToString());
+
+            bool isFlexConsumptionSku = _mockEnvironment.Object.IsFlexConsumptionSku();
+            if (isFlexConsumptionSku)
+            {
+                Assert.Equal("testhostid123", result["hostId"]);
+            }
+            else
+            {
+                Assert.Null(result["hostId"]);
+            }
+
+            // verify triggers
+            var triggers = result["triggers"];
+            Assert.Equal(expectedTriggersPayload, triggers.ToString(Formatting.None));
 
             var logs = _loggerProvider.GetAllLogMessages().Where(m => m.Category.Equals(SyncManagerLogCategory)).ToList();
-
             var log = logs[0];
             int startIdx = log.FormattedMessage.IndexOf("Content=") + 8;
             int endIdx = log.FormattedMessage.LastIndexOf(')');
             var triggersLog = log.FormattedMessage.Substring(startIdx, endIdx - startIdx).Trim();
             var logObject = JObject.Parse(triggersLog);
 
-            Assert.Equal(expectedSyncTriggersPayload, logObject["triggers"].ToString(Formatting.None));
+            if (isFlexConsumptionSku)
+            {
+                Assert.Equal("testhostid123", logObject["hostId"]);
+            }
+            else
+            {
+                Assert.Null(logObject["hostId"]);
+            }
+            
+            Assert.Equal(expectedTriggersPayload, logObject["triggers"].ToString(Formatting.None));
             Assert.False(triggersLog.Contains("secrets"));
-        }
 
-        private void VerifyResultWithCacheOff(string durableVersion)
-        {
-            string expectedSyncTriggersPayload = GetExpectedSyncTriggersPayload(durableVersion: durableVersion);
-            var triggers = JArray.Parse(_contentBuilder.ToString());
-            Assert.Equal(expectedSyncTriggersPayload, triggers.ToString(Formatting.None));
-
-            var logs = _loggerProvider.GetAllLogMessages().Where(m => m.Category.Equals(SyncManagerLogCategory)).ToList();
-            var log = logs[0];
-            int startIdx = log.FormattedMessage.IndexOf("Content=") + 8;
-            int endIdx = log.FormattedMessage.LastIndexOf(')');
-            var triggersLog = log.FormattedMessage.Substring(startIdx, endIdx - startIdx).Trim();
-            Assert.Equal(expectedSyncTriggersPayload, triggersLog);
+            return result;
         }
 
         [Fact]
@@ -375,7 +439,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 Assert.Equal(1, _mockHttpHandler.RequestCount);
                 var result = JObject.Parse(_contentBuilder.ToString());
                 var triggers = result["triggers"];
-                Assert.Equal(GetExpectedSyncTriggersPayload(durableVersion: "V1"), triggers.ToString(Formatting.None));
+                Assert.Equal(GetExpectedTriggersPayload(durableVersion: "V1"), triggers.ToString(Formatting.None));
 
                 string hash = string.Empty;
                 var downloadResponse = await hashBlob.DownloadAsync();
@@ -441,7 +505,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 Assert.Equal(1, _mockHttpHandler.RequestCount);
                 var result = JObject.Parse(_contentBuilder.ToString());
                 var triggers = result["triggers"];
-                Assert.Equal(GetExpectedSyncTriggersPayload(durableVersion: "V1"), triggers.ToString(Formatting.None));
+                Assert.Equal(GetExpectedTriggersPayload(durableVersion: "V1"), triggers.ToString(Formatting.None));
                 bool hashBlobExists = await hashBlob.ExistsAsync();
                 Assert.False(hashBlobExists);
 
