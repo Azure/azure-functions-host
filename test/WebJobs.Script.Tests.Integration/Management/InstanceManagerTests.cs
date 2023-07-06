@@ -756,7 +756,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 }
             };
 
-            static async void verifyMSIPropertiesHelper(ManagedServiceIdentity msi)
+            static void verifyMSIPropertiesHelper(ManagedServiceIdentity msi)
             {
                 Assert.NotNull(msi);
                 Assert.NotNull(msi.Type);
