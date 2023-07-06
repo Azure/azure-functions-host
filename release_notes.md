@@ -3,6 +3,7 @@
 <!-- Please add your release notes in the following format:
 - My change description (#PR)
 -->
+- Update Python Worker Version to [4.15.0](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.15.0)
 
 - Remove feature flag for http proxying (https://github.com/Azure/azure-functions-host/pull/9341)
 - Add error handling for http proxying failure scenarios (https://github.com/Azure/azure-functions-host/pull/9342)
@@ -14,3 +15,4 @@
     - Microsoft.IdentityModel.Abstractions
     - Microsoft.IdentityModel.JsonWebTokens
     - Microsoft.IdentityModel.Logging
+- Updated Grpc.AspNetCore package to 2.55.0 (https://github.com/Azure/azure-functions-host/pull/9373)
