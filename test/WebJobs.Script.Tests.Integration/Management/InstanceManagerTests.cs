@@ -732,6 +732,76 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         }
 
         [Fact]
+        public async Task SpecializeMsiSidecar_RequiredPropertiesInPayloadManagedServiceIdentities()
+        {
+            var environment = new Dictionary<string, string>()
+            {
+                { EnvironmentSettingNames.MsiEndpoint, "http://localhost:8081" },
+                { EnvironmentSettingNames.MsiSecret, "secret" }
+            };
+            var assignmentContext = new HostAssignmentContext
+            {
+                SiteId = 1234,
+                SiteName = "TestSite",
+                Environment = environment,
+                IsWarmupRequest = false,
+                MSIContext = new MSIContext()
+                {
+                    SiteName = "TestSite",
+                    MSISecret = "TestSecret1234",
+                    Identities = new[] { new ManagedServiceIdentity() },
+                    SystemAssignedIdentity = new ManagedServiceIdentity(),
+                    DelegatedIdentities = new[] { new ManagedServiceIdentity() },
+                    UserAssignedIdentities = new[] { new ManagedServiceIdentity() },
+                }
+            };
+
+            static async void verifyMSIPropertiesHelper(ManagedServiceIdentity msi)
+            {
+                Assert.NotNull(msi);
+                Assert.NotNull(msi.Type);
+                Assert.NotNull(msi.ClientId);
+                Assert.NotNull(msi.TenantId);
+                Assert.NotNull(msi.Thumbprint);
+                Assert.NotNull(msi.SecretUrl);
+                Assert.NotNull(msi.ResourceId);
+                Assert.NotNull(msi.Certificate);
+                Assert.NotNull(msi.PrincipalId);
+                Assert.NotNull(msi.AuthenticationEndpoint);
+            }
+
+            static async void verifyMSIProperties(HttpRequestMessage request, CancellationToken token)
+            {
+                var requestContent = await request.Content.ReadAsStringAsync(token);
+                var msiContext = JsonConvert.DeserializeObject<MSIContext>(requestContent);
+                Assert.NotNull(msiContext);
+
+                var identityList = new List <ManagedServiceIdentity> ();
+                identityList.AddRange(msiContext.Identities);
+                identityList.Add(msiContext.SystemAssignedIdentity);
+                identityList.AddRange(msiContext.UserAssignedIdentities);
+                identityList.AddRange(msiContext.DelegatedIdentities);
+
+                foreach (ManagedServiceIdentity identity in identityList)
+                {
+                    verifyMSIPropertiesHelper(identity);
+                }
+            }
+
+            var instanceManager = GetInstanceManagerForMSISpecialization(assignmentContext, HttpStatusCode.OK, null, customAction: verifyMSIProperties);
+
+            string error = await instanceManager.SpecializeMSISidecar(assignmentContext);
+            Assert.Null(error);
+
+            var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
+            Assert.Collection(logs,
+                p => Assert.StartsWith("MSI enabled status: True", p),
+                p => Assert.StartsWith("Specializing sidecar at http://localhost:8081", p),
+                p => Assert.StartsWith("Specialize MSI sidecar returned OK", p));
+        }
+
+
+        [Fact]
         public async Task SpecializeMSISidecar_NoOp_ForWarmup_Request()
         {
             var environment = new Dictionary<string, string>()
