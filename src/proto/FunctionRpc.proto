@@ -245,6 +245,10 @@ message FunctionEnvironmentReloadRequest {
 }
 
 message FunctionEnvironmentReloadResponse {
+  enum CapabilitiesUpdateStrategy {
+    merge = 0;
+    override = 1;
+  }
   // After specialization, worker sends capabilities & metadata.
   // Worker metadata captured for telemetry purposes
   WorkerMetadata worker_metadata = 1;
@@ -254,6 +258,8 @@ message FunctionEnvironmentReloadResponse {
 
   // Status of the response
   StatusResult result = 3;
+
+  CapabilitiesUpdateStrategy capabilities_update_strategy = 4;
 }
 
 // Tell the out-of-proc worker to close any shared memory maps it allocated for given invocation
