@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
             _startupContextProvider = startupContextProvider;
         }
 
-        public override async Task<(bool HasStartContext, string StartContext)> TryGetStartContextOrNullAsync(CancellationToken cancellationToken)
+        protected override async Task<(bool HasStartContext, string StartContext)> TryGetStartContextOrNullAsync(CancellationToken cancellationToken)
         {
             _cancellationToken = cancellationToken;
             var startContext = _environment.GetEnvironmentVariable(EnvironmentSettingNames.ContainerStartContext);

@@ -27,21 +27,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
             _logger = logger;
         }
 
-        public override Task<(bool HasStartContext, string StartContext)> TryGetStartContextOrNullAsync(CancellationToken cancellationToken)
+        protected override Task<(bool HasStartContext, string StartContext)> TryGetStartContextOrNullAsync(CancellationToken cancellationToken)
         {
             string containerSpecializationContextMountPath = _environment.GetEnvironmentVariable(EnvironmentSettingNames.ContainerSpecializationContextVolumePath);
 
             // The CONTAINER_SPECIALIZATION_CONTEXT_MOUNT_PATH environment variable should be set during pod creation
             if (string.IsNullOrEmpty(containerSpecializationContextMountPath))
             {
-                _logger.LogWarning("containerSpecializationContextMountPath is Null or Empty");
+                _logger.LogError($"{EnvironmentSettingNames.ContainerSpecializationContextVolumePath} is Null or Empty");
                 return Task.FromResult((false, string.Empty));
             }
 
             // The CONTAINER_SPECIALIZATION_CONTEXT_MOUNT_PATH emptyDir volume should be mounted by Legion during pod creation
             if (!Directory.Exists(containerSpecializationContextMountPath))
             {
-                _logger.LogWarning("Container Specialization Context Mount Does Not Exist");
+                _logger.LogError("Container Specialization Context Mount Does Not Exist");
                 return Task.FromResult((false, string.Empty));
             }
 

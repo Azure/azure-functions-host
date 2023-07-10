@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
         private readonly StartupContextProvider _startupContextProvider;
         private CancellationToken _cancellationToken;
 
-        public LinuxContainerInitializationHostedService(IEnvironment environment, IInstanceManager instanceManager, ILogger<LinuxContainerInitializationHostedService> logger, StartupContextProvider startupContextProvider)
+        public LinuxContainerInitializationHostedService(IEnvironment environment, IInstanceManager instanceManager, ILogger logger, StartupContextProvider startupContextProvider)
         {
             _environment = environment;
             _instanceManager = instanceManager;
@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
-            _logger.LogInformation("Initializing LinuxContainerInitializationService.");
+            _logger.LogInformation("Starting container initialization service.");
             _cancellationToken = cancellationToken;
 
             // The service should be registered in Linux Consumption only, but do additional check here.
@@ -60,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
             }
         }
 
-        public abstract Task<(bool HasStartContext, string StartContext)> TryGetStartContextOrNullAsync(CancellationToken cancellationToken);
+        protected abstract Task<(bool HasStartContext, string StartContext)> TryGetStartContextOrNullAsync(CancellationToken cancellationToken);
 
         protected abstract Task SpecializeMSISideCar(HostAssignmentContext assignmentContext);
 
