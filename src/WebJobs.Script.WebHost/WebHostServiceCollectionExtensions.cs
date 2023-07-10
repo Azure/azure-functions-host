@@ -247,7 +247,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     var startupContextProvider = s.GetService<StartupContextProvider>();
                     return new AtlasContainerInitializationHostedService(environment, instanceManager, logger, startupContextProvider);
                 }
-                else if (environment.IsLinuxConsumptionOnLegion())
+                else if (environment.IsFlexConsumptionSku())
                 {
                     var instanceManager = s.GetService<IInstanceManager>();
                     var logger = s.GetService<ILogger<LinuxContainerInitializationHostedService>>();
