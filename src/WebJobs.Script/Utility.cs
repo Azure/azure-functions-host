@@ -41,6 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private const string AssemblySeparator = "__";
         private const string BlobServiceDomain = "blob";
         private const string SasVersionQueryParam = "sv";
+        private const string SasTokenExpirationDate = "se";
 
         private static readonly Regex FunctionNameValidationRegex = new Regex(@"^[a-z][a-z0-9_\-]{0,127}$(?<!^host$)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
         private static readonly Regex BindingNameValidationRegex = new Regex(string.Format("^([a-zA-Z][a-zA-Z0-9]{{0,127}}|{0})$", Regex.Escape(ScriptConstants.SystemReturnParameterBindingName)));
@@ -877,6 +878,36 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             return true;
+        }
+
+        public static bool IsResourceAzureBlobWithoutSas(Uri resourceUri)
+        {
+            // Screen out URLs that don't have <name>.blob.core... format
+            if (string.IsNullOrEmpty(GetAccountNameFromDomain(resourceUri.Host)))
+            {
+                return false;
+            }
+
+            // Screen out URLs with an SAS token
+            var queryParams = HttpUtility.ParseQueryString(resourceUri.Query.ToLower());
+            if (queryParams != null && !string.IsNullOrEmpty(queryParams[SasVersionQueryParam]))
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+         public static string? GetSasTokenExpirationDate(Uri resourceUri)
+        {
+            // Screen out URLs with an SAS token
+            var queryParams = HttpUtility.ParseQueryString(resourceUri.Query.ToLower());
+            if (queryParams != null && !string.IsNullOrEmpty(queryParams[SasTokenExpirationDate]))
+            {
+                return false;
+            }
+
+            return null;
         }
 
         public static bool IsHttporManualTrigger(string triggerType)

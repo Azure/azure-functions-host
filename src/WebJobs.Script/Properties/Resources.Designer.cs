@@ -199,5 +199,14 @@ namespace Microsoft.Azure.WebJobs.Script.Properties {
                 return ResourceManager.GetString("MatchingBundleNotFound", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to the SAS token is expiring in {0} days. See https://aka.ms/functions-hostjson for more information&quot;.
+        /// </summary>
+        internal static string SasTokenExpiringFormat {
+            get {
+                return ResourceManager.GetString("SasTokenExpiringFormat", resourceCulture);
+            }
+        }
     }
 }

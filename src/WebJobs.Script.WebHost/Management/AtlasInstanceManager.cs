@@ -138,6 +138,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     }
                     else
                     {
+                        var sasTokenExpirationDate = Utility.GetSasTokenExpirationDate(uri);
+                        if (sasTokenExpirationDate != null)
+                        {
+                            var parsedDate = DateTime.Parse(sasTokenExpirationDate);
+                            var currentDate = DateTime.Now.Date;
+
+                            var difference = parsedDate.Subtract(currentDate);
+
+                            if (Math.Abs(difference.TotalDays) <= 30)
+                            {
+                                string message = string.Format(Resources.SasTokenExpiringFormat, difference.TotalDays);
+                                DiagnosticEventLoggerExtensions.LogDiagnosticEvent(_logger, DiagnosticEventConstants.SasTokenExpiringErrorCode, message, DiagnosticEventConstants.SasTokenExpiringErrorHelpLink);
+                            }
+                        }
                         // In AppService, ZipUrl == 1 means the package is hosted in azure files.
                         // Otherwise we expect zipUrl to be a blobUri to a zip or a squashfs image
                         var (error, contentLength) = await ValidateBlobPackageContext(pkgContext);

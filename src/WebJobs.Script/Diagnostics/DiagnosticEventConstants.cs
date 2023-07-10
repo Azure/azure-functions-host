@@ -10,5 +10,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public const string ExternalStartupErrorCode = "AZFD0005";
         public const string ExternalStartupErrorHelpLink = "https://go.microsoft.com/fwlink/?linkid=2224847";
+
+        public const string SasTokenExpiringErrorCode = "AZFD0006";
+        public const string SasTokenExpiringErrorHelpLink = "https://learn.microsoft.com/en-us/azure/azure-functions/run-functions-from-deployment-package#fetch-a-package-from-azure-blob-storage-using-a-managed-identity";
     }
 }

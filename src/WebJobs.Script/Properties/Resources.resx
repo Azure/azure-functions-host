@@ -167,4 +167,7 @@
   <data name="HostIdCollisionFormat" xml:space="preserve">
     <value>A collision for Host ID '{0}' was detected in the configured storage account. For more information, see https://aka.ms/functions-hostid-collision.</value>
   </data>
+   <data name="SasTokenExpiringFormat" xml:space="preserve">
+    <value>Sas token within URI is set to expire in '{0}' days. Consider switching to using identites instead. For more information, see https://learn.microsoft.com/en-us/azure/azure-functions/run-functions-from-deployment-package#fetch-a-package-from-azure-blob-storage-using-a-managed-identity.</value>
+  </data>
 </root>
