@@ -9,7 +9,9 @@ using Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Azure.WebJobs.Host.Storage;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions;
+using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
@@ -19,6 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     /// </summary>
     public class BlobStorageSecretsRepository : BaseSecretsRepository
     {
+        private const string BlobArchivedName = "BlobArchived";
         private readonly string _secretsBlobPath;
         private readonly string _hostSecretsBlobPath;
         private readonly string _secretsContainerName = "azure-webjobs-secrets";
@@ -96,7 +99,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
             catch (Exception ex)
             {
-                LogErrorMessage("read", ex);
+                // If the read operation failed because the blob access tier is set to archived, log a diagnostic event.
+                var rfex = ex as RequestFailedException;
+                var operation = "read";
+
+                if (rfex != null && rfex.Status == 409 && rfex.ErrorCode.Equals(BlobArchivedName, StringComparison.OrdinalIgnoreCase))
+                {
+                    DiagnosticEventLoggerExtensions.LogDiagnosticEventError(
+                        Logger,
+                        DiagnosticEventConstants.FailedToReadBlobStorageRepositoryErrorCode,
+                        Resources.FailedToReadBlobSecretRepositoryTierSetToArchive,
+                        DiagnosticEventConstants.FailedToReadBlobStorageRepositoryHelpLink,
+                        rfex);
+                }
+
+                LogErrorMessage(operation, ex);
                 throw;
             }
 
