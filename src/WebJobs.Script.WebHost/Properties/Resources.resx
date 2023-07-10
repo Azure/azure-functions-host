@@ -117,6 +117,9 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
+  <data name="BlobStorageSecretRepositoryFailedOperation" xml:space="preserve">
+    <value>There was an error performing a {0} operation on the Blob Storage Secret Repository.</value>
+  </data>
   <data name="ErrorSameSecrets" xml:space="preserve">
     <value>Two or more function apps are sharing the same secrets ({0})</value>
   </data>

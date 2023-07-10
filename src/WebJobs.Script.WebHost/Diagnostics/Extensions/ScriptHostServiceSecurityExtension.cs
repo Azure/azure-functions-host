@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions
@@ -13,11 +14,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions
             LoggerMessage.Define<string>(
                 LogLevel.Error,
                 new EventId(600, nameof(BlobStorageSecretRepoError)),
-                "There was an error performing a {operation} operation on the Blob Storage Secret Repository.");
+                "{message}");
 
         public static void BlobStorageSecretRepoError(this ILogger logger, string operation, Exception exception)
         {
-            _blobStorageSecretRepoError(logger, operation, exception);
+            var message = string.Format(Resources.BlobStorageSecretRepositoryFailedOperation, operation);
+            _blobStorageSecretRepoError(logger, message, exception);
         }
     }
 }

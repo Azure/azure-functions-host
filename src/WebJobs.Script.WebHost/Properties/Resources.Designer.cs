@@ -61,6 +61,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to There was an error performing a {0} operation on the Blob Storage Secret Repository..
+        /// </summary>
+        internal static string BlobStorageSecretRepositoryFailedOperation {
+            get {
+                return ResourceManager.GetString("BlobStorageSecretRepositoryFailedOperation", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Two or more function apps are sharing the same secrets ({0}).
         /// </summary>
         internal static string ErrorSameSecrets {
