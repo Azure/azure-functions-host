@@ -139,6 +139,9 @@
   "uri": "{uri}"
 }}</value>
   </data>
+  <data name="FailedToReadBlobSecretRepositoryTierSetToArchive" xml:space="preserve">
+    <value>Failed to read from Blob Storage Secret Repository because its access tier is set to archive.</value>
+  </data>
   <data name="FunctionSecretsSchemaV0" xml:space="preserve">
     <value>{
     "type": "object",

@@ -16,5 +16,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public const string MaximumSecretBackupCountErrorCode = "AZFD0007";
         public const string MaximumSecretBackupCountHelpLink = "https://go.microsoft.com/fwlink/?linkid=1234569";
+
+        public const string FailedToReadBlobStorageRepositoryErrorCode = "AZFD0007";
+        public const string FailedToReadBlobStorageRepositoryHelpLink = "https://go.microsoft.com/fwlink/?linkid=7891011";
     }
 }
