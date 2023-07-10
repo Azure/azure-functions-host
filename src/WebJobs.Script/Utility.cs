@@ -880,34 +880,16 @@ namespace Microsoft.Azure.WebJobs.Script
             return true;
         }
 
-        public static bool IsResourceAzureBlobWithoutSas(Uri resourceUri)
-        {
-            // Screen out URLs that don't have <name>.blob.core... format
-            if (string.IsNullOrEmpty(GetAccountNameFromDomain(resourceUri.Host)))
-            {
-                return false;
-            }
-
-            // Screen out URLs with an SAS token
-            var queryParams = HttpUtility.ParseQueryString(resourceUri.Query.ToLower());
-            if (queryParams != null && !string.IsNullOrEmpty(queryParams[SasVersionQueryParam]))
-            {
-                return false;
-            }
-
-            return true;
-        }
-
-         public static string? GetSasTokenExpirationDate(Uri resourceUri)
+        public static string GetSasTokenExpirationDate(Uri resourceUri)
         {
             // Screen out URLs with an SAS token
             var queryParams = HttpUtility.ParseQueryString(resourceUri.Query.ToLower());
             if (queryParams != null && !string.IsNullOrEmpty(queryParams[SasTokenExpirationDate]))
             {
-                return false;
+                return queryParams[SasTokenExpirationDate];
             }
 
-            return null;
+            return string.Empty;
         }
 
         public static bool IsHttporManualTrigger(string triggerType)
