@@ -12,15 +12,15 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
 {
-    public class LegionContainerInitializationHostService : LinuxContainerInitializationHostService
+    public class LegionContainerInitializationHostedService : LinuxContainerInitializationHostedService
     {
         private const string ContextFile = "Context.txt";
 
         private readonly IEnvironment _environment;
         private readonly ILogger _logger;
 
-        public LegionContainerInitializationHostService(IEnvironment environment, IInstanceManager instanceManager,
-            ILogger<LinuxContainerInitializationHostService> logger, StartupContextProvider startupContextProvider)
+        public LegionContainerInitializationHostedService(IEnvironment environment, IInstanceManager instanceManager,
+            ILogger<LinuxContainerInitializationHostedService> logger, StartupContextProvider startupContextProvider)
             : base(environment, instanceManager, logger, startupContextProvider)
         {
             _environment = environment;
@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
 
             if (File.Exists(contextFilePath))
             {
-                _logger.LogInformation($"Previous Start Context Found");
+                _logger.LogDebug($"Previous Start Context Found");
                 try
                 {
                     var startContext = File.ReadAllText(contextFilePath);

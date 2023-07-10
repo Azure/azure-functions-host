@@ -13,7 +13,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
 {
-    public class AtlasContainerInitializationHostService : LinuxContainerInitializationHostService
+    public class AtlasContainerInitializationHostedService : LinuxContainerInitializationHostedService
     {
         private readonly IEnvironment _environment;
         private readonly IInstanceManager _instanceManager;
@@ -21,8 +21,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
         private readonly StartupContextProvider _startupContextProvider;
         private CancellationToken _cancellationToken;
 
-        public AtlasContainerInitializationHostService(IEnvironment environment, IInstanceManager instanceManager,
-            ILogger<LinuxContainerInitializationHostService> logger, StartupContextProvider startupContextProvider)
+        public AtlasContainerInitializationHostedService(IEnvironment environment, IInstanceManager instanceManager,
+            ILogger<LinuxContainerInitializationHostedService> logger, StartupContextProvider startupContextProvider)
             : base(environment, instanceManager, logger, startupContextProvider)
         {
             _environment = environment;
@@ -44,13 +44,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
 
                 if (!string.IsNullOrEmpty(sasUri))
                 {
-                    _logger.LogInformation("Host context specified via CONTAINER_START_CONTEXT_SAS_URI");
+                    _logger.LogDebug($"Host context specified via {EnvironmentSettingNames.ContainerStartContextSasUri}");
                     startContext = await GetAssignmentContextFromSasUri(sasUri);
                 }
             }
             else
             {
-                _logger.LogInformation("Host context specified via CONTAINER_START_CONTEXT");
+                _logger.LogDebug($"Host context specified via {EnvironmentSettingNames.ContainerStartContext}");
             }
 
             return (!string.IsNullOrEmpty(startContext), startContext);

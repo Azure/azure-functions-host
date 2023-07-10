@@ -11,7 +11,7 @@ using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
 {
-    public abstract class LinuxContainerInitializationHostService : IHostedService
+    public abstract class LinuxContainerInitializationHostedService : IHostedService
     {
         private readonly IEnvironment _environment;
         private readonly IInstanceManager _instanceManager;
@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
         private readonly StartupContextProvider _startupContextProvider;
         private CancellationToken _cancellationToken;
 
-        public LinuxContainerInitializationHostService(IEnvironment environment, IInstanceManager instanceManager, ILogger<LinuxContainerInitializationHostService> logger, StartupContextProvider startupContextProvider)
+        public LinuxContainerInitializationHostedService(IEnvironment environment, IInstanceManager instanceManager, ILogger<LinuxContainerInitializationHostedService> logger, StartupContextProvider startupContextProvider)
         {
             _environment = environment;
             _instanceManager = instanceManager;
