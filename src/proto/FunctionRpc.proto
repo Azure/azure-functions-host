@@ -250,7 +250,7 @@ message FunctionEnvironmentReloadResponse {
     merge = 0;
     // appends, skipping existing items
     union = 1;
-    // new capabilities are applied
+    // existing capabilities are cleared and new capabilities are applied
     replace = 2;
   }
   // After specialization, worker sends capabilities & metadata.
