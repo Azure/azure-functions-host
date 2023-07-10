@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
             // The service should be registered in Linux Consumption only, but do additional check here.
             if (_environment.IsAnyLinuxConsumption())
             {
-                await ApplyStartContextIfPresent();
+                await ApplyStartContextIfPresent(cancellationToken);
             }
         }
 
