@@ -2914,14 +2914,14 @@
           "System.Xml.XmlDocument": "4.3.0"
         }
       },
-      "Yarp.ReverseProxy/2.0.0": {
+      "Yarp.ReverseProxy/2.0.1": {
         "dependencies": {
           "System.IO.Hashing": "7.0.0"
         },
         "runtime": {
           "lib/net6.0/Yarp.ReverseProxy.dll": {
-            "assemblyVersion": "2.0.0.0",
-            "fileVersion": "2.0.23.11306"
+            "assemblyVersion": "2.0.1.0",
+            "fileVersion": "2.0.123.32202"
           }
         }
       },
@@ -2978,7 +2978,7 @@
           "Microsoft.Azure.WebJobs.Script": "4.24.0",
           "System.IO.FileSystem.Primitives": "4.3.0",
           "System.Threading.Channels": "6.0.0",
-          "Yarp.ReverseProxy": "2.0.0"
+          "Yarp.ReverseProxy": "2.0.1"
         },
         "runtime": {
           "Microsoft.Azure.WebJobs.Script.Grpc.dll": {}
@@ -5017,12 +5017,12 @@
       "path": "system.xml.xmlserializer/4.3.0",
       "hashPath": "system.xml.xmlserializer.4.3.0.nupkg.sha512"
     },
-    "Yarp.ReverseProxy/2.0.0": {
+    "Yarp.ReverseProxy/2.0.1": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-9yMPNkJRPn/hHssKKf7eucF5o1f0nIrQ9QlSybR2RPdO4+Ws3aDd8qAg40YFZMbZKIIqtE3u4fCkXO8vNwm0yQ==",
-      "path": "yarp.reverseproxy/2.0.0",
-      "hashPath": "yarp.reverseproxy.2.0.0.nupkg.sha512"
+      "sha512": "sha512-op7vBwONPFeR1PYxeLw+RLqSodODDX8RWd0OinLGMVIq6yi1q9mv1j56ImuyZgiAToksiC0Dc7jbRUZ9I+jvFA==",
+      "path": "yarp.reverseproxy/2.0.1",
+      "hashPath": "yarp.reverseproxy.2.0.1.nupkg.sha512"
     },
     "Microsoft.Azure.WebJobs.Script/4.24.0": {
       "type": "project",
