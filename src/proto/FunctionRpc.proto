@@ -246,7 +246,7 @@ message FunctionEnvironmentReloadRequest {
 
 message FunctionEnvironmentReloadResponse {
   enum CapabilitiesUpdateStrategy {
-    // overwrites existing values and appends
+    // overwrites existing values and appends new ones
     merge = 0;
     // existing capabilities are cleared and new capabilities are applied
     replace = 1;
