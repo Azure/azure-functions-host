@@ -248,10 +248,8 @@ message FunctionEnvironmentReloadResponse {
   enum CapabilitiesUpdateStrategy {
     // overwrites existing values and appends
     merge = 0;
-    // appends, skipping existing items
-    union = 1;
     // existing capabilities are cleared and new capabilities are applied
-    replace = 2;
+    replace = 1;
   }
   // After specialization, worker sends capabilities & metadata.
   // Worker metadata captured for telemetry purposes
