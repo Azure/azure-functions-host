@@ -699,13 +699,54 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 {
                     SiteName = "TestSite",
                     MSISecret = "TestSecret1234",
-                    Identities = new[] { new ManagedServiceIdentity() },
-                    SystemAssignedIdentity = new ManagedServiceIdentity(),
-                    DelegatedIdentities = new[] { new ManagedServiceIdentity() },
-                    UserAssignedIdentities = new[] { new ManagedServiceIdentity() },
+                    Identities = new[] { new ManagedServiceIdentity() { 
+                        Type = ManagedServiceIdentityType.SystemAssigned, 
+                        ClientId = "identityClientId",
+                        TenantId = "identityTenantId",
+                        Thumbprint = "identityThumbprint",
+                        SecretUrl = "identitySecretUrl",
+                        ResourceId = "identityResourceId",
+                        Certificate = "identityCertificate",
+                        PrincipalId = "identityPrincipalId",
+                        AuthenticationEndpoint = "identityAuthEndpoint"
+                    } },
+                    SystemAssignedIdentity = new ManagedServiceIdentity()
+                    {
+                        Type = ManagedServiceIdentityType.SystemAssigned,
+                        ClientId = "saClientId",
+                        TenantId = "saTenantId",
+                        Thumbprint = "saThumbprint",
+                        SecretUrl = "saSecretUrl",
+                        ResourceId = "saResourceId",
+                        Certificate = "saCertificate",
+                        PrincipalId = "saPrincipalId",
+                        AuthenticationEndpoint = "saAuthEndpoint"
+                    },
+                    DelegatedIdentities = new[] { new ManagedServiceIdentity() {
+                        Type = ManagedServiceIdentityType.SystemAssigned,
+                        ClientId = "delegatedClientId",
+                        TenantId = "delegatedTenantId",
+                        Thumbprint = "delegatedThumbprint",
+                        SecretUrl = "delegatedSecretUrl",
+                        ResourceId = "delegatedResourceId",
+                        Certificate = "delegatedCertificate",
+                        PrincipalId = "delegatedPrincipalId",
+                        AuthenticationEndpoint = "delegatedAuthEndpoint"
+                    } },
+                    UserAssignedIdentities = new[] { new ManagedServiceIdentity() {
+                        Type = ManagedServiceIdentityType.UserAssigned,
+                        ClientId = "uaClientId",
+                        TenantId = "uaTenantId",
+                        Thumbprint = "uaThumbprint",
+                        SecretUrl = "uaSecretUrl",
+                        ResourceId = "uaResourceId",
+                        Certificate = "uaCertificate",
+                        PrincipalId = "uaPrincipalId",
+                        AuthenticationEndpoint = "uaAuthEndpoint"
+                    } },
                 }
             };
-
+            
             static void verifyMSIPropertiesHelper(ManagedServiceIdentity msi)
             {
                 Assert.NotNull(msi);
@@ -720,9 +761,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 Assert.NotNull(msi.AuthenticationEndpoint);
             }
 
-            static async void verifyProperties(HttpRequestMessage request, CancellationToken token)
+            static void verifyProperties(HttpRequestMessage request, CancellationToken token)
             {
-                var requestContent = await request.Content.ReadAsStringAsync(token);
+                var requestContent = request.Content.ReadAsStringAsync(token).GetAwaiter().GetResult();
                 var msiContext = JsonConvert.DeserializeObject<MSIContext>(requestContent);
                 Assert.NotNull(msiContext);
                 Assert.NotNull(msiContext.Identities);
