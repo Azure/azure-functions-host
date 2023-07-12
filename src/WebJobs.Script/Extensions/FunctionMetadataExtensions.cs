@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -16,6 +17,9 @@ namespace Microsoft.Azure.WebJobs.Script
         private const string FunctionIdKey = "FunctionId";
         private const string HttpTriggerKey = "HttpTrigger";
         private const string HttpOutputKey = "Http";
+        private const string BlobTriggerType = "blobTrigger";
+        private const string BlobSourceKey = "source";
+        private const string BlobEventGrid = "EventGrid";
 
         public static bool IsHttpInAndOutFunction(this FunctionMetadata metadata)
         {
@@ -38,6 +42,21 @@ namespace Microsoft.Azure.WebJobs.Script
         public static bool IsHttpTriggerFunction(this FunctionMetadata metadata)
         {
             return metadata.InputBindings.Any(b => string.Equals(HttpTriggerKey, b.Type, StringComparison.OrdinalIgnoreCase));
+        }
+
+        public static bool IsLegacyBlobTriggerFunction(this FunctionMetadata metadata)
+        {
+            if (metadata.Trigger != null && string.Equals(metadata.Trigger.Type, BlobTriggerType, StringComparison.OrdinalIgnoreCase))
+            {
+                if (metadata.Trigger.Raw != null)
+                {
+                    if (metadata.Trigger.Raw.TryGetValue(BlobSourceKey, StringComparison.OrdinalIgnoreCase, out JToken token) && token != null)
+                    {
+                        return !string.Equals(token.ToString(), BlobEventGrid, StringComparison.OrdinalIgnoreCase);
+                    }
+                }
+            }
+            return true;
         }
 
         public static string GetFunctionId(this FunctionMetadata metadata)

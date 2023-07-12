@@ -762,7 +762,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                         if (descriptor != null)
                         {
-                            ValidateFunction(descriptor, httpFunctions);
+                            ValidateFunction(descriptor, httpFunctions, _environment);
                             functionDescriptors.Add(descriptor);
                         }
 
@@ -782,7 +782,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return functionDescriptors;
         }
 
-        internal static void ValidateFunction(FunctionDescriptor function, Dictionary<string, HttpTriggerAttribute> httpFunctions)
+        internal static void ValidateFunction(FunctionDescriptor function, Dictionary<string, HttpTriggerAttribute> httpFunctions, IEnvironment environment = null)
         {
             var httpTrigger = function.HttpTriggerAttribute;
             if (httpTrigger != null)
@@ -810,6 +810,10 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
 
                 httpFunctions.Add(function.Name, httpTrigger);
+            }
+            if (environment != null && environment.IsFlexConsumptionSku() && function.Metadata.IsLegacyBlobTriggerFunction())
+            {
+                throw new InvalidOperationException($"Regular blob trigger for function '{function.Name}' is not supported in Flex Consumption plan. Please change the blob trigger to use Event Grid.");
             }
         }
 
@@ -931,7 +935,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private void ApplyJobHostMetadata()
         {
-            // TODO: DI (FACAVAL) Review
+            // TODO: DI (FACAVAL) Revieww
             foreach (var function in Functions)
             {
                 var metadata = _metadataProvider.GetFunctionMetadata(function.Metadata.Name);

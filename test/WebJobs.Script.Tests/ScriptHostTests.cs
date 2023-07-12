@@ -1403,6 +1403,56 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public void ValidateFunction_ThrowsLegacyBlobTriggerOnFlexConsumption()
+        {
+            var httpFunctions = new Dictionary<string, HttpTriggerAttribute>();
+            var name = "test";
+
+            // first add an http function
+            var metadata = new FunctionMetadata();
+            metadata.Bindings.Add(new BindingMetadata()
+            {
+                Direction = BindingDirection.In,
+                Type = "blobTrigger",
+                Raw = JObject.Parse("{  \"type\": \"blobTrigger\",  \"connection\": \"\",  \"path\": \"sample1/{name}\",  \"name\": \"myBlob\"}")
+            });
+            var function = new Mock<FunctionDescriptor>(MockBehavior.Strict, name, null, metadata, null, null, null, null);
+            function.SetupGet(p => p.HttpTriggerAttribute).Returns(() => null);
+
+            TestEnvironment testEnvironment = new TestEnvironment();
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, ScriptConstants.FlexConsumptionSku);
+
+            var ex = Assert.Throws<InvalidOperationException>(() =>
+            {
+                ScriptHost.ValidateFunction(function.Object, httpFunctions, testEnvironment);
+            });
+            Assert.Equal($"Regular blob trigger for function '{name}' is not supported in Flex Consumption plan. Please change the blob trigger to use Event Grid.", ex.Message);
+
+            metadata.Bindings.Clear();
+            metadata.Bindings.Add(new BindingMetadata()
+            {
+                Direction = BindingDirection.In,
+                Type = "blobTrigger",
+                Raw = JObject.Parse("{  \"type\": \"blobTrigger\",  \"connection\": \"\",  \"source\": \"LogsAndContainerScan\",  \"path\": \"sample1/{name}\",  \"name\": \"myBlob\"}")
+            });
+            ex = Assert.Throws<InvalidOperationException>(() =>
+            {
+                ScriptHost.ValidateFunction(function.Object, httpFunctions, testEnvironment);
+            });
+            Assert.Equal($"Regular blob trigger for function '{name}' is not supported in Flex Consumption plan. Please change the blob trigger to use Event Grid.", ex.Message);
+
+            metadata.Bindings.Clear();
+            metadata.Bindings.Add(new BindingMetadata()
+            {
+                Direction = BindingDirection.In,
+                Type = "blobTrigger",
+                Raw = JObject.Parse("{  \"type\": \"blobTrigger\",  \"connection\": \"\",  \"source\": \"EventGrid\",  \"path\": \"sample1/{name}\",  \"name\": \"myBlob\"}")
+            });
+
+            ScriptHost.ValidateFunction(function.Object, httpFunctions, testEnvironment);
+        }
+
+        [Fact]
         public async Task IsFunction_ReturnsExpectedResult()
         {
             var host = TestHelpers.GetDefaultHost(o =>
