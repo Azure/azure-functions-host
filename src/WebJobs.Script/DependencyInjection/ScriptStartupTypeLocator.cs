@@ -268,10 +268,11 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
         {
             var errors = new List<string>();
 
-            void CollectError(Type extensionType, Version minimumVersion, ExtensionStartupTypeRequirement requirement)
+            void CollectError(Type extensionType, Version minimumVersion, Version actualVersion, ExtensionStartupTypeRequirement requirement, bool isAssemblyVersion)
             {
-                _logger.MinimumExtensionVersionNotSatisfied(extensionType.Name, extensionType.Assembly.FullName, minimumVersion, requirement.PackageName, requirement.MinimumPackageVersion);
-                string requirementNotMetError = $"ExtensionStartupType {extensionType.Name} from assembly '{extensionType.Assembly.FullName}' does not meet the required minimum version of {minimumVersion}. Update your NuGet package reference for {requirement.PackageName} to {requirement.MinimumPackageVersion} or later.";
+                _logger.MinimumExtensionVersionNotSatisfied(extensionType.Name, extensionType.Assembly.FullName, minimumVersion, actualVersion, requirement.PackageName, requirement.MinimumPackageVersion);
+                string versionType = isAssemblyVersion ? "assembly" : "file";
+                string requirementNotMetError = $"ExtensionStartupType {extensionType.Name} from assembly '{extensionType.Assembly.FullName}' has {versionType} version {actualVersion} which does not meet the required minimum version of {minimumVersion}. Update your NuGet package reference for {requirement.PackageName} to {requirement.MinimumPackageVersion} or later.";
                 errors.Add(requirementNotMetError);
             }
 
@@ -300,7 +301,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
                             Version extensionAssemblyFileVersion = new Version(System.Diagnostics.FileVersionInfo.GetVersionInfo(extensionType.Assembly.Location).FileVersion);
                             if (extensionAssemblyFileVersion < minimumAssemblyFileVersion)
                             {
-                                CollectError(extensionType, minimumAssemblyFileVersion, requirement);
+                                CollectError(extensionType, minimumAssemblyFileVersion, extensionAssemblyFileVersion, requirement, isAssemblyVersion: true);
                                 continue;
                             }
                         }
@@ -313,7 +314,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
 
                     if (extensionAssemblyVersion < minimumAssemblyVersion)
                     {
-                        CollectError(extensionType, minimumAssemblyVersion, requirement);
+                        CollectError(extensionType, minimumAssemblyVersion, extensionAssemblyVersion, requirement, isAssemblyVersion: false);
                     }
                 }
             }

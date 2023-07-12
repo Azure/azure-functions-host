@@ -171,11 +171,11 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
                 new EventId(335, nameof(ScriptStartupResettingLoadContextWithBasePath)),
                 "Script Startup resetting load context with base path: '{path}'.");
 
-        private static readonly Action<ILogger, string, string, Version, string, string, Exception> _minimumExtensionVersionNotSatisfied =
-            LoggerMessage.Define<string, string, Version, string, string>(
+        private static readonly Action<ILogger, string, string, Version, Version, string, string, Exception> _minimumExtensionVersionNotSatisfied =
+            LoggerMessage.Define<string, string, Version, Version, string, string>(
             LogLevel.Error,
             new EventId(334, nameof(MinimumExtensionVersionNotSatisfied)),
-            "ExtensionStartupType {extensionTypeName} from assembly '{extensionTypeAssemblyFullName}' does not meet the required minimum version of {minimumAssemblyVersion}. Update your NuGet package reference for {requirementPackageName} to {requirementMinimumPackageVersion} or later.");
+            "ExtensionStartupType {extensionTypeName} from assembly '{extensionTypeAssemblyFullName}' has version {actualVersion} which does not meet the required minimum version of {minimumAssemblyVersion}. Update your NuGet package reference for {requirementPackageName} to {requirementMinimumPackageVersion} or later.");
 
         private static readonly Action<ILogger, string, string, string, string, Exception> _minimumBundleVersionNotSatisfied =
             LoggerMessage.Define<string, string, string, string>(
@@ -350,9 +350,9 @@ Lock file hash: {currentLockFileHash}";
             _incorrectAutorestGeneratedJSONFile(logger, contents, null);
         }
 
-        public static void MinimumExtensionVersionNotSatisfied(this ILogger logger, string extensionTypeName, string extensionTypeAssemblyFullName, Version minimumAssemblyVersion, string requirementPackageName, string requirementMinimumPackageVersion)
+        public static void MinimumExtensionVersionNotSatisfied(this ILogger logger, string extensionTypeName, string extensionTypeAssemblyFullName, Version minimumAssemblyVersion, Version actualVersion, string requirementPackageName, string requirementMinimumPackageVersion)
         {
-            _minimumExtensionVersionNotSatisfied(logger, extensionTypeName, extensionTypeAssemblyFullName, minimumAssemblyVersion, requirementPackageName, requirementMinimumPackageVersion, null);
+            _minimumExtensionVersionNotSatisfied(logger, extensionTypeName, extensionTypeAssemblyFullName, actualVersion, minimumAssemblyVersion, requirementPackageName, requirementMinimumPackageVersion, null);
         }
 
         public static void MinimumBundleVersionNotSatisfied(this ILogger logger, string bundleId, string bundleVersion, string minimumVersion)
