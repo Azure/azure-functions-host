@@ -15,9 +15,12 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string SasTokenExpiringErrorHelpLink = "https://go.microsoft.com/fwlink/?linkid=2244092";
 
         public const string MaximumSecretBackupCountErrorCode = "AZFD0007";
-        public const string MaximumSecretBackupCountHelpLink = "https://go.microsoft.com/fwlink/?linkid=1234569";
+        public const string MaximumSecretBackupCountHelpLink = "https://go.microsoft.com/fwlink/?linkid=2241600";
 
-        public const string FailedToReadBlobStorageRepositoryErrorCode = "AZFD0007";
-        public const string FailedToReadBlobStorageRepositoryHelpLink = "https://go.microsoft.com/fwlink/?linkid=7891011";
+        public const string FailedToReadBlobStorageRepositoryErrorCode = "AZFD0008";
+        public const string FailedToReadBlobStorageRepositoryHelpLink = "https://go.microsoft.com/fwlink/?linkid=2241601";
+
+        public const string RunFromPackageFailedErrorCode = "AZFD0009";
+        public const string RunFromPackageFailedErrorCodeHelpLink = "https://go.microsoft.com/fwlink/?linkid=2241519";
     }
 }
