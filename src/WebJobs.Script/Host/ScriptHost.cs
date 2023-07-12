@@ -935,7 +935,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private void ApplyJobHostMetadata()
         {
-            // TODO: DI (FACAVAL) Revieww
+            // TODO: DI (FACAVAL) Review
             foreach (var function in Functions)
             {
                 var metadata = _metadataProvider.GetFunctionMetadata(function.Metadata.Name);
