@@ -91,17 +91,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.TokenExpiration
 
         private void ScheduleAssemblyAnalysis()
         {
-            var jobHost = _scriptHost.GetService<IScriptJobHost>();
-            if (jobHost == null
-                || !jobHost.Functions.Any(f => f.Metadata.IsDirect()))
-            {
-                return;
-            }
-
             _analysisScheduled = true;
             _cancellationTokenSource = new CancellationTokenSource();
 
-            _analysisTask = Task.Delay(TimeSpan.FromMinutes(1), _cancellationTokenSource.Token)
+            _analysisTask = Task.Delay(TimeSpan.FromSeconds(5), _cancellationTokenSource.Token)
                .ContinueWith(t => AnalyzeSasTokenInUri());
         }
 
@@ -119,7 +112,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.TokenExpiration
             string[] uris =
             {
                 _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteRunFromPackage),
-                _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsSecretStorage),
                 _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureFilesConnectionString)
             };
 
@@ -130,18 +122,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.TokenExpiration
         {
             foreach (var uri in uris)
             {
-                var sasTokenExpirationDate = Utility.GetSasTokenExpirationDate(new Uri(uri));
-                if (!string.IsNullOrEmpty(sasTokenExpirationDate))
+                if (!string.IsNullOrEmpty(uri))
                 {
-                    var parsedDate = DateTime.Parse(sasTokenExpirationDate);
-                    var currentDate = DateTime.Now.Date;
-
-                    var difference = parsedDate.Subtract(currentDate);
-
-                    if (Math.Abs(difference.TotalDays) <= 30)
+                    var sasTokenExpirationDate = Utility.GetSasTokenExpirationDate(new Uri(uri));
+                    if (!string.IsNullOrEmpty(sasTokenExpirationDate))
                     {
-                        string message = string.Format(Resources.SasTokenExpiringFormat, difference.TotalDays);
-                        DiagnosticEventLoggerExtensions.LogDiagnosticEvent(_logger, LogLevel.Warning, 0, DiagnosticEventConstants.SasTokenExpiringErrorCode, message, DiagnosticEventConstants.SasTokenExpiringErrorHelpLink, null);
+                        var parsedDate = DateTime.Parse(sasTokenExpirationDate);
+                        var currentDate = DateTime.Now.Date;
+
+                        var difference = parsedDate.Subtract(currentDate);
+
+                        if (Math.Abs(difference.TotalDays) <= 30)
+                        {
+                            string message = string.Format(Resources.SasTokenExpiringFormat, difference.TotalDays);
+                            DiagnosticEventLoggerExtensions.LogDiagnosticEvent(_logger, LogLevel.Warning, 0, DiagnosticEventConstants.SasTokenExpiringErrorCode, message, DiagnosticEventConstants.SasTokenExpiringErrorHelpLink, null);
+                        }
                     }
                 }
             }
