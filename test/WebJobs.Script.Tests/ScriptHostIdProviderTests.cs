@@ -118,6 +118,47 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public void GetDefaultHostId_PlaceholderMode_ReturnsExpectedResult()
+        {
+            var options = new ScriptApplicationHostOptions
+            {
+                ScriptPath = @"c:\testscripts"
+            };
+
+            // In placeholder mode, site name and other settings aren't available to compute the
+            // default HostId, so we expect null.
+            var environment = new TestEnvironment();
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId, "123123");
+
+            Assert.False(environment.IsFlexConsumptionSku());
+
+            var result = ScriptHostIdProvider.GetDefaultHostId(environment, options);
+
+            Assert.Equal(null, result.HostId);
+        }
+
+        [Fact]
+        public void GetDefaultHostId_PlaceholderMode_FlexConsumption_ReturnsExpectedResult()
+        {
+            var options = new ScriptApplicationHostOptions
+            {
+                ScriptPath = @"c:\testscripts"
+            };
+
+            // In placeholder mode, site name and other settings aren't available to compute the
+            // default HostId, so we expect null.
+            var environment = new TestEnvironment();
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, "testContainer");
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.LegionServiceHost, "legionhost");
+
+            Assert.True(environment.IsFlexConsumptionSku());
+
+            var result = ScriptHostIdProvider.GetDefaultHostId(environment, options);
+
+            Assert.Equal(null, result.HostId);
+        }
+
+        [Fact]
         public void GetDefaultHostId_SelfHost_ReturnsExpectedResult()
         {
             var options = new ScriptApplicationHostOptions
