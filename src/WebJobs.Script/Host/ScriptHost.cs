@@ -782,7 +782,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return functionDescriptors;
         }
 
-        internal static void ValidateFunction(FunctionDescriptor function, Dictionary<string, HttpTriggerAttribute> httpFunctions, IEnvironment environment = null)
+        internal static void ValidateFunction(FunctionDescriptor function, Dictionary<string, HttpTriggerAttribute> httpFunctions, IEnvironment environment)
         {
             var httpTrigger = function.HttpTriggerAttribute;
             if (httpTrigger != null)
@@ -811,9 +811,10 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 httpFunctions.Add(function.Name, httpTrigger);
             }
-            if (environment != null && environment.IsFlexConsumptionSku() && function.Metadata.IsLegacyBlobTriggerFunction())
+            if (environment != null && environment.IsFlexConsumptionSku()
+                && function.Metadata != null && function.Metadata.IsLegacyBlobTriggerFunction())
             {
-                throw new InvalidOperationException($"Regular blob trigger for function '{function.Name}' is not supported in Flex Consumption plan. Please change the blob trigger to use Event Grid.");
+                throw new InvalidOperationException($"The Flex Consumption SKU only supports EventGrid as the source for BlobTrigger functions. Please update function '{function.Name}' to use EventGrid. For more information see https://aka.ms/blob-trigger-eg.");
             }
         }
 

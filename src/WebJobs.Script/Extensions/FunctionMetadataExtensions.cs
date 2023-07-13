@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private const string HttpOutputKey = "Http";
         private const string BlobTriggerType = "blobTrigger";
         private const string BlobSourceKey = "source";
-        private const string BlobEventGrid = "EventGrid";
+        private const string BlobEventGridSourceValue = "EventGrid";
 
         public static bool IsHttpInAndOutFunction(this FunctionMetadata metadata)
         {
@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     if (metadata.Trigger.Raw.TryGetValue(BlobSourceKey, StringComparison.OrdinalIgnoreCase, out JToken token) && token != null)
                     {
-                        return !string.Equals(token.ToString(), BlobEventGrid, StringComparison.OrdinalIgnoreCase);
+                        return !string.Equals(token.ToString(), BlobEventGridSourceValue, StringComparison.OrdinalIgnoreCase);
                     }
                 }
             }
