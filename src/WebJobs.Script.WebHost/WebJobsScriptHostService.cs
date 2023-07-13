@@ -216,7 +216,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     }
                     finally
                     {
-                        _logger.LogError(errorPrefix + errorSuffix);
+                        var message = errorPrefix + errorSuffix;
+                        _logger.LogError(message);
+
+                        DiagnosticEventLoggerExtensions.LogDiagnosticEventError(
+                            _logger, DiagnosticEventConstants.RunFromPackageFailedErrorCode, message, DiagnosticEventConstants.RunFromPackageFailedErrorCodeHelpLink, null);
                     }
                     _applicationLifetime.StopApplication();
                 }
