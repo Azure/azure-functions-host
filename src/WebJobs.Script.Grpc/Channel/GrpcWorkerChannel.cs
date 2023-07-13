@@ -430,7 +430,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             // If http proxying is enabled, we need to get the proxying endpoint of this worker
             var httpUri = _workerCapabilities.GetCapabilityState(RpcWorkerConstants.HttpUri);
-            if (!string.IsNullOrEmpty(httpUri) && FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableHttpProxying))
+            if (!string.IsNullOrEmpty(httpUri))
             {
                 try
                 {
@@ -763,7 +763,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     context.CancellationToken.Register(() => SendInvocationCancel(invocationRequest.InvocationId));
                 }
 
-                if (IsHttpProxyingWorker && FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableHttpProxying) && context.FunctionMetadata.IsHttpTriggerFunction())
+                if (IsHttpProxyingWorker && context.FunctionMetadata.IsHttpTriggerFunction())
                 {
                     var aspNetTask = _httpProxyService.ForwardAsync(context, _httpProxyEndpoint).AsTask();
 
@@ -963,24 +963,23 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             {
                 if (invokeResponse.Result.IsInvocationSuccess(context.ResultSource, capabilityEnabled))
                 {
-                    if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableHttpProxying) && IsHttpProxyingWorker)
-                    {
-                        if (context.Properties.TryGetValue(ScriptConstants.HttpProxyTask, out Task<ForwarderError> httpProxyTask))
-                        {
-                            ForwarderError httpProxyTaskResult = await httpProxyTask;
-
-                            if (httpProxyTaskResult is not ForwarderError.None)
-                            {
-                                // TODO: Understand scenarios where function invocation succeeds but there is an error proxying
-                                // need to investigate different ForwarderErrors and consider how they will be relayed through other services and to users
-                            }
-                        }
-                    }
-
                     _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvokeSucceeded, Id));
 
                     try
                     {
+                        if (IsHttpProxyingWorker)
+                        {
+                            if (context.Properties.TryGetValue(ScriptConstants.HttpProxyTask, out Task<ForwarderError> httpProxyTask))
+                            {
+                                ForwarderError httpProxyTaskResult = await httpProxyTask;
+
+                                if (httpProxyTaskResult is not ForwarderError.None)
+                                {
+                                    throw new InvalidOperationException($"Failed to proxy request with ForwarderError: {httpProxyTaskResult}");
+                                }
+                            }
+                        }
+
                         StringBuilder logBuilder = new StringBuilder();
                         bool usedSharedMemory = false;
 
@@ -1261,16 +1260,44 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     _timer?.Dispose();
 
                     // unlink function inputs
-                    foreach (var link in _inputLinks)
+                    if (_inputLinks is not null)
                     {
-                        link.Dispose();
+                        foreach (var link in _inputLinks)
+                        {
+                            if (link is null)
+                            {
+                                // This log is temporarily added for diagnostic purposes.
+                                _workerChannelLogger.LogDebug("An input link is null. Skipping disposal.");
+                            }
+
+                            link?.Dispose();
+                        }
+                    }
+                    else
+                    {
+                        // This log is temporarily added for diagnostic purposes.
+                        _workerChannelLogger.LogDebug("The input links collection is null. Skipping disposal of any individual input links.");
                     }
 
                     (_rpcWorkerProcess as IDisposable)?.Dispose();
 
-                    foreach (var sub in _eventSubscriptions)
+                    if (_eventSubscriptions is not null)
                     {
-                        sub.Dispose();
+                        foreach (var sub in _eventSubscriptions)
+                        {
+                            if (sub is null)
+                            {
+                                // This log is temporarily added for diagnostic purposes.
+                                _workerChannelLogger.LogDebug("An event subscription is null. Skipping disposal.");
+                            }
+
+                            sub?.Dispose();
+                        }
+                    }
+                    else
+                    {
+                        // This log is temporarily added for diagnostic purposes.
+                        _workerChannelLogger.LogDebug("The event subscriptions collection is null. Skipping disposal of any individual subscriptions.");
                     }
 
                     // shut down the channels

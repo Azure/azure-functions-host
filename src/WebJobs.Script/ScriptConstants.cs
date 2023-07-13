@@ -126,9 +126,9 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string FeatureFlagEnableWorkerIndexing = "EnableWorkerIndexing";
         public const string FeatureFlagEnableDebugTracing = "EnableDebugTracing";
         public const string FeatureFlagEnableProxies = "EnableProxies";
-        public const string FeatureFlagEnableHttpProxying = "EnableHttpProxying";
         public const string HostingConfigDisableLinuxAppServiceDetailedExecutionEvents = "DisableLinuxExecutionDetails";
         public const string HostingConfigDisableLinuxAppServiceExecutionEventLogBackoff = "DisableLinuxLogBackoff";
+        public const string FeatureFlagEnableLegacyDurableVersionCheck = "EnableLegacyDurableVersionCheck";
 
         public const string SiteAzureFunctionsUriFormat = "https://{0}.azurewebsites.net/azurefunctions";
         public const string ScmSiteUriFormat = "https://{0}.scm.azurewebsites.net";
@@ -171,6 +171,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string LinuxFunctionDetailsEventStreamName = "MS_FUNCTION_DETAILS";
         public const string LinuxAzureMonitorEventStreamName = "MS_FUNCTION_AZURE_MONITOR_EVENT";
         public const string LinuxMSISpecializationStem = "/api/specialize?api-version=2022-01-01";
+        public const string LinuxEncryptedTokenServiceSpecializationStem = "/api/specialize?api-version=2023-05-01";
 
         public const string DurableTaskPropertyName = "durableTask";
         public const string DurableTaskHubName = "HubName";
@@ -196,7 +197,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string Windows32BitRID = "win-x86";
         public const string WorkFlowAppKind = "workflowapp";
         public const string LogicAppDefaultExtensionBundleVersion = "[1.*, 2.0.0)";
-        public const string DefaultExtensionBundleVersion = "[3.*, 4.0.0)";
+        public const string DefaultExtensionBundleVersion = "[4.*, 5.0.0)";
 
         public const string AzureMonitorTraceCategory = "FunctionAppLogs";
 

@@ -126,33 +126,10 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
             else
             {
                 extensionsMetadataPath = Path.Combine(_rootScriptPath, "bin");
-
-                // Verify if the file exists and apply fallback paths
-                // The fallback order is:
-                //   1 - Script root
-                //       - If the system folder exists with metadata file at the root, use that as the base probing path
-                //   2 - System folder
-                if (!File.Exists(Path.Combine(extensionsMetadataPath, ScriptConstants.ExtensionsMetadataFileName)))
+                if (Utility.TryResolveExtensionsMetadataPath(_rootScriptPath, out string resolvedPath, out baseProbingPath))
                 {
-                    string systemPath = Path.Combine(_rootScriptPath, ScriptConstants.AzureFunctionsSystemDirectoryName);
-
-                    if (File.Exists(Path.Combine(_rootScriptPath, ScriptConstants.ExtensionsMetadataFileName)))
-                    {
-                        // As a fallback, allow extensions.json in the root path.
-                        extensionsMetadataPath = _rootScriptPath;
-
-                        // If the system path exists, that should take precedence as the base probing path
-                        if (Directory.Exists(systemPath))
-                        {
-                            baseProbingPath = systemPath;
-                        }
-                    }
-                    else if (File.Exists(Path.Combine(systemPath, ScriptConstants.ExtensionsMetadataFileName)))
-                    {
-                        extensionsMetadataPath = systemPath;
-                    }
+                      extensionsMetadataPath = resolvedPath;
                 }
-
                 _logger.ScriptStartNotLoadingExtensionBundle(extensionsMetadataPath, bundleConfigured, isPrecompiledFunctionApp, isLegacyExtensionBundle);
             }
 

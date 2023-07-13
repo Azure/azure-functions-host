@@ -22,7 +22,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Grpc.AspNetCore" Version="2.49.0" />
+    <PackageReference Include="Grpc.AspNetCore" Version="2.55.0" />
     <PackageReference Include="Microsoft.ApplicationInsights" Version="2.21.0" />
     <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.21.0" />
     <PackageReference Include="Microsoft.ApplicationInsights.DependencyCollector" Version="2.21.0" />
@@ -34,7 +34,7 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="System.Threading.Channels" Version="6.0.0" />
-    <PackageReference Include="Yarp.ReverseProxy" Version="2.0.0" />
+    <PackageReference Include="Yarp.ReverseProxy" Version="2.0.1" />
   </ItemGroup>
 
   <ItemGroup>

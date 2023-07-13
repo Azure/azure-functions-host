@@ -130,7 +130,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddTransient<VirtualFileSystem>();
             services.AddTransient<VirtualFileSystemMiddleware>();
 
-            if (SystemEnvironment.Instance.IsLinuxConsumptionOnLegion())
+            if (SystemEnvironment.Instance.IsFlexConsumptionSku())
             {
                 services.AddSingleton<IInstanceManager, LegionInstanceManager>();
             }

@@ -1606,6 +1606,10 @@
     {
       "name": "WindowsBase",
       "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Yarp.ReverseProxy",
+      "resolutionPolicy": "private"
     }
   ]
 }
