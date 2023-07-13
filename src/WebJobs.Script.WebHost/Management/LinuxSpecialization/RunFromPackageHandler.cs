@@ -70,6 +70,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
             }
             catch (Exception e)
             {
+                var message = "Failed to initialize Functions Host due to a problem with the application package.";
+                DiagnosticEventLoggerExtensions.LogDiagnosticEventError(
+                    _logger, DiagnosticEventConstants.RunFromPackageFailedErrorCode, message, DiagnosticEventConstants.RunFromPackageFailedErrorCodeHelpLink, e);
+
                 _logger.LogDebug(e, nameof(ApplyRunFromPackageContext));
                 if (throwOnFailure)
                 {
