@@ -21,6 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     /// </summary>
     public class BlobStorageSecretsRepository : BaseSecretsRepository
     {
+        private const string BlobArchivedName = "BlobArchived";
         private readonly string _secretsBlobPath;
         private readonly string _hostSecretsBlobPath;
         private readonly string _secretsContainerName = "azure-webjobs-secrets";
@@ -98,9 +99,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 var rfex = ex as RequestFailedException;
                 var operation = "read";
 
-                if (rfex != null && rfex.Status == 409 && rfex.ErrorCode.Equals("BlobArchived", StringComparison.OrdinalIgnoreCase))
+                if (rfex != null && rfex.Status == 409 && rfex.ErrorCode.Equals(BlobArchivedName, StringComparison.OrdinalIgnoreCase))
                 {
-                    var message = string.Format(Resources.BlobStorageSecretRepositoryFailedOperation, operation);
+                    var includeFunctionName = !string.IsNullOrWhiteSpace(functionName) ? string.Format(Resources.BlobStorageSecretRepositoryFailedOperationFunctionName, functionName) : string.Empty;
+                    var message = string.Format(Resources.BlobStorageSecretRepositoryFailedOperation, operation, includeFunctionName);
                     Logger?.LogError(message);
 
                     DiagnosticEventLoggerExtensions.LogDiagnosticEventError(

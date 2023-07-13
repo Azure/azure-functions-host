@@ -18,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions
 
         public static void BlobStorageSecretRepoError(this ILogger logger, string operation, Exception exception)
         {
-            var message = string.Format(Resources.BlobStorageSecretRepositoryFailedOperation, operation);
+            var message = string.Format(Resources.BlobStorageSecretRepositoryFailedOperation, operation, string.Empty);
             _blobStorageSecretRepoError(logger, message, exception);
         }
     }

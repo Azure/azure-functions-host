@@ -61,11 +61,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to There was an error performing a {0} operation on the Blob Storage Secret Repository..
+        ///   Looks up a localized string similar to There was an error performing a {0} operation on the Blob Storage Secret Repository{1}..
         /// </summary>
         internal static string BlobStorageSecretRepositoryFailedOperation {
             get {
                 return ResourceManager.GetString("BlobStorageSecretRepositoryFailedOperation", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to  for function &apos;{0}&apos;.
+        /// </summary>
+        internal static string BlobStorageSecretRepositoryFailedOperationFunctionName {
+            get {
+                return ResourceManager.GetString("BlobStorageSecretRepositoryFailedOperationFunctionName", resourceCulture);
             }
         }
         
