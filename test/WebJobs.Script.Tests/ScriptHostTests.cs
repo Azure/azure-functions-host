@@ -1233,7 +1233,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
             function.SetupGet(p => p.HttpTriggerAttribute).Returns(() => attribute);
 
-            ScriptHost.ValidateFunction(function.Object, httpFunctions, null);
+            ScriptHost.ValidateFunction(function.Object, httpFunctions, _testEnvironment);
             Assert.Equal(1, httpFunctions.Count);
             Assert.True(httpFunctions.ContainsKey("test"));
 
@@ -1244,7 +1244,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Route = "/foo/bar/baz/"
             };
             function.SetupGet(p => p.HttpTriggerAttribute).Returns(() => attribute);
-            ScriptHost.ValidateFunction(function.Object, httpFunctions, null);
+            ScriptHost.ValidateFunction(function.Object, httpFunctions, _testEnvironment);
             Assert.Equal(2, httpFunctions.Count);
             Assert.True(httpFunctions.ContainsKey("test2"));
 
@@ -1255,7 +1255,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Route = "/foo/bar/baz/"
             };
             function.SetupGet(p => p.HttpTriggerAttribute).Returns(() => attribute);
-            ScriptHost.ValidateFunction(function.Object, httpFunctions, null);
+            ScriptHost.ValidateFunction(function.Object, httpFunctions, _testEnvironment);
             Assert.Equal(3, httpFunctions.Count);
             Assert.True(httpFunctions.ContainsKey("test3"));
 
@@ -1269,7 +1269,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             function.SetupGet(p => p.HttpTriggerAttribute).Returns(() => attribute);
             var ex = Assert.Throws<InvalidOperationException>(() =>
             {
-                ScriptHost.ValidateFunction(function.Object, httpFunctions, null);
+                ScriptHost.ValidateFunction(function.Object, httpFunctions, _testEnvironment);
             });
             Assert.Equal("The route specified conflicts with the route defined by function 'test2'.", ex.Message);
             Assert.Equal(3, httpFunctions.Count);
@@ -1283,7 +1283,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             function.SetupGet(p => p.HttpTriggerAttribute).Returns(() => attribute);
             ex = Assert.Throws<InvalidOperationException>(() =>
             {
-                ScriptHost.ValidateFunction(function.Object, httpFunctions, null);
+                ScriptHost.ValidateFunction(function.Object, httpFunctions, _testEnvironment);
             });
             Assert.Equal("The specified route conflicts with one or more built in routes.", ex.Message);
 
@@ -1296,7 +1296,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             function.SetupGet(p => p.HttpTriggerAttribute).Returns(() => attribute);
             ex = Assert.Throws<InvalidOperationException>(() =>
             {
-                ScriptHost.ValidateFunction(function.Object, httpFunctions, null);
+                ScriptHost.ValidateFunction(function.Object, httpFunctions, _testEnvironment);
             });
             Assert.Equal("The specified route conflicts with one or more built in routes.", ex.Message);
 
@@ -1304,7 +1304,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             function = new Mock<FunctionDescriptor>(MockBehavior.Strict, "test7", null, metadata, null, null, null, null);
             attribute = new HttpTriggerAttribute();
             function.SetupGet(p => p.HttpTriggerAttribute).Returns(() => attribute);
-            ScriptHost.ValidateFunction(function.Object, httpFunctions, null);
+            ScriptHost.ValidateFunction(function.Object, httpFunctions, _testEnvironment);
             Assert.Equal(4, httpFunctions.Count);
             Assert.True(httpFunctions.ContainsKey("test7"));
             Assert.Equal("test7", attribute.Route);
@@ -1382,7 +1382,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var attribute = new HttpTriggerAttribute(AuthorizationLevel.Function, "get");
             function.SetupGet(p => p.HttpTriggerAttribute).Returns(() => attribute);
 
-            ScriptHost.ValidateFunction(function.Object, httpFunctions, null);
+            ScriptHost.ValidateFunction(function.Object, httpFunctions, _testEnvironment);
 
             // add a proxy with same name
             metadata = new ProxyFunctionMetadata(null);
@@ -1395,7 +1395,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var ex = Assert.Throws<InvalidOperationException>(() =>
             {
-                ScriptHost.ValidateFunction(function.Object, httpFunctions, null);
+                ScriptHost.ValidateFunction(function.Object, httpFunctions, _testEnvironment);
             });
 
             Assert.Equal(string.Format($"The function or proxy name '{name}' must be unique within the function app.", name), ex.Message);
