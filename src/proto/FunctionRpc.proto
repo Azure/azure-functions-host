@@ -245,6 +245,14 @@ message FunctionEnvironmentReloadRequest {
 }
 
 message FunctionEnvironmentReloadResponse {
+  enum CapabilitiesUpdateStrategy {
+    // overwrites existing values and appends new ones
+    // ex. worker init: {A: foo, B: bar} + env reload: {A:foo, B: foo, C: foo} -> {A: foo, B: foo, C: foo}
+    merge = 0;
+    // existing capabilities are cleared and new capabilities are applied
+    // ex. worker init: {A: foo, B: bar} + env reload: {A:foo, C: foo} -> {A: foo, C: foo}
+    replace = 1;
+  }
   // After specialization, worker sends capabilities & metadata.
   // Worker metadata captured for telemetry purposes
   WorkerMetadata worker_metadata = 1;
@@ -254,6 +262,9 @@ message FunctionEnvironmentReloadResponse {
 
   // Status of the response
   StatusResult result = 3;
+  
+  // If no strategy is defined, the host will default to merge
+  CapabilitiesUpdateStrategy capabilities_update_strategy = 4;
 }
 
 // Tell the out-of-proc worker to close any shared memory maps it allocated for given invocation
