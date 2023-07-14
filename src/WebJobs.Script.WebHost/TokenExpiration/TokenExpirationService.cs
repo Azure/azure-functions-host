@@ -9,6 +9,8 @@ using System.Reflection;
 using System.Reflection.PortableExecutable;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.Storage;
+using Microsoft.Azure.Storage.Auth;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Properties;
 using Microsoft.Extensions.DependencyInjection;
@@ -51,19 +53,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.TokenExpiration
                         {
                             if (!standbyOptions.InStandbyMode && !_analysisScheduled)
                             {
-                                ScheduleAssemblyAnalysis();
+                                ScheduleTokenExpirationCheck();
                             }
                         });
                     }
                     else
                     {
-                        ScheduleAssemblyAnalysis();
+                        ScheduleTokenExpirationCheck();
                     }
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error starting Assembly analysis service. Handling error and continuing.");
+                _logger.LogError(ex, "Error starting token expiration service. Handling error and continuing.");
             }
 
             return Task.CompletedTask;
@@ -77,19 +79,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.TokenExpiration
 
                 if (_analysisTask != null && !_analysisTask.IsCompleted)
                 {
-                    _logger.LogDebug("Assembly analysis service stopped before analysis completion. Waiting for cancellation.");
+                    _logger.LogDebug("Token expiration service stopped before analysis completion. Waiting for cancellation.");
 
                     return _analysisTask;
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error stopping Assembly analysis service. Handling error and continuing.");
+                _logger.LogError(ex, "Error stopping Token expiration service. Handling error and continuing.");
             }
             return Task.CompletedTask;
         }
 
-        private void ScheduleAssemblyAnalysis()
+        private void ScheduleTokenExpirationCheck()
         {
             _analysisScheduled = true;
             _cancellationTokenSource = new CancellationTokenSource();
@@ -108,23 +110,45 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.TokenExpiration
                 return;
             }
 
-            // WEBSITE_RUN_FROM_PACKAGE, AzureWebJobsStorage, WEBSITE_CONTENTAZUREFILECONNECTIONSTRING
-            string[] uris =
+            // WEBSITE_RUN_FROM_PACKAGE and WEBSITE_CONTENTAZUREFILECONNECTIONSTRING
+            Dictionary<string, string> appSettings = new Dictionary<string, string>
             {
-                _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteRunFromPackage),
-                _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureFilesConnectionString)
+                { EnvironmentSettingNames.AzureWebsiteRunFromPackage, _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteRunFromPackage) },
+                { EnvironmentSettingNames.AzureFilesConnectionString, _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureFilesConnectionString) }
             };
 
-            EmitLogging(uris);
+            // We only want to parse AzureWebJobsStorage in the following format
+            // BlobEndpoint=<blob-endpoint-url>;QueueEndpoint=<queue-endpoint-url>;TableEndpoint=<table-endpoint-url>;SharedAccessSignature=<sas-token>
+            var azureWebJobsStorage = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsSecretStorage);
+
+            // Check if the value starts with "BlobEndpoint=" and contains "SharedAccessSignature="
+            if (azureWebJobsStorage.StartsWith("BlobEndpoint=", StringComparison.OrdinalIgnoreCase)
+                && azureWebJobsStorage.Contains("SharedAccessSignature="))
+            {
+                appSettings.Add(EnvironmentSettingNames.AzureWebJobsSecretStorage, azureWebJobsStorage);
+            }
+
+            EmitLogging(appSettings);
         }
 
-        private void EmitLogging(string[] uris)
+        private void EmitLogging(Dictionary<string, string> appSettings)
         {
-            foreach (var uri in uris)
+            foreach (var setting in appSettings)
             {
+                var uri = setting.Value;
                 if (!string.IsNullOrEmpty(uri))
                 {
-                    var sasTokenExpirationDate = Utility.GetSasTokenExpirationDate(new Uri(uri));
+                    string sasTokenExpirationDate;
+
+                    if (setting.Key == EnvironmentSettingNames.AzureWebJobsSecretStorage)
+                    {
+                        sasTokenExpirationDate = Utility.GetSasTokenExpirationDateFromSasSignature(uri);
+                    }
+                    else
+                    {
+                        sasTokenExpirationDate = Utility.GetSasTokenExpirationDate(new Uri(uri));
+                    }
+
                     if (!string.IsNullOrEmpty(sasTokenExpirationDate))
                     {
                         var parsedDate = DateTime.Parse(sasTokenExpirationDate);
@@ -132,10 +156,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.TokenExpiration
 
                         var difference = parsedDate.Subtract(currentDate);
 
-                        if (Math.Abs(difference.TotalDays) <= 30)
+                        // Log an error event if the token is already expired; otherwise log a warning event
+                        if (difference.TotalDays <= 0)
                         {
-                            string message = string.Format(Resources.SasTokenExpiringFormat, difference.TotalDays);
-                            DiagnosticEventLoggerExtensions.LogDiagnosticEvent(_logger, LogLevel.Warning, 0, DiagnosticEventConstants.SasTokenExpiringErrorCode, message, DiagnosticEventConstants.SasTokenExpiringErrorHelpLink, null);
+                            string message = string.Format(Resources.SasTokenExpiredFormat, setting.Key);
+                            DiagnosticEventLoggerExtensions.LogDiagnosticEventError(_logger, message, DiagnosticEventConstants.SasTokenExpiringErrorCode, DiagnosticEventConstants.SasTokenExpiringErrorHelpLink, new Exception(message));
+                        }
+                        if (difference.TotalDays <= 30)
+                        {
+                            string message = string.Format(Resources.SasTokenExpiringFormat, (int)difference.TotalDays, setting.Key);
+                            DiagnosticEventLoggerExtensions.LogDiagnosticEvent(_logger, Microsoft.Extensions.Logging.LogLevel.Warning, 0, DiagnosticEventConstants.SasTokenExpiringErrorCode, message, DiagnosticEventConstants.SasTokenExpiringErrorHelpLink, null);
                         }
                     }
                 }

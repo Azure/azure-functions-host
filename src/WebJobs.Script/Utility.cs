@@ -9,6 +9,7 @@ using System.Globalization;
 using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
+using System.Net;
 using System.Net.Http.Headers;
 using System.Reflection;
 using System.Text;
@@ -884,6 +885,19 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             // Screen out URLs with an SAS token
             var queryParams = HttpUtility.ParseQueryString(resourceUri.Query.ToLower());
+            if (queryParams != null && !string.IsNullOrEmpty(queryParams[SasTokenExpirationDate]))
+            {
+                return queryParams[SasTokenExpirationDate];
+            }
+
+            return string.Empty;
+        }
+
+        public static string GetSasTokenExpirationDateFromSasSignature(string azureWebJobsStorage)
+        {
+            var splitStorage = azureWebJobsStorage.Split(';');
+            var sasToken = splitStorage[splitStorage.Length - 1];
+            var queryParams = HttpUtility.ParseQueryString(sasToken);
             if (queryParams != null && !string.IsNullOrEmpty(queryParams[SasTokenExpirationDate]))
             {
                 return queryParams[SasTokenExpirationDate];

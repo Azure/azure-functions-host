@@ -201,11 +201,20 @@ namespace Microsoft.Azure.WebJobs.Script.Properties {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to the SAS token is expiring in {0} days. See https://aka.ms/functions-hostjson for more information&quot;.
+        ///   Looks up a localized string similar to the SAS token is expiring in {0} days for {1} appsetting. See https://aka.ms/functions-hostjson for more information&quot;.
         /// </summary>
         internal static string SasTokenExpiringFormat {
             get {
                 return ResourceManager.GetString("SasTokenExpiringFormat", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to the SAS token has expired for {0} appsetting. See https://aka.ms/functions-hostjson for more information&quot;.
+        /// </summary>
+        internal static string SasTokenExpiredFormat {
+            get {
+                return ResourceManager.GetString("SasTokenExpiredFormat", resourceCulture);
             }
         }
     }
