@@ -133,6 +133,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.TokenExpiration
 
         private void EmitLogging(Dictionary<string, string> appSettings)
         {
+            var currentDate = DateTime.Now.Date;
             foreach (var setting in appSettings)
             {
                 var uri = setting.Value;
@@ -152,7 +153,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.TokenExpiration
                     if (!string.IsNullOrEmpty(sasTokenExpirationDate))
                     {
                         var parsedDate = DateTime.Parse(sasTokenExpirationDate);
-                        var currentDate = DateTime.Now.Date;
 
                         var difference = parsedDate.Subtract(currentDate);
 
@@ -165,7 +165,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.TokenExpiration
                         if (difference.TotalDays <= 30)
                         {
                             string message = string.Format(Resources.SasTokenExpiringFormat, (int)difference.TotalDays, setting.Key);
-                            DiagnosticEventLoggerExtensions.LogDiagnosticEvent(_logger, Microsoft.Extensions.Logging.LogLevel.Warning, 0, DiagnosticEventConstants.SasTokenExpiringErrorCode, message, DiagnosticEventConstants.SasTokenExpiringErrorHelpLink, null);
+                            DiagnosticEventLoggerExtensions.LogDiagnosticEvent(_logger, Microsoft.Extensions.Logging.LogLevel.Warning, 0, DiagnosticEventConstants.SasTokenExpiringErrorCode, message, DiagnosticEventConstants.SasTokenExpiringErrorHelpLink, exception: null);
                         }
                     }
                 }

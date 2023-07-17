@@ -884,26 +884,27 @@ namespace Microsoft.Azure.WebJobs.Script
         public static string GetSasTokenExpirationDate(Uri resourceUri)
         {
             // Screen out URLs with an SAS token
-            var queryParams = HttpUtility.ParseQueryString(resourceUri.Query.ToLower());
-            if (queryParams != null && !string.IsNullOrEmpty(queryParams[SasTokenExpirationDate]))
+            var queryParams = HttpUtility.ParseQueryString(resourceUri.Query);
+            if (!string.IsNullOrEmpty(queryParams[SasTokenExpirationDate]))
             {
                 return queryParams[SasTokenExpirationDate];
             }
 
-            return string.Empty;
+            return null;
         }
 
         public static string GetSasTokenExpirationDateFromSasSignature(string azureWebJobsStorage)
         {
-            var splitStorage = azureWebJobsStorage.Split(';');
-            var sasToken = splitStorage[splitStorage.Length - 1];
+            var azureWebJobsStorageSpan = azureWebJobsStorage.AsSpan();
+            var sasToken = azureWebJobsStorageSpan
+                         .Slice(azureWebJobsStorageSpan.LastIndexOf(';') + 1).ToString();
             var queryParams = HttpUtility.ParseQueryString(sasToken);
-            if (queryParams != null && !string.IsNullOrEmpty(queryParams[SasTokenExpirationDate]))
+            if (!string.IsNullOrEmpty(queryParams[SasTokenExpirationDate]))
             {
                 return queryParams[SasTokenExpirationDate];
             }
 
-            return string.Empty;
+            return null;
         }
 
         public static bool IsHttporManualTrigger(string triggerType)
