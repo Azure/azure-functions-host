@@ -1225,7 +1225,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var httpFunctions = new Dictionary<string, HttpTriggerAttribute>();
 
-            // first add an http function
             var metadata = new FunctionMetadata();
             var function = new Mock<FunctionDescriptor>(MockBehavior.Strict, "test", null, metadata, null, null, null, null);
             var attribute = new HttpTriggerAttribute(AuthorizationLevel.Function, "get")
@@ -1234,7 +1233,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
             function.SetupGet(p => p.HttpTriggerAttribute).Returns(() => attribute);
 
-            ScriptHost.ValidateFunction(function.Object, httpFunctions);
+            ScriptHost.ValidateFunction(function.Object, httpFunctions, _testEnvironment);
             Assert.Equal(1, httpFunctions.Count);
             Assert.True(httpFunctions.ContainsKey("test"));
 
@@ -1245,7 +1244,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Route = "/foo/bar/baz/"
             };
             function.SetupGet(p => p.HttpTriggerAttribute).Returns(() => attribute);
-            ScriptHost.ValidateFunction(function.Object, httpFunctions);
+            ScriptHost.ValidateFunction(function.Object, httpFunctions, _testEnvironment);
             Assert.Equal(2, httpFunctions.Count);
             Assert.True(httpFunctions.ContainsKey("test2"));
 
@@ -1256,7 +1255,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Route = "/foo/bar/baz/"
             };
             function.SetupGet(p => p.HttpTriggerAttribute).Returns(() => attribute);
-            ScriptHost.ValidateFunction(function.Object, httpFunctions);
+            ScriptHost.ValidateFunction(function.Object, httpFunctions, _testEnvironment);
             Assert.Equal(3, httpFunctions.Count);
             Assert.True(httpFunctions.ContainsKey("test3"));
 
@@ -1270,7 +1269,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             function.SetupGet(p => p.HttpTriggerAttribute).Returns(() => attribute);
             var ex = Assert.Throws<InvalidOperationException>(() =>
             {
-                ScriptHost.ValidateFunction(function.Object, httpFunctions);
+                ScriptHost.ValidateFunction(function.Object, httpFunctions, _testEnvironment);
             });
             Assert.Equal("The route specified conflicts with the route defined by function 'test2'.", ex.Message);
             Assert.Equal(3, httpFunctions.Count);
@@ -1284,7 +1283,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             function.SetupGet(p => p.HttpTriggerAttribute).Returns(() => attribute);
             ex = Assert.Throws<InvalidOperationException>(() =>
             {
-                ScriptHost.ValidateFunction(function.Object, httpFunctions);
+                ScriptHost.ValidateFunction(function.Object, httpFunctions, _testEnvironment);
             });
             Assert.Equal("The specified route conflicts with one or more built in routes.", ex.Message);
 
@@ -1297,7 +1296,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             function.SetupGet(p => p.HttpTriggerAttribute).Returns(() => attribute);
             ex = Assert.Throws<InvalidOperationException>(() =>
             {
-                ScriptHost.ValidateFunction(function.Object, httpFunctions);
+                ScriptHost.ValidateFunction(function.Object, httpFunctions, _testEnvironment);
             });
             Assert.Equal("The specified route conflicts with one or more built in routes.", ex.Message);
 
@@ -1305,7 +1304,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             function = new Mock<FunctionDescriptor>(MockBehavior.Strict, "test7", null, metadata, null, null, null, null);
             attribute = new HttpTriggerAttribute();
             function.SetupGet(p => p.HttpTriggerAttribute).Returns(() => attribute);
-            ScriptHost.ValidateFunction(function.Object, httpFunctions);
+            ScriptHost.ValidateFunction(function.Object, httpFunctions, _testEnvironment);
             Assert.Equal(4, httpFunctions.Count);
             Assert.True(httpFunctions.ContainsKey("test7"));
             Assert.Equal("test7", attribute.Route);
@@ -1383,7 +1382,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var attribute = new HttpTriggerAttribute(AuthorizationLevel.Function, "get");
             function.SetupGet(p => p.HttpTriggerAttribute).Returns(() => attribute);
 
-            ScriptHost.ValidateFunction(function.Object, httpFunctions);
+            ScriptHost.ValidateFunction(function.Object, httpFunctions, _testEnvironment);
 
             // add a proxy with same name
             metadata = new ProxyFunctionMetadata(null);
@@ -1396,10 +1395,61 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var ex = Assert.Throws<InvalidOperationException>(() =>
             {
-                ScriptHost.ValidateFunction(function.Object, httpFunctions);
+                ScriptHost.ValidateFunction(function.Object, httpFunctions, _testEnvironment);
             });
 
             Assert.Equal(string.Format($"The function or proxy name '{name}' must be unique within the function app.", name), ex.Message);
+        }
+
+        [Fact]
+        public void ValidateFunction_ThrowsForLegacyBlobTrigger_OnFlexConsumption()
+        {
+            var httpFunctions = new Dictionary<string, HttpTriggerAttribute>();
+            var name = "test";
+
+            var metadata = new FunctionMetadata();
+            metadata.Bindings.Add(new BindingMetadata()
+            {
+                Direction = BindingDirection.In,
+                Type = "blobTrigger",
+                Raw = JObject.Parse("{  \"type\": \"blobTrigger\",  \"connection\": \"\",  \"path\": \"sample1/{name}\",  \"name\": \"myBlob\"}")
+            });
+            var function = new Mock<FunctionDescriptor>(MockBehavior.Strict, name, null, metadata, null, null, null, null);
+            function.SetupGet(p => p.HttpTriggerAttribute).Returns(() => null);
+
+            TestEnvironment testEnvironment = new TestEnvironment();
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, ScriptConstants.FlexConsumptionSku);
+
+            string errorMessage = "The Flex Consumption SKU only supports EventGrid as the source for BlobTrigger functions. Please update function 'test' to use EventGrid. For more information see https://aka.ms/blob-trigger-eg.";
+
+            var ex = Assert.Throws<InvalidOperationException>(() =>
+            {
+                ScriptHost.ValidateFunction(function.Object, httpFunctions, testEnvironment);
+            });
+            Assert.Equal(errorMessage, ex.Message);
+
+            metadata.Bindings.Clear();
+            metadata.Bindings.Add(new BindingMetadata()
+            {
+                Direction = BindingDirection.In,
+                Type = "blobTrigger",
+                Raw = JObject.Parse("{  \"type\": \"blobTrigger\",  \"connection\": \"\",  \"source\": \"LogsAndContainerScan\",  \"path\": \"sample1/{name}\",  \"name\": \"myBlob\"}")
+            });
+            ex = Assert.Throws<InvalidOperationException>(() =>
+            {
+                ScriptHost.ValidateFunction(function.Object, httpFunctions, testEnvironment);
+            });
+            Assert.Equal(errorMessage, ex.Message);
+
+            metadata.Bindings.Clear();
+            metadata.Bindings.Add(new BindingMetadata()
+            {
+                Direction = BindingDirection.In,
+                Type = "blobTrigger",
+                Raw = JObject.Parse("{  \"type\": \"blobTrigger\",  \"connection\": \"\",  \"source\": \"EventGrid\",  \"path\": \"sample1/{name}\",  \"name\": \"myBlob\"}")
+            });
+
+            ScriptHost.ValidateFunction(function.Object, httpFunctions, testEnvironment);
         }
 
         [Fact]
