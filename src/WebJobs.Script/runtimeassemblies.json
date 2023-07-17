@@ -504,7 +504,7 @@
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
-      "name": "Microsoft.Azure.WebJobs.Host.Rpc",
+      "name": "Microsoft.Azure.WebJobs.Rpc.Core",
       "resolutionPolicy": "runtimeVersion"
     },
     {
