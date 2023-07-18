@@ -701,7 +701,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var meshServiceClient = new Mock<IMeshServiceClient>(MockBehavior.Strict);
             meshServiceClient.Setup(c => c.NotifyHealthEvent(ContainerHealthEventType.Fatal,
-                It.Is<Type>(t => t == typeof(InstanceManager)), "Could not specialize MSI sidecar since MSIContext was empty")).Returns(Task.CompletedTask);
+                It.Is<Type>(t => t == typeof(InstanceManager)), "Could not specialize MSI sidecar since MSIContext and EncryptedTokenServiceSpecializationPayload were empty")).Returns(Task.CompletedTask);
 
             var instanceManager = GetInstanceManagerForMSISpecialization(assignmentContext, HttpStatusCode.BadRequest, meshServiceClient.Object);
 
@@ -711,10 +711,73 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
             Assert.Collection(logs,
                 p => Assert.StartsWith("MSI enabled status: True", p),
-                p => Assert.StartsWith("Skipping specialization of MSI sidecar since MSIContext was absent", p));
+                p => Assert.StartsWith("Skipping specialization of MSI sidecar since MSIContext and EncryptedTokenServiceSpecializationPayload were absent", p));
 
             meshServiceClient.Verify(c => c.NotifyHealthEvent(ContainerHealthEventType.Fatal,
-                It.Is<Type>(t => t == typeof(InstanceManager)), "Could not specialize MSI sidecar since MSIContext was empty"), Times.Once);
+                It.Is<Type>(t => t == typeof(InstanceManager)), "Could not specialize MSI sidecar since MSIContext and EncryptedTokenServiceSpecializationPayload were empty"), Times.Once);
+        }
+
+        [Fact]
+        public async Task SpecializeMSISidecar_Succeeds_EncryptedMSIContextWithoutProvidedEndpoint()
+        {
+            var environment = new Dictionary<string, string>()
+            {
+                { EnvironmentSettingNames.MsiEndpoint, "http://localhost:8081" },
+                { EnvironmentSettingNames.MsiSecret, "secret" }
+            };
+            var assignmentContext = new HostAssignmentContext
+            {
+                SiteId = 1234,
+                SiteName = "TestSite",
+                Environment = environment,
+                IsWarmupRequest = false,
+                MSIContext = new MSIContext(),
+                EncryptedTokenServiceSpecializationPayload = "TestContext"
+            };
+
+            var instanceManager = GetInstanceManagerForMSISpecialization(assignmentContext, HttpStatusCode.OK, null);
+
+            string error = await instanceManager.SpecializeMSISidecar(assignmentContext);
+            Assert.Null(error);
+
+            var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
+            Assert.Collection(logs,
+                p => Assert.StartsWith("MSI enabled status: True", p),
+                p => Assert.StartsWith("Using encrypted TokenService payload format", p),
+                p => Assert.Equal($"Specializing sidecar at http://localhost:8081{ScriptConstants.LinuxEncryptedTokenServiceSpecializationStem}", p),
+                p => Assert.StartsWith("Specialize MSI sidecar returned OK", p));
+        }
+
+        [Fact]
+        public async Task SpecializeMSISidecar_Succeeds_EncryptedMSIContextWithProvidedEndpoint()
+        {
+            var environment = new Dictionary<string, string>()
+            {
+                { EnvironmentSettingNames.MsiEndpoint, "http://localhost:8081" },
+                { EnvironmentSettingNames.MsiSecret, "secret" }
+            };
+            var assignmentContext = new HostAssignmentContext
+            {
+                SiteId = 1234,
+                SiteName = "TestSite",
+                Environment = environment,
+                IsWarmupRequest = false,
+                MSIContext = new MSIContext(),
+                EncryptedTokenServiceSpecializationPayload = "TestContext",
+                TokenServiceApiEndpoint = "/api/TestEndpoint"
+            };
+
+            var instanceManager = GetInstanceManagerForMSISpecialization(assignmentContext, HttpStatusCode.OK, null);
+
+            string error = await instanceManager.SpecializeMSISidecar(assignmentContext);
+            Assert.Null(error);
+
+            var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
+            Assert.Collection(logs,
+                p => Assert.StartsWith("MSI enabled status: True", p),
+                p => Assert.StartsWith("Using encrypted TokenService payload format", p),
+                p => Assert.Equal($"Specializing sidecar at http://localhost:8081{assignmentContext.TokenServiceApiEndpoint}", p),
+                p => Assert.StartsWith("Specialize MSI sidecar returned OK", p));
         }
 
         [Fact]
@@ -1258,9 +1321,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var msiEndpoint = hostAssignmentContext.Environment[EnvironmentSettingNames.MsiEndpoint] + ScriptConstants.LinuxMSISpecializationStem;
 
+            var defaultEncryptedMsiEndpoint = hostAssignmentContext.Environment[EnvironmentSettingNames.MsiEndpoint] + ScriptConstants.LinuxEncryptedTokenServiceSpecializationStem;
+
+            var providedEncryptedMsiEndpoint = hostAssignmentContext.Environment[EnvironmentSettingNames.MsiEndpoint] + hostAssignmentContext.TokenServiceApiEndpoint;
+
             handlerMock.Protected().Setup<Task<HttpResponseMessage>>("SendAsync",
                 ItExpr.Is<HttpRequestMessage>(request => request.Method == HttpMethod.Post
-                                                         && request.RequestUri.AbsoluteUri.Equals(msiEndpoint)
+                                                         && (request.RequestUri.AbsoluteUri.Equals(msiEndpoint)
+                                                            || request.RequestUri.AbsoluteUri.Equals(defaultEncryptedMsiEndpoint)
+                                                            || request.RequestUri.AbsoluteUri.Equals(providedEncryptedMsiEndpoint))
                                                          && request.Content != null),
                 ItExpr.IsAny<CancellationToken>()).ReturnsAsync(new HttpResponseMessage
                 {
