@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
-            _logger.LogInformation("Starting container initialization service.");
+            _logger.LogDebug("Starting container initialization service.");
             _cancellationToken = cancellationToken;
 
             // The service should be registered in Linux Consumption only, but do additional check here.
@@ -45,18 +45,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
 
             if (hasStartContext && !string.IsNullOrEmpty(startContext))
             {
-                _logger.LogInformation("Applying host context");
+                _logger.LogDebug("Applying host context");
 
                 var encryptedAssignmentContext = JsonConvert.DeserializeObject<EncryptedHostAssignmentContext>(startContext);
                 var assignmentContext = _startupContextProvider.SetContext(encryptedAssignmentContext);
                 await SpecializeMSISideCar(assignmentContext);
 
                 bool success = _instanceManager.StartAssignment(assignmentContext);
-                _logger.LogInformation($"StartAssignment invoked (Success={success})");
+                _logger.LogDebug($"StartAssignment invoked (Success={success})");
             }
             else
             {
-                _logger.LogInformation("No host context specified. Waiting for host assignment");
+                _logger.LogDebug("No host context specified. Waiting for host assignment");
             }
         }
 

@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
         private CancellationToken _cancellationToken;
 
         public AtlasContainerInitializationHostedService(IEnvironment environment, IInstanceManager instanceManager,
-            ILogger<LinuxContainerInitializationHostedService> logger, StartupContextProvider startupContextProvider)
+            ILogger<AtlasContainerInitializationHostedService> logger, StartupContextProvider startupContextProvider)
             : base(environment, instanceManager, logger, startupContextProvider)
         {
             _environment = environment;

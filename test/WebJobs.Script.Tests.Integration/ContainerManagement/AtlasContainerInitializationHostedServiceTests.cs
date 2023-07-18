@@ -23,14 +23,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ContainerManagement
 {
     [Trait(TestTraits.Category, TestTraits.EndToEnd)]
     [Trait(TestTraits.Group, TestTraits.ContainerInstanceTests)]
-    public class LinuxContainerInitializationHostedServiceTests : IDisposable
+    public class AtlasContainerInitializationHostedServiceTests : IDisposable
     {
         private const string ContainerStartContextUri = "https://containerstartcontexturi";
         private readonly Mock<IInstanceManager> _instanceManagerMock;
         private readonly StartupContextProvider _startupContextProvider;
         private readonly TestEnvironment _environment;
 
-        public LinuxContainerInitializationHostedServiceTests()
+        public AtlasContainerInitializationHostedServiceTests()
         {
             _instanceManagerMock = new Mock<IInstanceManager>(MockBehavior.Strict);
 

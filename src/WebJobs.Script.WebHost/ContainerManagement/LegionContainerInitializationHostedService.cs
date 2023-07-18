@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
         private readonly ILogger _logger;
 
         public LegionContainerInitializationHostedService(IEnvironment environment, IInstanceManager instanceManager,
-            ILogger<LinuxContainerInitializationHostedService> logger, StartupContextProvider startupContextProvider)
+            ILogger<LegionContainerInitializationHostedService> logger, StartupContextProvider startupContextProvider)
             : base(environment, instanceManager, logger, startupContextProvider)
         {
             _environment = environment;
@@ -41,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
             // The CONTAINER_SPECIALIZATION_CONTEXT_MOUNT_PATH emptyDir volume should be mounted by Legion during pod creation
             if (!Directory.Exists(containerSpecializationContextMountPath))
             {
-                _logger.LogError("Container Specialization Context Mount Does Not Exist");
+                _logger.LogError("Container specialization context mount does not exist");
                 return Task.FromResult((false, string.Empty));
             }
 
@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
 
             if (File.Exists(contextFilePath))
             {
-                _logger.LogDebug($"Previous Start Context Found");
+                _logger.LogDebug($"Previous start context found");
                 try
                 {
                     var startContext = File.ReadAllText(contextFilePath);
@@ -57,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
                 }
                 catch (Exception e)
                 {
-                    _logger.LogError($"Error Reading Previous Start Context: {e.ToString()}");
+                    _logger.LogError($"Error reading previous start context: {e.ToString()}");
                 }
             }
 
