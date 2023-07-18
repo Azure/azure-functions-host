@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ContainerManagement
             _environment.SetEnvironmentVariable(AzureWebsiteInstanceId, null);
             Assert.False(_environment.IsAnyLinuxConsumption());
 
-            var initializationHostService = new LegionContainerInitializationHostedService(_environment, _instanceManagerMock.Object, NullLogger<LinuxContainerInitializationHostedService>.Instance, _startupContextProvider);
+            var initializationHostService = new LegionContainerInitializationHostedService(_environment, _instanceManagerMock.Object, NullLogger<LegionContainerInitializationHostedService>.Instance, _startupContextProvider);
             await initializationHostService.StartAsync(CancellationToken.None);
         }
 
@@ -65,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ContainerManagement
             Assert.True(_environment.IsLinuxConsumptionOnAtlas());
             Assert.False(_environment.IsFlexConsumptionSku());
 
-            var initializationHostService = new LegionContainerInitializationHostedService(_environment, _instanceManagerMock.Object, NullLogger<LinuxContainerInitializationHostedService>.Instance, _startupContextProvider);
+            var initializationHostService = new LegionContainerInitializationHostedService(_environment, _instanceManagerMock.Object, NullLogger<LegionContainerInitializationHostedService>.Instance, _startupContextProvider);
             await initializationHostService.StartAsync(CancellationToken.None);
         }
 
@@ -106,7 +106,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ContainerManagement
 
             _instanceManagerMock.Setup(manager => manager.StartAssignment(It.Is<HostAssignmentContext>(context => hostAssignmentContext.Equals(context) && !context.IsWarmupRequest))).Returns(true);
 
-            var initializationHostService = new LegionContainerInitializationHostedService(_environment, _instanceManagerMock.Object, NullLogger<LinuxContainerInitializationHostedService>.Instance, _startupContextProvider);
+            var initializationHostService = new LegionContainerInitializationHostedService(_environment, _instanceManagerMock.Object, NullLogger<LegionContainerInitializationHostedService>.Instance, _startupContextProvider);
             await initializationHostService.StartAsync(CancellationToken.None);
 
             _instanceManagerMock.Verify(m => m.SpecializeMSISidecar(It.Is<HostAssignmentContext>(context => hostAssignmentContext.Equals(context) && !context.IsWarmupRequest)), Times.Never);
@@ -122,7 +122,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ContainerManagement
         [Fact]
         public async Task Does_Not_Assign_If_Context_Not_Available()
         {
-            var initializationHostService = new LegionContainerInitializationHostedService(_environment, _instanceManagerMock.Object, NullLogger<LinuxContainerInitializationHostedService>.Instance, _startupContextProvider);
+            var initializationHostService = new LegionContainerInitializationHostedService(_environment, _instanceManagerMock.Object, NullLogger<LegionContainerInitializationHostedService>.Instance, _startupContextProvider);
             await initializationHostService.StartAsync(CancellationToken.None);
 
             _instanceManagerMock.Verify(manager => manager.StartAssignment(It.IsAny<HostAssignmentContext>()), Times.Never);

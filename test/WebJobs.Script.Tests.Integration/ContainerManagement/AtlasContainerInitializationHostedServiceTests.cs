@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ContainerManagement
             _environment.SetEnvironmentVariable(AzureWebsiteInstanceId, null);
             Assert.False(_environment.IsAnyLinuxConsumption());
 
-            var initializationHostService = new AtlasContainerInitializationHostedService(_environment, _instanceManagerMock.Object, NullLogger<LinuxContainerInitializationHostedService>.Instance, _startupContextProvider);
+            var initializationHostService = new AtlasContainerInitializationHostedService(_environment, _instanceManagerMock.Object, NullLogger<AtlasContainerInitializationHostedService>.Instance, _startupContextProvider);
             await initializationHostService.StartAsync(CancellationToken.None);
         }
 
@@ -62,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ContainerManagement
             Assert.False(_environment.IsLinuxConsumptionOnAtlas());
             Assert.True(_environment.IsFlexConsumptionSku());
 
-            var initializationHostService = new AtlasContainerInitializationHostedService(_environment, _instanceManagerMock.Object, NullLogger<LinuxContainerInitializationHostedService>.Instance, _startupContextProvider);
+            var initializationHostService = new AtlasContainerInitializationHostedService(_environment, _instanceManagerMock.Object, NullLogger<AtlasContainerInitializationHostedService>.Instance, _startupContextProvider);
             await initializationHostService.StartAsync(CancellationToken.None);
         }
 
@@ -100,7 +100,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ContainerManagement
 
             _instanceManagerMock.Setup(manager => manager.StartAssignment(It.Is<HostAssignmentContext>(context => hostAssignmentContext.Equals(context) && !context.IsWarmupRequest))).Returns(true);
 
-            var initializationHostService = new AtlasContainerInitializationHostedService(_environment, _instanceManagerMock.Object, NullLogger<LinuxContainerInitializationHostedService>.Instance, _startupContextProvider);
+            var initializationHostService = new AtlasContainerInitializationHostedService(_environment, _instanceManagerMock.Object, NullLogger<AtlasContainerInitializationHostedService>.Instance, _startupContextProvider);
             await initializationHostService.StartAsync(CancellationToken.None);
 
             _instanceManagerMock.Verify(m =>
@@ -116,7 +116,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ContainerManagement
         [Fact]
         public async Task Does_Not_Assign_If_Context_Not_Available()
         {
-            var initializationHostService = new AtlasContainerInitializationHostedService(_environment, _instanceManagerMock.Object, NullLogger<LinuxContainerInitializationHostedService>.Instance, _startupContextProvider);
+            var initializationHostService = new AtlasContainerInitializationHostedService(_environment, _instanceManagerMock.Object, NullLogger<AtlasContainerInitializationHostedService>.Instance, _startupContextProvider);
             await initializationHostService.StartAsync(CancellationToken.None);
 
             _instanceManagerMock.Verify(m => m.SpecializeMSISidecar(It.IsAny<HostAssignmentContext>()), Times.Never);
@@ -157,7 +157,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ContainerManagement
 
             _instanceManagerMock.Setup(manager => manager.StartAssignment(It.Is<HostAssignmentContext>(context => hostAssignmentContext.Equals(context) && !context.IsWarmupRequest))).Returns(true);
 
-            var initializationHostService = new AtlasContainerInitializationHostedService(_environment, _instanceManagerMock.Object, NullLogger<LinuxContainerInitializationHostedService>.Instance, _startupContextProvider);
+            var initializationHostService = new AtlasContainerInitializationHostedService(_environment, _instanceManagerMock.Object, NullLogger<AtlasContainerInitializationHostedService>.Instance, _startupContextProvider);
             await initializationHostService.StartAsync(CancellationToken.None);
 
             _instanceManagerMock.Verify(m =>
