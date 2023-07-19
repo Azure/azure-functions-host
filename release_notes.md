@@ -16,3 +16,4 @@
     - Microsoft.IdentityModel.JsonWebTokens
     - Microsoft.IdentityModel.Logging
 - Updated Grpc.AspNetCore package to 2.55.0 (https://github.com/Azure/azure-functions-host/pull/9373)
+- Added RestoreRawRequestPath middleware to restore the raw un-decoded request path value to the current request (https://github.com/Azure/azure-functions-host/pull/9402)
