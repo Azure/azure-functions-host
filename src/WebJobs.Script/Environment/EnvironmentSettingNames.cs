@@ -138,5 +138,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AppKind = "APP_KIND";
 
         public const string DrainOnApplicationStopping = "FUNCTIONS_ENABLE_DRAIN_ON_APP_STOPPING";
+
+        // Restore the raw request path from wire to the current request.
+        public const string RestoreRawRequestPathEnabled = "WEBSITE_RESTORE_RAW_REQUEST_PATH";
     }
 }

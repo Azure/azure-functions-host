@@ -35,6 +35,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             // Ensure the ClrOptimizationMiddleware is registered before all middleware
             builder.UseMiddleware<ClrOptimizationMiddleware>();
+
+            // Update the request URL path(which was altered by App service FE) to raw request path
+            // only if customer has opted in using the app setting.
+            builder.UseWhen(
+                _ => string.Equals(
+                    environment.GetEnvironmentVariable(EnvironmentSettingNames.RestoreRawRequestPathEnabled), "1",
+                    StringComparison.Ordinal), config =>
+            {
+                config.UseMiddleware<RestoreRawRequestPathMiddleware>();
+                // We need to re-add routing middleware after any updates to request path.
+                config.UseRouting();
+                config.UseEndpoints(endpoints => endpoints.MapControllers());
+            });
+
             builder.UseMiddleware<HttpRequestBodySizeMiddleware>();
             builder.UseMiddleware<SystemTraceMiddleware>();
             builder.UseMiddleware<HostnameFixupMiddleware>();
