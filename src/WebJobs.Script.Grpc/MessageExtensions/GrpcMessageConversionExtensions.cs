@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Extensions;
+using Microsoft.Azure.WebJobs.Script.Grpc.Channel;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
@@ -369,6 +370,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 RpcRetryOptions.Types.RetryStrategy.FixedDelay => RetryStrategy.FixedDelay,
                 RpcRetryOptions.Types.RetryStrategy.ExponentialBackoff => RetryStrategy.ExponentialBackoff,
                 _ => throw new InvalidOperationException($"Unknown RetryStrategy RpcDataType: {retryStrategy}.")
+            };
+
+        internal static GrpcCapabilitiesUpdateStrategy ToGrpcCapabilitiesUpdateStrategy(this FunctionEnvironmentReloadResponse.Types.CapabilitiesUpdateStrategy capabilityUpdateStrategy) =>
+            capabilityUpdateStrategy switch
+            {
+                FunctionEnvironmentReloadResponse.Types.CapabilitiesUpdateStrategy.Merge => GrpcCapabilitiesUpdateStrategy.Merge,
+                FunctionEnvironmentReloadResponse.Types.CapabilitiesUpdateStrategy.Replace => GrpcCapabilitiesUpdateStrategy.Replace,
+                _ => throw new InvalidOperationException($"Unknown capabilities update strategy: {capabilityUpdateStrategy}.")
             };
 
         private static bool ShouldIncludeEmptyEntriesInMessagePayload(GrpcCapabilities capabilities)

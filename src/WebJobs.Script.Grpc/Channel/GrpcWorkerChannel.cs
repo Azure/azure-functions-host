@@ -22,6 +22,7 @@ using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Extensions;
+using Microsoft.Azure.WebJobs.Script.Grpc.Channel;
 using Microsoft.Azure.WebJobs.Script.Grpc.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc.Extensions;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
@@ -372,7 +373,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _workerConfig.Description.DefaultRuntimeVersion = _workerConfig.Description.DefaultRuntimeVersion ?? res?.WorkerMetadata?.RuntimeVersion;
             _workerConfig.Description.DefaultRuntimeName = _workerConfig.Description.DefaultRuntimeName ?? res?.WorkerMetadata?.RuntimeName;
 
-            ApplyCapabilities(res.Capabilities);
+            ApplyCapabilities(res.Capabilities, res.CapabilitiesUpdateStrategy.ToGrpcCapabilitiesUpdateStrategy());
 
             if (res.Result.IsFailure(out Exception reloadEnvironmentVariablesException))
             {
@@ -428,16 +429,17 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         }
 
         // Allow tests to add capabilities, even if not directly supported by the worker.
-        internal virtual void UpdateCapabilities(IDictionary<string, string> fields)
+        internal virtual void UpdateCapabilities(IDictionary<string, string> fields, GrpcCapabilitiesUpdateStrategy strategy)
         {
-            _workerCapabilities.UpdateCapabilities(fields);
+            _workerCapabilities.UpdateCapabilities(fields, strategy);
         }
 
         // Helper method that updates and applies capabilities
         // Used at worker initialization and environment reload (placeholder scenarios)
-        internal void ApplyCapabilities(IDictionary<string, string> capabilities)
+        // The default strategy for updating capabilities is merge
+        internal void ApplyCapabilities(IDictionary<string, string> capabilities, GrpcCapabilitiesUpdateStrategy strategy = GrpcCapabilitiesUpdateStrategy.Merge)
         {
-            UpdateCapabilities(capabilities);
+            UpdateCapabilities(capabilities, strategy);
 
             _isSharedMemoryDataTransferEnabled = IsSharedMemoryDataTransferEnabled();
             _cancelCapabilityEnabled ??= !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.HandlesInvocationCancelMessage));

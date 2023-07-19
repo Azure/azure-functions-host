@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using Microsoft.Azure.WebJobs.Script.Grpc.Channel;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Grpc
@@ -26,18 +27,34 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             return null;
         }
 
-        public void UpdateCapabilities(IDictionary<string, string> capabilities)
+        public void UpdateCapabilities(IDictionary<string, string> capabilities, GrpcCapabilitiesUpdateStrategy strategy)
         {
             if (capabilities == null)
             {
                 return;
             }
 
-            _logger.LogDebug($"Updating capabilities: {capabilities.ToString()}");
-
-            foreach (KeyValuePair<string, string> capability in capabilities)
+            if (strategy == GrpcCapabilitiesUpdateStrategy.Merge)
             {
-                UpdateCapability(capability);
+                _logger.LogDebug($"Updating capabilities using merge strategy: {capabilities.ToString()}");
+
+                foreach (KeyValuePair<string, string> capability in capabilities)
+                {
+                    UpdateCapability(capability);
+                }
+            }
+            else if (strategy == GrpcCapabilitiesUpdateStrategy.Replace)
+            {
+                _logger.LogDebug($"Updating capabilities using replace strategy: {capabilities.ToString()}");
+                _capabilities.Clear();
+                foreach (KeyValuePair<string, string> capability in capabilities)
+                {
+                    UpdateCapability(capability);
+                }
+            }
+            else
+            {
+                throw new InvalidOperationException($"Did not recognize the capability update strategy {nameof(strategy)}.");
             }
         }
 
