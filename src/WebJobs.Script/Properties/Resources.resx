@@ -173,4 +173,7 @@
   <data name="SasTokenExpiredFormat" xml:space="preserve">
     <value>SAS token within '{0}' setting has expired. Please generate a new SAS token or switch to using identites instead. For more information, see https://go.microsoft.com/fwlink/?linkid=2241431.</value>
   </data>
+  <data name="SasTokenExpiringInfoFormat" xml:space="preserve">
+    <value>SAS token within '{1}' setting is set to expire in {0} days.</value>
+  </data>
 </root>

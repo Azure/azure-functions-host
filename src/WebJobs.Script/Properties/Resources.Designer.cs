@@ -201,7 +201,7 @@ namespace Microsoft.Azure.WebJobs.Script.Properties {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to the SAS token is expiring in {0} days for {1} appsetting. See https://aka.ms/functions-hostjson for more information&quot;.
+        ///   Looks up a localized string similar to the SAS token is expiring in {0} days for {1} appsetting. Please take action. See https://aka.ms/functions-hostjson for more information&quot;.
         /// </summary>
         internal static string SasTokenExpiringFormat {
             get {
@@ -215,6 +215,15 @@ namespace Microsoft.Azure.WebJobs.Script.Properties {
         internal static string SasTokenExpiredFormat {
             get {
                 return ResourceManager.GetString("SasTokenExpiredFormat", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to the SAS token is expiring in {0} days for {1} appsetting. See https://aka.ms/functions-hostjson for more information&quot;.
+        /// </summary>
+        internal static string SasTokenExpiringInfoFormat {
+            get {
+                return ResourceManager.GetString("SasTokenExpiringInfoFormat", resourceCulture);
             }
         }
     }

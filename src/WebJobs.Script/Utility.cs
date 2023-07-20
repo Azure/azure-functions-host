@@ -881,24 +881,22 @@ namespace Microsoft.Azure.WebJobs.Script
             return true;
         }
 
-        public static string GetSasTokenExpirationDate(Uri resourceUri)
+        public static string GetSasTokenExpirationDate(string valueToParse, bool isAzureWebJobsStorage)
         {
-            // Screen out URLs with an SAS token
-            var queryParams = HttpUtility.ParseQueryString(resourceUri.Query);
-            if (!string.IsNullOrEmpty(queryParams[SasTokenExpirationDate]))
+            NameValueCollection queryParams = null;
+            if (isAzureWebJobsStorage)
             {
-                return queryParams[SasTokenExpirationDate];
+                var azureWebJobsStorageSpan = valueToParse.AsSpan();
+                var sasToken = azureWebJobsStorageSpan
+                            .Slice(azureWebJobsStorageSpan.LastIndexOf(';') + 1).ToString();
+                queryParams = HttpUtility.ParseQueryString(sasToken);
             }
-
-            return null;
-        }
-
-        public static string GetSasTokenExpirationDateFromSasSignature(string azureWebJobsStorage)
-        {
-            var azureWebJobsStorageSpan = azureWebJobsStorage.AsSpan();
-            var sasToken = azureWebJobsStorageSpan
-                         .Slice(azureWebJobsStorageSpan.LastIndexOf(';') + 1).ToString();
-            var queryParams = HttpUtility.ParseQueryString(sasToken);
+            else
+            {
+                var resourceUri = new Uri(valueToParse);
+                queryParams = HttpUtility.ParseQueryString(resourceUri.Query);
+            }
+            // Parse query params
             if (!string.IsNullOrEmpty(queryParams[SasTokenExpirationDate]))
             {
                 return queryParams[SasTokenExpirationDate];

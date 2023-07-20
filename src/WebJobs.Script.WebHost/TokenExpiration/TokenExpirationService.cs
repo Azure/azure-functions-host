@@ -45,22 +45,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.TokenExpiration
         {
             try
             {
-                if (!_environment.IsCoreTools())
+                if (_environment.IsCoreTools())
                 {
-                    if (_standbyOptionsMonitor.CurrentValue.InStandbyMode)
+                    return Task.CompletedTask;
+                }
+                if (_standbyOptionsMonitor.CurrentValue.InStandbyMode)
+                {
+                    _standbyOptionsMonitor.OnChange(standbyOptions =>
                     {
-                        _standbyOptionsMonitor.OnChange(standbyOptions =>
+                        if (!standbyOptions.InStandbyMode && !_analysisScheduled)
                         {
-                            if (!standbyOptions.InStandbyMode && !_analysisScheduled)
-                            {
-                                ScheduleTokenExpirationCheck();
-                            }
-                        });
-                    }
-                    else
-                    {
-                        ScheduleTokenExpirationCheck();
-                    }
+                            ScheduleTokenExpirationCheck();
+                        }
+                    });
                 }
             }
             catch (Exception ex)
@@ -123,7 +120,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.TokenExpiration
 
             // Check if the value starts with "BlobEndpoint=" and contains "SharedAccessSignature="
             if (azureWebJobsStorage.StartsWith("BlobEndpoint=", StringComparison.OrdinalIgnoreCase)
-                && azureWebJobsStorage.Contains("SharedAccessSignature="))
+                && azureWebJobsStorage.Contains("SharedAccessSignature=", StringComparison.OrdinalIgnoreCase))
             {
                 appSettings.Add(EnvironmentSettingNames.AzureWebJobsSecretStorage, azureWebJobsStorage);
             }
@@ -137,22 +134,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.TokenExpiration
             foreach (var setting in appSettings)
             {
                 var uri = setting.Value;
-                if (!string.IsNullOrEmpty(uri))
+                if (!string.IsNullOrWhiteSpace(uri))
                 {
-                    string sasTokenExpirationDate;
-
-                    if (setting.Key == EnvironmentSettingNames.AzureWebJobsSecretStorage)
-                    {
-                        sasTokenExpirationDate = Utility.GetSasTokenExpirationDateFromSasSignature(uri);
-                    }
-                    else
-                    {
-                        sasTokenExpirationDate = Utility.GetSasTokenExpirationDate(new Uri(uri));
-                    }
+                    var isAzureWebJobsStorage = setting.Key == EnvironmentSettingNames.AzureWebJobsSecretStorage;
+                    string sasTokenExpirationDate = Utility.GetSasTokenExpirationDate(uri, isAzureWebJobsStorage);
 
                     if (!string.IsNullOrEmpty(sasTokenExpirationDate))
                     {
-                        var parsedDate = DateTime.Parse(sasTokenExpirationDate);
+                        DateTime.TryParse(sasTokenExpirationDate, out var parsedDate);
 
                         var difference = parsedDate.Subtract(currentDate);
 
@@ -162,10 +151,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.TokenExpiration
                             string message = string.Format(Resources.SasTokenExpiredFormat, setting.Key);
                             DiagnosticEventLoggerExtensions.LogDiagnosticEventError(_logger, message, DiagnosticEventConstants.SasTokenExpiringErrorCode, DiagnosticEventConstants.SasTokenExpiringErrorHelpLink, new Exception(message));
                         }
-                        if (difference.TotalDays <= 30)
+                        else if (difference.TotalDays <= 30)
                         {
                             string message = string.Format(Resources.SasTokenExpiringFormat, (int)difference.TotalDays, setting.Key);
                             DiagnosticEventLoggerExtensions.LogDiagnosticEvent(_logger, Microsoft.Extensions.Logging.LogLevel.Warning, 0, DiagnosticEventConstants.SasTokenExpiringErrorCode, message, DiagnosticEventConstants.SasTokenExpiringErrorHelpLink, exception: null);
+                        }
+                        else
+                        {
+                            string message = string.Format(Resources.SasTokenExpiringInfoFormat, (int)difference.TotalDays, setting.Key);
+                            DiagnosticEventLoggerExtensions.LogDiagnosticEventInformation(_logger, DiagnosticEventConstants.SasTokenExpiringErrorCode, message, DiagnosticEventConstants.SasTokenExpiringErrorHelpLink);
                         }
                     }
                 }
