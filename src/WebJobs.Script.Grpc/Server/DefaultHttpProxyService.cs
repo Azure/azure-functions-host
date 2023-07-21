@@ -24,7 +24,12 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         {
             _httpForwarder = httpForwarder ?? throw new ArgumentNullException(nameof(httpForwarder));
 
-            _handler = new SocketsHttpHandler();
+            _handler = new SocketsHttpHandler
+            {
+                AllowAutoRedirect = false,
+                UseCookies = false
+            };
+
             _messageInvoker = new HttpMessageInvoker(_handler);
             _forwarderRequestConfig = new ForwarderRequestConfig();
         }
