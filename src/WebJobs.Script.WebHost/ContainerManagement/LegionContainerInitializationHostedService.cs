@@ -14,7 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
 {
     public class LegionContainerInitializationHostedService : LinuxContainerInitializationHostedService
     {
-        private const string ContextFile = "Context.txt";
+        private const string ContextFile = "context.txt";
 
         private readonly IEnvironment _environment;
         private readonly ILogger _logger;

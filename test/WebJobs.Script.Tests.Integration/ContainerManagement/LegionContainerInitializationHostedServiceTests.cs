@@ -27,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ContainerManagement
     public class LegionContainerInitializationHostedServiceTests : IDisposable
     {
         private const string ContainerStartContextUri = "https://containerstartcontexturi";
-        private const string ContextFile = "Context.txt";
+        private const string ContextFile = "context.txt";
         private const string ContainerSpecializationContextPath = "/container-specialization-context";
         private readonly Mock<IInstanceManager> _instanceManagerMock;
         private readonly StartupContextProvider _startupContextProvider;
