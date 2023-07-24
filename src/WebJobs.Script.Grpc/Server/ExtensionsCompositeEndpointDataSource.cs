@@ -62,16 +62,21 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         /// <inheritdoc />
         public void Dispose()
         {
-            _scriptHostManager.ActiveHostChanged -= OnHostChanged;
-
             List<IDisposable> disposables = null;
             lock (_lock)
             {
+                if (_disposed)
+                {
+                    return;
+                }
+
+                _scriptHostManager.ActiveHostChanged -= OnHostChanged;
                 _disposed = true;
                 if (_changeTokenRegistrations is { Count: > 0 })
                 {
                     disposables ??= new List<IDisposable>();
                     disposables.AddRange(_changeTokenRegistrations);
+                    _changeTokenRegistrations = null;
                 }
             }
 

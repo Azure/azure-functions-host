@@ -67,6 +67,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 endpoint => Assert.Equal("Test2", endpoint.DisplayName));
         }
 
+        [Fact]
+        public void Dispose_GetThrows()
+        {
+            Mock<IScriptHostManager> manager = new();
+            ExtensionsCompositeEndpointDataSource dataSource = new(manager.Object);
+            IHost host = GetHost(new TestEndoints(new Endpoint(null, null, "Test1"), new Endpoint(null, null, "Test2")));
+            manager.Raise(x => x.ActiveHostChanged += null, new ActiveHostChangedEventArgs(null, host));
+            dataSource.Dispose();
+
+            Assert.Throws<ObjectDisposedException>(() => dataSource.Endpoints);
+            Assert.Throws<ObjectDisposedException>(() => dataSource.GetChangeToken());
+
+            dataSource.Dispose(); // verify multiple calls works.
+        }
+
         private static IHost GetHost(params WebJobsRpcEndpointDataSource[] extensions)
         {
             ServiceCollection services = new();
