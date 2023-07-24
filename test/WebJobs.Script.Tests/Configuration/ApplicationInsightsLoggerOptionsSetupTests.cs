@@ -244,6 +244,48 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             Assert.Null(options.QuickPulseAuthenticationApiKey);
         }
 
+        [Theory]
+        [InlineData(null, true)] // default value
+        [InlineData("true", true)]
+        [InlineData("false", false)]
+        public void Configure_EnableLiveMetrics(string value, bool expectedValue)
+        {
+            IConfiguration config = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string>
+                {
+                    { "EnableLiveMetrics", value },
+                })
+                .Build();
+
+            ApplicationInsightsLoggerOptionsSetup setup = new ApplicationInsightsLoggerOptionsSetup(new MockLoggerConfiguration(config), _environment);
+
+            ApplicationInsightsLoggerOptions options = new ApplicationInsightsLoggerOptions();
+            setup.Configure(options);
+
+            Assert.Equal(expectedValue, options.EnableLiveMetrics);
+        }
+
+        [Theory]
+        [InlineData(null, false)] // default value
+        [InlineData("true", true)]
+        [InlineData("false", false)]
+        public void Configure_EnableLiveMetricsFilters(string value, bool expectedValue)
+        {
+            IConfiguration config = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string>
+                {
+                    { "EnableLiveMetricsFilters", value },
+                })
+                .Build();
+
+            ApplicationInsightsLoggerOptionsSetup setup = new ApplicationInsightsLoggerOptionsSetup(new MockLoggerConfiguration(config), _environment);
+
+            ApplicationInsightsLoggerOptions options = new ApplicationInsightsLoggerOptions();
+            setup.Configure(options);
+
+            Assert.Equal(expectedValue, options.EnableLiveMetricsFilters);
+        }
+
         private class MockLoggerConfiguration : ILoggerProviderConfiguration<ApplicationInsightsLoggerProvider>
         {
             public MockLoggerConfiguration(IConfiguration configuration)

@@ -17,3 +17,4 @@
     - Microsoft.IdentityModel.Logging
 - Updated Grpc.AspNetCore package to 2.55.0 (https://github.com/Azure/azure-functions-host/pull/9373)
 - Add new Host to Worker RPC extensibility feature for out-of-proc workers. (https://github.com/Azure/azure-functions-host/pull/9292)
+- Update protobuf file to v1.10.0 (https://github.com/Azure/azure-functions-host/pull/9405)
