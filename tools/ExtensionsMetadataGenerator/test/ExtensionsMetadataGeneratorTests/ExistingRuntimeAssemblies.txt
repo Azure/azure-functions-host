@@ -88,6 +88,7 @@ Microsoft.Azure.WebJobs.dll
 Microsoft.Azure.WebJobs.Extensions.dll
 Microsoft.Azure.WebJobs.Extensions.Http.dll
 Microsoft.Azure.WebJobs.Host.dll
+Microsoft.Azure.WebJobs.Rpc.Core.dll
 Microsoft.Azure.WebJobs.Script.dll
 Microsoft.Azure.WebJobs.Script.Abstractions.dll
 Microsoft.Azure.WebJobs.Script.Grpc.dll
