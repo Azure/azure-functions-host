@@ -23,10 +23,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private bool _disposed = false;
         private IHost _grpcHost;
 
-        public AspNetCoreGrpcServer(FunctionRpc.FunctionRpcBase service, IScriptEventManager scriptEventManager, ILogger<AspNetCoreGrpcServer> logger)
+        public AspNetCoreGrpcServer(
+            FunctionRpc.FunctionRpcBase service,
+            IScriptEventManager scriptEventManager,
+            IScriptHostManager scriptHostManager,
+            ILogger<AspNetCoreGrpcServer> logger)
         {
             int port = WorkerUtilities.GetUnusedTcpPort();
-            _grpcHostBuilder = AspNetCoreGrpcHostBuilder.CreateHostBuilder(service, scriptEventManager, port);
+            _grpcHostBuilder = AspNetCoreGrpcHostBuilder.CreateHostBuilder(service, scriptEventManager, scriptHostManager, port);
             _logger = logger;
             Uri = new Uri($"http://{WorkerConstants.HostName}:{port}");
         }

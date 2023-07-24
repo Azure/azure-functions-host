@@ -1,5 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <Import Project="..\..\build\common.props" />
+
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
     <PackageId>Microsoft.Azure.WebJobs.Script.Grpc</PackageId>
@@ -8,6 +9,7 @@
     <Ext Condition="'$(OS)' == 'Windows_NT'">bat</Ext>
     <Ext Condition="'$(OS)' != 'Windows_NT'">sh</Ext>
   </PropertyGroup>
+
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <StyleCopTreatErrorsAsWarnings>false</StyleCopTreatErrorsAsWarnings>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
@@ -18,7 +20,7 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <WarningsAsErrors />
   </PropertyGroup>
-  
+
   <ItemGroup>
     <PackageReference Include="Grpc.AspNetCore" Version="2.55.0" />
     <PackageReference Include="Microsoft.ApplicationInsights" Version="2.21.0" />
@@ -26,18 +28,19 @@
     <PackageReference Include="Microsoft.ApplicationInsights.DependencyCollector" Version="2.21.0" />
     <PackageReference Include="Microsoft.ApplicationInsights.WindowsServer" Version="2.21.0" />
     <PackageReference Include="Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel" Version="2.21.0" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Rpc.Core" Version="3.0.37" />
     <PackageReference Include="System.IO.FileSystem.Primitives" Version="4.3.0" />
     <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.435">
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="System.Threading.Channels" Version="6.0.0" />
-    <PackageReference Include="Yarp.ReverseProxy" Version="2.0.0" />
+    <PackageReference Include="Yarp.ReverseProxy" Version="2.0.1" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\WebJobs.Script\WebJobs.Script.csproj" />
   </ItemGroup>
-  
+
   <ItemGroup>
      <Protobuf Include=".\azure-functions-language-worker-protobuf\src\proto\**\*.proto" GrpcServices="server" ProtoRoot=".\azure-functions-language-worker-protobuf\src\proto" />
   </ItemGroup>

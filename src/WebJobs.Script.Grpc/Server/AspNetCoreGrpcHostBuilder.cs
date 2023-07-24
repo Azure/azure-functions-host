@@ -14,8 +14,13 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 {
     internal static class AspNetCoreGrpcHostBuilder
     {
-        public static IHostBuilder CreateHostBuilder(FunctionRpc.FunctionRpcBase service, IScriptEventManager scriptEventManager, int port) =>
-            new HostBuilder().ConfigureWebHost(webBuilder =>
+        public static IHostBuilder CreateHostBuilder(
+            FunctionRpc.FunctionRpcBase service,
+            IScriptEventManager scriptEventManager,
+            IScriptHostManager scriptHostManager,
+            int port)
+        {
+            return new HostBuilder().ConfigureWebHost(webBuilder =>
             {
                 webBuilder.UseKestrel(options =>
                 {
@@ -26,12 +31,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 });
 
                 webBuilder.ConfigureServices(services =>
-                  {
-                      services.AddSingleton(scriptEventManager);
-                      services.AddSingleton(service);
-                  });
+                {
+                    services.AddSingleton(scriptHostManager);
+                    services.AddSingleton(scriptEventManager);
+                    services.AddSingleton(service);
+                });
 
                 webBuilder.UseStartup<Startup>();
             });
+        }
     }
 }

@@ -1,0 +1,290 @@
+id: 
+name: GitOps.PullRequestIssueManagement
+description: GitOps.PullRequestIssueManagement primitive
+owner: 
+resource: repository
+disabled: false
+where: 
+configuration:
+  resourceManagementConfiguration:
+    scheduledSearches:
+    - description: 
+      frequencies:
+      - hourly:
+          hour: 3
+      filters:
+      - isIssue
+      - isOpen
+      - hasLabel:
+          label: 'Needs: Author Feedback'
+      - hasLabel:
+          label: no-recent-activity
+      - noActivitySince:
+          days: 3
+      - isNotLabeledWith:
+          label: 'bot: do not close'
+      actions:
+      - closeIssue
+    - description: 
+      frequencies:
+      - hourly:
+          hour: 3
+      filters:
+      - isIssue
+      - isOpen
+      - hasLabel:
+          label: 'Needs: Author Feedback'
+      - noActivitySince:
+          days: 4
+      - isNotLabeledWith:
+          label: no-recent-activity
+      actions:
+      - addLabel:
+          label: no-recent-activity
+      - addReply:
+          reply: >-
+            This issue has been automatically marked as stale because it has been marked as requiring author feedback but has not had any activity for **4 days**. It will be closed if no further activity occurs **within 3 days of this comment**.
+
+
+            If you are not the original author (${issueAuthor}) and believe this issue is not stale, please comment with `/bot not-stale` and I will not close it.
+    - description: 
+      frequencies:
+      - hourly:
+          hour: 3
+      filters:
+      - isIssue
+      - isOpen
+      - hasLabel:
+          label: duplicate
+      - noActivitySince:
+          days: 3
+      actions:
+      - addReply:
+          reply: This issue has been marked as duplicate and has not had any activity for **3 days**. It will be closed for housekeeping purposes.
+      - closeIssue
+    - description: 
+      frequencies:
+      - hourly:
+          hour: 3
+      filters:
+      - isPullRequest
+      - isOpen
+      - hasLabel:
+          label: 'Needs: Author Feedback'
+      - hasLabel:
+          label: no-recent-activity
+      - noActivitySince:
+          days: 7
+      actions:
+      - closeIssue
+    - description: 
+      frequencies:
+      - hourly:
+          hour: 3
+      filters:
+      - isPullRequest
+      - isOpen
+      - hasLabel:
+          label: 'Needs: Author Feedback'
+      - noActivitySince:
+          days: 7
+      - isNotLabeledWith:
+          label: no-recent-activity
+      actions:
+      - addLabel:
+          label: no-recent-activity
+      - addReply:
+          reply: This pull request has been automatically marked as stale because it has been marked as requiring author feedback but has not had any activity for **7 days**. It will be closed if no further activity occurs **within 7 days of this comment**.
+    - description: 
+      frequencies:
+      - hourly:
+          hour: 3
+      filters:
+      - isOpen
+      - noActivitySince:
+          days: 30
+      - isNotLabeledWith:
+          label: stale
+      - hasLabel:
+          label: 'pr: needs author feedback'
+      actions:
+      - addReply:
+          reply: "Hi @${issueAuthor}.\nIt seems this PR hasn't had any activity in the past 30 days. To avoid accumulating old PRs, we're marking it as `stale`.  As a result, it will be closed if no further activity occurs **within 4 days of this comment**. "
+      - addLabel:
+          label: stale
+    - description: 
+      frequencies:
+      - hourly:
+          hour: 4
+      filters:
+      - isOpen
+      - isPullRequest
+      - hasLabel:
+          label: stale
+      - noActivitySince:
+          days: 4
+      actions:
+      - closeIssue
+    eventResponderTasks:
+    - if:
+      - payloadType: Issue_Comment
+      - not:
+          isAction:
+            action: Created
+      - isActivitySender:
+          issueAuthor: True
+      - hasLabel:
+          label: 'Needs: Author Feedback'
+      then:
+      - addLabel:
+          label: 'Needs: Attention :wave:'
+      - removeLabel:
+          label: 'Needs: Author Feedback'
+      description: 
+    - if:
+      - payloadType: Issues
+      - not:
+          isAction:
+            action: Closed
+      - hasLabel:
+          label: no-recent-activity
+      then:
+      - removeLabel:
+          label: no-recent-activity
+      description: 
+    - if:
+      - payloadType: Issues
+      - isAction:
+          action: Closed
+      - hasLabel:
+          label: 'Needs: Triage (Functions)'
+      then:
+      - removeLabel:
+          label: 'Needs: Triage (Functions)'
+      description: 
+    - if:
+      - payloadType: Issue_Comment
+      - hasLabel:
+          label: no-recent-activity
+      then:
+      - removeLabel:
+          label: no-recent-activity
+      description: 
+    - if:
+      - payloadType: Pull_Request_Review
+      - isAction:
+          action: Submitted
+      - isReviewState:
+          reviewState: Changes_requested
+      then:
+      - addLabel:
+          label: 'Needs: Author Feedback'
+      description: 
+    - if:
+      - payloadType: Pull_Request
+      - isActivitySender:
+          issueAuthor: True
+      - not:
+          isAction:
+            action: Closed
+      - hasLabel:
+          label: 'Needs: Author Feedback'
+      then:
+      - removeLabel:
+          label: 'Needs: Author Feedback'
+      description: 
+    - if:
+      - payloadType: Issue_Comment
+      - isActivitySender:
+          issueAuthor: True
+      - hasLabel:
+          label: 'Needs: Author Feedback'
+      then:
+      - removeLabel:
+          label: 'Needs: Author Feedback'
+      description: 
+    - if:
+      - payloadType: Pull_Request_Review
+      - isActivitySender:
+          issueAuthor: True
+      - hasLabel:
+          label: 'Needs: Author Feedback'
+      then:
+      - removeLabel:
+          label: 'Needs: Author Feedback'
+      description: 
+    - if:
+      - payloadType: Pull_Request
+      - not:
+          isAction:
+            action: Closed
+      - hasLabel:
+          label: no-recent-activity
+      then:
+      - removeLabel:
+          label: no-recent-activity
+      description: 
+    - if:
+      - payloadType: Issue_Comment
+      - hasLabel:
+          label: no-recent-activity
+      then:
+      - removeLabel:
+          label: no-recent-activity
+      description: 
+    - if:
+      - payloadType: Pull_Request_Review
+      - hasLabel:
+          label: no-recent-activity
+      then:
+      - removeLabel:
+          label: no-recent-activity
+      description: 
+    - if:
+      - payloadType: Pull_Request
+      - hasLabel:
+          label: AutoMerge
+      then:
+      - enableAutoMerge:
+          mergeMethod: Squash
+      description: 
+    - if:
+      - payloadType: Pull_Request
+      - labelRemoved:
+          label: AutoMerge
+      then:
+      - disableAutoMerge
+      description: 
+    - if:
+      - payloadType: Pull_Request
+      - isOpen
+      - hasLabel:
+          label: stale
+      - isActivitySender:
+          issueAuthor: True
+      then:
+      - removeLabel:
+          label: stale
+      - removeLabel:
+          label: 'pr: needs author feedback'
+      description: 
+    - if:
+      - payloadType: Issue_Comment
+      - commentContains:
+          pattern: /bot not-stale
+          isRegex: False
+      - and:
+        - hasLabel:
+            label: 'Needs: Author Feedback'
+        - hasLabel:
+            label: no-recent-activity
+      then:
+      - addLabel:
+          label: 'bot: do not close'
+      - addLabel:
+          label: 'Needs: Attention :wave:'
+      - addReply:
+          reply: Thank you ${contextualAuthor}. This issue will not be automatically closed and a member of the team will review it soon.
+      description: 
+onFailure: 
+onSuccess: 

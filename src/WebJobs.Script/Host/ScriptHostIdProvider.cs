@@ -54,13 +54,16 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 // in Flex Consumption, we use a Guid based host ID without truncation.
                 string uniqueSlotName = environment?.GetAzureWebsiteUniqueSlotName();
-                byte[] hash;
-                using (MD5 md5 = MD5.Create())
+                if (!string.IsNullOrEmpty(uniqueSlotName))
                 {
-                    hash = md5.ComputeHash(Encoding.UTF8.GetBytes(uniqueSlotName));
-                }
+                    byte[] hash;
+                    using (MD5 md5 = MD5.Create())
+                    {
+                        hash = md5.ComputeHash(Encoding.UTF8.GetBytes(uniqueSlotName));
+                    }
 
-                result.HostId = new Guid(hash).ToString().Replace("-", string.Empty).ToLowerInvariant();
+                    result.HostId = new Guid(hash).ToString().Replace("-", string.Empty).ToLowerInvariant();
+                }
 
                 return result;
             }

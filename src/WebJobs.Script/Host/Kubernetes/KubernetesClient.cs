@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return JsonConvert.DeserializeObject<KubernetesLockHandle>(responseString);
         }
 
-        internal async Task<KubernetesLockHandle> TryAcquireLock (string lockId, string ownerId, TimeSpan lockPeriod, CancellationToken cancellationToken)
+        internal async Task<KubernetesLockHandle> TryAcquireLock(string lockId, string ownerId, TimeSpan lockPeriod, CancellationToken cancellationToken)
         {
             if (string.IsNullOrEmpty(lockId))
             {

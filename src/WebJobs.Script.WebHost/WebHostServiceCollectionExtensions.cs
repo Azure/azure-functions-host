@@ -240,13 +240,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IHostedService>(s =>
             {
                 var environment = s.GetService<IEnvironment>();
-                //todo: Replace with legion specific service
-                if (environment.IsAnyLinuxConsumption())
+                if (environment.IsLinuxConsumptionOnAtlas())
                 {
                     var instanceManager = s.GetService<IInstanceManager>();
-                    var logger = s.GetService<ILogger<LinuxContainerInitializationHostService>>();
+                    var logger = s.GetService<ILogger<AtlasContainerInitializationHostedService>>();
                     var startupContextProvider = s.GetService<StartupContextProvider>();
-                    return new LinuxContainerInitializationHostService(environment, instanceManager, logger, startupContextProvider);
+                    return new AtlasContainerInitializationHostedService(environment, instanceManager, logger, startupContextProvider);
+                }
+                else if (environment.IsFlexConsumptionSku())
+                {
+                    var instanceManager = s.GetService<IInstanceManager>();
+                    var logger = s.GetService<ILogger<LegionContainerInitializationHostedService>>();
+                    var startupContextProvider = s.GetService<StartupContextProvider>();
+                    return new LegionContainerInitializationHostedService(environment, instanceManager, logger, startupContextProvider);
                 }
 
                 return NullHostedService.Instance;
