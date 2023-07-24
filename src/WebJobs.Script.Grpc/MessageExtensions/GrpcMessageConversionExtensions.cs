@@ -7,10 +7,8 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
 using Google.Protobuf;
-using Google.Protobuf.WellKnownTypes;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Extensions.Http;
-using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
@@ -25,19 +23,20 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
     internal static class GrpcMessageConversionExtensions
     {
         private static readonly JsonSerializerSettings _datetimeSerializerSettings = new JsonSerializerSettings { DateParseHandling = DateParseHandling.None };
+        private static readonly TypedData EmptyRpcHttp = new() { Http = new() };
 
         public static object ToObject(this TypedData typedData) =>
             typedData.DataCase switch
             {
-                    RpcDataType.None => null,
-                    RpcDataType.String => typedData.String,
-                    RpcDataType.Json => JsonConvert.DeserializeObject(typedData.Json, _datetimeSerializerSettings),
-                    RpcDataType.Bytes or RpcDataType.Stream => typedData.Bytes.ToByteArray(),
-                    RpcDataType.Http => GrpcMessageExtensionUtilities.ConvertFromHttpMessageToExpando(typedData.Http),
-                    RpcDataType.Int => typedData.Int,
-                    RpcDataType.Double => typedData.Double,
-                    // TODO better exception
-                    _ => throw new InvalidOperationException($"Unknown RpcDataType: {typedData.DataCase}")
+                RpcDataType.None => null,
+                RpcDataType.String => typedData.String,
+                RpcDataType.Json => JsonConvert.DeserializeObject(typedData.Json, _datetimeSerializerSettings),
+                RpcDataType.Bytes or RpcDataType.Stream => typedData.Bytes.ToByteArray(),
+                RpcDataType.Http => GrpcMessageExtensionUtilities.ConvertFromHttpMessageToExpando(typedData.Http),
+                RpcDataType.Int => typedData.Int,
+                RpcDataType.Double => typedData.Double,
+                // TODO better exception
+                _ => throw new InvalidOperationException($"Unknown RpcDataType: {typedData.DataCase}")
             };
 
         public static ValueTask<TypedData> ToRpc(this object value, ILogger logger, GrpcCapabilities capabilities)
@@ -102,6 +101,13 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         internal static async Task<TypedData> ToRpcHttp(this HttpRequest request, ILogger logger, GrpcCapabilities capabilities)
         {
+            // If proxying the http request to the worker, keep the grpc message minimal
+            bool skipHttpInputs = !string.IsNullOrEmpty(capabilities.GetCapabilityState(RpcWorkerConstants.HttpUri));
+            if (skipHttpInputs)
+            {
+                return EmptyRpcHttp;
+            }
+
             var http = new RpcHttp()
             {
                 Url = $"{(request.IsHttps ? "https" : "http")}://{request.Host}{request.Path}{request.QueryString}",
