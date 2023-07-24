@@ -55,7 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             Mock<IScriptHostManager> manager = new();
             ExtensionsCompositeEndpointDataSource dataSource = new(manager.Object);
-            IHost host = GetHost(new TestEndoints(new Endpoint(null, null, "Test1"), new Endpoint(null, null, "Test2")));
+            IHost host = GetHost(new TestEndpoints(new Endpoint(null, null, "Test1"), new Endpoint(null, null, "Test2")));
 
             IChangeToken token = dataSource.GetChangeToken();
             Assert.False(token.HasChanged);
@@ -72,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             Mock<IScriptHostManager> manager = new();
             ExtensionsCompositeEndpointDataSource dataSource = new(manager.Object);
-            IHost host = GetHost(new TestEndoints(new Endpoint(null, null, "Test1"), new Endpoint(null, null, "Test2")));
+            IHost host = GetHost(new TestEndpoints(new Endpoint(null, null, "Test1"), new Endpoint(null, null, "Test2")));
             manager.Raise(x => x.ActiveHostChanged += null, new ActiveHostChangedEventArgs(null, host));
             dataSource.Dispose();
 
@@ -94,9 +94,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             return Mock.Of<IHost>(x => x.Services == sp);
         }
 
-        private class TestEndoints : WebJobsRpcEndpointDataSource
+        private class TestEndpoints : WebJobsRpcEndpointDataSource
         {
-            public TestEndoints(params Endpoint[] endpoints)
+            public TestEndpoints(params Endpoint[] endpoints)
             {
                 Endpoints = endpoints;
             }
