@@ -33,28 +33,29 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 return;
             }
 
-            if (strategy == GrpcCapabilitiesUpdateStrategy.Merge)
-            {
-                _logger.LogDebug($"Updating capabilities using merge strategy: {capabilities.ToString()}");
+            _logger.LogDebug($"Updating capabilities using {strategy} strategy. Current: {_capabilities} Incoming: {capabilities}");
 
-                foreach (KeyValuePair<string, string> capability in capabilities)
-                {
-                    UpdateCapability(capability);
-                }
-            }
-            else if (strategy == GrpcCapabilitiesUpdateStrategy.Replace)
+            switch (strategy)
             {
-                _logger.LogDebug($"Updating capabilities using replace strategy: {capabilities.ToString()}");
-                _capabilities.Clear();
-                foreach (KeyValuePair<string, string> capability in capabilities)
-                {
-                    UpdateCapability(capability);
-                }
+                case GrpcCapabilitiesUpdateStrategy.Merge:
+                    foreach (KeyValuePair<string, string> capability in capabilities)
+                    {
+                        UpdateCapability(capability);
+                    }
+                    break;
+
+                case GrpcCapabilitiesUpdateStrategy.Replace:
+                    _capabilities.Clear();
+                    foreach (KeyValuePair<string, string> capability in capabilities)
+                    {
+                        UpdateCapability(capability);
+                    }
+                    break;
+                default:
+                    throw new InvalidOperationException($"Did not recognize the capability update strategy {strategy}.");
             }
-            else
-            {
-                throw new InvalidOperationException($"Did not recognize the capability update strategy {nameof(strategy)}.");
-            }
+
+            _logger.LogDebug($"Updated capabilities: {_capabilities}");
         }
 
         private void UpdateCapability(KeyValuePair<string, string> capability)
