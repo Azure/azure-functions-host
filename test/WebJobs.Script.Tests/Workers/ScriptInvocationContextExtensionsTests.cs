@@ -18,6 +18,7 @@ using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.WebJobs.Script.Tests;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
@@ -314,6 +315,94 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             Assert.Same(resultHttp, result.TriggerMetadata["$request"]);
             Assert.True(result.TriggerMetadata.ContainsKey("headers"));
             Assert.True(result.TriggerMetadata.ContainsKey("query"));
+        }
+
+        [Fact]
+        public async Task ToRpc_Http()
+        {
+            var rpcHttp = await CreateTestRpcHttp();
+
+            Assert.Equal("http://local/test?a=b", rpcHttp.Url);
+            Assert.Equal("test value", rpcHttp.Headers["test-header"]);
+            Assert.Equal("b", rpcHttp.Query["a"]);
+            Assert.Equal("test body", rpcHttp.Body.String);
+        }
+
+        [Fact]
+        public async Task ToRpc_Http_WithProxy()
+        {
+            // Specify that we're using proxies.
+            var rpcHttp = await CreateTestRpcHttp(new Dictionary<string, string>() { { "HttpUri", "something" } });
+
+            // everything should come back empty
+            Assert.Empty(rpcHttp.Url);
+            Assert.Empty(rpcHttp.Headers);
+            Assert.Empty(rpcHttp.Query);
+            Assert.Null(rpcHttp.Body);
+        }
+
+        private async Task<RpcHttp> CreateTestRpcHttp(IDictionary<string, string> capabilities = null)
+        {
+            var logger = new TestLogger("test");
+            GrpcCapabilities grpcCapabilities = new GrpcCapabilities(logger);
+            if (capabilities is not null)
+            {
+                grpcCapabilities.UpdateCapabilities(capabilities);
+            }
+
+            var headers = new HeaderDictionary();
+            headers.Add("test-header", "test value");
+            var request = HttpTestHelpers.CreateHttpRequest("POST", "http://local/test?a=b", headers: headers, body: "test body");
+
+            var bindingData = new Dictionary<string, object>
+            {
+                { "req", request },
+            };
+
+            var inputs = new List<(string Name, DataType Type, object Val)>
+            {
+                ("req", DataType.String, request),
+            };
+
+            var invocationContext = new ScriptInvocationContext()
+            {
+                ExecutionContext = new ExecutionContext()
+                {
+                    InvocationId = Guid.NewGuid(),
+                    FunctionName = "Test",
+                },
+                BindingData = bindingData,
+                Inputs = inputs,
+                ResultSource = new TaskCompletionSource<ScriptInvocationResult>(),
+                Logger = logger,
+                AsyncExecutionContext = System.Threading.ExecutionContext.Capture()
+            };
+
+            var functionMetadata = new FunctionMetadata
+            {
+                Name = "Test"
+            };
+
+            var httpTriggerBinding = new BindingMetadata
+            {
+                Name = "req",
+                Type = "httpTrigger",
+                Direction = BindingDirection.In,
+                Raw = new JObject()
+            };
+
+            functionMetadata.Bindings.Add(httpTriggerBinding);
+            invocationContext.FunctionMetadata = functionMetadata;
+
+            var result = await invocationContext.ToRpcInvocationRequest(logger, grpcCapabilities, isSharedMemoryDataTransferEnabled: false, _sharedMemoryManager);
+            var resultHttp = result.InputData[0].Data.Http;
+            Assert.Equal(1, result.TriggerMetadata.Count);
+            Assert.Same(resultHttp, result.TriggerMetadata["req"].Http);
+
+            Assert.Equal(1, result.InputData.Count);
+            Assert.Equal("req", result.InputData[0].Name);
+
+            return resultHttp;
         }
 
         [Fact]
