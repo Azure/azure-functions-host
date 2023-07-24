@@ -45,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 { testCapability2, value }
             };
 
-            _capabilities.UpdateCapabilities(addedCapabilities);
+            _capabilities.UpdateCapabilities(addedCapabilities, GrpcCapabilitiesUpdateStrategy.Merge);
 
             Assert.Equal(value, _capabilities.GetCapabilityState(testCapability2));
 
@@ -71,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 { testCapability2, "true" }
             };
 
-            _capabilities.UpdateCapabilities(addedCapabilities);
+            _capabilities.UpdateCapabilities(addedCapabilities, GrpcCapabilitiesUpdateStrategy.Merge);
 
             Assert.Equal("true", _capabilities.GetCapabilityState(testCapability2));
 
@@ -80,7 +80,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 { testCapability2, "false" }
             };
 
-            _capabilities.UpdateCapabilities(changedCapabilities);
+            _capabilities.UpdateCapabilities(changedCapabilities, GrpcCapabilitiesUpdateStrategy.Merge);
 
             Assert.Equal("false", _capabilities.GetCapabilityState(testCapability2));
 

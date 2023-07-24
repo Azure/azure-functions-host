@@ -177,7 +177,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
                 { RpcWorkerConstants.RpcHttpTriggerMetadataRemoved, "1" },
                 { RpcWorkerConstants.RpcHttpBodyOnly, "1" }
             };
-            capabilities.UpdateCapabilities(addedCapabilities);
+            capabilities.UpdateCapabilities(addedCapabilities, GrpcCapabilitiesUpdateStrategy.Merge);
 
             var result = await invocationContext.ToRpcInvocationRequest(logger, capabilities, isSharedMemoryDataTransferEnabled: false, _sharedMemoryManager);
             Assert.Equal(1, result.InputData.Count);

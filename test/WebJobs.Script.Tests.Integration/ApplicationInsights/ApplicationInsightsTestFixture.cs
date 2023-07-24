@@ -114,14 +114,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             {
                 internal TestGrpcWorkerChannel(string workerId, IScriptEventManager eventManager, RpcWorkerConfig workerConfig, IWorkerProcess rpcWorkerProcess, ILogger logger, IMetricsLogger metricsLogger, int attemptCount, IEnvironment environment, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ISharedMemoryManager sharedMemoryManager, IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions, IOptions<FunctionsHostingConfigOptions> hostingConfigOptions, IHttpProxyService httpProxyService)
                     : base(workerId, eventManager, workerConfig, rpcWorkerProcess, logger, metricsLogger, attemptCount, environment, applicationHostOptions, sharedMemoryManager, workerConcurrencyOptions, hostingConfigOptions, httpProxyService)
-                {
+                {   
                 }
 
-                internal override void UpdateCapabilities(IDictionary<string, string> fields)
+                internal override void UpdateCapabilities(IDictionary<string, string> fields, GrpcCapabilitiesUpdateStrategy strategy)
                 {
                     // inject a capability
                     fields[RpcWorkerConstants.WorkerApplicationInsightsLoggingEnabled] = bool.TrueString;
-                    base.UpdateCapabilities(fields);
+                    base.UpdateCapabilities(fields, strategy);
                 }
             }
         }

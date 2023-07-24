@@ -39,7 +39,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 capabilities.UpdateCapabilities(new MapField<string, string>
                 {
                     { RpcWorkerConstants.RpcHttpBodyOnly, rcpHttpBodyOnly.ToString() }
-                });
+                },
+                GrpcCapabilitiesUpdateStrategy.Merge);
             }
 
             var headers = new HeaderDictionary();
@@ -76,7 +77,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 capabilities.UpdateCapabilities(new MapField<string, string>
                 {
                     { RpcWorkerConstants.RpcHttpBodyOnly, rcpHttpBodyOnly.ToString() }
-                });
+                },
+                GrpcCapabilitiesUpdateStrategy.Merge);
             }
 
             var headers = new HeaderDictionary();
@@ -114,7 +116,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 capabilities.UpdateCapabilities(new MapField<string, string>
                 {
                     { RpcWorkerConstants.RpcHttpBodyOnly, rcpHttpBodyOnly.ToString() }
-                });
+                },
+                GrpcCapabilitiesUpdateStrategy.Merge);
             }
 
             var headers = new HeaderDictionary();
@@ -180,7 +183,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 capabilities.UpdateCapabilities(new MapField<string, string>
                     {
                         { RpcWorkerConstants.IgnoreEmptyValuedRpcHttpHeaders, "true" }
-                    });
+                    },                     GrpcCapabilitiesUpdateStrategy.Merge);
             }
 
             var headerDictionary = new HeaderDictionary();
@@ -405,7 +408,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 capabilities.UpdateCapabilities(new MapField<string, string>
                 {
                     { RpcWorkerConstants.RawHttpBodyBytes, rawBytesEnabled.ToString() }
-                });
+                },
+                GrpcCapabilitiesUpdateStrategy.Merge);
             }
 
             FileStream image = new FileStream(TestImageLocation, FileMode.Open, FileAccess.Read);
@@ -451,7 +455,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 { RpcWorkerConstants.TypedDataCollection, RpcWorkerConstants.TypedDataCollection }
             };
 
-            capabilities.UpdateCapabilities(addedCapabilities);
+            capabilities.UpdateCapabilities(addedCapabilities, GrpcCapabilitiesUpdateStrategy.Merge);
             string[] arrString = { "element1", "element_2" };
             TypedData returned_typedata = await arrString.ToRpc(logger, capabilities);
 
@@ -493,7 +497,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             capabilities.UpdateCapabilities(new MapField<string, string>
                 {
                     { RpcWorkerConstants.TypedDataCollection, bool.TrueString },
-                });
+                },
+                GrpcCapabilitiesUpdateStrategy.Merge);
 
             string[] arrString = { "element1", string.Empty, "element_2" };
             TypedData actual = await arrString.ToRpc(logger, capabilities);
@@ -511,7 +516,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 {
                     { RpcWorkerConstants.TypedDataCollection, bool.TrueString },
                     { RpcWorkerConstants.IncludeEmptyEntriesInMessagePayload, bool.TrueString }
-                });
+                },
+                GrpcCapabilitiesUpdateStrategy.Merge);
 
             string[] arrString = { "element1", string.Empty, "element_2", null };
             TypedData actual = await arrString.ToRpc(logger, capabilities);
@@ -530,7 +536,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 { RpcWorkerConstants.TypedDataCollection, RpcWorkerConstants.TypedDataCollection }
             };
 
-            capabilities.UpdateCapabilities(addedCapabilities);
+            capabilities.UpdateCapabilities(addedCapabilities, GrpcCapabilitiesUpdateStrategy.Merge);
             long[] arrLong = { 1L, 2L };
             TypedData returned_typedata = await arrLong.ToRpc(logger, capabilities);
 
@@ -571,7 +577,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 { RpcWorkerConstants.TypedDataCollection, RpcWorkerConstants.TypedDataCollection }
             };
 
-            capabilities.UpdateCapabilities(addedCapabilities);
+            capabilities.UpdateCapabilities(addedCapabilities, GrpcCapabilitiesUpdateStrategy.Merge);
             double[] arrDouble = { 1.1, 2.2 };
             TypedData returned_typedata = await arrDouble.ToRpc(logger, capabilities);
             TypedData typedData = new TypedData();
@@ -612,7 +618,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 { RpcWorkerConstants.TypedDataCollection, RpcWorkerConstants.TypedDataCollection }
             };
 
-            capabilities.UpdateCapabilities(addedCapabilities);
+            capabilities.UpdateCapabilities(addedCapabilities, GrpcCapabilitiesUpdateStrategy.Merge);
 
             byte[][] arrBytes = new byte[2][];
             arrBytes[0] = new byte[] { 22 };
@@ -678,7 +684,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 { RpcWorkerConstants.TypedDataCollection, RpcWorkerConstants.TypedDataCollection }
             };
-            capabilities.UpdateCapabilities(addedCapabilities);
+            capabilities.UpdateCapabilities(addedCapabilities, GrpcCapabilitiesUpdateStrategy.Merge);
             byte[] arrByte = Encoding.Default.GetBytes("HellowWorld");
 
             TypedData returned_typedata = await arrByte.ToRpc(logger, capabilities);
