@@ -347,7 +347,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             GrpcCapabilities grpcCapabilities = new GrpcCapabilities(logger);
             if (capabilities is not null)
             {
-                grpcCapabilities.UpdateCapabilities(capabilities);
+                grpcCapabilities.UpdateCapabilities(capabilities, GrpcCapabilitiesUpdateStrategy.Merge);
             }
 
             var headers = new HeaderDictionary();
