@@ -56,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     }
                 }
             }
-            return true;
+            return false;
         }
 
         public static string GetFunctionId(this FunctionMetadata metadata)
