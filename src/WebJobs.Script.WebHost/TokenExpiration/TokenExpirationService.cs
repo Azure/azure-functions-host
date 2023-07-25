@@ -3,17 +3,10 @@
 
 using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Reflection;
-using System.Reflection.PortableExecutable;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.Storage;
-using Microsoft.Azure.Storage.Auth;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Properties;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -23,22 +16,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.TokenExpiration
     internal class TokenExpirationService : IHostedService, IDisposable
     {
         private readonly IEnvironment _environment;
-        private readonly ILoggerFactory _loggerFactory;
+        private readonly ILogger<TokenExpirationService> _logger;
         private readonly IOptionsMonitor<StandbyOptions> _standbyOptionsMonitor;
-        private readonly WebJobsScriptHostService _scriptHost;
         private CancellationTokenSource _cancellationTokenSource;
         private Task _analysisTask;
         private bool _disposed;
         private bool _analysisScheduled;
-        private ILogger _logger;
 
-        public TokenExpirationService(IEnvironment environment, WebJobsScriptHostService scriptHost, ILoggerFactory loggerFactory, IOptionsMonitor<StandbyOptions> standbyOptionsMonitor)
+        public TokenExpirationService(IEnvironment environment, ILogger<TokenExpirationService> logger, IOptionsMonitor<StandbyOptions> standbyOptionsMonitor)
         {
             _environment = environment;
-            _scriptHost = scriptHost;
-            _loggerFactory = loggerFactory;
+            _logger = logger;
             _standbyOptionsMonitor = standbyOptionsMonitor;
-            _logger = _loggerFactory.CreateLogger<TokenExpirationService>();
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
@@ -99,10 +88,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.TokenExpiration
 
         private void AnalyzeSasTokenInUri()
         {
-            var jobHost = _scriptHost.GetService<IScriptJobHost>();
-
-            if (jobHost == null
-                || _cancellationTokenSource.IsCancellationRequested)
+            // If AzureWebJobsStorage__accountName is set, we are using identities and don't need to check for SAS token expiration
+            if (!string.IsNullOrEmpty(_environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsSecretStorage + "__" + "accountName")))
             {
                 return;
             }
@@ -139,28 +126,30 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.TokenExpiration
                     var isAzureWebJobsStorage = setting.Key == EnvironmentSettingNames.AzureWebJobsSecretStorage;
                     string sasTokenExpirationDate = Utility.GetSasTokenExpirationDate(uri, isAzureWebJobsStorage);
 
-                    if (!string.IsNullOrEmpty(sasTokenExpirationDate))
+                    if (string.IsNullOrEmpty(sasTokenExpirationDate))
                     {
-                        DateTime.TryParse(sasTokenExpirationDate, out var parsedDate);
+                        continue;
+                    }
 
-                        var difference = parsedDate.Subtract(currentDate);
+                    DateTime.TryParse(sasTokenExpirationDate, out var parsedDate);
 
-                        // Log an error event if the token is already expired; otherwise log a warning event
-                        if (difference.TotalDays <= 0)
-                        {
-                            string message = string.Format(Resources.SasTokenExpiredFormat, setting.Key);
-                            DiagnosticEventLoggerExtensions.LogDiagnosticEventError(_logger, message, DiagnosticEventConstants.SasTokenExpiringErrorCode, DiagnosticEventConstants.SasTokenExpiringErrorHelpLink, new Exception(message));
-                        }
-                        else if (difference.TotalDays <= 30)
-                        {
-                            string message = string.Format(Resources.SasTokenExpiringFormat, (int)difference.TotalDays, setting.Key);
-                            DiagnosticEventLoggerExtensions.LogDiagnosticEvent(_logger, Microsoft.Extensions.Logging.LogLevel.Warning, 0, DiagnosticEventConstants.SasTokenExpiringErrorCode, message, DiagnosticEventConstants.SasTokenExpiringErrorHelpLink, exception: null);
-                        }
-                        else
-                        {
-                            string message = string.Format(Resources.SasTokenExpiringInfoFormat, (int)difference.TotalDays, setting.Key);
-                            DiagnosticEventLoggerExtensions.LogDiagnosticEventInformation(_logger, DiagnosticEventConstants.SasTokenExpiringErrorCode, message, DiagnosticEventConstants.SasTokenExpiringErrorHelpLink);
-                        }
+                    var difference = parsedDate.Subtract(currentDate);
+
+                    // Log an error event if the token is already expired; otherwise log a warning event
+                    if (difference.TotalDays <= 0)
+                    {
+                        string message = string.Format(Resources.SasTokenExpiredFormat, setting.Key);
+                        DiagnosticEventLoggerExtensions.LogDiagnosticEventError(_logger, message, DiagnosticEventConstants.SasTokenExpiringErrorCode, DiagnosticEventConstants.SasTokenExpiringErrorHelpLink, new Exception(message));
+                    }
+                    else if (difference.TotalDays <= 45)
+                    {
+                        string message = string.Format(Resources.SasTokenExpiringFormat, (int)difference.TotalDays, setting.Key);
+                        DiagnosticEventLoggerExtensions.LogDiagnosticEvent(_logger, Microsoft.Extensions.Logging.LogLevel.Warning, 0, DiagnosticEventConstants.SasTokenExpiringErrorCode, message, DiagnosticEventConstants.SasTokenExpiringErrorHelpLink, exception: null);
+                    }
+                    else
+                    {
+                        string message = string.Format(Resources.SasTokenExpiringInfoFormat, (int)difference.TotalDays, setting.Key);
+                        DiagnosticEventLoggerExtensions.LogDiagnosticEventInformation(_logger, DiagnosticEventConstants.SasTokenExpiringErrorCode, message, DiagnosticEventConstants.SasTokenExpiringErrorHelpLink);
                     }
                 }
             }
