@@ -51,12 +51,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             Assert.Equal(value, _capabilities.GetCapabilityState(testCapability2));
 
-            IDictionary<string, string> finalDict = new Dictionary<string, string> { { "testCapability2", value.ToString() } };
-
             var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
             Assert.Collection(logs,
-                p => Assert.Equal($"Updating capabilities using {GrpcCapabilitiesUpdateStrategy.Merge} strategy. Current: {new Dictionary<string, string>()} Incoming: {addedCapabilities}", p),
-                p => Assert.Equal($"Updated capabilities: {finalDict}", p));
+                p => Assert.Equal($"Updating capabilities using {GrpcCapabilitiesUpdateStrategy.Merge} strategy. Current: {{}} Incoming: {{\"TestCapability2\":\"{value}\"}}", p),
+                p => Assert.Equal($"Updated capabilities: {{\"TestCapability2\":\"{value}\"}}", p));
         }
 
         [Fact]
@@ -89,24 +87,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             Assert.Equal("false", _capabilities.GetCapabilityState(testCapability2));
 
-            IDictionary<string, string> firstUpdates = new Dictionary<string, string>()
-            {
-                { testCapability1, TestCapability.State1.ToString() },
-                { "testCapability2", "true" }
-            };
-
-            IDictionary<string, string> finalCapabilities = new Dictionary<string, string>()
-            {
-                { testCapability1, TestCapability.State1.ToString() },
-                { "testCapability2", "false" }
-            };
-
             var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
             Assert.Collection(logs,
-                p => Assert.Equal($"Updating capabilities using {GrpcCapabilitiesUpdateStrategy.Merge} strategy. Current: {new Dictionary<string, string>()} Incoming: {addedCapabilities}", p),
-                p => Assert.Equal($"Updated capabilities: {firstUpdates}", p),
-                p => Assert.Equal($"Updating capabilities using {GrpcCapabilitiesUpdateStrategy.Merge} strategy. Current: {firstUpdates} Incoming: {changedCapabilities}", p),
-                p => Assert.Equal($"Updated capabilities: {finalCapabilities}", p));
+                p => Assert.Equal($"Updating capabilities using {GrpcCapabilitiesUpdateStrategy.Merge} strategy. Current: {{}} Incoming: {{\"TestCapability1\":\"State1\",\"TestCapability2\":\"true\"}}", p),
+                p => Assert.Equal($"Updated capabilities: {{\"TestCapability1\":\"State1\",\"TestCapability2\":\"true\"}}", p),
+                p => Assert.Equal($"Updating capabilities using {GrpcCapabilitiesUpdateStrategy.Merge} strategy. Current: {{\"TestCapability1\":\"State1\",\"TestCapability2\":\"true\"}} Incoming: {{\"TestCapability2\":\"false\"}}", p),
+                p => Assert.Equal($"Updated capabilities: {{\"TestCapability1\":\"State1\",\"TestCapability2\":\"false\"}}", p));
         }
 
         [Fact]
@@ -120,8 +106,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             _capabilities.UpdateCapabilities(initialCapabilities, GrpcCapabilitiesUpdateStrategy.Replace);
 
-            IDictionary<string, string> initialDict = new Dictionary<string, string> { { "testCapability2", "false" } };
-
             MapField<string, string> changedCapabilities = new MapField<string, string>
             {
                 { testCapability2, "false" }
@@ -129,14 +113,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             _capabilities.UpdateCapabilities(changedCapabilities, GrpcCapabilitiesUpdateStrategy.Replace);
 
-            IDictionary<string, string> finalDict = new Dictionary<string, string> { { "testCapability2", "false" } };
-
             var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
             Assert.Collection(logs,
-                p => Assert.Equal($"Updating capabilities using {GrpcCapabilitiesUpdateStrategy.Replace} strategy. Current: {new Dictionary<string, string>()} Incoming: {initialCapabilities}", p),
-                p => Assert.Equal($"Updated capabilities: {initialDict}", p),
-                p => Assert.Equal($"Updating capabilities using {GrpcCapabilitiesUpdateStrategy.Replace} strategy. Current: {new Dictionary<string, string>()} Incoming: {changedCapabilities}", p),
-                p => Assert.Equal($"Updated capabilities: {finalDict}", p));
+                p => Assert.Equal($"Updating capabilities using {GrpcCapabilitiesUpdateStrategy.Replace} strategy. Current: {{}} Incoming: {{\"TestCapability2\":\"true\",\"TestCapability1\":\"false\"}}", p),
+                p => Assert.Equal($"Updated capabilities: {{\"TestCapability2\":\"true\",\"TestCapability1\":\"false\"}}", p),
+                p => Assert.Equal($"Updating capabilities using {GrpcCapabilitiesUpdateStrategy.Replace} strategy. Current: {{\"TestCapability2\":\"true\",\"TestCapability1\":\"false\"}} Incoming: {{\"TestCapability2\":\"false\"}}", p),
+                p => Assert.Equal($"Updated capabilities: {{\"TestCapability2\":\"false\"}}", p));
         }
     }
 }

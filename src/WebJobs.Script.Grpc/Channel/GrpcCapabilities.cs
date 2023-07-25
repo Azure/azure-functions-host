@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Text.Json;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Grpc
@@ -33,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 return;
             }
 
-            _logger.LogDebug($"Updating capabilities using {strategy} strategy. Current: {_capabilities} Incoming: {capabilities}");
+            _logger.LogDebug("Updating capabilities using {strategy} strategy. Current: {_capabilities} Incoming: {capabilities}", strategy, JsonSerializer.Serialize(_capabilities), JsonSerializer.Serialize(capabilities));
 
             switch (strategy)
             {
@@ -55,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     throw new InvalidOperationException($"Did not recognize the capability update strategy {strategy}.");
             }
 
-            _logger.LogDebug($"Updated capabilities: {_capabilities}");
+            _logger.LogDebug("Updated capabilities: {capabilities}", JsonSerializer.Serialize(_capabilities));
         }
 
         private void UpdateCapability(KeyValuePair<string, string> capability)

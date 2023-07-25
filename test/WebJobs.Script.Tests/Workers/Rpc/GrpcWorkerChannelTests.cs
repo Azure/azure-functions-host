@@ -787,7 +787,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var metatadataLog = traces.Where(m => string.Equals(m.FormattedMessage,
                 @"Worker metadata: { ""runtimeName"": "".NET"", ""runtimeVersion"": ""7.0"", ""workerVersion"": ""1.0.0"", ""workerBitness"": ""x64"" }"));
             var capabilityUpdateLog = traces.Where(m => string.Equals(m.FormattedMessage,
-                @"Updating capabilities: { ""RpcHttpBodyOnly"": ""True"", ""TypedDataCollection"": ""True"" }"));
+                @"Updated capabilities: {""RpcHttpBodyOnly"":""True"",""TypedDataCollection"":""True""}"));
             Assert.Single(metatadataLog);
             Assert.Single(capabilityUpdateLog);
         }

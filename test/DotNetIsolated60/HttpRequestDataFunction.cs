@@ -9,9 +9,9 @@ namespace DotNetIsolated60
     {
         private readonly ILogger _logger;
 
-        public HttpRequestDataFunction(ILoggerFactory loggerFactory)
+        public HttpRequestDataFunction(ILogger logger)
         {
-            _logger = loggerFactory.CreateLogger<HttpRequestDataFunction>();
+            _logger = logger;
         }
 
         [Function(nameof(HttpRequestDataFunction))]
