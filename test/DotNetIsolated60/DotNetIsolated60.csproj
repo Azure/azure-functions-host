@@ -11,7 +11,7 @@
     <PackageReference Include="Microsoft.Azure.Functions.Worker" Version="1.18.0" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Http" Version="3.0.13" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Http.AspNetCore" Version="1.0.0-preview2" />
-    <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Storage" Version="5.1.2" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Storage" Version="6.0.0" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Sdk" Version="1.12.0" />
   </ItemGroup>
   <ItemGroup>
