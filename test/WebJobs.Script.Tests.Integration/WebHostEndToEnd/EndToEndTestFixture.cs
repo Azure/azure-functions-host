@@ -38,9 +38,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private string _functionsWorkerRuntimeVersion;
         private bool _addTestSettings;
 
-        protected EndToEndTestFixture(string rootPath, string testId, 
-            string functionsWorkerRuntime, 
-            int workerProcessesCount = 1, 
+        protected EndToEndTestFixture(string rootPath, string testId,
+            string functionsWorkerRuntime,
+            int workerProcessesCount = 1,
             string functionsWorkerRuntimeVersion = null,
             bool addTestSettings = true)
         {
@@ -109,7 +109,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var extensionsToInstall = GetExtensionsToInstall();
             if (extensionsToInstall != null && extensionsToInstall.Length > 0)
             {
-                TestFunctionHost.WriteNugetPackageSources(_copiedRootPath, "http://www.myget.org/F/azure-appservice/api/v2", "https://www.myget.org/F/azure-appservice-staging/api/v2", "https://api.nuget.org/v3/index.json");
+                TestFunctionHost.WriteNugetPackageSources(_copiedRootPath, "https://azfunc.pkgs.visualstudio.com/e6a70c92-4128-439f-8012-382fe78d6396/_packaging/AzureFunctionsPreRelease/nuget/v3/index.json", "https://api.nuget.org/v3/index.json");
                 var options = new OptionsWrapper<ScriptJobHostOptions>(new ScriptJobHostOptions
                 {
                     RootScriptPath = _copiedRootPath
