@@ -65,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.Benchmarks
             {
                 { RpcWorkerConstants.TypedDataCollection, "1" }
             };
-            grpcCapabilities.UpdateCapabilities(addedCapabilities);
+            grpcCapabilities.UpdateCapabilities(addedCapabilities, GrpcCapabilitiesUpdateStrategy.Merge);
         }
     }
 }

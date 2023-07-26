@@ -5,16 +5,16 @@ using Microsoft.Extensions.Logging;
 
 namespace DotNetIsolated60
 {
-    public class Function1
+    public class HttpRequestDataFunction
     {
-        private readonly ILogger _logger;
+        private readonly ILogger<HttpRequestDataFunction> _logger;
 
-        public Function1(ILoggerFactory loggerFactory)
+        public HttpRequestDataFunction(ILogger<HttpRequestDataFunction> logger)
         {
-            _logger = loggerFactory.CreateLogger<Function1>();
+            _logger = logger;
         }
 
-        [Function("Function1")]
+        [Function(nameof(HttpRequestDataFunction))]
         public HttpResponseData Run([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post")] HttpRequestData req)
         {
             _logger.LogInformation("C# HTTP trigger function processed a request.");
