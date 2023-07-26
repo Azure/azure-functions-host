@@ -6,9 +6,9 @@ namespace DotNetIsolated60
 {
     public class HttpRequestFunction
     {
-        private readonly ILogger _logger;
+        private readonly ILogger<HttpRequestFunction> _logger;
 
-        public HttpRequestFunction(ILogger logger)
+        public HttpRequestFunction(ILogger<HttpRequestFunction> logger)
         {
             _logger = logger;
         }
