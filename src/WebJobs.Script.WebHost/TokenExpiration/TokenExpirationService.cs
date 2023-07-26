@@ -106,7 +106,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.TokenExpiration
             var azureWebJobsStorage = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsSecretStorage);
 
             // Check if the value starts with "BlobEndpoint=" and contains "SharedAccessSignature="
-            if (azureWebJobsStorage.StartsWith("BlobEndpoint=", StringComparison.OrdinalIgnoreCase)
+            if (!string.IsNullOrEmpty(azureWebJobsStorage) && azureWebJobsStorage.StartsWith("BlobEndpoint=", StringComparison.OrdinalIgnoreCase)
                 && azureWebJobsStorage.Contains("SharedAccessSignature=", StringComparison.OrdinalIgnoreCase))
             {
                 appSettings.Add(EnvironmentSettingNames.AzureWebJobsSecretStorage, azureWebJobsStorage);

@@ -5,7 +5,9 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Castle.Core.Logging;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
 using Microsoft.Azure.WebJobs.Script.WebHost.TokenExpiration;
 using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
@@ -16,19 +18,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class TokenExpirationServiceTests
     {
-        private readonly TestLoggerProvider _loggerProvider;
         private readonly TimeSpan _testDueTime = TimeSpan.FromSeconds(3);
-        private LoggerFactory _loggerFactory;
+        private TestLoggerProvider _loggerProvider;
+        private ILogger<TokenExpirationService> _logger;
         private Mock<IEnvironment> _mockEnvironment;
         private TestOptionsMonitor<StandbyOptions> _optionsMonitor;
 
         public TokenExpirationServiceTests()
         {
             _loggerProvider = new TestLoggerProvider();
-            _loggerFactory = new LoggerFactory();
-            _loggerFactory.AddProvider(_loggerProvider);
+            var loggerFactory = new LoggerFactory();
+            loggerFactory.AddProvider(_loggerProvider);
+            _logger = loggerFactory.CreateLogger<TokenExpirationService>();
 
-            _mockEnvironment = new Mock<IEnvironment>(MockBehavior.Strict);
+            _mockEnvironment = new Mock<IEnvironment>(MockBehavior.Loose);
         }
 
         [Theory]
@@ -58,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureFilesConnectionString)).Returns(string.Empty);
             }
 
-            using (var provider = new TokenExpirationService(_mockEnvironment.Object, _loggerFactory, _optionsMonitor))
+            using (var provider = new TokenExpirationService(_mockEnvironment.Object, _logger, _optionsMonitor))
             {
                 await provider.StartAsync(CancellationToken.None);
 
@@ -87,7 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _optionsMonitor = new TestOptionsMonitor<StandbyOptions>(options);
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsSecretStorage + "__accountName")).Returns("accountName");
 
-            using (var provider = new TokenExpirationService(_mockEnvironment.Object, _loggerFactory, _optionsMonitor))
+            using (var provider = new TokenExpirationService(_mockEnvironment.Object, _logger, _optionsMonitor))
             {
                 await provider.StartAsync(CancellationToken.None);
 
