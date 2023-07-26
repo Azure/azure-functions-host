@@ -55,6 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script
                         return !string.Equals(token.ToString(), BlobEventGridSourceValue, StringComparison.OrdinalIgnoreCase);
                     }
                 }
+                return true;
             }
             return false;
         }
