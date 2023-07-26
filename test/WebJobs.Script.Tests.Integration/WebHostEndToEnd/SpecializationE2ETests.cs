@@ -925,7 +925,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await queue.CreateIfNotExistsAsync();
             await queue.ClearAsync();
 
-            var builder = InitializeDotNetIsolatedPlaceholderBuilder("Function1", "QueueFunction");
+            var builder = InitializeDotNetIsolatedPlaceholderBuilder("HttpRequestDataFunction", "QueueFunction");
 
             using var testServer = new TestServer(builder);
 
@@ -937,7 +937,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
 
-            response = await client.GetAsync("api/function1");
+            response = await client.GetAsync("api/HttpRequestDataFunction");
             response.EnsureSuccessStatusCode();
 
             var scriptHostManager = testServer.Services.GetService<IScriptHostManager>();
