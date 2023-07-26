@@ -7,23 +7,13 @@ using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
-using Microsoft.Azure.Cosmos.Table;
-using Microsoft.Azure.Storage.Blob;
-using Microsoft.Azure.Storage.Queue;
-using Microsoft.Azure.WebJobs.Script.BindingExtensions;
-using Microsoft.Azure.WebJobs.Script.Diagnostics;
-using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
-using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using Moq;
-using Xunit;
 using CloudStorageAccount = Microsoft.Azure.Storage.CloudStorageAccount;
 using TableStorageAccount = Microsoft.Azure.Cosmos.Table.CloudStorageAccount;
 
@@ -38,9 +28,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private string _functionsWorkerRuntimeVersion;
         private bool _addTestSettings;
 
-        protected EndToEndTestFixture(string rootPath, string testId, 
-            string functionsWorkerRuntime, 
-            int workerProcessesCount = 1, 
+        protected EndToEndTestFixture(string rootPath, string testId,
+            string functionsWorkerRuntime,
+            int workerProcessesCount = 1,
             string functionsWorkerRuntimeVersion = null,
             bool addTestSettings = true)
         {
@@ -109,7 +99,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var extensionsToInstall = GetExtensionsToInstall();
             if (extensionsToInstall != null && extensionsToInstall.Length > 0)
             {
-                TestFunctionHost.WriteNugetPackageSources(_copiedRootPath, "http://www.myget.org/F/azure-appservice/api/v2", "https://www.myget.org/F/azure-appservice-staging/api/v2", "https://api.nuget.org/v3/index.json");
+                TestFunctionHost.WriteNugetPackageSources(_copiedRootPath, "https://azfunc.pkgs.visualstudio.com/e6a70c92-4128-439f-8012-382fe78d6396/_packaging/AzureFunctionsPreRelease/nuget/v3/index.json", "https://api.nuget.org/v3/index.json");
                 var options = new OptionsWrapper<ScriptJobHostOptions>(new ScriptJobHostOptions
                 {
                     RootScriptPath = _copiedRootPath
