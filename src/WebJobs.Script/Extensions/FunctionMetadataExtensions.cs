@@ -55,8 +55,9 @@ namespace Microsoft.Azure.WebJobs.Script
                         return !string.Equals(token.ToString(), BlobEventGridSourceValue, StringComparison.OrdinalIgnoreCase);
                     }
                 }
+                return true;
             }
-            return true;
+            return false;
         }
 
         public static string GetFunctionId(this FunctionMetadata metadata)
