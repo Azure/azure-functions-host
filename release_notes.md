@@ -5,7 +5,6 @@
 -->
 - Update Python Worker Version to [4.16.0](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.16.0)
 - Update Java Worker Version to [2.12.1](https://github.com/Azure/azure-functions-java-worker/releases/tag/2.12.1)
-- Update Python Worker Version to [4.15.0](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.15.0)
 - Update PowerShell Worker 7.0 to 4.0.2850 [Release Note](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.2850)
 - Update Node.js Worker Version to [3.8.0](https://github.com/Azure/azure-functions-nodejs-worker/releases/tag/v3.8.0)
 - Identity dependencies updated to 6.31.0:
