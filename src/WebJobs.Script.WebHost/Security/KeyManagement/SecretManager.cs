@@ -90,12 +90,26 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         _logger.LogDebug("Loading host secrets");
 
                         hostSecrets = await LoadSecretsAsync<HostSecrets>();
-                        if (hostSecrets == null)
+                        try
                         {
-                            // host secrets do not yet exist so generate them
-                            _logger.LogDebug(Resources.TraceHostSecretGeneration);
-                            hostSecrets = GenerateHostSecrets();
-                            await PersistSecretsAsync(hostSecrets);
+                            if (hostSecrets == null)
+                            {
+                                // host secrets do not yet exist so generate them
+                                _logger.LogDebug(Resources.TraceHostSecretGeneration);
+                                hostSecrets = GenerateHostSecrets();
+                                await PersistSecretsAsync(hostSecrets);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogDebug("Trying again to ensure potential race condition is handled correctly");
+                            hostSecrets = await LoadSecretsAsync<HostSecrets>();
+
+                            if (hostSecrets == null)
+                            {
+                                _logger.LogError(ex, "Failed to load host secrets on second attempt");
+                                throw;
+                            }
                         }
 
                         try
