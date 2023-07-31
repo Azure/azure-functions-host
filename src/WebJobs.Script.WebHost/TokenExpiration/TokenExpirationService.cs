@@ -13,68 +13,57 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.TokenExpiration
 {
-    internal class TokenExpirationService : IHostedService, IDisposable
+    internal class TokenExpirationService : BackgroundService, IDisposable
     {
+        private readonly TaskCompletionSource<object> _standby = new();
         private readonly IEnvironment _environment;
         private readonly ILogger<TokenExpirationService> _logger;
-        private readonly IOptionsMonitor<StandbyOptions> _standbyOptionsMonitor;
+        private IDisposable _listener;
         private CancellationTokenSource _cancellationTokenSource;
         private Task _analysisTask;
-        private bool _disposed;
         private bool _analysisScheduled;
 
         public TokenExpirationService(IEnvironment environment, ILogger<TokenExpirationService> logger, IOptionsMonitor<StandbyOptions> standbyOptionsMonitor)
         {
             _environment = environment;
             _logger = logger;
-            _standbyOptionsMonitor = standbyOptionsMonitor;
-        }
-
-        public Task StartAsync(CancellationToken cancellationToken)
-        {
-            try
+            if (standbyOptionsMonitor.CurrentValue.InStandbyMode)
             {
-                if (_environment.IsCoreTools())
+                _listener = standbyOptionsMonitor.OnChange(standbyOptions =>
                 {
-                    return Task.CompletedTask;
-                }
-                if (_standbyOptionsMonitor.CurrentValue.InStandbyMode)
-                {
-                    _standbyOptionsMonitor.OnChange(standbyOptions =>
+                    if (!standbyOptions.InStandbyMode && !_analysisScheduled)
                     {
-                        if (!standbyOptions.InStandbyMode && !_analysisScheduled)
-                        {
-                            ScheduleTokenExpirationCheck();
-                        }
-                    });
-                }
+                        _standby.TrySetResult(null);
+                    }
+                });
             }
-            catch (Exception ex)
+            else
             {
-                _logger.LogError(ex, "Error starting token expiration service. Handling error and continuing.");
+                _standby.TrySetResult(null);
             }
-
-            return Task.CompletedTask;
         }
 
-        public Task StopAsync(CancellationToken cancellationToken)
+        protected override async Task ExecuteAsync(CancellationToken cancellationToken)
         {
-            try
-            {
-                _cancellationTokenSource?.Cancel();
+            await Task.Yield(); // force a yield, so our synchronous code does not slowdown startup
+            await _standby.Task.WaitAsync(cancellationToken);
 
-                if (_analysisTask != null && !_analysisTask.IsCompleted)
-                {
-                    _logger.LogDebug("Token expiration service stopped before analysis completion. Waiting for cancellation.");
-
-                    return _analysisTask;
-                }
-            }
-            catch (Exception ex)
+            if (_environment.IsCoreTools())
             {
-                _logger.LogError(ex, "Error stopping Token expiration service. Handling error and continuing.");
+                return;
             }
-            return Task.CompletedTask;
+
+            // Execute first during startup
+            ScheduleTokenExpirationCheck();
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                // check at every hour
+                await Task.Delay(TimeSpan.FromHours(1), cancellationToken)
+               .ContinueWith(t => ScheduleTokenExpirationCheck());
+            }
+
+            // Dispose of the listener for the standby options monitor
+            _listener?.Dispose();
         }
 
         private void ScheduleTokenExpirationCheck()
@@ -82,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.TokenExpiration
             _analysisScheduled = true;
             _cancellationTokenSource = new CancellationTokenSource();
 
-            _analysisTask = Task.Delay(TimeSpan.FromSeconds(5), _cancellationTokenSource.Token)
+            _analysisTask = Task.Delay(TimeSpan.FromSeconds(1), _cancellationTokenSource.Token)
                .ContinueWith(t => AnalyzeSasTokenInUri());
         }
 
@@ -152,15 +141,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.TokenExpiration
                         DiagnosticEventLoggerExtensions.LogDiagnosticEventInformation(_logger, DiagnosticEventConstants.SasTokenExpiringErrorCode, message, DiagnosticEventConstants.SasTokenExpiringErrorHelpLink);
                     }
                 }
-            }
-        }
-
-        public void Dispose()
-        {
-            if (!_disposed)
-            {
-                _cancellationTokenSource?.Dispose();
-                _disposed = true;
             }
         }
     }
