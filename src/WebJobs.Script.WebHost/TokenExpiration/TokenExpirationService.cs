@@ -77,8 +77,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.TokenExpiration
 
         private void AnalyzeSasTokenInUri()
         {
+            var accountNameEnvVar = $"{_environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsSecretStorage)}__accountName";
             // If AzureWebJobsStorage__accountName is set, we are using identities and don't need to check for SAS token expiration
-            if (!string.IsNullOrEmpty(_environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsSecretStorage + "__" + "accountName")))
+            if (!string.IsNullOrEmpty(_environment.GetEnvironmentVariable(accountNameEnvVar)))
             {
                 return;
             }
