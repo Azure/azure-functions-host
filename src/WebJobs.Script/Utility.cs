@@ -9,6 +9,7 @@ using System.Globalization;
 using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
+using System.Net;
 using System.Net.Http.Headers;
 using System.Reflection;
 using System.Text;
@@ -41,6 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private const string AssemblySeparator = "__";
         private const string BlobServiceDomain = "blob";
         private const string SasVersionQueryParam = "sv";
+        private const string SasTokenExpirationDate = "se";
 
         private static readonly Regex FunctionNameValidationRegex = new Regex(@"^[a-z][a-z0-9_\-]{0,127}$(?<!^host$)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
         private static readonly Regex BindingNameValidationRegex = new Regex(string.Format("^([a-zA-Z][a-zA-Z0-9]{{0,127}}|{0})$", Regex.Escape(ScriptConstants.SystemReturnParameterBindingName)));
@@ -877,6 +879,30 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             return true;
+        }
+
+        public static string GetSasTokenExpirationDate(string valueToParse, bool isAzureWebJobsStorage)
+        {
+            NameValueCollection queryParams = null;
+            if (isAzureWebJobsStorage)
+            {
+                var azureWebJobsStorageSpan = valueToParse.AsSpan();
+                var sasToken = azureWebJobsStorageSpan
+                            .Slice(azureWebJobsStorageSpan.LastIndexOf(';') + 1).ToString();
+                queryParams = HttpUtility.ParseQueryString(sasToken);
+            }
+            else
+            {
+                var resourceUri = new Uri(valueToParse);
+                queryParams = HttpUtility.ParseQueryString(resourceUri.Query);
+            }
+            // Parse query params
+            if (!string.IsNullOrEmpty(queryParams[SasTokenExpirationDate]))
+            {
+                return queryParams[SasTokenExpirationDate];
+            }
+
+            return null;
         }
 
         public static bool IsHttporManualTrigger(string triggerType)
