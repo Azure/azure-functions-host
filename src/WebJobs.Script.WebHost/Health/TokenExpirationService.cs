@@ -11,17 +11,14 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace Microsoft.Azure.WebJobs.Script.WebHost.TokenExpiration
+namespace Microsoft.Azure.WebJobs.Script.WebHost.Health
 {
-    internal class TokenExpirationService : BackgroundService, IDisposable
+    internal class TokenExpirationService : BackgroundService
     {
         private readonly TaskCompletionSource<object> _standby = new();
         private readonly IEnvironment _environment;
         private readonly ILogger<TokenExpirationService> _logger;
         private IDisposable _listener;
-        private CancellationTokenSource _cancellationTokenSource;
-        private Task _analysisTask;
-        private bool _analysisScheduled;
 
         public TokenExpirationService(IEnvironment environment, ILogger<TokenExpirationService> logger, IOptionsMonitor<StandbyOptions> standbyOptionsMonitor)
         {
@@ -31,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.TokenExpiration
             {
                 _listener = standbyOptionsMonitor.OnChange(standbyOptions =>
                 {
-                    if (!standbyOptions.InStandbyMode && !_analysisScheduled)
+                    if (!standbyOptions.InStandbyMode)
                     {
                         _standby.TrySetResult(null);
                     }
@@ -53,26 +50,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.TokenExpiration
                 return;
             }
 
-            // Execute first during startup
-            ScheduleTokenExpirationCheck();
             while (!cancellationToken.IsCancellationRequested)
             {
                 // check at every hour
-                await Task.Delay(TimeSpan.FromHours(1), cancellationToken)
-               .ContinueWith(t => ScheduleTokenExpirationCheck());
+                AnalyzeSasTokenInUri();
+                await Task.Delay(TimeSpan.FromHours(1), cancellationToken);
             }
-
-            // Dispose of the listener for the standby options monitor
-            _listener?.Dispose();
-        }
-
-        private void ScheduleTokenExpirationCheck()
-        {
-            _analysisScheduled = true;
-            _cancellationTokenSource = new CancellationTokenSource();
-
-            _analysisTask = Task.Delay(TimeSpan.FromSeconds(1), _cancellationTokenSource.Token)
-               .ContinueWith(t => AnalyzeSasTokenInUri());
         }
 
         private void AnalyzeSasTokenInUri()
@@ -142,6 +125,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.TokenExpiration
                     }
                 }
             }
+        }
+
+        public override void Dispose()
+        {
+            base.Dispose();
+            _listener?.Dispose();
         }
     }
 }
