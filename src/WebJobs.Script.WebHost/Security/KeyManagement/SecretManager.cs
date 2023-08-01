@@ -102,7 +102,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogDebug("Trying again to ensure potential race condition is handled correctly");
+                            _logger.LogDebug("Potential conflict, attempting to load host secrets for the second time.");
                             hostSecrets = await LoadSecretsAsync<HostSecrets>();
 
                             if (hostSecrets == null)
