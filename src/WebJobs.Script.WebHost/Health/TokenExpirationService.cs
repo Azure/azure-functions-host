@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Health
         private readonly ILogger<TokenExpirationService> _logger;
         private IDisposable _listener;
 
-        // Note: The TokenExpirationService is a good health check candidate if we start using Microsoft.Extensions.Diagnostics.HealthChecks
+        // The TokenExpirationService is a good health check candidate if we start using Microsoft.Extensions.Diagnostics.HealthChecks
         public TokenExpirationService(IEnvironment environment, ILogger<TokenExpirationService> logger, IOptionsMonitor<StandbyOptions> standbyOptionsMonitor)
         {
             _environment = environment;
