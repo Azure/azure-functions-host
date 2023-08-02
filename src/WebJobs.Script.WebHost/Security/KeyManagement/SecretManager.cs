@@ -16,7 +16,6 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security;
 using Microsoft.Extensions.Logging;
-
 using DataProtectionConstants = Microsoft.Azure.Web.DataProtection.Constants;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
@@ -172,14 +171,29 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         _logger.LogDebug($"Loading secrets for function '{functionName}'");
 
                         FunctionSecrets secrets = await LoadFunctionSecretsAsync(functionName);
-                        if (secrets == null)
-                        {
-                            // no secrets exist for this function so generate them
-                            string message = string.Format(Resources.TraceFunctionSecretGeneration, functionName);
-                            _logger.LogDebug(message);
-                            secrets = GenerateFunctionSecrets();
 
-                            await PersistSecretsAsync(secrets, functionName);
+                        try
+                        {
+                            if (secrets == null)
+                            {
+                                // no secrets exist for this function so generate them
+                                string message = string.Format(Resources.TraceFunctionSecretGeneration, functionName);
+                                _logger.LogDebug(message);
+                                secrets = GenerateFunctionSecrets();
+
+                                await PersistSecretsAsync(secrets, functionName);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogDebug("Potential conflict, attempting to load function secrets for the second time.");
+                            secrets = await LoadFunctionSecretsAsync(functionName);
+
+                            if (secrets == null)
+                            {
+                                _logger.LogError(ex, "Failed to load function secrets on second attempt");
+                                throw;
+                            }
                         }
 
                         try

@@ -483,6 +483,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
         }
 
         [Fact]
+        public async Task FunctionSecrets_SimultaneousCreates_Throws_Conflict()
+        {
+            var mockValueConverterFactory = GetConverterFactoryMock(false, false);
+            var metricsLogger = new TestMetricsLogger();
+            var testRepository = new TestSecretsRepository(true, true, true);
+            string testFunctionName = $"TestFunction";
+
+            using (var secretManager = new SecretManager(testRepository, mockValueConverterFactory.Object, _logger, metricsLogger, _hostNameProvider, _startupContextProvider))
+            {
+                var tasks = new List<Task<IDictionary<string, string>>>();
+                for (int i = 0; i < 2; i++)
+                {
+                    tasks.Add(secretManager.GetFunctionSecretsAsync(testFunctionName));
+                }
+
+                await Task.WhenAll(tasks);
+
+                // verify all calls return the same result
+                Assert.Equal(1, testRepository.FunctionSecrets.Count);
+                var functionSecrets = (FunctionSecrets)testRepository.FunctionSecrets[testFunctionName];
+                string defaultKeyValue = functionSecrets.Keys.Where(p => p.Name == "default").Single().Value;
+                SecretGeneratorTests.ValidateSecret(defaultKeyValue, SecretGenerator.FunctionKeySeed);
+                Assert.True(tasks.Select(p => p.Result).All(t => t["default"] == defaultKeyValue));
+            }
+        }
+
+        [Fact]
         public async Task GetHostSecrets_WhenNoHostSecretFileExists_GeneratesSecretsAndPersistsFiles()
         {
             using (var directory = new TempDirectory())
