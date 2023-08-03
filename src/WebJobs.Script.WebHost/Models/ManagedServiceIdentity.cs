@@ -20,5 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
         public string Certificate { get; set; }
 
         public string PrincipalId { get; set; }
+
+        public string AuthenticationEndpoint { get; set; }
     }
 }

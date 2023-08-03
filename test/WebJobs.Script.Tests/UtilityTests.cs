@@ -466,6 +466,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
+        [InlineData("BlobEndpoint=https://storage.blob.core.windows.net;SharedAccessSignature=sv=2015-07-08&sig=f%2BGLvBih%2BoFuQvckBSHWKMXwqGJHlPkESmZh9pjnHuc%3D&spr=https&st=2016-04-12T03%3A24%3A31Z&se=2023-07-20T05:27:05Z&srt=s&ss=bf&sp=rwl", "2023-07-20T05:27:05Z", true)]
+        [InlineData("BlobEndpoint=https://storage.blob.core.windows.net;SharedAccessSignature=sv=2015-07-08&sig=f%2BGLvBih%2BoFuQvckBSHWKMXwqGJHlPkESmZh9pjnHuc%3D&spr=https&st=2016-04-12T03%3A24%3A31Z&srt=s&ss=bf&sp=rwl", null, true)]
+        [InlineData("BlobEndpoint=https://storage.blob.core.windows.net;TableEndpoint=https://table.core.windows.net;SharedAccessSignature=sv=2015-07-08&sig=f%2BGLvBih%2BoFuQvckBSHWKMXwqGJHlPkESmZh9pjnHuc%3D&spr=https&st=2016-04-12T03%3A24%3A31Z&srt=s&ss=bf&sp=rwl", null, true)]
+        [InlineData("BlobEndpoint=https://storage.blob.core.windows.net;TableEndpoint=https://table.core.windows.net;SharedAccessSignature=sv=2015-07-08&sig=f%2BGLvBih%2BoFuQvckBSHWKMXwqGJHlPkESmZh9pjnHuc%3D&spr=https&st=2016-04-12T03%3A24%3A31Z&se=2023-07-20T05:27:05Z&srt=s&ss=bf&sp=rwl", "2023-07-20T05:27:05Z", true)]
+        [InlineData("UseDevelopmentStorage=true", null, true)]
+        [InlineData("https://storage.blob.core.windows.net/func/func.zip?sp=r&st=2023-07-12T21:27:05Z&se=2023-07-20T05:27:05Z&spr=https&sv=2022-11-02&sr=b&sig=f%2BGLvBih%2BoFuQvckBSHWKMXwqGJHlPkESmZh9pjnHuc%3D", "2023-07-20T05:27:05Z", false)]
+        [InlineData("https://storage.blob.core.windows.net/functions/func.zip", null, false)]
+        public void GetSasTokenExpirationDateFromSasSignature(string input, string expirationDate, bool isAzureWebJobsStorage)
+        {
+            Assert.Equal(expirationDate, Utility.GetSasTokenExpirationDate(input, isAzureWebJobsStorage));
+        }
+
+        [Theory]
         [InlineData("httpTrigger", true)]
         [InlineData("manualTrigger", true)]
         [InlineData("HttptRIGGER", true)]
