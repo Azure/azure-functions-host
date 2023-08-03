@@ -11,10 +11,13 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using DryIoc;
+using Microsoft.Azure.Web.DataProtection;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using DataProtectionConstants = Microsoft.Azure.Web.DataProtection.Constants;
 
@@ -101,12 +104,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogDebug("Potential conflict, attempting to load host secrets for the second time.");
+                            _logger.LogDebug(ex, "Exception while generating host secrets. This can happen if another instance is also generating secrets. Attempting to read secrets again.");
                             hostSecrets = await LoadSecretsAsync<HostSecrets>();
 
                             if (hostSecrets == null)
                             {
-                                _logger.LogError(ex, "Failed to load host secrets on second attempt");
+                                _logger.LogError("Host secrets are still null on second attempt.");
                                 throw;
                             }
                         }
