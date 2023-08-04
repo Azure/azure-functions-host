@@ -189,12 +189,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogDebug("Potential conflict, attempting to load function secrets for the second time.");
+                            _logger.LogDebug(ex, "Exception while generating function secrets. This can happen if another instance is also generating secrets. Attempting to read secrets again.");
                             secrets = await LoadFunctionSecretsAsync(functionName);
 
                             if (secrets == null)
                             {
-                                _logger.LogError(ex, "Failed to load function secrets on second attempt");
+                                _logger.LogError("Function secrets are still null on second attempt.");
                                 throw;
                             }
                         }
