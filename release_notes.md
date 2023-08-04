@@ -3,6 +3,8 @@
 <!-- Please add your release notes in the following format:
 - My change description (#PR)
 -->
+- Increase timeout for http proxying requests [#9433](https://github.com/Azure/azure-functions-host/pull/9433)
+
 - Update Python Worker Version to [4.16.0](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.16.0)
 - Update Java Worker Version to [2.12.1](https://github.com/Azure/azure-functions-java-worker/releases/tag/2.12.1)
 - Update PowerShell Worker 7.0 to 4.0.2850 [Release Note](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.2850)

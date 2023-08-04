@@ -31,7 +31,10 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             };
 
             _messageInvoker = new HttpMessageInvoker(_handler);
-            _forwarderRequestConfig = new ForwarderRequestConfig();
+            _forwarderRequestConfig = new ForwarderRequestConfig
+            {
+                ActivityTimeout = TimeSpan.FromSeconds(240)
+            };
         }
 
         public void Dispose()
