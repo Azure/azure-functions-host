@@ -177,7 +177,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
                 { RpcWorkerConstants.RpcHttpTriggerMetadataRemoved, "1" },
                 { RpcWorkerConstants.RpcHttpBodyOnly, "1" }
             };
-            capabilities.UpdateCapabilities(addedCapabilities);
+            capabilities.UpdateCapabilities(addedCapabilities, GrpcCapabilitiesUpdateStrategy.Merge);
 
             var result = await invocationContext.ToRpcInvocationRequest(logger, capabilities, isSharedMemoryDataTransferEnabled: false, _sharedMemoryManager);
             Assert.Equal(1, result.InputData.Count);
@@ -347,7 +347,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             GrpcCapabilities grpcCapabilities = new GrpcCapabilities(logger);
             if (capabilities is not null)
             {
-                grpcCapabilities.UpdateCapabilities(capabilities);
+                grpcCapabilities.UpdateCapabilities(capabilities, GrpcCapabilitiesUpdateStrategy.Merge);
             }
 
             var headers = new HeaderDictionary();

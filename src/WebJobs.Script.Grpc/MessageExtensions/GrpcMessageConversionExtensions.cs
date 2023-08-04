@@ -371,6 +371,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 _ => throw new InvalidOperationException($"Unknown RetryStrategy RpcDataType: {retryStrategy}.")
             };
 
+        internal static GrpcCapabilitiesUpdateStrategy ToGrpcCapabilitiesUpdateStrategy(this FunctionEnvironmentReloadResponse.Types.CapabilitiesUpdateStrategy capabilityUpdateStrategy) =>
+            capabilityUpdateStrategy switch
+            {
+                FunctionEnvironmentReloadResponse.Types.CapabilitiesUpdateStrategy.Merge => GrpcCapabilitiesUpdateStrategy.Merge,
+                FunctionEnvironmentReloadResponse.Types.CapabilitiesUpdateStrategy.Replace => GrpcCapabilitiesUpdateStrategy.Replace,
+                _ => throw new InvalidOperationException($"Unknown capabilities update strategy: {capabilityUpdateStrategy}.")
+            };
+
         private static bool ShouldIncludeEmptyEntriesInMessagePayload(GrpcCapabilities capabilities)
         {
             return !string.IsNullOrWhiteSpace(capabilities.GetCapabilityState(RpcWorkerConstants.IncludeEmptyEntriesInMessagePayload));

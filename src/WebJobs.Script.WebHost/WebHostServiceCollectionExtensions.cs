@@ -182,6 +182,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // Performs function assembly analysis to generete log use of unoptimized assemblies.
             services.AddSingleton<IHostedService, AssemblyAnalyzer.AssemblyAnalysisService>();
 
+            // Performs checks to see if the sas token within the urls are expired.
+            services.AddSingleton<IHostedService, Health.TokenExpirationService>();
+
             // Manages a diagnostic listener that subscribes to diagnostic sources setup in the host
             // and persists events in the logging infrastructure.
             services.AddSingleton<IHostedService, DiagnosticListenerService>();

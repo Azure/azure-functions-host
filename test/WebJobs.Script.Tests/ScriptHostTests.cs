@@ -1453,6 +1453,39 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public void ValidateFunction_DoesntThrowForHttpTrigger_OnFlexConsumption()
+        {
+            var httpFunctions = new Dictionary<string, HttpTriggerAttribute>();
+            var name = "test";
+
+            BindingMetadata httpTriggerMetadata = BindingMetadata.Create(JObject.Parse("{\"type\": \"httpTrigger\",\"name\": \"req\",\"direction\": \"in\"}"));
+
+            var metadata = new FunctionMetadata();
+            metadata.Bindings.Add(httpTriggerMetadata);
+            var function = new Mock<FunctionDescriptor>(MockBehavior.Strict, name, null, metadata, null, null, null, null);
+            function.SetupGet(p => p.HttpTriggerAttribute).Returns(() => null);
+
+            TestEnvironment testEnvironment = new TestEnvironment();
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, ScriptConstants.FlexConsumptionSku);
+
+            var exception = Record.Exception(() =>
+            {
+                ScriptHost.ValidateFunction(function.Object, httpFunctions, testEnvironment);
+            });
+            Assert.Null(exception);
+
+            metadata.Bindings.Clear();
+
+            exception = Record.Exception(() =>
+            {
+                ScriptHost.ValidateFunction(function.Object, httpFunctions, testEnvironment);
+            });
+            Assert.Null(exception);
+
+            ScriptHost.ValidateFunction(function.Object, httpFunctions, testEnvironment);
+        }
+
+        [Fact]
         public async Task IsFunction_ReturnsExpectedResult()
         {
             var host = TestHelpers.GetDefaultHost(o =>

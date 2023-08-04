@@ -799,7 +799,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task DotNetIsolated_PlaceholderHit()
         {
-            var builder = InitializeDotNetIsolatedPlaceholderBuilder("Function1");
+            var builder = InitializeDotNetIsolatedPlaceholderBuilder("HttpRequestDataFunction");
 
             using var testServer = new TestServer(builder);
 
@@ -819,7 +819,57 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
 
-            response = await client.GetAsync("api/function1");
+            response = await client.GetAsync("api/HttpRequestDataFunction");
+            response.EnsureSuccessStatusCode();
+
+            // Placeholder hit; these should match
+            var specializedChannel = await webChannelManager.GetChannels("dotnet-isolated").Single().Value.Task;
+            Assert.Same(placeholderChannel, specializedChannel);
+            runningProcess = Process.GetProcessById(placeholderChannel.WorkerProcess.Id);
+            Assert.Contains(runningProcess.ProcessName, "FunctionsNetHost");
+
+            var log = _loggerProvider.GetLog();
+            Assert.Contains("UsePlaceholderDotNetIsolated: True", log);
+            Assert.Contains("Placeholder runtime version: '6.0'. Site runtime version: '6.0'. Match: True", log);
+            Assert.DoesNotContain("Shutting down placeholder worker.", log);
+        }
+
+        [Fact]
+        public async Task DotNetIsolated_PlaceholderHit_WithProxies()
+        {
+            // This test ensures that capabilities are correctly applied in EnvironmentReload during
+            // specialization
+            var builder = InitializeDotNetIsolatedPlaceholderBuilder("HttpRequestFunction");
+
+            using var testServer = new TestServer(builder);
+
+            var client = testServer.CreateClient();
+            client.Timeout = TimeSpan.FromSeconds(10);
+
+            var response = await client.GetAsync("api/warmup");
+            response.EnsureSuccessStatusCode();
+
+            // Validate that the channel is set up with native worker
+            var webChannelManager = testServer.Services.GetService<IWebHostRpcWorkerChannelManager>();
+
+            var placeholderChannel = await webChannelManager.GetChannels("dotnet-isolated").Single().Value.Task;
+            Assert.Contains("FunctionsNetHost.exe", placeholderChannel.WorkerProcess.Process.StartInfo.FileName);
+            Assert.NotNull(placeholderChannel.WorkerProcess.Process.Id);
+            var runningProcess = Process.GetProcessById(placeholderChannel.WorkerProcess.Id);
+            Assert.Contains(runningProcess.ProcessName, "FunctionsNetHost");
+
+            // This has to be on the actual environment in order to propagate to worker
+            using var proxyEnv = new TestScopedEnvironmentVariable("UseProxyInTest", "1");
+
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+
+            Task<HttpResponseMessage> responseTask = client.GetAsync("api/HttpRequestFunction");
+
+            // Cancellation not working with TestServer
+            await TestHelpers.Await(() => responseTask.IsCompleted, timeout: 5000);
+
+            response = await responseTask;
             response.EnsureSuccessStatusCode();
 
             // Placeholder hit; these should match
@@ -875,7 +925,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await queue.CreateIfNotExistsAsync();
             await queue.ClearAsync();
 
-            var builder = InitializeDotNetIsolatedPlaceholderBuilder("Function1", "QueueFunction");
+            var builder = InitializeDotNetIsolatedPlaceholderBuilder("HttpRequestDataFunction", "QueueFunction");
 
             using var testServer = new TestServer(builder);
 
@@ -887,7 +937,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
 
-            response = await client.GetAsync("api/function1");
+            response = await client.GetAsync("api/HttpRequestDataFunction");
             response.EnsureSuccessStatusCode();
 
             var scriptHostManager = testServer.Services.GetService<IScriptHostManager>();
@@ -939,7 +989,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private async Task DotNetIsolatedPlaceholderMiss(Action additionalSpecializedSetup = null)
         {
-            var builder = InitializeDotNetIsolatedPlaceholderBuilder("Function1");
+            var builder = InitializeDotNetIsolatedPlaceholderBuilder("HttpRequestDataFunction");
 
             // remove WEBSITE_USE_PLACEHOLDER_DOTNETISOLATED
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteUsePlaceholderDotNetIsolated, null);
@@ -964,7 +1014,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             additionalSpecializedSetup?.Invoke();
 
-            response = await client.GetAsync("api/function1");
+            response = await client.GetAsync("api/HttpRequestDataFunction");
             response.EnsureSuccessStatusCode();
 
             // Placeholder miss; new channel should be started using the deployed worker directly

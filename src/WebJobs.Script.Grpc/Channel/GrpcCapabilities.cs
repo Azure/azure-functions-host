@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Text.Json;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Grpc
@@ -26,19 +27,36 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             return null;
         }
 
-        public void UpdateCapabilities(IDictionary<string, string> capabilities)
+        public void UpdateCapabilities(IDictionary<string, string> capabilities, GrpcCapabilitiesUpdateStrategy strategy)
         {
             if (capabilities == null)
             {
                 return;
             }
 
-            _logger.LogDebug($"Updating capabilities: {capabilities.ToString()}");
+            _logger.LogDebug("Updating capabilities using {strategy} strategy. Current: {_capabilities} Incoming: {capabilities}", strategy, JsonSerializer.Serialize(_capabilities), JsonSerializer.Serialize(capabilities));
 
-            foreach (KeyValuePair<string, string> capability in capabilities)
+            switch (strategy)
             {
-                UpdateCapability(capability);
+                case GrpcCapabilitiesUpdateStrategy.Merge:
+                    foreach (KeyValuePair<string, string> capability in capabilities)
+                    {
+                        UpdateCapability(capability);
+                    }
+                    break;
+
+                case GrpcCapabilitiesUpdateStrategy.Replace:
+                    _capabilities.Clear();
+                    foreach (KeyValuePair<string, string> capability in capabilities)
+                    {
+                        UpdateCapability(capability);
+                    }
+                    break;
+                default:
+                    throw new InvalidOperationException($"Did not recognize the capability update strategy {strategy}.");
             }
+
+            _logger.LogDebug("Updated capabilities: {capabilities}", JsonSerializer.Serialize(_capabilities));
         }
 
         private void UpdateCapability(KeyValuePair<string, string> capability)

@@ -699,22 +699,89 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 {
                     SiteName = "TestSite",
                     MSISecret = "TestSecret1234",
-                    Identities = new[] { new ManagedServiceIdentity() },
-                    SystemAssignedIdentity = new ManagedServiceIdentity(),
-                    DelegatedIdentities = new[] { new ManagedServiceIdentity() },
-                    UserAssignedIdentities = new[] { new ManagedServiceIdentity() },
+                    Identities = new[] { new ManagedServiceIdentity() { 
+                        Type = ManagedServiceIdentityType.SystemAssigned, 
+                        ClientId = "identityClientId",
+                        TenantId = "identityTenantId",
+                        Thumbprint = "identityThumbprint",
+                        SecretUrl = "identitySecretUrl",
+                        ResourceId = "identityResourceId",
+                        Certificate = "identityCertificate",
+                        PrincipalId = "identityPrincipalId",
+                        AuthenticationEndpoint = "identityAuthEndpoint"
+                    } },
+                    SystemAssignedIdentity = new ManagedServiceIdentity()
+                    {
+                        Type = ManagedServiceIdentityType.SystemAssigned,
+                        ClientId = "saClientId",
+                        TenantId = "saTenantId",
+                        Thumbprint = "saThumbprint",
+                        SecretUrl = "saSecretUrl",
+                        ResourceId = "saResourceId",
+                        Certificate = "saCertificate",
+                        PrincipalId = "saPrincipalId",
+                        AuthenticationEndpoint = "saAuthEndpoint"
+                    },
+                    DelegatedIdentities = new[] { new ManagedServiceIdentity() {
+                        Type = ManagedServiceIdentityType.SystemAssigned,
+                        ClientId = "delegatedClientId",
+                        TenantId = "delegatedTenantId",
+                        Thumbprint = "delegatedThumbprint",
+                        SecretUrl = "delegatedSecretUrl",
+                        ResourceId = "delegatedResourceId",
+                        Certificate = "delegatedCertificate",
+                        PrincipalId = "delegatedPrincipalId",
+                        AuthenticationEndpoint = "delegatedAuthEndpoint"
+                    } },
+                    UserAssignedIdentities = new[] { new ManagedServiceIdentity() {
+                        Type = ManagedServiceIdentityType.UserAssigned,
+                        ClientId = "uaClientId",
+                        TenantId = "uaTenantId",
+                        Thumbprint = "uaThumbprint",
+                        SecretUrl = "uaSecretUrl",
+                        ResourceId = "uaResourceId",
+                        Certificate = "uaCertificate",
+                        PrincipalId = "uaPrincipalId",
+                        AuthenticationEndpoint = "uaAuthEndpoint"
+                    } },
                 }
             };
-
-            static async void verifyProperties(HttpRequestMessage request, CancellationToken token)
+            
+            static void verifyMSIPropertiesHelper(ManagedServiceIdentity msi)
             {
-                var requestContent = await request.Content.ReadAsStringAsync(token);
+                Assert.NotNull(msi);
+                Assert.NotNull(msi.Type);
+                Assert.NotNull(msi.ClientId);
+                Assert.NotNull(msi.TenantId);
+                Assert.NotNull(msi.Thumbprint);
+                Assert.NotNull(msi.SecretUrl);
+                Assert.NotNull(msi.ResourceId);
+                Assert.NotNull(msi.Certificate);
+                Assert.NotNull(msi.PrincipalId);
+                Assert.NotNull(msi.AuthenticationEndpoint);
+            }
+
+            static void verifyProperties(HttpRequestMessage request, CancellationToken token)
+            {
+                var requestContent = request.Content.ReadAsStringAsync(token).GetAwaiter().GetResult();
                 var msiContext = JsonConvert.DeserializeObject<MSIContext>(requestContent);
                 Assert.NotNull(msiContext);
                 Assert.NotNull(msiContext.Identities);
                 Assert.NotNull(msiContext.SystemAssignedIdentity);
                 Assert.NotNull(msiContext.UserAssignedIdentities);
                 Assert.NotNull(msiContext.DelegatedIdentities);
+
+                var identityList = new List<ManagedServiceIdentity>();
+                identityList.AddRange(msiContext.Identities);
+                identityList.Add(msiContext.SystemAssignedIdentity);
+                identityList.AddRange(msiContext.UserAssignedIdentities);
+                identityList.AddRange(msiContext.DelegatedIdentities);
+
+                foreach (ManagedServiceIdentity identity in identityList)
+                {
+                    verifyMSIPropertiesHelper(identity);
+                }
+
                 Assert.True(!string.IsNullOrEmpty(msiContext.MSISecret));
                 Assert.True(!string.IsNullOrEmpty(msiContext.SiteName));
             }
