@@ -11,12 +11,14 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using DryIoc;
+using Microsoft.Azure.Web.DataProtection;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-
 using DataProtectionConstants = Microsoft.Azure.Web.DataProtection.Constants;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
@@ -90,12 +92,26 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         _logger.LogDebug("Loading host secrets");
 
                         hostSecrets = await LoadSecretsAsync<HostSecrets>();
-                        if (hostSecrets == null)
+                        try
                         {
-                            // host secrets do not yet exist so generate them
-                            _logger.LogDebug(Resources.TraceHostSecretGeneration);
-                            hostSecrets = GenerateHostSecrets();
-                            await PersistSecretsAsync(hostSecrets);
+                            if (hostSecrets == null)
+                            {
+                                // host secrets do not yet exist so generate them
+                                _logger.LogDebug(Resources.TraceHostSecretGeneration);
+                                hostSecrets = GenerateHostSecrets();
+                                await PersistSecretsAsync(hostSecrets);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogDebug(ex, "Exception while generating host secrets. This can happen if another instance is also generating secrets. Attempting to read secrets again.");
+                            hostSecrets = await LoadSecretsAsync<HostSecrets>();
+
+                            if (hostSecrets == null)
+                            {
+                                _logger.LogError("Host secrets are still null on second attempt.");
+                                throw;
+                            }
                         }
 
                         try
@@ -158,14 +174,29 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         _logger.LogDebug($"Loading secrets for function '{functionName}'");
 
                         FunctionSecrets secrets = await LoadFunctionSecretsAsync(functionName);
-                        if (secrets == null)
-                        {
-                            // no secrets exist for this function so generate them
-                            string message = string.Format(Resources.TraceFunctionSecretGeneration, functionName);
-                            _logger.LogDebug(message);
-                            secrets = GenerateFunctionSecrets();
 
-                            await PersistSecretsAsync(secrets, functionName);
+                        try
+                        {
+                            if (secrets == null)
+                            {
+                                // no secrets exist for this function so generate them
+                                string message = string.Format(Resources.TraceFunctionSecretGeneration, functionName);
+                                _logger.LogDebug(message);
+                                secrets = GenerateFunctionSecrets();
+
+                                await PersistSecretsAsync(secrets, functionName);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogDebug(ex, "Exception while generating function secrets. This can happen if another instance is also generating secrets. Attempting to read secrets again.");
+                            secrets = await LoadFunctionSecretsAsync(functionName);
+
+                            if (secrets == null)
+                            {
+                                _logger.LogError("Function secrets are still null on second attempt.");
+                                throw;
+                            }
                         }
 
                         try

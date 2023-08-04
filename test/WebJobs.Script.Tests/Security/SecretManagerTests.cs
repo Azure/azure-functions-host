@@ -448,6 +448,68 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
         }
 
         [Fact]
+        public async Task SecretsRepository_SimultaneousCreates_Throws_Conflict()
+        {
+            var mockValueConverterFactory = GetConverterFactoryMock(false, false);
+            var metricsLogger = new TestMetricsLogger();
+
+            // Test repository that will fail on WriteAsync() due to a conflict, but will replicate a success when LoadSecretsAsync() is called
+            // indicating that there was race condition
+            var testRepository = new TestSecretsRepository(true, true, true);
+            string testFunctionName = "host";
+
+            using (var secretManager = new SecretManager(testRepository, mockValueConverterFactory.Object, _logger, metricsLogger, _hostNameProvider, _startupContextProvider))
+            {
+                var tasks = new List<Task<HostSecretsInfo>>();
+                for (int i = 0; i < 2; i++)
+                {
+                    tasks.Add(secretManager.GetHostSecretsAsync());
+                }
+
+                // Ensure nothing is there.
+                HostSecrets secretsContent = await testRepository.ReadAsync(ScriptSecretsType.Host, testFunctionName) as HostSecrets;
+                Assert.Null(secretsContent);
+                await Task.WhenAll(tasks);
+
+                // verify all calls return the same result
+                var masterKey = tasks.First().Result.MasterKey;
+                var functionKey = tasks.First().Result.FunctionKeys.First();
+                Assert.True(tasks.Select(p => p.Result).All(q => q.MasterKey == masterKey));
+                Assert.True(tasks.Select(p => p.Result).All(q => q.FunctionKeys.First().Value == functionKey.Value));
+
+                // verify generated master and function keys are valid
+                tasks.Select(p => p.Result).All(q => ValidateHostSecrets(q));
+            }
+        }
+
+        [Fact]
+        public async Task FunctionSecrets_SimultaneousCreates_Throws_Conflict()
+        {
+            var mockValueConverterFactory = GetConverterFactoryMock(false, false);
+            var metricsLogger = new TestMetricsLogger();
+            var testRepository = new TestSecretsRepository(true, true, true);
+            string testFunctionName = $"TestFunction";
+
+            using (var secretManager = new SecretManager(testRepository, mockValueConverterFactory.Object, _logger, metricsLogger, _hostNameProvider, _startupContextProvider))
+            {
+                var tasks = new List<Task<IDictionary<string, string>>>();
+                for (int i = 0; i < 2; i++)
+                {
+                    tasks.Add(secretManager.GetFunctionSecretsAsync(testFunctionName));
+                }
+
+                await Task.WhenAll(tasks);
+
+                // verify all calls return the same result
+                Assert.Equal(1, testRepository.FunctionSecrets.Count);
+                var functionSecrets = (FunctionSecrets)testRepository.FunctionSecrets[testFunctionName];
+                string defaultKeyValue = functionSecrets.Keys.Where(p => p.Name == "default").Single().Value;
+                SecretGeneratorTests.ValidateSecret(defaultKeyValue, SecretGenerator.FunctionKeySeed);
+                Assert.True(tasks.Select(p => p.Result).All(t => t["default"] == defaultKeyValue));
+            }
+        }
+
+        [Fact]
         public async Task GetHostSecrets_WhenNoHostSecretFileExists_GeneratesSecretsAndPersistsFiles()
         {
             using (var directory = new TempDirectory())
@@ -532,7 +594,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
                 KeyOperationResult result;
 
-                ISecretsRepository repository = new TestSecretsRepository(false, true, HttpStatusCode.InternalServerError);
+                ISecretsRepository repository = new TestSecretsRepository(false, true, false, HttpStatusCode.InternalServerError);
                 using (var secretManager = CreateSecretManager(directory.Path, simulateWriteConversion: false, secretsRepository: repository))
                 {
                     try
@@ -1265,6 +1327,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             private Random _rand = new Random();
             private bool _enforceSerialWrites = false;
             private bool _forceWriteErrors = false;
+            private bool _shouldSuceedAfterFailing = false;
             private HttpStatusCode _httpstaus;
 
             public TestSecretsRepository(bool enforceSerialWrites)
@@ -1272,10 +1335,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 _enforceSerialWrites = enforceSerialWrites;
             }
 
-            public TestSecretsRepository(bool enforceSerialWrites, bool forceWriteErrors, HttpStatusCode httpstaus = HttpStatusCode.InternalServerError)
+            public TestSecretsRepository(bool enforceSerialWrites, bool forceWriteErrors, bool shouldSucceedAfterFailing = false, HttpStatusCode httpstaus = HttpStatusCode.InternalServerError)
                 : this(enforceSerialWrites)
             {
                 _forceWriteErrors = forceWriteErrors;
+                _shouldSuceedAfterFailing = shouldSucceedAfterFailing;
                 _httpstaus = httpstaus;
             }
 
@@ -1319,6 +1383,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             {
                 if (_forceWriteErrors)
                 {
+                    // Replicate making the first write fail, but succeed on the second attempt
+                    if (_shouldSuceedAfterFailing)
+                    {
+                        await WriteAsyncHelper(type, functionName, secrets);
+                    }
                     throw new RequestFailedException((int)_httpstaus, "Error");
                 }
 
@@ -1327,6 +1396,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                     throw new Exception("Concurrent writes detected!");
                 }
 
+                await WriteAsyncHelper(type, functionName, secrets);
+            }
+
+            private async Task WriteAsyncHelper(ScriptSecretsType type, string functionName, ScriptSecrets secrets)
+            {
                 Interlocked.Increment(ref _writeCount);
 
                 await Task.Delay(_rand.Next(100, 300));
