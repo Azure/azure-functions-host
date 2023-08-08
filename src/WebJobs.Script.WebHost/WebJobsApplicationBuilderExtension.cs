@@ -36,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // Ensure the ClrOptimizationMiddleware is registered before all middleware
             builder.UseMiddleware<ClrOptimizationMiddleware>();
 
-            // Update the request URL path(which was altered by App service FE) to raw request path
+            // Update the request URL path (which was altered by App service FE) to raw request path
             // only if customer has opted in using the app setting.
             builder.UseWhen(
                 _ => string.Equals(
