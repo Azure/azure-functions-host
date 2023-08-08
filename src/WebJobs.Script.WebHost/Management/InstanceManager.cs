@@ -63,25 +63,37 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
             if (msiEnabled)
             {
-                if (context.MSIContext == null)
+                if (context.MSIContext == null && context.EncryptedTokenServiceSpecializationPayload == null)
                 {
-                    _logger.LogWarning("Skipping specialization of MSI sidecar since MSIContext was absent");
+                    _logger.LogWarning("Skipping specialization of MSI sidecar since MSIContext and EncryptedTokenServiceSpecializationPayload were absent");
                     await _meshServiceClient.NotifyHealthEvent(ContainerHealthEventType.Fatal, this.GetType(),
-                        "Could not specialize MSI sidecar since MSIContext was empty");
+                        "Could not specialize MSI sidecar since MSIContext and EncryptedTokenServiceSpecializationPayload were empty");
                 }
                 else
                 {
                     using (_metricsLogger.LatencyEvent(MetricEventNames.LinuxContainerSpecializationMSIInit))
                     {
                         var uri = new Uri(endpoint);
-                        var address = $"http://{uri.Host}:{uri.Port}{ScriptConstants.LinuxMSISpecializationStem}";
+                        var addressStem = GetMsiSpecializationRequestAddressStem(context);
+
+                        var address = $"http://{uri.Host}:{uri.Port}{addressStem}";
 
                         _logger.LogDebug($"Specializing sidecar at {address}");
 
+                        StringContent payload;
+                        if (string.IsNullOrEmpty(context.EncryptedTokenServiceSpecializationPayload))
+                        {
+                            payload = new StringContent(JsonConvert.SerializeObject(context.MSIContext),
+                                    Encoding.UTF8, "application/json");
+                        }
+                        else
+                        {
+                            payload = new StringContent(context.EncryptedTokenServiceSpecializationPayload, Encoding.UTF8);
+                        }
+
                         var requestMessage = new HttpRequestMessage(HttpMethod.Post, address)
                         {
-                            Content = new StringContent(JsonConvert.SerializeObject(context.MSIContext),
-                                Encoding.UTF8, "application/json")
+                            Content = payload
                         };
 
                         var response = await _client.SendAsync(requestMessage);
@@ -101,6 +113,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
 
             return null;
+        }
+
+        private string GetMsiSpecializationRequestAddressStem(HostAssignmentContext context)
+        {
+            var stem = ScriptConstants.LinuxMSISpecializationStem;
+
+            if (!string.IsNullOrEmpty(context.EncryptedTokenServiceSpecializationPayload))
+            {
+                _logger.LogDebug("Using encrypted TokenService payload format");
+
+                // use default encrypted API endpoint if endpoint not provided in context
+                stem = string.IsNullOrEmpty(context.TokenServiceApiEndpoint)
+                    ? ScriptConstants.LinuxEncryptedTokenServiceSpecializationStem
+                    : context.TokenServiceApiEndpoint;
+            }
+
+            return stem;
         }
 
         public bool StartAssignment(HostAssignmentContext context)
