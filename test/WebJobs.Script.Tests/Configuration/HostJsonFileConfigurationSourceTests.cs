@@ -161,8 +161,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                     'categoryFilter': {
                         'defaultLevel': 'Information'
                     },
-                    'secret': 'Hey=AS1$@%#$%W-k2j"";SharedAccessKey=foo,Data Source=barzons,Server=bathouse""testing',
-                    'values': [ 'plain', 10, 'Password=hunter2' ]
+                    'prop': 'Hey=AS1$@%#$%W-k2j"";SharedAccessKey=foo,Data Source=barzons,Server=bathouse""testing',
+                    'values': [ 'plain', 10, 'Password=hunter2' ],
+                    'my-password': 'hunter2',
+                    'service_token': 'token',
+                    'StorageSas': 'access'
                 },
                 'Values': {
                     'MyCustomValue': 'abc'
@@ -185,8 +188,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                     'categoryFilter': {
                         'defaultLevel': 'Information'
                     },
-                    'secret': 'Hey=AS1$@%#$%W-k2j"";[Hidden Credential]""testing',
-                    'values': [ 'plain', 10, '[Hidden Credential]' ]
+                    'prop': 'Hey=AS1$@%#$%W-k2j"";[Hidden Credential]""testing',
+                    'values': [ 'plain', 10, '[Hidden Credential]' ],
+                    'my-password': '[Hidden Credential]',
+                    'service_token': '[Hidden Credential]',
+                    'StorageSas': '[Hidden Credential]'
                 }
             }";
 

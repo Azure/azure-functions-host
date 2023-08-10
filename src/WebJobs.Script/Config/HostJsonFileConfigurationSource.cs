@@ -54,6 +54,8 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                 "customHandler", "httpWorker", "extensions", "concurrency"
             };
 
+            private static readonly string[] CredentialNameFragments = new[] { "password", "pwd", "key", "secret", "token", "sas" };
+
             private readonly HostJsonFileConfigurationSource _configurationSource;
             private readonly Stack<string> _path;
             private readonly ILogger _logger;
@@ -275,6 +277,19 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 
             internal static string SanitizeHostJson(JObject hostJsonObject)
             {
+                static bool IsPotentialCredential(string name)
+                {
+                    foreach (string fragment in CredentialNameFragments)
+                    {
+                        if (name.Contains(fragment, StringComparison.OrdinalIgnoreCase))
+                        {
+                            return true;
+                        }
+                    }
+
+                    return false;
+                }
+
                 static JToken Sanitize(JToken token)
                 {
                     if (token is JObject obj)
@@ -282,7 +297,14 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                         JObject sanitized = new JObject();
                         foreach (var prop in obj)
                         {
-                            sanitized[prop.Key] = Sanitize(prop.Value);
+                            if (IsPotentialCredential(prop.Key))
+                            {
+                                sanitized[prop.Key] = Sanitizer.SecretReplacement;
+                            }
+                            else
+                            {
+                                sanitized[prop.Key] = Sanitize(prop.Value);
+                            }
                         }
 
                         return sanitized;
