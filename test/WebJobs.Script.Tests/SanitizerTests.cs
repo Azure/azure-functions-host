@@ -33,6 +33,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData("test&sig=", "test[Hidden Credential]")]
         [InlineData("SharedAccessKey=foo", "[Hidden Credential]")]
         [InlineData(@"Hey=AS1$@%#$%W-k2j"";SharedAccessKey=foo,Data Source=barzons,Server=bathouse'testing", @"Hey=AS1$@%#$%W-k2j"";[Hidden Credential]'testing")]
+        [InlineData(".access.key: ABC", "[Hidden Credential]")]
+        [InlineData(".access.secret: ABC", "[Hidden Credential]")]
         public void SanitizeString(string input, string expectedOutput)
         {
             var sanitized = Sanitizer.Sanitize(input);

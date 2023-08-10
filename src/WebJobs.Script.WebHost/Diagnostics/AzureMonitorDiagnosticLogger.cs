@@ -73,10 +73,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             }
 
             (string exceptionType, string exceptionMessage, string exceptionDetails) = exception.GetExceptionDetails();
-            if (exception != null)
-            {
-                formattedMessage = Sanitizer.Sanitize(formattedMessage);
-            }
+
+            formattedMessage = Sanitizer.Sanitize(formattedMessage);
 
             // enumerate all the state values once, capturing the values we'll use below
             // last one wins

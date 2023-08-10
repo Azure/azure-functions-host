@@ -16,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Logging
 
         // List of keywords that should not be replaced with [Hidden Credential]
         private static readonly string[] AllowedTokens = new string[] { "PublicKeyToken=" };
-        internal static readonly string[] CredentialTokens = new string[] { "Token=", "DefaultEndpointsProtocol=http", "AccountKey=", "Data Source=", "Server=", "Password=", "pwd=", "&amp;sig=", "&sig=", "SharedAccessKey=" };
+        internal static readonly string[] CredentialTokens = new string[] { "Token=", "DefaultEndpointsProtocol=http", "AccountKey=", "Data Source=", "Server=", "Password=", "pwd=", "&amp;sig=", "&sig=", "SharedAccessKey=", ".access.key:", ".access.secret:" };
 
         /// <summary>
         /// Removes well-known credential strings from strings.
@@ -78,6 +78,6 @@ namespace Microsoft.Azure.WebJobs.Logging
         /// Checks if a string even *possibly* contains one of our <see cref="CredentialTokens"/>.
         /// Useful for short-circuiting more expensive checks and replacements if it's known we wouldn't do anything.
         /// </summary>
-        internal static bool MayContainCredentials(string input) => input.Contains("=");
+        internal static bool MayContainCredentials(string input) => input.Contains("=") || input.Contains(":");
     }
 }
