@@ -275,14 +275,45 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 
             internal static string SanitizeHostJson(JObject hostJsonObject)
             {
-                JObject sanitizedObject = new JObject();
+                static JToken Sanitize(JToken token)
+                {
+                    if (token is JObject obj)
+                    {
+                        JObject sanitized = new JObject();
+                        foreach (var prop in obj)
+                        {
+                            sanitized[prop.Key] = Sanitize(prop.Value);
+                        }
 
+                        return sanitized;
+                    }
+
+                    if (token is JArray arr)
+                    {
+                        JArray sanitized = new JArray();
+                        foreach (var value in arr)
+                        {
+                            sanitized.Add(Sanitize(value));
+                        }
+
+                        return sanitized;
+                    }
+
+                    if (token.Type == JTokenType.String)
+                    {
+                        return Sanitizer.Sanitize(token.ToString());
+                    }
+
+                    return token;
+                }
+
+                JObject sanitizedObject = new JObject();
                 foreach (var propName in WellKnownHostJsonProperties)
                 {
                     var propValue = hostJsonObject[propName];
                     if (propValue != null)
                     {
-                        sanitizedObject[propName] = propValue;
+                        sanitizedObject[propName] = Sanitize(propValue);
                     }
                 }
 

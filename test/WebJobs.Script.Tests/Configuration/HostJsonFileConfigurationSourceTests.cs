@@ -160,7 +160,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 'logging': {
                     'categoryFilter': {
                         'defaultLevel': 'Information'
-                    }
+                    },
+                    'secret': 'Hey=AS1$@%#$%W-k2j"";SharedAccessKey=foo,Data Source=barzons,Server=bathouse""testing',
+                    'values': [ 'plain', 10, 'Password=hunter2' ]
                 },
                 'Values': {
                     'MyCustomValue': 'abc'
@@ -182,7 +184,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 'logging': {
                     'categoryFilter': {
                         'defaultLevel': 'Information'
-                    }
+                    },
+                    'secret': 'Hey=AS1$@%#$%W-k2j"";[Hidden Credential]""testing',
+                    'values': [ 'plain', 10, '[Hidden Credential]' ]
                 }
             }";
 
