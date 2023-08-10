@@ -30,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Logging
                 return string.Empty;
             }
 
-            // Everything we *might* replace contains an equal, so if we don't have that short circuit out.
+            // Everything we *might* replace contains an equal or colon, so if we don't have that short circuit out.
             // This can be likely be more efficient with a Regex, but that's best done with a large test suite and this is
             // a quick/simple win for the high traffic case.
             if (!MayContainCredentials(input))
