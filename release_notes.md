@@ -21,3 +21,4 @@
 - Add new Host to Worker RPC extensibility feature for out-of-proc workers. (https://github.com/Azure/azure-functions-host/pull/9292)
 - Apply capabilities on environment reload (placeholder mode scenarios) (https://github.com/Azure/azure-functions-host/pull/9367)
 - Update PowerShell Worker 7.2 to 4.0.2890 [Release Note](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.2890)
+- Improve host.json sanitization
