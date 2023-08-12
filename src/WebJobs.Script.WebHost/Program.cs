@@ -23,12 +23,46 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     {
         public static void Main(string[] args)
         {
-            InitializeProcess();
+            try
+            {
+                InitializeProcess();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error while initializing the WebHost");
+                WriteExceptionLog(ex);
+                throw;
+            }
 
-            var host = BuildWebHost(args);
+            IWebHost host;
+
+            try
+            {
+                host = BuildWebHost(args);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error while building the WebHost");
+                WriteExceptionLog(ex);
+                throw;
+            }
 
             host.RunAsync()
                 .Wait();
+        }
+
+        private static void WriteExceptionLog(Exception ex)
+        {
+            Console.WriteLine($"Exception {ex.GetType()}, {ex.Message}");
+            Console.WriteLine(ex.StackTrace);
+
+            if (ex.InnerException != null)
+            {
+                WriteExceptionLog(ex.InnerException);
+                Console.WriteLine();
+            }
+
+            Console.WriteLine();
         }
 
         public static IWebHost BuildWebHost(string[] args)
