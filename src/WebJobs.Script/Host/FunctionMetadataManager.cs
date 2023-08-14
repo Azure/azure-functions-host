@@ -87,7 +87,11 @@ namespace Microsoft.Azure.WebJobs.Script
             if (forceRefresh || _servicesReset || _functionMetadataArray.IsDefaultOrEmpty)
             {
                 _functionMetadataArray = LoadFunctionMetadata(forceRefresh, includeCustomProviders, workerConfigs: workerConfigs);
-                _logger.FunctionMetadataManagerFunctionsLoaded(ApplyAllowList(_functionMetadataArray).Count());
+                // The host and worker metadata are checked in parallel, so we don't want to emit this extra logging reading the metadata
+                if (!includeCustomProviders)
+                {
+                    _logger.FunctionMetadataManagerFunctionsLoaded(ApplyAllowList(_functionMetadataArray).Count());
+                }
                 _servicesReset = false;
             }
 
