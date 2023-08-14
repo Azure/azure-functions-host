@@ -12,6 +12,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string ExternalStartupErrorHelpLink = "https://go.microsoft.com/fwlink/?linkid=2224847";
 
         public const string SasTokenExpiringErrorCode = "AZFD0006";
-        public const string SasTokenExpiringErrorHelpLink = "https://go.microsoft.com/fwlink/?linkid=2241431"; // TODO: update this link with new documentation page
+        public const string SasTokenExpiringErrorHelpLink = "https://go.microsoft.com/fwlink/?linkid=2244092";
     }
 }
