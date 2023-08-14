@@ -201,7 +201,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     o.AppDirectory = applicationHostOptions.ScriptPath;
                 })
                 .AddHttp()
-                .AddTimersWithStorage()
+                .AddTimersStorage()
                 .AddManualTrigger()
                 .AddWarmup();
 
