@@ -87,11 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script
             if (forceRefresh || _servicesReset || _functionMetadataArray.IsDefaultOrEmpty)
             {
                 _functionMetadataArray = LoadFunctionMetadata(forceRefresh, includeCustomProviders, workerConfigs: workerConfigs);
-                // The host and worker metadata are checked in parallel, so we don't want to emit this extra logging reading the metadata
-                if (!includeCustomProviders)
-                {
-                    _logger.FunctionMetadataManagerFunctionsLoaded(ApplyAllowList(_functionMetadataArray).Count());
-                }
+                _logger.FunctionMetadataManagerFunctionsLoaded(ApplyAllowList(_functionMetadataArray).Count());
                 _servicesReset = false;
             }
 
@@ -219,7 +215,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private void AddMetadataFromCustomProviders(IEnumerable<IFunctionProvider> functionProviders, List<FunctionMetadata> functionMetadataList)
         {
-            _logger.FunctionMetadataProviderParsingFunctions();
+            _logger.FunctionMetadataProviderParsingFunctions(nameof(FunctionMetadataManager));
 
             var functionProviderTasks = new List<Task<ImmutableArray<FunctionMetadata>>>();
             foreach (var functionProvider in functionProviders)
@@ -232,7 +228,7 @@ namespace Microsoft.Azure.WebJobs.Script
             // This is used to make sure no duplicates are registered
             var distinctFunctionNames = new HashSet<string>(functionMetadataList.Select(m => m.Name));
 
-            _logger.FunctionMetadataProviderFunctionFound(functionMetadataListArray.Length);
+            _logger.FunctionMetadataProviderFunctionFoundCustomProvider(functionMetadataListArray.Length);
 
             foreach (var metadataArray in functionMetadataListArray)
             {

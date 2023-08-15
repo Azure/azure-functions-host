@@ -47,9 +47,9 @@ namespace Microsoft.Azure.WebJobs.Script
 
             if (_functions.IsDefaultOrEmpty || forceRefresh)
             {
-                _logger.FunctionMetadataProviderParsingFunctions();
+                _logger.FunctionMetadataProviderParsingFunctions(nameof(HostFunctionMetadataProvider));
                 Collection<FunctionMetadata> functionMetadata = ReadFunctionsMetadata(workerConfigs);
-                _logger.FunctionMetadataProviderFunctionFound(functionMetadata.Count);
+                _logger.FunctionMetadataProviderFunctionFound(functionMetadata.Count, nameof(HostFunctionMetadataProvider));
                 _functions = functionMetadata.ToImmutableArray();
             }
 

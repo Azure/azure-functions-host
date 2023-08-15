@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script
             _logger.LogInformation("Fetching metadata for workerRuntime: {workerRuntime}", _workerRuntime);
 
             IEnumerable<FunctionMetadata> functions = new List<FunctionMetadata>();
-            _logger.FunctionMetadataProviderParsingFunctions();
+            _logger.FunctionMetadataProviderParsingFunctions(nameof(WorkerFunctionMetadataProvider));
 
             if (_functions.IsDefaultOrEmpty || forceRefresh)
             {
@@ -102,7 +102,7 @@ namespace Microsoft.Azure.WebJobs.Script
                             }
 
                             _functions = functions.ToImmutableArray();
-                            _logger.FunctionMetadataProviderFunctionFound(_functions.IsDefault ? 0 : _functions.Count());
+                            _logger.FunctionMetadataProviderFunctionFound(_functions.IsDefault ? 0 : _functions.Count(), nameof(WorkerFunctionMetadataProvider));
 
                             // Validate if the app has functions in legacy format and add in logs to inform about the mixed app
                             _ = Task.Delay(TimeSpan.FromMinutes(1)).ContinueWith(t => ValidateFunctionAppFormat(_scriptOptions.CurrentValue.ScriptPath, _logger, _environment));
