@@ -33,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         /// Gets or sets the process startup timeout. This is the time from when the process is
         /// launched to when the StartStream message is received.
         /// </summary>
-        public TimeSpan ProcessStartupTimeout { get; set; } = TimeSpan.FromSeconds(60);
+        public TimeSpan ProcessStartupTimeout { get; set; } = TimeSpan.FromSeconds(300);
 
         /// <summary>
         /// Gets or sets the worker initialization timeout. This is the time from when the WorkerInitRequest
