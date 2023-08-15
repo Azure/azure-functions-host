@@ -160,7 +160,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 'logging': {
                     'categoryFilter': {
                         'defaultLevel': 'Information'
-                    }
+                    },
+                    'applicationInsights': {
+                        'prop': 'Hey=AS1$@%#$%W-k2j"";SharedAccessKey=foo,Data Source=barzons,Server=bathouse""testing',
+                        'values': [ 'plain', 10, 'Password=hunter2' ],
+                        'sampleSettings': {
+                            'my-password': 'hunter2',
+                            'service_token': 'token',
+                            'StorageSas': 'access'
+                        }
+                    },
+                    'prop': 'Hey=AS1$@%#$%W-k2j"";SharedAccessKey=foo,Data Source=barzons,Server=bathouse""testing',
+                    'values': [ 'plain', 10, 'Password=hunter2' ],
+                    'my-password': 'hunter2',
+                    'service_token': 'token',
+                    'StorageSas': 'access',
+                    'aSecret': { 'value1': 'value' }
                 },
                 'Values': {
                     'MyCustomValue': 'abc'
@@ -182,7 +197,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 'logging': {
                     'categoryFilter': {
                         'defaultLevel': 'Information'
-                    }
+                    },
+                    'applicationInsights': {
+                        'prop': 'Hey=AS1$@%#$%W-k2j"";[Hidden Credential]""testing',
+                        'values': [ 'plain', 10, '[Hidden Credential]' ],
+                        'sampleSettings': {
+                            'my-password': '[Hidden Credential]',
+                            'service_token': '[Hidden Credential]',
+                            'StorageSas': '[Hidden Credential]'
+                        }
+                    },
+                    'prop': 'Hey=AS1$@%#$%W-k2j"";[Hidden Credential]""testing',
+                    'values': [ 'plain', 10, '[Hidden Credential]' ],
+                    'my-password': '[Hidden Credential]',
+                    'service_token': '[Hidden Credential]',
+                    'StorageSas': '[Hidden Credential]',
+                    'aSecret': '[Hidden Credential]'
                 }
             }";
 
