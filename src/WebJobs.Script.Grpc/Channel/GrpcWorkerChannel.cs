@@ -277,7 +277,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             // note: it is important that the ^^^ StartStream is in place *before* we start process the loop, otherwise we get a race condition
             _ = ProcessInbound();
 
-            _workerChannelLogger.LogDebug("Initiating Worker Process start up");
+            _workerChannelLogger.LogInformation("Initiating Worker Process start up");
             await _rpcWorkerProcess.StartProcessAsync();
             _state = _state | RpcWorkerChannelState.Initializing;
             await _workerInitTask.Task;
