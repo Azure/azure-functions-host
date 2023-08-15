@@ -335,7 +335,12 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
 
         private bool IsDotnetIsolatedApp(IList<RpcWorkerConfig> workerConfigs)
         {
-            return workerConfigs.Where(a => a.Description.Language == RpcWorkerConstants.DotNetIsolatedLanguageWorkerName).Any();
+            if (workerConfigs != null)
+            {
+                return workerConfigs.Where(a => a.Description?.Language == RpcWorkerConstants.DotNetIsolatedLanguageWorkerName).Any();
+            }
+
+            return false;
         }
 
         private class TypeNameEqualityComparer : IEqualityComparer<Type>
