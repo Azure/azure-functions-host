@@ -337,7 +337,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
         {
             if (workerConfigs != null)
             {
-                return workerConfigs.Where(a => a.Description?.Language == RpcWorkerConstants.DotNetIsolatedLanguageWorkerName).Any();
+                return workerConfigs.Where(config => config.Description is not null && config.Description.Language == RpcWorkerConstants.DotNetIsolatedLanguageWorkerName).Any();
             }
 
             return false;

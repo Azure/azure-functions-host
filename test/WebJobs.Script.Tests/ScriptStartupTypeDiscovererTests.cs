@@ -427,7 +427,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 //Assert
                 var traces = testLoggerProvider.GetAllLogMessages();
-                var expectedTrace = traces.FirstOrDefault(a => a.EventId.Name.Equals("ScriptStartNotLoadingExtensionBundle"));
+                var expectedTrace = traces.FirstOrDefault(val => val.EventId.Name.Equals("ScriptStartNotLoadingExtensionBundle"));
                 Assert.NotNull(expectedTrace);
 
                 AreExpectedMetricsGenerated(testMetricsLogger);
