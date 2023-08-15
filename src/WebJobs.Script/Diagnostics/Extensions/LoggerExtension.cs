@@ -84,12 +84,12 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
         private static readonly Action<ILogger, Exception> _functionMetadataManagerLoadingFunctionsMetadata =
             LoggerMessage.Define(LogLevel.Information,
                 new EventId(314, nameof(FunctionMetadataManagerLoadingFunctionsMetadata)),
-                "Loading functions metadata From FunctionMetadataManager");
+                "Loading functions metadata");
 
         private static readonly Action<ILogger, int, Exception> _functionMetadataManagerFunctionsLoaded =
             LoggerMessage.Define<int>(LogLevel.Information,
                 new EventId(315, nameof(FunctionMetadataManagerFunctionsLoaded)),
-                "{count} functions loaded from FunctionMetadataManager");
+                "{count} functions loaded");
 
         private static readonly Action<ILogger, string, string, Exception> _autoRecoveringFileSystemWatcherFailureDetected =
             LoggerMessage.Define<string, string>(LogLevel.Warning,
