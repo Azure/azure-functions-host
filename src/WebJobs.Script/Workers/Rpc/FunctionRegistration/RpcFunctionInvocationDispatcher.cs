@@ -149,7 +149,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             {
                 var rpcWorkerChannel = _rpcWorkerChannelFactory.Create(_scriptOptions.RootScriptPath, language, _metricsLogger, attemptCount, _workerConfigs);
 
-                _logger.LogInformation($"Add RPC channel for {language}. Attempt count: {attemptCount}");
+                _logger.LogInformation($"###Add RPC channel for {language}. Attempt count: {attemptCount}");
 
                 _jobHostLanguageWorkerChannelManager.AddChannel(rpcWorkerChannel, language);
 
@@ -573,6 +573,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             {
                 runtime = _workerRuntime;
             }
+
+            _logger.LogInformation($"### Start worker channel for the {runtime} runtime");
 
             if (_languageWorkerErrors.Count < ErrorEventsThreshold)
             {
