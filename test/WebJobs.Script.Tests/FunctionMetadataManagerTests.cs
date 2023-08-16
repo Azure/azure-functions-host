@@ -12,9 +12,12 @@ using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Xunit;
+using static Microsoft.Azure.AppService.Proxy.Common.Constants.WellKnownHttpHeaders;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -143,6 +146,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var mockFunctionMetadataProvider = new Mock<IFunctionMetadataProvider>();
             var mockFunctionProvider = new Mock<IFunctionProvider>();
             var workerConfigs = TestHelpers.GetTestWorkerConfigs();
+            var testLoggerProvider = new TestLoggerProvider();
+            var loggerFactory = new LoggerFactory();
+            loggerFactory.AddProvider(testLoggerProvider);
 
             mockFunctionMetadataProvider.Setup(m => m.GetFunctionMetadataAsync(workerConfigs, SystemEnvironment.Instance, false)).Returns(Task.FromResult(new Collection<FunctionMetadata>().ToImmutableArray()));
             mockFunctionMetadataProvider.Setup(m => m.FunctionErrors).Returns(new Dictionary<string, ICollection<string>>().ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray()));
@@ -153,12 +159,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             mockFunctionProvider.Setup(m => m.FunctionErrors).Returns(mockFunctionErrors.ToImmutableDictionary());
 
             FunctionMetadataManager testFunctionMetadataManager = TestFunctionMetadataManager.GetFunctionMetadataManager(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions),
-                mockFunctionMetadataProvider.Object, new List<IFunctionProvider>() { mockFunctionProvider.Object }, new OptionsWrapper<HttpWorkerOptions>(_defaultHttpWorkerOptions), MockNullLoggerFactory.CreateLoggerFactory(), new TestOptionsMonitor<LanguageWorkerOptions>(TestHelpers.GetTestLanguageWorkerOptions()));
+                mockFunctionMetadataProvider.Object, new List<IFunctionProvider>() { mockFunctionProvider.Object }, new OptionsWrapper<HttpWorkerOptions>(_defaultHttpWorkerOptions), loggerFactory, new TestOptionsMonitor<LanguageWorkerOptions>(TestHelpers.GetTestLanguageWorkerOptions()));
             testFunctionMetadataManager.LoadFunctionMetadata();
 
             Assert.Equal(0, testFunctionMetadataManager.Errors.Count);
             Assert.Equal(1, testFunctionMetadataManager.GetFunctionMetadata(true).Length);
+            var traces = testLoggerProvider.GetAllLogMessages();
             Assert.Equal("anotherFunction", testFunctionMetadataManager.GetFunctionMetadata(true).FirstOrDefault()?.Name);
+
+            // Assert logging traces print out as expected
+            Assert.Equal(7, traces.Count);
+            Assert.Equal(2, traces.Count(t => t.FormattedMessage.Contains("Reading functions metadata from FunctionMetadataManager")));
+            Assert.Equal(2, traces.Count(t => t.FormattedMessage.Contains("1 functions found in FunctionMetadataManager from custom provider")));
         }
 
         [Fact]
