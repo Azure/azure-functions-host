@@ -392,6 +392,50 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
+        [Fact]
+        public async Task GetExtensionsStartupTypes_DotnetIsolated_ExtensionBundleConfigured()
+        {
+            using (var directory = GetTempDirectory())
+            {
+                var binPath = Path.Combine(directory.Path, "bin");
+                TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
+                TestLoggerProvider testLoggerProvider = new TestLoggerProvider();
+                LoggerFactory factory = new LoggerFactory();
+                factory.AddProvider(testLoggerProvider);
+                var testLogger = factory.CreateLogger<ScriptStartupTypeLocator>();
+
+                var mockExtensionBundleManager = new Mock<IExtensionBundleManager>();
+                mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
+                mockExtensionBundleManager.Setup(e => e.GetExtensionBundleBinPathAsync()).Returns(Task.FromResult(binPath));
+                mockExtensionBundleManager.Setup(e => e.IsLegacyExtensionBundle()).Returns(false);
+                mockExtensionBundleManager.Setup(e => e.GetExtensionBundleDetails()).Returns(Task.FromResult(GetV2BundleDetails()));
+
+                RpcWorkerConfig workerConfig = new RpcWorkerConfig() { Description = TestHelpers.GetTestWorkerDescription("dotnet-isolated", "none", true) };
+                var tempOptions = new LanguageWorkerOptions();
+                tempOptions.WorkerConfigs = new List<RpcWorkerConfig>();
+                tempOptions.WorkerConfigs.Add(workerConfig);
+                var optionsMonitor = new TestOptionsMonitor<LanguageWorkerOptions>(tempOptions);
+                var mockFunctionMetadataManager = GetTestFunctionMetadataManager(optionsMonitor);
+
+                var languageWorkerOptions = new TestOptionsMonitor<LanguageWorkerOptions>(tempOptions);
+                Environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "dotnet-isolated");
+
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger, languageWorkerOptions);
+
+                // Act
+                var types = await discoverer.GetExtensionsStartupTypesAsync();
+
+                //Assert
+                var traces = testLoggerProvider.GetAllLogMessages();
+                var expectedTrace = traces.FirstOrDefault(val => val.EventId.Name.Equals("ScriptStartNotLoadingExtensionBundle"));
+                Assert.NotNull(expectedTrace);
+
+                AreExpectedMetricsGenerated(testMetricsLogger);
+                Assert.Single(types);
+                Assert.Equal(typeof(AzureStorageWebJobsStartup).FullName, types.Single().FullName);
+            }
+        }
+
         [Theory]
         [InlineData(false)]
         [InlineData(true)]

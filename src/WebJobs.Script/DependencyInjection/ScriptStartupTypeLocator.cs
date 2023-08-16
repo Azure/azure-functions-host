@@ -103,6 +103,8 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
                 }
             }
 
+            bool isDotnetApp = isPrecompiledFunctionApp || IsDotnetIsolatedApp(workerConfigs);
+
             if (SystemEnvironment.Instance.IsPlaceholderModeEnabled())
             {
                 // Do not move this.
@@ -112,7 +114,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
 
             string baseProbingPath = null;
 
-            if (bundleConfigured && (!isPrecompiledFunctionApp || isLegacyExtensionBundle))
+            if (bundleConfigured && (!isDotnetApp || isLegacyExtensionBundle))
             {
                 extensionsMetadataPath = await _extensionBundleManager.GetExtensionBundleBinPathAsync();
                 if (string.IsNullOrEmpty(extensionsMetadataPath))
@@ -329,6 +331,16 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
 
                 throw new HostInitializationException(builder.ToString());
             }
+        }
+
+        private bool IsDotnetIsolatedApp(IList<RpcWorkerConfig> workerConfigs)
+        {
+            if (workerConfigs != null)
+            {
+                return workerConfigs.Where(config => config.Description is not null && config.Description.Language == RpcWorkerConstants.DotNetIsolatedLanguageWorkerName).Any();
+            }
+
+            return false;
         }
 
         private class TypeNameEqualityComparer : IEqualityComparer<Type>
