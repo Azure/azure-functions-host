@@ -86,9 +86,9 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
                 new EventId(314, nameof(FunctionMetadataManagerLoadingFunctionsMetadata)),
                 "Loading functions metadata");
 
-        private static readonly Action<ILogger, int, Exception> _functionMetadataManagerFunctionsLoaded =
+        private static readonly Action<ILogger, int, Exception> _functionMetadataProviderFunctionsLoaded =
             LoggerMessage.Define<int>(LogLevel.Information,
-                new EventId(315, nameof(FunctionMetadataManagerFunctionsLoaded)),
+                new EventId(315, nameof(FunctionsLoadedByProvider)),
                 "{count} functions loaded");
 
         private static readonly Action<ILogger, string, string, Exception> _autoRecoveringFileSystemWatcherFailureDetected =
@@ -121,15 +121,15 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
                 new EventId(325, nameof(ScriptStartUpLoadedExtension)),
                 "Loaded extension '{startupExtensionName}' ({startupExtensionVersion})");
 
-        private static readonly Action<ILogger, string, Exception> _functionMetadataProviderReadingMetadata =
+        private static readonly Action<ILogger, string, Exception> _readingFunctionMetadataFromProvider =
             LoggerMessage.Define<string>(LogLevel.Information,
                 new EventId(326, nameof(FunctionMetadataManagerLoadingFunctionsMetadata)),
-                "Reading functions metadata from {source}");
+                "Reading functions metadata ({provider})");
 
-        private static readonly Action<ILogger, int, string, Exception> _functionMetadataProviderFunctionsFound =
+        private static readonly Action<ILogger, int, string, Exception> _functionsReturnedByProvider =
             LoggerMessage.Define<int, string>(LogLevel.Information,
-                new EventId(327, nameof(FunctionMetadataManagerFunctionsLoaded)),
-                "{count} functions found in {source}");
+                new EventId(327, nameof(FunctionsReturnedByProvider)),
+                "{count} functions found ({provider})");
 
         private static readonly Action<ILogger, string, Guid, Exception> _customHandlerForwardingHttpTriggerInvocation =
             LoggerMessage.Define<string, Guid>(LogLevel.Debug,
@@ -182,11 +182,6 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
             LogLevel.Error,
             new EventId(335, nameof(MinimumBundleVersionNotSatisfied)),
             "Referenced bundle {bundleId} of version {bundleVersion} does not meet the required minimum version of {minimumVersion}. Update your extension bundle reference in host.json to reference {minimumVersion2} or later.");
-
-        private static readonly Action<ILogger, int, Exception> _functionMetadataProviderFunctionsFoundCustomProvider =
-            LoggerMessage.Define<int>(LogLevel.Information,
-            new EventId(336, nameof(FunctionMetadataManagerFunctionsLoaded)),
-            "{count} functions found in FunctionMetadataManager from custom provider");
 
         public static void ExtensionsManagerRestoring(this ILogger logger)
         {
@@ -285,24 +280,19 @@ Lock file hash: {currentLockFileHash}";
             _functionMetadataManagerLoadingFunctionsMetadata(logger, null);
         }
 
-        public static void FunctionMetadataManagerFunctionsLoaded(this ILogger logger, int count)
+        public static void FunctionsLoadedByProvider(this ILogger logger, int count)
         {
-            _functionMetadataManagerFunctionsLoaded(logger, count, null);
+            _functionMetadataProviderFunctionsLoaded(logger, count, null);
         }
 
-        public static void FunctionMetadataProviderParsingFunctions(this ILogger logger, string source)
+        public static void FunctionMetadataProviderParsingFunctions(this ILogger logger, string provider)
         {
-            _functionMetadataProviderReadingMetadata(logger, source, null);
+            _readingFunctionMetadataFromProvider(logger, provider, null);
         }
 
-        public static void FunctionMetadataProviderFunctionFound(this ILogger logger, int count, string source)
+        public static void FunctionsReturnedByProvider(this ILogger logger, int count, string provider)
         {
-            _functionMetadataProviderFunctionsFound(logger, count, source, null);
-        }
-
-        public static void FunctionMetadataProviderFunctionFoundCustomProvider(this ILogger logger, int count)
-        {
-            _functionMetadataProviderFunctionsFoundCustomProvider(logger, count, null);
+            _functionsReturnedByProvider(logger, count, provider, null);
         }
 
         public static void AutoRecoveringFileSystemWatcherFailureDetected(this ILogger logger, string errorMessage, string path)

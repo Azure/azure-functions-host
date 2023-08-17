@@ -22,6 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script
     public class FunctionMetadataManager : IFunctionMetadataManager
     {
         private const string _functionConfigurationErrorMessage = "Unable to determine the primary function script.Make sure atleast one script file is present.Try renaming your entry point script to 'run' or alternatively you can specify the name of the entry point script explicitly by adding a 'scriptFile' property to your function metadata.";
+        private const string _customProviderLog = "Custom";
         private readonly IServiceProvider _serviceProvider;
         private readonly ILoggerFactory _loggerFactory;
         private IFunctionMetadataProvider _functionMetadataProvider;
@@ -87,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.Script
             if (forceRefresh || _servicesReset || _functionMetadataArray.IsDefaultOrEmpty)
             {
                 _functionMetadataArray = LoadFunctionMetadata(forceRefresh, includeCustomProviders, workerConfigs: workerConfigs);
-                _logger.FunctionMetadataManagerFunctionsLoaded(ApplyAllowList(_functionMetadataArray).Count());
+                _logger.FunctionsLoadedByProvider(ApplyAllowList(_functionMetadataArray).Count());
                 _servicesReset = false;
             }
 
@@ -228,7 +229,7 @@ namespace Microsoft.Azure.WebJobs.Script
             // This is used to make sure no duplicates are registered
             var distinctFunctionNames = new HashSet<string>(functionMetadataList.Select(m => m.Name));
 
-            _logger.FunctionMetadataProviderFunctionFoundCustomProvider(functionMetadataListArray.Length);
+            _logger.FunctionsReturnedByProvider(functionMetadataListArray.Length, _customProviderLog);
 
             foreach (var metadataArray in functionMetadataListArray)
             {

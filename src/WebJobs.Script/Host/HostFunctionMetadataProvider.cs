@@ -22,6 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     internal class HostFunctionMetadataProvider : IHostFunctionMetadataProvider
     {
+        private const string _hostProviderLog = "Host";
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
         private readonly IMetricsLogger _metricsLogger;
         private readonly Dictionary<string, ICollection<string>> _functionErrors = new Dictionary<string, ICollection<string>>();
@@ -47,9 +48,9 @@ namespace Microsoft.Azure.WebJobs.Script
 
             if (_functions.IsDefaultOrEmpty || forceRefresh)
             {
-                _logger.FunctionMetadataProviderParsingFunctions(nameof(HostFunctionMetadataProvider));
+                _logger.FunctionMetadataProviderParsingFunctions(_hostProviderLog);
                 Collection<FunctionMetadata> functionMetadata = ReadFunctionsMetadata(workerConfigs);
-                _logger.FunctionMetadataProviderFunctionFound(functionMetadata.Count, nameof(HostFunctionMetadataProvider));
+                _logger.FunctionsReturnedByProvider(functionMetadata.Count, _hostProviderLog);
                 _functions = functionMetadata.ToImmutableArray();
             }
 

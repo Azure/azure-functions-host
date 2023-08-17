@@ -49,8 +49,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // Assert that the logs contain the expected messages
             Assert.Equal(2, traces.Count);
-            Assert.Equal("Reading functions metadata from HostFunctionMetadataProvider", traces[0].FormattedMessage);
-            Assert.Equal("18 functions found in HostFunctionMetadataProvider", traces[1].FormattedMessage);
+            Assert.Equal("Reading functions metadata (Host)", traces[0].FormattedMessage);
+            Assert.Equal("18 functions found (Host)", traces[1].FormattedMessage);
         }
 
         [Fact]
