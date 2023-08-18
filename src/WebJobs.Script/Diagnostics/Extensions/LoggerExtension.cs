@@ -86,9 +86,9 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
                 new EventId(314, nameof(FunctionMetadataManagerLoadingFunctionsMetadata)),
                 "Loading functions metadata");
 
-        private static readonly Action<ILogger, int, Exception> _functionMetadataProviderFunctionsLoaded =
+        private static readonly Action<ILogger, int, Exception> _functionMetadataManagerFunctionsLoaded =
             LoggerMessage.Define<int>(LogLevel.Information,
-                new EventId(315, nameof(FunctionsLoadedByProvider)),
+                new EventId(315, nameof(FunctionMetadataManagerFunctionsLoaded)),
                 "{count} functions loaded");
 
         private static readonly Action<ILogger, string, string, Exception> _autoRecoveringFileSystemWatcherFailureDetected =
@@ -280,12 +280,12 @@ Lock file hash: {currentLockFileHash}";
             _functionMetadataManagerLoadingFunctionsMetadata(logger, null);
         }
 
-        public static void FunctionsLoadedByProvider(this ILogger logger, int count)
+        public static void FunctionMetadataManagerFunctionsLoaded(this ILogger logger, int count)
         {
-            _functionMetadataProviderFunctionsLoaded(logger, count, null);
+            _functionMetadataManagerFunctionsLoaded(logger, count, null);
         }
 
-        public static void FunctionMetadataProviderParsingFunctions(this ILogger logger, string provider)
+        public static void ReadingFunctionMetadataFromProvider(this ILogger logger, string provider)
         {
             _readingFunctionMetadataFromProvider(logger, provider, null);
         }

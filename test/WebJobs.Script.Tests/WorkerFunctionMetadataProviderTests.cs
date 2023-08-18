@@ -3,11 +3,14 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Workers;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
@@ -139,6 +142,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             });
 
             Assert.Equal($"{ScriptConstants.SystemReturnParameterBindingName} bindings must specify a direction of 'out'.", ex.Message);
+        }
+
+        [Fact]
+        public async void ValidateFunctionMetadata_Logging()
+        {
+            var logger = new TestLogger<WorkerFunctionMetadataProvider>();
+            logger.ClearLogMessages();
+
+            var workerConfigs = TestHelpers.GetTestWorkerConfigs().ToImmutableArray();
+            workerConfigs.ToList().ForEach(config => config.Description.WorkerIndexing = "true");
+
+            var scriptApplicationHostOptions = new ScriptApplicationHostOptions();
+            var optionsMonitor = TestHelpers.CreateOptionsMonitor(scriptApplicationHostOptions);
+
+            var mockWebHostRpcWorkerChannelManager = new Mock<IWebHostRpcWorkerChannelManager>();
+            mockWebHostRpcWorkerChannelManager.Setup(m => m.GetChannels(It.IsAny<string>())).Returns(() => new Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>>
+            {
+            });
+
+            var workerFunctionMetadataProvider = new WorkerFunctionMetadataProvider(optionsMonitor, logger, SystemEnvironment.Instance, mockWebHostRpcWorkerChannelManager.Object);
+            await workerFunctionMetadataProvider.GetFunctionMetadataAsync(workerConfigs, false);
+
+            var traces = logger.GetLogMessages();
+
+            // Assert that the logs contain the expected messages
+            Assert.Equal(2, traces.Count);
+            Assert.Equal("Reading functions metadata (Worker)", traces[1].FormattedMessage);
         }
     }
 }
