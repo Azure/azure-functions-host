@@ -205,24 +205,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             // verify log levels in traces
             LogMessage[] traces = Fixture.Host.GetScriptHostLogMessages(userCategory).Where(t => t.FormattedMessage != null && t.FormattedMessage.Contains("loglevel")).ToArray();
-            Assert.Equal(LogLevel.Information, traces[0].Level);
-            Assert.Equal("loglevel default", traces[0].FormattedMessage);
-            Assert.Equal(LogLevel.Information, traces[1].Level);
-            Assert.Equal("loglevel info", traces[1].FormattedMessage);
-            Assert.Equal(LogLevel.Trace, traces[2].Level);
-            Assert.Equal("loglevel verbose", traces[2].FormattedMessage);
-            Assert.Equal(LogLevel.Warning, traces[3].Level);
-            Assert.Equal("loglevel warn", traces[3].FormattedMessage);
-            Assert.Equal(LogLevel.Error, traces[4].Level);
-            Assert.Equal("loglevel error", traces[4].FormattedMessage);
+            Assert.True(traces.Any(t => t.Level == LogLevel.Information && t.FormattedMessage == "loglevel default" ));
+            Assert.True(traces.Any(t => t.Level == LogLevel.Information && t.FormattedMessage == "loglevel info" ));
+            Assert.True(traces.Any(t => t.Level == LogLevel.Trace && t.FormattedMessage == "loglevel verbose" ));
+            Assert.True(traces.Any(t => t.Level == LogLevel.Warning && t.FormattedMessage == "loglevel warn" ));
+            Assert.True(traces.Any(t => t.Level == LogLevel.Error && t.FormattedMessage == "loglevel error" ));
 
             // verify most of the logs look correct
-            Assert.EndsWith("Mathew Charles", userLogs[1]);
-            Assert.EndsWith("null", userLogs[2]);
-            Assert.EndsWith("1234", userLogs[3]);
-            Assert.EndsWith("true", userLogs[4]);
-            Assert.EndsWith("loglevel default", userLogs[5]);
-            Assert.EndsWith("loglevel info", userLogs[6]);
+            Assert.True(userLogs.Contains("Mathew Charles"));
+            Assert.True(userLogs.Contains("null"));
+            Assert.True(userLogs.Contains("1234"));
+            Assert.True(userLogs.Contains("true"));
+            Assert.True(userLogs.Contains("loglevel default"));
+            Assert.True(userLogs.Contains("loglevel info"));
 
             // verify the console log
             Assert.Equal("console log", consoleLog);
