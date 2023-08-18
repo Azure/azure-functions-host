@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script
             _logger.LogInformation("Fetching metadata for workerRuntime: {workerRuntime}", _workerRuntime);
 
             IEnumerable<FunctionMetadata> functions = new List<FunctionMetadata>();
-            _logger.FunctionMetadataProviderParsingFunctions(_customProviderLog);
+            _logger.ReadingFunctionMetadataFromProvider(_customProviderLog);
 
             if (_functions.IsDefaultOrEmpty || forceRefresh)
             {

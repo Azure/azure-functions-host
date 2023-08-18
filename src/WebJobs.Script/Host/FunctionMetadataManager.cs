@@ -88,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.Script
             if (forceRefresh || _servicesReset || _functionMetadataArray.IsDefaultOrEmpty)
             {
                 _functionMetadataArray = LoadFunctionMetadata(forceRefresh, includeCustomProviders, workerConfigs: workerConfigs);
-                _logger.FunctionsLoadedByProvider(ApplyAllowList(_functionMetadataArray).Count());
+                _logger.FunctionMetadataManagerFunctionsLoaded(ApplyAllowList(_functionMetadataArray).Count());
                 _servicesReset = false;
             }
 
@@ -216,7 +216,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private void AddMetadataFromCustomProviders(IEnumerable<IFunctionProvider> functionProviders, List<FunctionMetadata> functionMetadataList)
         {
-            _logger.FunctionMetadataProviderParsingFunctions(_metadataProviderName);
+            _logger.ReadingFunctionMetadataFromProvider(_metadataProviderName);
 
             var functionProviderTasks = new List<Task<ImmutableArray<FunctionMetadata>>>();
             foreach (var functionProvider in functionProviders)
