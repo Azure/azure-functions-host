@@ -123,7 +123,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
 
         private static readonly Action<ILogger, string, Exception> _readingFunctionMetadataFromProvider =
             LoggerMessage.Define<string>(LogLevel.Information,
-                new EventId(326, nameof(FunctionMetadataManagerLoadingFunctionsMetadata)),
+                new EventId(326, nameof(ReadingFunctionMetadataFromProvider)),
                 "Reading functions metadata ({provider})");
 
         private static readonly Action<ILogger, int, string, Exception> _functionsReturnedByProvider =
@@ -280,14 +280,14 @@ Lock file hash: {currentLockFileHash}";
             _functionMetadataManagerLoadingFunctionsMetadata(logger, null);
         }
 
-        public static void FunctionMetadataManagerFunctionsLoaded(this ILogger logger, int count)
-        {
-            _functionMetadataManagerFunctionsLoaded(logger, count, null);
-        }
-
         public static void ReadingFunctionMetadataFromProvider(this ILogger logger, string provider)
         {
             _readingFunctionMetadataFromProvider(logger, provider, null);
+        }
+
+        public static void FunctionMetadataManagerFunctionsLoaded(this ILogger logger, int count)
+        {
+            _functionMetadataManagerFunctionsLoaded(logger, count, null);
         }
 
         public static void FunctionsReturnedByProvider(this ILogger logger, int count, string provider)

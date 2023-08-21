@@ -13,6 +13,7 @@ using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 using Moq;
+using NuGet.ContentModel;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -161,6 +162,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
             });
 
+            var environment = SystemEnvironment.Instance;
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "node");
+
             var workerFunctionMetadataProvider = new WorkerFunctionMetadataProvider(optionsMonitor, logger, SystemEnvironment.Instance, mockWebHostRpcWorkerChannelManager.Object);
             await workerFunctionMetadataProvider.GetFunctionMetadataAsync(workerConfigs, false);
 
@@ -169,6 +173,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // Assert that the logs contain the expected messages
             Assert.Equal(2, traces.Count);
             Assert.Equal("Reading functions metadata (Worker)", traces[1].FormattedMessage);
+            Assert.Equal("Fetching metadata for workerRuntime: node", traces[0].FormattedMessage);
         }
     }
 }
