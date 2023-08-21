@@ -169,7 +169,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // Assert logging traces print out as expected
             Assert.Equal(7, traces.Count);
-            Assert.Equal(2, traces.Count(t => t.FormattedMessage.Contains("Reading functions metadata (FunctionMetadataManager)")));
+            Assert.Equal(2, traces.Count(t => t.FormattedMessage.Contains("Reading functions metadata (Custom)")));
             Assert.Equal(2, traces.Count(t => t.FormattedMessage.Contains("1 functions found (Custom)")));
             Assert.Equal(1, traces.Count(t => t.FormattedMessage.Contains("1 functions loaded")));
             Assert.Equal(2, traces.Count(t => t.FormattedMessage.Contains("Loading functions metadata")));
