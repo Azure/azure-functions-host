@@ -121,15 +121,15 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
                 new EventId(325, nameof(ScriptStartUpLoadedExtension)),
                 "Loaded extension '{startupExtensionName}' ({startupExtensionVersion})");
 
-        private static readonly Action<ILogger, Exception> _functionMetadataProviderReadingMetadata =
-            LoggerMessage.Define(LogLevel.Information,
-                new EventId(326, nameof(FunctionMetadataManagerLoadingFunctionsMetadata)),
-                "Reading functions metadata");
+        private static readonly Action<ILogger, string, Exception> _readingFunctionMetadataFromProvider =
+            LoggerMessage.Define<string>(LogLevel.Information,
+                new EventId(326, nameof(ReadingFunctionMetadataFromProvider)),
+                "Reading functions metadata ({provider})");
 
-        private static readonly Action<ILogger, int, Exception> _functionMetadataProviderFunctionsFound =
-            LoggerMessage.Define<int>(LogLevel.Information,
-                new EventId(327, nameof(FunctionMetadataManagerFunctionsLoaded)),
-                "{count} functions found");
+        private static readonly Action<ILogger, int, string, Exception> _functionsReturnedByProvider =
+            LoggerMessage.Define<int, string>(LogLevel.Information,
+                new EventId(327, nameof(FunctionsReturnedByProvider)),
+                "{count} functions found ({provider})");
 
         private static readonly Action<ILogger, string, Guid, Exception> _customHandlerForwardingHttpTriggerInvocation =
             LoggerMessage.Define<string, Guid>(LogLevel.Debug,
@@ -280,19 +280,19 @@ Lock file hash: {currentLockFileHash}";
             _functionMetadataManagerLoadingFunctionsMetadata(logger, null);
         }
 
+        public static void ReadingFunctionMetadataFromProvider(this ILogger logger, string provider)
+        {
+            _readingFunctionMetadataFromProvider(logger, provider, null);
+        }
+
         public static void FunctionMetadataManagerFunctionsLoaded(this ILogger logger, int count)
         {
             _functionMetadataManagerFunctionsLoaded(logger, count, null);
         }
 
-        public static void FunctionMetadataProviderParsingFunctions(this ILogger logger)
+        public static void FunctionsReturnedByProvider(this ILogger logger, int count, string provider)
         {
-            _functionMetadataProviderReadingMetadata(logger, null);
-        }
-
-        public static void FunctionMetadataProviderFunctionFound(this ILogger logger, int count)
-        {
-            _functionMetadataProviderFunctionsFound(logger, count, null);
+            _functionsReturnedByProvider(logger, count, provider, null);
         }
 
         public static void AutoRecoveringFileSystemWatcherFailureDetected(this ILogger logger, string errorMessage, string path)
