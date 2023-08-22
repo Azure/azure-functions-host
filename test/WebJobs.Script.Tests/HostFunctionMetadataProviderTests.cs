@@ -10,7 +10,9 @@ using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -31,14 +33,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void ReadFunctionMetadata_Succeeds()
         {
+            var testLoggerProvider = new TestLoggerProvider();
+            var loggerFactory = new LoggerFactory();
+            loggerFactory.AddProvider(testLoggerProvider);
+            var logger = loggerFactory.CreateLogger<HostFunctionMetadataProvider>();
             string functionsPath = Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "..", "sample", "node");
             _scriptApplicationHostOptions.ScriptPath = functionsPath;
             var optionsMonitor = TestHelpers.CreateOptionsMonitor(_scriptApplicationHostOptions);
-            var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, _testMetricsLogger, SystemEnvironment.Instance);
+            var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, logger, _testMetricsLogger, SystemEnvironment.Instance);
             var workerConfigs = TestHelpers.GetTestWorkerConfigs();
 
             Assert.Equal(18, metadataProvider.GetFunctionMetadataAsync(workerConfigs, SystemEnvironment.Instance, false).Result.Length);
+            var traces = testLoggerProvider.GetAllLogMessages();
             Assert.True(AreRequiredMetricsEmitted(_testMetricsLogger));
+
+            // Assert that the logs contain the expected messages
+            Assert.Equal(2, traces.Count);
+            Assert.Equal("Reading functions metadata (Host)", traces[0].FormattedMessage);
+            Assert.Equal("18 functions found (Host)", traces[1].FormattedMessage);
         }
 
         [Fact]
