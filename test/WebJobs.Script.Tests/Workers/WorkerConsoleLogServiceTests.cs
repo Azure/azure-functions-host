@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             _workerConsoleLogService = new WorkerConsoleLogService(_testUserLogger, _toolingConsoleJsonLoggerLazy, _workerConsoleLogSource);
             _serviceProviderMock = new Mock<IServiceProvider>(MockBehavior.Strict);
 
-            WorkerProcess workerProcess = new TestWorkerProcess(_eventManager, _processRegistry, _testSystemLogger, _workerConsoleLogSource, null, _serviceProviderMock.Object, useStdErrForErrorLogsOnly);
+            WorkerProcess workerProcess = new TestWorkerProcess(_eventManager, _processRegistry, _testSystemLogger, _workerConsoleLogSource, null, _serviceProviderMock.Object, new LoggerFactory(), useStdErrForErrorLogsOnly);
             workerProcess.ParseErrorMessageAndLog("Test Message No keyword");
             workerProcess.ParseErrorMessageAndLog("Test Error Message");
             workerProcess.ParseErrorMessageAndLog("Test Warning Message");

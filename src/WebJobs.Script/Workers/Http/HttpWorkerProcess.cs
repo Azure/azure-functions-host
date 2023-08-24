@@ -31,8 +31,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                                        IWorkerConsoleLogSource consoleLogSource,
                                        IEnvironment environment,
                                        IMetricsLogger metricsLogger,
-                                       IServiceProvider serviceProvider)
-            : base(eventManager, processRegistry, workerProcessLogger, consoleLogSource, metricsLogger, serviceProvider, httpWorkerOptions.Description.UseStdErrorStreamForErrorsOnly)
+                                       IServiceProvider serviceProvider,
+                                       ILoggerFactory loggerFactory)
+            : base(eventManager, processRegistry, workerProcessLogger, consoleLogSource, metricsLogger, serviceProvider, loggerFactory, httpWorkerOptions.Description.UseStdErrorStreamForErrorsOnly)
         {
             _processFactory = processFactory;
             _eventManager = eventManager;

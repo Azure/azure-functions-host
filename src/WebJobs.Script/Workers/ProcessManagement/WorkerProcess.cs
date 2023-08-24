@@ -26,13 +26,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         private readonly int processExitTimeoutInMilliseconds = 1000;
         private readonly IServiceProvider _serviceProvider;
         private readonly IDisposable _eventSubscription;
+        private readonly Lazy<ILogger> _toolingConsoleJsonLoggerLazy;
 
         private bool _useStdErrorStreamForErrorsOnly;
         private Queue<string> _processStdErrDataQueue = new Queue<string>(3);
         private IHostProcessMonitor _processMonitor;
         private object _syncLock = new object();
 
-        internal WorkerProcess(IScriptEventManager eventManager, IProcessRegistry processRegistry, ILogger workerProcessLogger, IWorkerConsoleLogSource consoleLogSource, IMetricsLogger metricsLogger, IServiceProvider serviceProvider, bool useStdErrStreamForErrorsOnly = false)
+        internal WorkerProcess(IScriptEventManager eventManager, IProcessRegistry processRegistry, ILogger workerProcessLogger, IWorkerConsoleLogSource consoleLogSource, IMetricsLogger metricsLogger, IServiceProvider serviceProvider, ILoggerFactory loggerFactory, bool useStdErrStreamForErrorsOnly = false)
         {
             _processRegistry = processRegistry;
             _workerProcessLogger = workerProcessLogger;
@@ -41,6 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             _metricsLogger = metricsLogger;
             _useStdErrorStreamForErrorsOnly = useStdErrStreamForErrorsOnly;
             _serviceProvider = serviceProvider;
+            _toolingConsoleJsonLoggerLazy = new Lazy<ILogger>(() => loggerFactory.CreateLogger(WorkerConstants.ToolingConsoleLogCategoryName), isThreadSafe: true);
 
             // We subscribe to host start events so we can handle the restart that occurs
             // on host specialization.
@@ -193,19 +195,19 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 Message = msg,
                 Level = level
             };
+
             if (WorkerProcessUtilities.IsConsoleLog(msg))
             {
                 _workerProcessLogger?.Log(level, WorkerProcessUtilities.RemoveLogPrefix(msg));
             }
+            else if (WorkerProcessUtilities.IsToolingConsoleJsonLogEntry(msg))
+            {
+                // log with the message prefix as coretools expects it.
+                _toolingConsoleJsonLoggerLazy.Value.Log(level, msg);
+            }
             else
             {
                 _consoleLogSource?.Log(consoleLog);
-            }
-
-            if (WorkerProcessUtilities.IsToolingConsoleJsonLogEntry(msg))
-            {
-                // log with the message prefix as coretools expects it.
-                _workerProcessLogger?.Log(level, msg);
             }
         }
 
