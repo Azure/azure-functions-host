@@ -43,5 +43,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         {
             return consoleLog.Message.StartsWith(WorkerConstants.ToolingConsoleLogPrefix, StringComparison.OrdinalIgnoreCase);
         }
+
+        public static bool IsToolingConsoleJsonLogEntry(string msg)
+        {
+            return msg.StartsWith(WorkerConstants.ToolingConsoleLogPrefix, StringComparison.OrdinalIgnoreCase);
+        }
     }
 }

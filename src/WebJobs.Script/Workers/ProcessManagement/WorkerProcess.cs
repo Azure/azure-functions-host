@@ -201,6 +201,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             {
                 _consoleLogSource?.Log(consoleLog);
             }
+
+            if (WorkerProcessUtilities.IsToolingConsoleJsonLogEntry(msg))
+            {
+                // log with the message prefix as coretools expects it.
+                _workerProcessLogger?.Log(level, msg);
+            }
         }
 
         internal abstract void HandleWorkerProcessExitError(WorkerProcessExitException langExc);
