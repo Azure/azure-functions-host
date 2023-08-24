@@ -190,7 +190,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 // Wire this up early so that any early worker logs are guaranteed to be flushed if any other
                 // IHostedService has a slow startup.
-                services.AddSingleton<IHostedService, WorkerConsoleLogService>();
             });
 
             builder.ConfigureWebJobs((context, webJobsBuilder) =>
@@ -353,6 +352,7 @@ namespace Microsoft.Azure.WebJobs.Script
             // Need to maintain the order: Add RpcInitializationService before core script host services
             services.AddManagedHostedService<RpcInitializationService>();
             services.TryAddSingleton<IWorkerConsoleLogSource, WorkerConsoleLogSource>();
+            services.AddSingleton<IHostedService, WorkerConsoleLogService>();
             services.AddSingleton<IWorkerProcessFactory, DefaultWorkerProcessFactory>();
             services.AddSingleton<IRpcWorkerProcessFactory, RpcWorkerProcessFactory>();
             services.TryAddSingleton<IWebHostRpcWorkerChannelManager, WebHostRpcWorkerChannelManager>();
