@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Abstractions;
 using System.IO.Compression;
 using System.Linq;
 using System.Net;
@@ -304,6 +305,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 return await sr.ReadToEndAsync();
             }
+        }
+
+        public static FileSystemStream BuildFileSystemStream(string content, string path = null)
+        {
+            string filePath = path ?? Path.GetTempFileName();
+
+            BinaryData binaryData = new BinaryData(content);
+
+            FileSystem fileSystem = new FileSystem();
+            FileSystemStream systemStream = fileSystem.FileStream.New(filePath, FileMode.OpenOrCreate);
+            systemStream.Write(binaryData);
+            systemStream.Flush();
+            systemStream.Position = 0;
+
+            return systemStream;
         }
 
         public static IList<RpcWorkerConfig> GetTestWorkerConfigs(bool includeDllWorker = false, int processCountValue = 1,

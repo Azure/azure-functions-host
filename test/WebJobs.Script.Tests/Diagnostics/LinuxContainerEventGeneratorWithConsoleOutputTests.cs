@@ -135,7 +135,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
 
             using var sr = new StreamReader(_consoleOut);
             _consoleOut.Position = 0;
-            var output = sr.ReadToEnd().Trim().SplitLines();
+            var output = sr.ReadToEnd().Trim().Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
 
             Assert.Equal(3, output.Length);
 
@@ -161,7 +161,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
 
             using var sr = new StreamReader(_consoleOut);
             _consoleOut.Position = 0;
-            var output = sr.ReadToEnd().Trim().SplitLines();
+            var output = sr.ReadToEnd().Trim().Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
 
             // The first two messages are still stuck in the buffer. The third message will have been written to the console.
             Assert.Equal(1, output.Length);
@@ -189,7 +189,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
 
             using var sr = new StreamReader(_consoleOut);
             _consoleOut.Position = 0;
-            var output = sr.ReadToEnd().Trim().SplitLines();
+            var output = sr.ReadToEnd().Trim().Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
 
             Assert.Equal(3, output.Length);
 
@@ -233,7 +233,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
 
             using var sr = new StreamReader(_consoleOut);
             _consoleOut.Position = 0;
-            var output = sr.ReadToEnd().Trim().SplitLines();
+            var output = sr.ReadToEnd().Trim().Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
 
             Assert.Equal(3, output.Length);
 

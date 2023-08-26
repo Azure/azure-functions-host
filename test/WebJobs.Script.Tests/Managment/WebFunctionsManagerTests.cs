@@ -205,6 +205,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         {
             string rootPath = options.ScriptPath;
             string testDataPath = options.TestDataPath;
+            string hostJsonPath = Path.Combine(rootPath, @"host.json");
 
             var fullFileSystem = new FileSystem();
             var fileSystem = new Mock<IFileSystem>();
@@ -213,11 +214,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             fileSystem.SetupGet(f => f.Path).Returns(fullFileSystem.Path);
             fileSystem.SetupGet(f => f.File).Returns(fileBase.Object);
-            fileBase.Setup(f => f.Exists(Path.Combine(rootPath, "host.json"))).Returns(true);
+            fileBase.Setup(f => f.Exists(hostJsonPath)).Returns(true);
 
-            var hostJson = new MemoryStream(Encoding.UTF8.GetBytes(@"{ ""durableTask"": { ""HubName"": ""TestHubValue"", ""azureStorageConnectionStringName"": ""DurableStorage"" }}"));
-            hostJson.Position = 0;
-            fileBase.Setup(f => f.Open(Path.Combine(rootPath, @"host.json"), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>())).Returns(hostJson);
+            string hostJsonContent = @"{ ""durableTask"": { ""HubName"": ""TestHubValue"", ""azureStorageConnectionStringName"": ""DurableStorage"" }}";
+            FileSystemStream hostJsonStream = TestHelpers.BuildFileSystemStream(hostJsonContent, hostJsonPath);
+            fileBase.Setup(f => f.Open(hostJsonPath, It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>())).Returns(hostJsonStream);
 
             fileSystem.SetupGet(f => f.Directory).Returns(dirBase.Object);
 
@@ -230,6 +231,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         {
             string rootPath = options.ScriptPath;
             string testDataPath = options.TestDataPath;
+            string hostJsonPath = Path.Combine(rootPath, @"host.json");
 
             var fullFileSystem = new FileSystem();
             var fileSystem = new Mock<IFileSystem>();
@@ -238,11 +240,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             fileSystem.SetupGet(f => f.Path).Returns(fullFileSystem.Path);
             fileSystem.SetupGet(f => f.File).Returns(fileBase.Object);
-            fileBase.Setup(f => f.Exists(Path.Combine(rootPath, "host.json"))).Returns(true);
+            fileBase.Setup(f => f.Exists(hostJsonPath)).Returns(true);
 
-            var hostJson = new MemoryStream(Encoding.UTF8.GetBytes(@"{ ""durableTask"": { ""HubName"": ""TestHubValue"", ""azureStorageConnectionStringName"": ""DurableStorage"" }}"));
-            hostJson.Position = 0;
-            fileBase.Setup(f => f.Open(Path.Combine(rootPath, @"host.json"), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>())).Returns(hostJson);
+            string hostJsonContent = @"{ ""durableTask"": { ""HubName"": ""TestHubValue"", ""azureStorageConnectionStringName"": ""DurableStorage"" }}";
+            FileSystemStream hostJsonStream = TestHelpers.BuildFileSystemStream(hostJsonContent, hostJsonPath);
+            fileBase.Setup(f => f.Open(hostJsonPath, It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>())).Returns(hostJsonStream);
 
             fileSystem.SetupGet(f => f.Directory).Returns(dirBase.Object);
 

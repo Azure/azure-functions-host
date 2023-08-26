@@ -157,16 +157,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
             _fileSystem.File.Move(_logFilePath, GetCurrentFileName(DateTime.UtcNow));
 
-            var fileInfoBases = ListFiles(_logFileDirectory, _logFileName + "*", SearchOption.TopDirectoryOnly);
+            var fileInfos = ListFiles(_logFileDirectory, _logFileName + "*", SearchOption.TopDirectoryOnly);
 
-            if (fileInfoBases.Length >= MaxFileCount)
+            if (fileInfos.Length >= MaxFileCount)
             {
-                var oldestFile = fileInfoBases.OrderByDescending(f => f.Name).Last();
+                var oldestFile = fileInfos.OrderByDescending(f => f.Name).Last();
                 oldestFile.Delete();
             }
         }
 
-        private FileInfoBase[] ListFiles(string directoryPath, string pattern, SearchOption searchOption)
+        private IFileInfo[] ListFiles(string directoryPath, string pattern, SearchOption searchOption)
         {
             return _fileSystem.DirectoryInfo.FromDirectoryName(directoryPath).GetFiles(pattern, searchOption);
         }

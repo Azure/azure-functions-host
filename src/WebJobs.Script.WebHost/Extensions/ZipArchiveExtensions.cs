@@ -12,25 +12,25 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
 {
     public static class ZipArchiveExtensions
     {
-        public static async Task AddDirectory(this ZipArchive zipArchive, DirectoryInfoBase directory, string directoryNameInArchive)
+        public static async Task AddDirectory(this ZipArchive zipArchive, IDirectoryInfo directory, string directoryNameInArchive)
         {
             await InternalAddDirectory(zipArchive, directory, directoryNameInArchive);
         }
 
-        private static async Task InternalAddDirectory(ZipArchive zipArchive, DirectoryInfoBase directory, string directoryNameInArchive, IList<ZipArchiveEntry> files = null)
+        private static async Task InternalAddDirectory(ZipArchive zipArchive, IDirectoryInfo directory, string directoryNameInArchive, IList<ZipArchiveEntry> files = null)
         {
             bool any = false;
             foreach (var info in directory.GetFileSystemInfos())
             {
                 any = true;
-                if (info is DirectoryInfoBase subDirectoryInfo)
+                if (info is IDirectoryInfo subDirectoryInfo)
                 {
                     string childName = ForwardSlashCombine(directoryNameInArchive, subDirectoryInfo.Name);
                     await InternalAddDirectory(zipArchive, subDirectoryInfo, childName, files);
                 }
                 else
                 {
-                    var entry = await zipArchive.AddFile((FileInfoBase)info, directoryNameInArchive);
+                    var entry = await zipArchive.AddFile((IFileInfo)info, directoryNameInArchive);
                     files?.Add(entry);
                 }
             }
@@ -50,10 +50,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
         public static Task<ZipArchiveEntry> AddFile(this ZipArchive zipArchive, string filePath, string directoryNameInArchive = "")
         {
             var fileInfo = FileUtility.FileInfoFromFileName(filePath);
-            return zipArchive.AddFile(fileInfo, directoryNameInArchive);
+            return zipArchive.AddFile(fileInfo.Name, directoryNameInArchive);
         }
 
-        public static async Task<ZipArchiveEntry> AddFile(this ZipArchive zipArchive, FileInfoBase file, string directoryNameInArchive)
+        public static async Task<ZipArchiveEntry> AddFile(this ZipArchive zipArchive, IFileInfo file, string directoryNameInArchive)
         {
             using (var fileStream = file.OpenRead())
             {

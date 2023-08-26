@@ -476,7 +476,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return result;
         }
 
-        internal static string ProbeForNativeAsset(IList<string> probingPaths, string assetFileName, FileBase fileBase)
+        internal static string ProbeForNativeAsset(IList<string> probingPaths, string assetFileName, IFile fileBase)
         {
             string basePath = probingPaths[0];
             const string ridSubFolder = "native";

@@ -237,7 +237,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
         }
 
-        protected virtual Task<HttpResponseMessage> CreateDirectoryGetResponse(HttpRequest request, DirectoryInfoBase info, string localFilePath)
+        protected virtual Task<HttpResponseMessage> CreateDirectoryGetResponse(HttpRequest request, IDirectoryInfo info, string localFilePath)
         {
             ArgumentNullException.ThrowIfNull(info);
 
@@ -256,7 +256,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
         }
 
-        protected Task<HttpResponseMessage> CreateItemGetResponse(HttpRequest request, FileSystemInfoBase info, string localFilePath)
+        protected Task<HttpResponseMessage> CreateItemGetResponse(HttpRequest request, IFileSystemInfo info, string localFilePath)
         {
             // Get current etag
             var currentEtag = CreateEntityTag(info);
@@ -332,7 +332,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
         }
 
-        protected Task<HttpResponseMessage> CreateDirectoryPutResponse(HttpRequest request, DirectoryInfoBase info, string localFilePath)
+        protected Task<HttpResponseMessage> CreateDirectoryPutResponse(HttpRequest request, IDirectoryInfo info, string localFilePath)
         {
             if (info != null && info.Exists)
             {
@@ -357,7 +357,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             return Task.FromResult(successFileResponse);
         }
 
-        protected async Task<HttpResponseMessage> CreateItemPutResponse(HttpRequest request, FileSystemInfoBase info, string localFilePath, bool itemExists)
+        protected async Task<HttpResponseMessage> CreateItemPutResponse(HttpRequest request, IFileSystemInfo info, string localFilePath, bool itemExists)
         {
             // Check that we have a matching conditional If-Match request for existing resources
             if (itemExists)
@@ -423,7 +423,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
         }
 
-        protected Task<HttpResponseMessage> CreateFileDeleteResponse(HttpRequest request, FileInfoBase info)
+        protected Task<HttpResponseMessage> CreateFileDeleteResponse(HttpRequest request, IFileInfo info)
         {
             // Existing resources require an etag to be updated.
             var typedHeaders = request.GetTypedHeaders();
@@ -465,7 +465,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         /// <summary>
         /// Indicates whether this is a conditional range request containing an
         /// If-Range header with a matching etag and a Range header indicating the
-        /// desired ranges
+        /// desired ranges.
         /// </summary>
         protected bool IsRangeRequest(HttpRequest request, Net.Http.Headers.EntityTagHeaderValue currentEtag)
         {
@@ -522,7 +522,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         /// <summary>
         /// Provides a common way for opening a file stream for exclusively deleting the file.
         /// </summary>
-        private static Stream GetFileDeleteStream(FileInfoBase file)
+        private static Stream GetFileDeleteStream(IFileInfo file)
         {
             ArgumentNullException.ThrowIfNull(file);
 
@@ -531,9 +531,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         }
 
         /// <summary>
-        /// Create unique etag based on the last modified UTC time
+        /// Create unique etag based on the last modified UTC time.
         /// </summary>
-        private static Microsoft.Net.Http.Headers.EntityTagHeaderValue CreateEntityTag(FileSystemInfoBase sysInfo)
+        private static Microsoft.Net.Http.Headers.EntityTagHeaderValue CreateEntityTag(IFileSystemInfo sysInfo)
         {
             ArgumentNullException.ThrowIfNull(sysInfo);
 
@@ -602,17 +602,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             return result;
         }
 
-        private IEnumerable<VfsStatEntry> GetDirectoryResponse(HttpRequest request, FileSystemInfoBase[] infos)
+        private IEnumerable<VfsStatEntry> GetDirectoryResponse(HttpRequest request, IFileSystemInfo[] infos)
         {
             var uri = request.GetRequestUri();
             string baseAddress = uri.AbsoluteUri.Split('?').First();
             string query = uri.Query;
-            foreach (FileSystemInfoBase fileSysInfo in infos)
+            foreach (IFileSystemInfo fileSysInfo in infos)
             {
                 bool isDirectory = (fileSysInfo.Attributes & FileAttributes.Directory) != 0;
                 string mime = isDirectory ? _directoryMediaType.ToString() : MediaTypeMap.GetMediaType(fileSysInfo.Extension).ToString();
                 string unescapedHref = isDirectory ? fileSysInfo.Name + UriSegmentSeparator : fileSysInfo.Name;
-                long size = isDirectory ? 0 : ((FileInfoBase)fileSysInfo).Length;
+                long size = isDirectory ? 0 : ((IFileInfo)fileSysInfo).Length;
 
                 yield return new VfsStatEntry
                 {

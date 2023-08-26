@@ -2,11 +2,9 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
-using System.Reactive.Concurrency;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Moq;
@@ -32,7 +30,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             var streamWriter = new Mock<StreamWriter>(MockBehavior.Default, stream.Object);
 
             fileSystem.SetupGet(fs => fs.Directory).Returns(dirBase.Object);
-            dirBase.Setup(d => d.CreateDirectory(It.Is<string>(s => string.Equals(s, LogDirectoryPath)))).Returns(new DirectoryInfo(LogDirectoryPath));
+
+            FileSystem abstractFileSystem = new FileSystem();
+            dirBase.Setup(d => d.CreateDirectory(It.Is<string>(s => string.Equals(s, LogDirectoryPath)))).Returns(abstractFileSystem.DirectoryInfo.New(LogDirectoryPath));
 
             fileSystem.SetupGet(fs => fs.FileInfo).Returns(fileInfoFactory.Object);
             fileInfoFactory.Setup(f => f.FromFileName(It.Is<string>(s => MatchesLogFilePath(s))))
@@ -95,7 +95,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             var directoryInfoBase = new Mock<DirectoryInfoBase>(MockBehavior.Strict);
 
             fileSystem.SetupGet(fs => fs.Directory).Returns(dirBase.Object);
-            dirBase.Setup(d => d.CreateDirectory(It.Is<string>(s => string.Equals(s, LogDirectoryPath)))).Returns(new DirectoryInfo(LogDirectoryPath));
+            FileSystem abstractFileSystem = new FileSystem();
+            dirBase.Setup(d => d.CreateDirectory(It.Is<string>(s => string.Equals(s, LogDirectoryPath)))).Returns(abstractFileSystem.DirectoryInfo.New(LogDirectoryPath));
 
             fileSystem.SetupGet(fs => fs.FileInfo).Returns(fileInfoFactory.Object);
             fileInfoFactory.Setup(f => f.FromFileName(It.Is<string>(s => MatchesLogFilePath(s))))
@@ -213,7 +214,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             var streamWriter = new Mock<StreamWriter>(MockBehavior.Default, stream.Object);
 
             fileSystem.SetupGet(fs => fs.Directory).Returns(dirBase.Object);
-            dirBase.Setup(d => d.CreateDirectory(It.Is<string>(s => string.Equals(s, LogDirectoryPath)))).Returns(new DirectoryInfo(LogDirectoryPath));
+            FileSystem abstractFileSystem = new FileSystem();
+            dirBase.Setup(d => d.CreateDirectory(It.Is<string>(s => string.Equals(s, LogDirectoryPath)))).Returns(abstractFileSystem.DirectoryInfo.New(LogDirectoryPath));
 
             fileSystem.SetupGet(fs => fs.FileInfo).Returns(fileInfoFactory.Object);
             fileInfoFactory.Setup(f => f.FromFileName(It.Is<string>(s => MatchesLogFilePath(s))))
@@ -271,7 +273,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             var streamWriter = new Mock<StreamWriter>(MockBehavior.Default, stream.Object);
 
             fileSystem.SetupGet(fs => fs.Directory).Returns(dirBase.Object);
-            dirBase.Setup(d => d.CreateDirectory(It.Is<string>(s => string.Equals(s, LogDirectoryPath)))).Returns(new DirectoryInfo(LogDirectoryPath));
+            FileSystem abstractFileSystem = new FileSystem();
+            dirBase.Setup(d => d.CreateDirectory(It.Is<string>(s => string.Equals(s, LogDirectoryPath)))).Returns(abstractFileSystem.DirectoryInfo.New(LogDirectoryPath));
 
             fileSystem.SetupGet(fs => fs.FileInfo).Returns(fileInfoFactory.Object);
             fileInfoFactory.Setup(f => f.FromFileName(It.Is<string>(s => MatchesLogFilePath(s))))

@@ -27,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 {
     /// <summary>
     /// Controller responsible for administrative and management operations on functions
-    /// example retrieving a list of functions, invoking a function, creating a function, etc
+    /// example retrieving a list of functions, invoking a function, creating a function, etc.
     /// </summary>
     public class FunctionsController : Controller
     {
@@ -228,9 +228,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             {
                 using (var zipArchive = new ZipArchive(outputStream, ZipArchiveMode.Create))
                 {
-                    foreach (FileSystemInfoBase fileSysInfo in dirInfo.GetFileSystemInfos())
+                    foreach (IFileSystemInfo fileSysInfo in dirInfo.GetFileSystemInfos())
                     {
-                        if (fileSysInfo is DirectoryInfoBase directoryInfo)
+                        if (fileSysInfo is IDirectoryInfo directoryInfo)
                         {
                             await zipArchive.AddDirectory(directoryInfo, fileSysInfo.Name);
                         }

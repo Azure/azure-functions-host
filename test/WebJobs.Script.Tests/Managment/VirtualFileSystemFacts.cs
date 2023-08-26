@@ -69,9 +69,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             dirInfo.SetupGet(d => d.Attributes).Returns(FileAttributes.Normal);
             dirInfo.SetupGet(d => d.Extension).Returns("txt");
             var fileBase = new Mock<FileBase>();
-            var fileStream = new MemoryStream(Encoding.UTF8.GetBytes("Testing"));
-            fileStream.Position = 0;
-            var filePath = Path.Combine(SiteRootPath, @"foo\bar.txt");
+            string filePath = Path.Combine(SiteRootPath, @"foo\bar.txt");
+            FileSystemStream fileStream = TestHelpers.BuildFileSystemStream("Testing", filePath);
             fileBase.Setup(f => f.Open(filePath, It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>())).Returns(fileStream);
             var fileSystem = CreateFileSystem(path, dirInfo.Object, fileInfo.Object, fileBase.Object);
             FileUtility.Instance = fileSystem;

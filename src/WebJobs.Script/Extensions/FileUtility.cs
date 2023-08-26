@@ -194,13 +194,13 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static bool DirectoryExists(string path) => Instance.Directory.Exists(path);
 
-        public static DirectoryInfoBase DirectoryInfoFromDirectoryName(string localSiteRootPath) => Instance.DirectoryInfo.FromDirectoryName(localSiteRootPath);
+        public static IDirectoryInfo DirectoryInfoFromDirectoryName(string localSiteRootPath) => Instance.DirectoryInfo.FromDirectoryName(localSiteRootPath);
 
-        public static FileInfoBase FileInfoFromFileName(string localFilePath) => Instance.FileInfo.FromFileName(localFilePath);
+        public static IFileInfo FileInfoFromFileName(string localFilePath) => Instance.FileInfo.FromFileName(localFilePath);
 
         public static string GetFullPath(string path) => Instance.Path.GetFullPath(path);
 
-        private static void DeleteDirectoryContentsSafe(DirectoryInfoBase directoryInfo, bool ignoreErrors)
+        private static void DeleteDirectoryContentsSafe(IDirectoryInfo directoryInfo, bool ignoreErrors)
         {
             try
             {
@@ -217,7 +217,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        private static void DeleteFileSystemInfo(FileSystemInfoBase fileSystemInfo, bool ignoreErrors)
+        private static void DeleteFileSystemInfo(IFileSystemInfo fileSystemInfo, bool ignoreErrors)
         {
             if (!fileSystemInfo.Exists)
             {

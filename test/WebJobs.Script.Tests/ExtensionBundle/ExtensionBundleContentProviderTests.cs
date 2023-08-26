@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
             var fileBase = fileSystemTuple.Item3;
             var path = Path.Combine("bundlePath", "StaticContent", "v1", "templates", "templates.json");
             fileBase.Setup(f => f.Exists(path)).Returns(true);
-            fileBase.Setup(f => f.Open(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete)).Returns(GetReadableStream());
+            fileBase.Setup(f => f.Open(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete)).Returns(GetReadableStream(path));
             FileUtility.Instance = fileSystemTuple.Item1.Object;
             var templates = await contentProvider.GetTemplates();
             Assert.NotNull(templates);
@@ -58,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
             var fileBase = fileSystemTuple.Item3;
             var path = Path.Combine("bundlePath", "StaticContent", "v1", "bindings", "bindings.json");
             fileBase.Setup(f => f.Exists(path)).Returns(true);
-            fileBase.Setup(f => f.Open(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete)).Returns(GetReadableStream());
+            fileBase.Setup(f => f.Open(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete)).Returns(GetReadableStream(path));
             FileUtility.Instance = fileSystemTuple.Item1.Object;
             var bindings = await contentProvider.GetBindings();
             Assert.NotNull(bindings);
@@ -81,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
             var fileBase = fileSystemTuple.Item3;
             var path = Path.Combine("bundlePath", "StaticContent", "v1", "resources", "Resources.json");
             fileBase.Setup(f => f.Exists(path)).Returns(true);
-            fileBase.Setup(f => f.Open(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete)).Returns(GetReadableStream());
+            fileBase.Setup(f => f.Open(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete)).Returns(GetReadableStream(path));
             FileUtility.Instance = fileSystemTuple.Item1.Object;
             var resources = await contentProvider.GetResources();
             Assert.NotNull(resources);
@@ -98,7 +98,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
 
             var path = Path.Combine("bundlePath", "StaticContent", "v1", "resources", resourceFileName);
             fileBase.Setup(f => f.Exists(path)).Returns(true);
-            fileBase.Setup(f => f.Open(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete)).Returns(GetReadableStream());
+            fileBase.Setup(f => f.Open(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete)).Returns(GetReadableStream(path));
             FileUtility.Instance = fileSystemTuple.Item1.Object;
             var resources = await contentProvider.GetResources(resourceFileName);
             Assert.NotNull(resources);
@@ -120,14 +120,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
             return new Tuple<Mock<IFileSystem>, Mock<DirectoryBase>, Mock<FileBase>>(fileSystem, dirBase, fileBase);
         }
 
-        private Stream GetReadableStream()
+        private FileSystemStream GetReadableStream(string filePath)
         {
-            var stream = new MemoryStream();
-            var streamWriter = new StreamWriter(stream);
-            streamWriter.Write(StreamContent);
-            streamWriter.Flush();
-            stream.Position = 0;
-            return stream;
+            string path = filePath ?? Path.GetTempFileName();
+            BinaryData binaryData = new BinaryData(StreamContent);
+
+            FileSystem fileSystem = new FileSystem();
+            FileSystemStream systemStream = fileSystem.FileStream.New(path, FileMode.OpenOrCreate);
+            systemStream.Write(binaryData);
+            systemStream.Flush();
+            systemStream.Position = 0;
+
+            return systemStream;
         }
 
         private class TestExtensionBundleManager : IExtensionBundleManager
