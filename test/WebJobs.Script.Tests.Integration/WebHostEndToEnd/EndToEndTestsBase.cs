@@ -15,12 +15,13 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.WindowsAzure.MobileServices;
-using Microsoft.Azure.Storage.Blob;
-using Microsoft.Azure.Storage.Queue;
 using Microsoft.Azure.Cosmos.Table;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
+using Azure.Storage.Blobs.Specialized;
+using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -159,12 +160,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             TestHelpers.ClearFunctionLogs("QueueTriggerToBlob");
 
             string id = Guid.NewGuid().ToString();
-            string messageContent = string.Format("{{ \"id\": \"{0}\" }}", id);
-            CloudQueueMessage message = new CloudQueueMessage(messageContent);
+            string messageContent = $"{{ \"id\": \"{id}\" }}";
+            await Fixture.TestQueue.SendMessageAsync(messageContent);
 
-            await Fixture.TestQueue.AddMessageAsync(message);
-
-            var resultBlob = Fixture.TestOutputContainer.GetBlockBlobReference(id);
+            BlockBlobClient resultBlob = Fixture.TestOutputContainer.GetBlockBlobClient(id);
             string result = await TestHelpers.WaitForBlobAndGetStringAsync(resultBlob);
             Assert.Equal(TestHelpers.RemoveByteOrderMarkAndWhitespace(messageContent), TestHelpers.RemoveByteOrderMarkAndWhitespace(result));
 
@@ -238,9 +237,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         //    await WaitForMobileTableRecordAsync("Item", idToCheck, textToCheck);
         //}
 
-        protected async Task<IEnumerable<CloudBlockBlob>> Scenario_RandGuidBinding_GeneratesRandomIDs()
+        protected async Task<(BlobContainerClient containerClient, IEnumerable<BlobItem> blobs)> Scenario_RandGuidBinding_GeneratesRandomIDs()
         {
-            var container = await GetEmptyContainer("scenarios-output");
+            BlobContainerClient containerClient = await GetEmptyContainer("scenarios-output");
 
             // Call 3 times - expect 3 separate output blobs
             for (int i = 0; i < 3; i++)
@@ -255,25 +254,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 await Fixture.Host.BeginFunctionAsync("Scenarios", input);
             }
 
-            IEnumerable<CloudBlockBlob> blobs = null;
+            IEnumerable<BlobItem> blobs = null;
 
             await TestHelpers.Await(async () =>
             {
-                blobs = await TestHelpers.ListBlobsAsync(container);
+                blobs = await TestHelpers.ListBlobsAsync(containerClient);
                 return blobs.Count() == 3;
             });
 
             // Different languages write different content, so let them validate the blobs.
-            return blobs;
+            return (containerClient, blobs); ;
         }
 
-        protected async Task<CloudBlobContainer> GetEmptyContainer(string containerName)
+        protected async Task<BlobContainerClient> GetEmptyContainer(string containerName)
         {
-            var container = Fixture.BlobClient.GetContainerReference(containerName);
-            if (!await container.CreateIfNotExistsAsync())
-            {
-                await TestHelpers.ClearContainerAsync(container);
-            }
+            BlobContainerClient container = Fixture.BlobClient.GetBlobContainerClient(containerName);
+
+            await container.CreateIfNotExistsAsync();
+            await TestHelpers.ClearContainerAsync(container);
+
             return container;
         }
 

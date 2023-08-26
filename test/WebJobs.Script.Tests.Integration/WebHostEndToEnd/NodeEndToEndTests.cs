@@ -12,9 +12,10 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
 using System.Web.Http;
+using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
+using Azure.Storage.Blobs.Specialized;
 using Microsoft.Azure.WebJobs.Logging;
-using Microsoft.Azure.WebJobs.Script.Diagnostics;
-using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -22,8 +23,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
-using Microsoft.Azure.Storage.Blob;
-using Microsoft.Azure.Storage.Queue;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -43,20 +42,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         {
             // write a binary blob
             string name = Guid.NewGuid().ToString();
-            CloudBlockBlob inputBlob = Fixture.TestInputContainer.GetBlockBlobReference(name);
-            inputBlob.Metadata.Add("TestMetadataKey", "TestMetadataValue");
+            BlockBlobClient inputBlob = Fixture.TestInputContainer.GetBlockBlobClient(name);
+            await inputBlob.SetMetadataAsync(new Dictionary<string, string>() { { "TestMetadataKey", "TestMetadataValue" } });
+
             byte[] inputBytes = new byte[] { 1, 2, 3, 4, 5 };
-            using (var stream = await inputBlob.OpenWriteAsync())
+            using (var stream = await inputBlob.OpenWriteAsync(true))
             {
                 stream.Write(inputBytes, 0, inputBytes.Length);
             }
 
-            var resultBlob = Fixture.TestOutputContainer.GetBlockBlobReference(name);
+            BlockBlobClient resultBlob = Fixture.TestOutputContainer.GetBlockBlobClient(name);
             await TestHelpers.WaitForBlobAsync(resultBlob);
 
             byte[] resultBytes;
-            using (var resultStream = await resultBlob.OpenReadAsync())
-            using (var ms = new MemoryStream())
+            using (Stream resultStream = await resultBlob.OpenReadAsync())
+            using (MemoryStream ms = new MemoryStream())
             {
                 resultStream.CopyTo(ms);
                 resultBytes = ms.ToArray();
@@ -89,11 +89,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             // write a binary queue message
             byte[] inputBytes = new byte[] { 1, 2, 3 };
-            CloudQueueMessage message = new CloudQueueMessage(inputBytes);
-            var queue = Fixture.QueueClient.GetQueueReference("test-input-byte");
+            BinaryData messageContent = new BinaryData(inputBytes);
+            var queue = Fixture.QueueClient.GetQueueClient("test-input-byte");
+
             await queue.CreateIfNotExistsAsync();
-            await queue.ClearAsync();
-            await queue.AddMessageAsync(message);
+            await queue.ClearMessagesAsync();
+            await queue.SendMessageAsync(messageContent);
 
             JObject testResult = await GetFunctionTestResult("QueueTriggerByteArray");
             Assert.True((bool)testResult["isBuffer"]);
@@ -205,11 +206,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             // verify log levels in traces
             LogMessage[] traces = Fixture.Host.GetScriptHostLogMessages(userCategory).Where(t => t.FormattedMessage != null && t.FormattedMessage.Contains("loglevel")).ToArray();
-            Assert.True(traces.Any(t => t.Level == LogLevel.Information && t.FormattedMessage == "loglevel default" ));
-            Assert.True(traces.Any(t => t.Level == LogLevel.Information && t.FormattedMessage == "loglevel info" ));
-            Assert.True(traces.Any(t => t.Level == LogLevel.Trace && t.FormattedMessage == "loglevel verbose" ));
-            Assert.True(traces.Any(t => t.Level == LogLevel.Warning && t.FormattedMessage == "loglevel warn" ));
-            Assert.True(traces.Any(t => t.Level == LogLevel.Error && t.FormattedMessage == "loglevel error" ));
+            Assert.True(traces.Any(t => t.Level == LogLevel.Information && t.FormattedMessage == "loglevel default"));
+            Assert.True(traces.Any(t => t.Level == LogLevel.Information && t.FormattedMessage == "loglevel info"));
+            Assert.True(traces.Any(t => t.Level == LogLevel.Trace && t.FormattedMessage == "loglevel verbose"));
+            Assert.True(traces.Any(t => t.Level == LogLevel.Warning && t.FormattedMessage == "loglevel warn"));
+            Assert.True(traces.Any(t => t.Level == LogLevel.Error && t.FormattedMessage == "loglevel error"));
 
             // verify most of the logs look correct
             Assert.True(userLogs.Contains("Mathew Charles"));
@@ -234,12 +235,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         [Fact]
         public async Task RandGuidBinding_GeneratesRandomIDs()
         {
-            var blobs = await Scenario_RandGuidBinding_GeneratesRandomIDs();
+            (BlobContainerClient containerClient, IEnumerable<BlobItem> blobs) result = await Scenario_RandGuidBinding_GeneratesRandomIDs();
 
-            foreach (var blob in blobs)
+            foreach (BlobItem blob in result.blobs)
             {
-                byte[] contents = new byte[4];
-                await blob.DownloadToByteArrayAsync(contents, 0);
+                BlobClient blobClient = result.containerClient.GetBlobClient(blob.Name);
+
+                BlobDownloadResult downloadResult = await blobClient.DownloadContentAsync();
+                byte[] contents = downloadResult.Content.ToArray();
+
                 int blobInt = BitConverter.ToInt32(contents, 0);
                 Assert.True(blobInt >= 0 && blobInt <= 3);
             }
@@ -248,7 +252,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         [Fact]
         public async Task Scenario_OutputBindingContainsFunctions()
         {
-            var container = await GetEmptyContainer("scenarios-output");
+            BlobContainerClient container = await GetEmptyContainer("scenarios-output");
 
             JObject input = new JObject
                 {
@@ -258,14 +262,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             await Fixture.Host.BeginFunctionAsync("Scenarios", input);
 
-            IEnumerable<CloudBlockBlob> blobs = null;
+            IEnumerable<BlobItem> blobs = null;
             await TestHelpers.Await(async () =>
             {
                 blobs = await TestHelpers.ListBlobsAsync(container);
                 return blobs.Count() == 1;
             });
 
-            var blobString = await blobs.Single().DownloadTextAsync();
+            BlobItem singleBlobItem = blobs.Single();
+            BlobClient singleBlobClient = container.GetBlobClient(singleBlobItem.Name);
+
+            BlobDownloadResult downloadResult = await singleBlobClient.DownloadContentAsync();
+            string blobString = downloadResult.Content.ToString();
+
             Assert.Equal("{\"nested\":{},\"array\":[{}],\"value\":\"value\"}", blobString);
         }
 
@@ -321,7 +330,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             // verify blob was written
             string blobName = $"TestPrefix-{id}-TestSuffix-BBB";
-            var outBlob = Fixture.TestOutputContainer.GetBlockBlobReference(blobName);
+            BlockBlobClient outBlob = Fixture.TestOutputContainer.GetBlockBlobClient(blobName);
             string result = await TestHelpers.WaitForBlobAndGetStringAsync(outBlob);
             Assert.Equal(expectedValue, result);
         }
@@ -796,20 +805,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             await Fixture.Host.BeginFunctionAsync("MultipleOutputs", input);
 
             // verify all 3 output blobs were written
-            var blob = Fixture.TestOutputContainer.GetBlockBlobReference(id1);
+            BlockBlobClient blob = Fixture.TestOutputContainer.GetBlockBlobClient(id1);
             await TestHelpers.WaitForBlobAsync(blob, Fixture.Host.GetLog);
-            string blobContent = await blob.DownloadTextAsync();
+            BlobDownloadResult downloadResult = await blob.DownloadContentAsync();
+            string blobContent = downloadResult.Content.ToString();
             // TODO: why required?
             Assert.Equal("Test Blob 1", blobContent.TrimEnd('\0').Trim('"'));
 
-            blob = Fixture.TestOutputContainer.GetBlockBlobReference(id2);
+            blob = Fixture.TestOutputContainer.GetBlockBlobClient(id2);
             await TestHelpers.WaitForBlobAsync(blob);
-            blobContent = await blob.DownloadTextAsync();
+            downloadResult = await blob.DownloadContentAsync();
+            blobContent = downloadResult.Content.ToString();
             Assert.Equal("Test Blob 2", blobContent.TrimEnd('\0').Trim('"'));
 
-            blob = Fixture.TestOutputContainer.GetBlockBlobReference(id3);
+            blob = Fixture.TestOutputContainer.GetBlockBlobClient(id3);
             await TestHelpers.WaitForBlobAsync(blob);
-            blobContent = await blob.DownloadTextAsync();
+            downloadResult = await blob.DownloadContentAsync();
+            blobContent = downloadResult.Content.ToString();
             Assert.Equal("Test Blob 3", blobContent.TrimEnd('\0').Trim('"'));
         }
 
@@ -828,9 +840,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             await Fixture.Host.BeginFunctionAsync("MultipleInputs", input);
 
             // verify the correct output blob was written
-            var blob = Fixture.TestOutputContainer.GetBlockBlobReference(id);
+            BlockBlobClient blob = Fixture.TestOutputContainer.GetBlockBlobClient(id);
             await TestHelpers.WaitForBlobAsync(blob);
-            var blobContent = await blob.DownloadTextAsync();
+            BlobDownloadResult downloadResult = await blob.DownloadContentAsync();
+            string blobContent = downloadResult.Content.ToString();
             Assert.Equal("Test Entity 1, Test Entity 2", Utility.RemoveUtf8ByteOrderMark(blobContent.Trim()));
         }
 
@@ -897,7 +910,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             {
                 base.ConfigureScriptHost(webJobsBuilder);
 
-                webJobsBuilder.AddAzureStorage()
+                webJobsBuilder.AddAzureStorageCoreServices()
                     .Services.Configure<ScriptJobHostOptions>(o =>
                     {
                         o.Functions = new[]

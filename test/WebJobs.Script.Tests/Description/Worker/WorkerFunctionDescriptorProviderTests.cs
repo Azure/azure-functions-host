@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             _host = new HostBuilder().ConfigureDefaultTestWebScriptHost(b =>
             {
-                b.AddAzureStorage();
+                b.AddAzureStorageCoreServices();
             },
             o =>
             {

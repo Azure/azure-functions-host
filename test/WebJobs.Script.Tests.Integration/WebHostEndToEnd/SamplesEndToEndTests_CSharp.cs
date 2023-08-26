@@ -13,7 +13,8 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
-using Microsoft.Azure.Storage.Blob;
+using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Specialized;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Management.Models;
 using Microsoft.Azure.WebJobs.Script.Models;
@@ -189,7 +190,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 }
 
                 HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
-                
+
                 if (addAuthKey)
                 {
                     await this._fixture.AddMasterKey(request);
@@ -725,17 +726,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         [Fact]
         public async Task ManualTrigger_Invoke_Succeeds()
         {
+            const string sampleText = "Hello C#!";
             var vars = new Dictionary<string, string>
             {
                 { RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.DotNetLanguageWorkerName}
             };
             using (_fixture.Host.WebHostServices.CreateScopedEnvironment(vars))
             {
-                CloudBlobContainer outputContainer = _fixture.BlobClient.GetContainerReference("samples-output");
+                BlobContainerClient outputContainer = _fixture.BlobClient.GetBlobContainerClient("samples-output");
                 string inId = Guid.NewGuid().ToString();
                 string outId = Guid.NewGuid().ToString();
-                CloudBlockBlob statusBlob = outputContainer.GetBlockBlobReference(inId);
-                await statusBlob.UploadTextAsync("Hello C#!");
+                BlockBlobClient statusBlob = outputContainer.GetBlockBlobClient(inId);
+                BinaryData blobContent = new BinaryData(sampleText);
+                await statusBlob.UploadAsync(blobContent.ToStream());
 
                 JObject input = new JObject()
             {
@@ -745,10 +748,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
                 await _fixture.Host.BeginFunctionAsync("manualtrigger", input);
 
-                // wait for completion
-                CloudBlockBlob outputBlob = outputContainer.GetBlockBlobReference(outId);
+                // wait for completionBlock
+                BlockBlobClient outputBlob = outputContainer.GetBlockBlobClient(outId);
                 string result = await TestHelpers.WaitForBlobAndGetStringAsync(outputBlob);
-                Assert.Equal("Hello C#!", Utility.RemoveUtf8ByteOrderMark(result));
+                Assert.Equal(sampleText, Utility.RemoveUtf8ByteOrderMark(result));
             }
         }
 
@@ -782,8 +785,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
                 // wait for function to execute and produce its result blob
-                CloudBlobContainer outputContainer = _fixture.BlobClient.GetContainerReference("samples-output");
-                CloudBlockBlob outputBlob = outputContainer.GetBlockBlobReference(id);
+                BlobContainerClient outputContainer = _fixture.BlobClient.GetBlobContainerClient("samples-output");
+                BlockBlobClient outputBlob = outputContainer.GetBlockBlobClient(id);
                 string result = await TestHelpers.WaitForBlobAndGetStringAsync(outputBlob);
 
                 Assert.Equal("Testing", TestHelpers.RemoveByteOrderMarkAndWhitespace(result));
@@ -836,8 +839,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
                 // wait for function to execute and produce its result blob
-                CloudBlobContainer outputContainer = _fixture.BlobClient.GetContainerReference("samples-output");
-                CloudBlockBlob outputBlob = outputContainer.GetBlockBlobReference(id);
+                BlobContainerClient outputContainer = _fixture.BlobClient.GetBlobContainerClient("samples-output");
+                BlockBlobClient outputBlob = outputContainer.GetBlockBlobClient(id);
                 string result = await TestHelpers.WaitForBlobAndGetStringAsync(outputBlob);
 
                 Assert.Equal("Testing", TestHelpers.RemoveByteOrderMarkAndWhitespace(result));

@@ -12,8 +12,9 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Specialized;
 using Microsoft.Azure.EventHubs;
-using Microsoft.Azure.Storage.Blob;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Models;
@@ -85,16 +86,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         [Fact]
         public async Task ManualTrigger_Invoke_Succeeds()
         {
-            CloudBlobContainer outputContainer = _fixture.BlobClient.GetContainerReference("samples-output");
+            BlobContainerClient outputContainer = _fixture.BlobClient.GetBlobContainerClient("samples-output");
             string inId = Guid.NewGuid().ToString();
             string outId = Guid.NewGuid().ToString();
-            CloudBlockBlob statusBlob = outputContainer.GetBlockBlobReference(inId);
+            BlockBlobClient statusBlob = outputContainer.GetBlockBlobClient(inId);
             JObject testData = new JObject()
             {
                 { "first", "Mathew" },
                 { "last", "Charles" }
             };
-            await statusBlob.UploadTextAsync(testData.ToString(Formatting.None));
+            BinaryData content = new BinaryData(testData.ToString(Formatting.None));
+            await statusBlob.UploadAsync(content.ToStream());
 
             JObject input = new JObject()
             {
@@ -105,7 +107,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             await _fixture.Host.BeginFunctionAsync("manualtrigger", input);
 
             // wait for completion
-            CloudBlockBlob outputBlob = outputContainer.GetBlockBlobReference(outId);
+            BlockBlobClient outputBlob = outputContainer.GetBlockBlobClient(outId);
             string result = await TestHelpers.WaitForBlobAndGetStringAsync(outputBlob);
             Assert.Equal("Mathew Charles", result);
         }
@@ -261,9 +263,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(HttpStatusCode.Created, response.StatusCode);
 
             // wait for function to execute and produce its result blob
-            CloudBlobContainer outputContainer = _fixture.BlobClient.GetContainerReference("samples-output");
+            BlobContainerClient outputContainer = _fixture.BlobClient.GetBlobContainerClient("samples-output");
             string path = $"housewares/{id}";
-            CloudBlockBlob outputBlob = outputContainer.GetBlockBlobReference(path);
+            BlockBlobClient outputBlob = outputContainer.GetBlockBlobClient(path);
             string result = await TestHelpers.WaitForBlobAndGetStringAsync(outputBlob);
             JObject resultProduct = JObject.Parse(Utility.RemoveUtf8ByteOrderMark(result));
             Assert.Equal(id, (string)resultProduct["id"]);

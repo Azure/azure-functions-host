@@ -10,6 +10,9 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
+using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
+using Azure.Storage.Blobs.Specialized;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
@@ -243,19 +246,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             await Fixture.Host.BeginFunctionAsync("MultipleOutputs", input);
 
             // verify all 3 output blobs were written
-            var blob = Fixture.TestOutputContainer.GetBlockBlobReference(id1);
+            BlockBlobClient blob = Fixture.TestOutputContainer.GetBlockBlobClient(id1);
             await TestHelpers.WaitForBlobAsync(blob);
-            string blobContent = await blob.DownloadTextAsync();
+            BlobDownloadResult downloadResult = await blob.DownloadContentAsync();
+            string blobContent = downloadResult.Content.ToString();
             Assert.Equal("Test Blob 1", Utility.RemoveUtf8ByteOrderMark(blobContent));
 
-            blob = Fixture.TestOutputContainer.GetBlockBlobReference(id2);
+            blob = Fixture.TestOutputContainer.GetBlockBlobClient(id2);
             await TestHelpers.WaitForBlobAsync(blob);
-            blobContent = await blob.DownloadTextAsync();
+            downloadResult = await blob.DownloadContentAsync();
+            blobContent = downloadResult.Content.ToString();
             Assert.Equal("Test Blob 2", Utility.RemoveUtf8ByteOrderMark(blobContent));
 
-            blob = Fixture.TestOutputContainer.GetBlockBlobReference(id3);
+            blob = Fixture.TestOutputContainer.GetBlockBlobClient(id3);
             await TestHelpers.WaitForBlobAsync(blob);
-            blobContent = await blob.DownloadTextAsync();
+            downloadResult = await blob.DownloadContentAsync();
+            blobContent = downloadResult.Content.ToString();
             Assert.Equal("Test Blob 3", Utility.RemoveUtf8ByteOrderMark(blobContent));
         }
 
@@ -309,11 +315,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         [Fact]
         public async Task RandGuidBinding_GeneratesRandomIDs()
         {
-            var blobs = await Scenario_RandGuidBinding_GeneratesRandomIDs();
+            (BlobContainerClient containerClient, IEnumerable<BlobItem> blobs) result = await Scenario_RandGuidBinding_GeneratesRandomIDs();
 
-            foreach (var blob in blobs)
+            foreach (BlobItem blob in result.blobs)
             {
-                string content = await blob.DownloadTextAsync();
+                BlobClient blobClient = result.containerClient.GetBlobClient(blob.Name);
+                BlobDownloadResult downloadResult = await blobClient.DownloadContentAsync();
+                string content = downloadResult.Content.ToString();
+
                 int blobInt = int.Parse(content.Trim(new char[] { '\uFEFF', '\u200B' }));
                 Assert.True(blobInt >= 0 && blobInt <= 3);
             }
@@ -447,7 +456,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             // verify blob was written
             string blobName = $"TestPrefix-{id}-TestSuffix-BBB";
-            var outBlob = Fixture.TestOutputContainer.GetBlockBlobReference(blobName);
+            BlockBlobClient outBlob = Fixture.TestOutputContainer.GetBlockBlobClient(blobName);
             string result = await TestHelpers.WaitForBlobAndGetStringAsync(outBlob);
             Assert.Equal(expectedValue, Utility.RemoveUtf8ByteOrderMark(result));
         }
@@ -567,7 +576,7 @@ namespace SecondaryDependency
             {
                 base.ConfigureScriptHost(webJobsBuilder);
 
-                webJobsBuilder.AddAzureStorage();
+                webJobsBuilder.AddAzureStorageCoreServices();
                 webJobsBuilder.Services.Configure<ScriptJobHostOptions>(o =>
                 {
                     // Only load the functions we care about

@@ -14,8 +14,12 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure;
+using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
+using Azure.Storage.Blobs.Specialized;
+using Azure.Storage.Sas;
 using Microsoft.Azure.Storage;
-using Microsoft.Azure.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.Workers;
@@ -141,24 +145,55 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        public static async Task<string> WaitForBlobAndGetStringAsync(CloudBlockBlob blob, Func<string> userMessageCallback = null)
+        public static async Task<string> WaitForBlobAndGetStringAsync(BlobClient blobClient, Func<string> userMessageCallback = null)
         {
-            await WaitForBlobAsync(blob, userMessageCallback: userMessageCallback);
+            await WaitForBlobAsync(blobClient, userMessageCallback: userMessageCallback);
 
-            string result = await blob.DownloadTextAsync(Encoding.UTF8,
-                null, new BlobRequestOptions(), new OperationContext());
+            BlobDownloadResult downloadResult = await blobClient.DownloadContentAsync();
+            string result = downloadResult.Content.ToString();
 
             return result;
         }
 
-        public static async Task WaitForBlobAsync(CloudBlockBlob blob, Func<string> userMessageCallback = null)
+        public static async Task WaitForBlobAsync(BlobClient blobClient, Func<string> userMessageCallback = null)
         {
             StringBuilder sb = new StringBuilder();
 
             await TestHelpers.Await(async () =>
             {
-                bool exists = await blob.ExistsAsync();
-                sb.AppendLine($"{blob.Name} exists: {exists}.");
+                bool exists = await blobClient.ExistsAsync();
+                sb.AppendLine($"{blobClient.Name} exists: {exists}.");
+                return exists;
+            },
+            pollingInterval: 500,
+            userMessageCallback: () =>
+            {
+                if (userMessageCallback != null)
+                {
+                    sb.AppendLine().Append(userMessageCallback());
+                }
+                return sb.ToString();
+            });
+        }
+
+        public static async Task<string> WaitForBlobAndGetStringAsync(BlockBlobClient blockBlobClient, Func<string> userMessageCallback = null)
+        {
+            await WaitForBlobAsync(blockBlobClient, userMessageCallback: userMessageCallback);
+
+            BlobDownloadResult downloadResult = await blockBlobClient.DownloadContentAsync();
+            string result = downloadResult.Content.ToString();
+
+            return result;
+        }
+
+        public static async Task WaitForBlobAsync(BlockBlobClient blockBlobClient, Func<string> userMessageCallback = null)
+        {
+            StringBuilder sb = new StringBuilder();
+
+            await TestHelpers.Await(async () =>
+            {
+                bool exists = await blockBlobClient.ExistsAsync();
+                sb.AppendLine($"{blockBlobClient.Name} exists: {exists}.");
                 return exists;
             },
             pollingInterval: 500,
@@ -237,26 +272,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         // Deleting and recreating a container can result in a 409 as the container name is not
         // immediately available. Instead, use this helper to clear a container.
-        public static async Task ClearContainerAsync(CloudBlobContainer container)
+        public static async Task ClearContainerAsync(BlobContainerClient container)
         {
             foreach (var blob in await ListBlobsAsync(container))
             {
-                await blob.DeleteIfExistsAsync();
+                BlobClient blobClient = container.GetBlobClient(blob.Name);
+                await blobClient.DeleteIfExistsAsync();
             }
         }
 
-        public static async Task<IEnumerable<CloudBlockBlob>> ListBlobsAsync(CloudBlobContainer container)
+        public static async Task<IEnumerable<BlobItem>> ListBlobsAsync(BlobContainerClient container)
         {
-            List<CloudBlockBlob> blobs = new List<CloudBlockBlob>();
-            BlobContinuationToken token = null;
+            const int segmentSize = 256;
 
-            do
+            List<BlobItem> blobs = new List<BlobItem>();
+
+            var resultSegment = container.GetBlobsAsync().AsPages(default, segmentSize);
+
+            await foreach (Page<BlobItem> blobPage in resultSegment)
             {
-                BlobResultSegment blobSegment = await container.ListBlobsSegmentedAsync(token);
-                token = blobSegment.ContinuationToken;
-                blobs.AddRange(blobSegment.Results.Cast<CloudBlockBlob>());
+                blobs.AddRange(blobPage.Values);
             }
-            while (token != null);
 
             return blobs;
         }
@@ -450,45 +486,52 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             ZipFile.CreateFromDirectory(contentTemp, zipPath);
         }
 
+
         public static async Task<Uri> CreateBlobSas(string connectionString, string filePath, string blobContainer, string blobName)
         {
-            CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
-            var blobClient = storageAccount.CreateCloudBlobClient();
-            var container = blobClient.GetContainerReference(blobContainer);
-            await container.CreateIfNotExistsAsync();
-            var blob = container.GetBlockBlobReference(blobName);
+            BlobServiceClient blobServiceClient = new BlobServiceClient(connectionString);
+
+            BlobContainerClient containerClient = blobServiceClient.GetBlobContainerClient(blobContainer);
+            await containerClient.CreateIfNotExistsAsync();
+
+            BlobClient blobClient = containerClient.GetBlobClient(blobName);
+
             if (!string.IsNullOrEmpty(filePath))
             {
-                await blob.UploadFromFileAsync(filePath);
+                BinaryData binaryData = new BinaryData(filePath);
+                await blobClient.UploadAsync(binaryData, overwrite: true);
             }
-            var policy = new SharedAccessBlobPolicy
-            {
-                SharedAccessStartTime = DateTime.UtcNow,
-                SharedAccessExpiryTime = DateTime.UtcNow.AddHours(1),
-                Permissions = SharedAccessBlobPermissions.Read | SharedAccessBlobPermissions.List
-            };
-            var sas = blob.GetSharedAccessSignature(policy);
-            var sasUri = new Uri(blob.Uri, sas);
 
-            return sasUri;
+            BlobSasBuilder blobSasBuilder = new BlobSasBuilder
+            {
+                StartsOn = DateTimeOffset.UtcNow,
+                ExpiresOn = DateTimeOffset.UtcNow.AddHours(1),
+                BlobContainerName = blobClient.BlobContainerName,
+                BlobName = blobClient.Name
+            };
+
+            blobSasBuilder.SetPermissions(BlobSasPermissions.Read | BlobSasPermissions.List);
+
+            return blobClient.GenerateSasUri(blobSasBuilder);
         }
 
         public static async Task<Uri> CreateBlobContainerSas(string connectionString, string blobContainer)
         {
-            CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
-            var blobClient = storageAccount.CreateCloudBlobClient();
-            var container = blobClient.GetContainerReference(blobContainer);
-            await container.CreateIfNotExistsAsync();
+            BlobServiceClient blobServiceClient = new BlobServiceClient(connectionString);
 
-            var policy = new SharedAccessBlobPolicy
+            BlobContainerClient containerClient = blobServiceClient.GetBlobContainerClient(blobContainer);
+            await containerClient.CreateIfNotExistsAsync();
+
+            BlobSasBuilder blobSasBuilder = new BlobSasBuilder
             {
-                SharedAccessStartTime = DateTime.UtcNow,
-                SharedAccessExpiryTime = DateTime.UtcNow.AddHours(1),
-                Permissions = SharedAccessBlobPermissions.Read | SharedAccessBlobPermissions.Write | SharedAccessBlobPermissions.List | SharedAccessBlobPermissions.Delete
+                StartsOn = DateTimeOffset.UtcNow,
+                ExpiresOn = DateTimeOffset.UtcNow.AddHours(1),
+                BlobContainerName = blobContainer,
             };
-            var sas = container.GetSharedAccessSignature(policy);
 
-            return new Uri(container.StorageUri.PrimaryUri, sas);
+            blobSasBuilder.SetPermissions(BlobContainerSasPermissions.Read | BlobContainerSasPermissions.Write | BlobContainerSasPermissions.List | BlobContainerSasPermissions.Delete);
+
+            return containerClient.GenerateSasUri(blobSasBuilder);
         }
 
         // Creates an IAzureBlobStorageProvider without reacting to Specialization and ActiveHost change. To test the specialization logic, please refer to

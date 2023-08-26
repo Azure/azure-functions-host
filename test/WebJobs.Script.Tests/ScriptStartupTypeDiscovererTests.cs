@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 new ExtensionReference { Name = "Http", TypeName = typeof(HttpWebJobsStartup).AssemblyQualifiedName },
                 new ExtensionReference { Name = "Timers", TypeName = typeof(ExtensionsWebJobsStartup).AssemblyQualifiedName },
-                new ExtensionReference { Name = "Storage", TypeName = typeof(AzureStorageWebJobsStartup).AssemblyQualifiedName },
+                new ExtensionReference { Name = "Storage", TypeName = typeof(AzureStorageBlobsWebJobsStartup).AssemblyQualifiedName },
             };
 
             var extensions = new JObject
@@ -59,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 CopyToBin(typeof(HttpWebJobsStartup).Assembly.Location);
                 CopyToBin(typeof(ExtensionsWebJobsStartup).Assembly.Location);
-                CopyToBin(typeof(AzureStorageWebJobsStartup).Assembly.Location);
+                CopyToBin(typeof(AzureStorageBlobsWebJobsStartup).Assembly.Location);
 
                 File.WriteAllText(Path.Combine(binPath, "extensions.json"), extensions.ToString());
 
@@ -81,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 // Assert
                 AreExpectedMetricsGenerated(testMetricsLogger);
                 Assert.Single(types);
-                Assert.Equal(typeof(AzureStorageWebJobsStartup).FullName, types.Single().FullName);
+                Assert.Equal(typeof(AzureStorageBlobsWebJobsStartup).FullName, types.Single().FullName);
                 Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"The extension startup type '{references[0].TypeName}' belongs to a builtin extension")));
                 Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"The extension startup type '{references[1].TypeName}' belongs to a builtin extension")));
             }
@@ -126,7 +126,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 new ExtensionReference { Name = "Http", TypeName = typeof(HttpWebJobsStartup).AssemblyQualifiedName },
                 new ExtensionReference { Name = "Timers", TypeName = typeof(ExtensionsWebJobsStartup).AssemblyQualifiedName },
-                new ExtensionReference { Name = "Storage", TypeName = typeof(AzureStorageWebJobsStartup).AssemblyQualifiedName },
+                new ExtensionReference { Name = "Storage", TypeName = typeof(AzureStorageBlobsWebJobsStartup).AssemblyQualifiedName },
             };
 
             var extensions = new JObject
@@ -152,7 +152,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 CopyToBin(typeof(HttpWebJobsStartup).Assembly.Location);
                 CopyToBin(typeof(ExtensionsWebJobsStartup).Assembly.Location);
-                CopyToBin(typeof(AzureStorageWebJobsStartup).Assembly.Location);
+                CopyToBin(typeof(AzureStorageBlobsWebJobsStartup).Assembly.Location);
 
                 File.WriteAllText(Path.Combine(binPath, "extensions.json"), extensions.ToString());
 
@@ -172,7 +172,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 // Assert
                 Assert.Single(types);
                 AreExpectedMetricsGenerated(testMetricsLogger);
-                Assert.Equal(typeof(AzureStorageWebJobsStartup).FullName, types.Single().FullName);
+                Assert.Equal(typeof(AzureStorageBlobsWebJobsStartup).FullName, types.Single().FullName);
                 Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"The extension startup type '{references[0].TypeName}' belongs to a builtin extension")));
                 Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"The extension startup type '{references[1].TypeName}' belongs to a builtin extension")));
             }
@@ -210,8 +210,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task GetExtensionsStartupTypes_BundlesConfiguredBindingsNotConfigured_LoadsAllExtensions()
         {
-            var storageExtensionReference = new ExtensionReference { Name = "Storage", TypeName = typeof(AzureStorageWebJobsStartup).AssemblyQualifiedName };
-            var sendGridExtensionReference = new ExtensionReference { Name = "SendGrid", TypeName = typeof(AzureStorageWebJobsStartup).AssemblyQualifiedName };
+            var storageExtensionReference = new ExtensionReference { Name = "Storage", TypeName = typeof(AzureStorageBlobsWebJobsStartup).AssemblyQualifiedName };
+            var sendGridExtensionReference = new ExtensionReference { Name = "SendGrid", TypeName = typeof(AzureStorageBlobsWebJobsStartup).AssemblyQualifiedName };
             var references = new[] { storageExtensionReference, sendGridExtensionReference };
             TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
 
@@ -230,7 +230,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     File.Copy(path, Path.Combine(binPath, Path.GetFileName(path)));
                 }
 
-                CopyToBin(typeof(AzureStorageWebJobsStartup).Assembly.Location);
+                CopyToBin(typeof(AzureStorageBlobsWebJobsStartup).Assembly.Location);
 
                 File.WriteAllText(Path.Combine(binPath, "extensions.json"), extensions.ToString());
 
@@ -253,7 +253,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 // Assert
                 AreExpectedMetricsGenerated(testMetricsLogger);
                 Assert.Equal(types.Count(), 2);
-                Assert.Equal(typeof(AzureStorageWebJobsStartup).FullName, types.FirstOrDefault().FullName);
+                Assert.Equal(typeof(AzureStorageBlobsWebJobsStartup).FullName, types.FirstOrDefault().FullName);
             }
         }
 
@@ -262,7 +262,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var references = new[]
             {
-                new ExtensionReference { Name = "Storage", TypeName = typeof(AzureStorageWebJobsStartup).AssemblyQualifiedName }
+                new ExtensionReference { Name = "Storage", TypeName = typeof(AzureStorageBlobsWebJobsStartup).AssemblyQualifiedName }
             };
 
             var extensions = new JObject
@@ -284,7 +284,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     File.Copy(path, Path.Combine(binPath, Path.GetFileName(path)));
                 }
 
-                CopyToBin(typeof(AzureStorageWebJobsStartup).Assembly.Location);
+                CopyToBin(typeof(AzureStorageBlobsWebJobsStartup).Assembly.Location);
 
                 File.WriteAllText(Path.Combine(binPath, "extensions.json"), extensions.ToString());
 
@@ -304,16 +304,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 // Assert
                 AreExpectedMetricsGenerated(testMetricsLogger);
                 Assert.Single(types);
-                Assert.Equal(typeof(AzureStorageWebJobsStartup).FullName, types.Single().FullName);
+                Assert.Equal(typeof(AzureStorageBlobsWebJobsStartup).FullName, types.Single().FullName);
             }
         }
 
         [Fact]
         public async Task GetExtensionsStartupTypes_BundlesConfiguredBindingsConfigured_PerformsSelectiveLoading()
         {
-            var storageExtensionReference = new ExtensionReference { Name = "Storage", TypeName = typeof(AzureStorageWebJobsStartup).AssemblyQualifiedName };
+            var storageExtensionReference = new ExtensionReference { Name = "Storage", TypeName = typeof(AzureStorageBlobsWebJobsStartup).AssemblyQualifiedName };
             storageExtensionReference.Bindings.Add("blob");
-            var sendGridExtensionReference = new ExtensionReference { Name = "SendGrid", TypeName = typeof(AzureStorageWebJobsStartup).AssemblyQualifiedName };
+            var sendGridExtensionReference = new ExtensionReference { Name = "SendGrid", TypeName = typeof(AzureStorageBlobsWebJobsStartup).AssemblyQualifiedName };
             sendGridExtensionReference.Bindings.Add("sendGrid");
             var references = new[] { storageExtensionReference, sendGridExtensionReference };
             TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
@@ -333,7 +333,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     File.Copy(path, Path.Combine(binPath, Path.GetFileName(path)));
                 }
 
-                CopyToBin(typeof(AzureStorageWebJobsStartup).Assembly.Location);
+                CopyToBin(typeof(AzureStorageBlobsWebJobsStartup).Assembly.Location);
 
                 File.WriteAllText(Path.Combine(binPath, "extensions.json"), extensions.ToString());
 
@@ -357,7 +357,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 //Assert
                 AreExpectedMetricsGenerated(testMetricsLogger);
                 Assert.Single(types);
-                Assert.Equal(typeof(AzureStorageWebJobsStartup).FullName, types.Single().FullName);
+                Assert.Equal(typeof(AzureStorageBlobsWebJobsStartup).FullName, types.Single().FullName);
             }
         }
 
@@ -388,7 +388,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 //Assert
                 AreExpectedMetricsGenerated(testMetricsLogger);
                 Assert.Single(types);
-                Assert.Equal(typeof(AzureStorageWebJobsStartup).FullName, types.Single().FullName);
+                Assert.Equal(typeof(AzureStorageBlobsWebJobsStartup).FullName, types.Single().FullName);
             }
         }
 
@@ -432,7 +432,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 AreExpectedMetricsGenerated(testMetricsLogger);
                 Assert.Single(types);
-                Assert.Equal(typeof(AzureStorageWebJobsStartup).FullName, types.Single().FullName);
+                Assert.Equal(typeof(AzureStorageBlobsWebJobsStartup).FullName, types.Single().FullName);
             }
         }
 
@@ -465,16 +465,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 //Assert
                 AreExpectedMetricsGenerated(testMetricsLogger);
                 Assert.Single(types);
-                Assert.Equal(typeof(AzureStorageWebJobsStartup).FullName, types.Single().FullName);
+                Assert.Equal(typeof(AzureStorageBlobsWebJobsStartup).FullName, types.Single().FullName);
             }
         }
 
         [Fact]
         public async Task GetExtensionsStartupTypes_BundlesNotConfiguredBindingsConfigured_LoadsAllExtensions()
         {
-            var storageExtensionReference = new ExtensionReference { Name = "Storage", TypeName = typeof(AzureStorageWebJobsStartup).AssemblyQualifiedName };
+            var storageExtensionReference = new ExtensionReference { Name = "Storage", TypeName = typeof(AzureStorageBlobsWebJobsStartup).AssemblyQualifiedName };
             storageExtensionReference.Bindings.Add("blob");
-            var sendGridExtensionReference = new ExtensionReference { Name = "SendGrid", TypeName = typeof(AzureStorageWebJobsStartup).AssemblyQualifiedName };
+            var sendGridExtensionReference = new ExtensionReference { Name = "SendGrid", TypeName = typeof(AzureStorageBlobsWebJobsStartup).AssemblyQualifiedName };
             sendGridExtensionReference.Bindings.Add("sendGrid");
             var references = new[] { storageExtensionReference, sendGridExtensionReference };
             TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
@@ -494,7 +494,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     File.Copy(path, Path.Combine(binPath, Path.GetFileName(path)));
                 }
 
-                CopyToBin(typeof(AzureStorageWebJobsStartup).Assembly.Location);
+                CopyToBin(typeof(AzureStorageBlobsWebJobsStartup).Assembly.Location);
 
                 File.WriteAllText(Path.Combine(binPath, "extensions.json"), extensions.ToString());
 
@@ -516,7 +516,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 // Assert
                 AreExpectedMetricsGenerated(testMetricsLogger);
                 Assert.Equal(types.Count(), 2);
-                Assert.Equal(typeof(AzureStorageWebJobsStartup).FullName, types.FirstOrDefault().FullName);
+                Assert.Equal(typeof(AzureStorageBlobsWebJobsStartup).FullName, types.FirstOrDefault().FullName);
             }
         }
 
@@ -590,9 +590,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 // Assert
 
-                var storageTrace = traces.FirstOrDefault(m => m.FormattedMessage.StartsWith("ExtensionStartupType AzureStorageWebJobsStartup"));
+                var storageTrace = traces.FirstOrDefault(m => m.FormattedMessage.StartsWith("ExtensionStartupType AzureStorageBlobsWebJobsStartup"));
                 Assert.NotNull(storageTrace);
-                Assert.Equal("ExtensionStartupType AzureStorageWebJobsStartup from assembly 'Microsoft.Azure.WebJobs.Extensions.Storage, Version=3.0.10.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35' does not meet the required minimum version of 4.0.4.0. Update your NuGet package reference for Microsoft.Azure.WebJobs.Extensions.Storage to 4.0.4 or later.",
+                Assert.Equal("ExtensionStartupType AzureStorageBlobsWebJobsStartup from assembly 'Microsoft.Azure.WebJobs.Extensions.Storage, Version=3.0.10.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35' does not meet the required minimum version of 4.0.4.0. Update your NuGet package reference for Microsoft.Azure.WebJobs.Extensions.Storage to 4.0.4 or later.",
                     storageTrace.FormattedMessage);
             }
         }
@@ -600,9 +600,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task GetExtensionsStartupTypes_WorkerIndexing_PerformsSelectiveLoading()
         {
-            var storageExtensionReference = new ExtensionReference { Name = "Storage", TypeName = typeof(AzureStorageWebJobsStartup).AssemblyQualifiedName };
+            var storageExtensionReference = new ExtensionReference { Name = "Storage", TypeName = typeof(AzureStorageBlobsWebJobsStartup).AssemblyQualifiedName };
             storageExtensionReference.Bindings.Add("blob");
-            var sendGridExtensionReference = new ExtensionReference { Name = "SendGrid", TypeName = typeof(AzureStorageWebJobsStartup).AssemblyQualifiedName };
+            var sendGridExtensionReference = new ExtensionReference { Name = "SendGrid", TypeName = typeof(AzureStorageBlobsWebJobsStartup).AssemblyQualifiedName };
             sendGridExtensionReference.Bindings.Add("sendGrid");
             var references = new[] { storageExtensionReference, sendGridExtensionReference };
             TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
@@ -622,7 +622,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     File.Copy(path, Path.Combine(binPath, Path.GetFileName(path)));
                 }
 
-                CopyToBin(typeof(AzureStorageWebJobsStartup).Assembly.Location);
+                CopyToBin(typeof(AzureStorageBlobsWebJobsStartup).Assembly.Location);
 
                 File.WriteAllText(Path.Combine(binPath, "extensions.json"), extensions.ToString());
 
@@ -656,7 +656,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 //Assert that filtering did not take place because of worker indexing
                 Assert.True(types.Count() == 1);
-                Assert.Equal(typeof(AzureStorageWebJobsStartup).FullName, types.ElementAt(0).FullName);
+                Assert.Equal(typeof(AzureStorageBlobsWebJobsStartup).FullName, types.ElementAt(0).FullName);
             }
         }
 
@@ -685,9 +685,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private TempDirectory GetTempDirectory()
         {
             var directory = new TempDirectory();
-            var storageExtensionReference = new ExtensionReference { Name = "Storage", TypeName = typeof(AzureStorageWebJobsStartup).AssemblyQualifiedName };
+            var storageExtensionReference = new ExtensionReference { Name = "Storage", TypeName = typeof(AzureStorageBlobsWebJobsStartup).AssemblyQualifiedName };
             storageExtensionReference.Bindings.Add("blob");
-            var sendGridExtensionReference = new ExtensionReference { Name = "SendGrid", TypeName = typeof(AzureStorageWebJobsStartup).AssemblyQualifiedName };
+            var sendGridExtensionReference = new ExtensionReference { Name = "SendGrid", TypeName = typeof(AzureStorageBlobsWebJobsStartup).AssemblyQualifiedName };
             sendGridExtensionReference.Bindings.Add("sendGrid");
             var references = new[] { storageExtensionReference, sendGridExtensionReference };
 
@@ -704,7 +704,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 File.Copy(path, Path.Combine(binPath, Path.GetFileName(path)));
             }
 
-            CopyToBin(typeof(AzureStorageWebJobsStartup).Assembly.Location);
+            CopyToBin(typeof(AzureStorageBlobsWebJobsStartup).Assembly.Location);
 
             File.WriteAllText(Path.Combine(binPath, "extensions.json"), extensions.ToString());
             return directory;

@@ -4,9 +4,9 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using Azure.Storage.Blobs.Specialized;
 using Microsoft.Azure.Documents;
 using Microsoft.Azure.Documents.Client;
-using Microsoft.Azure.Storage.Queue;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
 
             await Fixture.InitializeDocumentClient();
             bool collectionsCreated = await Fixture.CreateDocumentCollections();
-            var resultBlob = Fixture.TestOutputContainer.GetBlockBlobReference("cosmosdbtriggere2e-completed");
+            BlockBlobClient resultBlob = Fixture.TestOutputContainer.GetBlockBlobClient("cosmosdbtriggere2e-completed");
             await resultBlob.DeleteIfExistsAsync();
 
             string id = Guid.NewGuid().ToString();
@@ -70,8 +70,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
 
             // Now add that Id to a Queue, in an object to test binding
             var queue = await Fixture.GetNewQueue("documentdb-input");
-            string messageContent = string.Format("{{ \"documentId\": \"{0}\" }}", id);
-            await queue.AddMessageAsync(new CloudQueueMessage(messageContent));
+            string messageContent = $"{{ \"documentId\": \"{id}\" }}";
+            await queue.SendMessageAsync(messageContent);
 
             // And wait for the text to be updated
             Document updatedDoc = await WaitForDocumentAsync(id, "This was updated!");

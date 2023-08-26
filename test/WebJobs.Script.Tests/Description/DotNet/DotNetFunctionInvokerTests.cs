@@ -267,7 +267,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var host = new HostBuilder().ConfigureDefaultTestWebScriptHost(b =>
             {
-                b.AddAzureStorage();
+                b.AddAzureStorageCoreServices();
             }).Build();
 
             Collection<FunctionBinding> inputBindings = new Collection<FunctionBinding>()
