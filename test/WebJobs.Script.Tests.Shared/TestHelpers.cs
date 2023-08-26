@@ -486,7 +486,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             ZipFile.CreateFromDirectory(contentTemp, zipPath);
         }
 
-
         public static async Task<Uri> CreateBlobSas(string connectionString, string filePath, string blobContainer, string blobName)
         {
             BlobServiceClient blobServiceClient = new BlobServiceClient(connectionString);
