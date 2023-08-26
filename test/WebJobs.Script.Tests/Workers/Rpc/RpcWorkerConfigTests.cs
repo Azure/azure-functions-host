@@ -342,7 +342,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 DefaultExecutablePath = defaultExecutablePath,
                 FileExists = path =>
                                 {
-                                    Assert.True(false, "FileExists should not be called");
+                                    Assert.Fail("FileExists should not be called");
                                     return false;
                                 }
             };

@@ -112,7 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
             catch (ArgumentException)
             {
-                Assert.True(false, $"Valid binding name '{bindingName}' failed validation.");
+                Assert.Fail($"Valid binding name '{bindingName}' failed validation.");
             }
         }
 

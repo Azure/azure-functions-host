@@ -447,7 +447,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             if (!dict.TryGetValue(keyName, out string actualValue))
             {
                 string msg = $"Missing key '{keyName}'. Keys = " + string.Join(", ", dict.Keys);
-                Assert.True(false, msg);
+                Assert.Fail(msg);
             }
             if (expectedValue != null)
             {

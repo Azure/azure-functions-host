@@ -231,9 +231,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(4, functionMetadata.Length);
 
             Assert.Null(functionMetadata[0].Name);
-            Assert.True(string.Equals(aFunction, functionMetadata[1].Name));
-            Assert.True(string.Equals(bFunction, functionMetadata[2].Name));
-            Assert.True(string.Equals(cFunction, functionMetadata[3].Name));
+            Assert.Equal(aFunction, functionMetadata[1].Name);
+            Assert.Equal(bFunction, functionMetadata[2].Name);
+            Assert.Equal(cFunction, functionMetadata[3].Name);
         }
 
         [Fact]

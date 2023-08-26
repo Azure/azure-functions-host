@@ -44,4 +44,8 @@
   <ItemGroup>
      <Protobuf Include=".\azure-functions-language-worker-protobuf\src\proto\**\*.proto" GrpcServices="server" ProtoRoot=".\azure-functions-language-worker-protobuf\src\proto" />
   </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Update="Microsoft.SourceLink.GitHub" Version="1.1.1" />
+  </ItemGroup>
 </Project>

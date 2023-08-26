@@ -170,7 +170,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
             catch (Exception ex)
             {
-                Assert.True(false, "Exception not expected:" + ex.Message);
+                Assert.Fail("Exception not expected:" + ex.Message);
                 throw;
             }
         }
@@ -235,7 +235,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
             catch (ArgumentException)
             {
-                Assert.True(false, $"Valid binding name '{bindingName}' failed validation.");
+                Assert.Fail($"Valid binding name '{bindingName}' failed validation.");
             }
         }
 

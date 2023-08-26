@@ -524,7 +524,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
             catch (InvalidOperationException)
             {
-                Assert.True(false, $"Valid function name {functionName} failed validation.");
+                Assert.Fail($"Valid function name {functionName} failed validation.");
             }
         }
 
@@ -572,7 +572,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
             catch (ArgumentException)
             {
-                Assert.True(false, $"Valid binding name '{bindingName}' failed validation.");
+                Assert.Fail($"Valid binding name '{bindingName}' failed validation.");
             }
         }
 
