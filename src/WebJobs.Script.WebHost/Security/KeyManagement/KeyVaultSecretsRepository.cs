@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 // If clientSecret and tenantId are provided, use ClientSecret credential; otherwise use managed identity
                 TokenCredential credential = !string.IsNullOrEmpty(clientSecret) && !string.IsNullOrEmpty(tenantId)
                     ? new ClientSecretCredential(tenantId, clientId, clientSecret)
-                    : new ChainedTokenCredential(new ManagedIdentityCredential(clientId), new ManagedIdentityCredential());
+                    : new ChainedTokenCredential(new WorkloadIdentityCredential( new WorkloadIdentityCredentialOptions { TenantId = tenantId, ClientId = clientId, TokenFilePath = secretsSentinelFilePath }), new WorkloadIdentityCredential());
 
                 return new SecretClient(keyVaultUri, credential);
             });
