@@ -128,8 +128,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void LogEvent_QueuesPendingEvent(string eventName, string expectedEventName)
         {
             //Note: Caller is responsible for sanitizing the string
-            Sanitizer.Sanitize(eventName);
-            _metricsLogger.LogEvent(eventName);
+            _metricsLogger.LogEvent(Sanitizer.Sanitize(eventName));
 
             Assert.Equal(1, _metricsEventManager.QueuedEvents.Count);
             SystemMetricEvent evt = _metricsEventManager.QueuedEvents.Values.Single();
