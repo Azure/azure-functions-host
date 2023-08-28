@@ -119,8 +119,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         {
             ArgumentNullException.ThrowIfNull(eventName);
 
-            eventName = Sanitizer.Sanitize(eventName);
-
             string key = GetAggregateKey(eventName, functionName);
             QueuedEvents.AddOrUpdate(key,
                 (name) =>

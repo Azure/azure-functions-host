@@ -7,6 +7,7 @@ using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Loggers;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Extensions.Configuration;
@@ -112,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 data = string.Format(Microsoft.Azure.WebJobs.Script.Properties.Resources.FunctionInvocationMetricsData, startedEvent.FunctionMetadata.Language, functionName, success, Stopwatch.IsHighResolution);
                 _eventDataCache[key] = data;
             }
-            _metrics.LogEvent(eventName, startedEvent.FunctionName, data);
+            _metrics.LogEvent(eventName, startedEvent.FunctionName, Sanitizer.Sanitize(data));
 
             startedEvent.Data = data;
             _metrics.EndEvent(startedEvent);
