@@ -423,7 +423,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             workerMetadata.UpdateWorkerMetadata(_workerConfig);
             var workerMetadataString = workerMetadata.ToString();
-            _metricsLogger.LogEvent(MetricEventNames.WorkerMetadata, functionName: null, workerMetadataString);
+            _metricsLogger.LogEvent(MetricEventNames.WorkerMetadata, functionName: null, Sanitizer.Sanitize(workerMetadataString));
             _workerChannelLogger.LogDebug("Worker metadata: {workerMetadata}", workerMetadataString);
         }
 
@@ -670,7 +670,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
                 if (binding.SupportsDeferredBinding() && !binding.SkipDeferredBinding())
                 {
-                    _metricsLogger.LogEvent(MetricEventNames.FunctionBindingDeferred, functionName: metadata.Name);
+                    _metricsLogger.LogEvent(MetricEventNames.FunctionBindingDeferred, functionName: Sanitizer.Sanitize(metadata.Name));
                 }
             }
 
@@ -757,8 +757,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 var invocationRequest = await context.ToRpcInvocationRequest(_workerChannelLogger, _workerCapabilities, _isSharedMemoryDataTransferEnabled, _sharedMemoryManager);
                 AddAdditionalTraceContext(invocationRequest.TraceContext.Attributes, context);
                 _executingInvocations.TryAdd(invocationRequest.InvocationId, context);
-
-                _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvoked, Id), functionName: context.FunctionMetadata.Name);
+                _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvoked, Id), functionName: Sanitizer.Sanitize(context.FunctionMetadata.Name));
 
                 await SendStreamingMessageAsync(new StreamingMessage
                 {

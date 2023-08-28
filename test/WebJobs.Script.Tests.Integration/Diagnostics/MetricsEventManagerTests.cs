@@ -9,6 +9,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -126,6 +127,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData("{ \"AzureWebJobsStorage\": \"DefaultEndpointsProtocol=https;AccountName=testAccount1;AccountKey=mykey1;EndpointSuffix=core.windows.net\", \"AnotherKey\": \"AnotherValue\" }", "{ \"azurewebjobsstorage\": \"[hidden credential]\", \"anotherkey\": \"anothervalue\" }")]
         public void LogEvent_QueuesPendingEvent(string eventName, string expectedEventName)
         {
+            //Note: Caller is responsible for sanitizing the string
+            Sanitizer.Sanitize(eventName);
             _metricsLogger.LogEvent(eventName);
 
             Assert.Equal(1, _metricsEventManager.QueuedEvents.Count);
