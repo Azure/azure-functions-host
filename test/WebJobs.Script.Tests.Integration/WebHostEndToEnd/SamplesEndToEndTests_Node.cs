@@ -12,9 +12,10 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Messaging.EventHubs;
+using Azure.Messaging.EventHubs.Producer;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Specialized;
-using Microsoft.Azure.EventHubs;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Models;
@@ -43,8 +44,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         [Fact(Skip = "Need to investigate .NET 6 failure")]
         public async Task EventHubTrigger()
         {
-            // write 3 events
-            List<EventData> events = new List<EventData>();
+            string connectionString = Environment.GetEnvironmentVariable("AzureWebJobsEventHubSender");
+           
+            EventHubProducerClient eventHubProducerClient = new EventHubProducerClient(connectionString);
+
+            using EventDataBatch eventBatch = await eventHubProducerClient.CreateBatchAsync();
+
             string[] ids = new string[3];
             for (int i = 0; i < 3; i++)
             {
@@ -55,21 +60,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 };
                 var evt = new EventData(Encoding.UTF8.GetBytes(jo.ToString(Formatting.None)));
                 evt.Properties.Add("TestIndex", i);
-                events.Add(evt);
+          
+                eventBatch.TryAdd(evt);
             }
 
-            string connectionString = Environment.GetEnvironmentVariable("AzureWebJobsEventHubSender");
-            EventHubsConnectionStringBuilder builder = new EventHubsConnectionStringBuilder(connectionString);
-
-            if (string.IsNullOrWhiteSpace(builder.EntityPath))
+            try
             {
-                string eventHubPath = ScriptSettingsManager.Instance.GetSetting("AzureWebJobsEventHubPath");
-                builder.EntityPath = eventHubPath;
+                // Use the producer client to send the batch of events to the event hub
+                await eventHubProducerClient.SendAsync(eventBatch);
             }
-
-            EventHubClient eventHubClient = EventHubClient.CreateFromConnectionString(builder.ToString());
-
-            await eventHubClient.SendAsync(events);
+            finally
+            {
+                await eventHubProducerClient.DisposeAsync();
+            }
 
             string logs = null;
             await TestHelpers.Await(() =>
