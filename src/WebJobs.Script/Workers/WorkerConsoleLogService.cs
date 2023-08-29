@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             _logger = loggerFactory.CreateLogger(WorkerConstants.ConsoleLogCategoryName);
         }
 
-        internal WorkerConsoleLogService(ILogger logger, Lazy<ILogger> toolingConsoleJsonLoggerLazy, IWorkerConsoleLogSource consoleLogSource)
+        internal WorkerConsoleLogService(ILogger logger, IWorkerConsoleLogSource consoleLogSource)
         {
             _source = consoleLogSource ?? throw new ArgumentNullException(nameof(consoleLogSource));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
