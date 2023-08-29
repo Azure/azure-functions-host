@@ -279,12 +279,12 @@ namespace Microsoft.Azure.WebJobs.Script
                 IEnumerable<FunctionMetadata> functionMetadataList = GetFunctionsMetadata();
 
                 string workerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
-                _logger.FunctionsWorkerRuntimeValue(workerRuntime);
+                _logger.FunctionsWorkerRuntimeValue(Sanitizer.Sanitize(workerRuntime));
 
                 if (workerRuntime is null)
                 {
                     workerRuntime = Utility.GetWorkerRuntime(functionMetadataList);
-                    _logger.ResolvedWorkerRuntimeFromMetadata(workerRuntime);
+                    _logger.ResolvedWorkerRuntimeFromMetadata(Sanitizer.Sanitize(workerRuntime));
                 }
 
                 if (!_environment.IsPlaceholderModeEnabled())
