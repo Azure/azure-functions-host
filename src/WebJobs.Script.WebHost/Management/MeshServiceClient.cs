@@ -6,8 +6,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
-using Microsoft.Azure.Storage;
+using Azure.Storage;
+using Azure.Storage.Files.Shares;
+using Azure.Storage.Sas;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
@@ -36,18 +39,27 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         public async Task<bool> MountCifs(string connectionString, string contentShare, string targetPath)
         {
-            var sa = CloudStorageAccount.Parse(connectionString);
-            var key = Convert.ToBase64String(sa.Credentials.ExportKey());
+            ShareServiceClient shareServiceClient = new ShareServiceClient(connectionString);
+
+            const string AccountKeyParameterName = "AccountKey";
+
+            string accountKey = connectionString.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries)
+                                        .Select(s => s.Split(new char[] { '=' }, 2))
+                                        .Where(s => s.Length == 2)
+                                        .ToDictionary(s => s[0], s => s[1])
+                                        .Where(kv => kv.Key == AccountKeyParameterName)
+                                        .Select(kv => kv.Value)
+                                        .FirstOrDefault();
 
             HttpResponseMessage responseMessage = await SendAsync(new[]
-            {
+        {
                 new KeyValuePair<string, string>(Operation, "cifs"),
-                new KeyValuePair<string, string>("host", sa.FileEndpoint.Host),
-                new KeyValuePair<string, string>("accountName", sa.Credentials.AccountName),
-                new KeyValuePair<string, string>("accountKey", key),
+                new KeyValuePair<string, string>("host", $"{shareServiceClient.AccountName}.file.core.windows.net"),
+                new KeyValuePair<string, string>("accountName", shareServiceClient.AccountName),
+                new KeyValuePair<string, string>("accountKey", accountKey),
                 new KeyValuePair<string, string>("contentShare", contentShare),
                 new KeyValuePair<string, string>("targetPath", targetPath),
-            });
+        });
 
             return responseMessage.IsSuccessStatusCode;
         }

@@ -2,20 +2,18 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
-using Microsoft.Azure.Storage;
-using Microsoft.Azure.Storage.File;
+using Azure.Storage.Files.Shares;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
@@ -223,10 +221,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         {
             try
             {
-                var storageAccount = CloudStorageAccount.Parse(connectionString);
-                var fileClient = storageAccount.CreateCloudFileClient();
-                var share = fileClient.GetShareReference(contentShare);
-                await share.CreateIfNotExistsAsync();
+                ShareClient shareClient = new ShareClient(connectionString, contentShare);
+                await shareClient.CreateIfNotExistsAsync();
                 return null;
             }
             catch (Exception e)
