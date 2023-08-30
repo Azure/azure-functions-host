@@ -5,9 +5,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Castle.Core.Logging;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.Logging;
+using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Xunit;
 
@@ -15,20 +17,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
 {
     public class WorkerConsoleLogServiceTests
     {
-        private TestLogger _toolingConsoleTestLogger;
         private IScriptEventManager _eventManager;
         private IProcessRegistry _processRegistry;
         private TestLogger _testUserLogger = new TestLogger("Host.Function.Console");
         private TestLogger _testSystemLogger = new TestLogger("Worker.rpcWorkerProcess");
-        private Lazy<ILogger> _toolingConsoleJsonLoggerLazy;
         private WorkerConsoleLogService _workerConsoleLogService;
         private WorkerConsoleLogSource _workerConsoleLogSource;
         private Mock<IServiceProvider> _serviceProviderMock;
+        private static Microsoft.Extensions.Logging.ILogger _testLogger;
+        private static TestLoggerProvider _testLoggerProvider;
+        private static LoggerFactory _testLoggerFactory;
 
         public WorkerConsoleLogServiceTests()
         {
-            _toolingConsoleTestLogger = new TestLogger("Host.Function.ToolingConsoleLog");
-            _toolingConsoleJsonLoggerLazy = new Lazy<ILogger>(() => _toolingConsoleTestLogger, true);
+            _testLoggerProvider = new TestLoggerProvider();
+            _testLoggerFactory = new LoggerFactory();
+            _testLoggerFactory.AddProvider(_testLoggerProvider);
+            _testLogger = _testLoggerProvider.CreateLogger(WorkerConstants.ToolingConsoleLogCategoryName);
         }
 
         [Theory]
@@ -40,10 +45,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             _workerConsoleLogSource = new WorkerConsoleLogSource();
             _eventManager = new ScriptEventManager();
             _processRegistry = new EmptyProcessRegistry();
-            _workerConsoleLogService = new WorkerConsoleLogService(_testUserLogger, _toolingConsoleJsonLoggerLazy, _workerConsoleLogSource);
+            _workerConsoleLogService = new WorkerConsoleLogService(_testUserLogger, _workerConsoleLogSource);
             _serviceProviderMock = new Mock<IServiceProvider>(MockBehavior.Strict);
 
-            WorkerProcess workerProcess = new TestWorkerProcess(_eventManager, _processRegistry, _testSystemLogger, _workerConsoleLogSource, null, _serviceProviderMock.Object, useStdErrForErrorLogsOnly);
+            WorkerProcess workerProcess = new TestWorkerProcess(_eventManager, _processRegistry, _testSystemLogger, _workerConsoleLogSource, null, _serviceProviderMock.Object, _testLoggerFactory, useStdErrForErrorLogsOnly);
             workerProcess.ParseErrorMessageAndLog("Test Message No keyword");
             workerProcess.ParseErrorMessageAndLog("Test Error Message");
             workerProcess.ParseErrorMessageAndLog("Test Warning Message");
@@ -57,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             await _workerConsoleLogService.StopAsync(System.Threading.CancellationToken.None);
             var userLogs = _testUserLogger.GetLogMessages();
             var systemLogs = _testSystemLogger.GetLogMessages();
-            var toolingConsoleLogs = _toolingConsoleTestLogger.GetLogMessages();
+            var toolingConsoleLogs = _testLoggerProvider.GetAllLogMessages();
 
             // Assert
             Assert.Equal(3, userLogs.Count);
