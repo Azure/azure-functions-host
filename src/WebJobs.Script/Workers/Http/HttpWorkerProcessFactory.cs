@@ -41,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         public IWorkerProcess Create(string workerId, string scriptRootPath, HttpWorkerOptions httpWorkerOptions)
         {
             ILogger workerProcessLogger = _loggerFactory.CreateLogger($"Worker.HttpWorkerProcess.{workerId}");
-            return new HttpWorkerProcess(workerId, scriptRootPath, httpWorkerOptions, _eventManager, _workerProcessFactory, _processRegistry, workerProcessLogger, _consoleLogSource, _environment, _metricsLogger, _serviceProvider);
+            return new HttpWorkerProcess(workerId, scriptRootPath, httpWorkerOptions, _eventManager, _workerProcessFactory, _processRegistry, workerProcessLogger, _consoleLogSource, _environment, _metricsLogger, _serviceProvider, _loggerFactory);
         }
     }
 }
