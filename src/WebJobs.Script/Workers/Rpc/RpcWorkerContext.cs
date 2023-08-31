@@ -44,7 +44,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         public override string GetFormattedArguments()
         {
-            return $" --host {ServerUri.Host} --port {ServerUri.Port} --workerId {WorkerId} --requestId {RequestId} --grpcMaxMessageLength {MaxMessageLength}";
+            // We are adding a second copy of the commandline arguments with the FUNCTIONS_ prefix.
+            // Once all workers starts using the new parameters, we can retire the old ones.
+            // Tracking item: https://github.com/Azure/azure-functions-host/issues/9504
+
+            return $" --host {ServerUri.Host} --port {ServerUri.Port} --workerId {WorkerId} --requestId {RequestId} --grpcMaxMessageLength {MaxMessageLength} --FUNCTIONS_HOST {ServerUri.Host} --FUNCTIONS_PORT {ServerUri.Port} --FUNCTIONS_WORKERID {WorkerId} --requestId {RequestId} --FUNCTIONS_GRPCMAXMESSAGELENGTH {MaxMessageLength}";
         }
     }
 }
