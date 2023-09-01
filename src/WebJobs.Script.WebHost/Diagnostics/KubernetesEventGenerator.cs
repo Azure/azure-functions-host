@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             using (FunctionsSystemLogsEventSource.SetActivityId(activityId))
             {
                 details = details.Length > MaxDetailsLength ? details.Substring(0, MaxDetailsLength) : details;
-
+                
                 // Set event type to MS_FUNCTION_LOGS to send these events as part of infra logs.
                 JObject traceLog = new JObject();
                 traceLog.Add("EventType", ScriptConstants.LinuxLogEventStreamName);
@@ -33,12 +33,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 traceLog.Add("FunctionName", functionName);
                 traceLog.Add("EventName", eventName);
                 traceLog.Add("Source", source);
-                traceLog.Add("Details", NormalizeString(details).Trim('"'));
-                traceLog.Add("Summary", NormalizeString(summary).Trim('"'));
+                traceLog.Add("Details", NormalizeString(details, addEnclosingQuotes: false));
+                traceLog.Add("Summary", NormalizeString(summary, addEnclosingQuotes: false));
                 traceLog.Add("HostVersion", ScriptHost.Version);
                 traceLog.Add("EventTimeStamp", eventTimestamp.ToString(EventTimestampFormat));
                 traceLog.Add("ExceptionType", exceptionType);
-                traceLog.Add("ExceptionMessage", NormalizeString(exceptionMessage).Trim('"'));
+                traceLog.Add("ExceptionMessage", NormalizeString(exceptionMessage, addEnclosingQuotes: false));
                 traceLog.Add("FunctionInvocationId", functionInvocationId);
                 traceLog.Add("HostInstanceId", hostInstanceId);
                 traceLog.Add("ActivityId", activityId);
