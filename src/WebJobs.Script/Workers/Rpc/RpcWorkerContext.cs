@@ -47,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             // Adding a second copy of the commandline arguments with the FUNCTIONS_ prefix to prevent any conflicts caused by the existing generic names(ex:HOST).
             // Language workers are advised to use the FUNCTIONS_ prefix ones and if not present fallback to existing ones.
 
-            return $" --host {ServerUri.Host} --port {ServerUri.Port} --workerId {WorkerId} --requestId {RequestId} --grpcMaxMessageLength {MaxMessageLength} --FUNCTIONS_HOST {ServerUri.Host} --FUNCTIONS_PORT {ServerUri.Port} --FUNCTIONS_WORKERID {WorkerId} --requestId {RequestId} --FUNCTIONS_GRPCMAXMESSAGELENGTH {MaxMessageLength}";
+            return $" --host {ServerUri.Host} --port {ServerUri.Port} --workerId {WorkerId} --requestId {RequestId} --grpcMaxMessageLength {MaxMessageLength} --FUNCTIONS_HOST {ServerUri.Host} --FUNCTIONS_PORT {ServerUri.Port} --FUNCTIONS_WORKERID {WorkerId} --FUNCTIONS_REQUESTID {RequestId} --FUNCTIONS_GRPCMAXMESSAGELENGTH {MaxMessageLength}";
         }
     }
 }

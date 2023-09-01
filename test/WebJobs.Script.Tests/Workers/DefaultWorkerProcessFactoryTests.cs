@@ -82,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             }
             if (workerContext is RpcWorkerContext)
             {
-                Assert.Equal(" httpvalue1 TestVal httpvalue2 --host localhost --port 80 --workerId testWorkerId --requestId testId --grpcMaxMessageLength 2147483647", childProcess.StartInfo.Arguments);
+                Assert.Equal(" httpvalue1 TestVal httpvalue2 --host localhost --port 80 --workerId testWorkerId --requestId testId --grpcMaxMessageLength 2147483647 --FUNCTIONS_HOST localhost --FUNCTIONS_PORT 80 --FUNCTIONS_WORKERID testWorkerId --FUNCTIONS_REQUESTID testId --FUNCTIONS_GRPCMAXMESSAGELENGTH 2147483647", childProcess.StartInfo.Arguments);
             }
             else
             {
