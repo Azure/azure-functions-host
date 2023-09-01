@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             using (FunctionsSystemLogsEventSource.SetActivityId(activityId))
             {
                 details = details.Length > MaxDetailsLength ? details.Substring(0, MaxDetailsLength) : details;
-                
+
                 // Set event type to MS_FUNCTION_LOGS to send these events as part of infra logs.
                 JObject traceLog = new JObject();
                 traceLog.Add("EventType", ScriptConstants.LinuxLogEventStreamName);
