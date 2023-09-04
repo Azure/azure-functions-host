@@ -33,12 +33,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 traceLog.Add("FunctionName", functionName);
                 traceLog.Add("EventName", eventName);
                 traceLog.Add("Source", source);
-                traceLog.Add("Details", NormalizeString(details));
-                traceLog.Add("Summary", NormalizeString(summary));
+                traceLog.Add("Details", NormalizeString(details, addEnclosingQuotes: false));
+                traceLog.Add("Summary", NormalizeString(summary, addEnclosingQuotes: false));
                 traceLog.Add("HostVersion", ScriptHost.Version);
                 traceLog.Add("EventTimeStamp", eventTimestamp.ToString(EventTimestampFormat));
                 traceLog.Add("ExceptionType", exceptionType);
-                traceLog.Add("ExceptionMessage", NormalizeString(exceptionMessage));
+                traceLog.Add("ExceptionMessage", NormalizeString(exceptionMessage, addEnclosingQuotes: false));
                 traceLog.Add("FunctionInvocationId", functionInvocationId);
                 traceLog.Add("HostInstanceId", hostInstanceId);
                 traceLog.Add("ActivityId", activityId);
