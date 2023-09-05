@@ -9,6 +9,7 @@ using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
+using Google.Protobuf.WellKnownTypes;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
@@ -150,6 +151,41 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // Verify that the internal cache has reset
             Assert.NotSame(GetCachedTimeZoneInfo(), _originalTimeZoneInfoCache);
+        }
+
+
+        [Fact]
+        public async Task StandbyModeE2E_LinuxContainer_ZipDeployment()
+        {
+            byte[] bytes = TestHelpers.GenerateKeyBytes();
+            var encryptionKey = Convert.ToBase64String(bytes);
+            var containerName = "testContainer";
+
+            var vars = new Dictionary<string, string>
+            {
+                { EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1" },
+                { EnvironmentSettingNames.ContainerName, containerName },
+                { EnvironmentSettingNames.AzureWebsiteHostName, "testapp.azurewebsites.net" },
+                { EnvironmentSettingNames.AzureWebsiteName, "TestApp" },
+                { EnvironmentSettingNames.ContainerEncryptionKey, encryptionKey },
+                { EnvironmentSettingNames.AzureWebsiteContainerReady, null },
+                { EnvironmentSettingNames.AzureWebsiteSku, "Dynamic" },
+                { EnvironmentSettingNames.AzureWebsiteZipDeployment, null },
+                { EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableProxies },
+                { "AzureWebEncryptionKey", "0F75CA46E7EBDD39E4CA6B074D1F9A5972B849A55F91A248" }
+            };
+
+            var environment = new TestEnvironment(vars);
+
+            Assert.True(environment.IsLinuxConsumptionOnAtlas());
+            Assert.False(environment.IsFlexConsumptionSku());
+            Assert.True(environment.IsAnyLinuxConsumption());
+
+            await InitializeTestHostAsync("Linux", environment);
+
+            // verify the expected logs
+            var logLines = _loggerProvider.GetAllLogMessages().Where(p => p.FormattedMessage != null).Select(p => p.FormattedMessage).ToArray();
+            Assert.Equal(1, logLines.Count(p => p.Contains("Zip deployment is not supported on a Linux Consumption app configured to use Managed Identity\r\n")));
         }
 
         private async Task Assign(string encryptionKey)

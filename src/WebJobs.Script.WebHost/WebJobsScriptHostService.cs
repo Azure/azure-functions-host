@@ -228,15 +228,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             var url = _environment.GetEnvironmentVariable(ScmRunFromPackage);
 
-            if (string.IsNullOrEmpty(url) && _environment.IsLinuxConsumptionOnAtlas() && _environment.IsManagedAppEnvironment())
+            // _environment.IsLinuxConsumptionOnAtlas() && _environment.IsManagedAppEnvironment())
+            if (string.IsNullOrEmpty(url) && _environment.IsAnyLinuxConsumption())
             {
                 _logger.LogWarning($"Zip deployment is not supported on a Linux Consumption app configured to use Managed Identity. Functions may not be indexed correctly.");
 
                 DiagnosticEventLoggerExtensions.LogDiagnosticEventInformation(
-                    _logger,
-                    DiagnosticEventConstants.UnsupportedZipDeploymentOnLinuxConsumptionwithMSIErrorCode,
-                    "Zip deployment is not supported on a Linux Consumption app configured to use Managed Identity.",
-                    DiagnosticEventConstants.UnsupportedZipDeploymentOnLinuxConsumptionwithMSIErrorCodeLink);
+                            _logger,
+                            DiagnosticEventConstants.UnsupportedZipDeploymentOnLinuxConsumptionwithMSIErrorCode,
+                            "Zip deployment is not supported on a Linux Consumption app configured to use Managed Identity.",
+                            DiagnosticEventConstants.UnsupportedZipDeploymentOnLinuxConsumptionwithMSIErrorCodeLink);
             }
         }
 
