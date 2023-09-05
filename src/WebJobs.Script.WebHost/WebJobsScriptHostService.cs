@@ -25,6 +25,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using static Microsoft.Azure.WebJobs.Script.EnvironmentSettingNames;
 using IApplicationLifetime = Microsoft.AspNetCore.Hosting.IApplicationLifetime;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
@@ -223,6 +224,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
+        private void ValidateLinuxSKUConfiguration()
+        {
+            var url = _environment.GetEnvironmentVariable(ScmRunFromPackage);
+
+            if (string.IsNullOrEmpty(url) && _environment.IsLinuxConsumptionOnAtlas() && _environment.IsManagedAppEnvironment())
+            {
+                _logger.LogWarning($"Zip deployment is not supported on a Linux Consumption app configured to use Managed Identity. Functions may not be indexed correctly.");
+
+                DiagnosticEventLoggerExtensions.LogDiagnosticEventInformation(
+                    _logger,
+                    DiagnosticEventConstants.UnsupportedZipDeploymentOnLinuxConsumptionwithMSIErrorCode,
+                    "Zip deployment is not supported on a Linux Consumption app configured to use Managed Identity.",
+                    DiagnosticEventConstants.UnsupportedZipDeploymentOnLinuxConsumptionwithMSIErrorCodeLink);
+            }
+        }
+
         private async Task StartHostAsync(CancellationToken cancellationToken, int attemptCount = 0,
             JobHostStartupMode startupMode = JobHostStartupMode.Normal, Guid? parentOperationId = null)
         {
@@ -310,6 +327,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 }
 
                 LogInitialization(localHost, isOffline, attemptCount, ++_hostStartCount, activeOperation.Id);
+
+                ValidateLinuxSKUConfiguration();
 
                 if (!_scriptWebHostEnvironment.InStandbyMode)
                 {
