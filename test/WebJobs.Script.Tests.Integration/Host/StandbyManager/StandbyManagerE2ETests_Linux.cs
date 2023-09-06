@@ -155,7 +155,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
 
         [Fact]
-        public async Task StandbyModeE2E_LinuxContainer_ZipDeployment()
+        public async Task StandbyModeE2E_LinuxContainer_ValidateLinuxSKU()
         {
             byte[] bytes = TestHelpers.GenerateKeyBytes();
             var encryptionKey = Convert.ToBase64String(bytes);
@@ -171,7 +171,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 { EnvironmentSettingNames.AzureWebsiteContainerReady, null },
                 { EnvironmentSettingNames.AzureWebsiteSku, "Dynamic" },
                 { EnvironmentSettingNames.AzureWebsiteZipDeployment, null },
-                { EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableProxies },
+                { EnvironmentSettingNames.ManagedEnvironment, "1" },
                 { "AzureWebEncryptionKey", "0F75CA46E7EBDD39E4CA6B074D1F9A5972B849A55F91A248" }
             };
 
@@ -179,13 +179,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.True(environment.IsLinuxConsumptionOnAtlas());
             Assert.False(environment.IsFlexConsumptionSku());
-            Assert.True(environment.IsAnyLinuxConsumption());
+            Assert.False(environment.IsAnyLinuxConsumption());
 
             await InitializeTestHostAsync("Linux", environment);
 
             // verify the expected logs
             var logLines = _loggerProvider.GetAllLogMessages().Where(p => p.FormattedMessage != null).Select(p => p.FormattedMessage).ToArray();
-            Assert.Equal(1, logLines.Count(p => p.Contains("Zip deployment is not supported on a Linux Consumption app configured to use Managed Identity\r\n")));
+            Assert.Equal(2, logLines.Count(p => p.Contains("Zip deployment is not supported on a Linux Consumption app configured to use Managed Identity.")));
         }
 
         private async Task Assign(string encryptionKey)
