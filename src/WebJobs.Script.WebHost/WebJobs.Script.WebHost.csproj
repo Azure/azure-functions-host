@@ -80,9 +80,9 @@
     <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.37" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Host.Storage" Version="5.0.0" />
     <PackageReference Include="Microsoft.Azure.WebSites.DataProtection" Version="2.1.91-alpha" />
-    <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="6.32.2" />
-    <PackageReference Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="6.32.2" />
-    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="6.32.2" />
+    <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="6.32.3" />
+    <PackageReference Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="6.32.3" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="6.32.3" />
     <PackageReference Include="Microsoft.Security.Utilities" Version="1.4.0" />
     <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.435">
       <PrivateAssets>all</PrivateAssets>
