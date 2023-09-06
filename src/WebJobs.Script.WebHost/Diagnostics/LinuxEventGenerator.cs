@@ -17,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         public static readonly string FunctionsDetailsCategory = "functionsdetails";
         public static readonly string FunctionsExecutionEventsCategory = "functionexecutionevents";
 
-        internal static string NormalizeString(string value)
+        internal static string NormalizeString(string value, bool addEnclosingQuotes = true)
         {
             // Need to remove newlines for csv output
             value = value.Replace(Environment.NewLine, " ");
@@ -34,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             // our delimiter ',', before writing the value we
             // enclose in quotes. This allows us to define matching
             // groups based on quotes for these values.
-            return $"\"{value}\"";
+            return addEnclosingQuotes ? $"\"{value}\"" : value;
         }
 
         /// <summary>
