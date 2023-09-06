@@ -145,7 +145,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 // Guids end up roundtripping as strings
                 Assert.Equal(typeof(string), entity["guidProp"].GetType());
 
-                Assert.Equal(typeof(string), entity["guidProp"].GetType());
                 Assert.Equal(typeof(double), entity["floatProp"].GetType());
             }
         }
