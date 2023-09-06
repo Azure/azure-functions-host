@@ -3,16 +3,17 @@
 
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.Cosmos.Table;
+using Azure;
+using Azure.Data.Tables;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Helpers;
 using Microsoft.Azure.WebJobs.Script.WebHost.Storage;
-using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -151,42 +152,47 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale
             // no versioning issues
 
             // add an entity with Count property of type int
-            var entity = new DynamicTableEntity
+            TableEntity entityWithInt = new TableEntity()
             {
                 RowKey = TableStorageHelpers.GetRowKey(DateTime.UtcNow),
                 PartitionKey = TestHostId,
-                Properties = new Dictionary<string, EntityProperty>()
             };
+
             var expectedIntCountValue = int.MaxValue;
-            entity.Properties.Add("Timestamp", new EntityProperty(DateTime.UtcNow));
-            entity.Properties.Add("Count", new EntityProperty(expectedIntCountValue));
-            entity.Properties.Add(TableStorageScaleMetricsRepository.MonitorIdPropertyName, EntityProperty.GeneratePropertyForString(monitor1.Descriptor.Id));
-            var batch = new TableBatchOperation();
-            batch.Add(TableOperation.Insert(entity));
+            entityWithInt.Add("Timestamp", DateTime.UtcNow);
+            entityWithInt.Add("Count", expectedIntCountValue);
+            entityWithInt.Add(TableStorageScaleMetricsRepository.MonitorIdPropertyName, monitor1.Descriptor.Id);
+            List<TableTransactionAction> batch = new List<TableTransactionAction>()
+            {
+                new TableTransactionAction(TableTransactionActionType.Add, entityWithInt)
+            };
 
             // add an entity with Count property of type long
-            entity = new DynamicTableEntity
+            TableEntity entityWithLong = new TableEntity
             {
                 RowKey = TableStorageHelpers.GetRowKey(DateTime.UtcNow),
-                PartitionKey = TestHostId,
-                Properties = new Dictionary<string, EntityProperty>()
+                PartitionKey = TestHostId
             };
             var expectedLongCountValue = long.MaxValue;
-            entity.Properties.Add("Timestamp", new EntityProperty(DateTime.UtcNow));
-            entity.Properties.Add("Count", new EntityProperty(expectedLongCountValue));
-            entity.Properties.Add(TableStorageScaleMetricsRepository.MonitorIdPropertyName, EntityProperty.GeneratePropertyForString(monitor1.Descriptor.Id));
-            batch.Add(TableOperation.Insert(entity));
+            entityWithLong.Add("Timestamp", DateTime.UtcNow);
+            entityWithLong.Add("Count", expectedLongCountValue);
+            entityWithLong.Add(TableStorageScaleMetricsRepository.MonitorIdPropertyName, monitor1.Descriptor.Id);
+            batch.Add(new TableTransactionAction(TableTransactionActionType.Add, entityWithLong));
 
             await _repository.ExecuteBatchSafeAsync(batch);
 
             // push a long max value through serialization
-            var metricsMap = new Dictionary<IScaleMonitor, ScaleMetrics>();
-            metricsMap.Add(monitor1, new TestScaleMetrics1 { Count = long.MaxValue });
+            var metricsMap = new Dictionary<IScaleMonitor, ScaleMetrics>
+            {
+                { monitor1, new TestScaleMetrics1 { Count = long.MaxValue } }
+            };
             await _repository.WriteMetricsAsync(metricsMap);
 
             // add one more
-            metricsMap = new Dictionary<IScaleMonitor, ScaleMetrics>();
-            metricsMap.Add(monitor1, new TestScaleMetrics1 { Count = 12345 });
+            metricsMap = new Dictionary<IScaleMonitor, ScaleMetrics>
+            {
+                { monitor1, new TestScaleMetrics1 { Count = 12345 } }
+            };
             await _repository.WriteMetricsAsync(metricsMap);
 
             // read the metrics back
@@ -218,7 +224,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale
             var monitors = new IScaleMonitor[] { monitor1 };
 
             // add a bunch of expired samples
-            var batch = new TableBatchOperation();
+            List<TableTransactionAction> batch = new List<TableTransactionAction>();
             for (int i = 5; i > 0; i--)
             {
                 var metrics = new TestScaleMetrics1
@@ -282,7 +288,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale
 
             var metricsTable = _repository.GetMetricsTable();
             await _repository.CreateIfNotExistsAsync(metricsTable);
-            TableBatchOperation batch = new TableBatchOperation();
+            List<TableTransactionAction> batch = new List<TableTransactionAction>();
 
             int numRows = 500;
             for (int i = 0; i < numRows; i++)
@@ -293,13 +299,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale
 
                 if (batch.Count % 100 == 0)
                 {
-                    await metricsTable.ExecuteBatchAsync(batch);
-                    batch = new TableBatchOperation();
+                    await metricsTable.SubmitTransactionAsync(batch).ConfigureAwait(false);
+                    batch = new List<TableTransactionAction>();
                 }
             }
             if (batch.Count > 0)
             {
-                await metricsTable.ExecuteBatchAsync(batch);
+                await metricsTable.SubmitTransactionAsync(batch).ConfigureAwait(false);
             }
 
             var results = await _repository.ReadMetricsAsync(monitors);
@@ -328,7 +334,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale
             var tables = await _repository.ListOldMetricsTablesAsync();
             foreach (var table in tables)
             {
-                await table.DeleteIfExistsAsync();
+                await table.DeleteAsync();
             }
 
             // set now to months back
@@ -376,13 +382,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale
             var tables = await _repository.ListOldMetricsTablesAsync();
             foreach (var table in tables)
             {
-                await table.DeleteIfExistsAsync();
+                await table.DeleteAsync();
             }
 
             // create 3 old tables
             for (int i = 0; i < 3; i++)
             {
-                var table = _repository.TableClient.GetTableReference($"{TableStorageScaleMetricsRepository.TableNamePrefix}Test{i}");
+                TableClient table = _repository.TableServiceClient.GetTableClient($"{TableStorageScaleMetricsRepository.TableNamePrefix}Test{i}");
                 await _repository.CreateIfNotExistsAsync(table);
             }
 
@@ -404,20 +410,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale
         [Fact]
         public async Task LogStorageException_LogsDetails()
         {
-            StorageException ex = null;
-            var table = _repository.TableClient.GetTableReference("dne");
-            var continuationToken = new TableContinuationToken();
+            RequestFailedException ex = null;
+            TableClient tableClient = _repository.TableServiceClient.GetTableClient("dne");
+
             try
             {
-                await table.ExecuteQuerySegmentedAsync(new TableQuery(), continuationToken);
+                AsyncPageable<TableEntity> result = tableClient.QueryAsync<TableEntity>();
+                await foreach (TableEntity tableEntity in result) { }
             }
-            catch (StorageException e)
+            catch (RequestFailedException e)
             {
                 ex = e;
             }
 
             Assert.NotNull(ex);
-            _repository.LogStorageException(ex);
+            _repository.LogException(ex);
 
             // ensure that inner storage exception details are dumped as part of log
             var logs = _loggerProvider.GetAllLogMessages();
@@ -427,19 +434,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale
             Assert.True(errorLog.FormattedMessage.Contains("ErrorMessage:The table specified does not exist."));
 
             _loggerProvider.ClearAllLogMessages();
-            var batch = new TableBatchOperation();
-            batch.Add(TableOperation.Insert(new DynamicTableEntity("testpk", "testrk")));
+            List<TableTransactionAction> batch = new List<TableTransactionAction>()
+            {
+                new TableTransactionAction(TableTransactionActionType.Add, new TableEntity("testpk", "testrk"))
+            };
+
             try
             {
-                await table.ExecuteBatchAsync(batch);
+                await tableClient.SubmitTransactionAsync(batch).ConfigureAwait(false);
             }
-            catch (StorageException e)
+            catch (RequestFailedException e)
             {
                 ex = e;
             }
 
             Assert.NotNull(ex);
-            _repository.LogStorageException(ex);
+            _repository.LogException(ex);
 
             logs = _loggerProvider.GetAllLogMessages();
             errorLog = logs.Single();
@@ -485,26 +495,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale
             await EmptyTableAsync(metricsTable);
         }
 
-        private async Task EmptyTableAsync(CloudTable table)
+        private async Task EmptyTableAsync(TableClient tableClient)
         {
-            var results = await _repository.ExecuteQuerySafeAsync(table, new TableQuery());
+            var results = await _repository.ExecuteQuerySafeAsync(tableClient, string.Empty);
             if (results.Any())
             {
-                TableBatchOperation batch = new TableBatchOperation();
+
+                List<TableTransactionAction> batch = new List<TableTransactionAction>();
                 foreach (var entity in results)
                 {
-                    batch.Add(TableOperation.Delete(entity));
+                    batch.Add(new TableTransactionAction(TableTransactionActionType.Delete, entity));
 
                     if (batch.Count == 100)
                     {
-                        var result = await table.ExecuteBatchAsync(batch);
-                        batch = new TableBatchOperation();
+                        await tableClient.SubmitTransactionAsync(batch).ConfigureAwait(false);
+                        batch = new List<TableTransactionAction>();
                     }
                 }
 
                 if (batch.Count > 0)
                 {
-                    await table.ExecuteBatchAsync(batch);
+                    await tableClient.SubmitTransactionAsync(batch).ConfigureAwait(false);
                 }
             }
         }

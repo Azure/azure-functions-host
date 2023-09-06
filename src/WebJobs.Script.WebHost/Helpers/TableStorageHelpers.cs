@@ -6,7 +6,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
-using Microsoft.Azure.Cosmos.Table;
+using Azure;
+using Azure.Data.Tables;
+using Azure.Data.Tables.Models;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Helpers
@@ -18,16 +20,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Helpers
             return string.Format("{0:D19}-{1}", DateTime.MaxValue.Ticks - now.Ticks, Guid.NewGuid());
         }
 
-        internal static async Task<bool> CreateIfNotExistsAsync(CloudTable table, int tableCreationRetries, int retryDelayMS = 1000)
+        internal static async Task<bool> CreateIfNotExistsAsync(TableClient table, int tableCreationRetries, int retryDelayMS = 1000)
         {
             int attempt = 0;
             do
             {
                 try
                 {
-                    return await table.CreateIfNotExistsAsync();
+                    Response<TableItem> genericResponse = await table.CreateIfNotExistsAsync();
+                    Response response = genericResponse.GetRawResponse();
+                    return response.Status == 204;
                 }
-                catch (StorageException e)
+                catch (RequestFailedException e)
                 {
                     // Can get conflicts with multiple instances attempting to create
                     // the same table.
@@ -35,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Helpers
                     // though these should only happen in tests not production, because we only ever
                     // delete OLD tables and we'll never be attempting to recreate a table we just
                     // deleted outside of tests.
-                    if (e.RequestInformation.HttpStatusCode == (int)HttpStatusCode.Conflict &&
+                    if (e.Status == (int)HttpStatusCode.Conflict &&
                         attempt < tableCreationRetries)
                     {
                         // wait a bit and try again
@@ -50,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Helpers
             return false;
         }
 
-        internal static void QueueBackgroundTablePurge(CloudTable currentTable, CloudTableClient tableClient, string tableNamePrefix, ILogger logger, int delaySeconds = 30)
+        internal static void QueueBackgroundTablePurge(TableClient currentTable, TableServiceClient tableClient, string tableNamePrefix, ILogger logger, int delaySeconds = 30)
         {
             var tIgnore = Task.Run(async () =>
             {
@@ -71,36 +75,37 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Helpers
             });
         }
 
-        internal static async Task DeleteOldTablesAsync(CloudTable currentTable, CloudTableClient tableClient, string tableNamePrefix, ILogger logger)
+        internal static async Task DeleteOldTablesAsync(TableClient currentTable, TableServiceClient tableClient, string tableNamePrefix, ILogger logger)
         {
             var tablesToDelete = await ListOldTablesAsync(currentTable, tableClient, tableNamePrefix);
             logger.LogDebug($"Deleting {tablesToDelete.Count()} old tables.");
             foreach (var table in tablesToDelete)
             {
                 logger.LogDebug($"Deleting table '{table.Name}'");
-                await table.DeleteIfExistsAsync();
+                await tableClient.DeleteTableAsync(table.Name);
+
                 logger.LogDebug($"{table.Name} deleted.");
             }
         }
 
-        internal static async Task<IEnumerable<CloudTable>> ListOldTablesAsync(CloudTable currentTable, CloudTableClient tableClient, string tableNamePrefix)
+        internal static async Task<IEnumerable<TableClient>> ListOldTablesAsync(TableClient currentTable, TableServiceClient tableClient, string tableNamePrefix)
         {
             var tables = await ListTablesAsync(tableClient, tableNamePrefix);
             return tables.Where(p => !string.Equals(currentTable.Name, p.Name, StringComparison.OrdinalIgnoreCase));
         }
 
-        internal static async Task<IEnumerable<CloudTable>> ListTablesAsync(CloudTableClient tableClient, string tableNamePrefix)
+        internal static async Task<IEnumerable<TableClient>> ListTablesAsync(TableServiceClient tableClient, string tableNamePrefix)
         {
-            List<CloudTable> tables = new List<CloudTable>();
-            TableContinuationToken continuationToken = null;
+            List<TableClient> tables = new List<TableClient>();
 
-            do
+            AsyncPageable<TableItem> result = tableClient.QueryAsync();
+            await foreach (TableItem item in result)
             {
-                var results = await tableClient.ListTablesSegmentedAsync(tableNamePrefix, continuationToken);
-                continuationToken = results.ContinuationToken;
-                tables.AddRange(results.Results);
+                if (!string.IsNullOrEmpty(item?.Name) && item.Name.StartsWith(tableNamePrefix))
+                {
+                    tables.Add(tableClient.GetTableClient(item.Name));
+                }
             }
-            while (continuationToken != null);
 
             return tables;
         }

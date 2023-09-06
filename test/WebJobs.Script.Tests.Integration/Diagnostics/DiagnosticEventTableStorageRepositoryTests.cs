@@ -15,9 +15,10 @@ using Moq;
 using Moq.Protected;
 using Xunit;
 using System.Linq;
-using Microsoft.Azure.Cosmos.Table;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
+using Azure.Data.Tables;
+using Azure;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
 {
@@ -132,7 +133,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             DateTime dateTime = new DateTime(2021, 1, 1);
             var cloudTable = repository.GetDiagnosticEventsTable(dateTime);
             Assert.NotNull(cloudTable);
-            Assert.NotNull(repository.TableClient);
+            Assert.NotNull(repository.TableServiceClient);
             Assert.Equal(cloudTable.Name, $"{DiagnosticEventTableStorageRepository.TableNamePrefix}202101");
         }
 
@@ -163,31 +164,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
 
             // delete any existing non-current diagnostics events tables
             string tablePrefix = DiagnosticEventTableStorageRepository.TableNamePrefix;
-            var currentTable = repository.GetDiagnosticEventsTable();
-            var tables = await TableStorageHelpers.ListOldTablesAsync(currentTable, repository.TableClient, tablePrefix);
-            foreach (var table in tables)
+            TableClient currentTable = repository.GetDiagnosticEventsTable();
+            IEnumerable<TableClient> tables = await TableStorageHelpers.ListOldTablesAsync(currentTable, repository.TableServiceClient, tablePrefix);
+            foreach (TableClient table in tables)
             {
-                await table.DeleteIfExistsAsync();
+                await table.DeleteAsync();
             }
 
             // create 3 old tables
             for (int i = 0; i < 3; i++)
             {
-                var table = repository.TableClient.GetTableReference($"{tablePrefix}Test{i}");
+                TableClient table = repository.TableServiceClient.GetTableClient($"{tablePrefix}Test{i}");
                 await TableStorageHelpers.CreateIfNotExistsAsync(table, 2);
             }
 
             // verify tables were created
-            tables = await TableStorageHelpers.ListOldTablesAsync(currentTable, repository.TableClient, tablePrefix);
+            tables = await TableStorageHelpers.ListOldTablesAsync(currentTable, repository.TableServiceClient, tablePrefix);
             Assert.Equal(3, tables.Count());
 
             // queue the background purge
-            TableStorageHelpers.QueueBackgroundTablePurge(currentTable, repository.TableClient, tablePrefix, NullLogger.Instance, 0);
+            TableStorageHelpers.QueueBackgroundTablePurge(currentTable, repository.TableServiceClient, tablePrefix, NullLogger.Instance, 0);
 
             // wait for the purge to complete
             await TestHelpers.Await(async () =>
             {
-                tables = await TableStorageHelpers.ListOldTablesAsync(currentTable, repository.TableClient, tablePrefix);
+                tables = await TableStorageHelpers.ListOldTablesAsync(currentTable, repository.TableServiceClient, tablePrefix);
                 return tables.Count() == 0;
             }, timeout: 5000);
         }
@@ -202,16 +203,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             DiagnosticEventTableStorageRepository repository =
                 new DiagnosticEventTableStorageRepository(_configuration, _hostIdProvider, testEnvironment, _logger);
 
-            var tableClient = repository.TableClient;
-            var cloudTable = tableClient.GetTableReference("aa");
+            TableServiceClient tableServiceClient = repository.TableServiceClient;
+            TableClient tableClient = tableServiceClient.GetTableClient("aa");
 
             repository.WriteDiagnosticEvent(DateTime.UtcNow, "eh1", LogLevel.Information, "This is the message", "https://fwlink/", new Exception("exception message"));
 
-            Assert.Equal(1, repository.Events.Values.Count());
+            Assert.Equal(1, repository.Events.Values.Count);
 
-            await repository.FlushLogs(cloudTable);
+            await repository.FlushLogs(tableClient);
 
-            Assert.Equal(0, repository.Events.Values.Count());
+            Assert.Equal(0, repository.Events.Values.Count);
             var logMessage = _loggerProvider.GetAllLogMessages()[0];
             Assert.True(logMessage.FormattedMessage.StartsWith("Unable to create table 'aa'"));
         }
@@ -235,7 +236,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             events.TryAdd("EC123", diagnosticEvent);
             await repository.ExecuteBatchAsync(events, table);
 
-            var results = ExecuteQuery(table, new TableQuery());
+            var results = await ExecuteQueryAsync(table, string.Empty);
             Assert.Equal(results.Count(), 1);
         }
 
@@ -248,53 +249,47 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             DiagnosticEventTableStorageRepository repository =
                 new DiagnosticEventTableStorageRepository(_configuration, _hostIdProvider, testEnvironment, _logger);
 
-            var tableClient = repository.TableClient;
-            var table = tableClient.GetTableReference("aa");
+            TableServiceClient tableServiceClient = repository.TableServiceClient;
+            TableClient tableClient = tableServiceClient.GetTableClient("aa");
 
             var dateTime = DateTime.UtcNow;
             var diagnosticEvent = new DiagnosticEvent("hostId", dateTime);
 
             var events = new ConcurrentDictionary<string, DiagnosticEvent>();
             events.TryAdd("EC123", diagnosticEvent);
-            await repository.ExecuteBatchAsync(events, table);
+            await repository.ExecuteBatchAsync(events, tableClient);
 
-            ExecuteQuery(table, new TableQuery());
+            await ExecuteQueryAsync(tableClient, string.Empty);
             string message = _loggerProvider.GetAllLogMessages()[0].FormattedMessage;
             Assert.True(message.StartsWith("Unable to write diagnostic events to table storage"));
         }
 
-        private async Task EmptyTableAsync(CloudTable table)
+        private async Task EmptyTableAsync(TableClient tableClient)
         {
-            var results = ExecuteQuery(table, new TableQuery());
-            if (results.Any())
+            IEnumerable<TableEntity> tableEntities = await ExecuteQueryAsync(tableClient, string.Empty);
+            if (tableEntities.Any())
             {
-                TableBatchOperation batch = new TableBatchOperation();
-                foreach (var entity in results)
+                List<TableTransactionAction> batch = new List<TableTransactionAction>();
+                foreach (TableEntity tableEntity in tableEntities)
                 {
-                    batch.Add(TableOperation.Delete(entity));
-
-                    if (batch.Count == 1)
-                    {
-                        var result = await table.ExecuteBatchAsync(batch);
-                        batch = new TableBatchOperation();
-                    }
+                    batch.Add(new TableTransactionAction(TableTransactionActionType.Delete, tableEntity));
                 }
 
-                if (batch.Count > 0)
-                {
-                    await table.ExecuteBatchAsync(batch);
-                }
+                await tableClient.SubmitTransactionAsync(batch).ConfigureAwait(false);
             }
         }
 
-        internal IEnumerable<DynamicTableEntity> ExecuteQuery(CloudTable table, TableQuery query)
+        internal async Task<IEnumerable<TableEntity>> ExecuteQueryAsync(TableClient tableClient, string query)
         {
-            if (!table.Exists())
+            List<TableEntity> entities = new List<TableEntity>();
+
+            AsyncPageable<TableEntity> result = tableClient.QueryAsync<TableEntity>(query);
+            await foreach (TableEntity entity in result)
             {
-                return Enumerable.Empty<DynamicTableEntity>();
+                entities.Add(entity);
             }
 
-            return table.ExecuteQuery(query);
+            return entities;
         }
 
         private class FixedHostIdProvider : IHostIdProvider

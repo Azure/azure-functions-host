@@ -3,9 +3,12 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Data;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.Cosmos.Table;
+using Azure.Data.Tables;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Script.WebHost.Helpers;
 using Microsoft.Extensions.Configuration;
@@ -27,8 +30,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private IEnvironment _environment;
         private ILogger<DiagnosticEventTableStorageRepository> _logger;
 
-        private CloudTableClient _tableClient;
-        private CloudTable _diagnosticEventsTable;
+        private TableServiceClient _tableServiceClient;
+        private TableClient _diagnosticEventsTable;
         private string _hostId;
         private object _syncLock = new object();
         private bool _disposed = false;
@@ -46,11 +49,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         public DiagnosticEventTableStorageRepository(IConfiguration configuration, IHostIdProvider hostIdProvider, IEnvironment environment, ILogger<DiagnosticEventTableStorageRepository> logger)
             : this(configuration, hostIdProvider, environment, logger, LogFlushInterval) { }
 
-        internal CloudTableClient TableClient
+        internal TableServiceClient TableServiceClient
         {
             get
             {
-                if (!_environment.IsPlaceholderModeEnabled() && _tableClient == null)
+                if (!_environment.IsPlaceholderModeEnabled() && _tableServiceClient == null)
                 {
                     string storageConnectionString = _configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
                     if (string.IsNullOrEmpty(storageConnectionString))
@@ -58,14 +61,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                         _logger.LogError("Azure Storage connection string is empty or invalid. Unable to write diagnostic events.");
                     }
 
-                    if (CloudStorageAccount.TryParse(storageConnectionString, out CloudStorageAccount account))
-                    {
-                        var tableClientConfig = new TableClientConfiguration();
-                        _tableClient = new CloudTableClient(account.TableStorageUri, account.Credentials, tableClientConfig);
-                    }
+                    _tableServiceClient = new TableServiceClient(storageConnectionString);
                 }
 
-                return _tableClient;
+                return _tableServiceClient;
             }
         }
 
@@ -89,9 +88,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             }
         }
 
-        internal CloudTable GetDiagnosticEventsTable(DateTime? now = null)
+        internal TableClient GetDiagnosticEventsTable(DateTime? now = null)
         {
-            if (TableClient != null)
+            if (TableServiceClient != null)
             {
                 now = now ?? DateTime.UtcNow;
                 string currentTableName = GetCurrentTableName(now.Value);
@@ -100,7 +99,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 if (_diagnosticEventsTable == null || currentTableName != _tableName)
                 {
                     _tableName = currentTableName;
-                    _diagnosticEventsTable = TableClient.GetTableReference(_tableName);
+                    _diagnosticEventsTable = TableServiceClient.GetTableClient(_tableName);
                 }
             }
 
@@ -117,7 +116,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             await FlushLogs();
         }
 
-        internal virtual async Task FlushLogs(CloudTable table = null)
+        internal virtual async Task FlushLogs(TableClient table = null)
         {
             if (_environment.IsPlaceholderModeEnabled())
             {
@@ -131,7 +130,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 bool tableCreated = await TableStorageHelpers.CreateIfNotExistsAsync(table, _tableCreationRetries);
                 if (tableCreated)
                 {
-                    TableStorageHelpers.QueueBackgroundTablePurge(table, TableClient, TableNamePrefix, _logger);
+                    TableStorageHelpers.QueueBackgroundTablePurge(table, TableServiceClient, TableNamePrefix, _logger);
                 }
             }
             catch (Exception ex)
@@ -153,17 +152,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             }
         }
 
-        internal async Task ExecuteBatchAsync(ConcurrentDictionary<string, DiagnosticEvent> events, CloudTable table)
+        internal async Task ExecuteBatchAsync(ConcurrentDictionary<string, DiagnosticEvent> events, TableClient table)
         {
             try
             {
-                var batch = new TableBatchOperation();
-                foreach (string errorCode in events.Keys)
-                {
-                    TableOperation insertOperation = TableOperation.Insert(events[errorCode]);
-                    batch.Add(insertOperation);
-                }
-                await table.ExecuteBatchAsync(batch);
+                List<TableTransactionAction> addEntitiesBatch = new List<TableTransactionAction>();
+                addEntitiesBatch.AddRange(events.Values.Select(v => new TableTransactionAction(TableTransactionActionType.Add, v)));
+
+                await table.SubmitTransactionAsync(addEntitiesBatch).ConfigureAwait(false);
+
                 events.Clear();
             }
             catch (Exception e)

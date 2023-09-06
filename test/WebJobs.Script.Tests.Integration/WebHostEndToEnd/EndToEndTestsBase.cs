@@ -15,13 +15,14 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.WindowsAzure.MobileServices;
-using Microsoft.Azure.Cosmos.Table;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
 using Azure.Storage.Blobs.Specialized;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
+using Azure.Data.Tables;
+using Azure;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -100,9 +101,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         protected async Task TableOutputTest()
         {
-            CloudTable table = Fixture.TableClient.GetTableReference("testoutput");
-            await table.CreateIfNotExistsAsync();
-            await Fixture.DeleteEntities(table);
+            TableClient tableClient = Fixture.TableServiceClient.GetTableClient("testoutput");
+            await tableClient.CreateIfNotExistsAsync();
+            await Fixture.DeleteEntities(tableClient);
 
             JObject item = new JObject
             {
@@ -118,26 +119,34 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await Fixture.Host.BeginFunctionAsync("TableOut", item);
 
             // read the entities and verify schema
-            TableQuery tableQuery = new TableQuery();
-            DynamicTableEntity[] entities = null;
+            string query = string.Empty;
+            List<TableEntity> entities = new List<TableEntity>();
 
             await TestHelpers.Await(async () =>
             {
-                var results = await table.ExecuteQuerySegmentedAsync(tableQuery, null);
-                entities = results.ToArray();
-                return entities.Length == 3;
+                List<TableEntity> results = new List<TableEntity>();
+
+                AsyncPageable<TableEntity> tableEntities = tableClient.QueryAsync<TableEntity>(query);
+                await foreach (TableEntity entity in tableEntities)
+                {
+                    results.Add(entity);
+
+                }
+
+                return entities.Count == 3;
             });
 
-            foreach (var entity in entities)
+            foreach (TableEntity entity in entities)
             {
-                Assert.Equal(EdmType.String, entity.Properties["stringProp"].PropertyType);
-                Assert.Equal(EdmType.Int32, entity.Properties["intProp"].PropertyType);
-                Assert.Equal(EdmType.Boolean, entity.Properties["boolProp"].PropertyType);
+                Assert.Equal(typeof(string), entity["stringProp"].GetType());
+                Assert.Equal(typeof(int), entity["intProp"].GetType());
+                Assert.Equal(typeof(bool), entity["boolPro"].GetType());
 
                 // Guids end up roundtripping as strings
-                Assert.Equal(EdmType.String, entity.Properties["guidProp"].PropertyType);
+                Assert.Equal(typeof(string), entity["guidProp"].GetType());
 
-                Assert.Equal(EdmType.Double, entity.Properties["floatProp"].PropertyType);
+                Assert.Equal(typeof(string), entity["guidProp"].GetType());
+                Assert.Equal(typeof(double), entity["floatProp"].GetType());
             }
         }
 
