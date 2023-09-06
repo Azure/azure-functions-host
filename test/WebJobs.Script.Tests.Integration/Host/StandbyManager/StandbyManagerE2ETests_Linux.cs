@@ -179,6 +179,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(environment.IsLinuxConsumptionOnAtlas());
             Assert.False(environment.IsFlexConsumptionSku());
             Assert.False(environment.IsAnyLinuxConsumption());
+            Assert.True(environment.IsManagedAppEnvironment());
 
             await InitializeTestHostAsync("Linux", environment);
 
