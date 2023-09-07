@@ -170,16 +170,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 { EnvironmentSettingNames.AzureWebsiteContainerReady, null },
                 { EnvironmentSettingNames.AzureWebsiteSku, "Dynamic" },
                 { EnvironmentSettingNames.AzureWebsiteZipDeployment, null },
-                { EnvironmentSettingNames.ManagedEnvironment, "1" },
-                { "AzureWebEncryptionKey", "0F75CA46E7EBDD39E4CA6B074D1F9A5972B849A55F91A248" }
+                { "AzureWebEncryptionKey", "0F75CA46E7EBDD39E4CA6B074D1F9A5972B849A55F91A248" },
+                { EnvironmentSettingNames.AzureWebJobsStorageAccountName, "test" },
             };
 
             var environment = new TestEnvironment(vars);
 
             Assert.True(environment.IsLinuxConsumptionOnAtlas());
             Assert.False(environment.IsFlexConsumptionSku());
-            Assert.False(environment.IsAnyLinuxConsumption());
-            Assert.True(environment.IsManagedAppEnvironment());
 
             await InitializeTestHostAsync("Linux", environment);
 

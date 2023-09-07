@@ -224,11 +224,25 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
+        private bool IsAppUsingManagedIdentity()
+        {
+            // If AzureWebJobsStorage__accountName is set, we are using identities.
+            if (!string.IsNullOrEmpty(_environment.GetEnvironmentVariable(AzureWebJobsStorageAccountName)))
+            {
+                return true;
+            }
+
+            return false;
+        }
+
         private void ValidateLinuxSKUConfiguration()
         {
             var url = _environment.GetEnvironmentVariable(ScmRunFromPackage);
 
-            if (string.IsNullOrEmpty(url) && _environment.IsLinuxConsumptionOnAtlas() && _environment.IsManagedAppEnvironment())
+            if (string.IsNullOrEmpty(url) &&
+                _environment.IsLinuxConsumptionOnAtlas() &&
+                !_environment.IsManagedAppEnvironment() &&
+                IsAppUsingManagedIdentity())
             {
                 _logger.LogWarning($"Zip deployment is not supported on a Linux Consumption app configured to use Managed Identity. Functions may not be indexed correctly.");
 
