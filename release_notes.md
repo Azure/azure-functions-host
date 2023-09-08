@@ -6,3 +6,5 @@
 
 **Release sprint:** Sprint 146
 [ [bugs](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+146%22+label%3Abug+is%3Aclosed) | [features](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+146%22+label%3Afeature+is%3Aclosed) ]
+
+- Update WebJobsScriptHostService to remove hardcoded sleep during application shut down (#9521)
