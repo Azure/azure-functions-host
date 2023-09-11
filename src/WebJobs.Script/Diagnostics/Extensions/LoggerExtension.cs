@@ -164,7 +164,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
         private static readonly Action<ILogger, string, bool, bool, bool, bool, bool, Exception> _scriptStartUpNotLoadingExtensionBundle =
             LoggerMessage.Define<string, bool, bool, bool, bool, bool>(LogLevel.Information,
                 new EventId(334, nameof(ScriptStartNotLoadingExtensionBundle)),
-                "Loading extensions from {path}. BundleConfigured: {bundleConfigured}, PrecompiledFunctionApp: {isPrecompiledFunctionApp}, LegacyBundle: {isLegacyExtensionBundle}, DotnetIsolatedApp: {isDotnetIsolatedApp}, isLogicApp: {isLogicApp}");
+                "Extension Bundle not loaded. Loading extensions from {path}. BundleConfigured: {bundleConfigured}, PrecompiledFunctionApp: {isPrecompiledFunctionApp}, LegacyBundle: {isLegacyExtensionBundle}, DotnetIsolatedApp: {isDotnetIsolatedApp}, isLogicApp: {isLogicApp}");
 
         private static readonly Action<ILogger, string, Exception> _scriptStartupResettingLoadContextWithBasePath =
             LoggerMessage.Define<string>(LogLevel.Information,
