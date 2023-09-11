@@ -103,18 +103,20 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
                 }
             }
 
-            bool isDotnetApp = isPrecompiledFunctionApp || IsDotnetIsolatedApp(workerConfigs);
+            bool isDotnetIsolatedApp = IsDotnetIsolatedApp(workerConfigs);
+            bool isDotnetApp = isPrecompiledFunctionApp || isDotnetIsolatedApp;
+            var isLogicApp = SystemEnvironment.Instance.IsLogicApp();
 
             if (SystemEnvironment.Instance.IsPlaceholderModeEnabled())
             {
                 // Do not move this.
                 // Calling this log statement in the placeholder mode to avoid jitting during specializtion
-                _logger.ScriptStartNotLoadingExtensionBundle("WARMUP_LOG_ONLY", bundleConfigured, isPrecompiledFunctionApp, isLegacyExtensionBundle);
+                _logger.ScriptStartNotLoadingExtensionBundle("WARMUP_LOG_ONLY", bundleConfigured, isPrecompiledFunctionApp, isLegacyExtensionBundle, isDotnetIsolatedApp, isLogicApp);
             }
 
             string baseProbingPath = null;
 
-            if (bundleConfigured && (!isDotnetApp || isLegacyExtensionBundle))
+            if (bundleConfigured && (!isDotnetApp || isLegacyExtensionBundle || isLogicApp))
             {
                 extensionsMetadataPath = await _extensionBundleManager.GetExtensionBundleBinPathAsync();
                 if (string.IsNullOrEmpty(extensionsMetadataPath))
@@ -130,9 +132,9 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
                 extensionsMetadataPath = Path.Combine(_rootScriptPath, "bin");
                 if (Utility.TryResolveExtensionsMetadataPath(_rootScriptPath, out string resolvedPath, out baseProbingPath))
                 {
-                      extensionsMetadataPath = resolvedPath;
+                    extensionsMetadataPath = resolvedPath;
                 }
-                _logger.ScriptStartNotLoadingExtensionBundle(extensionsMetadataPath, bundleConfigured, isPrecompiledFunctionApp, isLegacyExtensionBundle);
+                _logger.ScriptStartNotLoadingExtensionBundle(extensionsMetadataPath, bundleConfigured, isPrecompiledFunctionApp, isLegacyExtensionBundle, isDotnetIsolatedApp, isLogicApp);
             }
 
             baseProbingPath ??= extensionsMetadataPath;
