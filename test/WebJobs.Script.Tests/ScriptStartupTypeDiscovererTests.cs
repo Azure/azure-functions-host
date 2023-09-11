@@ -392,10 +392,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        [Fact]
-        public async Task GetExtensionsStartupTypes_DotnetIsolated_ExtensionBundleConfigured()
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async Task GetExtensionsStartupTypes_DotnetIsolated_ExtensionBundleConfigured(bool isLogicApp)
         {
+            var vars = new Dictionary<string, string>();
+
+            if (isLogicApp)
+            {
+                vars.Add(EnvironmentSettingNames.AppKind, ScriptConstants.WorkFlowAppKind);
+            }
+
             using (var directory = GetTempDirectory())
+            using (var env = new TestScopedEnvironmentVariable(vars))
             {
                 var binPath = Path.Combine(directory.Path, "bin");
                 TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
@@ -428,7 +438,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 //Assert
                 var traces = testLoggerProvider.GetAllLogMessages();
                 var expectedTrace = traces.FirstOrDefault(val => val.EventId.Name.Equals("ScriptStartNotLoadingExtensionBundle"));
-                Assert.NotNull(expectedTrace);
+
+                if (isLogicApp)
+                {
+                    Assert.Null(expectedTrace);
+                }
+                else
+                {
+                    Assert.NotNull(expectedTrace);
+                }
 
                 AreExpectedMetricsGenerated(testMetricsLogger);
                 Assert.Single(types);
