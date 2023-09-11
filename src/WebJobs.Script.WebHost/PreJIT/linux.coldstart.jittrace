@@ -8160,3 +8160,4 @@ string.Trim(char)~System.String,System.Private.CoreLib~1~0~Trim
 [System.Net.Http]System.Net.Http.HttpContent.ReadAsStreamAsync()~System.Net.Http.HttpContent,System.Net.Http~0~0~ReadAsStreamAsync
 [System.Net.Http]System.Net.Http.HttpContent.ReadAsStreamAsync(CancellationToken)~System.Net.Http.HttpContent,System.Net.Http~1~0~ReadAsStreamAsync
 char.IsLetter(char)~System.Char,System.Private.CoreLib~1~0~IsLetter
+[S.P.CoreLib]System.Threading.Tasks.Sources.ManualResetValueTaskSourceCore`1<int32>.OnCompleted(Action`1<object>,object,int16,ValueTaskSourceOnCompletedFlags)~System.Threading.Tasks.Sources.ManualResetValueTaskSourceCore`1[[System.Int32,System.Private.CoreLib]],System.Private.CoreLib~4~0~OnCompleted
