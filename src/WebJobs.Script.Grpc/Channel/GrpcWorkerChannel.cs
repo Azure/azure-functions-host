@@ -1503,10 +1503,10 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 {
                     attributes[ScriptConstants.LiveLogsSessionAIKey] = sessionid;
                 }
-                string operation_name = context.FunctionMetadata.Name;
-                if (!string.IsNullOrEmpty(operation_name))
+                string operationName = context.FunctionMetadata.Name;
+                if (!string.IsNullOrEmpty(operationName))
                 {
-                    attributes[ScriptConstants.OperationNameKey] = operation_name;
+                    attributes[ScriptConstants.OperationNameKey] = operationName;
                 }
             }
         }
