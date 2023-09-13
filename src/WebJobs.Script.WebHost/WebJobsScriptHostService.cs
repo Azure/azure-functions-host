@@ -237,19 +237,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private void ValidateLinuxSKUConfiguration()
         {
-            var url = _environment.GetEnvironmentVariable(ScmRunFromPackage);
+            var websiteRunFromPackageValue = _environment.GetEnvironmentVariable(AzureWebsiteRunFromPackage);
+            var scmRunFromPackageValue = _environment.GetEnvironmentVariable(ScmRunFromPackage);
 
-            if (string.IsNullOrEmpty(url) &&
+            if (string.IsNullOrEmpty(websiteRunFromPackageValue) &&
+                string.IsNullOrEmpty(scmRunFromPackageValue) &&
                 _environment.IsLinuxConsumptionOnAtlas() &&
                 !_environment.IsManagedAppEnvironment() &&
                 IsAppUsingManagedIdentity())
             {
-                _logger.LogWarning($"Zip deployment is not supported on a Linux Consumption app configured to use Managed Identity. Functions may not be indexed correctly.");
+                _logger.LogWarning($"App has no functions deployed and remote build is not available since the app was not provisioned with valid {AzureWebJobsSecretStorage} connection string.");
 
                 DiagnosticEventLoggerExtensions.LogDiagnosticEventInformation(
                             _logger,
                             DiagnosticEventConstants.UnsupportedZipDeploymentOnLinuxConsumptionwithMSIErrorCode,
-                            "Zip deployment is not supported on a Linux Consumption app configured to use Managed Identity.",
+                            $"App has no functions deployed and remote build is not available since the app was not provisioned with valid {AzureWebJobsSecretStorage} connection string.",
                             DiagnosticEventConstants.UnsupportedZipDeploymentOnLinuxConsumptionwithMSIErrorCodeLink);
             }
         }
