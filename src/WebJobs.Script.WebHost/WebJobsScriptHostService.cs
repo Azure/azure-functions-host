@@ -224,17 +224,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
-        private bool IsAppUsingManagedIdentity()
-        {
-            // If AzureWebJobsStorage__accountName is set, we are using identities.
-            if (!string.IsNullOrEmpty(_environment.GetEnvironmentVariable(AzureWebJobsStorageAccountName)))
-            {
-                return true;
-            }
-
-            return false;
-        }
-
         private void ValidateLinuxSKUConfiguration()
         {
             var websiteRunFromPackageValue = _environment.GetEnvironmentVariable(AzureWebsiteRunFromPackage);
@@ -243,16 +232,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             if (string.IsNullOrEmpty(websiteRunFromPackageValue) &&
                 string.IsNullOrEmpty(scmRunFromPackageValue) &&
                 _environment.IsLinuxConsumptionOnAtlas() &&
-                !_environment.IsManagedAppEnvironment() &&
-                IsAppUsingManagedIdentity())
+                !_environment.IsManagedAppEnvironment())
             {
-                _logger.LogWarning($"App has no functions deployed and remote build is not available since the app was not provisioned with valid {AzureWebJobsSecretStorage} connection string.");
-
-                DiagnosticEventLoggerExtensions.LogDiagnosticEventInformation(
-                            _logger,
-                            DiagnosticEventConstants.UnsupportedZipDeploymentOnLinuxConsumptionwithMSIErrorCode,
-                            $"App has no functions deployed and remote build is not available since the app was not provisioned with valid {AzureWebJobsSecretStorage} connection string.",
-                            DiagnosticEventConstants.UnsupportedZipDeploymentOnLinuxConsumptionwithMSIErrorCodeLink);
+                _logger.LogInformation($"App has no functions deployed and remote build is not available since the app was not provisioned with valid {AzureWebJobsSecretStorage} connection string.");
             }
         }
 
