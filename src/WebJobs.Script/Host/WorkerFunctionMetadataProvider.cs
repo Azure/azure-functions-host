@@ -25,6 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly ILogger _logger;
         private readonly IEnvironment _environment;
         private readonly IWebHostRpcWorkerChannelManager _channelManager;
+        private readonly IScriptHostManager _scriptHostManager;
         private string _workerRuntime;
         private ImmutableArray<FunctionMetadata> _functions;
 
@@ -32,17 +33,19 @@ namespace Microsoft.Azure.WebJobs.Script
             IOptionsMonitor<ScriptApplicationHostOptions> scriptOptions,
             ILogger<WorkerFunctionMetadataProvider> logger,
             IEnvironment environment,
-            IWebHostRpcWorkerChannelManager webHostRpcWorkerChannelManager)
+            IWebHostRpcWorkerChannelManager webHostRpcWorkerChannelManager,
+            IScriptHostManager scriptHostManager)
         {
             _scriptOptions = scriptOptions;
             _logger = logger;
             _environment = environment;
             _channelManager = webHostRpcWorkerChannelManager;
+            _scriptHostManager = scriptHostManager;
             _workerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
         }
 
         public ImmutableDictionary<string, ImmutableArray<string>> FunctionErrors
-           => _functionErrors.ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray());
+            => _functionErrors.ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray());
 
         public async Task<FunctionMetadataResult> GetFunctionMetadataAsync(IEnumerable<RpcWorkerConfig> workerConfigs, bool forceRefresh)
         {
@@ -65,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 // Scenario: Restart worker for hot reload on a readwrite file system
                 // We reuse the worker started in placeholderMode only when the fileSystem is readonly
                 // otherwise we shutdown the channel in which case the channel should not have any channels anyway
-                // forceRefresh in only true once in the script host intialization flow.
+                // forceRefresh in only true once in the script host initialization flow
                 // forceRefresh will be false when bundle is not used (dotnet and dotnet-isolated).
                 if (!_environment.IsPlaceholderModeEnabled() && forceRefresh && !_scriptOptions.CurrentValue.IsFileSystemReadOnly)
                 {
@@ -74,12 +77,25 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 var channels = _channelManager.GetChannels(_workerRuntime);
 
+                // Start up GRPC channels if they are not already running.
                 if (channels?.Any() != true)
                 {
-                    await _channelManager.InitializeChannelAsync(workerConfigs, _workerRuntime);
+                    if (_scriptHostManager.State is ScriptHostState.Default
+                        || _scriptHostManager.State is ScriptHostState.Starting
+                        || _scriptHostManager.State is ScriptHostState.Initialized)
+                    {
+                        // We don't need to restart if the host hasn't even been created yet.
+                        await _channelManager.InitializeChannelAsync(workerConfigs, _workerRuntime);
+                    }
+                    else
+                    {
+                        // During the restart flow, GetFunctionMetadataAsync gets invoked
+                        // again through a new script host initialization flow.
+                        await _scriptHostManager.RestartHostAsync();
+                    }
+
                     channels = _channelManager.GetChannels(_workerRuntime);
                 }
-                // start up GRPC channels
 
                 foreach (string workerId in channels.Keys.ToList())
                 {
