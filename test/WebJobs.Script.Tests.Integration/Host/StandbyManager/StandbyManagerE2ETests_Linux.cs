@@ -183,7 +183,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // verify the expected logs
             var logLines = _loggerProvider.GetAllLogMessages().Where(p => p.FormattedMessage != null).Select(p => p.FormattedMessage).ToArray();
-            Assert.Equal(2, logLines.Count(p => p.Contains("Zip deployment is not supported on a Linux Consumption app configured to use Managed Identity.")));
+            Assert.Equal(2, logLines.Count(p => p.Contains($"App has no functions deployed and remote build is not available since the app was not provisioned with valid {EnvironmentSettingNames.AzureWebJobsSecretStorage} connection string.")));
         }
 
         private async Task Assign(string encryptionKey)
