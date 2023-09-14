@@ -285,11 +285,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <returns><see cref="true"/> if running in a Linux Consumption App Service app; otherwise, false.</returns>
         public static bool IsAnyLinuxConsumption(this IEnvironment environment)
         {
-<<<<<<< HEAD
-            return environment.IsLinuxConsumptionOnAtlas() || environment.IsLinuxConsumptionOnLegion();
-=======
             return (environment.IsLinuxConsumptionOnAtlas() || environment.IsFlexConsumptionSku()) && !environment.IsManagedAppEnvironment();
->>>>>>> f95cea5d7 (Unifying CV2 SKU/Environment checks (#9334))
         }
 
         public static bool IsLinuxConsumptionOnAtlas(this IEnvironment environment)
