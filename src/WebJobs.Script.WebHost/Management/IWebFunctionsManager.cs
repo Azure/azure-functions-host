@@ -10,9 +10,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 {
     public interface IWebFunctionsManager
     {
-        Task<IEnumerable<FunctionMetadataResponse>> GetFunctionsMetadataAsync(bool includeProxies, bool forceRefresh = true);
+        Task<IEnumerable<FunctionMetadataResponse>> GetFunctionsMetadata(bool includeProxies);
 
-        Task<(bool Success, FunctionMetadataResponse Response)> TryGetFunction(string name, HttpRequest request, bool forceRefresh = true);
+        Task<(bool Success, FunctionMetadataResponse Response)> TryGetFunction(string name, HttpRequest request);
 
         Task<(bool Success, bool ConfigChanged, FunctionMetadataResponse Response)> CreateOrUpdate(string name, FunctionMetadataResponse functionMetadata, HttpRequest request);
 

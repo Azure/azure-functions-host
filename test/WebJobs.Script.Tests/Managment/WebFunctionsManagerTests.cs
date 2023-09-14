@@ -108,7 +108,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var envScope = new TestScopedEnvironmentVariable(env);
             using (envScope)
             {
-                var metadata = (await _webFunctionsManager.GetFunctionsMetadataAsync(includeProxies: false, forceRefresh: true)).ToArray();
+                var metadata = (await _webFunctionsManager.GetFunctionsMetadata(includeProxies: false)).ToArray();
 
                 Assert.Equal(2, metadata.Count(p => p.Language == RpcWorkerConstants.NodeLanguageWorkerName));
                 Assert.Equal(1, metadata.Count(p => string.IsNullOrEmpty(p.Language)));

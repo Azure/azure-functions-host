@@ -39,10 +39,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             _functionMetadataManager = functionMetadataManager;
         }
 
-        public async Task<IEnumerable<FunctionMetadataResponse>> GetFunctionsMetadataAsync(bool includeProxies, bool forceRefresh = true)
+        public async Task<IEnumerable<FunctionMetadataResponse>> GetFunctionsMetadata(bool includeProxies)
         {
             var hostOptions = _applicationHostOptions.CurrentValue.ToHostOptions();
-            var functionsMetadata = GetFunctionsMetadata(includeProxies, forceRefresh);
+            var functionsMetadata = GetFunctionsMetadata(includeProxies, forceRefresh: false);
 
             return await GetFunctionMetadataResponse(functionsMetadata, hostOptions, _hostNameProvider);
         }
@@ -157,9 +157,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         /// </summary>
         /// <param name="name">Function name to retrieve.</param>
         /// <param name="request">Current HttpRequest.</param>
+        /// <returns>(success, FunctionMetadataResponse).</returns>
+        public async Task<(bool Success, FunctionMetadataResponse Response)> TryGetFunction(string name, HttpRequest request)
+        {
+            return await TryGetFunction(name, request, forceRefresh: false);
+        }
+
+        /// <summary>
+        /// Maps a functionName to its FunctionMetadataResponse.
+        /// </summary>
+        /// <param name="name">Function name to retrieve.</param>
+        /// <param name="request">Current HttpRequest.</param>
         /// <param name="forceRefresh">Bool to determine if we refresh the worker channel.</param>
         /// <returns>(success, FunctionMetadataResponse).</returns>
-        public async Task<(bool Success, FunctionMetadataResponse Response)> TryGetFunction(string name, HttpRequest request, bool forceRefresh = true)
+        public async Task<(bool Success, FunctionMetadataResponse Response)> TryGetFunction(string name, HttpRequest request, bool forceRefresh)
         {
             var hostOptions = _applicationHostOptions.CurrentValue.ToHostOptions();
             var functionMetadata = GetFunctionsMetadata(includeProxies: false, forceRefresh)

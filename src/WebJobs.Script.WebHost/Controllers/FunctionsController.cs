@@ -1,7 +1,6 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO.Abstractions;
@@ -50,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
         public async Task<IActionResult> List(bool includeProxies = false)
         {
-            var result = await _functionsManager.GetFunctionsMetadataAsync(includeProxies, forceRefresh: false);
+            var result = await _functionsManager.GetFunctionsMetadata(includeProxies);
             return Ok(result);
         }
 
@@ -59,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
         public async Task<IActionResult> Get(string name)
         {
-            (var success, var function) = await _functionsManager.TryGetFunction(name, Request, forceRefresh: false);
+            (var success, var function) = await _functionsManager.TryGetFunction(name, Request);
 
             return success
                 ? Ok(function)
@@ -179,7 +178,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             {
                 // if we don't have any errors registered, make sure the function exists
                 // before returning empty errors
-                var result = await _functionsManager.GetFunctionsMetadataAsync(includeProxies: true, forceRefresh: false);
+                var result = await _functionsManager.GetFunctionsMetadata(includeProxies: true);
                 var function = result.FirstOrDefault(p => string.Equals(p.Name, name, System.StringComparison.InvariantCultureIgnoreCase));
                 if (function == null)
                 {
@@ -195,7 +194,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
         public async Task<IActionResult> Delete(string name, [FromServices] IFileMonitoringService fileMonitoringService)
         {
-            (var found, var function) = await _functionsManager.TryGetFunction(name, Request, forceRefresh: false);
+            (var found, var function) = await _functionsManager.TryGetFunction(name, Request);
             if (!found)
             {
                 return NotFound();
