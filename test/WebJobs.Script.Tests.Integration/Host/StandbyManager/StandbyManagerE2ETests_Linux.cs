@@ -138,6 +138,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(2, logLines.Count(p => p.Contains($"1 proxies loaded")));
             Assert.Equal(1, logLines.Count(p => p.Contains($"0 proxies loaded")));
             Assert.Contains("Node.js HttpTrigger function invoked.", logLines);
+            Assert.Equal(3, logLines.Count(p => p.Contains($"App has no functions deployed and remote build is not available since the app was not provisioned with valid {EnvironmentSettingNames.AzureWebJobsSecretStorage} connection string.")));
 
             // verify cold start log entry
             var coldStartLog = _loggerProvider.GetAllLogMessages().FirstOrDefault(p => p.Category == ScriptConstants.LogCategoryHostMetrics);
@@ -150,39 +151,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // Verify that the internal cache has reset
             Assert.NotSame(GetCachedTimeZoneInfo(), _originalTimeZoneInfoCache);
-        }
-
-
-        [Fact]
-        public async Task StandbyModeE2E_LinuxContainer_ValidateLinuxSKU()
-        {
-            byte[] bytes = TestHelpers.GenerateKeyBytes();
-            var encryptionKey = Convert.ToBase64String(bytes);
-            var containerName = "testContainer";
-
-            var vars = new Dictionary<string, string>
-            {
-                { EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1" },
-                { EnvironmentSettingNames.ContainerName, containerName },
-                { EnvironmentSettingNames.AzureWebsiteHostName, "testapp.azurewebsites.net" },
-                { EnvironmentSettingNames.AzureWebsiteName, "TestApp" },
-                { EnvironmentSettingNames.ContainerEncryptionKey, encryptionKey },
-                { EnvironmentSettingNames.AzureWebsiteContainerReady, null },
-                { EnvironmentSettingNames.AzureWebsiteSku, "Dynamic" },
-                { EnvironmentSettingNames.AzureWebsiteZipDeployment, null },
-                { "AzureWebEncryptionKey", "0F75CA46E7EBDD39E4CA6B074D1F9A5972B849A55F91A248" },
-            };
-
-            var environment = new TestEnvironment(vars);
-
-            Assert.True(environment.IsLinuxConsumptionOnAtlas());
-            Assert.False(environment.IsFlexConsumptionSku());
-
-            await InitializeTestHostAsync("Linux", environment);
-
-            // verify the expected logs
-            var logLines = _loggerProvider.GetAllLogMessages().Where(p => p.FormattedMessage != null).Select(p => p.FormattedMessage).ToArray();
-            Assert.Equal(1, logLines.Count(p => p.Contains($"App has no functions deployed and remote build is not available since the app was not provisioned with valid {EnvironmentSettingNames.AzureWebJobsSecretStorage} connection string.")));
         }
 
         private async Task Assign(string encryptionKey)
