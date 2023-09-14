@@ -68,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 // Scenario: Restart worker for hot reload on a readwrite file system
                 // We reuse the worker started in placeholderMode only when the fileSystem is readonly
                 // otherwise we shutdown the channel in which case the channel should not have any channels anyway
-                // forceRefresh in only true once in the script host initialization flow
+                // forceRefresh in only true once in the script host initialization flow.
                 // forceRefresh will be false when bundle is not used (dotnet and dotnet-isolated).
                 if (!_environment.IsPlaceholderModeEnabled() && forceRefresh && !_scriptOptions.CurrentValue.IsFileSystemReadOnly)
                 {
