@@ -102,11 +102,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 {
                     return new LinuxContainerEventGenerator(environment);
                 }
-                else if (environment.IsLinuxConsumptionOnLegion())
-                {
-                    //todo: Replace with legion specific logger
-                    return new LinuxContainerEventGenerator(environment);
-                }
                 else if (SystemEnvironment.Instance.IsLinuxAppService())
                 {
                     var hostNameProvider = p.GetService<HostNameProvider>();

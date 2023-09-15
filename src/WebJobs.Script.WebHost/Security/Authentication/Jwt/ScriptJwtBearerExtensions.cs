@@ -72,15 +72,6 @@ namespace Microsoft.Extensions.DependencyInjection
 
         private static string[] GetValidAudiences()
         {
-            if (SystemEnvironment.Instance.IsPlaceholderModeEnabled() &&
-                SystemEnvironment.Instance.IsFlexConsumptionSku())
-            {
-                return new string[]
-                {
-                    ScriptSettingsManager.Instance.GetSetting(WebsitePodName)
-                };
-            }
-
             return new string[]
             {
                 string.Format(SiteAzureFunctionsUriFormat, ScriptSettingsManager.Instance.GetSetting(AzureWebsiteName)),

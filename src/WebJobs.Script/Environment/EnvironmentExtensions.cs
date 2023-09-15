@@ -256,17 +256,6 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
-        /// Gets a value indicating whether the application is running in a Windows or Linux Consumption (dynamic)
-        /// App Service environment.
-        /// </summary>
-        /// <param name="environment">The environment to verify</param>
-        /// <returns><see cref="true"/> if running in a Windows or Linux Consumption App Service app; otherwise, false.</returns>
-        public static bool IsConsumptionSku(this IEnvironment environment)
-        {
-            return environment.IsWindowsConsumption() || environment.IsAnyLinuxConsumption();
-        }
-
-        /// <summary>
         /// Gets a value indicating whether the application is running in an Azure Windows managed hosting environment
         /// (i.e. Windows Consumption or Windows Dedicated)
         /// </summary>
@@ -285,7 +274,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <returns><see cref="true"/> if running in a Linux Consumption App Service app; otherwise, false.</returns>
         public static bool IsAnyLinuxConsumption(this IEnvironment environment)
         {
-            return (environment.IsLinuxConsumptionOnAtlas() || environment.IsFlexConsumptionSku()) && !environment.IsManagedAppEnvironment();
+            return environment.IsLinuxConsumptionOnAtlas() || environment.IsFlexConsumptionSku();
         }
 
         public static bool IsLinuxConsumptionOnAtlas(this IEnvironment environment)
