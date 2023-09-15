@@ -4,7 +4,6 @@
 - My change description (#PR)
 -->
 - Update Java Worker Version to [2.13.0](https://github.com/Azure/azure-functions-java-worker/releases/tag/2.13.0)
-- Update Java Worker Version to [2.12.2](https://github.com/Azure/azure-functions-java-worker/releases/tag/2.12.2)
 - Update Python Worker Version to [4.17.0](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.17.0)
 - Increased maximum HTTP request content size to 210000000 Bytes (~200MB)
 - Update Node.js Worker Version to [3.8.1](https://github.com/Azure/azure-functions-nodejs-worker/releases/tag/v3.8.1)
