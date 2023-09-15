@@ -1267,7 +1267,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
-        public async Task SendInvocationRequest_ValidateTraceContext_SessionId()
+        public async Task SendInvocationRequest_ValidateTraceContext_Properties()
         {
             await CreateDefaultWorkerChannel();
             string sessionId = "sessionId1234";
@@ -1295,7 +1295,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 Assert.Equal(sessionId, aiKey);
                 Assert.True(attribs.TryGetValue(LogConstants.CategoryNameKey, out var catKey), "LogConstants.CategoryNameKey");
                 Assert.Equal("testcat1", catKey);
-                Assert.Equal(4, attribs.Count);
+                Assert.True(attribs.TryGetValue(ScriptConstants.OperationNameKey, out var onKey), "ScriptConstants.OperationNameKey");
+                Assert.Equal(5, attribs.Count);
             }
             else
             {
