@@ -66,12 +66,12 @@ namespace Microsoft.Extensions.DependencyInjection
 
         private static string[] GetValidAudiences()
         {
-            if (SystemEnvironment.Instance.IsPlaceholderModeEnabled() &&
-                SystemEnvironment.Instance.IsLinuxConsumptionOnLegion())
+             if (SystemEnvironment.Instance.IsPlaceholderModeEnabled()
+                && SystemEnvironment.Instance.IsLinuxConsumptionOnAtlas())
             {
                 return new string[]
                 {
-                    ScriptSettingsManager.Instance.GetSetting(WebsitePodName)
+                    ScriptSettingsManager.Instance.GetSetting(ContainerName)
                 };
             }
 
