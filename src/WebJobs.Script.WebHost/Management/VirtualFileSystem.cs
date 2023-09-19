@@ -204,14 +204,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         public static Uri FilePathToVfsUri(string filePath, string baseUrl, ScriptJobHostOptions config, bool isDirectory = false)
         {
-            var home = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
-                ? ScriptSettingsManager.Instance.GetSetting(EnvironmentSettingNames.AzureWebsiteHomePath) ?? config.RootScriptPath
-                : Path.DirectorySeparatorChar.ToString();
+            int lastSeparatorIndex = filePath.LastIndexOfAny(new char[] { '\\', '/' });
 
-            filePath = filePath
-                .Substring(home.Length)
-                .Trim('\\', '/')
-                .Replace("\\", "/");
+            if (lastSeparatorIndex != -1)
+            {
+                // Gets the last component of 'filePath' which should be the file or directory name.
+                filePath = filePath.Substring(lastSeparatorIndex + 1);
+            }
 
             return new Uri($"{baseUrl}/admin/vfs/{filePath}{(isDirectory ? "/" : string.Empty)}");
         }
