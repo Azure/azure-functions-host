@@ -175,9 +175,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var traces = logger.GetLogMessages();
 
             // Assert that the logs contain the expected messages
-            Assert.Equal(2, traces.Count);
-            Assert.Equal("Reading functions metadata (Worker)", traces[1].FormattedMessage);
+            Assert.Equal(3, traces.Count);
             Assert.Equal("Fetching metadata for workerRuntime: node", traces[0].FormattedMessage);
+            Assert.Equal("Reading functions metadata (Worker)", traces[1].FormattedMessage);
+            // The third log is Host is running without any initialized channels, restarting the JobHost. This is not relevant to this test.
         }
     }
 }
