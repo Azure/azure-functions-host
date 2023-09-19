@@ -99,6 +99,13 @@ namespace Microsoft.Azure.WebJobs.Script
                     channels = _channelManager.GetChannels(_workerRuntime);
                 }
 
+                if (channels is null)
+                {
+                    _logger.LogWarning("No initialized language worker channel found for runtime: {workerRuntime}. "
+                        + "There is likely an issue with the worker not being able to start.", _workerRuntime);
+                    return; // should we throw our own exception here so that it's not a null ref exception?
+                }
+
                 foreach (string workerId in channels.Keys.ToList())
                 {
                     if (channels.TryGetValue(workerId, out TaskCompletionSource<IRpcWorkerChannel> languageWorkerChannelTask))
