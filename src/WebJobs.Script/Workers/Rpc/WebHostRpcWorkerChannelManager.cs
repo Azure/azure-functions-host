@@ -181,6 +181,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     return false;
                 }
 
+                // We support specialization of dotnet-isolated only on 64bit host process.
+                var is64Bit = _environment.Is64BitProcess;
+                _logger.LogDebug("Is64BitProcess: {is64Bit}", is64Bit.ToString());
+
+                if (!is64Bit)
+                {
+                    return false;
+                }
+
                 // Do not specialize if the placeholder is 6.0 but the site is 7.0 (for example).
                 var currentWorkerRuntimeVersion = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName);
                 channel.WorkerProcess.Process.StartInfo.Environment.TryGetValue(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, out string placeholderWorkerRuntimeVersion);
