@@ -66,7 +66,7 @@ namespace Microsoft.Extensions.DependencyInjection
 
         private static string[] GetValidAudiences()
         {
-             if (SystemEnvironment.Instance.IsPlaceholderModeEnabled()
+            if (SystemEnvironment.Instance.IsPlaceholderModeEnabled()
                 && SystemEnvironment.Instance.IsLinuxConsumptionOnAtlas())
             {
                 return new string[]
