@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
         }
 
-        public TestEnvironment(IDictionary<string, string> variables) 
+        public TestEnvironment(IDictionary<string, string> variables)
             : this(variables, is64BitProcess: true)
         {
         }
