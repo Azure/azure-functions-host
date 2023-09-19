@@ -15,14 +15,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security
         /// <summary>
         /// A SWT or a Simple Web Token is a token that's made of key=value pairs separated
         /// by &. We only specify expiration in ticks from now (exp={ticks})
-        /// The SWT is then returned as an encrypted string
+        /// The SWT is then returned as an encrypted string.
         /// </summary>
-        /// <param name="validUntil">Datetime for when the token should expire</param>
-        /// <param name="key">Optional key to encrypt the token with</param>
-        /// <returns>a SWT signed by this app</returns>
+        /// <param name="validUntil">Datetime for when the token should expire.</param>
+        /// <param name="key">Optional key to encrypt the token with.</param>
+        /// <returns>a SWT signed by this app.</returns>
         public static string CreateToken(DateTime validUntil, byte[] key = null) => Encrypt($"exp={validUntil.Ticks}", key);
 
-        internal static string Encrypt(string value, byte[] key = null, IEnvironment environment = null)
+        internal static string Encrypt(string value, byte[] key = null, IEnvironment environment = null, bool includesSignature = false)
         {
             key = key ?? SecretsUtility.GetEncryptionKey(environment);
 
@@ -43,8 +43,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security
                         cryptoStream.FlushFinalBlock();
                     }
 
-                    // return {iv}.{swt}.{sha236(key)}
-                    return string.Format("{0}.{1}.{2}", iv, Convert.ToBase64String(cipherStream.ToArray()), GetSHA256Base64String(aes.Key));
+                    if (includesSignature)
+                    {
+                        return $"{Convert.ToBase64String(aes.IV)}.{Convert.ToBase64String(cipherStream.ToArray())}.{GetSHA256Base64String(aes.Key)}.{Convert.ToBase64String(ComputeHMACSHA256(aes.Key, input))}";
+                    }
+                    else
+                    {
+                        // return {iv}.{swt}.{sha236(key)}
+                        return string.Format("{0}.{1}.{2}", iv, Convert.ToBase64String(cipherStream.ToArray()), GetSHA256Base64String(aes.Key));
+                    }
                 }
             }
         }
@@ -52,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security
         public static string Decrypt(byte[] encryptionKey, string value)
         {
             var parts = value.Split(new[] { '.' }, StringSplitOptions.RemoveEmptyEntries);
-            if (parts.Length != 2 && parts.Length != 3)
+            if (parts.Length != 2 && parts.Length != 3 && parts.Length != 4)
             {
                 throw new InvalidOperationException("Malformed token.");
             }
@@ -60,6 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security
             var iv = Convert.FromBase64String(parts[0]);
             var data = Convert.FromBase64String(parts[1]);
             var base64KeyHash = parts.Length == 3 ? parts[2] : null;
+            var signature = parts.Length == 4 ? Convert.FromBase64String(parts[3]) : null;
 
             if (!string.IsNullOrEmpty(base64KeyHash) && !string.Equals(GetSHA256Base64String(encryptionKey), base64KeyHash))
             {
@@ -78,6 +86,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security
 
                     return Encoding.UTF8.GetString(ms.ToArray());
                 }
+            }
+        }
+
+        private static byte[] ComputeHMACSHA256(byte[] key, byte[] input)
+        {
+            using (var hmacSha256 = new HMACSHA256(key))
+            {
+                return hmacSha256.ComputeHash(input);
             }
         }
 

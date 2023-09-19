@@ -2,9 +2,12 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Security.Cryptography;
+using System.Collections.Generic;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security;
+using Newtonsoft.Json;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Helpers
@@ -86,11 +89,63 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Helpers
             Assert.True(SimpleWebTokenHelper.TryValidateToken(token, new SystemClock()));
         }
 
+        [Fact]
+        public void Validate_Token_Checks_Signature_If_Signature_Is_Available()
+        {
+            var websiteAuthEncryptionKey = TestHelpers.GenerateKeyBytes();
+            var websiteAuthEncryptionStringKey = TestHelpers.GenerateKeyHexString(websiteAuthEncryptionKey);
+
+            var timeStamp = DateTime.UtcNow.AddHours(1);
+
+            Environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerEncryptionKey, string.Empty);
+            Environment.SetEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey, websiteAuthEncryptionStringKey);
+
+            var token = SimpleWebTokenHelper.Encrypt($"exp={timeStamp.Ticks}", websiteAuthEncryptionKey, includesSignature: true);
+
+            Assert.True(SimpleWebTokenHelper.TryValidateToken(token, new SystemClock()));
+        }
+
+        [Fact]
+        public void Encrypt_And_Decrypt_Context_With_Signature()
+        {
+            var websiteAuthEncryptionKey = TestHelpers.GenerateKeyBytes();
+            var websiteAuthEncryptionStringKey = TestHelpers.GenerateKeyHexString(websiteAuthEncryptionKey);
+            var hostContext = GetHostAssignmentContext();
+            var hostContextJson = JsonConvert.SerializeObject(hostContext);
+
+            Environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerEncryptionKey, string.Empty);
+            Environment.SetEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey, websiteAuthEncryptionStringKey);
+
+            var encryptedHostContextWithSignature = SimpleWebTokenHelper.Encrypt(hostContextJson, websiteAuthEncryptionKey, includesSignature: true);
+
+            var decryptedHostContextJson = SimpleWebTokenHelper.Decrypt(websiteAuthEncryptionKey, encryptedHostContextWithSignature);
+
+            Assert.Equal(hostContextJson, decryptedHostContextJson);
+        }
+
         public void Dispose()
         {
             // Clean up
             Environment.SetEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey, string.Empty);
             Environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerEncryptionKey, string.Empty);
+        }
+
+        private static HostAssignmentContext GetHostAssignmentContext()
+        {
+            var hostAssignmentContext = new HostAssignmentContext();
+            hostAssignmentContext.SiteId = 1;
+            hostAssignmentContext.SiteName = "sitename";
+            hostAssignmentContext.LastModifiedTime = DateTime.UtcNow.Add(TimeSpan.FromMinutes(new Random().Next()));
+            hostAssignmentContext.Environment = new Dictionary<string, string>();
+            hostAssignmentContext.MSIContext = new MSIContext();
+            hostAssignmentContext.EncryptedTokenServiceSpecializationPayload = "payload";
+            hostAssignmentContext.TokenServiceApiEndpoint = "endpoints";
+            hostAssignmentContext.CorsSettings = new CorsSettings();
+            hostAssignmentContext.EasyAuthSettings = new EasyAuthSettings();
+            hostAssignmentContext.Secrets = new FunctionAppSecrets();
+            hostAssignmentContext.IsWarmupRequest = false;
+
+            return hostAssignmentContext;
         }
     }
 }
