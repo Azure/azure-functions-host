@@ -85,14 +85,14 @@ namespace Microsoft.Azure.WebJobs.Script
                         || _scriptHostManager.State is ScriptHostState.Initialized)
                     {
                         // We don't need to restart if the host hasn't even been created yet.
-                        _logger.LogInformation("Host is starting up, initializing language worker channel");
+                        _logger.LogDebug("Host is starting up, initializing language worker channel");
                         await _channelManager.InitializeChannelAsync(workerConfigs, _workerRuntime);
                     }
                     else
                     {
                         // During the restart flow, GetFunctionMetadataAsync gets invoked
                         // again through a new script host initialization flow.
-                        _logger.LogInformation("Host is running without any initialized channels, restarting the JobHost.");
+                        _logger.LogDebug("Host is running without any initialized channels, restarting the JobHost.");
                         await _scriptHostManager.RestartHostAsync();
                     }
 
