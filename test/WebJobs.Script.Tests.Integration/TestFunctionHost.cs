@@ -354,7 +354,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public string GetLog() => string.Join(Environment.NewLine, GetScriptHostLogMessages().Concat(GetWebHostLogMessages()).OrderBy(m => m.Timestamp));
 
-        public void ClearLogMessages() => _scriptHostLoggerProvider.ClearAllLogMessages();
+        public void ClearLogMessages()
+        {
+            _webHostLoggerProvider.ClearAllLogMessages();
+            _scriptHostLoggerProvider.ClearAllLogMessages();
+        }
 
         public async Task BeginFunctionAsync(string functionName, JToken payload)
         {

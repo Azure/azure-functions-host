@@ -125,18 +125,18 @@
   </data>
   <data name="ExecutedHttpRequest" xml:space="preserve">
     <value>Executed HTTP request: {{
-  requestId: "{mS_ActivityId}",
-  identities: "{identities}",
-  status: "{statusCode}",
-  duration: "{duration}"
+  "requestId": "{mS_ActivityId}",
+  "identities": "{identities}",
+  "status": "{statusCode}",
+  "duration": "{duration}"
 }}</value>
   </data>
   <data name="ExecutingHttpRequest" xml:space="preserve">
     <value>Executing HTTP request: {{
-  requestId: "{mS_ActivityId}",
-  method: "{httpMethod}",
-  userAgent: "{userAgent}",
-  uri: "{uri}"
+  "requestId": "{mS_ActivityId}",
+  "method": "{httpMethod}",
+  "userAgent": "{userAgent}",
+  "uri": "{uri}"
 }}</value>
   </data>
   <data name="FunctionSecretsSchemaV0" xml:space="preserve">
