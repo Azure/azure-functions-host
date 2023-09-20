@@ -232,14 +232,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 try
                 {
-                    bool tableCreated = false;
+                    bool tableCreated = true;
                     if (!table.Exists())
                     {
                         tableCreated = await table.CreateIfNotExistsAsync();
-                    }
-                    else
-                    {
-                        tableCreated = true;
                     }
 
                     if (tableCreated && _scaleOptions.MetricsPurgeEnabled)
