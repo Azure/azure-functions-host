@@ -63,5 +63,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             return new TestEnvironment(variables);
         }
+
+        public void SetProcessBitness(bool is64Bitness)
+        {
+            _is64BitProcess = is64Bitness;
+        }
     }
 }

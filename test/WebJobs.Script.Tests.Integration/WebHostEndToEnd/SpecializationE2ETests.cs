@@ -830,6 +830,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var log = _loggerProvider.GetLog();
             Assert.Contains("UsePlaceholderDotNetIsolated: True", log);
+            Assert.Contains("Is64BitProcess: True", log);
             Assert.Contains("Placeholder runtime version: '6.0'. Site runtime version: '6.0'. Match: True", log);
             Assert.DoesNotContain("Shutting down placeholder worker.", log);
         }
@@ -880,6 +881,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var log = _loggerProvider.GetLog();
             Assert.Contains("UsePlaceholderDotNetIsolated: True", log);
+            Assert.Contains("Is64BitProcess: True", log);
             Assert.Contains("Placeholder runtime version: '6.0'. Site runtime version: '6.0'. Match: True", log);
             Assert.DoesNotContain("Shutting down placeholder worker.", log);
         }
@@ -896,6 +898,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task DotNetIsolated_PlaceholderMiss_Not64Bit()
+        {
+            _environment.SetProcessBitness(is64Bitness: false);
+
+            // We only specialize when host process is 64 bit process.
+            await DotNetIsolatedPlaceholderMiss(() =>
+            {
+                _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteUsePlaceholderDotNetIsolated, "1");
+                _environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, "6.0");
+            });
+
+            var log = _loggerProvider.GetLog();
+            Assert.Contains("UsePlaceholderDotNetIsolated: True", log);
+            Assert.Contains("Is64BitProcess: False", log);
+            Assert.Contains("Shutting down placeholder worker. Worker is not compatible for runtime: dotnet-isolated", log);
+        }
+
+        [Fact]
         public async Task DotNetIsolated_PlaceholderMiss_DotNetVer()
         {
             // Even with placeholders enabled via the WEBSITE_USE_PLACEHOLDER_DOTNETISOLATED env var,
@@ -908,6 +928,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var log = _loggerProvider.GetLog();
             Assert.Contains("UsePlaceholderDotNetIsolated: True", log);
+            Assert.Contains("Is64BitProcess: True", log);
             Assert.Contains("Placeholder runtime version: '6.0'. Site runtime version: '7.0'. Match: False", log);
             Assert.Contains("Shutting down placeholder worker. Worker is not compatible for runtime: dotnet-isolated", log);
         }
