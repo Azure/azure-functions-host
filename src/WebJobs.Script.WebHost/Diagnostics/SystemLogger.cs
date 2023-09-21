@@ -3,11 +3,13 @@
 
 using System;
 using System.Collections.Generic;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -123,9 +125,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
             string invocationId = string.Empty;
             object scopeValue = null;
-            if (scopeProps != null && scopeProps.TryGetValue(ScriptConstants.LogPropertyFunctionInvocationIdKey, out scopeValue) && scopeValue != null)
+            string scopeActivityId = null;
+            if (scopeProps != null)
             {
-                invocationId = scopeValue.ToString();
+                if (scopeProps.TryGetValue(ScriptConstants.LogPropertyFunctionInvocationIdKey, out scopeValue) && scopeValue != null)
+                {
+                    invocationId = scopeValue.ToString();
+                }
+
+                // For Http function invocations we want to stamp invocation logs with
+                // the request ID for easy correlation with incoming Http request logs.
+                if (scopeProps.TryGetValue(ScriptConstants.LoggerHttpRequest, out scopeValue))
+                {
+                    var httpRequest = (HttpRequest)scopeValue;
+                    scopeActivityId = httpRequest.GetRequestId();
+                }
             }
 
             // Apply standard event properties
@@ -133,7 +147,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             // otherwise the ETW event will fail to be persisted (silently)
             string summary = formattedMessage ?? string.Empty;
             string eventName = !string.IsNullOrEmpty(eventId.Name) ? eventId.Name : stateEventName ?? string.Empty;
-            string activityId = stateActivityId ?? string.Empty;
+            string activityId = stateActivityId ?? scopeActivityId ?? string.Empty;
             var options = _appServiceOptions;
             string subscriptionId = options.SubscriptionId ?? string.Empty;
             string appName = options.AppName ?? string.Empty;
