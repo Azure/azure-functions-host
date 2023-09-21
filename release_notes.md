@@ -11,3 +11,4 @@
 - Update PowerShell 7.4 Worker Version to [4.0.2975](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.2975)
 - Update PowerShell 7.2 Worker Version to [4.0.2974](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.2974)
 - Update PowerShell 7.0 Worker Version to [4.0.2973](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.2973)
+- Add support for standalone executable (ie: `dotnet build --standalone`) for out-of-proc workers in Linux Consumption.
