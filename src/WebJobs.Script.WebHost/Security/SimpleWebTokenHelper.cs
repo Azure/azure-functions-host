@@ -84,7 +84,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security
                         binaryWriter.Write(data, 0, data.Length);
                     }
 
-                    return Encoding.UTF8.GetString(ms.ToArray());
+                    var input = ms.ToArray();
+                    if (signature != null && !signature.SequenceEqual(ComputeHMACSHA256(encryptionKey, input)))
+                    {
+                        throw new InvalidOperationException("Signature mismatches!");
+                    }
+
+                    return Encoding.UTF8.GetString(input);
                 }
             }
         }
