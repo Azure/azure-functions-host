@@ -138,7 +138,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(2, logLines.Count(p => p.Contains($"1 proxies loaded")));
             Assert.Equal(1, logLines.Count(p => p.Contains($"0 proxies loaded")));
             Assert.Contains("Node.js HttpTrigger function invoked.", logLines);
-            Assert.Equal(3, logLines.Count(p => p.Contains($"App has no functions deployed and remote build is not available since the app was not provisioned with valid {EnvironmentSettingNames.AzureWebJobsSecretStorage} connection string.")));
+            Assert.Equal(3, logLines.Count(p => p.Contains($"App has no functions deployed since the app was not provisioned with valid {EnvironmentSettingNames.AzureWebJobsSecretStorage} connection string.")));
 
             // verify cold start log entry
             var coldStartLog = _loggerProvider.GetAllLogMessages().FirstOrDefault(p => p.Category == ScriptConstants.LogCategoryHostMetrics);
