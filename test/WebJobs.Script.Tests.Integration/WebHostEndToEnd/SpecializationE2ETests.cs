@@ -830,7 +830,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var log = _loggerProvider.GetLog();
             Assert.Contains("UsePlaceholderDotNetIsolated: True", log);
-            Assert.Contains("Is64BitProcess: True", log);
             Assert.Contains("Placeholder runtime version: '6.0'. Site runtime version: '6.0'. Match: True", log);
             Assert.DoesNotContain("Shutting down placeholder worker.", log);
         }
@@ -881,7 +880,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var log = _loggerProvider.GetLog();
             Assert.Contains("UsePlaceholderDotNetIsolated: True", log);
-            Assert.Contains("Is64BitProcess: True", log);
             Assert.Contains("Placeholder runtime version: '6.0'. Site runtime version: '6.0'. Match: True", log);
             Assert.DoesNotContain("Shutting down placeholder worker.", log);
         }
@@ -911,7 +909,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var log = _loggerProvider.GetLog();
             Assert.Contains("UsePlaceholderDotNetIsolated: True", log);
-            Assert.Contains("Is64BitProcess: False", log);
+            Assert.Contains("This app is configured as 32-bit and therefore does not leverage all performance optimizations. See https://aka.ms/azure-functions/dotnet/placeholders for more information.", log);
             Assert.Contains("Shutting down placeholder worker. Worker is not compatible for runtime: dotnet-isolated", log);
         }
 
@@ -928,7 +926,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var log = _loggerProvider.GetLog();
             Assert.Contains("UsePlaceholderDotNetIsolated: True", log);
-            Assert.Contains("Is64BitProcess: True", log);
             Assert.Contains("Placeholder runtime version: '6.0'. Site runtime version: '7.0'. Match: False", log);
             Assert.Contains("Shutting down placeholder worker. Worker is not compatible for runtime: dotnet-isolated", log);
         }
