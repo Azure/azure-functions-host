@@ -234,7 +234,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 _environment.IsLinuxConsumptionOnAtlas() &&
                 !_environment.IsManagedAppEnvironment())
             {
-                _logger.LogError($"App has no functions deployed since the app was not provisioned with valid {AzureWebJobsSecretStorage} connection string.");
+                _logger.LogError($"Unable to load the functions payload since the app was not provisioned with valid {AzureWebJobsSecretStorage} connection string.");
             }
         }
 
