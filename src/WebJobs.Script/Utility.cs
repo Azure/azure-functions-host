@@ -893,6 +893,11 @@ namespace Microsoft.Azure.WebJobs.Script
             }
             else
             {
+                var isUri = Uri.IsWellFormedUriString(valueToParse, UriKind.Absolute);
+                if (!isUri)
+                {
+                    return null;
+                }
                 var resourceUri = new Uri(valueToParse);
                 queryParams = HttpUtility.ParseQueryString(resourceUri.Query);
             }
