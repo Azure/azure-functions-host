@@ -19,15 +19,16 @@ using Microsoft.Azure.WebJobs.Script.Management.Models;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
+using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using NuGet.Common;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
@@ -794,6 +795,72 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         public async Task HttpTrigger_Get_WithoutContentType_Succeeds()
         {
             await SamplesTestHelpers.InvokeAndValidateHttpTriggerWithoutContentType(_fixture, "HttpTrigger");
+        }
+
+        [Fact]
+        public async Task HttpTrigger_CorrelationIDsAreLogged()
+        {
+            string functionKey = await _fixture.Host.GetFunctionSecretAsync("HttpTrigger");
+
+            string requestId = Guid.NewGuid().ToString();
+
+            _fixture.Host.ClearLogMessages();
+            _fixture.EventGenerator.ClearEvents();
+
+            string uri = $"api/HttpTrigger?code={functionKey}&name=Mathew";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
+            request.Headers.Add(ScriptConstants.AntaresLogIdHeaderName, requestId);
+            request.Headers.Add("User-Agent", new string[] { "TestAgent" });
+
+            HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            var webHostLogs = _fixture.Host.GetWebHostLogMessages();
+            var httpTraceLogs = webHostLogs.Where(p => p.Category == typeof(SystemTraceMiddleware).FullName).ToList();
+            Assert.Equal(2, httpTraceLogs.Count);
+
+            // validate executing trace
+            var log = httpTraceLogs[0];
+            Assert.Equal(typeof(SystemTraceMiddleware).FullName, log.Category);
+            Assert.Equal(LogLevel.Information, log.Level);
+            var idx = log.FormattedMessage.IndexOf(':');
+            var message = log.FormattedMessage.Substring(0, idx).Trim();
+            Assert.Equal("Executing HTTP request", message);
+            var details = log.FormattedMessage.Substring(idx + 1).Trim();
+            var jo = JObject.Parse(details);
+            Assert.Equal(4, jo.Count);
+            Assert.Equal(requestId, jo["requestId"]);
+            Assert.Equal("GET", jo["method"]);
+            Assert.Equal("/api/HttpTrigger", jo["uri"]);
+            Assert.Equal("TestAgent", jo["userAgent"]);
+
+            // validate executed trace
+            log = httpTraceLogs[1];
+            Assert.Equal(typeof(SystemTraceMiddleware).FullName, log.Category);
+            Assert.Equal(LogLevel.Information, log.Level);
+            idx = log.FormattedMessage.IndexOf(':');
+            message = log.FormattedMessage.Substring(0, idx).Trim();
+            Assert.Equal("Executed HTTP request", message);
+            details = log.FormattedMessage.Substring(idx + 1).Trim();
+            jo = JObject.Parse(details);
+            Assert.Equal(4, jo.Count);
+            Assert.Equal(requestId, (string)jo["requestId"]);
+            Assert.Equal(200, jo["status"]);
+            var duration = (long)jo["duration"];
+            Assert.True(duration > 0);
+
+            // determine the function invocation ID
+            var scriptHostLogs = _fixture.Host.GetScriptHostLogMessages();
+            var functionInvocationStartingLog = scriptHostLogs.Single(p => p.EventId.Name == "FunctionStarted");
+            string functionInvocationId = (string)functionInvocationStartingLog.Scope[ScriptConstants.LogPropertyFunctionInvocationIdKey];
+
+            // verify we've stamped the function invocation logs with the Activity ID (i.e. the Request ID)
+            // and invocation ID
+            var traceEvents = _fixture.EventGenerator.GetFunctionTraceEvents();
+            var httpTraceEvents = traceEvents.Where(p => p.Source == "Function.HttpTrigger").ToArray();
+            Assert.Equal(2, httpTraceEvents.Length);
+            Assert.All(httpTraceEvents, p => Assert.Equal(requestId, p.ActivityId));
+            Assert.All(httpTraceEvents, p => Assert.Equal(functionInvocationId, p.FunctionInvocationId));
         }
 
         [Fact]

@@ -3,6 +3,7 @@
 
 using System;
 using System.Diagnostics;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Workers;
@@ -66,12 +67,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Http
         }
 
         [Fact]
-        public void CreateWorkerProcess_LinuxConsumption_AssingnsExecutePermissions_invoked()
+        public async Task StartProcess_LinuxConsumption_TriesToAssignExecutePermissions()
         {
             TestEnvironment testEnvironment = new TestEnvironment();
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, "TestContainer");
             var mockHttpWorkerProcess = new HttpWorkerProcess(_testWorkerId, _rootScriptPath, _httpWorkerOptions, _mockEventManager.Object, _defaultWorkerProcessFactory, _processRegistry, _testLogger, _languageWorkerConsoleLogSource.Object, testEnvironment, new TestMetricsLogger(), _serviceProviderMock.Object, new LoggerFactory());
-            mockHttpWorkerProcess.CreateWorkerProcess();
+
+            try
+            {
+                await mockHttpWorkerProcess.StartProcessAsync();
+            }
+            catch
+            {
+                // expected to throw. Just verifying a log statement occured before then.
+            }
+
             // Verify method invocation
             var testLogs = _testLogger.GetLogMessages();
             Assert.Contains("Error while assigning execute permission", testLogs[0].FormattedMessage);

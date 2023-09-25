@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                                        IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
                                        IEnvironment environment,
                                        ILoggerFactory loggerFactory)
-            : base(eventManager, processRegistry, workerProcessLogger, consoleLogSource, metricsLogger, serviceProvider, loggerFactory, rpcWorkerConfig.Description.UseStdErrorStreamForErrorsOnly)
+            : base(eventManager, processRegistry, workerProcessLogger, consoleLogSource, metricsLogger, serviceProvider, loggerFactory, environment, rpcWorkerConfig.Description.UseStdErrorStreamForErrorsOnly)
         {
             _runtime = runtime;
             _processFactory = processFactory;
