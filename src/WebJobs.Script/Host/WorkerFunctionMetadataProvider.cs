@@ -103,7 +103,9 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     _logger.LogWarning("No initialized language worker channel found for runtime: {workerRuntime}. "
                         + "There is likely an issue with the worker not being able to start.", _workerRuntime);
-                    return; // should we throw our own exception here so that it's not a null ref exception?
+                    // Q: Instead of the null reference exception, we now fallback to default (host) metadata indexing.
+                    // Is this the right thing to do? Should we throw an exception instead?
+                    return new FunctionMetadataResult(useDefaultMetadataIndexing: true, _functions);
                 }
 
                 foreach (string workerId in channels.Keys.ToList())
