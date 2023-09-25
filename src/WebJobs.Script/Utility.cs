@@ -894,7 +894,7 @@ namespace Microsoft.Azure.WebJobs.Script
             else
             {
                 var isUri = Uri.IsWellFormedUriString(valueToParse, UriKind.Absolute);
-                if (!isUri)
+                if (!Uri.IsWellFormedUriString(valueToParse, UriKind.Absolute);)
                 {
                     return null;
                 }
