@@ -13,6 +13,7 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Mono.Unix;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers
 {
@@ -27,13 +28,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         private readonly IServiceProvider _serviceProvider;
         private readonly IDisposable _eventSubscription;
         private readonly Lazy<ILogger> _toolingConsoleJsonLoggerLazy;
+        private readonly IEnvironment _environment;
 
         private bool _useStdErrorStreamForErrorsOnly;
         private Queue<string> _processStdErrDataQueue = new Queue<string>(3);
         private IHostProcessMonitor _processMonitor;
         private object _syncLock = new object();
 
-        internal WorkerProcess(IScriptEventManager eventManager, IProcessRegistry processRegistry, ILogger workerProcessLogger, IWorkerConsoleLogSource consoleLogSource, IMetricsLogger metricsLogger, IServiceProvider serviceProvider, ILoggerFactory loggerFactory, bool useStdErrStreamForErrorsOnly = false)
+        internal WorkerProcess(IScriptEventManager eventManager, IProcessRegistry processRegistry, ILogger workerProcessLogger, IWorkerConsoleLogSource consoleLogSource, IMetricsLogger metricsLogger, IServiceProvider serviceProvider, ILoggerFactory loggerFactory, IEnvironment environment, bool useStdErrStreamForErrorsOnly = false)
         {
             _processRegistry = processRegistry;
             _workerProcessLogger = workerProcessLogger;
@@ -42,6 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             _metricsLogger = metricsLogger;
             _useStdErrorStreamForErrorsOnly = useStdErrStreamForErrorsOnly;
             _serviceProvider = serviceProvider;
+            _environment = environment;
             _toolingConsoleJsonLoggerLazy = new Lazy<ILogger>(() => loggerFactory.CreateLogger(WorkerConstants.ToolingConsoleLogCategoryName), isThreadSafe: true);
 
             // We subscribe to host start events so we can handle the restart that occurs
@@ -66,6 +69,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             using (_metricsLogger.LatencyEvent(MetricEventNames.ProcessStart))
             {
                 Process = CreateWorkerProcess();
+                if (_environment.IsAnyLinuxConsumption())
+                {
+                    AssignUserExecutePermissionsIfNotExists();
+                }
+
                 try
                 {
                     Process.ErrorDataReceived += (sender, e) => OnErrorDataReceived(sender, e);
@@ -303,6 +311,31 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                     _processMonitor.UnregisterChildProcess(Process);
                     _processMonitor = null;
                 }
+            }
+        }
+
+        private void AssignUserExecutePermissionsIfNotExists()
+        {
+            try
+            {
+                if (Process is not { } p)
+                {
+                    return;
+                }
+
+                string filePath = p.StartInfo.FileName;
+                UnixFileInfo fileInfo = new UnixFileInfo(filePath);
+                if (!fileInfo.FileAccessPermissions.HasFlag(FileAccessPermissions.UserExecute))
+                {
+                    _workerProcessLogger.LogDebug("Assigning execute permissions to file: {filePath}", filePath);
+                    fileInfo.FileAccessPermissions |= FileAccessPermissions.UserExecute |
+                                                      FileAccessPermissions.GroupExecute |
+                                                      FileAccessPermissions.OtherExecute;
+                }
+            }
+            catch (Exception ex)
+            {
+                _workerProcessLogger.LogWarning(ex, "Error while assigning execute permission.");
             }
         }
     }

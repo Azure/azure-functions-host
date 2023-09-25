@@ -25,6 +25,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using static Microsoft.Azure.WebJobs.Script.EnvironmentSettingNames;
 using IApplicationLifetime = Microsoft.AspNetCore.Hosting.IApplicationLifetime;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
@@ -223,6 +224,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
+        private void ValidateLinuxSKUConfiguration()
+        {
+            var websiteRunFromPackageValue = _environment.GetEnvironmentVariable(AzureWebsiteRunFromPackage);
+            var scmRunFromPackageValue = _environment.GetEnvironmentVariable(ScmRunFromPackage);
+
+            if (string.IsNullOrEmpty(websiteRunFromPackageValue) &&
+                string.IsNullOrEmpty(scmRunFromPackageValue) &&
+                _environment.IsLinuxConsumptionOnAtlas() &&
+                !_environment.IsManagedAppEnvironment())
+            {
+                _logger.LogError($"Unable to load the functions payload since the app was not provisioned with valid {AzureWebJobsSecretStorage} connection string.");
+            }
+        }
+
         private async Task StartHostAsync(CancellationToken cancellationToken, int attemptCount = 0,
             JobHostStartupMode startupMode = JobHostStartupMode.Normal, Guid? parentOperationId = null)
         {
@@ -310,6 +325,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 }
 
                 LogInitialization(localHost, isOffline, attemptCount, ++_hostStartCount, activeOperation.Id);
+
+                ValidateLinuxSKUConfiguration();
 
                 if (!_scriptWebHostEnvironment.InStandbyMode)
                 {

@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
     // class via a tool like ResGen or Visual Studio.
     // To add or remove a member, edit your .ResX file then rerun ResGen
     // with the /str option, or rebuild your VS project.
-    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "16.0.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "17.0.0.0")]
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
     internal class Resources {
@@ -80,10 +80,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
         
         /// <summary>
         ///   Looks up a localized string similar to Executed HTTP request: {{
-        ///  requestId: &quot;{mS_ActivityId}&quot;,
-        ///  identities: &quot;{identities}&quot;,
-        ///  status: &quot;{statusCode}&quot;,
-        ///  duration: &quot;{duration}&quot;
+        ///  &quot;requestId&quot;: &quot;{mS_ActivityId}&quot;,
+        ///  &quot;identities&quot;: &quot;{identities}&quot;,
+        ///  &quot;status&quot;: &quot;{statusCode}&quot;,
+        ///  &quot;duration&quot;: &quot;{duration}&quot;
         ///}}.
         /// </summary>
         internal static string ExecutedHttpRequest {
@@ -94,10 +94,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
         
         /// <summary>
         ///   Looks up a localized string similar to Executing HTTP request: {{
-        ///  requestId: &quot;{mS_ActivityId}&quot;,
-        ///  method: &quot;{httpMethod}&quot;,
-        ///  userAgent: &quot;{userAgent}&quot;,
-        ///  uri: &quot;{uri}&quot;
+        ///  &quot;requestId&quot;: &quot;{mS_ActivityId}&quot;,
+        ///  &quot;method&quot;: &quot;{httpMethod}&quot;,
+        ///  &quot;userAgent&quot;: &quot;{userAgent}&quot;,
+        ///  &quot;uri&quot;: &quot;{uri}&quot;
         ///}}.
         /// </summary>
         internal static string ExecutingHttpRequest {
