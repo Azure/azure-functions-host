@@ -80,7 +80,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration
             HostDisposedException originalEx = new HostDisposedException("someObject", new ObjectDisposedException("someObject"));
             HostDisposedException deserializedEx;
 
+#pragma warning disable SYSLIB0011 // Type or member is obsolete
             BinaryFormatter bf = new BinaryFormatter();
+#pragma warning restore SYSLIB0011 // Type or member is obsolete
             using (MemoryStream ms = new MemoryStream())
             {
 #pragma warning disable SYSLIB0011 // Type or member is obsolete
