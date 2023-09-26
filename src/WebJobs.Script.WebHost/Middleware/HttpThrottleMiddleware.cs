@@ -84,7 +84,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             metricsLogger.LogEvent(MetricEventNames.FunctionInvokeThrottled);
 
             httpContext.Response.StatusCode = 429;
-            httpContext.Response.Headers.Add(ScriptConstants.AntaresScaleOutHeaderName, "1");
+            httpContext.Response.Headers.Append(ScriptConstants.AntaresScaleOutHeaderName, "1");
         }
     }
 }
