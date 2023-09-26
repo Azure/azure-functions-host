@@ -2,7 +2,7 @@
   <Import Project="..\..\build\common.props" />
   <Import Project="..\..\build\python.props" />
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <AssemblyName>Microsoft.Azure.WebJobs.Script.WebHost</AssemblyName>
     <RootNamespace>Microsoft.Azure.WebJobs.Script.WebHost</RootNamespace>
     <PackageId>Microsoft.Azure.WebJobs.Script.WebHost</PackageId>
