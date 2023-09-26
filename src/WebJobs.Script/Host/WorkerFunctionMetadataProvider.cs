@@ -99,6 +99,12 @@ namespace Microsoft.Azure.WebJobs.Script
                     channels = _channelManager.GetChannels(_workerRuntime);
                 }
 
+                if (channels is null)
+                {
+                    _logger.LogDebug("Worker channels are null, there is likely an issue with the worker not being able to start.");
+                    throw new InvalidOperationException($"No initialized language worker channel found for runtime: {_workerRuntime}.");
+                }
+
                 foreach (string workerId in channels.Keys.ToList())
                 {
                     if (channels.TryGetValue(workerId, out TaskCompletionSource<IRpcWorkerChannel> languageWorkerChannelTask))
