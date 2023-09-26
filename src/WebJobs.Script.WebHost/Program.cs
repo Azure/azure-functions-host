@@ -71,13 +71,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     });
                     config.Add(new FunctionsHostingConfigSource(SystemEnvironment.Instance));
                 })
-                .ConfigureLogging((context, loggingBuilder) =>
-                {
-                    loggingBuilder.ClearProviders();
+                //.ConfigureLogging((context, loggingBuilder) =>
+                //{
+                //    loggingBuilder.ClearProviders();
 
-                    loggingBuilder.AddDefaultWebJobsFilters();
-                    loggingBuilder.AddWebJobsSystem<WebHostSystemLoggerProvider>();
-                })
+                //    loggingBuilder.AddDefaultWebJobsFilters();
+                //    loggingBuilder.AddWebJobsSystem<WebHostSystemLoggerProvider>();
+                //})
                 .UseStartup<Startup>();
         }
 

@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>net6.0</TargetFrameworks>
+    <TargetFrameworks>net8.0</TargetFrameworks>
     <OutputType>Exe</OutputType>
     <!-- BenchmarkDotNet looks for a matching Project, see https://github.com/dotnet/BenchmarkDotNet/issues/1019 -->
     <!--<AssemblyName>Microsoft.Azure.WebJobs.Script.Benchmarks</AssemblyName>-->
