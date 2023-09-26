@@ -57,18 +57,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private bool _isDisposed = false;
 
         public TestFunctionHost(string scriptPath,
-           Action<IServiceCollection> configureWebHostServices = null,
-           Action<IWebJobsBuilder> configureScriptHostWebJobsBuilder = null,
-           Action<IConfigurationBuilder> configureScriptHostAppConfiguration = null,
-           Action<ILoggingBuilder> configureScriptHostLogging = null,
-           Action<IServiceCollection> configureScriptHostServices = null,
-           Action<IConfigurationBuilder> configureWebHostAppConfiguration = null)
-            : this(scriptPath, Path.Combine(Path.GetTempPath(), @"Functions"), configureWebHostServices, configureScriptHostWebJobsBuilder,
-                  configureScriptHostAppConfiguration, configureScriptHostLogging, configureScriptHostServices, configureWebHostAppConfiguration)
+            Action<IServiceCollection> configureWebHostServices = null,
+            Action<IWebJobsBuilder> configureScriptHostWebJobsBuilder = null,
+            Action<IConfigurationBuilder> configureScriptHostAppConfiguration = null,
+            Action<ILoggingBuilder> configureScriptHostLogging = null,
+            Action<IServiceCollection> configureScriptHostServices = null,
+            Action<IConfigurationBuilder> configureWebHostAppConfiguration = null)
+            : this(scriptPath, Path.Combine(Path.GetTempPath(), @"Functions"), Path.Combine(Path.GetTempPath(), @"FunctionsData"), configureWebHostServices, configureScriptHostWebJobsBuilder,
+                configureScriptHostAppConfiguration, configureScriptHostLogging, configureScriptHostServices, configureWebHostAppConfiguration)
         {
         }
 
-        public TestFunctionHost(string scriptPath, string logPath,
+        public TestFunctionHost(string scriptPath, string logPath, string testDataPath = "",
             Action<IServiceCollection> configureWebHostServices = null,
             Action<IWebJobsBuilder> configureScriptHostWebJobsBuilder = null,
             Action<IConfigurationBuilder> configureScriptHostAppConfiguration = null,
@@ -83,6 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 IsSelfHost = true,
                 ScriptPath = _appRoot,
+                TestDataPath = testDataPath,
                 LogPath = logPath,
                 SecretsPath = Environment.CurrentDirectory, // not used
                 HasParentScope = true
