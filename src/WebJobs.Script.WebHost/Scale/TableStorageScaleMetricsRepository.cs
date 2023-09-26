@@ -232,7 +232,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 try
                 {
-                    bool tableCreated = await table.CreateIfNotExistsAsync();
+                    bool tableCreated = true;
+                    if (!table.Exists())
+                    {
+                        tableCreated = await table.CreateIfNotExistsAsync();
+                    }
+
                     if (tableCreated && _scaleOptions.MetricsPurgeEnabled)
                     {
                         // when we roll over to a new table, it's a good time to

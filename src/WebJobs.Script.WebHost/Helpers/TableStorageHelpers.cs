@@ -25,7 +25,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Helpers
             {
                 try
                 {
-                    return await table.CreateIfNotExistsAsync();
+                    if (!table.Exists())
+                    {
+                        return await table.CreateIfNotExistsAsync();
+                    }
                 }
                 catch (StorageException e)
                 {

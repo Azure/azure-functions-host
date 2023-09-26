@@ -226,7 +226,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 var storageAccount = CloudStorageAccount.Parse(connectionString);
                 var fileClient = storageAccount.CreateCloudFileClient();
                 var share = fileClient.GetShareReference(contentShare);
-                await share.CreateIfNotExistsAsync();
+
+                if (!share.Exists())
+                {
+                    await share.CreateIfNotExistsAsync();
+                }
+
                 return null;
             }
             catch (Exception e)

@@ -66,7 +66,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             if (_azureBlobStorageProvider.TryCreateBlobServiceClientFromConnection(connection, out BlobServiceClient blobServiceClient))
             {
                 var blobContainerClient = blobServiceClient.GetBlobContainerClient(_secretsContainerName);
-                blobContainerClient.CreateIfNotExists();
+
+                if (!blobContainerClient.Exists())
+                {
+                    blobContainerClient.CreateIfNotExists();
+                }
 
                 return blobContainerClient;
             }

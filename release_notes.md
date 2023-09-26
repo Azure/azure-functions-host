@@ -15,3 +15,4 @@
 - Bug fix: If there are no channels created and the host is running, restart the JobHost instead of shutting down worker channels (#9510)
   - This fixes a bug with worker indexing where we are shutting down worker channels and creating a new channel that never
     gets properly initialized as the invocation buffers are not created - this leads to a "Did not find initialized workers" error.
+- Check if a blob container or table exists before trying to create it (#9555)
