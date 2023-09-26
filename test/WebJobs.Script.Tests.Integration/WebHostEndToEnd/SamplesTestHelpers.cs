@@ -100,5 +100,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal("text/plain", response.Content.Headers.ContentType.MediaType);
             Assert.Equal("Hello Host", body);
         }
+
+        public static async Task<HttpResponseMessage> InvokeEndpointGet(EndToEndTestFixture fixture, string endpoint)
+        {
+            string masterKey = await fixture.Host.GetMasterKeyAsync();
+            string uri = $"{endpoint}?code={masterKey}";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
+
+            return await fixture.Host.HttpClient.SendAsync(request);
+        }
+
+        public static async Task<HttpResponseMessage> InvokeEndpointPut(EndToEndTestFixture fixture, string endpoint, object testContent)
+        {
+            string masterKey = await fixture.Host.GetMasterKeyAsync();
+            string uri = $"{endpoint}?code={masterKey}";
+
+            return await fixture.Host.HttpClient.PutAsJsonAsync(uri, testContent);
+        }
     }
 }

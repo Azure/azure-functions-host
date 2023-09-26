@@ -50,5 +50,10 @@ namespace Microsoft.WebJobs.Script.Tests
         /// Tests for the AdminIsolation feature.
         /// </summary>
         public const string AdminIsolationTests = "AdminIsolationTests";
+
+        /// <summary>
+        /// Tests for the FunctionsController.
+        /// </summary>
+        public const string FunctionsControllerEndToEnd = "FunctionsControllerEndToEnd";
     }
 }

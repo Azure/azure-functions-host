@@ -157,6 +157,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var scriptApplicationHostOptions = new ScriptApplicationHostOptions();
             var optionsMonitor = TestHelpers.CreateOptionsMonitor(scriptApplicationHostOptions);
 
+            var mockScriptHostManager = new Mock<IScriptHostManager>();
+            mockScriptHostManager.Setup(m => m.State).Returns(ScriptHostState.Running);
+
             var mockWebHostRpcWorkerChannelManager = new Mock<IWebHostRpcWorkerChannelManager>();
             mockWebHostRpcWorkerChannelManager.Setup(m => m.GetChannels(It.IsAny<string>())).Returns(() => new Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>>
             {
@@ -165,15 +168,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var environment = SystemEnvironment.Instance;
             environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "node");
 
-            var workerFunctionMetadataProvider = new WorkerFunctionMetadataProvider(optionsMonitor, logger, SystemEnvironment.Instance, mockWebHostRpcWorkerChannelManager.Object);
+            var workerFunctionMetadataProvider = new WorkerFunctionMetadataProvider(optionsMonitor, logger, SystemEnvironment.Instance,
+                                                    mockWebHostRpcWorkerChannelManager.Object, mockScriptHostManager.Object);
             await workerFunctionMetadataProvider.GetFunctionMetadataAsync(workerConfigs, false);
 
             var traces = logger.GetLogMessages();
 
             // Assert that the logs contain the expected messages
-            Assert.Equal(2, traces.Count);
-            Assert.Equal("Reading functions metadata (Worker)", traces[1].FormattedMessage);
+            Assert.Equal(3, traces.Count);
             Assert.Equal("Fetching metadata for workerRuntime: node", traces[0].FormattedMessage);
+            Assert.Equal("Reading functions metadata (Worker)", traces[1].FormattedMessage);
+            // The third log is Host is running without any initialized channels, restarting the JobHost. This is not relevant to this test.
         }
     }
 }
