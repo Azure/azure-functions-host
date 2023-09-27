@@ -174,7 +174,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 innerExceptionMessage = innerExceptionMessage ?? string.Empty;
             }
 
-            FileUtility.WriteAsync(filePath, $"{logLevel}, {subscriptionId}, {appName}, {functionName}, {eventName}, {source}, {details}, {summary}, {innerExceptionType}, {innerExceptionMessage}, {invocationId}, {_hostInstanceId}, {activityId}, {runtimeSiteName}, {slotName}, {DateTime.UtcNow}").GetAwaiter().GetResult();
+            FileUtility.WriteToFile(filePath, $"{logLevel}, {subscriptionId}, {appName}, {functionName}, {eventName}, {source}, {details}, {summary}, {innerExceptionType}, {innerExceptionMessage}, {invocationId}, {_hostInstanceId}, {activityId}, {runtimeSiteName}, {slotName}, {DateTime.UtcNow}");
             _eventGenerator.LogFunctionTraceEvent(logLevel, subscriptionId, appName, functionName, eventName, source, details, summary, innerExceptionType, innerExceptionMessage, invocationId, _hostInstanceId, activityId, runtimeSiteName, slotName, DateTime.UtcNow);
         }
     }

@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             string homeDirectory = SystemEnvironment.Instance.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath);
             string filePath = Path.Combine(homeDirectory, "data", "Functions", "Logs.txt");
 
-            FileUtility.WriteAsync(filePath, $"FunctionsSystemLogsEventSource.Instance.IsEnabled():{FunctionsSystemLogsEventSource.Instance.IsEnabled()}").GetAwaiter().GetResult();
+            FileUtility.WriteToFile(filePath, $"FunctionsSystemLogsEventSource.Instance.IsEnabled():{FunctionsSystemLogsEventSource.Instance.IsEnabled()}");
             if (!FunctionsSystemLogsEventSource.Instance.IsEnabled())
             {
                 return;

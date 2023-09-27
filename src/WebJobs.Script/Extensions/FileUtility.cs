@@ -7,6 +7,7 @@ using System.IO;
 using System.IO.Abstractions;
 using System.Reflection;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Microsoft.Azure.WebJobs.Script
@@ -15,11 +16,25 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         private static IFileSystem _default = new FileSystem();
         private static IFileSystem _instance;
+        private static ReaderWriterLock locker = new ReaderWriterLock();
 
         public static IFileSystem Instance
         {
             get { return _instance ?? _default; }
             set { _instance = value; }
+        }
+
+        public static void WriteToFile(string filePath, string text)
+        {
+            try
+            {
+                locker.AcquireWriterLock(100);
+                System.IO.File.AppendAllLines(filePath, new[] { text });
+            }
+            finally
+            {
+                locker.ReleaseWriterLock();
+            }
         }
 
         public static string ReadResourceString(string resourcePath, Assembly assembly = null)
