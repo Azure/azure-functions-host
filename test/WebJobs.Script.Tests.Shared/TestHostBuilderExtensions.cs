@@ -17,6 +17,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -74,10 +75,10 @@ namespace Microsoft.WebJobs.Script.Tests
 
             configureRootServices?.Invoke(services);
 
-            var rootProvider = new WebHostServiceProvider(services);
+            var rootProvider = services.BuildServiceProvider();
 
             builder
-                .AddWebScriptHost(rootProvider, rootProvider, webHostOptions, configureWebJobs)
+                .AddWebScriptHost(rootProvider, services, webHostOptions, configureWebJobs)
                 .ConfigureAppConfiguration(c =>
                 {
                     c.AddTestSettings();
