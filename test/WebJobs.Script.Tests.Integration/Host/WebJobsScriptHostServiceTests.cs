@@ -311,7 +311,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
                   services.AddSingleton<IScriptHostBuilder>(s =>
                   {
                       var appHostOptions = s.GetService<IOptionsMonitor<ScriptApplicationHostOptions>>();
-                      var rootServiceScopeFactory = s.GetService<IServiceScopeFactory>();
 
                       IHost Intercept(IScriptHostBuilder builder, bool skipHostStartup, bool skipHostConfigurationParsing)
                       {
@@ -334,7 +333,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
                           return builder.BuildHost(skipHostStartup, skipHostConfigurationParsing);
                       }
 
-                      return new InterceptingScriptHostBuilder(appHostOptions, s, rootServiceScopeFactory, Intercept);
+                      return new InterceptingScriptHostBuilder(appHostOptions, s, services, Intercept);
                   });
               }))
             {
@@ -360,10 +359,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             private readonly DefaultScriptHostBuilder _builder;
             private readonly Func<IScriptHostBuilder, bool, bool, IHost> _interceptCallback;
 
-            public InterceptingScriptHostBuilder(IOptionsMonitor<ScriptApplicationHostOptions> appHostOptions, IServiceProvider rootServiceProvider,
-                IServiceScopeFactory rootServiceScopeFactory, Func<IScriptHostBuilder, bool, bool, IHost> interceptCallback)
+            public InterceptingScriptHostBuilder(IOptionsMonitor<ScriptApplicationHostOptions> appHostOptions, IServiceProvider rootServiceProvider, IServiceCollection rootServices, Func<IScriptHostBuilder, bool, bool, IHost> interceptCallback)
             {
-                _builder = new DefaultScriptHostBuilder(appHostOptions, rootServiceProvider, rootServiceScopeFactory);
+                _builder = new DefaultScriptHostBuilder(appHostOptions, rootServices, rootServiceProvider);
                 _interceptCallback = interceptCallback;
             }
 
