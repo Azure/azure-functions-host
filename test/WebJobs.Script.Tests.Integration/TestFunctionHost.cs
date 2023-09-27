@@ -98,7 +98,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 .ConfigureServices(services =>
                   {
                       services.Replace(new ServiceDescriptor(typeof(ISecretManagerProvider), new TestSecretManagerProvider(new TestSecretManager())));
-                      services.Replace(ServiceDescriptor.Singleton<IServiceProviderFactory<IServiceCollection>>(new WebHostServiceProviderFactory()));
                       services.Replace(new ServiceDescriptor(typeof(IOptions<ScriptApplicationHostOptions>), sp =>
                       {
                           _hostOptions.RootServiceProvider = sp;
