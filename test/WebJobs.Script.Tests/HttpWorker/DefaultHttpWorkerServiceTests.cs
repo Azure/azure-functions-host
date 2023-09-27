@@ -586,6 +586,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
             Assert.Equal($"http://127.0.0.1:{_defaultPort}/{TestFunctionName}{HttpWorkerTestUtilities.QueryParamString}", httpRequestMessage.RequestUri.AbsoluteUri);
             Assert.Equal(HttpWorkerTestUtilities.AcceptHeaderValue, httpRequestMessage.Headers.GetValues(HeaderNames.Accept).FirstOrDefault());
             Assert.Equal(HttpWorkerTestUtilities.UTF8AcceptCharset, httpRequestMessage.Headers.GetValues(HeaderNames.AcceptCharset).FirstOrDefault());
+            Assert.NotNull(httpRequestMessage.Headers.GetValues(HttpWorkerConstants.W3CTraceParentHeaderName).FirstOrDefault());
             var content = await httpRequestMessage.Content.ReadAsStringAsync();
             Assert.Equal($"\"{HttpWorkerTestUtilities.HttpContentStringValue}\"", content);
         }

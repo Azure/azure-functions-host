@@ -158,11 +158,19 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             return null;
         }
 
-        internal void AddHeaders(HttpRequestMessage httpRequest, string invocationId)
+        internal void AddHeaders(HttpRequestMessage httpRequest, ScriptInvocationContext scriptInvocationContext)
         {
             httpRequest.Headers.Add(HttpWorkerConstants.HostVersionHeaderName, ScriptHost.Version);
-            httpRequest.Headers.Add(HttpWorkerConstants.InvocationIdHeaderName, invocationId);
+            httpRequest.Headers.Add(HttpWorkerConstants.InvocationIdHeaderName, scriptInvocationContext.ExecutionContext.InvocationId.ToString());
             httpRequest.Headers.UserAgent.ParseAdd($"{HttpWorkerConstants.UserAgentHeaderValue}/{ScriptHost.Version}");
+
+            // NOTE: This ensures that W3C trace context propagation works for custom handler functions (as these headers are stripped by the runtime).
+            httpRequest.Headers.Add(HttpWorkerConstants.W3CTraceParentHeaderName, scriptInvocationContext.Traceparent);
+
+            if (!string.IsNullOrEmpty(scriptInvocationContext.Tracestate))
+            {
+                httpRequest.Headers.Add(HttpWorkerConstants.W3CTraceStateHeaderName, scriptInvocationContext.Tracestate);
+            }
         }
 
         internal string GetPathValue(HttpWorkerOptions httpWorkerOptions, string functionName, HttpRequest httpRequest)
@@ -186,7 +194,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 // Build httpRequestMessage from scriptInvocationContext
                 using (HttpRequestMessage httpRequestMessage = httpScriptInvocationContext.ToHttpRequestMessage(uri))
                 {
-                    AddHeaders(httpRequestMessage, scriptInvocationContext.ExecutionContext.InvocationId.ToString());
+                    AddHeaders(httpRequestMessage, scriptInvocationContext);
 
                     HttpResponseMessage invocationResponse = await SendInvocationRequestAsync(scriptInvocationContext, httpRequestMessage);
 

@@ -9,6 +9,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         public const string InvocationIdHeaderName = "X-Azure-Functions-InvocationId";
         public const string HostVersionHeaderName = "X-Azure-Functions-HostVersion";
         public const string UserAgentHeaderValue = "Azure-Functions-Host";
+        public const string W3CTraceParentHeaderName = "traceparent";
+        public const string W3CTraceStateHeaderName = "tracestate";
 
         // Child Process Env vars
         public const string PortEnvVarName = "FUNCTIONS_HTTPWORKER_PORT";
