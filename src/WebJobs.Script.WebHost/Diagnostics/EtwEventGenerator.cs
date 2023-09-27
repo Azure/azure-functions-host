@@ -2,6 +2,8 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.IO;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
@@ -19,6 +21,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public void LogFunctionTraceEvent(LogLevel level, string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary, string exceptionType, string exceptionMessage, string functionInvocationId, string hostInstanceId, string activityId, string runtimeSiteName, string slotName, DateTime eventTimeStamp)
         {
+            string homeDirectory = SystemEnvironment.Instance.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath);
+            string filePath = Path.Combine(homeDirectory, "data", "Functions", "Logs.txt");
+
+            FileUtility.WriteAsync(filePath, $"FunctionsSystemLogsEventSource.Instance.IsEnabled():{FunctionsSystemLogsEventSource.Instance.IsEnabled()}").GetAwaiter().GetResult();
             if (!FunctionsSystemLogsEventSource.Instance.IsEnabled())
             {
                 return;

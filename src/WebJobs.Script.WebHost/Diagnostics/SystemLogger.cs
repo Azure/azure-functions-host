@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Indexers;
@@ -58,6 +59,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
         {
+            string homeDirectory = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath);
+            string filePath = Path.Combine(homeDirectory, "data", "Functions", "Logs.txt");
+
             if (!IsEnabled(logLevel) || _isUserFunction)
             {
                 return;
@@ -170,6 +174,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 innerExceptionMessage = innerExceptionMessage ?? string.Empty;
             }
 
+            FileUtility.WriteAsync(filePath, $"{logLevel}, {subscriptionId}, {appName}, {functionName}, {eventName}, {source}, {details}, {summary}, {innerExceptionType}, {innerExceptionMessage}, {invocationId}, {_hostInstanceId}, {activityId}, {runtimeSiteName}, {slotName}, {DateTime.UtcNow}").GetAwaiter().GetResult();
             _eventGenerator.LogFunctionTraceEvent(logLevel, subscriptionId, appName, functionName, eventName, source, details, summary, innerExceptionType, innerExceptionMessage, invocationId, _hostInstanceId, activityId, runtimeSiteName, slotName, DateTime.UtcNow);
         }
     }

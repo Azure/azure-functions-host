@@ -42,6 +42,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging.Configuration;
 using Microsoft.Extensions.Options;
+using NuGet.Protocol.Plugins;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -220,6 +221,9 @@ namespace Microsoft.Azure.WebJobs.Script
                     // Only set our external startup if we're not suppressing host initialization
                     // as we don't want to load user assemblies otherwise.
                     var locator = context.Properties.GetAndRemove<ScriptStartupTypeLocator>(StartupTypeLocatorKey);
+
+                    var logger = loggerFactory.CreateLogger(LogCategories.Startup);
+                    logger.LogDiagnosticEventError(DiagnosticEventConstants.ExternalStartupErrorCode, "Diagnostic event message nare", DiagnosticEventConstants.ExternalStartupErrorHelpLink, null);
 
                     try
                     {
