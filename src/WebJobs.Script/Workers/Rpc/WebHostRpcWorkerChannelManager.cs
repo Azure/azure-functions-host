@@ -184,7 +184,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 // We support specialization of dotnet-isolated only on 64bit host process.
                 if (!_environment.Is64BitProcess)
                 {
-                    _logger.LogInformation("This app is configured as 32-bit and therefore does not leverage all performance optimizations. See https://aka.ms/azure-functions/dotnet/placeholders for more information.");
+                    _logger.LogInformation(new EventId(421, "PlaceholderMissDueToBitness"), 
+                        "This app is configured as 32-bit and therefore does not leverage all performance optimizations. See https://aka.ms/azure-functions/dotnet/placeholders for more information.");
                     return false;
                 }
 
