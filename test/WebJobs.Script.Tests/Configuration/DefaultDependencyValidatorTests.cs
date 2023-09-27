@@ -204,9 +204,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         {
             private readonly DefaultScriptHostBuilder _builder;
 
-            public TestScriptHostBuilder(IOptionsMonitor<ScriptApplicationHostOptions> appHostOptions, IServiceProvider rootServiceProvider, IServiceScopeFactory rootServiceScopeFactory)
+            public TestScriptHostBuilder(IOptionsMonitor<ScriptApplicationHostOptions> appHostOptions, IServiceProvider rootServiceProvider, IServiceCollection rootServices)
             {
-                _builder = new DefaultScriptHostBuilder(appHostOptions, rootServiceProvider, rootServiceScopeFactory);
+                _builder = new DefaultScriptHostBuilder(appHostOptions, rootServices, rootServiceProvider);
             }
 
             public IHost BuildHost(bool skipHostStartup, bool skipHostConfigurationParsing)
