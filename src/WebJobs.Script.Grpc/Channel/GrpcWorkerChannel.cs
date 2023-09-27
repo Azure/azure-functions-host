@@ -1003,7 +1003,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
                         if (sharedMemoryLogBuilder != null)
                         {
-                            _workerChannelLogger.LogDebug("Shared memory usage for response of invocation '{invocationId}' is {SharedMemoryUsage}", invokeResponse.InvocationId, sharedMemoryLogBuilder.ToString());
+                            _workerChannelLogger.LogDebug("Shared memory usage for response of invocation '{invocationId}' is {SharedMemoryUsage}", invokeResponse.InvocationId, sharedMemoryLogBuilder);
                         }
 
                         IDictionary<string, object> bindingsDictionary = await invokeResponse.OutputData
