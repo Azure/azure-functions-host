@@ -11,13 +11,10 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using DryIoc;
-using Microsoft.Azure.Web.DataProtection;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using DataProtectionConstants = Microsoft.Azure.Web.DataProtection.Constants;
 
