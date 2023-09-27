@@ -1177,9 +1177,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             private readonly DefaultScriptHostBuilder _inner;
             private readonly IOptionsMonitor<ScriptApplicationHostOptions> _options;
 
-            public PausingScriptHostBuilder(IOptionsMonitor<ScriptApplicationHostOptions> options, IServiceProvider root, IServiceScopeFactory scope)
+            public PausingScriptHostBuilder(IOptionsMonitor<ScriptApplicationHostOptions> options, IServiceProvider rootServiceProvider, IServiceCollection rootServices)
             {
-                _inner = new DefaultScriptHostBuilder(options, root, scope);
+                _inner = new DefaultScriptHostBuilder(options, rootServices, rootServiceProvider);
                 _options = options;
             }
 
