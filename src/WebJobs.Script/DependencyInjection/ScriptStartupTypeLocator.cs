@@ -340,7 +340,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
         private bool IsDotnetIsolatedApp(IEnumerable<FunctionMetadata> functions, IEnvironment environment)
         {
             string workerRuntime = Utility.GetWorkerRuntime(functions, environment);
-            return workerRuntime?.Equals(RpcWorkerConstants.DotNetIsolatedLanguageWorkerName, StringComparison.OrdinalIgnoreCase) ?? false;
+            return workerRuntime.Equals(RpcWorkerConstants.DotNetIsolatedLanguageWorkerName, StringComparison.OrdinalIgnoreCase);
         }
 
         private class TypeNameEqualityComparer : IEqualityComparer<Type>
