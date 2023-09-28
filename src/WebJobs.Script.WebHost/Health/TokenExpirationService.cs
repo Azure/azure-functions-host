@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Properties;
 using Microsoft.Extensions.Hosting;
@@ -13,61 +14,92 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Health
 {
-    internal class TokenExpirationService : BackgroundService
+    internal class TokenExpirationService : IHostedService, IDisposable
     {
         private readonly TaskCompletionSource<object> _standby = new();
         private readonly IEnvironment _environment;
         private readonly ILogger<TokenExpirationService> _logger;
+        private readonly IOptionsMonitor<StandbyOptions> _standbyOptionsMonitor;
         private IDisposable _listener;
+        private bool _analysisScheduled;
+        private Task _analysisTask;
+        private bool _disposed;
+        private CancellationTokenSource _cancellationTokenSource;
 
         // The TokenExpirationService is a good health check candidate if we start using Microsoft.Extensions.Diagnostics.HealthChecks
         public TokenExpirationService(IEnvironment environment, ILogger<TokenExpirationService> logger, IOptionsMonitor<StandbyOptions> standbyOptionsMonitor)
         {
             _environment = environment;
             _logger = logger;
-            if (standbyOptionsMonitor.CurrentValue.InStandbyMode)
-            {
-                _listener = standbyOptionsMonitor.OnChange(standbyOptions =>
-                {
-                    if (!standbyOptions.InStandbyMode)
-                    {
-                        _standby.TrySetResult(null);
-                    }
-                });
-            }
-            else
-            {
-                _standby.TrySetResult(null);
-            }
+            _standbyOptionsMonitor = standbyOptionsMonitor;
         }
 
-        protected override async Task ExecuteAsync(CancellationToken cancellationToken)
+        public Task StartAsync(CancellationToken cancellationToken)
         {
             try
-            { 
-                await Task.Yield(); // force a yield, so our synchronous code does not slowdown startup
-                await _standby.Task.WaitAsync(cancellationToken);
-
-                if (_environment.IsCoreTools())
-                {
-                    return;
-                }
-
-                while (!cancellationToken.IsCancellationRequested)
-                {
-                    // check at every hour
-                    AnalyzeSasTokenInUri();
-                    await Task.Delay(TimeSpan.FromHours(1), cancellationToken);
-                }
-            }
-            catch (Exception e)
             {
-                _logger.LogError(e, "Error occurred in {ServiceName}", nameof(TokenExpirationService));
+                if (!_environment.IsCoreTools())
+                {
+                    if (_standbyOptionsMonitor.CurrentValue.InStandbyMode)
+                    {
+                        _standbyOptionsMonitor.OnChange(standbyOptions =>
+                        {
+                            if (!standbyOptions.InStandbyMode && !_analysisScheduled)
+                            {
+                                ScheduleTokenExpirationServiceAnalysis();
+                            }
+                        });
+                    }
+                    else
+                    {
+                        ScheduleTokenExpirationServiceAnalysis();
+                    }
+                }
             }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error starting Token expiration service. Handling error and continuing.");
+            }
+
+            return Task.CompletedTask;
+        }
+
+        public Task StopAsync(CancellationToken cancellationToken)
+        {
+            try
+            {
+                _cancellationTokenSource?.Cancel();
+
+                if (_analysisTask != null && !_analysisTask.IsCompleted)
+                {
+                    _logger.LogDebug("Token expiration service stopped before analysis completion. Waiting for cancellation.");
+
+                    return _analysisTask;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error stopping Token expiration service. Handling error and continuing.");
+            }
+            return Task.CompletedTask;
+        }
+
+        private void ScheduleTokenExpirationServiceAnalysis()
+        {
+            _analysisScheduled = true;
+            _cancellationTokenSource = new CancellationTokenSource();
+
+            _analysisTask = Task.Delay(TimeSpan.FromMinutes(1), _cancellationTokenSource.Token)
+               .ContinueWith(t => AnalyzeSasTokenInUri());
         }
 
         private void AnalyzeSasTokenInUri()
         {
+            if (_cancellationTokenSource.IsCancellationRequested)
+            {
+                return;
+            }
+
             // If AzureWebJobsStorage__accountName is set, we are using identities and don't need to check for SAS token expiration
             if (!string.IsNullOrEmpty(_environment.GetEnvironmentVariable($"{EnvironmentSettingNames.AzureWebJobsSecretStorage}__accountName")))
             {
@@ -135,10 +167,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Health
             }
         }
 
-        public override void Dispose()
+        public void Dispose()
         {
-            base.Dispose();
-            _listener?.Dispose();
+            if (!_disposed)
+            {
+                _cancellationTokenSource?.Dispose();
+                _disposed = true;
+            }
         }
     }
 }
