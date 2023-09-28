@@ -20,7 +20,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Health
         private readonly IEnvironment _environment;
         private readonly ILogger<TokenExpirationService> _logger;
         private readonly IOptionsMonitor<StandbyOptions> _standbyOptionsMonitor;
-        private IDisposable _listener;
         private bool _analysisScheduled;
         private Task _analysisTask;
         private bool _disposed;
