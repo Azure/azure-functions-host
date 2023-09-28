@@ -81,6 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
             var bundleConfigured = _extensionBundleManager.IsExtensionBundleConfigured();
             bool isLegacyExtensionBundle = _extensionBundleManager.IsLegacyExtensionBundle();
             bool isPrecompiledFunctionApp = false;
+            bool isDotnetIsolatedApp = false;
 
             // dotnet app precompiled -> Do not use bundles
             var workerConfigs = _languageWorkerOptions.CurrentValue.WorkerConfigs;
@@ -101,9 +102,10 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
                     }
                     isPrecompiledFunctionApp = isPrecompiledFunctionApp || functionMetadata.Language == DotNetScriptTypes.DotNetAssembly;
                 }
+
+                isDotnetIsolatedApp = IsDotnetIsolatedApp(functionMetadataCollection, SystemEnvironment.Instance);
             }
 
-            bool isDotnetIsolatedApp = IsDotnetIsolatedApp(workerConfigs);
             bool isDotnetApp = isPrecompiledFunctionApp || isDotnetIsolatedApp;
             var isLogicApp = SystemEnvironment.Instance.IsLogicApp();
 
@@ -335,14 +337,10 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
             }
         }
 
-        private bool IsDotnetIsolatedApp(IList<RpcWorkerConfig> workerConfigs)
+        private bool IsDotnetIsolatedApp(IEnumerable<FunctionMetadata> functions, IEnvironment environment)
         {
-            if (workerConfigs != null)
-            {
-                return workerConfigs.Where(config => config.Description is not null && config.Description.Language == RpcWorkerConstants.DotNetIsolatedLanguageWorkerName).Any();
-            }
-
-            return false;
+            string workerRuntime = Utility.GetWorkerRuntime(functions, environment);
+            return workerRuntime.Equals(RpcWorkerConstants.DotNetIsolatedLanguageWorkerName, StringComparison.OrdinalIgnoreCase);
         }
 
         private class TypeNameEqualityComparer : IEqualityComparer<Type>
