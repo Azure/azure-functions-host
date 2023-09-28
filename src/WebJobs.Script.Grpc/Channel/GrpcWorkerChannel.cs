@@ -40,7 +40,7 @@ using ParameterBindingType = Microsoft.Azure.WebJobs.Script.Grpc.Messages.Parame
 
 namespace Microsoft.Azure.WebJobs.Script.Grpc
 {
-    internal class GrpcWorkerChannel : IRpcWorkerChannel, IDisposable
+    internal partial class GrpcWorkerChannel : IRpcWorkerChannel, IDisposable
     {
         private readonly IScriptEventManager _eventManager;
         private readonly RpcWorkerConfig _workerConfig;
@@ -247,9 +247,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 {
                     while (_inbound.TryRead(out var msg))
                     {
-                        if (debug)
+                        if (debug && msg.MessageType != MsgType.RpcLog)
                         {
-                            _workerChannelLogger.LogDebug("[channel] received {0}: {1}", msg.WorkerId, msg.MessageType);
+                            Logger.ChannelReceivedMessage(_workerChannelLogger, msg.WorkerId, msg.MessageType);
                         }
                         ThreadPool.QueueUserWorkItem(_processInbound, msg);
                     }
@@ -960,7 +960,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         internal async Task InvokeResponse(InvocationResponse invokeResponse)
         {
-            _workerChannelLogger.LogDebug("InvocationResponse received for invocation: '{invocationId}'", invokeResponse.InvocationId);
+            Logger.InvocationResponseReceived(_workerChannelLogger, invokeResponse.InvocationId);
 
             // Check if the worker supports logging user-code-thrown exceptions to app insights
             bool capabilityEnabled = !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.EnableUserCodeException));
@@ -986,25 +986,24 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                             }
                         }
 
-                        StringBuilder logBuilder = new StringBuilder();
-                        bool usedSharedMemory = false;
+                        StringBuilder sharedMemoryLogBuilder = null;
 
                         foreach (ParameterBinding binding in invokeResponse.OutputData)
                         {
                             switch (binding.RpcDataCase)
                             {
                                 case ParameterBindingType.RpcSharedMemory:
-                                    logBuilder.AppendFormat("{0}:{1},", binding.Name, binding.RpcSharedMemory.Count);
-                                    usedSharedMemory = true;
+                                    sharedMemoryLogBuilder ??= new StringBuilder();
+                                    sharedMemoryLogBuilder.AppendFormat("{0}:{1},", binding.Name, binding.RpcSharedMemory.Count);
                                     break;
                                 default:
                                     break;
                             }
                         }
 
-                        if (usedSharedMemory)
+                        if (sharedMemoryLogBuilder != null)
                         {
-                            _workerChannelLogger.LogDebug("Shared memory usage for response of invocation '{invocationId}' is {SharedMemoryUsage}", invokeResponse.InvocationId, logBuilder.ToString());
+                            _workerChannelLogger.LogDebug("Shared memory usage for response of invocation '{invocationId}' is {SharedMemoryUsage}", invokeResponse.InvocationId, sharedMemoryLogBuilder);
                         }
 
                         IDictionary<string, object> bindingsDictionary = await invokeResponse.OutputData
@@ -1116,6 +1115,10 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                         }
                     }
                 }, (context, rpcLog, _isWorkerApplicationInsightsLoggingEnabled));
+            }
+            else
+            {
+                Logger.IgnoringRpcLog(_workerChannelLogger, rpcLog.InvocationId);
             }
         }
 
