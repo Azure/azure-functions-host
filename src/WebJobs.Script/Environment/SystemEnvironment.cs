@@ -17,6 +17,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static SystemEnvironment Instance => _instance.Value;
 
+        public bool Is64BitProcess => Environment.Is64BitProcess;
+
         private static SystemEnvironment CreateInstance()
         {
             return new SystemEnvironment();
