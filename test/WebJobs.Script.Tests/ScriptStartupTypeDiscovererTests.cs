@@ -392,16 +392,74 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
+        [Fact]
+        public async Task GetExtensionsStartupTypes_WorkerRuntimeNotSetForNodeApp_LoadsExtensionBundle()
+        {
+            var vars = new Dictionary<string, string>();
+
+            using (var directory = GetTempDirectory())
+            using (var env = new TestScopedEnvironmentVariable(vars))
+            {
+                var binPath = Path.Combine(directory.Path, "bin");
+                TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
+                TestLoggerProvider testLoggerProvider = new TestLoggerProvider();
+                LoggerFactory factory = new LoggerFactory();
+                factory.AddProvider(testLoggerProvider);
+                var testLogger = factory.CreateLogger<ScriptStartupTypeLocator>();
+
+                var mockExtensionBundleManager = new Mock<IExtensionBundleManager>();
+                mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
+                mockExtensionBundleManager.Setup(e => e.GetExtensionBundleBinPathAsync()).Returns(Task.FromResult(binPath));
+                mockExtensionBundleManager.Setup(e => e.IsLegacyExtensionBundle()).Returns(false);
+                mockExtensionBundleManager.Setup(e => e.GetExtensionBundleDetails()).Returns(Task.FromResult(GetV2BundleDetails()));
+
+                RpcWorkerConfig nodeWorkerConfig = new RpcWorkerConfig() { Description = TestHelpers.GetTestWorkerDescription("node", "none", false) };
+                RpcWorkerConfig dotnetIsolatedWorkerConfig = new RpcWorkerConfig() { Description = TestHelpers.GetTestWorkerDescription("dotnet-isolated", "none", false) };
+
+                var tempOptions = new LanguageWorkerOptions();
+                tempOptions.WorkerConfigs = new List<RpcWorkerConfig>();
+                tempOptions.WorkerConfigs.Add(nodeWorkerConfig);
+                tempOptions.WorkerConfigs.Add(dotnetIsolatedWorkerConfig);
+
+                var optionsMonitor = new TestOptionsMonitor<LanguageWorkerOptions>(tempOptions);
+                var mockFunctionMetadataManager = GetTestFunctionMetadataManager(optionsMonitor, hasNodeFunctions: true);
+
+                var languageWorkerOptions = new TestOptionsMonitor<LanguageWorkerOptions>(tempOptions);
+
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger, languageWorkerOptions);
+
+                // Act
+                var types = await discoverer.GetExtensionsStartupTypesAsync();
+
+                //Assert
+                var traces = testLoggerProvider.GetAllLogMessages();
+                var traceMessage = traces.FirstOrDefault(val => val.EventId.Name.Equals("ScriptStartNotLoadingExtensionBundle"));
+                bool loadingExtensionBundle = traceMessage == null;
+
+                Assert.True(loadingExtensionBundle);
+                AreExpectedMetricsGenerated(testMetricsLogger);
+                Assert.Single(types);
+                Assert.Equal(typeof(AzureStorageWebJobsStartup).FullName, types.Single().FullName);
+            }
+        }
+
         [Theory]
-        [InlineData(true)]
-        [InlineData(false)]
-        public async Task GetExtensionsStartupTypes_DotnetIsolated_ExtensionBundleConfigured(bool isLogicApp)
+        [InlineData(true, true)]
+        [InlineData(true, false)]
+        [InlineData(false, true)]
+        [InlineData(false, false)]
+        public async Task GetExtensionsStartupTypes_DotnetIsolated_ExtensionBundleConfigured(bool isLogicApp, bool workerRuntimeSet)
         {
             var vars = new Dictionary<string, string>();
 
             if (isLogicApp)
             {
                 vars.Add(EnvironmentSettingNames.AppKind, ScriptConstants.WorkFlowAppKind);
+            }
+
+            if (workerRuntimeSet)
+            {
+                vars.Add(EnvironmentSettingNames.FunctionWorkerRuntime, "dotnet-isolated");
             }
 
             using (var directory = GetTempDirectory())
@@ -424,11 +482,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var tempOptions = new LanguageWorkerOptions();
                 tempOptions.WorkerConfigs = new List<RpcWorkerConfig>();
                 tempOptions.WorkerConfigs.Add(workerConfig);
+
+                RpcWorkerConfig nodeWorkerConfig = new RpcWorkerConfig() { Description = TestHelpers.GetTestWorkerDescription("node", "none", false) };
+                tempOptions.WorkerConfigs.Add(nodeWorkerConfig);
+
                 var optionsMonitor = new TestOptionsMonitor<LanguageWorkerOptions>(tempOptions);
-                var mockFunctionMetadataManager = GetTestFunctionMetadataManager(optionsMonitor);
+
+                var mockFunctionMetadataManager = GetTestFunctionMetadataManager(optionsMonitor, hasDotnetIsolatedFunctions: true);
 
                 var languageWorkerOptions = new TestOptionsMonitor<LanguageWorkerOptions>(tempOptions);
-                Environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "dotnet-isolated");
 
                 var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger, languageWorkerOptions);
 
@@ -437,15 +499,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 //Assert
                 var traces = testLoggerProvider.GetAllLogMessages();
-                var expectedTrace = traces.FirstOrDefault(val => val.EventId.Name.Equals("ScriptStartNotLoadingExtensionBundle"));
+                var traceMessage = traces.FirstOrDefault(val => val.EventId.Name.Equals("ScriptStartNotLoadingExtensionBundle"));
+
+                bool loadingExtensionBundle = traceMessage == null;
 
                 if (isLogicApp)
                 {
-                    Assert.Null(expectedTrace);
+                    Assert.True(loadingExtensionBundle);
                 }
                 else
                 {
-                    Assert.NotNull(expectedTrace);
+                    Assert.False(loadingExtensionBundle);
                 }
 
                 AreExpectedMetricsGenerated(testMetricsLogger);
@@ -678,7 +742,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        private IFunctionMetadataManager GetTestFunctionMetadataManager(IOptionsMonitor<LanguageWorkerOptions> options, ICollection<FunctionMetadata> metadataColection = null, bool hasPrecompiledFunction = false)
+        private IFunctionMetadataManager GetTestFunctionMetadataManager(IOptionsMonitor<LanguageWorkerOptions> options, ICollection<FunctionMetadata> metadataColection = null, bool hasPrecompiledFunction = false, bool hasNodeFunctions = false, bool hasDotnetIsolatedFunctions = false)
         {
             var functionMetdata = new FunctionMetadata();
             functionMetdata.Bindings.Add(new BindingMetadata() { Type = "blob" });
@@ -686,6 +750,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             if (hasPrecompiledFunction)
             {
                 functionMetdata.Language = DotNetScriptTypes.DotNetAssembly;
+            }
+            if (hasNodeFunctions)
+            {
+                functionMetdata.Language = RpcWorkerConstants.NodeLanguageWorkerName;
+            }
+
+            if (hasDotnetIsolatedFunctions)
+            {
+                functionMetdata.Language = RpcWorkerConstants.DotNetIsolatedLanguageWorkerName;
             }
 
             var functionMetadataCollection = metadataColection ?? new List<FunctionMetadata>() { functionMetdata };
