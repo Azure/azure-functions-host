@@ -2,7 +2,7 @@
   <Import Project="..\..\build\common.props" />
 
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <PackageId>Microsoft.Azure.WebJobs.Script.Grpc</PackageId>
     <AssemblyName>Microsoft.Azure.WebJobs.Script.Grpc</AssemblyName>
     <RootNamespace>Microsoft.Azure.WebJobs.Script.Grpc</RootNamespace>
