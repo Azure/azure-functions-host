@@ -88,6 +88,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string DefaultMasterKeyName = "master";
         public const string DefaultFunctionKeyName = "default";
         public const string ColdStartEventName = "ColdStart";
+        public const string PlaceholderMissDueToBitnessEventName = "PlaceholderMissDueToBitness";
 
         public const string FunctionsUserAgent = "AzureFunctionsRuntime";
         public const string HttpScaleUserAgent = "HttpScaleManager";
