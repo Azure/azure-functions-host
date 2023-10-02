@@ -10,6 +10,7 @@ using System.Linq;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
 {
@@ -23,6 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
             typeof(IStartupFilter),        // This would re-add middlewares to the host pipeline
             typeof(IManagedHostedService), // These shouldn't be instantiated twice
             typeof(IHostedService),        // These shouldn't be instantiated twice
+            typeof(ILoggerProvider),        // These shouldn't be instantiated twice
         };
 
         /// <summary>
