@@ -95,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
                 using (HttpRequestMessage httpRequestMessage = httpRequest.ToHttpRequestMessage(uri))
                 {
-                    AddHeaders(httpRequestMessage, scriptInvocationContext.ExecutionContext.InvocationId.ToString());
+                    AddHeaders(httpRequestMessage, scriptInvocationContext);
 
                     HttpResponseMessage invocationResponse = await SendInvocationRequestAsync(scriptInvocationContext, httpRequestMessage);
 
