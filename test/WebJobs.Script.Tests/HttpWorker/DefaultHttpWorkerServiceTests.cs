@@ -310,11 +310,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
             HttpWorkerOptions testOptions = new HttpWorkerOptions();
             DefaultHttpWorkerService defaultHttpWorkerService = new DefaultHttpWorkerService(new HttpClient(), new OptionsWrapper<HttpWorkerOptions>(testOptions), _testLogger, _testEnvironment, new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions));
             HttpRequestMessage input = new HttpRequestMessage();
-            string invocationId = Guid.NewGuid().ToString();
+            var invocationId = Guid.NewGuid();
+            var testScriptInvocationContext = HttpWorkerTestUtilities.GetSimpleHttpTriggerScriptInvocationContext(TestFunctionName, invocationId, _functionLogger);
 
-            defaultHttpWorkerService.AddHeaders(input, invocationId);
+            testScriptInvocationContext.Traceparent = Guid.NewGuid().ToString();
+            testScriptInvocationContext.Tracestate = "environment=test";
+
+            defaultHttpWorkerService.AddHeaders(input, testScriptInvocationContext);
             Assert.Equal(input.Headers.GetValues(HttpWorkerConstants.HostVersionHeaderName).FirstOrDefault(), ScriptHost.Version);
-            Assert.Equal(input.Headers.GetValues(HttpWorkerConstants.InvocationIdHeaderName).FirstOrDefault(), invocationId);
+            Assert.Equal(input.Headers.GetValues(HttpWorkerConstants.InvocationIdHeaderName).FirstOrDefault(), invocationId.ToString());
+            Assert.Equal(input.Headers.GetValues(HttpWorkerConstants.W3CTraceParentHeaderName).FirstOrDefault(), testScriptInvocationContext.Traceparent);
+            Assert.Equal(input.Headers.GetValues(HttpWorkerConstants.W3CTraceStateHeaderName).FirstOrDefault(), testScriptInvocationContext.Tracestate);
         }
 
         [Fact]
