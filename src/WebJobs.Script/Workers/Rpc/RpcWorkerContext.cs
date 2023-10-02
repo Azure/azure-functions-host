@@ -44,7 +44,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         public override string GetFormattedArguments()
         {
-            return $" --host {ServerUri.Host} --port {ServerUri.Port} --workerId {WorkerId} --requestId {RequestId} --grpcMaxMessageLength {MaxMessageLength}";
+            // Adding a second copy of the commandline arguments with the "functions-" prefix to prevent any conflicts caused by the existing generic names.
+            // Language workers are advised to use the "functions-" prefix ones and if not present fallback to existing ones.
+
+            return $" --host {ServerUri.Host} --port {ServerUri.Port} --workerId {WorkerId} --requestId {RequestId} --grpcMaxMessageLength {MaxMessageLength} --functions-uri {ServerUri.AbsoluteUri} --functions-worker-id {WorkerId} --functions-request-id {RequestId} --functions-grpc-max-message-length {MaxMessageLength}";
         }
     }
 }
