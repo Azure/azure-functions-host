@@ -2,7 +2,7 @@
   <Import Project="..\..\build\common.props" />
 
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <PackageId>Microsoft.Azure.WebJobs.Script.Grpc</PackageId>
     <AssemblyName>Microsoft.Azure.WebJobs.Script.Grpc</AssemblyName>
     <RootNamespace>Microsoft.Azure.WebJobs.Script.Grpc</RootNamespace>
@@ -33,7 +33,7 @@
     <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.435">
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="System.Threading.Channels" Version="6.0.0" />
+    <PackageReference Include="System.Threading.Channels" Version="8.0.0" />
     <PackageReference Include="Yarp.ReverseProxy" Version="2.0.1" />
   </ItemGroup>
 

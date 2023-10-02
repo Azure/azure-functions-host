@@ -487,6 +487,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 .ConfigureAppConfiguration(c =>
                 {
                     c.AddConfiguration(webHostConfiguration);
+
+                    // These are used internally inside Hosting.
+                    c.AddInMemoryCollection(new Dictionary<string, string>
+                    {
+                        ["shutdownTimeoutSeconds"] = "1",
+                        ["startupTimeoutSeconds"] = "1",
+                        ["servicesStartConcurrently"] = true.ToString(),
+                        ["servicesStopConcurrently"] = true.ToString(),
+                    });
                 })
                 .Build();
 
