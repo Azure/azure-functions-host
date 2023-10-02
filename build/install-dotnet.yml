@@ -16,3 +16,8 @@ steps:
       # Newer versions can be found at: https://github.com/dotnet/installer#installers-and-binaries
       ./dotnet-install.ps1 -InstallDir 'C:\Program Files\dotnet' -Verbose -Channel 6.0
       & dotnet --info
+- task: UseDotNet@2
+  displayName: 'Install .NET 8'
+  inputs:
+    version: "8.x"
+    includePreviewVersions: true
