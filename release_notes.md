@@ -17,3 +17,4 @@
     gets properly initialized as the invocation buffers are not created - this leads to a "Did not find initialized workers" error.
 - Check if a blob container or table exists before trying to create it (#9555)
 - Limit dotnet-isolated specialization to 64 bit host process (#9548)
+- Sending command line arguments to language workers with `functions-` prefix to prevent conflicts (#9514)
