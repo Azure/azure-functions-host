@@ -16,5 +16,5 @@
   - This fixes a bug with worker indexing where we are shutting down worker channels and creating a new channel that never
     gets properly initialized as the invocation buffers are not created - this leads to a "Did not find initialized workers" error.
 - Check if a blob container or table exists before trying to create it (#9555)
-- Add support for W3C Trace Context propagation when using Custom Handlers with `enableForwardingHttpRequest` enabled.
+- Add support for W3C Trace Context propagation when using Custom Handlers with `enableForwardingHttpRequest` enabled (#9576)
 - Limit dotnet-isolated specialization to 64 bit host process (#9548)
