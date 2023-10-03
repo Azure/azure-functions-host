@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
@@ -119,6 +120,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _logger.LogInformation("Starting language worker channel specialization");
             _workerRuntime = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
 
+            if (!IsFunctionAppPayloadExist())
+            {
+                _logger.LogInformation($"Script root does not contain a valid payload. Skipping language worker channel specialization");
+                return;
+            }
+
             IRpcWorkerChannel rpcWorkerChannel = await GetChannelAsync(_workerRuntime);
 
             if (_workerRuntime != null && rpcWorkerChannel != null)
@@ -153,6 +160,19 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             {
                 rpcWorkerChannel.SendWorkerWarmupRequest();
             }
+        }
+
+        private bool IsFunctionAppPayloadExist()
+        {
+            var scriptRootPath = _applicationHostOptions.CurrentValue.ScriptPath;
+            if (string.IsNullOrWhiteSpace(scriptRootPath))
+            {
+                _logger.LogDebug("{scriptPath} value is empty!", nameof(ScriptApplicationHostOptions.ScriptPath));
+                return false;
+            }
+
+            // If worker.config.json is present in the script root, we consider that as existence of a payload.
+            return File.Exists(Path.Combine(scriptRootPath, WorkerConstants.WorkerConfigFileName));
         }
 
         private bool UsePlaceholderChannel(IRpcWorkerChannel channel)
