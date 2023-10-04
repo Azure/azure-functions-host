@@ -33,7 +33,7 @@
     <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.435">
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="System.Threading.Channels" Version="6.0.0" />
+    <PackageReference Include="System.Threading.Channels" Version="8.0.0-rc.1.23419.4" />
     <PackageReference Include="Yarp.ReverseProxy" Version="2.0.1" />
   </ItemGroup>
 
