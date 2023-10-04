@@ -19,5 +19,4 @@ steps:
 - task: UseDotNet@2
   displayName: 'Install .NET 8'
   inputs:
-    version: "8.x"
-    includePreviewVersions: true
+    version: "8.0.0-rc.1.23419.4"
