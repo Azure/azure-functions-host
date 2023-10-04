@@ -51,6 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private static readonly string _scriptRootConfigPath = ConfigurationPath.Combine(ConfigurationSectionNames.WebHost, nameof(ScriptApplicationHostOptions.ScriptPath));
 
         private static readonly string _dotnetIsolated60Path = Path.GetFullPath(@"..\..\..\..\DotNetIsolated60\bin\Debug\net6.0");
+        private static readonly string _emptyScriptRootDirPath = Path.GetFullPath(@"..\..\..\..\EmptyScriptRoot");
 
         private const string _specializedScriptRoot = @"TestScripts\CSharp";
 
@@ -799,7 +800,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task DotNetIsolated_PlaceholderHit()
         {
-            var builder = InitializeDotNetIsolatedPlaceholderBuilder("HttpRequestDataFunction");
+            var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetIsolated60Path, "HttpRequestDataFunction");
 
             using var testServer = new TestServer(builder);
 
@@ -839,7 +840,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             // This test ensures that capabilities are correctly applied in EnvironmentReload during
             // specialization
-            var builder = InitializeDotNetIsolatedPlaceholderBuilder("HttpRequestFunction");
+            var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetIsolated60Path, "HttpRequestFunction");
 
             using var testServer = new TestServer(builder);
 
@@ -896,6 +897,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task DotNetIsolated_PlaceholderMiss_EmptyScriptRoot()
+        {
+            // Placeholder miss if the WEBSITE_USE_PLACEHOLDER_DOTNETISOLATED env var is not set
+            await DotNetIsolatedPlaceholderMiss(() => { }, appPayloadPath: _emptyScriptRootDirPath);
+
+            var log = _loggerProvider.GetLog();
+            Assert.Contains("UsePlaceholderDotNetIsolated: False", log);
+            Assert.Contains("Shutting down placeholder worker. Worker is not compatible for runtime: dotnet-isolated", log);
+        }
+
+        [Fact]
         public async Task DotNetIsolated_PlaceholderMiss_Not64Bit()
         {
             _environment.SetProcessBitness(is64Bitness: false);
@@ -943,7 +955,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await queue.CreateIfNotExistsAsync();
             await queue.ClearAsync();
 
-            var builder = InitializeDotNetIsolatedPlaceholderBuilder("HttpRequestDataFunction", "QueueFunction");
+            var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetIsolated60Path, "HttpRequestDataFunction", "QueueFunction");
 
             using var testServer = new TestServer(builder);
 
@@ -1005,9 +1017,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Empty(completedLogs.Where(p => p.Level == LogLevel.Error));
         }
 
-        private async Task DotNetIsolatedPlaceholderMiss(Action additionalSpecializedSetup = null)
+        private async Task DotNetIsolatedPlaceholderMiss(Action additionalSpecializedSetup = null, string appPayloadPath = null)
         {
-            var builder = InitializeDotNetIsolatedPlaceholderBuilder("HttpRequestDataFunction");
+            var builder = InitializeDotNetIsolatedPlaceholderBuilder(appPayloadPath ?? _dotnetIsolated60Path, "HttpRequestDataFunction");
 
             // remove WEBSITE_USE_PLACEHOLDER_DOTNETISOLATED
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteUsePlaceholderDotNetIsolated, null);
@@ -1053,7 +1065,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             p.WaitForExit();
         }
 
-        private IWebHostBuilder InitializeDotNetIsolatedPlaceholderBuilder(params string[] functions)
+        private IWebHostBuilder InitializeDotNetIsolatedPlaceholderBuilder(string scriptRootOverrideValue, params string[] functions)
         {
             BuildDotnetIsolated60();
 
@@ -1068,7 +1080,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 config.AddInMemoryCollection(new Dictionary<string, string>
                 {
-                    { _scriptRootConfigPath, _dotnetIsolated60Path },
+                    { _scriptRootConfigPath, scriptRootOverrideValue },
                 });
             });
 

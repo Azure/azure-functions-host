@@ -120,12 +120,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _logger.LogInformation("Starting language worker channel specialization");
             _workerRuntime = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
 
-            if (!IsFunctionAppPayloadExist())
-            {
-                _logger.LogInformation($"Script root does not contain a valid payload. Skipping language worker channel specialization");
-                return;
-            }
-
             IRpcWorkerChannel rpcWorkerChannel = await GetChannelAsync(_workerRuntime);
 
             if (_workerRuntime != null && rpcWorkerChannel != null)
@@ -171,8 +165,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 return false;
             }
 
-            // If worker.config.json is present in the script root, we consider that as existence of a payload.
-            return File.Exists(Path.Combine(scriptRootPath, WorkerConstants.WorkerConfigFileName));
+            // If we see any files except host.json, we think there is was a payload deployment.
+            // host automatically creates host.json if it is not present.So we exclude that from our check.
+            var anyPayloadFileExist = Directory.EnumerateFiles(scriptRootPath).Any(f => !f.Equals(ScriptConstants.HostMetadataFileName, StringComparison.OrdinalIgnoreCase));
+
+            return anyPayloadFileExist;
         }
 
         private bool UsePlaceholderChannel(IRpcWorkerChannel channel)
@@ -198,6 +195,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
                 if (!placeholderEnabled)
                 {
+                    return false;
+                }
+
+                if (!IsFunctionAppPayloadExist())
+                {
+                    _logger.LogInformation($"Script root does not contain a valid payload. Skipping language worker channel specialization");
                     return false;
                 }
 
