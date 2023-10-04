@@ -81,6 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                     Process.Exited += (sender, e) => OnProcessExited(sender, e);
                     Process.EnableRaisingEvents = true;
 
+                    _workerProcessLogger?.LogDebug($"A small fix to validate ");
                     _workerProcessLogger?.LogDebug($"Starting worker process with FileName:{Process.StartInfo.FileName} WorkingDirectory:{Process.StartInfo.WorkingDirectory} Arguments:{Process.StartInfo.Arguments}");
                     Process.Start();
                     _workerProcessLogger?.LogDebug($"{Process.StartInfo.FileName} process with Id={Process.Id} started");
@@ -92,6 +93,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                     _processRegistry?.Register(this);
 
                     RegisterWithProcessMonitor();
+
+                    _workerProcessLogger?.LogDebug($"Before WaitForExit ");
+                    Process.WaitForExit();
 
                     return Task.CompletedTask;
                 }
