@@ -18,7 +18,7 @@ namespace Microsoft.WebJobs.Script.Tests
         public const string EndToEnd = "E2E";
 
         /// <summary>
-        /// Release Tests only run in branches: release/*
+        /// Release Tests only run in branches: release.
         /// </summary>
         public const string ReleaseTests = "ReleaseTests";
 
@@ -55,5 +55,7 @@ namespace Microsoft.WebJobs.Script.Tests
         /// Tests for the FunctionsController.
         /// </summary>
         public const string FunctionsControllerEndToEnd = "FunctionsControllerEndToEnd";
+
+        public const string FlexConsumptionMetricsTests = "FlexConsumptionMetricsTests";
     }
 }
