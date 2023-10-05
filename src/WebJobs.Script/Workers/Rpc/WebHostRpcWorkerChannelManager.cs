@@ -156,22 +156,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
         }
 
-        private bool IsFunctionAppPayloadExist()
-        {
-            var scriptRootPath = _applicationHostOptions.CurrentValue.ScriptPath;
-            if (string.IsNullOrWhiteSpace(scriptRootPath))
-            {
-                _logger.LogDebug("{scriptPath} value is empty!", nameof(ScriptApplicationHostOptions.ScriptPath));
-                return false;
-            }
-
-            // If we see any files except host.json, we think there is was a payload deployment.
-            // host automatically creates host.json if it is not present.So we exclude that from our check.
-            var anyPayloadFileExist = Directory.EnumerateFiles(scriptRootPath).Any(f => !f.Equals(ScriptConstants.HostMetadataFileName, StringComparison.OrdinalIgnoreCase));
-
-            return anyPayloadFileExist;
-        }
-
         private bool UsePlaceholderChannel(IRpcWorkerChannel channel)
         {
             string workerRuntime = channel?.WorkerConfig?.Description?.Language;
@@ -198,7 +182,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     return false;
                 }
 
-                if (!IsFunctionAppPayloadExist())
+                if (!DoesFunctionAppPayloadExist())
                 {
                     _logger.LogInformation($"Script root does not contain a valid payload. Skipping language worker channel specialization");
                     return false;
@@ -241,6 +225,22 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
 
             return true;
+        }
+
+        private bool DoesFunctionAppPayloadExist()
+        {
+            var scriptRootPath = _applicationHostOptions.CurrentValue.ScriptPath;
+            if (string.IsNullOrWhiteSpace(scriptRootPath))
+            {
+                _logger.LogDebug("{scriptPath} value is empty!", nameof(ScriptApplicationHostOptions.ScriptPath));
+                return false;
+            }
+
+            var fullPath = Path.Combine(scriptRootPath, ScriptConstants.HostMetadataFileName);
+
+            // If we see any files except host.json, we think there was not a payload deployment.
+            // host automatically creates host.json if it is not present.So we exclude that from our check.
+            return Directory.EnumerateFiles(scriptRootPath).Any(f => !f.Equals(fullPath, StringComparison.OrdinalIgnoreCase));
         }
 
         public Task<bool> ShutdownChannelIfExistsAsync(string language, string workerId, Exception workerException = null)

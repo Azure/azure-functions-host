@@ -833,6 +833,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Contains("UsePlaceholderDotNetIsolated: True", log);
             Assert.Contains("Placeholder runtime version: '6.0'. Site runtime version: '6.0'. Match: True", log);
             Assert.DoesNotContain("Shutting down placeholder worker.", log);
+            Assert.Contains("Sending FunctionEnvironmentReloadRequest to WorkerProcess", log);
         }
 
         [Fact]
@@ -883,6 +884,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Contains("UsePlaceholderDotNetIsolated: True", log);
             Assert.Contains("Placeholder runtime version: '6.0'. Site runtime version: '6.0'. Match: True", log);
             Assert.DoesNotContain("Shutting down placeholder worker.", log);
+            Assert.Contains("Sending FunctionEnvironmentReloadRequest to WorkerProcess", log);
         }
 
         [Fact]
@@ -894,17 +896,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var log = _loggerProvider.GetLog();
             Assert.Contains("UsePlaceholderDotNetIsolated: False", log);
             Assert.Contains("Shutting down placeholder worker. Worker is not compatible for runtime: dotnet-isolated", log);
+            Assert.DoesNotContain("Sending FunctionEnvironmentReloadRequest to WorkerProcess", log);
         }
 
         [Fact]
         public async Task DotNetIsolated_PlaceholderMiss_EmptyScriptRoot()
         {
-            // Placeholder miss if the WEBSITE_USE_PLACEHOLDER_DOTNETISOLATED env var is not set
-            await DotNetIsolatedPlaceholderMiss(() => { }, appPayloadPath: _emptyScriptRootDirPath);
+            // We do not execute language worker specialization if the script root does not have valid app payload.
+            await DotNetIsolatedPlaceholderMiss(() =>
+            {
+                _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteUsePlaceholderDotNetIsolated, "1");
+                _environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, "6.0");
+            }, useEmptyScriptRoot: true);
 
             var log = _loggerProvider.GetLog();
-            Assert.Contains("UsePlaceholderDotNetIsolated: False", log);
+            Assert.Contains("UsePlaceholderDotNetIsolated: True", log);
+            Assert.Contains("Script root does not contain a valid payload. Skipping language worker channel specialization", log);
             Assert.Contains("Shutting down placeholder worker. Worker is not compatible for runtime: dotnet-isolated", log);
+            Assert.DoesNotContain("Sending FunctionEnvironmentReloadRequest to WorkerProcess", log);
         }
 
         [Fact]
@@ -922,6 +931,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var log = _loggerProvider.GetLog();
             Assert.Contains("UsePlaceholderDotNetIsolated: True", log);
             Assert.Contains("This app is configured as 32-bit and therefore does not leverage all performance optimizations. See https://aka.ms/azure-functions/dotnet/placeholders for more information.", log);
+            Assert.DoesNotContain("Sending FunctionEnvironmentReloadRequest to WorkerProcess", log);
             Assert.Contains("Shutting down placeholder worker. Worker is not compatible for runtime: dotnet-isolated", log);
         }
 
@@ -940,6 +950,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Contains("UsePlaceholderDotNetIsolated: True", log);
             Assert.Contains("Placeholder runtime version: '6.0'. Site runtime version: '7.0'. Match: False", log);
             Assert.Contains("Shutting down placeholder worker. Worker is not compatible for runtime: dotnet-isolated", log);
+            Assert.DoesNotContain("Sending FunctionEnvironmentReloadRequest to WorkerProcess", log);
         }
 
         [Fact]
@@ -1017,9 +1028,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Empty(completedLogs.Where(p => p.Level == LogLevel.Error));
         }
 
-        private async Task DotNetIsolatedPlaceholderMiss(Action additionalSpecializedSetup = null, string appPayloadPath = null)
+        private async Task DotNetIsolatedPlaceholderMiss(Action additionalSpecializedSetup = null, bool useEmptyScriptRoot = false)
         {
-            var builder = InitializeDotNetIsolatedPlaceholderBuilder(appPayloadPath ?? _dotnetIsolated60Path, "HttpRequestDataFunction");
+            var builder = InitializeDotNetIsolatedPlaceholderBuilder(useEmptyScriptRoot ? _emptyScriptRootDirPath : _dotnetIsolated60Path, "HttpRequestDataFunction");
 
             // remove WEBSITE_USE_PLACEHOLDER_DOTNETISOLATED
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteUsePlaceholderDotNetIsolated, null);
@@ -1044,19 +1055,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             additionalSpecializedSetup?.Invoke();
 
+            placeholderChannel = await webChannelManager.GetChannels("dotnet-isolated").Single().Value.Task;
             response = await client.GetAsync("api/HttpRequestDataFunction");
-            response.EnsureSuccessStatusCode();
-
-            // Placeholder miss; new channel should be started using the deployed worker directly
             var specializedChannel = await webChannelManager.GetChannels("dotnet-isolated").Single().Value.Task;
-            Assert.Contains("dotnet.exe", specializedChannel.WorkerProcess.Process.StartInfo.FileName);
-            Assert.Contains("DotNetIsolated60", specializedChannel.WorkerProcess.Process.StartInfo.Arguments);
-            runningProcess = Process.GetProcessById(specializedChannel.WorkerProcess.Id);
-            Assert.Contains(runningProcess.ProcessName, "dotnet");
 
-            // Ensure other process is gone.
-            Assert.DoesNotContain(Process.GetProcesses(), p => p.ProcessName.Contains("FunctionsNetHost"));
-            Assert.Throws<InvalidOperationException>(() => placeholderChannel.WorkerProcess.Process.Id);
+            if (useEmptyScriptRoot)
+            {
+                Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+            }
+            else
+            {
+                response.EnsureSuccessStatusCode();
+
+                // Placeholder miss; new channel should be started using the deployed worker directly
+                Assert.Contains("dotnet.exe", specializedChannel.WorkerProcess.Process.StartInfo.FileName);
+                Assert.Contains("DotNetIsolated60", specializedChannel.WorkerProcess.Process.StartInfo.Arguments);
+                runningProcess = Process.GetProcessById(specializedChannel.WorkerProcess.Id);
+                Assert.Contains(runningProcess.ProcessName, "dotnet");
+
+                // Ensure other process is gone.
+                Assert.DoesNotContain(Process.GetProcesses(), p => p.ProcessName.Contains("FunctionsNetHost"));
+                Assert.Throws<InvalidOperationException>(() => placeholderChannel.WorkerProcess.Process.Id);
+            }
         }
 
         private static void BuildDotnetIsolated60()
