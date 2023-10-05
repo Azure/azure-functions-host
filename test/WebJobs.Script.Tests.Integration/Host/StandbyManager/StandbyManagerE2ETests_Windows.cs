@@ -12,9 +12,11 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
 using Xunit;
 
@@ -70,10 +72,50 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var applicationLifetime = host.Services.GetServices<IApplicationLifetime>().Single();
             await TestHelpers.RunWithTimeoutAsync(() => applicationLifetime.ApplicationStopping.WaitHandle.WaitOneAsync(), TimeSpan.FromSeconds(30));
 
+
             // ensure the host was specialized and the expected error was logged
             string[] logLines = _loggerProvider.GetAllLogMessages().Where(p => p.FormattedMessage != null).Select(p => p.FormattedMessage).ToArray();
             Assert.True(logLines.Contains("Starting host specialization"));
             Assert.True(logLines.Contains($"Shutting down host due to presence of {markerFilePath}"));
+
+            await host.StopAsync();
+            host.Dispose();
+        }
+
+        [Fact()]
+        public async Task ZipPackageFailure_Logs_DiagnosticEvent()
+        {
+            _settings.Add(EnvironmentSettingNames.AzureWebsiteInstanceId, Guid.NewGuid().ToString());
+            var environment = new TestEnvironment(_settings);
+            var webHostBuilder = await CreateWebHostBuilderAsync("Windows", environment);
+            IWebHost host = webHostBuilder.Build();
+
+            await host.StartAsync();
+
+            // after the placeholder host is fully initialized but before we specialize
+            // write the invalid zip marker file
+            string markerFilePath = Path.Combine(_expectedScriptPath, ScriptConstants.RunFromPackageFailedFileName);
+            File.WriteAllText(markerFilePath, "test");
+
+            // now specialize the host
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteRunFromPackage, "1");
+            environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "dotnet");
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
+
+            // wait for shutdown to be triggered
+            var applicationLifetime = host.Services.GetServices<IApplicationLifetime>().Single();
+            await TestHelpers.RunWithTimeoutAsync(() => applicationLifetime.ApplicationStopping.WaitHandle.WaitOneAsync(), TimeSpan.FromSeconds(30));
+
+            var expectedTraceMessage = "Failed to initialize Functions Host due to a problem with the application package.";
+
+            DiagnosticEventTestUtils.ValidateThatTheExpectedDiagnosticEventIsPresent(
+                _loggerProvider,
+                expectedTraceMessage,
+                LogLevel.Error,
+                DiagnosticEventConstants.RunFromPackageFailedErrorCodeHelpLink,
+                DiagnosticEventConstants.RunFromPackageFailedErrorCode
+            );
 
             await host.StopAsync();
             host.Dispose();
