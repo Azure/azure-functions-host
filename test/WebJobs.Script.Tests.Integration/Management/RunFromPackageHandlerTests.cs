@@ -605,6 +605,42 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                     MetricEventNames.LinuxContainerSpecializationFileCommand), Times.Once);
         }
 
+        [Fact]
+        public async Task ApplyRunFromPackageContext_Throws_Logs_DiagnosticEvent()
+        {
+            var loggerProvider = new TestLoggerProvider();
+            var loggerFactory = new LoggerFactory();
+            loggerFactory.AddProvider(loggerProvider);
+            var logger = loggerFactory.CreateLogger<RunFromPackageHandler>();
+
+            var runFromPackageHandler = new RunFromPackageHandler(_environment, _meshServiceClientMock.Object,
+                _bashCmdHandlerMock.Object, _zipHandler.Object, _packageDownloadHandler.Object, _metricsLogger, logger);
+
+            var url = $"http://url/zip-file.zip";
+            var isWarmUpRequest = false;
+            var runFromPackageContext = new RunFromPackageContext(EnvironmentSettingNames.AzureWebsiteRunFromPackage,
+                url, DefaultPackageLength, isWarmUpRequest);
+
+            var exception = new InvalidOperationException("invalid operation.");
+            _packageDownloadHandler.Setup(p => p.Download(It.IsAny<RunFromPackageContext>()))
+                                   .Throws(exception);
+
+            await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            {
+                await runFromPackageHandler.ApplyRunFromPackageContext(runFromPackageContext, TargetScriptPath, false, true);
+            });
+
+            var expectedTraceMessage = "Failed to initialize Functions Host due to a problem with the application package.";
+
+            DiagnosticEventTestUtils.ValidateThatTheExpectedDiagnosticEventIsPresent(
+                loggerProvider,
+                expectedTraceMessage,
+                LogLevel.Error,
+                DiagnosticEventConstants.RunFromPackageFailedErrorCodeHelpLink,
+                DiagnosticEventConstants.RunFromPackageFailedErrorCode
+            );
+        }
+
         private static Mock<IFileSystem> GetFileSystem()
         {
             var fileSystem = new Mock<IFileSystem>(MockBehavior.Strict);
