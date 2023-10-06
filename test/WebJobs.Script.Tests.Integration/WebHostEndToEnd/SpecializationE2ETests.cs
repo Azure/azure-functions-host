@@ -902,7 +902,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task DotNetIsolated_PlaceholderMiss_EmptyScriptRoot()
         {
-            // We do not execute language worker specialization if the script root does not have valid app payload.
+            // Placeholder miss if the script root does not have valid app payload.
             await DotNetIsolatedPlaceholderMiss(() =>
             {
                 _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteUsePlaceholderDotNetIsolated, "1");
