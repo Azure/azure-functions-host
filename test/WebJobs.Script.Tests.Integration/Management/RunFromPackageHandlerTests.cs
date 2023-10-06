@@ -10,6 +10,7 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
