@@ -223,6 +223,42 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             Assert.Equal($"Host configuration file read:{Environment.NewLine}{hostJson}", logMessage);
         }
 
+        [Fact]
+        public void InvalidHostJsonLogsDiagnosticEvent()
+        {
+            Assert.False(File.Exists(_hostJsonFile));
+
+            var hostJsonContent = " { fooBar";
+            TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
+
+            File.WriteAllText(_hostJsonFile, hostJsonContent);
+            Assert.True(File.Exists(_hostJsonFile));
+
+            var ex = Assert.Throws<FormatException>(() => BuildHostJsonConfiguration(testMetricsLogger));
+
+            var expectedTraceMessage = $"Unable to parse host configuration file '{_hostJsonFile}'.";
+
+            LogMessage actualEvent = null;
+
+            // Find the expected diagnostic event
+            foreach (var message in _loggerProvider.GetAllLogMessages())
+            {
+                if (message.FormattedMessage.IndexOf(expectedTraceMessage, StringComparison.OrdinalIgnoreCase) > -1 &&
+                    message.Level == LogLevel.Error &&
+                    message.State is Dictionary<string, object> dictionary &&
+                    dictionary.ContainsKey("MS_HelpLink") && dictionary.ContainsKey("MS_ErrorCode") &&
+                    dictionary.GetValueOrDefault("MS_HelpLink").ToString().Equals(DiagnosticEventConstants.UnableToParseHostConfigurationFileHelpLink.ToString(), StringComparison.OrdinalIgnoreCase) &&
+                    dictionary.GetValueOrDefault("MS_ErrorCode").ToString().Equals(DiagnosticEventConstants.UnableToParseHostConfigurationFileErrorCode.ToString(), StringComparison.OrdinalIgnoreCase))
+                {
+                    actualEvent = message;
+                    break;
+                }
+            }
+
+            // Make sure that the expected event was found
+            Assert.NotNull(actualEvent);
+        }
+
         private IConfiguration BuildHostJsonConfiguration(TestMetricsLogger testMetricsLogger, IEnvironment environment = null)
         {
             environment = environment ?? new TestEnvironment();
