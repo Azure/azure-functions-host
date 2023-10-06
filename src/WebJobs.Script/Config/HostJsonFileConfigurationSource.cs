@@ -205,7 +205,12 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                     }
                     catch (JsonException ex)
                     {
-                        throw new FormatException($"Unable to parse host configuration file '{configFilePath}'.", ex);
+                        var message = $"Unable to parse host configuration file '{configFilePath}'.";
+
+                        DiagnosticEventLoggerExtensions.LogDiagnosticEventError(
+                            _logger, DiagnosticEventConstants.UnableToParseHostConfigurationFileErrorCode, message, DiagnosticEventConstants.UnableToParseHostConfigurationFileHelpLink, ex);
+
+                        throw new FormatException(message, ex);
                     }
                     catch (Exception ex) when (ex is FileNotFoundException || ex is DirectoryNotFoundException)
                     {
