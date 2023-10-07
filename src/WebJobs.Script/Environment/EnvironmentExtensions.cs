@@ -38,6 +38,9 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static bool UsePlaceholderDotNetIsolated(this IEnvironment environment)
         {
+            // This will make sure that it will attempt to resolve isolated worker model placeholder
+            if (environment.GetEnvironmentVariable(AzureWebsiteUsePlaceholderDotNetIsolated)==null)
+            { return true; }
             return environment.GetEnvironmentVariable(AzureWebsiteUsePlaceholderDotNetIsolated) == "1";
         }
 
