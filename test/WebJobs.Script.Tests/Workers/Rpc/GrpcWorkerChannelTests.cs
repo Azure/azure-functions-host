@@ -393,7 +393,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
-        public async Task SendInvocationRequest_SignalCancellation_WithCapability_SendsInvocationCancelRequest()
+        public async Task SendInvocationRequest_SignalCancellation_WithCancellationCapability_SendsInvocationCancelRequest()
         {
             var cancellationWaitTimeMs = 3000;
             var invocationId = Guid.NewGuid();
@@ -403,7 +403,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             cts.CancelAfter(cancellationWaitTimeMs);
             var token = cts.Token;
 
-            await CreateDefaultWorkerChannel(capabilities: new Dictionary<string, string>() { { RpcWorkerConstants.HandlesInvocationCancelMessage, "true" } });
+            await CreateDefaultWorkerChannel(capabilities: new Dictionary<string, string>()
+            {
+                { RpcWorkerConstants.HandlesInvocationCancelMessage, "true" },
+            });
+
             var scriptInvocationContext = GetTestScriptInvocationContext(invocationId, null, token);
             await _workerChannel.SendInvocationRequest(scriptInvocationContext);
 
@@ -422,7 +426,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
-        public async Task SendInvocationRequest_SignalCancellation_WithoutCapability_NoAction()
+        public async Task SendInvocationRequest_SignalCancellation_WithoutCancellationCapability_NoAction()
         {
             var cancellationWaitTimeMs = 3000;
             var invocationId = Guid.NewGuid();
@@ -449,18 +453,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.False(traces.Any(m => string.Equals(m.FormattedMessage, expectedCancellationLog)));
         }
 
-        [Fact]
-        public async Task SendInvocationRequest_CancellationAlreadyRequested_ResultSourceCanceled()
+        [Theory]
+        [InlineData(true, true, false)] // CancellationCapability:true SendCanceledInvocationsToTheWorker:true = ResultSource not canceled (send invocation)
+        [InlineData(true, false, true)] // CancellationCapability:true SendCanceledInvocationsToTheWorker:false = ResultSource canceled
+        [InlineData(false, true, true)] // CancellationCapability:false SendCanceledInvocationsToTheWorker:true  = ResultSource canceled
+        [InlineData(false, false, true)] // CancellationCapability:false SendCanceledInvocationsToTheWorker:false = ResultSource canceled
+        public async Task SendInvocationRequest_CancellationAlreadyRequested(bool invocationCancelCapability, bool sendCanceledInvocationsToTheWorker, bool cancelResultSource)
         {
             var cancellationWaitTimeMs = 3000;
             var invocationId = Guid.NewGuid();
-            var expectedCancellationLog = $"Cancellation has been requested. The invocation request with id '{invocationId}' is canceled and will not be sent to the worker.";
 
             var cts = new CancellationTokenSource();
             cts.CancelAfter(cancellationWaitTimeMs);
             var token = cts.Token;
 
-            await CreateDefaultWorkerChannel(capabilities: new Dictionary<string, string>() { { RpcWorkerConstants.HandlesInvocationCancelMessage, "true" } });
+            var capabilities = new Dictionary<string, string>();
+            if (invocationCancelCapability)
+            {
+                capabilities.Add(RpcWorkerConstants.HandlesInvocationCancelMessage, "true");
+            }
+
+            _hostOptionsMonitor.CurrentValue.SendCanceledInvocationsToTheWorker = sendCanceledInvocationsToTheWorker;
+            await CreateDefaultWorkerChannel(capabilities: capabilities);
+
             while (!token.IsCancellationRequested)
             {
                 await Task.Delay(1000);
@@ -475,8 +490,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             await _workerChannel.SendInvocationRequest(scriptInvocationContext);
 
             var traces = _logger.GetLogMessages();
-            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, expectedCancellationLog)));
-            Assert.Equal(TaskStatus.Canceled, resultSource.Task.Status);
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"Cancellation was requested prior to the invocation request ('{invocationId}') being sent to the worker.")));
+
+            if (cancelResultSource)
+            {
+                var expectedCancellationLog = $"Cancelling invocation '{invocationId}' due to cancellation token being signaled. This invocation was not sent to the worker. Read more about this here: https://aka.ms/azure-functions-cancellations";
+                Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, expectedCancellationLog)));
+                Assert.Equal(TaskStatus.Canceled, resultSource.Task.Status);
+            }
+            else
+            {
+                Assert.Equal(TaskStatus.WaitingForActivation, resultSource.Task.Status);
+            }
         }
 
         [Fact]
