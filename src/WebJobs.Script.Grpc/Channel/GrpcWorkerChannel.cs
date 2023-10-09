@@ -87,6 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private Uri _httpProxyEndpoint;
         private System.Timers.Timer _timer;
         private bool _functionMetadataRequestSent = false;
+        private CancellationTokenRegistration _cancellationCtr;
 
         internal GrpcWorkerChannel(
             string workerId,
@@ -847,7 +848,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
                 if (_isHandlesInvocationCancelMessageCapabilityEnabled)
                 {
-                    context.CancellationToken.Register(() => SendInvocationCancel(invocationRequest.InvocationId));
+                    _cancellationCtr = context.CancellationToken.Register(() => SendInvocationCancel(invocationRequest.InvocationId));
                 }
 
                 if (IsHttpProxyingWorker && context.FunctionMetadata.IsHttpTriggerFunction())
@@ -1366,6 +1367,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     _startLatencyMetric?.Dispose();
                     _workerInitTask?.TrySetCanceled();
                     _timer?.Dispose();
+                    _cancellationCtr?.Dispose();
 
                     // unlink function inputs
                     if (_inputLinks is not null)
