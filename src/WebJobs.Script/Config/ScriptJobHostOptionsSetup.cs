@@ -51,6 +51,12 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                 {
                     options.FileLoggingMode = fileLoggingMode.Value;
                 }
+
+                var sendCanceledInvocationsToTheWorker = jobHostSection.GetSection("SendCanceledInvocationsToTheWorker");
+                _applicationHostOptions.Value.SendCanceledInvocationsToTheWorker = sendCanceledInvocationsToTheWorker.Value is null
+                    ? _applicationHostOptions.Value.SendCanceledInvocationsToTheWorker = true
+                    : sendCanceledInvocationsToTheWorker.Get<bool>();
+
                 Utility.ValidateRetryOptions(options.Retry);
             }
 
