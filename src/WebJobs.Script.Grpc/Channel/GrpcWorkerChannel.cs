@@ -81,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private TaskCompletionSource<List<RawFunctionMetadata>> _functionsIndexingTask = new TaskCompletionSource<List<RawFunctionMetadata>>(TaskCreationOptions.RunContinuationsAsynchronously);
         private TimeSpan _functionLoadTimeout = TimeSpan.FromMinutes(1);
         private bool _isSharedMemoryDataTransferEnabled;
-        private bool? _cancelCapabilityEnabled;
+        private bool _isHandlesInvocationCancelMessageCapabilityEnabled;
         private bool _isWorkerApplicationInsightsLoggingEnabled;
         private IHttpProxyService _httpProxyService;
         private Uri _httpProxyEndpoint;
@@ -511,7 +511,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             UpdateCapabilities(capabilities, strategy);
 
             _isSharedMemoryDataTransferEnabled = IsSharedMemoryDataTransferEnabled();
-            _cancelCapabilityEnabled ??= !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.HandlesInvocationCancelMessage));
+            _isHandlesInvocationCancelMessageCapabilityEnabled = !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.HandlesInvocationCancelMessage));
 
             if (!_isSharedMemoryDataTransferEnabled)
             {
@@ -816,12 +816,23 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     return;
                 }
 
-                // do not send an invocation request if cancellation has been requested
-                if (context.CancellationToken.IsCancellationRequested)
+                // for debugging
+                if (true)
                 {
-                    _workerChannelLogger.LogWarning("Cancellation has been requested. The invocation request with id '{invocationId}' is canceled and will not be sent to the worker.", invocationId);
-                    context.ResultSource.TrySetCanceled();
-                    return;
+                    _workerChannelLogger.LogDebug("Cancellation was requested prior to the invocation request ('{invocationId}') being sent to the worker.", invocationId);
+
+                    // If the worker does not support handling InvocationCancel grpc messages, or if cancellation is supported and the customer opts-out
+                    // of sending cancelled invocations to the worker, we will cancel the result source and not send the invocation to the worker.
+                    if (!_isHandlesInvocationCancelMessageCapabilityEnabled ||
+                        (_isHandlesInvocationCancelMessageCapabilityEnabled && !_applicationHostOptions.CurrentValue.SendCanceledInvocationsToTheWorker))
+                    {
+                        // This will result in an invocation failure with a "FunctionInvocationCanceled" exception.
+                        _workerChannelLogger.LogInformation("Cancelling invocation '{invocationId}' due to cancellation token being signaled. "
+                            + "This invocation was not sent to the worker. Read more about this here: https://aka.ms/azure-functions-cancellations", invocationId);
+
+                        context.ResultSource.TrySetCanceled();
+                        return;
+                    }
                 }
 
                 var invocationRequest = await context.ToRpcInvocationRequest(_workerChannelLogger, _workerCapabilities, _isSharedMemoryDataTransferEnabled, _sharedMemoryManager);
@@ -834,7 +845,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     InvocationRequest = invocationRequest
                 });
 
-                if (_cancelCapabilityEnabled != null && _cancelCapabilityEnabled.Value)
+                if (_isHandlesInvocationCancelMessageCapabilityEnabled)
                 {
                     context.CancellationToken.Register(() => SendInvocationCancel(invocationRequest.InvocationId));
                 }
