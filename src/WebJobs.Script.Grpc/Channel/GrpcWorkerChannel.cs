@@ -817,8 +817,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     return;
                 }
 
-                // for debugging
-                if (true)
+                if (context.CancellationToken.IsCancellationRequested)
                 {
                     _workerChannelLogger.LogDebug("Cancellation was requested prior to the invocation request ('{invocationId}') being sent to the worker.", invocationId);
 
