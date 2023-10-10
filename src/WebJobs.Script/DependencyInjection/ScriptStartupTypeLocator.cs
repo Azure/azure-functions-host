@@ -81,16 +81,16 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
             var bundleConfigured = _extensionBundleManager.IsExtensionBundleConfigured();
             bool isLegacyExtensionBundle = _extensionBundleManager.IsLegacyExtensionBundle();
             bool isPrecompiledFunctionApp = false;
-            bool isDotnetIsolatedApp = false;
 
             // dotnet app precompiled -> Do not use bundles
             var workerConfigs = _languageWorkerOptions.CurrentValue.WorkerConfigs;
+            ImmutableArray<FunctionMetadata> functionMetadataCollection = ImmutableArray.Create<FunctionMetadata>();
             if (bundleConfigured)
             {
                 ExtensionBundleDetails bundleDetails = await _extensionBundleManager.GetExtensionBundleDetails();
                 ValidateBundleRequirements(bundleDetails);
 
-                var functionMetadataCollection = _functionMetadataManager.GetFunctionMetadata(forceRefresh: true, includeCustomProviders: false, workerConfigs: workerConfigs);
+                functionMetadataCollection = _functionMetadataManager.GetFunctionMetadata(forceRefresh: true, includeCustomProviders: false, workerConfigs: workerConfigs);
                 bindingsSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
                 // Generate a Hashset of all the binding types used in the function app
@@ -102,10 +102,9 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
                     }
                     isPrecompiledFunctionApp = isPrecompiledFunctionApp || functionMetadata.Language == DotNetScriptTypes.DotNetAssembly;
                 }
-
-                isDotnetIsolatedApp = IsDotnetIsolatedApp(functionMetadataCollection, SystemEnvironment.Instance);
             }
 
+            bool isDotnetIsolatedApp = IsDotnetIsolatedApp(functionMetadataCollection, SystemEnvironment.Instance);
             bool isDotnetApp = isPrecompiledFunctionApp || isDotnetIsolatedApp;
             var isLogicApp = SystemEnvironment.Instance.IsLogicApp();
 

@@ -443,7 +443,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        [Theory(Skip = "This test is failing on CI and needs to be fixed.")]
+        [Theory]
         [InlineData(true, true)]
         [InlineData(true, false)]
         [InlineData(false, true)]
