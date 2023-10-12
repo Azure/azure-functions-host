@@ -376,7 +376,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             if (res.Result.IsFailure(out Exception reloadEnvironmentVariablesException))
             {
-                if (IsFatalFailure(res))
+                if (IsEnvironmentReloadFailureFatalError(res))
                 {
                     _workerChannelLogger.LogError(reloadEnvironmentVariablesException, "Failed to reload environment variables");
                     _reloadTask.SetException(reloadEnvironmentVariablesException);
@@ -396,11 +396,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         /// <summary>
         /// Determines whether the environment reload failure should be considered as a fatal error or should be ignored.
         /// </summary>
-        internal bool IsFatalFailure(FunctionEnvironmentReloadResponse response)
+        internal bool IsEnvironmentReloadFailureFatalError(FunctionEnvironmentReloadResponse response)
         {
             var workerRuntime = _environment.GetFunctionsWorkerRuntime();
 
-            // Currently we support non fatal reload errors for dotnet isolated worker only.
+            // Currently we support non fatal environment reload errors for dotnet isolated worker only.
             if (workerRuntime != RpcWorkerConstants.DotNetIsolatedLanguageWorkerName)
             {
                 return true;
@@ -608,8 +608,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 FunctionEnvironmentReloadRequest = request
             });
 
-            Task<bool> t = _reloadTask.Task;
-            return t;
+            var environmentReloadRequestResult = _reloadTask.Task;
+
+            return environmentReloadRequestResult;
         }
 
         public void SendWorkerWarmupRequest()
