@@ -123,12 +123,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             if (_workerRuntime != null && rpcWorkerChannel != null)
             {
+                bool envReloadRequestResultSuccessful = false;
                 if (UsePlaceholderChannel(rpcWorkerChannel))
                 {
                     _logger.LogDebug("Loading environment variables for runtime: {runtime}", _workerRuntime);
-                    await rpcWorkerChannel.SendFunctionEnvironmentReloadRequest();
+                    envReloadRequestResultSuccessful = await rpcWorkerChannel.SendFunctionEnvironmentReloadRequest();
                 }
-                else
+
+                if (envReloadRequestResultSuccessful == false)
                 {
                     _logger.LogDebug("Shutting down placeholder worker. Worker is not compatible for runtime: {runtime}", _workerRuntime);
                     // If we need to allow file edits, we should shutdown the webhost channel on specialization.
@@ -178,6 +180,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
                 if (!placeholderEnabled)
                 {
+                    return false;
+                }
+
+                // We support specialization of dotnet-isolated only on 64bit host process.
+                if (!_environment.Is64BitProcess)
+                {
+                    _logger.LogInformation(new EventId(421, ScriptConstants.PlaceholderMissDueToBitnessEventName),
+                        "This app is configured as 32-bit and therefore does not leverage all performance optimizations. See https://aka.ms/azure-functions/dotnet/placeholders for more information.");
+
                     return false;
                 }
 
