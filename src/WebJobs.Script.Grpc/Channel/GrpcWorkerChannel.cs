@@ -409,7 +409,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             var rpcException = response.Result.Exception;
 
             // Currently the below 2 errors are considered as non fatal.
-            if (rpcException.Message.StartsWith("Microsoft.Azure.Functions.Worker.EnvironmentReloadUnsupportedException"))
+            if (rpcException.Message.StartsWith("Microsoft.Azure.Functions.Worker.EnvironmentReloadNotSupportedException"))
             {
                 _workerChannelLogger.LogDebug(new EventId(422, ScriptConstants.PlaceholderMissDueToBitnessEventName),
                     " This app is not using the latest version of Microsoft.Azure.Functions.Worker SDK and therefore does not leverage all performance optimizations. See https://aka.ms/azure-functions/dotnet/placeholders for more information.");
@@ -418,7 +418,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             if (rpcException.Message.StartsWith("Microsoft.Azure.Functions.Worker.FunctionAppPayloadNotFoundException"))
             {
                 // If no app payload present, we can ignore the error because
-                // it is possible that the app was created (instance assigned), but no deployment has happened yet.
+                // it is possible that the app was created (instance assigned from platform), but no deployment has happened yet.
                 return false;
             }
 

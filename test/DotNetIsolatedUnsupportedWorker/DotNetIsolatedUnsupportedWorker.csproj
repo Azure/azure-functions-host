@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
     <AzureFunctionsVersion>v4</AzureFunctionsVersion>
@@ -14,7 +14,7 @@
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Http" Version="3.0.13" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Http.AspNetCore" Version="1.0.0-preview2" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Storage" Version="6.0.0" />
-    <PackageReference Include="Microsoft.Azure.Functions.Worker.Sdk" Version="1.15.1" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.Sdk" Version="1.15.0" />
   </ItemGroup>
   <ItemGroup>
     <None Update="host.json">
