@@ -174,14 +174,22 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
         private static readonly Action<ILogger, string, string, Version, string, string, Exception> _minimumExtensionVersionNotSatisfied =
             LoggerMessage.Define<string, string, Version, string, string>(
             LogLevel.Error,
-            new EventId(334, nameof(MinimumExtensionVersionNotSatisfied)),
+            new EventId(336, nameof(MinimumExtensionVersionNotSatisfied)),
             "ExtensionStartupType {extensionTypeName} from assembly '{extensionTypeAssemblyFullName}' does not meet the required minimum version of {minimumAssemblyVersion}. Update your NuGet package reference for {requirementPackageName} to {requirementMinimumPackageVersion} or later.");
 
         private static readonly Action<ILogger, string, string, string, string, Exception> _minimumBundleVersionNotSatisfied =
             LoggerMessage.Define<string, string, string, string>(
             LogLevel.Error,
-            new EventId(335, nameof(MinimumBundleVersionNotSatisfied)),
+            new EventId(337, nameof(MinimumBundleVersionNotSatisfied)),
             "Referenced bundle {bundleId} of version {bundleVersion} does not meet the required minimum version of {minimumVersion}. Update your extension bundle reference in host.json to reference {minimumVersion2} or later.");
+
+        private static readonly Action<ILogger, string, Exception> _publishingMetrics =
+            LoggerMessage.Define<string>(LogLevel.Debug, new EventId(338, nameof(PublishingMetrics)), "{metrics}");
+
+        public static void PublishingMetrics(this ILogger logger, string metrics)
+        {
+            _publishingMetrics(logger, metrics, null);
+        }
 
         public static void ExtensionsManagerRestoring(this ILogger logger)
         {

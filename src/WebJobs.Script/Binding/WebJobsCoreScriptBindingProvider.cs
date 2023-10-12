@@ -13,7 +13,7 @@ using Newtonsoft.Json.Linq;
 namespace Microsoft.Azure.WebJobs.Script.Binding
 {
     /// <summary>
-    /// Enables all Core SDK Triggers/Binders
+    /// Enables all Core SDK Triggers/Binders.
     /// </summary>
     internal class WebJobsCoreScriptBindingProvider : ScriptBindingProvider
     {
