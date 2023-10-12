@@ -581,9 +581,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 FunctionEnvironmentReloadRequest = request
             });
 
-            var environmentReloadRequestResult = _reloadTask.Task;
-
-            return environmentReloadRequestResult;
+            return _reloadTask.Task;
         }
 
         public void SendWorkerWarmupRequest()
