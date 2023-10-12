@@ -903,7 +903,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _environment.SetProcessBitness(is64Bitness: false);
 
             // We only specialize when host process is 64 bit process.
-            await DotNetIsolatedPlaceholderMiss(_dotnetIsolated60Path , () =>
+            await DotNetIsolatedPlaceholderMiss(_dotnetIsolated60Path, () =>
             {
                 _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteUsePlaceholderDotNetIsolated, "1");
                 _environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, "6.0");
@@ -1072,19 +1072,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             else
             {
                 response.EnsureSuccessStatusCode();
+
+                var expectedProcessName = scriptRootPath == _dotnetIsolated60Path ? "DotNetIsolated60" : "DotNetIsolatedUnsupported";
+                // Placeholder miss; new channel should be started using the deployed worker directly
+                var specializedChannel = await webChannelManager.GetChannels("dotnet-isolated").Single().Value.Task;
+                Assert.Contains("dotnet.exe", specializedChannel.WorkerProcess.Process.StartInfo.FileName);
+                Assert.Contains(expectedProcessName, specializedChannel.WorkerProcess.Process.StartInfo.Arguments);
+                runningProcess = Process.GetProcessById(specializedChannel.WorkerProcess.Id);
+                Assert.Contains(runningProcess.ProcessName, "dotnet");
+
+                // Ensure other process is gone.
+                Assert.DoesNotContain(Process.GetProcesses(), p => p.ProcessName.Contains("FunctionsNetHost"));
+                Assert.Throws<InvalidOperationException>(() => placeholderChannel.WorkerProcess.Process.Id);
             }
-
-            var expectedProcessName = scriptRootPath == _dotnetIsolated60Path ? "DotNetIsolated60" : "DotNetIsolatedUnsupported";
-            // Placeholder miss; new channel should be started using the deployed worker directly
-            var specializedChannel = await webChannelManager.GetChannels("dotnet-isolated").Single().Value.Task;
-            Assert.Contains("dotnet.exe", specializedChannel.WorkerProcess.Process.StartInfo.FileName);
-            Assert.Contains(expectedProcessName, specializedChannel.WorkerProcess.Process.StartInfo.Arguments);
-            runningProcess = Process.GetProcessById(specializedChannel.WorkerProcess.Id);
-            Assert.Contains(runningProcess.ProcessName, "dotnet");
-
-            // Ensure other process is gone.
-            Assert.DoesNotContain(Process.GetProcesses(), p => p.ProcessName.Contains("FunctionsNetHost"));
-            Assert.Throws<InvalidOperationException>(() => placeholderChannel.WorkerProcess.Process.Id);
         }
 
         private static void BuildDotnetIsolated60()
