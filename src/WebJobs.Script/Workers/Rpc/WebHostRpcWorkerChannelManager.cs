@@ -123,12 +123,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             if (_workerRuntime != null && rpcWorkerChannel != null)
             {
+                bool envReloadRequestResultSuccessful = false;
                 if (UsePlaceholderChannel(rpcWorkerChannel))
                 {
                     _logger.LogDebug("Loading environment variables for runtime: {runtime}", _workerRuntime);
-                    await rpcWorkerChannel.SendFunctionEnvironmentReloadRequest();
+                    envReloadRequestResultSuccessful = await rpcWorkerChannel.SendFunctionEnvironmentReloadRequest();
                 }
-                else
+
+                if (envReloadRequestResultSuccessful == false)
                 {
                     _logger.LogDebug("Shutting down placeholder worker. Worker is not compatible for runtime: {runtime}", _workerRuntime);
                     // If we need to allow file edits, we should shutdown the webhost channel on specialization.

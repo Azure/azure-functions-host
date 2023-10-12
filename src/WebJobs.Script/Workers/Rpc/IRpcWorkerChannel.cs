@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         void SendFunctionLoadRequests(ManagedDependencyOptions managedDependencyOptions, TimeSpan? functionTimeout);
 
-        Task SendFunctionEnvironmentReloadRequest();
+        Task<bool> SendFunctionEnvironmentReloadRequest();
 
         void SendWorkerWarmupRequest();
 
