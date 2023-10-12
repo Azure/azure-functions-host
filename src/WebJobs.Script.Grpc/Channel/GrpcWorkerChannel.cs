@@ -374,55 +374,19 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             ApplyCapabilities(res.Capabilities, res.CapabilitiesUpdateStrategy.ToGrpcCapabilitiesUpdateStrategy());
 
-            if (res.Result.IsFailure(out Exception reloadEnvironmentVariablesException))
+            if (res.Result.IsFailure(IsUserCodeExceptionCapabilityEnabled(), out var reloadEnvironmentVariablesException))
             {
-                if (IsEnvironmentReloadFailureFatalError(res))
+                if (res.Result.Exception is not null && reloadEnvironmentVariablesException is not null)
                 {
-                    _workerChannelLogger.LogError(reloadEnvironmentVariablesException, "Failed to reload environment variables");
-                    _reloadTask.SetException(reloadEnvironmentVariablesException);
+                    _workerChannelLogger.LogWarning(reloadEnvironmentVariablesException, reloadEnvironmentVariablesException.Message);
                 }
-                else
-                {
-                    _reloadTask.SetResult(false);
-                }
+                _reloadTask.SetResult(false);
             }
             else
             {
                 _reloadTask.SetResult(true);
             }
             latencyEvent.Dispose();
-        }
-
-        /// <summary>
-        /// Determines whether the environment reload failure should be considered as a fatal error or should be ignored.
-        /// </summary>
-        internal bool IsEnvironmentReloadFailureFatalError(FunctionEnvironmentReloadResponse response)
-        {
-            var workerRuntime = _environment.GetFunctionsWorkerRuntime();
-
-            // Currently we support non fatal environment reload errors for dotnet isolated worker only.
-            if (workerRuntime != RpcWorkerConstants.DotNetIsolatedLanguageWorkerName)
-            {
-                return true;
-            }
-
-            var rpcException = response.Result.Exception;
-
-            // Currently the below 2 errors are considered as non fatal.
-            if (rpcException.Message.StartsWith("Microsoft.Azure.Functions.Worker.EnvironmentReloadNotSupportedException"))
-            {
-                _workerChannelLogger.LogDebug(new EventId(422, ScriptConstants.PlaceholderMissDueToBitnessEventName),
-                    " This app is not using the latest version of Microsoft.Azure.Functions.Worker SDK and therefore does not leverage all performance optimizations. See https://aka.ms/azure-functions/dotnet/placeholders for more information.");
-                return false;
-            }
-            if (rpcException.Message.StartsWith("Microsoft.Azure.Functions.Worker.FunctionAppPayloadNotFoundException"))
-            {
-                // If no app payload present, we can ignore the error because
-                // it is possible that the app was created (instance assigned from platform), but no deployment has happened yet.
-                return false;
-            }
-
-            return true;
         }
 
         internal void WorkerInitResponse(GrpcEvent initEvent)
@@ -454,6 +418,15 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             ApplyCapabilities(_initMessage.Capabilities);
 
             _workerInitTask.TrySetResult(true);
+        }
+
+        private bool IsUserCodeExceptionCapabilityEnabled()
+        {
+            var enableUserCodeExceptionCapability = string.Equals(
+                _workerCapabilities.GetCapabilityState(RpcWorkerConstants.EnableUserCodeException), bool.TrueString,
+                StringComparison.OrdinalIgnoreCase);
+
+            return enableUserCodeExceptionCapability;
         }
 
         private void LogWorkerMetadata(WorkerMetadata workerMetadata)
