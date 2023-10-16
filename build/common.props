@@ -7,7 +7,7 @@
     <MinorVersion>28</MinorVersion>
     <PatchVersion>0</PatchVersion>
     <BuildNumber Condition="'$(BuildNumber)' == '' ">0</BuildNumber>
-    <PreviewVersion></PreviewVersion>        
+    <PreviewVersion></PreviewVersion>
     
     <!-- During previews, always generate this suffix, even for official releases -->
     <_VersionSuffix Condition="'$(PreviewVersion)' != ''">-preview.$(PreviewVersion).$(BuildNumber)</_VersionSuffix>
@@ -25,7 +25,8 @@
     <ContinuousIntegrationBuild Condition="'$(TF_BUILD)' == 'true'">true</ContinuousIntegrationBuild>
     <DebugType>embedded</DebugType>
     <GenerateRuntimeConfigDevFile>true</GenerateRuntimeConfigDevFile><!-- https://github.com/dotnet/runtime/issues/54684 -->
-    <DisableImplicitNamespaceImports>true</DisableImplicitNamespaceImports>    
+    <DisableImplicitNamespaceImports>true</DisableImplicitNamespaceImports>
+    <Configurations>$(Configurations);DebugPlaceholder;ReleasePlaceholder</Configurations>
   </PropertyGroup>
 
   <Target Name="EchoVersion">

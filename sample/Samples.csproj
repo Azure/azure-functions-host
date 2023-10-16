@@ -1,5 +1,6 @@
 <Project Sdk="Microsoft.Build.NoTargets/3.2.14">
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
+    <Configurations>$(Configurations);DebugPlaceholder;ReleasePlaceholder</Configurations>
   </PropertyGroup>
 </Project>

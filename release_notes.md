@@ -18,3 +18,5 @@
 - Check if a blob container or table exists before trying to create it (#9555)
 - Limit dotnet-isolated specialization to 64 bit host process (#9548)
 - Sending command line arguments to language workers with `functions-` prefix to prevent conflicts (#9514)
+- Adding code to simulate placeholder and specilization locally (#9618)
+
