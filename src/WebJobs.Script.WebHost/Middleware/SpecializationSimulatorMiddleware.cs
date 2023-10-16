@@ -17,6 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
         private readonly RequestDelegate _next;
         private readonly IEnvironment _environment;
         private readonly ILogger<SpecializationSimulatorMiddleware> _logger;
+        private int _specializationDone = 0;
 
         public SpecializationSimulatorMiddleware(RequestDelegate next, IEnvironment environment, ILogger<SpecializationSimulatorMiddleware> logger)
         {
@@ -32,16 +33,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             {
                 _logger.LogInformation("Attempting to simulate specialization event.");
 
-                var scriptRoot = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsScriptRoot);
-                if (string.IsNullOrWhiteSpace(scriptRoot))
+                if (Interlocked.Exchange(ref _specializationDone, 1) == 0)
                 {
-                    const string error = $"Invalid script root. Provide the function function app payload location via {EnvironmentSettingNames.AzureWebJobsScriptRoot} environment variable";
-                    throw new InvalidOperationException(error);
-                }
+                    var scriptRoot = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsScriptRoot);
+                    if (string.IsNullOrWhiteSpace(scriptRoot))
+                    {
+                        const string error = $"Invalid script root. Provide the function function app payload location via {EnvironmentSettingNames.AzureWebJobsScriptRoot} environment variable";
+                        throw new InvalidOperationException(error);
+                    }
 
-                _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteUsePlaceholderDotNetIsolated, "1");
-                _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
-                _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
+                    _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteUsePlaceholderDotNetIsolated, "1");
+                    _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+                    _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
+                }
+                else
+                {
+                    _logger.LogWarning("Specialization simulation event was already invoked once. No actions taken this time.");
+                }
             }
 
             await _next(context);
