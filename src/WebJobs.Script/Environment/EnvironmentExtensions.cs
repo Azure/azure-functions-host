@@ -231,6 +231,26 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
+        /// Gets a value indicating whether the application is migrated Consumption V1 running in Legion environment.
+        /// </summary>
+        /// <param name="environment">The environment to verify.</param>
+        /// <returns><see cref="true"/> if migrated Consumption V1 running in Legion, false otherwise.</returns>
+        public static bool IsConsumptionV1RunningOnLegion(this IEnvironment environment)
+        {
+            // Check if host is running in Legion and if host is in placeholder mode
+            // There shouldn't be any difference for Legion placeholders running in Flex vs migrated Consumption V1
+            if (!environment.IsLinuxConsumptionOnLegion() || environment.IsPlaceholderModeEnabled())
+            {
+                return false;
+            }
+
+            // Check if the SKU is set to FlexConsumptionSku
+            string sku = environment.GetEnvironmentVariable(AzureWebsiteSku);
+            bool isFlex = string.Equals(sku, ScriptConstants.FlexConsumptionSku, StringComparison.OrdinalIgnoreCase);
+            return !isFlex;
+        }
+
+        /// <summary>
         /// Returns true if the app is running on Virtual Machine Scale Sets (VMSS).
         /// </summary>
         public static bool IsVMSS(this IEnvironment environment)
