@@ -44,6 +44,9 @@ namespace Microsoft.Azure.WebJobs.Script
         private const string HostAssemblyName = "ScriptHost";
         private const string GeneratedTypeNamespace = "Host";
         internal const string GeneratedTypeName = "Functions";
+
+        private static readonly string[] CredentialNameFragments = new[] { "password", "pwd", "key", "secret", "token", "sas" };
+
         private readonly IScriptHostEnvironment _scriptHostEnvironment;
         private readonly string _storageConnectionString;
         private readonly IMetricsLogger _metricsLogger;
@@ -308,17 +311,68 @@ namespace Microsoft.Azure.WebJobs.Script
         internal static string SanitizeHostJson(JObject hostJsonObject)
         {
             JObject sanitizedObject = new JObject();
-
             foreach (var propName in WellKnownHostJsonProperties)
             {
                 var propValue = hostJsonObject[propName];
                 if (propValue != null)
                 {
-                    sanitizedObject[propName] = propValue;
+                    sanitizedObject[propName] = Sanitize(propValue);
                 }
             }
 
             return sanitizedObject.ToString();
+        }
+
+        private static JToken Sanitize(JToken token)
+        {
+            if (token is JObject obj)
+            {
+                JObject sanitized = new JObject();
+                foreach (var prop in obj)
+                {
+                    if (IsPotentialCredential(prop.Key))
+                    {
+                        sanitized[prop.Key] = Sanitizer.SecretReplacement;
+                    }
+                    else
+                    {
+                        sanitized[prop.Key] = Sanitize(prop.Value);
+                    }
+                }
+
+                return sanitized;
+            }
+
+            if (token is JArray arr)
+            {
+                JArray sanitized = new JArray();
+                foreach (var value in arr)
+                {
+                    sanitized.Add(Sanitize(value));
+                }
+
+                return sanitized;
+            }
+
+            if (token.Type == JTokenType.String)
+            {
+                return Sanitizer.Sanitize(token.ToString());
+            }
+
+            return token;
+        }
+
+        private static bool IsPotentialCredential(string name)
+        {
+            foreach (string fragment in CredentialNameFragments)
+            {
+                if (name.IndexOf(fragment, StringComparison.OrdinalIgnoreCase) != -1)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         // Validate that for any precompiled assembly, all functions have the same configuration precedence.
