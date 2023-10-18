@@ -42,6 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
     internal partial class GrpcWorkerChannel : IRpcWorkerChannel, IDisposable
     {
         private readonly IScriptEventManager _eventManager;
+        private readonly IServiceProvider _serviceProvider;
         private readonly RpcWorkerConfig _workerConfig;
         private readonly string _runtime;
         private readonly IEnvironment _environment;
@@ -92,6 +93,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         internal GrpcWorkerChannel(
             string workerId,
             IScriptEventManager eventManager,
+            IScriptHostManager hostManager,
             RpcWorkerConfig workerConfig,
             IWorkerProcess rpcWorkerProcess,
             ILogger logger,
@@ -106,6 +108,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         {
             _workerId = workerId;
             _eventManager = eventManager;
+            _serviceProvider = hostManager as IServiceProvider;
             _workerConfig = workerConfig;
             _runtime = workerConfig.Description.Language;
             _rpcWorkerProcess = rpcWorkerProcess;
@@ -170,6 +173,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
         }
 
+        public IOptions<ScriptJobHostOptions> JobHostOptions => (IOptions<ScriptJobHostOptions>)_serviceProvider.GetService(typeof(IOptions<ScriptJobHostOptions>));
         private void ProcessItem(InboundGrpcEvent msg)
         {
             // note this method is a thread-pool (QueueUserWorkItem) entry-point
@@ -824,12 +828,12 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     // If the worker does not support handling InvocationCancel grpc messages, or if cancellation is supported and the customer opts-out
                     // of sending cancelled invocations to the worker, we will cancel the result source and not send the invocation to the worker.
                     if (!_isHandlesInvocationCancelMessageCapabilityEnabled ||
-                        (_isHandlesInvocationCancelMessageCapabilityEnabled && !_applicationHostOptions.CurrentValue.SendCanceledInvocationsToTheWorker))
+                        (_isHandlesInvocationCancelMessageCapabilityEnabled && !JobHostOptions.Value.SendCanceledInvocationsToTheWorker))
                     {
-                        // This will result in an invocation failure with a "FunctionInvocationCanceled" exception.
                         _workerChannelLogger.LogInformation("Cancelling invocation '{invocationId}' due to cancellation token being signaled. "
                             + "This invocation was not sent to the worker. Read more about this here: https://aka.ms/azure-functions-cancellations", invocationId);
 
+                        // This will result in an invocation failure with a "FunctionInvocationCanceled" exception.
                         context.ResultSource.TrySetCanceled();
                         return;
                     }
@@ -1366,7 +1370,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     _startLatencyMetric?.Dispose();
                     _workerInitTask?.TrySetCanceled();
                     _timer?.Dispose();
-                    _cancellationCtr?.Dispose();
+                    _cancellationCtr.Dispose();
 
                     // unlink function inputs
                     if (_inputLinks is not null)

@@ -52,10 +52,12 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                     options.FileLoggingMode = fileLoggingMode.Value;
                 }
 
+                // Default SendCanceledInvocationsToTheWorker to true if not provided
                 var sendCanceledInvocationsToTheWorker = jobHostSection.GetSection("SendCanceledInvocationsToTheWorker");
-                _applicationHostOptions.Value.SendCanceledInvocationsToTheWorker = sendCanceledInvocationsToTheWorker.Value is null
-                    ? _applicationHostOptions.Value.SendCanceledInvocationsToTheWorker = true
-                    : sendCanceledInvocationsToTheWorker.Get<bool>();
+                if (sendCanceledInvocationsToTheWorker.Value is null)
+                {
+                    options.SendCanceledInvocationsToTheWorker = true;
+                }
 
                 Utility.ValidateRetryOptions(options.Retry);
             }
