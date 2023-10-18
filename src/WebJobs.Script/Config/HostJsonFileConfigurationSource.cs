@@ -281,7 +281,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                 {
                     foreach (string fragment in CredentialNameFragments)
                     {
-                        if (name.Contains(fragment, StringComparison.OrdinalIgnoreCase))
+                        if (name.IndexOf(fragment, StringComparison.OrdinalIgnoreCase) != -1)
                         {
                             return true;
                         }
