@@ -52,6 +52,12 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private static List<string> dotNetLanguages = new List<string>() { DotNetScriptTypes.CSharp, DotNetScriptTypes.DotNetAssembly };
 
+#if PLACEHOLDERSIMULATION
+        private static bool isInPlaceholderSimulationMode = true;
+#else
+        private static bool isInPlaceholderSimulationMode = false;
+#endif
+
         public static int ColdStartDelayMS { get; set; } = 5000;
 
         internal static bool TryGetHostService<TService>(IScriptHostManager scriptHostManager, out TService service) where TService : class
@@ -774,7 +780,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public static void ExecuteAfterColdStartDelay(IEnvironment environment, Action targetAction, CancellationToken cancellationToken = default)
         {
             // for Dynamic SKUs where coldstart is important, we want to delay the action
-            if (environment.IsDynamicSku())
+            if (isInPlaceholderSimulationMode || environment.IsDynamicSku())
             {
                 ExecuteAfterDelay(targetAction, TimeSpan.FromMilliseconds(ColdStartDelayMS), cancellationToken);
             }
