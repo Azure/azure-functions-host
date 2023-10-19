@@ -11,12 +11,12 @@ namespace Microsoft.Azure.WebJobs.Logging
     // Note: This file is shared between the WebJobs SDK and Script repos. Update both if changes are needed.
     internal static class Sanitizer
     {
-        private const string SecretReplacement = "[Hidden Credential]";
+        public const string SecretReplacement = "[Hidden Credential]";
         private static readonly char[] ValueTerminators = new char[] { '<', '"', '\'' };
 
         // List of keywords that should not be replaced with [Hidden Credential]
         private static readonly string[] AllowedTokens = new string[] { "PublicKeyToken=" };
-        private static readonly string[] CredentialTokens = new string[] { "Token=", "DefaultEndpointsProtocol=http", "AccountKey=", "Data Source=", "Server=", "Password=", "pwd=", "&amp;sig=", "SharedAccessKey=" };
+        private static readonly string[] CredentialTokens = new string[] { "Token=", "DefaultEndpointsProtocol=http", "AccountKey=", "Data Source=", "Server=", "Password=", "pwd=", "&amp;sig=", "&sig=", "?sig=", "SharedAccessKey=" };
 
         /// <summary>
         /// Removes well-known credential strings from strings.

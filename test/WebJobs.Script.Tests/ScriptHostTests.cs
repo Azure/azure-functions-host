@@ -1244,7 +1244,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Directory.CreateDirectory(rootPath);
             }
 
-            // Turn off all logging. We shouldn't see any output.
             string hostJsonContent = @"
             {
                 'functionTimeout': '00:05:00',
@@ -1252,10 +1251,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 'logger': {
                     'categoryFilter': {
                         'defaultLevel': 'Information'
-                    }
+                    },
+                    'prop': 'Hey=AS1$@%#$%W-k2j"";SharedAccessKey=foo,Data Source=barzons,Server=bathouse""testing',
+                    'values': [ 'plain', 10, 'Password=hunter2' ],
+                    'my-password': 'hunter2',
+                    'service_token': 'token',
+                    'StorageSas': 'access',
+                    'aSecret': { 'value1': 'value' }
                 },
                 'Values': {
                     'MyCustomValue': 'abc'
+                },
+                'applicationInsights': {
+                    'prop': 'Hey=AS1$@%#$%W-k2j"";SharedAccessKey=foo,Data Source=barzons,Server=bathouse""testing',
+                    'values': [ 'plain', 10, 'Password=hunter2' ],
+                    'sampleSettings': {
+                        'my-password': 'hunter2',
+                        'service_token': 'token',
+                        'StorageSas': 'access'
+                    }
                 }
             }";
 
@@ -1283,6 +1297,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 'logger': {
                     'categoryFilter': {
                         'defaultLevel': 'Information'
+                    },
+                    'prop': 'Hey=AS1$@%#$%W-k2j"";[Hidden Credential]""testing',
+                    'values': [ 'plain', 10, '[Hidden Credential]' ],
+                    'my-password': '[Hidden Credential]',
+                    'service_token': '[Hidden Credential]',
+                    'StorageSas': '[Hidden Credential]',
+                    'aSecret': '[Hidden Credential]'
+                },
+                'applicationInsights': {
+                    'prop': 'Hey=AS1$@%#$%W-k2j"";[Hidden Credential]""testing',
+                    'values': [ 'plain', 10, '[Hidden Credential]' ],
+                    'sampleSettings': {
+                        'my-password': '[Hidden Credential]',
+                        'service_token': '[Hidden Credential]',
+                        'StorageSas': '[Hidden Credential]'
                     }
                 }
             }";

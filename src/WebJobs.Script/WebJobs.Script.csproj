@@ -516,6 +516,7 @@
     <Compile Include="HostInitializationException.cs" />
     <Compile Include="Scale\ApplicationPerformanceCounters.cs" />
     <Compile Include="Diagnostics\CompositeTraceWriter.cs" />
+    <Compile Include="Diagnostics\Sanitizer.cs" />
     <Compile Include="Description\Binding\BindingDirection.cs" />
     <Compile Include="Description\Binding\BindingMetadata.cs" />
     <Compile Include="Description\DotNet\DotNetConstants.cs" />
