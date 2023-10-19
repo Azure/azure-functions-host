@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
     internal partial class GrpcWorkerChannel : IRpcWorkerChannel, IDisposable
     {
         private readonly IScriptEventManager _eventManager;
-        private readonly IServiceProvider _serviceProvider;
+        private readonly IScriptHostManager _scriptHostManager;
         private readonly RpcWorkerConfig _workerConfig;
         private readonly string _runtime;
         private readonly IEnvironment _environment;
@@ -89,6 +89,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private System.Timers.Timer _timer;
         private bool _functionMetadataRequestSent = false;
         private CancellationTokenRegistration _cancellationCtr;
+        private IOptions<ScriptJobHostOptions> _scriptHostOptions;
 
         internal GrpcWorkerChannel(
             string workerId,
@@ -108,7 +109,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         {
             _workerId = workerId;
             _eventManager = eventManager;
-            _serviceProvider = hostManager as IServiceProvider;
+            _scriptHostManager = hostManager;
             _workerConfig = workerConfig;
             _runtime = workerConfig.Description.Language;
             _rpcWorkerProcess = rpcWorkerProcess;
@@ -144,6 +145,10 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             // Temporary switch to allow fully testing new algorithm in production
             _messageDispatcherFactory = GetProcessorFactory();
+
+            _scriptHostManager.ActiveHostChanged += HandleActiveHostChange;
+
+            LoadScriptJobHostOptions();
         }
 
         private bool IsHttpProxyingWorker => _httpProxyEndpoint is not null;
@@ -155,6 +160,25 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         public IWorkerProcess WorkerProcess => _rpcWorkerProcess;
 
         public RpcWorkerConfig WorkerConfig => _workerConfig;
+
+        public IOptions<ScriptJobHostOptions> JobHostOptions => _scriptHostOptions;
+
+        private void HandleActiveHostChange(object sender, ActiveHostChangedEventArgs e)
+        {
+            LoadScriptJobHostOptions();
+        }
+
+        public void LoadScriptJobHostOptions()
+        {
+            if ((_scriptHostManager as IServiceProvider)?.GetService(typeof(IOptions<ScriptJobHostOptions>)) is IOptions<ScriptJobHostOptions> scriptHostOptions)
+            {
+                _scriptHostOptions = scriptHostOptions;
+            }
+            else
+            {
+                throw new InvalidOperationException("ScriptHostManager is not a service provider, could not load ScriptJobHostOptions.");
+            }
+        }
 
         // Temporary switch that allows us to move between the "old" ThreadPool-only processor
         // and a "new" Channel processor (for proper ordering of messages).
@@ -173,7 +197,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
         }
 
-        public IOptions<ScriptJobHostOptions> JobHostOptions => (IOptions<ScriptJobHostOptions>)_serviceProvider.GetService(typeof(IOptions<ScriptJobHostOptions>));
         private void ProcessItem(InboundGrpcEvent msg)
         {
             // note this method is a thread-pool (QueueUserWorkItem) entry-point
@@ -1371,6 +1394,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     _workerInitTask?.TrySetCanceled();
                     _timer?.Dispose();
                     _cancellationCtr.Dispose();
+                    _scriptHostManager.ActiveHostChanged -= HandleActiveHostChange;
 
                     // unlink function inputs
                     if (_inputLinks is not null)
