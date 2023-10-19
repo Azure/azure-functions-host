@@ -40,6 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         private readonly string _workerId = "testWorkerId";
         private readonly string _scriptRootPath = "c:\testdir";
         private readonly IScriptEventManager _eventManager = new ScriptEventManager();
+        private readonly Mock<IScriptHostManager> _mockScriptHostManager = new Mock<IScriptHostManager>(MockBehavior.Strict);
         private readonly TestMetricsLogger _metricsLogger = new TestMetricsLogger();
         private readonly Mock<IWorkerConsoleLogSource> _mockConsoleLogger = new Mock<IWorkerConsoleLogSource>();
         private readonly Mock<FunctionRpc.FunctionRpcBase> _mockFunctionRpcService = new Mock<FunctionRpc.FunctionRpcBase>();
@@ -106,6 +107,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _hostingConfigOptions = Options.Create(new FunctionsHostingConfigOptions());
 
             _httpProxyService = _mockHttpProxyService.Object;
+
+            IOptions<ScriptJobHostOptions> jobHostOptions = new OptionsWrapper<ScriptJobHostOptions>(new ScriptJobHostOptions
+            {
+                RootScriptPath = _scriptRootPath
+            });
+
+            _mockScriptHostManager.As<IServiceProvider>().Setup(p => p.GetService(typeof(IOptions<ScriptJobHostOptions>))).Returns(jobHostOptions);
         }
 
         private Task CreateDefaultWorkerChannel(bool autoStart = true, IDictionary<string, string> capabilities = null)
@@ -113,6 +121,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _workerChannel = new GrpcWorkerChannel(
                _workerId,
                _eventManager,
+               _mockScriptHostManager.Object,
                _testWorkerConfig,
                _mockrpcWorkerProcess.Object,
                _logger,
@@ -280,6 +289,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _workerChannel = new GrpcWorkerChannel(
                _workerId,
                _eventManager,
+               _mockScriptHostManager.Object,
                _testWorkerConfig,
                mockrpcWorkerProcessThatThrows.Object,
                _logger,
@@ -473,8 +483,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 capabilities.Add(RpcWorkerConstants.HandlesInvocationCancelMessage, "true");
             }
 
-            _hostOptionsMonitor.CurrentValue.SendCanceledInvocationsToTheWorker = sendCanceledInvocationsToTheWorker;
             await CreateDefaultWorkerChannel(capabilities: capabilities);
+
+            _workerChannel.JobHostOptions.Value.SendCanceledInvocationsToTheWorker = sendCanceledInvocationsToTheWorker;
 
             while (!token.IsCancellationRequested)
             {
@@ -530,6 +541,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             GrpcWorkerChannel channel = new GrpcWorkerChannel(
                _workerId,
                _eventManager,
+               _mockScriptHostManager.Object,
                _testWorkerConfig,
                _mockrpcWorkerProcess.Object,
                _logger,
@@ -1193,6 +1205,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             GrpcWorkerChannel workerChannel = new GrpcWorkerChannel(
                _workerId,
                _eventManager,
+               _mockScriptHostManager.Object,
                config,
                _mockrpcWorkerProcess.Object,
                _logger,
@@ -1233,6 +1246,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             GrpcWorkerChannel workerChannel = new GrpcWorkerChannel(
                _workerId,
                _eventManager,
+               _mockScriptHostManager.Object,
                config,
                _mockrpcWorkerProcess.Object,
                _logger,
