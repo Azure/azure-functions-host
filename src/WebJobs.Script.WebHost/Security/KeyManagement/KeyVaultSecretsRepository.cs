@@ -75,7 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             List<Task> deleteTasks = new List<Task>();
             string prefix = (type == ScriptSecretsType.Host) ? HostPrefix : FunctionPrefix + Normalize(functionName);
 
-            foreach (SecretProperties item in await FindSecrets(secretsPages, x => x.Name.StartsWith(prefix)))
+            foreach (SecretProperties item in await FindSecrets(secretsPages, x => x.Name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)))
             {
                 // Delete only keys which no longer exist in passed-in secrets
                 if (!dictionary.Keys.Contains(item.Name))
@@ -125,7 +125,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             List<Task<Response<KeyVaultSecret>>> tasks = new List<Task<Response<KeyVaultSecret>>>();
 
             // Add master key task
-            List<SecretProperties> masterItems = await FindSecrets(secretsPages, x => x.Name.StartsWith(MasterKey));
+            List<SecretProperties> masterItems = await FindSecrets(secretsPages, x => x.Name.StartsWith(MasterKey, StringComparison.OrdinalIgnoreCase));
             if (masterItems.Count > 0)
             {
                 tasks.Add(_secretClient.Value.GetSecretAsync(masterItems[0].Name));
@@ -136,13 +136,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
 
             // Add functionKey tasks
-            foreach (SecretProperties item in await FindSecrets(secretsPages, x => x.Name.StartsWith(FunctionKeyPrefix)))
+            foreach (SecretProperties item in await FindSecrets(secretsPages, x => x.Name.StartsWith(FunctionKeyPrefix, StringComparison.OrdinalIgnoreCase)))
             {
                 tasks.Add(_secretClient.Value.GetSecretAsync(item.Name));
             }
 
             // Add systemKey tasks
-            foreach (SecretProperties item in await FindSecrets(secretsPages, x => x.Name.StartsWith(SystemKeyPrefix)))
+            foreach (SecretProperties item in await FindSecrets(secretsPages, x => x.Name.StartsWith(SystemKeyPrefix, StringComparison.OrdinalIgnoreCase)))
             {
                 tasks.Add(_secretClient.Value.GetSecretAsync(item.Name));
             }
@@ -158,15 +158,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             foreach (Task<Response<KeyVaultSecret>> task in tasks)
             {
                 KeyVaultSecret item = task.Result;
-                if (item.Name.StartsWith(MasterKey))
+                if (item.Name.StartsWith(MasterKey, StringComparison.OrdinalIgnoreCase))
                 {
                     hostSecrets.MasterKey = KeyVaultSecretToKey(item, MasterKey);
                 }
-                else if (item.Name.StartsWith(FunctionKeyPrefix))
+                else if (item.Name.StartsWith(FunctionKeyPrefix, StringComparison.OrdinalIgnoreCase))
                 {
                     hostSecrets.FunctionKeys.Add(KeyVaultSecretToKey(item, FunctionKeyPrefix));
                 }
-                else if (item.Name.StartsWith(SystemKeyPrefix))
+                else if (item.Name.StartsWith(SystemKeyPrefix, StringComparison.OrdinalIgnoreCase))
                 {
                     hostSecrets.SystemKeys.Add(KeyVaultSecretToKey(item, SystemKeyPrefix));
                 }
@@ -234,7 +234,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public static Dictionary<string, string> GetDictionaryFromScriptSecrets(ScriptSecrets secrets, string functionName)
         {
-            Dictionary<string, string> dic = new Dictionary<string, string>();
+            Dictionary<string, string> dic = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             HostSecrets hostSecrets = secrets as HostSecrets;
             FunctionSecrets functionSecrets = secrets as FunctionSecrets;
             if (hostSecrets != null)
