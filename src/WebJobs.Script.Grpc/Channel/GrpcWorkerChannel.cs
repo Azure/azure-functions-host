@@ -367,7 +367,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         {
             _workerChannelLogger.LogDebug("Received FunctionEnvironmentReloadResponse from WorkerProcess with Pid: '{0}'", _rpcWorkerProcess.Id);
 
-            LogWorkerMetadata(res.WorkerMetadata);
+            res.WorkerMetadata?.UpdateWorkerMetadata(_workerConfig);
+
+            Utility.ExecuteAfterColdStartDelay(_environment, () => LogWorkerMetadata(res.WorkerMetadata));
 
             _workerConfig.Description.DefaultRuntimeVersion = _workerConfig.Description.DefaultRuntimeVersion ?? res?.WorkerMetadata?.RuntimeVersion;
             _workerConfig.Description.DefaultRuntimeName = _workerConfig.Description.DefaultRuntimeName ?? res?.WorkerMetadata?.RuntimeName;
@@ -398,10 +400,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _initMessage = initEvent.Message.WorkerInitResponse;
             _workerChannelLogger.LogDebug("Worker capabilities: {capabilities}", _initMessage.Capabilities);
 
-            // In placeholder scenario, the capabilities and worker metadata will not be available
-            // until specialization is done (env reload request). So these can be removed from worker init response code path.
-            // to do to track this: https://github.com/Azure/azure-functions-host/issues/9019
-            LogWorkerMetadata(_initMessage.WorkerMetadata);
+            _initMessage.WorkerMetadata?.UpdateWorkerMetadata(_workerConfig);
+
+            Utility.ExecuteAfterColdStartDelay(_environment, () => LogWorkerMetadata(_initMessage.WorkerMetadata));
 
             _workerConfig.Description.DefaultRuntimeVersion = _workerConfig.Description.DefaultRuntimeVersion ?? _initMessage?.WorkerMetadata?.RuntimeVersion;
             _workerConfig.Description.DefaultRuntimeName = _workerConfig.Description.DefaultRuntimeName ?? _initMessage?.WorkerMetadata?.RuntimeName;
@@ -436,7 +437,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 return;
             }
 
-            workerMetadata.UpdateWorkerMetadata(_workerConfig);
             var workerMetadataString = workerMetadata.ToString();
             _metricsLogger.LogEvent(MetricEventNames.WorkerMetadata, functionName: null, Sanitizer.Sanitize(workerMetadataString));
             _workerChannelLogger.LogDebug("Worker metadata: {workerMetadata}", workerMetadataString);
