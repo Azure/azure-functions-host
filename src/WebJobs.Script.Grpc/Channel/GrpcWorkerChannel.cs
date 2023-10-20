@@ -1477,7 +1477,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
             catch
             {
-                // Don't allow background execptions to escape
+                // Don't allow background exceptions to escape
                 // E.g. when a rpc channel is shutting down we can process exceptions
             }
             try
@@ -1508,13 +1508,13 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             if (_environment.IsApplicationInsightsAgentEnabled())
             {
                 attributes[ScriptConstants.LogPropertyProcessIdKey] = Convert.ToString(_rpcWorkerProcess.Id);
-                if (context.FunctionMetadata.Properties.ContainsKey(ScriptConstants.LogPropertyHostInstanceIdKey))
+                if (context.FunctionMetadata.Properties.TryGetValue(ScriptConstants.LogPropertyHostInstanceIdKey, out var hostInstanceIdValue))
                 {
-                    attributes[ScriptConstants.LogPropertyHostInstanceIdKey] = Convert.ToString(context.FunctionMetadata.Properties[ScriptConstants.LogPropertyHostInstanceIdKey]);
+                    attributes[ScriptConstants.LogPropertyHostInstanceIdKey] = Convert.ToString(hostInstanceIdValue);
                 }
-                if (context.FunctionMetadata.Properties.ContainsKey(LogConstants.CategoryNameKey))
+                if (context.FunctionMetadata.Properties.TryGetValue(LogConstants.CategoryNameKey, out var categoryNameValue))
                 {
-                    attributes[LogConstants.CategoryNameKey] = Convert.ToString(context.FunctionMetadata.Properties[LogConstants.CategoryNameKey]);
+                    attributes[LogConstants.CategoryNameKey] = Convert.ToString(categoryNameValue);
                 }
                 string sessionid = Activity.Current?.GetBaggageItem(ScriptConstants.LiveLogsSessionAIKey);
                 if (!string.IsNullOrEmpty(sessionid))
