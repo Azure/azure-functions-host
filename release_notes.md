@@ -3,7 +3,7 @@
 <!-- Please add your release notes in the following format:
 - My change description (#PR)
 -->
-- Update Python Worker Version to [4.18.0](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.18.0)
+- Update Python Worker Version to [4.20.0](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.20.0)
 - Update Java Worker Version to [2.13.0](https://github.com/Azure/azure-functions-java-worker/releases/tag/2.13.0)
 - Update WebJobsScriptHostService to remove hardcoded sleep during application shut down (#9520)
 - Update PowerShell 7.2 Worker Version to [4.0.2974](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.2974)
@@ -19,3 +19,6 @@
 - Add support for W3C Trace Context propagation when using Custom Handlers with `enableForwardingHttpRequest` enabled (#9576)
 - Limit dotnet-isolated specialization to 64 bit host process (#9548)
 - Sending command line arguments to language workers with `functions-` prefix to prevent conflicts (#9514)
+- Adding code to simulate placeholder and specilization locally (#9618)
+- Update PowerShell Worker 7.2 to 4.0.3070 [Release Note](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.3070)
+- Update PowerShell Worker 7.4 to 4.0.3030 [Release Note](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.3030)

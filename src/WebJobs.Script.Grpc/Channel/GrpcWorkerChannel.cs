@@ -374,12 +374,18 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             ApplyCapabilities(res.Capabilities, res.CapabilitiesUpdateStrategy.ToGrpcCapabilitiesUpdateStrategy());
 
-            if (res.Result.IsFailure(out Exception reloadEnvironmentVariablesException))
+            if (res.Result.IsFailure(IsUserCodeExceptionCapabilityEnabled(), out var reloadEnvironmentVariablesException))
             {
-                _workerChannelLogger.LogError(reloadEnvironmentVariablesException, "Failed to reload environment variables");
-                _reloadTask.SetException(reloadEnvironmentVariablesException);
+                if (res.Result.Exception is not null && reloadEnvironmentVariablesException is not null)
+                {
+                    _workerChannelLogger.LogWarning(reloadEnvironmentVariablesException, reloadEnvironmentVariablesException.Message);
+                }
+                _reloadTask.SetResult(false);
             }
-            _reloadTask.SetResult(true);
+            else
+            {
+                _reloadTask.SetResult(true);
+            }
             latencyEvent.Dispose();
         }
 
@@ -412,6 +418,15 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             ApplyCapabilities(_initMessage.Capabilities);
 
             _workerInitTask.TrySetResult(true);
+        }
+
+        private bool IsUserCodeExceptionCapabilityEnabled()
+        {
+            var enableUserCodeExceptionCapability = string.Equals(
+                _workerCapabilities.GetCapabilityState(RpcWorkerConstants.EnableUserCodeException), bool.TrueString,
+                StringComparison.OrdinalIgnoreCase);
+
+            return enableUserCodeExceptionCapability;
         }
 
         private void LogWorkerMetadata(WorkerMetadata workerMetadata)
@@ -546,7 +561,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             return functionLoadRequestCollection;
         }
 
-        public Task SendFunctionEnvironmentReloadRequest()
+        public Task<bool> SendFunctionEnvironmentReloadRequest()
         {
             _functionsIndexingTask = new TaskCompletionSource<List<RawFunctionMetadata>>(TaskCreationOptions.RunContinuationsAsynchronously);
             _functionMetadataRequestSent = false;
@@ -1462,7 +1477,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
             catch
             {
-                // Don't allow background execptions to escape
+                // Don't allow background exceptions to escape
                 // E.g. when a rpc channel is shutting down we can process exceptions
             }
             try
@@ -1493,13 +1508,13 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             if (_environment.IsApplicationInsightsAgentEnabled())
             {
                 attributes[ScriptConstants.LogPropertyProcessIdKey] = Convert.ToString(_rpcWorkerProcess.Id);
-                if (context.FunctionMetadata.Properties.ContainsKey(ScriptConstants.LogPropertyHostInstanceIdKey))
+                if (context.FunctionMetadata.Properties.TryGetValue(ScriptConstants.LogPropertyHostInstanceIdKey, out var hostInstanceIdValue))
                 {
-                    attributes[ScriptConstants.LogPropertyHostInstanceIdKey] = Convert.ToString(context.FunctionMetadata.Properties[ScriptConstants.LogPropertyHostInstanceIdKey]);
+                    attributes[ScriptConstants.LogPropertyHostInstanceIdKey] = Convert.ToString(hostInstanceIdValue);
                 }
-                if (context.FunctionMetadata.Properties.ContainsKey(LogConstants.CategoryNameKey))
+                if (context.FunctionMetadata.Properties.TryGetValue(LogConstants.CategoryNameKey, out var categoryNameValue))
                 {
-                    attributes[LogConstants.CategoryNameKey] = Convert.ToString(context.FunctionMetadata.Properties[LogConstants.CategoryNameKey]);
+                    attributes[LogConstants.CategoryNameKey] = Convert.ToString(categoryNameValue);
                 }
                 string sessionid = Activity.Current?.GetBaggageItem(ScriptConstants.LiveLogsSessionAIKey);
                 if (!string.IsNullOrEmpty(sessionid))

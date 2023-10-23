@@ -19,5 +19,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public void AddFunctionExecutionActivity(string functionName, string invocationId, int concurrency, string executionStage, bool success, long executionTimeSpan, string executionId, DateTime eventTimeStamp, DateTime functionStartTime)
         {
         }
+
+        public void OnFunctionStarted(string functionName, string invocationId)
+        {
+        }
+
+        public void OnFunctionCompleted(string functionName, string invocationId)
+        {
+        }
     }
 }

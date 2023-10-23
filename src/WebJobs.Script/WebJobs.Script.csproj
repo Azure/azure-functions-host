@@ -47,7 +47,7 @@
     <PackageReference Include="Microsoft.ApplicationInsights.DependencyCollector" Version="2.21.0" />
     <PackageReference Include="Microsoft.ApplicationInsights.WindowsServer" Version="2.21.0" />
     <PackageReference Include="Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel" Version="2.21.0" />
-    <PackageReference Include="Microsoft.Azure.Functions.DotNetIsolatedNativeHost" Version="1.0.0" />
+    <PackageReference Include="Microsoft.Azure.Functions.DotNetIsolatedNativeHost" Version="1.0.2" />
     <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.39" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Host.Storage" Version="5.0.0-beta.2-11957" />
     <PackageReference Include="Microsoft.Extensions.Azure" Version="1.7.0" />
@@ -60,8 +60,8 @@
     <PackageReference Include="Microsoft.Azure.Functions.JavaWorker" Version="2.13.0" />
     <PackageReference Include="Microsoft.Azure.Functions.NodeJsWorker" Version="3.8.1" />
     <PackageReference Include="Microsoft.Azure.Functions.PowerShellWorker.PS7.0" Version="4.0.2973" />
-    <PackageReference Include="Microsoft.Azure.Functions.PowerShellWorker.PS7.2" Version="4.0.2974" />
-    <PackageReference Include="Microsoft.Azure.Functions.PowerShellWorker.PS7.4" Version="4.0.2975" />
+    <PackageReference Include="Microsoft.Azure.Functions.PowerShellWorker.PS7.2" Version="4.0.3070" />
+    <PackageReference Include="Microsoft.Azure.Functions.PowerShellWorker.PS7.4" Version="4.0.3030" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions" Version="5.0.0-beta.2-10879" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Http" Version="3.2.0" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Timers.Storage" Version="1.0.0-beta.1" />

@@ -33,6 +33,12 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <WarningsAsErrors />
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DebugPlaceholder|AnyCPU'">
+    <DefineConstants>$(DefineConstants);PLACEHOLDERSIMULATION</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleasePlaceholder|AnyCPU'">
+    <DefineConstants>$(DefineConstants);PLACEHOLDERSIMULATION</DefineConstants>
+  </PropertyGroup>
   <ItemGroup>
     <Content Remove="Resources\Functions\host.json" />
     <Content Remove="Resources\Functions\proxies.json" />
@@ -72,7 +78,7 @@
     <PackageReference Include="Microsoft.AspNet.WebApi.Client" Version="5.2.8" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="6.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="6.0.0" />
-    <PackageReference Include="Microsoft.Azure.AppService.Middleware.Functions" Version="1.5.3" />
+    <PackageReference Include="Microsoft.Azure.AppService.Middleware.Functions" Version="1.5.4" />
     <PackageReference Include="Microsoft.Azure.AppService.Proxy.Client" Version="2.2.20220831.41" />
     <PackageReference Include="Microsoft.Azure.Cosmos.Table" Version="1.0.8" />
     <PackageReference Include="Microsoft.Azure.Storage.File" Version="11.1.7" />
@@ -145,4 +151,7 @@
     </CreateItem>
   </Target>
 
+  <ItemGroup Condition="'$(Configuration)' != 'DebugPlaceholder' And '$(Configuration)' != 'ReleasePlaceholder'">
+    <Compile Remove="Middleware\SpecializationSimulatorMiddleware.cs" />
+  </ItemGroup>
 </Project>
