@@ -19,6 +19,7 @@
 - Limit dotnet-isolated specialization to 64 bit host process (#9548)
 - Sending command line arguments to language workers with `functions-` prefix to prevent conflicts (#9514)
 - Adding code to simulate placeholder and specilization locally (#9618)
+- Delaying execution of `LogWorkerMetadata` method until after coldstart is done. (#9627)
 - Update PowerShell Worker 7.2 to 4.0.3070 [Release Note](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.3070)
 - Update PowerShell Worker 7.4 to 4.0.3030 [Release Note](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.3030)
 - Update Node.js Worker Version to [3.9.0](https://github.com/Azure/azure-functions-nodejs-worker/releases/tag/v3.9.0)
