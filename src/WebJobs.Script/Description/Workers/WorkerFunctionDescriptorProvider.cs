@@ -36,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _loggerFactory = loggerFactory;
             _applicationLifetime = applicationLifetime;
             _workerInitializationTimeout = workerInitializationTimeout;
-            _expressionRegex = new Regex(@"{(.*?)\}", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+            _expressionRegex = RegularExpressions.GetFunctionBindingAttributeExpressionRegex();
         }
 
         public override async Task<(bool Success, FunctionDescriptor Descriptor)> TryCreate(FunctionMetadata functionMetadata)
