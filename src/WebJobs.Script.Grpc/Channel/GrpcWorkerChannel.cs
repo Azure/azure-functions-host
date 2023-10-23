@@ -165,11 +165,23 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         private void HandleActiveHostChange(object sender, ActiveHostChangedEventArgs e)
         {
+            if (e.NewHost is null)
+            {
+                return;
+            }
+
             LoadScriptJobHostOptions();
         }
 
         public void LoadScriptJobHostOptions()
         {
+            if (_scriptHostManager?.State != ScriptHostState.Initialized
+                || _scriptHostManager?.State != ScriptHostState.Running)
+            {
+                // Host is not initialized yet, so we can't load the ScriptJobHostOptions
+                return;
+            }
+
             if ((_scriptHostManager as IServiceProvider)?.GetService(typeof(IOptions<ScriptJobHostOptions>)) is IOptions<ScriptJobHostOptions> scriptHostOptions)
             {
                 _scriptHostOptions = scriptHostOptions;
@@ -1417,6 +1429,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     }
 
                     (_rpcWorkerProcess as IDisposable)?.Dispose();
+                    // (_scriptHostManager as IDisposable)?.Dispose();
 
                     if (_eventSubscriptions is not null)
                     {
