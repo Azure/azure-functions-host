@@ -175,8 +175,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         public void LoadScriptJobHostOptions()
         {
-            if (_scriptHostManager?.State != ScriptHostState.Initialized
-                || _scriptHostManager?.State != ScriptHostState.Running)
+            if (_scriptHostManager?.State == ScriptHostState.Initialized
+                | _scriptHostManager?.State != ScriptHostState.Running)
             {
                 // Host is not initialized yet, so we can't load the ScriptJobHostOptions
                 return;
