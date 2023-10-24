@@ -114,6 +114,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             });
 
             _mockScriptHostManager.As<IServiceProvider>().Setup(p => p.GetService(typeof(IOptions<ScriptJobHostOptions>))).Returns(jobHostOptions);
+            _mockScriptHostManager.Setup(p => p.State).Returns(ScriptHostState.Running);
         }
 
         private Task CreateDefaultWorkerChannel(bool autoStart = true, IDictionary<string, string> capabilities = null)
