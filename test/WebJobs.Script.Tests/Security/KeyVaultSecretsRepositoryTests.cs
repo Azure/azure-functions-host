@@ -4,10 +4,14 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Azure;
 using Azure.Security.KeyVault.Secrets;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Extensions.Logging;
+using Moq;
+using WebJobs.Script.Tests;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -45,6 +49,50 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
+        [MemberData(nameof(HostSecretsDataProvider.TestCases), MemberType = typeof(HostSecretsDataProvider))]
+        public async Task ReadHostKeys(List<KeyVaultSecret> keyVaultSecrets, HostSecrets expectedHostSecrets)
+        {
+            var mockClient = new Mock<SecretClient>(MockBehavior.Strict);
+            List<SecretProperties> properties = keyVaultSecrets.Select(kvSecret => kvSecret.Properties).ToList();
+            mockClient.Setup(client => client.GetPropertiesOfSecretsAsync(It.IsAny<CancellationToken>())).Returns(GetPageableSecretProperties(properties));
+
+            foreach (var keyVaultSecret in keyVaultSecrets)
+            {
+                mockClient.Setup(client => client.GetSecretAsync(keyVaultSecret.Name, It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                          .ReturnsAsync(Response.FromValue(keyVaultSecret, Mock.Of<Response>()));
+            }
+
+            var loggerFactory = MockNullLoggerFactory.CreateLoggerFactory();
+            using var secretSentinelDirectory = new TempDirectory();
+            var repository = new KeyVaultSecretsRepository(mockClient.Object, secretSentinelDirectory.Path, loggerFactory.CreateLogger<KeyVaultSecretsRepository>(), new TestEnvironment());
+            var secrets = await repository.ReadAsync(ScriptSecretsType.Host, string.Empty);
+            var hostSecrets = secrets as HostSecrets;
+
+            Assert.True(expectedHostSecrets.MasterKey.Name == hostSecrets?.MasterKey.Name);
+            Assert.True(expectedHostSecrets.MasterKey.Value == hostSecrets?.MasterKey.Value);
+
+            Assert.Equal(expectedHostSecrets.SystemKeys.Count, hostSecrets?.SystemKeys.Count);
+            foreach (var expectedKey in expectedHostSecrets.SystemKeys)
+            {
+                var keys = hostSecrets?.SystemKeys.Where(k => k.Name == expectedKey.Name);
+                Assert.Single(keys);
+                var key = keys.First();
+                Assert.True(expectedKey.Name == key.Name);
+                Assert.True(expectedKey.Value == key.Value);
+            }
+
+            Assert.Equal(expectedHostSecrets.FunctionKeys.Count, hostSecrets?.FunctionKeys.Count);
+            foreach (var expectedKey in expectedHostSecrets.SystemKeys)
+            {
+                var keys = hostSecrets?.FunctionKeys.Where(k => k.Name == expectedKey.Name);
+                Assert.Single(keys);
+                var key = keys.First();
+                Assert.True(expectedKey.Name == key.Name);
+                Assert.True(expectedKey.Value == key.Value);
+            }
+        }
+
+        [Theory]
         [InlineData("Func-test", "te%st-te^st-")]
         [InlineData("Func--test-", "te--%st-te^s-t")]
         public void FunctionKeys(string functionName, string secretName)
@@ -73,6 +121,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Assert.Equal(matchingNames.Count(), 1);
                 Assert.Equal(matchingNames.First().Name, name);
             }
+        }
+
+        private AsyncPageable<SecretProperties> GetPageableSecretProperties(IReadOnlyList<SecretProperties> secretProperties)
+        {
+            return AsyncPageable<SecretProperties>.FromPages(new[] { Page<SecretProperties>.FromValues(secretProperties, default, null) });
         }
 
         private AsyncPageable<SecretProperties> GetSecretProperties()
@@ -108,6 +161,47 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     yield return new object[] { (Func<SecretProperties, bool>)(x => x.Name.StartsWith("S")), new List<string>() { "Seattle", "SanDiego" } };
                     yield return new object[] { (Func<SecretProperties, bool>)(x => x.Name.EndsWith("o")), new List<string>() { "Chicago", "SanDiego" } };
+                }
+            }
+        }
+
+        public class HostSecretsDataProvider
+        {
+            public static IEnumerable<object[]> TestCases
+            {
+                get
+                {
+                    var secrets = new List<KeyVaultSecret>()
+                    {
+                        SecretModelFactory.KeyVaultSecret(new SecretProperties("host--masterKey--master"), "test"),
+                        SecretModelFactory.KeyVaultSecret(new SecretProperties("host--systemKey--test"), "test"),
+                        SecretModelFactory.KeyVaultSecret(new SecretProperties("host--functionKey--test"), "test")
+                    };
+
+                    HostSecrets hostSecrets = new HostSecrets()
+                    {
+                        MasterKey = new Key("master", "test"),
+                        FunctionKeys = new List<Key>() { new Key("test", "test") },
+                        SystemKeys = new List<Key>() { new Key("test", "test") }
+                    };
+
+                    yield return new object[] { secrets, hostSecrets };
+
+                    secrets = new List<KeyVaultSecret>()
+                    {
+                        SecretModelFactory.KeyVaultSecret(new SecretProperties("host--masterkey--master"), "test"),
+                        SecretModelFactory.KeyVaultSecret(new SecretProperties("host--systemkey--test"), "test"),
+                        SecretModelFactory.KeyVaultSecret(new SecretProperties("host--functionkey--test"), "test"),
+                    };
+
+                    hostSecrets = new HostSecrets()
+                    {
+                        MasterKey = new Key("master", "test"),
+                        FunctionKeys = new List<Key>() { new Key("test", "test") },
+                        SystemKeys = new List<Key>() { new Key("test", "test") }
+                    };
+
+                    yield return new object[] { secrets, hostSecrets };
                 }
             }
         }

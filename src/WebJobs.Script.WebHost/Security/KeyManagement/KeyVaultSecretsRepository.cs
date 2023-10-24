@@ -50,6 +50,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
         }
 
+        // For testing
+        internal KeyVaultSecretsRepository(SecretClient secretClient, string secretsSentinelFilePath, ILogger logger, IEnvironment environment) : base(secretsSentinelFilePath, logger, environment)
+        {
+            _secretClient = new Lazy<SecretClient>(() => secretClient);
+        }
+
         public override bool IsEncryptionSupported
         {
             get
