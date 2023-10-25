@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
                 { ScriptConstants.ErrorCodeKey, errorCode }
             };
 
-            logger.Log(level, eventId, stateDict, exception, (state, ex) => message);
+            logger.Log(level, new EventId(0, $"DiagnosticEvent-{errorCode}"), stateDict, exception, (state, ex) => message);
         }
 
         public static void LogDiagnosticEventInformation(this ILogger logger, string errorCode, string message, string helpLink)
