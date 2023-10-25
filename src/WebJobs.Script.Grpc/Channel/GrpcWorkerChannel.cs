@@ -29,6 +29,7 @@ using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Yarp.ReverseProxy.Forwarder;
@@ -148,7 +149,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             _scriptHostManager.ActiveHostChanged += HandleActiveHostChange;
 
-            LoadScriptJobHostOptions();
+            LoadScriptJobHostOptions(_scriptHostManager as IServiceProvider);
         }
 
         private bool IsHttpProxyingWorker => _httpProxyEndpoint is not null;
@@ -170,25 +171,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 return;
             }
 
-            LoadScriptJobHostOptions();
+            LoadScriptJobHostOptions(e.NewHost.Services);
         }
 
-        public void LoadScriptJobHostOptions()
+        public void LoadScriptJobHostOptions(IServiceProvider provider)
         {
-            if (_scriptHostManager?.State == ScriptHostState.Initialized
-                | _scriptHostManager?.State != ScriptHostState.Running)
-            {
-                // Host is not initialized yet, so we can't load the ScriptJobHostOptions
-                return;
-            }
-
-            if ((_scriptHostManager as IServiceProvider)?.GetService(typeof(IOptions<ScriptJobHostOptions>)) is IOptions<ScriptJobHostOptions> scriptHostOptions)
+            if (provider?.GetService(typeof(IOptions<ScriptJobHostOptions>)) is IOptions<ScriptJobHostOptions> scriptHostOptions)
             {
                 _scriptHostOptions = scriptHostOptions;
-            }
-            else
-            {
-                throw new InvalidOperationException("ScriptHostManager is not a service provider, could not load ScriptJobHostOptions.");
             }
         }
 
