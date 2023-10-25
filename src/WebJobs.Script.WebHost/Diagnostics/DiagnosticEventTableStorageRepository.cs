@@ -124,10 +124,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 return;
             }
 
-            table = table ?? GetDiagnosticEventsTable();
-
             try
             {
+                table = table ?? GetDiagnosticEventsTable();
+
+                if (table == null)
+                {
+                    _logger.LogError("Unable to get table reference. Aborting write operation");
+                    StopTimer();
+                    return;
+                }
+
                 bool tableCreated = await TableStorageHelpers.CreateIfNotExistsAsync(table, _tableCreationRetries);
                 if (tableCreated)
                 {
@@ -136,11 +143,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Unable to create table '{table.Name}' after {_tableCreationRetries} retries. Aborting write operation {ex}");
-
+                _logger.LogError(ex, $"Unable to get table reference or create table. Aborting write operation.");
+                return;
+            }
+            finally
+            {
                 // Clearing the memory cache to avoid memory build up.
                 _events.Clear();
-                return;
             }
 
             // Assigning a new empty directory to reset the event count in the new duration window.
@@ -174,6 +183,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public void WriteDiagnosticEvent(DateTime timestamp, string errorCode, LogLevel level, string message, string helpLink, Exception exception)
         {
+            if (TableClient == null)
+            {
+                return;
+            }
+
             if (string.IsNullOrEmpty(HostId))
             {
                 _logger.LogError("Unable to write diagnostic events. Host id is set to null.");
@@ -198,6 +212,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     _events[errorCode].HitCount++;
                 }
             }
+        }
+
+        internal void StopTimer()
+        {
+            _logger.LogInformation("Stopping the flush logs timer");
+            _flushLogsTimer?.Change(Timeout.Infinite, Timeout.Infinite);
         }
 
         protected virtual void Dispose(bool disposing)
