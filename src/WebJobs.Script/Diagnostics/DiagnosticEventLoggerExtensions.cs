@@ -25,14 +25,12 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
 
         public static void LogDiagnosticEventInformation(this ILogger logger, string errorCode, string message, string helpLink)
         {
-            int eventId = 0; // Dummy value - diagnostic events does not log an eventId.
-            logger.LogDiagnosticEvent(LogLevel.Information, eventId, errorCode, message, helpLink, null);
+            logger.LogDiagnosticEvent(LogLevel.Information, 0, errorCode, message, helpLink, null);
         }
 
         public static void LogDiagnosticEventError(this ILogger logger, string errorCode, string message, string helpLink, Exception exception)
         {
-            int eventId = 0; // Dummy value - diagnostic events does not log an eventId.
-            logger.LogDiagnosticEvent(LogLevel.Error, eventId, errorCode, message, helpLink, exception);
+            logger.LogDiagnosticEvent(LogLevel.Error, 0, errorCode, message, helpLink, exception);
         }
     }
 }
