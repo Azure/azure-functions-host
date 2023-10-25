@@ -116,6 +116,42 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
+        [MemberData(nameof(FunctionSecretsDataProvider.TestCases), MemberType = typeof(FunctionSecretsDataProvider))]
+        public async Task ReadFunctionKeys(string functionName, List<KeyVaultSecret> keyVaultSecrets, FunctionSecrets expectedFunctionSecrets)
+        {
+            using var secretSentinelDirectory = new TempDirectory();
+            Mock<SecretClient> mockClient = ConfigureSecretClientMock(keyVaultSecrets);
+            var loggerFactory = MockNullLoggerFactory.CreateLoggerFactory();
+            var repository = new KeyVaultSecretsRepository(mockClient.Object, secretSentinelDirectory.Path, loggerFactory.CreateLogger<KeyVaultSecretsRepository>(), new TestEnvironment());
+
+            var secrets = await repository.ReadAsync(ScriptSecretsType.Function, functionName);
+            var functionSecrets = secrets as FunctionSecrets;
+
+            foreach (var secret in expectedFunctionSecrets.Keys)
+            {
+                var keys = functionSecrets?.Keys?.Where(k => k.Name == secret.Name);
+                Assert.Single(keys);
+                var key = keys.First();
+                Assert.Equal(secret.Name, key.Name);
+                Assert.Equal(secret.Value, key.Value);
+            }
+        }
+
+        [Theory]
+        [MemberData(nameof(FunctionSecretsDataProvider.TestCases), MemberType = typeof(FunctionSecretsDataProvider))]
+        public async Task WriteFunctionKeys(string functionName, List<KeyVaultSecret> keyVaultSecrets, FunctionSecrets functionSecrets)
+        {
+            Mock<SecretClient> mockClient = ConfigureSecretClientMock(keyVaultSecrets);
+            var loggerFactory = MockNullLoggerFactory.CreateLoggerFactory();
+            using var secretSentinelDirectory = new TempDirectory();
+            var repository = new KeyVaultSecretsRepository(mockClient.Object, secretSentinelDirectory.Path, loggerFactory.CreateLogger<KeyVaultSecretsRepository>(), new TestEnvironment());
+
+            await repository.WriteAsync(ScriptSecretsType.Function, functionName, functionSecrets);
+            mockClient.Verify(client => client.StartDeleteSecretAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+            mockClient.Verify(client => client.SetSecretAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Exactly(functionSecrets.Keys.Count));
+        }
+
+        [Theory]
         [InlineData("Func-test", "te%st-te^st-")]
         [InlineData("Func--test-", "te--%st-te^s-t")]
         public void FunctionKeys(string functionName, string secretName)
@@ -256,6 +292,53 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     };
 
                     yield return new object[] { secrets, hostSecrets };
+                }
+            }
+        }
+
+        public class FunctionSecretsDataProvider
+        {
+            public static IEnumerable<object[]> TestCases
+            {
+                get
+                {
+                    var functionName = "Function1";
+
+                    var keyVaultSecrets = new List<KeyVaultSecret>()
+                    {
+                        SecretModelFactory.KeyVaultSecret(new SecretProperties($"function--{functionName}--test"), "test"),
+                        SecretModelFactory.KeyVaultSecret(new SecretProperties($"function--{functionName}--{KeyVaultSecretsRepository.Normalize("te--%st-te^s-t")}"), "test"),
+                    };
+
+                    var functionSecrets = new FunctionSecrets()
+                    {
+                        Keys = new List<Key>()
+                        {
+                            new Key("test", "test"),
+                            new Key("te--%st-te^s-t", "test")
+                        }
+                    };
+
+                    yield return new object[] { functionName, keyVaultSecrets, functionSecrets };
+
+                    functionName = "GreatFuNcTiOn";
+
+                    keyVaultSecrets = new List<KeyVaultSecret>()
+                    {
+                        SecretModelFactory.KeyVaultSecret(new SecretProperties($"fUnction--{functionName}--test"), "test"),
+                        SecretModelFactory.KeyVaultSecret(new SecretProperties($"Function--{functionName.ToUpperInvariant()}--{KeyVaultSecretsRepository.Normalize("te--%st-te^s-t")}"), "test"),
+                    };
+
+                    functionSecrets = new FunctionSecrets()
+                    {
+                        Keys = new List<Key>()
+                        {
+                            new Key("test", "test"),
+                            new Key("te--%st-te^s-t", "test")
+                        }
+                    };
+
+                    yield return new object[] { functionName, keyVaultSecrets, functionSecrets };
                 }
             }
         }
