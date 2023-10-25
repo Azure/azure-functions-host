@@ -52,24 +52,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [MemberData(nameof(HostSecretsDataProvider.TestCases), MemberType = typeof(HostSecretsDataProvider))]
         public async Task ReadHostKeys(List<KeyVaultSecret> keyVaultSecrets, HostSecrets expectedHostSecrets)
         {
-            var mockClient = new Mock<SecretClient>(MockBehavior.Strict);
-            List<SecretProperties> properties = keyVaultSecrets.Select(kvSecret => kvSecret.Properties).ToList();
-            mockClient.Setup(client => client.GetPropertiesOfSecretsAsync(It.IsAny<CancellationToken>())).Returns(GetPageableSecretProperties(properties));
-
-            foreach (var keyVaultSecret in keyVaultSecrets)
-            {
-                mockClient.Setup(client => client.GetSecretAsync(keyVaultSecret.Name, It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                          .ReturnsAsync(Response.FromValue(keyVaultSecret, Mock.Of<Response>()));
-            }
-
-            var loggerFactory = MockNullLoggerFactory.CreateLoggerFactory();
             using var secretSentinelDirectory = new TempDirectory();
+            Mock<SecretClient> mockClient = ConfigureSecretClientMock(keyVaultSecrets);
+            var loggerFactory = MockNullLoggerFactory.CreateLoggerFactory();
             var repository = new KeyVaultSecretsRepository(mockClient.Object, secretSentinelDirectory.Path, loggerFactory.CreateLogger<KeyVaultSecretsRepository>(), new TestEnvironment());
+
             var secrets = await repository.ReadAsync(ScriptSecretsType.Host, string.Empty);
             var hostSecrets = secrets as HostSecrets;
 
-            Assert.True(expectedHostSecrets.MasterKey.Name == hostSecrets?.MasterKey.Name);
-            Assert.True(expectedHostSecrets.MasterKey.Value == hostSecrets?.MasterKey.Value);
+            Assert.Equal(expectedHostSecrets.MasterKey.Name, hostSecrets?.MasterKey.Name);
+            Assert.Equal(expectedHostSecrets.MasterKey.Value, hostSecrets?.MasterKey.Value);
 
             Assert.Equal(expectedHostSecrets.SystemKeys.Count, hostSecrets?.SystemKeys.Count);
             foreach (var expectedKey in expectedHostSecrets.SystemKeys)
@@ -77,8 +69,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var keys = hostSecrets?.SystemKeys.Where(k => k.Name == expectedKey.Name);
                 Assert.Single(keys);
                 var key = keys.First();
-                Assert.True(expectedKey.Name == key.Name);
-                Assert.True(expectedKey.Value == key.Value);
+                Assert.Equal(expectedKey.Name, key.Name);
+                Assert.Equal(expectedKey.Value, key.Value);
             }
 
             Assert.Equal(expectedHostSecrets.FunctionKeys.Count, hostSecrets?.FunctionKeys.Count);
@@ -87,9 +79,40 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var keys = hostSecrets?.FunctionKeys.Where(k => k.Name == expectedKey.Name);
                 Assert.Single(keys);
                 var key = keys.First();
-                Assert.True(expectedKey.Name == key.Name);
-                Assert.True(expectedKey.Value == key.Value);
+                Assert.Equal(expectedKey.Name, key.Name);
+                Assert.Equal(expectedKey.Value, key.Value);
             }
+        }
+
+        [Theory]
+        [MemberData(nameof(HostSecretsDataProvider.TestCases), MemberType = typeof(HostSecretsDataProvider))]
+        public async Task WriteHostKeys(List<KeyVaultSecret> keyVaultSecrets, HostSecrets hostSecrets)
+        {
+            Mock<SecretClient> mockClient = ConfigureSecretClientMock(keyVaultSecrets);
+            var loggerFactory = MockNullLoggerFactory.CreateLoggerFactory();
+            using var secretSentinelDirectory = new TempDirectory();
+            var repository = new KeyVaultSecretsRepository(mockClient.Object, secretSentinelDirectory.Path, loggerFactory.CreateLogger<KeyVaultSecretsRepository>(), new TestEnvironment());
+
+            await repository.WriteAsync(ScriptSecretsType.Host, string.Empty, hostSecrets);
+            mockClient.Verify(client => client.StartDeleteSecretAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+
+            int numberOfSecrets = 0;
+            if (hostSecrets.MasterKey != null)
+            {
+                numberOfSecrets++;
+            }
+
+            if (hostSecrets.SystemKeys != null)
+            {
+                numberOfSecrets += hostSecrets.SystemKeys.Count;
+            }
+
+            if (hostSecrets.FunctionKeys != null)
+            {
+                numberOfSecrets += hostSecrets.FunctionKeys.Count;
+            }
+
+            mockClient.Verify(client => client.SetSecretAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Exactly(numberOfSecrets));
         }
 
         [Theory]
@@ -123,11 +146,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        private AsyncPageable<SecretProperties> GetPageableSecretProperties(IReadOnlyList<SecretProperties> secretProperties)
-        {
-            return AsyncPageable<SecretProperties>.FromPages(new[] { Page<SecretProperties>.FromValues(secretProperties, default, null) });
-        }
-
         private AsyncPageable<SecretProperties> GetSecretProperties()
         {
             // Create a list of SecretProperties
@@ -151,6 +169,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var page2 = Page<SecretProperties>.FromValues(pageTwoValues, default, null);
 
             return AsyncPageable<SecretProperties>.FromPages(new[] { page1, page2 });
+        }
+
+        private AsyncPageable<SecretProperties> GetPageableSecretProperties(IReadOnlyList<SecretProperties> secretProperties)
+        {
+            return AsyncPageable<SecretProperties>.FromPages(new[] { Page<SecretProperties>.FromValues(secretProperties, default, null) });
+        }
+
+        private Mock<SecretClient> ConfigureSecretClientMock(List<KeyVaultSecret> keyVaultSecrets)
+        {
+            var mockClient = new Mock<SecretClient>(MockBehavior.Loose);
+            List<SecretProperties> properties = keyVaultSecrets.Select(kvSecret => kvSecret.Properties).ToList();
+            mockClient.Setup(client => client.GetPropertiesOfSecretsAsync(It.IsAny<CancellationToken>())).Returns(GetPageableSecretProperties(properties));
+
+            foreach (var keyVaultSecret in keyVaultSecrets)
+            {
+                mockClient.Setup(client => client.GetSecretAsync(keyVaultSecret.Name, It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                          .ReturnsAsync(Response.FromValue(keyVaultSecret, Mock.Of<Response>()));
+            }
+
+            return mockClient;
         }
 
         public class FindSecretsDataProvider
@@ -192,6 +230,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                         SecretModelFactory.KeyVaultSecret(new SecretProperties("host--masterkey--master"), "test"),
                         SecretModelFactory.KeyVaultSecret(new SecretProperties("host--systemkey--test"), "test"),
                         SecretModelFactory.KeyVaultSecret(new SecretProperties("host--functionkey--test"), "test"),
+                    };
+
+                    hostSecrets = new HostSecrets()
+                    {
+                        MasterKey = new Key("master", "test"),
+                        FunctionKeys = new List<Key>() { new Key("test", "test") },
+                        SystemKeys = new List<Key>() { new Key("test", "test") }
+                    };
+
+                    yield return new object[] { secrets, hostSecrets };
+
+                    secrets = new List<KeyVaultSecret>()
+                    {
+                        SecretModelFactory.KeyVaultSecret(new SecretProperties("hosT--masterkEy--master"), "test"),
+                        SecretModelFactory.KeyVaultSecret(new SecretProperties("hoSt--sysTemkey--test"), "test"),
+                        SecretModelFactory.KeyVaultSecret(new SecretProperties("Host--functIonkey--test"), "test"),
                     };
 
                     hostSecrets = new HostSecrets()
