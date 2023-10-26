@@ -1013,9 +1013,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 Assert.True(backupCount >= ScriptConstants.MaximumSecretBackupCount);
 
                 Assert.True(Directory.GetFiles(directory.Path, $"{functionName}.{ScriptConstants.Snapshot}*").Length >= ScriptConstants.MaximumSecretBackupCount);
+
+                // There will be two log entries of the expectedTraceMessage:
+                // 1) Debug level log entry
                 Assert.True(_loggerProvider.GetAllLogMessages().Any(
                     t => t.Level == LogLevel.Debug && t.FormattedMessage.IndexOf(expectedTraceMessage, StringComparison.OrdinalIgnoreCase) > -1),
                     "Expected Trace message not found");
+
+                // 2) Diagnostic event with LogLevel.Error, indicating that the app will not be able to start; this will be shown to the user in the Portal.
+                var expectedDiagnosticEvent = _loggerProvider.GetAllLogMessages().LastOrDefault();
+                Assert.True(expectedDiagnosticEvent != null &&
+                            expectedDiagnosticEvent.Level == LogLevel.Error &&
+                            expectedDiagnosticEvent.FormattedMessage.IndexOf(expectedTraceMessage, StringComparison.OrdinalIgnoreCase) > -1,
+                            "Expected Diagnostic event log entry not found");
+
+                // Validate diagnostic event MS_HelpLink and MS_ErrorCode
+                var myDictionary = (Dictionary<string, object>)expectedDiagnosticEvent.State;
+                Assert.Equal(myDictionary.GetValueOrDefault("MS_HelpLink").ToString(), DiagnosticEventConstants.MaximumSecretBackupCountHelpLink);
+                Assert.Equal(myDictionary.GetValueOrDefault("MS_ErrorCode").ToString(), DiagnosticEventConstants.MaximumSecretBackupCountErrorCode);
             }
         }
 
