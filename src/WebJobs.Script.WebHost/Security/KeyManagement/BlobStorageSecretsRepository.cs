@@ -85,6 +85,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             string secretsContent = null;
             string blobPath = GetSecretsBlobPath(type, functionName);
+            var operation = "read";
             try
             {
                 BlobClient secretBlobClient = Container.GetBlobClient(blobPath);
@@ -97,13 +98,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     }
                 }
             }
-            catch (Exception ex)
+            catch (RequestFailedException rfex) when (rfex.Status == 409)
             {
                 // If the read operation failed because the blob access tier is set to archived, log a diagnostic event.
-                var rfex = ex as RequestFailedException;
-                var operation = "read";
-
-                if (rfex != null && rfex.Status == 409 && rfex.ErrorCode.Equals(BlobArchivedName, StringComparison.OrdinalIgnoreCase))
+                if (rfex.ErrorCode.Equals(BlobArchivedName, StringComparison.OrdinalIgnoreCase))
                 {
                     DiagnosticEventLoggerExtensions.LogDiagnosticEventError(
                         Logger,
@@ -113,6 +111,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         rfex);
                 }
 
+                LogErrorMessage(operation, rfex);
+                throw;
+            }
+            catch (Exception ex)
+            {
                 LogErrorMessage(operation, ex);
                 throw;
             }
