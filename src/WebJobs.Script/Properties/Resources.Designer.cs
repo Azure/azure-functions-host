@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Properties {
     // class via a tool like ResGen or Visual Studio.
     // To add or remove a member, edit your .ResX file then rerun ResGen
     // with the /str option, or rebuild your VS project.
-    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "16.0.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "17.0.0.0")]
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
     internal class Resources {
@@ -192,6 +192,15 @@ namespace Microsoft.Azure.WebJobs.Script.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to WEBSITE_TIME_ZONE and TZ are not currently supported on the Linux Consumption plan..
+        /// </summary>
+        internal static string LinuxConsumptionRemoveTimeZone {
+            get {
+                return ResourceManager.GetString("LinuxConsumptionRemoveTimeZone", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Bundle version matching the {0} was not found.
         /// </summary>
         internal static string MatchingBundleNotFound {
@@ -199,27 +208,27 @@ namespace Microsoft.Azure.WebJobs.Script.Properties {
                 return ResourceManager.GetString("MatchingBundleNotFound", resourceCulture);
             }
         }
-
+        
         /// <summary>
-        ///   Looks up a localized string similar to the SAS token is expiring in {0} days for {1} appsetting. Please take action. See https://aka.ms/functions-hostjson for more information&quot;.
-        /// </summary>
-        internal static string SasTokenExpiringFormat {
-            get {
-                return ResourceManager.GetString("SasTokenExpiringFormat", resourceCulture);
-            }
-        }
-
-        /// <summary>
-        ///   Looks up a localized string similar to the SAS token has expired for {0} appsetting. See https://aka.ms/functions-hostjson for more information&quot;.
+        ///   Looks up a localized string similar to SAS token within &apos;{0}&apos; setting has expired. Please generate a new SAS token or switch to using identites instead. For more information, see https://go.microsoft.com/fwlink/?linkid=2244092..
         /// </summary>
         internal static string SasTokenExpiredFormat {
             get {
                 return ResourceManager.GetString("SasTokenExpiredFormat", resourceCulture);
             }
         }
-
+        
         /// <summary>
-        ///   Looks up a localized string similar to the SAS token is expiring in {0} days for {1} appsetting. See https://aka.ms/functions-hostjson for more information&quot;.
+        ///   Looks up a localized string similar to SAS token within &apos;{1}&apos; setting is set to expire in {0} days. Consider generating a new SAS token or switching to using identites instead. For more information, see https://go.microsoft.com/fwlink/?linkid=2244092..
+        /// </summary>
+        internal static string SasTokenExpiringFormat {
+            get {
+                return ResourceManager.GetString("SasTokenExpiringFormat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to SAS token within &apos;{1}&apos; setting is set to expire in {0} days..
         /// </summary>
         internal static string SasTokenExpiringInfoFormat {
             get {

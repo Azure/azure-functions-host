@@ -13,5 +13,9 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public const string SasTokenExpiringErrorCode = "AZFD0006";
         public const string SasTokenExpiringErrorHelpLink = "https://go.microsoft.com/fwlink/?linkid=2244092";
+
+        // TODO: Update this link with the proper docs once they get published
+        public const string LinuxConsumptionTimeZoneErrorCode = "AZFD0011";
+        public const string LinuxConsumptionTimeZoneErrorHelpLink = "https://go.microsoft.com/fwlink/?linkid=2250165";
     }
 }
