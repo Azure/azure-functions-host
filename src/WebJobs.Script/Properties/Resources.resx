@@ -177,6 +177,6 @@
     <value>SAS token within '{1}' setting is set to expire in {0} days.</value>
   </data>
   <data name="LinuxConsumptionRemoveTimeZone" xml:space="preserve">
-    <value>WEBSITE_TIME_ZONE and TZ are not currently supported on the Linux Consumption plan.</value>
+    <value>WEBSITE_TIME_ZONE and TZ are not currently supported on the Linux Consumption plan. Please remove these environment variables.</value>
   </data>
 </root>

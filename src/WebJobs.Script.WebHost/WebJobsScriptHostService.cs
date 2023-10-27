@@ -217,10 +217,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     }
                     finally
                     {
-                        var eventMessage = "Failed to initialize Functions Host due to a problem with the application package.";
-                        DiagnosticEventLoggerExtensions.LogDiagnosticEventError(
-                            _logger, DiagnosticEventConstants.RunFromPackageFailedErrorCode, eventMessage, DiagnosticEventConstants.RunFromPackageFailedErrorCodeHelpLink, null);
-
                         _logger.LogError(errorPrefix + errorSuffix);
                     }
                     _applicationLifetime.StopApplication();
@@ -239,6 +235,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 !_environment.IsManagedAppEnvironment())
             {
                 _logger.LogError($"Unable to load the functions payload since the app was not provisioned with valid {AzureWebJobsSecretStorage} connection string.");
+            }
+
+            var functionsTimeZone = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsTimeZone);
+            var functionsWebsiteTimeZone = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsWebsiteTimeZone);
+
+            // If we have a linux consumption app and the time zone env variable is set, log a warning and diagnostic event
+            if (EnvironmentExtensions.IsLinuxConsumptionOnAtlas(_environment) &&
+                (!string.IsNullOrEmpty(functionsTimeZone) ||
+                !string.IsNullOrEmpty(functionsWebsiteTimeZone)))
+            {
+                string message = Script.Properties.Resources.LinuxConsumptionRemoveTimeZone;
+
+                // Log diagnostic event
+                DiagnosticEventLoggerExtensions.LogDiagnosticEventError(_logger, DiagnosticEventConstants.LinuxConsumptionTimeZoneErrorCode, message, DiagnosticEventConstants.LinuxConsumptionTimeZoneErrorHelpLink, new Exception(message));
+
+                // Log warning so this message goes to App insights
+                _logger.LogWarning(message);
             }
         }
 
