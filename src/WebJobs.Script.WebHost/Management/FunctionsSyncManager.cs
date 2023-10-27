@@ -417,7 +417,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 { "triggers", triggersArray }
             };
 
-            if (_environment.IsFlexConsumptionSku())
+            if (_environment.IsFlexConsumptionSku() || _environment.IsConsumptionV1RunningOnLegion())
             {
                 // Currently we're only sending the HostId for Flex Consumption. Eventually we'll do this for all SKUs.
                 // When the HostId is sent, ScaleController will use it directly rather than compute it itself.

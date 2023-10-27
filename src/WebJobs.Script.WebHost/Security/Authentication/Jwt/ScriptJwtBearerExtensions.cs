@@ -75,7 +75,7 @@ namespace Microsoft.Extensions.DependencyInjection
         {
             if (SystemEnvironment.Instance.IsPlaceholderModeEnabled())
             {
-                if (SystemEnvironment.Instance.IsFlexConsumptionSku())
+                if (SystemEnvironment.Instance.IsFlexConsumptionSku() || SystemEnvironment.Instance.IsConsumptionV1RunningOnLegion())
                 {
                     return new string[]
                     {

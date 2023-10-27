@@ -209,7 +209,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <returns><see cref="true"/> if running in one of our Consumption SKUs, false otherwise.</returns>
         public static bool IsConsumptionSku(this IEnvironment environment)
         {
-            return IsWindowsConsumption(environment) || IsAnyLinuxConsumption(environment) || IsFlexConsumptionSku(environment);
+            return IsWindowsConsumption(environment) || IsAnyLinuxConsumption(environment) || IsFlexConsumptionSku(environment) || IsConsumptionV1RunningOnLegion(environment);
         }
 
         /// <summary>
@@ -227,7 +227,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             // when in placeholder mode, site settings like SKU are not available
             // to enable this check to run in both modes, we check additional settings
-            return environment.IsLinuxConsumptionOnLegion();
+            return environment.IsPlaceholderModeEnabled() && environment.IsLinuxConsumptionOnLegion();
         }
 
         /// <summary>
@@ -326,7 +326,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <returns><see cref="true"/> if running in a Linux Consumption App Service app; otherwise, false.</returns>
         public static bool IsAnyLinuxConsumption(this IEnvironment environment)
         {
-            return (environment.IsLinuxConsumptionOnAtlas() || environment.IsFlexConsumptionSku()) && !environment.IsManagedAppEnvironment();
+            return (environment.IsLinuxConsumptionOnAtlas() || environment.IsLinuxConsumptionOnLegion()) && !environment.IsManagedAppEnvironment();
         }
 
         public static bool IsLinuxConsumptionOnAtlas(this IEnvironment environment)

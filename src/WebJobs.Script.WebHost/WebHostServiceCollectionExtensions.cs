@@ -130,7 +130,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddTransient<VirtualFileSystem>();
             services.AddTransient<VirtualFileSystemMiddleware>();
 
-            if (SystemEnvironment.Instance.IsFlexConsumptionSku())
+            if (SystemEnvironment.Instance.IsFlexConsumptionSku() || SystemEnvironment.Instance.IsConsumptionV1RunningOnLegion())
             {
                 services.AddSingleton<IInstanceManager, LegionInstanceManager>();
             }
@@ -250,7 +250,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     var startupContextProvider = s.GetService<StartupContextProvider>();
                     return new AtlasContainerInitializationHostedService(environment, instanceManager, logger, startupContextProvider);
                 }
-                else if (environment.IsFlexConsumptionSku())
+                else if (environment.IsFlexConsumptionSku() || environment.IsConsumptionV1RunningOnLegion())
                 {
                     var instanceManager = s.GetService<IInstanceManager>();
                     var logger = s.GetService<ILogger<LegionContainerInitializationHostedService>>();

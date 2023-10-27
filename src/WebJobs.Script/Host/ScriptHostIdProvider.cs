@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             HostIdResult result = new HostIdResult();
 
-            if (environment.IsFlexConsumptionSku())
+            if (environment.IsFlexConsumptionSku() || environment.IsConsumptionV1RunningOnLegion())
             {
                 // in Flex Consumption, we use a Guid based host ID without truncation.
                 string uniqueSlotName = environment?.GetAzureWebsiteUniqueSlotName();
