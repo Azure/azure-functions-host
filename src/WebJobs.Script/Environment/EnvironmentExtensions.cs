@@ -219,15 +219,14 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <returns><see cref="true"/> if running in the FlexConsumption Sku, false otherwise.</returns>
         public static bool IsFlexConsumptionSku(this IEnvironment environment)
         {
-            string value = environment.GetEnvironmentVariable(AzureWebsiteSku);
-            if (string.Equals(value, ScriptConstants.FlexConsumptionSku, StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
+            string conusmptionVersion = environment.GetEnvironmentVariable(ConsumptionVersion);
+            return string.Equals(conusmptionVersion, ScriptConstants.FlexConsumption, StringComparison.OrdinalIgnoreCase);
+        }
 
-            // when in placeholder mode, site settings like SKU are not available
-            // to enable this check to run in both modes, we check additional settings
-            return environment.IsPlaceholderModeEnabled() && environment.IsLinuxConsumptionOnLegion();
+        public static bool IsConsumptionV1(this IEnvironment environment)
+        {
+            string conusmptionVersion = environment.GetEnvironmentVariable(ConsumptionVersion);
+            return string.Equals(conusmptionVersion, ScriptConstants.ConsumptionV1, StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>
@@ -237,17 +236,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <returns><see cref="true"/> if migrated Consumption V1 running in Legion, false otherwise.</returns>
         public static bool IsConsumptionV1RunningOnLegion(this IEnvironment environment)
         {
-            // Check if host is running in Legion and if host is in placeholder mode
-            // There shouldn't be any difference for Legion placeholders running in Flex vs migrated Consumption V1
-            if (!environment.IsLinuxConsumptionOnLegion() || environment.IsPlaceholderModeEnabled())
-            {
-                return false;
-            }
-
-            // Check if the SKU is set to FlexConsumptionSku
-            string sku = environment.GetEnvironmentVariable(AzureWebsiteSku);
-            bool isFlex = string.Equals(sku, ScriptConstants.FlexConsumptionSku, StringComparison.OrdinalIgnoreCase);
-            return !isFlex;
+            return environment.IsLinuxConsumptionOnLegion() && environment.IsConsumptionV1();
         }
 
         /// <summary>
