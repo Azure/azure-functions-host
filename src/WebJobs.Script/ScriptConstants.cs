@@ -112,7 +112,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string FlexConsumptionSku = "FlexConsumption";
         public const string ElasticPremiumSku = "ElasticPremium";
         public const string DefaultProductionSlotName = "production";
-        public const string ConsumptionV1 = "ConsumptionV1";
         public const string FlexConsumption = "FlexConsumption";
 
         public const string AzureProxyFunctionLocalRedirectKey = "MS_ProxyLocalRedirectCount";

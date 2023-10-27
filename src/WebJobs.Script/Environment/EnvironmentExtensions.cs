@@ -219,14 +219,21 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <returns><see cref="true"/> if running in the FlexConsumption Sku, false otherwise.</returns>
         public static bool IsFlexConsumptionSku(this IEnvironment environment)
         {
-            string conusmptionVersion = environment.GetEnvironmentVariable(ConsumptionVersion);
-            return string.Equals(conusmptionVersion, ScriptConstants.FlexConsumption, StringComparison.OrdinalIgnoreCase);
+            string sku = environment.GetEnvironmentVariable(WebsiteSkuName);
+
+            // Currently set the sku to Dynamic in FPS
+            // TODO: Remove this once FPS sets the value to FlexConsumption
+            if (string.Equals(sku, ScriptConstants.DynamicSku, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+            return string.Equals(sku, ScriptConstants.FlexConsumption, StringComparison.OrdinalIgnoreCase);
         }
 
         public static bool IsConsumptionV1(this IEnvironment environment)
         {
-            string conusmptionVersion = environment.GetEnvironmentVariable(ConsumptionVersion);
-            return string.Equals(conusmptionVersion, ScriptConstants.ConsumptionV1, StringComparison.OrdinalIgnoreCase);
+            // We don't set the WebsiteSkuName for Consumption V1
+            return environment.IsAnyLinuxConsumption() && !environment.IsFlexConsumptionSku();
         }
 
         /// <summary>
