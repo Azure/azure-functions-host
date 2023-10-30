@@ -44,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly IConfiguration _config;
         private readonly SlidingWindow<bool> _healthCheckWindow;
         private readonly Timer _hostHealthCheckTimer;
-        private readonly SemaphoreSlim _hostStartSemaphore = new SemaphoreSlim(1, 1);
+        private readonly SemaphoreSlim _hostStartSemaphore = new SemaphoreSlim(1, 2);
         private readonly TaskCompletionSource<bool> _hostStartedSource = new TaskCompletionSource<bool>();
         private readonly Task _hostStarted;
         private IScriptEventManager _eventManager;
@@ -243,8 +243,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             // Add this to the list of trackable startup operations. Restarts can use this to cancel any ongoing or pending operations.
             var activeOperation = ScriptHostStartupOperation.Create(cancellationToken, _logger, parentOperationId);
+            var latencyEvent = _metricsLogger.LatencyEvent(MetricEventNames.ScriptHostManagerStartService);
 
-            using (_metricsLogger.LatencyEvent(MetricEventNames.ScriptHostManagerStartService))
+            using (latencyEvent)
             {
                 try
                 {
@@ -256,6 +257,38 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     _hostStartedSource.TrySetResult(true);
 
                     await UnsynchronizedStartHostAsync(activeOperation, attemptCount, startupMode);
+                }
+                catch (OperationCanceledException)
+                {
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        _logger.ScriptHostServiceInitCanceledByRuntime();
+                        throw;
+                    }
+
+                    if (latencyEvent != null)
+                    {
+                        var activeOperation2 = ScriptHostStartupOperation.Create(cancellationToken, _logger, parentOperationId);
+
+                        try
+                        {
+                            activeOperation.Dispose();
+                            _hostStartSemaphore.Release();
+                            await _hostStartSemaphore.WaitAsync();
+
+                            // Now that we're inside the semaphore, set this task as completed. This prevents
+                            // restarts from being invoked (via the PlaceholderSpecializationMiddleware) before
+                            // the IHostedService has ever started.
+                            _hostStartedSource.TrySetResult(true);
+
+                            await UnsynchronizedStartHostAsync(activeOperation2, attemptCount, startupMode);
+                        }
+                        finally
+                        {
+                            activeOperation2.Dispose();
+                            _hostStartSemaphore.Release();
+                        }
+                    }
                 }
                 finally
                 {
@@ -305,9 +338,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 _logger.Building(functionsExtensionVersion, skipJobHostStartup, skipHostJsonConfiguration, activeOperation.Id);
 
                 using (_metricsLogger.LatencyEvent(MetricEventNames.ScriptHostManagerBuildScriptHost))
-                {
-                    localHost = BuildHost(skipJobHostStartup, skipHostJsonConfiguration);
-                }
+                        {
+                            localHost = BuildHost(skipJobHostStartup, skipHostJsonConfiguration);
+                        }
 
                 ActiveHost = localHost;
 
