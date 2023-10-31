@@ -9,6 +9,7 @@ using Azure;
 using Azure.Core;
 using Azure.Identity;
 using Azure.Security.KeyVault.Secrets;
+using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
@@ -86,6 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 // Delete only keys which no longer exist in passed-in secrets
                 if (!dictionary.Keys.Contains(item.Name))
                 {
+                    Logger?.KeyVaultSecretRepoDeleteKey(item.Name);
                     deleteTasks.Add(_secretClient.Value.StartDeleteSecretAsync(item.Name));
                 }
             }
@@ -99,6 +101,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             List<Task> setTasks = new List<Task>();
             foreach (string key in dictionary.Keys)
             {
+                Logger?.KeyVaultSecretRepoSetKey(key);
                 setTasks.Add(_secretClient.Value.SetSecretAsync(key, dictionary[key]));
             }
             await Task.WhenAll(setTasks);
