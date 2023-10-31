@@ -12,13 +12,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
     {
         private readonly IServiceProvider _serviceProvider;
         private readonly IConfiguration _configuration;
-        private readonly ILogger<DiagnosticEventRepositoryFactory> _logger;
 
-        public DiagnosticEventRepositoryFactory(IServiceProvider serviceProvider, IConfiguration configuration, ILogger<DiagnosticEventRepositoryFactory> logger)
+        public DiagnosticEventRepositoryFactory(IServiceProvider serviceProvider, IConfiguration configuration)
         {
             _serviceProvider = serviceProvider;
             _configuration = configuration;
-            _logger = logger;
         }
 
         public IDiagnosticEventRepository Create()
@@ -29,7 +27,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             string storageConnectionString = _configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
             if (string.IsNullOrEmpty(storageConnectionString))
             {
-                _logger.LogError("Azure Storage connection string is empty or invalid. Unable to write diagnostic events to table storage.");
                 return new DiagnosticEventNullRepository();
             }
             else
