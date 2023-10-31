@@ -44,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly IConfiguration _config;
         private readonly SlidingWindow<bool> _healthCheckWindow;
         private readonly Timer _hostHealthCheckTimer;
-        private readonly SemaphoreSlim _hostStartSemaphore = new SemaphoreSlim(1, 2);
+        private readonly SemaphoreSlim _hostStartSemaphore = new SemaphoreSlim(1, 1);
         private readonly TaskCompletionSource<bool> _hostStartedSource = new TaskCompletionSource<bool>();
         private readonly Task _hostStarted;
         private IScriptEventManager _eventManager;
@@ -258,40 +258,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                     await UnsynchronizedStartHostAsync(activeOperation, attemptCount, startupMode);
                 }
-                /*
-                catch (OperationCanceledException)
-                {
-                    if (cancellationToken.IsCancellationRequested)
-                    {
-                        _logger.ScriptHostServiceInitCanceledByRuntime();
-                        throw;
-                    }
-
-                    if (latencyEvent != null)
-                    {
-                        var activeOperation2 = ScriptHostStartupOperation.Create(cancellationToken, _logger, parentOperationId);
-
-                        try
-                        {
-                            activeOperation.Dispose();
-                            _hostStartSemaphore.Release();
-                            await _hostStartSemaphore.WaitAsync();
-
-                            // Now that we're inside the semaphore, set this task as completed. This prevents
-                            // restarts from being invoked (via the PlaceholderSpecializationMiddleware) before
-                            // the IHostedService has ever started.
-                            _hostStartedSource.TrySetResult(true);
-
-                            await UnsynchronizedStartHostAsync(activeOperation2, attemptCount, startupMode);
-                        }
-                        finally
-                        {
-                            activeOperation2.Dispose();
-                            _hostStartSemaphore.Release();
-                        }
-                    }
-                }
-                */
                 finally
                 {
                     activeOperation.Dispose();
@@ -341,8 +307,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                 using (_metricsLogger.LatencyEvent(MetricEventNames.ScriptHostManagerBuildScriptHost))
                 {
+                    // OperationCanceledException is due to External Startup taking too long
+                    // which causes BuildHost() call below to fail with OperationCanceledException
+
+                    // Using stopwatch to identify delay if we get OperationCanceledException
                     stopwatch = ValueStopwatch.StartNew();
+
                     //await DelayMethod();
+
                     localHost = BuildHost(skipJobHostStartup, skipHostJsonConfiguration);
                 }
 
@@ -466,15 +438,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                     if (stopwatch.IsActive)
                     {
-                        var a = stopwatch.GetElapsedTime().TotalSeconds;
+                        var time = stopwatch.GetElapsedTime().TotalMinutes;
 
-                        if (a < 120 || attemptCount > 3)
+                        // If time less than 2 minutes then it did not fail due to delay
+                        // If attemptCount > 3 then we already retried 3 times
+                        if (time < 2 || attemptCount > 3)
                         {
                             GetHostLogger(localHost).StartupOperationWasCanceled(activeOperation.Id);
                             throw;
                         }
                     }
 
+                    // This logic is same as StartAsync() method above
+                    // If the exception was triggered by our loop cancellation token, just ignore as it doesn't indicate an issue.
                     if (currentCancellationToken.IsCancellationRequested)
                     {
                         _logger.ScriptHostServiceInitCanceledByRuntime();
