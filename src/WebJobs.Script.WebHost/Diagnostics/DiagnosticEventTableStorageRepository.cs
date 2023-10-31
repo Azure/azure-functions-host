@@ -183,14 +183,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public void WriteDiagnosticEvent(DateTime timestamp, string errorCode, LogLevel level, string message, string helpLink, Exception exception)
         {
-            if (TableClient == null)
+            if (TableClient == null || string.IsNullOrEmpty(HostId))
             {
-                return;
-            }
-
-            if (string.IsNullOrEmpty(HostId))
-            {
-                _logger.LogError("Unable to write diagnostic events. Host id is set to null.");
                 return;
             }
 
