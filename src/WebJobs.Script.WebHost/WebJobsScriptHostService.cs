@@ -54,6 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private CancellationTokenSource _startupLoopTokenSource;
         private int _hostStartCount;
         private bool _disposed = false;
+        private ValueStopwatch stopwatch;
 
         private static IDisposable _telemetryConfiguration;
         private static IDisposable _requestTrackingModule;
@@ -243,9 +244,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             // Add this to the list of trackable startup operations. Restarts can use this to cancel any ongoing or pending operations.
             var activeOperation = ScriptHostStartupOperation.Create(cancellationToken, _logger, parentOperationId);
-            var latencyEvent = _metricsLogger.LatencyEvent(MetricEventNames.ScriptHostManagerStartService);
 
-            using (latencyEvent)
+            using (_metricsLogger.LatencyEvent(MetricEventNames.ScriptHostManagerStartService))
             {
                 try
                 {
@@ -258,6 +258,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                     await UnsynchronizedStartHostAsync(activeOperation, attemptCount, startupMode);
                 }
+                /*
                 catch (OperationCanceledException)
                 {
                     if (cancellationToken.IsCancellationRequested)
@@ -290,6 +291,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         }
                     }
                 }
+                */
                 finally
                 {
                     activeOperation.Dispose();
@@ -338,9 +340,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 _logger.Building(functionsExtensionVersion, skipJobHostStartup, skipHostJsonConfiguration, activeOperation.Id);
 
                 using (_metricsLogger.LatencyEvent(MetricEventNames.ScriptHostManagerBuildScriptHost))
-                        {
-                            localHost = BuildHost(skipJobHostStartup, skipHostJsonConfiguration);
-                        }
+                {
+                    stopwatch = ValueStopwatch.StartNew();
+                    //await DelayMethod();
+                    localHost = BuildHost(skipJobHostStartup, skipHostJsonConfiguration);
+                }
 
                 ActiveHost = localHost;
 
@@ -389,11 +393,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 }
 
                 _eventManager.Publish(new HostStartEvent());
-            }
-            catch (OperationCanceledException)
-            {
-                GetHostLogger(localHost).StartupOperationWasCanceled(activeOperation.Id);
-                throw;
             }
             catch (Exception exc)
             {
@@ -458,6 +457,29 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 else if (exc is HostInitializationException)
                 {
                     nextStartupAttemptMode = JobHostStartupMode.HandlingInitializationError;
+                }
+                else if (exc is OperationCanceledException)
+                {
+                    // Need a way to identify that the OperationCanceledException is because of "timeout in loading extensions"
+                    // if yes, dont throw here and let it restart
+                    // if no, throw from here
+
+                    if (stopwatch.IsActive)
+                    {
+                        var a = stopwatch.GetElapsedTime().TotalSeconds;
+
+                        if (a < 120 || attemptCount > 3)
+                        {
+                            GetHostLogger(localHost).StartupOperationWasCanceled(activeOperation.Id);
+                            throw;
+                        }
+                    }
+
+                    if (currentCancellationToken.IsCancellationRequested)
+                    {
+                        _logger.ScriptHostServiceInitCanceledByRuntime();
+                        throw;
+                    }
                 }
 
                 if (nextStartupAttemptMode != JobHostStartupMode.Normal)
