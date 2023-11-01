@@ -3,6 +3,7 @@
 
 using System;
 using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -55,6 +56,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     services.Remove(jobHostService);
                 });
             }
+
+            Task.Delay(150000).GetAwaiter().GetResult();
 
             return builder.Build();
         }
