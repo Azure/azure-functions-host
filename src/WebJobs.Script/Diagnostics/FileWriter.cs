@@ -30,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private Timer _flushTimer;
         private ConcurrentQueue<string> _logBuffer = new ConcurrentQueue<string>();
 
-        public FileWriter(string logFilePath)
+        public FileWriter(string logFilePath, int flushIntervalMs = LogFlushIntervalMs)
         {
             _logFilePath = logFilePath;
             _instanceId = GetInstanceId();
@@ -39,8 +39,8 @@ namespace Microsoft.Azure.WebJobs.Script
             // start a timer to flush accumulated logs in batches
             _flushTimer = new Timer
             {
-                AutoReset = true,
-                Interval = LogFlushIntervalMs
+                AutoReset = false,
+                Interval = flushIntervalMs
             };
             _flushTimer.Elapsed += OnFlushLogs;
             _flushTimer.Start();
@@ -171,7 +171,14 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private void OnFlushLogs(object sender, ElapsedEventArgs e)
         {
-            Flush();
+            try
+            {
+                Flush();
+            }
+            finally
+            {
+                _flushTimer.Start();
+            }
         }
 
         /// <summary>
