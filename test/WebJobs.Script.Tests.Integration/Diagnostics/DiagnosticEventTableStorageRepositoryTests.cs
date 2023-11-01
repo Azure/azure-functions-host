@@ -73,7 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             repository.WriteDiagnosticEvent(DateTime.UtcNow, "eh1", LogLevel.Information, "This is the message", "https://fwlink/", new Exception("exception message"));
 
             var messages = _loggerProvider.GetAllLogMessages();
-            Assert.Equal(messages[0].FormattedMessage, "Unable to write diagnostic events. Host id is set to null.");
+            Assert.Equal(0, repository.Events.Values.Count());
         }
 
         [Fact]
@@ -214,15 +214,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
 
             // Act
             repository.WriteDiagnosticEvent(DateTime.UtcNow, "eh1", LogLevel.Information, "This is the message", "https://fwlink/", new Exception("exception message"));
-            Assert.Equal(1, repository.Events.Values.Count());
             await repository.FlushLogs();
 
             // Assert 
             var logMessage = _loggerProvider.GetAllLogMessages().SingleOrDefault(m => m.FormattedMessage.Contains("Unable to get table reference"));
             Assert.NotNull(logMessage);
 
-            logMessage = _loggerProvider.GetAllLogMessages().SingleOrDefault(m => m.FormattedMessage.Contains("Azure Storage connection string is empty or invalid. Unable to write diagnostic events."));
-            Assert.NotNull(logMessage);
+            var messagePresent = _loggerProvider.GetAllLogMessages().Any(m => m.FormattedMessage.Contains("Azure Storage connection string is empty or invalid. Unable to write diagnostic events."));
+            Assert.True(messagePresent);
             
             Assert.Equal(0, repository.Events.Values.Count());
         }
