@@ -426,28 +426,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     // minimal host and allow the portal to see the error. Any modification will restart again.
                     nextStartupAttemptMode = JobHostStartupMode.HandlingConfigurationParsingError;
                 }
-                else if (exc is HostInitializationException)
+                else if (exc is HostInitializationException || exc is OperationCanceledException)
                 {
                     nextStartupAttemptMode = JobHostStartupMode.HandlingInitializationError;
                 }
+                /*
                 else if (exc is OperationCanceledException)
                 {
-                    // Need a way to identify that the OperationCanceledException is because of "timeout in loading extensions"
-                    // if yes, dont throw here and let it restart
-                    // if no, throw from here
+                    var nextStartupAttemptMode = JobHostStartupMode.HandlingError;
 
-                    if (stopwatch.IsActive)
-                    {
-                        var time = stopwatch.GetElapsedTime().TotalMinutes;
-
-                        // If time less than 2 minutes then it did not fail due to delay
-                        // If attemptCount > 3 then we already retried 3 times
-                        if (time < 2 || attemptCount > 3)
-                        {
-                            GetHostLogger(localHost).StartupOperationWasCanceled(activeOperation.Id);
-                            throw;
                         }
-                    }
 
                     // This logic is same as StartAsync() method above
                     // If the exception was triggered by our loop cancellation token, just ignore as it doesn't indicate an issue.
@@ -456,7 +444,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         _logger.ScriptHostServiceInitCanceledByRuntime();
                         throw;
                     }
-                }
+                }*/
 
                 if (nextStartupAttemptMode != JobHostStartupMode.Normal)
                 {
