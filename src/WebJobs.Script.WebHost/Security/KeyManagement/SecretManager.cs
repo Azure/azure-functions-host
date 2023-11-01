@@ -592,8 +592,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     _logger?.LogDebug(message);
 
                     var exception = new InvalidOperationException(message);
-
-                    DiagnosticEventLoggerExtensions.LogDiagnosticEventError(_logger, DiagnosticEventConstants.MaximumSecretBackupCountErrorCode, message, DiagnosticEventConstants.MaximumSecretBackupCountHelpLink, exception);
+                    _logger?.LogDiagnosticEventError(DiagnosticEventConstants.MaximumSecretBackupCountErrorCode, message, DiagnosticEventConstants.MaximumSecretBackupCountHelpLink, exception);
 
                     throw exception;
                 }

@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     /// </summary>
     public class BlobStorageSecretsRepository : BaseSecretsRepository
     {
-        private const string BlobArchivedName = "BlobArchived";
+        private readonly string _blobArchivedName = "BlobArchived";
         private readonly string _secretsBlobPath;
         private readonly string _hostSecretsBlobPath;
         private readonly string _secretsContainerName = "azure-webjobs-secrets";
@@ -101,10 +101,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             catch (RequestFailedException rfex) when (rfex.Status == 409)
             {
                 // If the read operation failed because the blob access tier is set to archived, log a diagnostic event.
-                if (rfex.ErrorCode.Equals(BlobArchivedName, StringComparison.OrdinalIgnoreCase))
+                if (rfex.ErrorCode.Equals(_blobArchivedName, StringComparison.OrdinalIgnoreCase))
                 {
-                    DiagnosticEventLoggerExtensions.LogDiagnosticEventError(
-                        Logger,
+                    Logger?.LogDiagnosticEventError(
                         DiagnosticEventConstants.FailedToReadBlobStorageRepositoryErrorCode,
                         Resources.FailedToReadBlobSecretRepositoryTierSetToArchive,
                         DiagnosticEventConstants.FailedToReadBlobStorageRepositoryHelpLink,
