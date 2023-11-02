@@ -113,6 +113,19 @@ namespace Microsoft.Azure.WebJobs.Script.Config
             }
         }
 
+        public bool EnableOrderedInvocationMessages
+        {
+            get
+            {
+                return GetFeature(ScriptConstants.FeatureFlagEnableOrderedInvocationmessages) == "1";
+            }
+
+            set
+            {
+                _features[ScriptConstants.FeatureFlagEnableOrderedInvocationmessages] = value ? "1" : "0";
+            }
+        }
+
         /// <summary>
         /// Gets the highest version of extension bundle v3 supported
         /// </summary>

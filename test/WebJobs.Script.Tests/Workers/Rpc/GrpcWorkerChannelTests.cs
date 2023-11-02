@@ -1358,6 +1358,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public async Task Log_And_InvocationResult_OrderedCorrectly()
         {
+            // Without this feature flag, this test fails every time on multi-core machines as the logs will
+            // be processed out-of-order
+            _testEnvironment.SetEnvironmentVariable("AzureWebJobsFeatureFlags", "EnableOrderedInvocationMessages");
+
             await CreateDefaultWorkerChannel();
             _metricsLogger.ClearCollections();
 
@@ -1391,7 +1395,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             }
         }
 
-        private IEnumerable<FunctionMetadata> GetTestFunctionsList(string runtime, bool addWorkerProperties = false)
+        private static IEnumerable<FunctionMetadata> GetTestFunctionsList(string runtime, bool addWorkerProperties = false)
         {
             var metadata1 = new FunctionMetadata()
             {
@@ -1430,8 +1434,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             };
         }
 
-        private ScriptInvocationContext GetTestScriptInvocationContext(Guid invocationId, TaskCompletionSource<ScriptInvocationResult> resultSource,
-             CancellationToken? token = null, ILogger logger = null)
+        public static ScriptInvocationContext GetTestScriptInvocationContext(Guid invocationId, TaskCompletionSource<ScriptInvocationResult> resultSource,
+             CancellationToken? token = null, ILogger logger = null, string scriptRootPath = null)
         {
             return new ScriptInvocationContext()
             {
@@ -1440,8 +1444,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 {
                     InvocationId = invocationId,
                     FunctionName = "js1",
-                    FunctionAppDirectory = _scriptRootPath,
-                    FunctionDirectory = _scriptRootPath
+                    FunctionAppDirectory = scriptRootPath,
+                    FunctionDirectory = scriptRootPath
                 },
                 BindingData = new Dictionary<string, object>(),
                 Inputs = new List<(string Name, DataType Type, object Val)>(),
