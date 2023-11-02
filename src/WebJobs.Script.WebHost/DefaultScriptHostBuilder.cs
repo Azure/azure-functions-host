@@ -58,11 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 });
             }
 
-            throw new ExternalStartupException("test msg ExternalStartupException");
-
-//            Task.Delay(150000).GetAwaiter().GetResult();
-
-          //  return builder.Build();
+            return builder.Build();
         }
     }
 }

@@ -251,6 +251,7 @@ namespace Microsoft.Azure.WebJobs.Script
                         try
                         {
                             webJobsConfigBuilder.UseExternalConfigurationStartup(locator, webJobsBuilderContext, loggerFactory);
+                            throw new ExternalStartupException("test msg ExternalStartupException");
                         }
                         catch (Exception ex)
                         {
