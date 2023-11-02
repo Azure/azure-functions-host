@@ -53,15 +53,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 if (!_environment.IsPlaceholderModeEnabled() && _tableClient == null)
                 {
                     string storageConnectionString = _configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
-                    if (string.IsNullOrEmpty(storageConnectionString))
-                    {
-                        _logger.LogError("Azure Storage connection string is empty or invalid. Unable to write diagnostic events.");
-                    }
-
-                    if (CloudStorageAccount.TryParse(storageConnectionString, out CloudStorageAccount account))
+                    if (!string.IsNullOrEmpty(storageConnectionString)
+                        && CloudStorageAccount.TryParse(storageConnectionString, out CloudStorageAccount account))
                     {
                         var tableClientConfig = new TableClientConfiguration();
                         _tableClient = new CloudTableClient(account.TableStorageUri, account.Credentials, tableClientConfig);
+                    }
+                    else
+                    {
+                        _logger.LogError("Azure Storage connection string is empty or invalid. Unable to write diagnostic events.");
                     }
                 }
 
@@ -124,10 +124,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 return;
             }
 
-            table = table ?? GetDiagnosticEventsTable();
-
             try
             {
+                table = table ?? GetDiagnosticEventsTable();
+
+                if (table == null)
+                {
+                    _logger.LogError("Unable to get table reference. Aborting write operation");
+                    StopTimer();
+                    return;
+                }
+
                 bool tableCreated = await TableStorageHelpers.CreateIfNotExistsAsync(table, _tableCreationRetries);
                 if (tableCreated)
                 {
@@ -136,11 +143,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Unable to create table '{table.Name}' after {_tableCreationRetries} retries. Aborting write operation {ex}");
-
+                _logger.LogError(ex, $"Unable to get table reference or create table. Aborting write operation.");
+                return;
+            }
+            finally
+            {
                 // Clearing the memory cache to avoid memory build up.
                 _events.Clear();
-                return;
             }
 
             // Assigning a new empty directory to reset the event count in the new duration window.
@@ -174,9 +183,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public void WriteDiagnosticEvent(DateTime timestamp, string errorCode, LogLevel level, string message, string helpLink, Exception exception)
         {
-            if (string.IsNullOrEmpty(HostId))
+            if (TableClient == null || string.IsNullOrEmpty(HostId))
             {
-                _logger.LogError("Unable to write diagnostic events. Host id is set to null.");
                 return;
             }
 
@@ -198,6 +206,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     _events[errorCode].HitCount++;
                 }
             }
+        }
+
+        internal void StopTimer()
+        {
+            _logger.LogInformation("Stopping the flush logs timer");
+            _flushLogsTimer?.Change(Timeout.Infinite, Timeout.Infinite);
         }
 
         protected virtual void Dispose(bool disposing)
