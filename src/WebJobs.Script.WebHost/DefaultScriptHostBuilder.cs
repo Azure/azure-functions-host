@@ -8,6 +8,7 @@ using Microsoft.Azure.WebJobs.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using NuGet.Protocol.Plugins;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -57,9 +58,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 });
             }
 
-            Task.Delay(150000).GetAwaiter().GetResult();
+            throw new ExternalStartupException("test msg ExternalStartupException");
 
-            return builder.Build();
+//            Task.Delay(150000).GetAwaiter().GetResult();
+
+          //  return builder.Build();
         }
     }
 }
