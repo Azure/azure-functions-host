@@ -357,9 +357,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                 _eventManager.Publish(new HostStartEvent());
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException ex)
             {
-                GetHostLogger(localHost).StartupOperationWasCanceled(activeOperation.Id);
+                ILogger logger = GetHostLogger(localHost);
+                logger.LogError($"OperationCanceledException StartupOperationWasCanceled : {ex.Message} AND stacktrace {ex.StackTrace}");
+                logger.StartupOperationWasCanceled(activeOperation.Id);
                 throw;
             }
             catch (Exception exc)
@@ -613,7 +615,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private IHost BuildHost(bool skipHostStartup, bool skipHostJsonConfiguration)
         {
-            return _scriptHostBuilder.BuildHost(skipHostStartup, skipHostJsonConfiguration);
+            throw new OperationCanceledException("Test ex");
+           // return _scriptHostBuilder.BuildHost(skipHostStartup, skipHostJsonConfiguration);
         }
 
         private string GetHostInstanceId(IHost host)

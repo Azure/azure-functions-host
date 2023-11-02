@@ -3,12 +3,10 @@
 
 using System;
 using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
-using NuGet.Protocol.Plugins;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
