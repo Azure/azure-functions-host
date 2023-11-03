@@ -85,7 +85,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             string secretsContent = null;
             string blobPath = GetSecretsBlobPath(type, functionName);
-            var operation = "read";
+            const string Operation = "read";
             try
             {
                 BlobClient secretBlobClient = Container.GetBlobClient(blobPath);
@@ -110,12 +110,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         rfex);
                 }
 
-                LogErrorMessage(operation, rfex);
+                LogErrorMessage(Operation, rfex);
                 throw;
             }
             catch (Exception ex)
             {
-                LogErrorMessage(operation, ex);
+                LogErrorMessage(Operation, ex);
                 throw;
             }
 
