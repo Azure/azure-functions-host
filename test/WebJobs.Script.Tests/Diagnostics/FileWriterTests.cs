@@ -183,6 +183,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task LogsAreFlushedOnTimer()
+        {
+            FileWriter fileWriter = new FileWriter(_logFilePath, flushIntervalMs: 10);
+
+            // timer should elapse 50 times during this test
+            int numLogs = 100;
+            for (int i = 0; i < numLogs; i++)
+            {
+                fileWriter.AppendLine($"Test message {Thread.CurrentThread.ManagedThreadId} {i}");
+                await Task.Delay(5);
+            }
+
+            var directory = new DirectoryInfo(_logFilePath);
+            int count = directory.EnumerateFiles().Count();
+            Assert.Equal(1, count);
+
+            string logFile = directory.EnumerateFiles().First().FullName;
+            string[] fileLines = File.ReadAllLines(logFile);
+            Assert.Equal(numLogs, fileLines.Length);
+        }
+
+        [Fact]
         public async Task Flush_ThrottlesLogs()
         {
             int numLogs = 10000;

@@ -69,6 +69,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             string stateFunctionName = null;
             string stateEventName = null;
             string stateActivityId = null;
+            string diagnosticEventErrorCode = null;
+            bool isDiagnosticEvent = false;
             if (state is IEnumerable<KeyValuePair<string, object>> stateProps)
             {
                 foreach (var kvp in stateProps)
@@ -76,6 +78,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     if (string.Equals(kvp.Key, ScriptConstants.LogPropertySourceKey, StringComparison.OrdinalIgnoreCase))
                     {
                         stateSourceValue = kvp.Value?.ToString();
+                    }
+                    else if (string.Equals(kvp.Key, ScriptConstants.DiagnosticEventKey, StringComparison.OrdinalIgnoreCase))
+                    {
+                        isDiagnosticEvent = true;
+                    }
+                    else if (string.Equals(kvp.Key, ScriptConstants.ErrorCodeKey, StringComparison.OrdinalIgnoreCase))
+                    {
+                        diagnosticEventErrorCode = kvp.Value?.ToString();
                     }
                     else if (string.Equals(kvp.Key, ScriptConstants.LogPropertyIsUserLogKey, StringComparison.OrdinalIgnoreCase))
                     {
@@ -147,6 +157,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             // otherwise the ETW event will fail to be persisted (silently)
             string summary = formattedMessage ?? string.Empty;
             string eventName = !string.IsNullOrEmpty(eventId.Name) ? eventId.Name : stateEventName ?? string.Empty;
+            eventName = isDiagnosticEvent ? $"DiagnosticEvent-{diagnosticEventErrorCode}" : eventName;
+
             string activityId = stateActivityId ?? scopeActivityId ?? string.Empty;
             var options = _appServiceOptions;
             string subscriptionId = options.SubscriptionId ?? string.Empty;
