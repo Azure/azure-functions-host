@@ -135,6 +135,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
             request = HttpTestHelpers.CreateHttpRequest("POST", "http://azure.com/api/warmup");
             environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, "TestContainer");
             environment.SetEnvironmentVariable(EnvironmentSettingNames.LegionServiceHost, "1");
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.WebsiteSkuName, ScriptConstants.FlexConsumptionSku);
             Assert.True(environment.IsAnyLinuxConsumption());
             Assert.False(environment.IsLinuxConsumptionOnAtlas());
             Assert.True(environment.IsFlexConsumptionSku());

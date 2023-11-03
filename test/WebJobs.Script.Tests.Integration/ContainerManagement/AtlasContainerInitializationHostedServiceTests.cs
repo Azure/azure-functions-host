@@ -58,6 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ContainerManagement
         {
             _environment.SetEnvironmentVariable(ContainerName, "abcd");
             _environment.SetEnvironmentVariable(LegionServiceHost, "1");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.WebsiteSkuName, ScriptConstants.FlexConsumptionSku);
             Assert.True(_environment.IsAnyLinuxConsumption());
             Assert.False(_environment.IsLinuxConsumptionOnAtlas());
             Assert.True(_environment.IsFlexConsumptionSku());
