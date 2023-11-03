@@ -108,6 +108,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var environment = new TestEnvironment();
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, ScriptConstants.FlexConsumptionSku);
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.WebsiteSkuName, ScriptConstants.FlexConsumptionSku);
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName, siteName);
 
             var result = ScriptHostIdProvider.GetDefaultHostId(environment, options);
@@ -150,6 +151,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var environment = new TestEnvironment();
             environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, "testContainer");
             environment.SetEnvironmentVariable(EnvironmentSettingNames.LegionServiceHost, "legionhost");
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.WebsiteSkuName, ScriptConstants.FlexConsumptionSku);
 
             Assert.True(environment.IsFlexConsumptionSku());
 

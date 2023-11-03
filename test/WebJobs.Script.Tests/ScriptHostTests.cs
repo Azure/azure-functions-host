@@ -23,6 +23,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.VisualStudio.TestPlatform.PlatformAbstractions.Interfaces;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Newtonsoft.Json.Linq;
@@ -1419,6 +1420,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             TestEnvironment testEnvironment = new TestEnvironment();
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, ScriptConstants.FlexConsumptionSku);
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.WebsiteSkuName, ScriptConstants.FlexConsumptionSku);
 
             string errorMessage = "The Flex Consumption SKU only supports EventGrid as the source for BlobTrigger functions. Please update function 'test' to use EventGrid. For more information see https://aka.ms/blob-trigger-eg.";
 

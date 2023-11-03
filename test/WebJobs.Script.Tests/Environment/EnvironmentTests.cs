@@ -213,23 +213,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
-        [InlineData("website-instance-id", "container-name", "1", false, false)]
-        [InlineData("website-instance-id", "container-name", "", false, false)]
-        [InlineData("website-instance-id", "", "", false, false)]
-        [InlineData("", "container-name", "1", false, true)]
-        [InlineData("", "container-name", "", true, false)]
-        [InlineData("", "container-name", "a", false, true)]
-        [InlineData(null, "container-name", "", true, false)]
-        [InlineData("", "", "", false, false)]
-        [InlineData(null, "", null, false, false)]
-        [InlineData("", null, null, false, false)]
-        [InlineData(null, null, null,  false, false)]
-        public void Returns_IsLinuxConsumption(string websiteInstanceId, string containerName, string legionServiceHost, bool isLinuxConsumptionOnAtlas, bool isLinuxConsumptionOnLegion)
+        [InlineData("website-instance-id", "container-name", "1", "", false, false)]
+        [InlineData("website-instance-id", "container-name", "", "", false, false)]
+        [InlineData("website-instance-id", "", "", "InvalidSku", false, false)]
+        [InlineData("", "container-name", "1", "FlexConsumption", false, true)]
+        [InlineData("", "container-name", "", "", true, false)]
+        [InlineData("", "container-name", "a", "FlexConsumption", false, true)]
+        [InlineData(null, "container-name", "", "", true, false)]
+        [InlineData("", "", "", "", false, false)]
+        [InlineData(null, "", null, "", false, false)]
+        [InlineData("", null, null, "", false, false)]
+        [InlineData(null, null, null, "",  false, false)]
+        public void Returns_IsLinuxConsumption(string websiteInstanceId, string containerName, string legionServiceHost, string flexConsumptionSku, bool isLinuxConsumptionOnAtlas, bool isLinuxConsumptionOnLegion)
         {
             var testEnvironment = new TestEnvironment();
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId, websiteInstanceId);
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, containerName);
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.LegionServiceHost, legionServiceHost);
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.WebsiteSkuName, flexConsumptionSku);
             Assert.Equal(isLinuxConsumptionOnAtlas || isLinuxConsumptionOnLegion, testEnvironment.IsAnyLinuxConsumption());
             Assert.Equal(isLinuxConsumptionOnAtlas, testEnvironment.IsLinuxConsumptionOnAtlas());
             Assert.Equal(isLinuxConsumptionOnLegion, testEnvironment.IsFlexConsumptionSku());
