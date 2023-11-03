@@ -9,7 +9,9 @@ using Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Azure.WebJobs.Host.Storage;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions;
+using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
@@ -19,6 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     /// </summary>
     public class BlobStorageSecretsRepository : BaseSecretsRepository
     {
+        private readonly string _blobArchivedName = "BlobArchived";
         private readonly string _secretsBlobPath;
         private readonly string _hostSecretsBlobPath;
         private readonly string _secretsContainerName = "azure-webjobs-secrets";
@@ -82,6 +85,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             string secretsContent = null;
             string blobPath = GetSecretsBlobPath(type, functionName);
+            const string Operation = "read";
             try
             {
                 BlobClient secretBlobClient = Container.GetBlobClient(blobPath);
@@ -94,9 +98,24 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     }
                 }
             }
+            catch (RequestFailedException rfex) when (rfex.Status == 409)
+            {
+                // If the read operation failed because the blob access tier is set to archived, log a diagnostic event.
+                if (rfex.ErrorCode.Equals(_blobArchivedName, StringComparison.OrdinalIgnoreCase))
+                {
+                    Logger?.LogDiagnosticEventError(
+                        DiagnosticEventConstants.FailedToReadBlobStorageRepositoryErrorCode,
+                        Resources.FailedToReadBlobSecretRepositoryTierSetToArchive,
+                        DiagnosticEventConstants.FailedToReadBlobStorageRepositoryHelpLink,
+                        rfex);
+                }
+
+                LogErrorMessage(Operation, rfex);
+                throw;
+            }
             catch (Exception ex)
             {
-                LogErrorMessage("read", ex);
+                LogErrorMessage(Operation, ex);
                 throw;
             }
 

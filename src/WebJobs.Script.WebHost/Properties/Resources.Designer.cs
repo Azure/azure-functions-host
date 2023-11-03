@@ -107,6 +107,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Failed to read from Blob Storage Secret Repository because its access tier is set to archive..
+        /// </summary>
+        internal static string FailedToReadBlobSecretRepositoryTierSetToArchive {
+            get {
+                return ResourceManager.GetString("FailedToReadBlobSecretRepositoryTierSetToArchive", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to {
         ///    &quot;type&quot;: &quot;object&quot;,
         ///    &quot;properties&quot;: {

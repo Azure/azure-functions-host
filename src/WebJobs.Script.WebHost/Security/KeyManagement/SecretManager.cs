@@ -590,7 +590,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 {
                     string message = string.Format(Resources.ErrorTooManySecretBackups, ScriptConstants.MaximumSecretBackupCount, string.IsNullOrEmpty(keyScope) ? "host" : keyScope, await AnalyzeSnapshots(secretBackups));
                     _logger?.LogDebug(message);
-                    throw new InvalidOperationException(message);
+
+                    var exception = new InvalidOperationException(message);
+                    _logger?.LogDiagnosticEventError(DiagnosticEventConstants.MaximumSecretBackupCountErrorCode, message, DiagnosticEventConstants.MaximumSecretBackupCountHelpLink, exception);
+
+                    throw exception;
                 }
                 await _repository.WriteSnapshotAsync(secretsType, keyScope, secrets);
             }
