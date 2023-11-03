@@ -1360,7 +1360,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             // Without this feature flag, this test fails every time on multi-core machines as the logs will
             // be processed out-of-order
-            _testEnvironment.SetEnvironmentVariable("AzureWebJobsFeatureFlags", "EnableOrderedInvocationMessages");
+            _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableOrderedInvocationmessages);
 
             await CreateDefaultWorkerChannel();
             _metricsLogger.ClearCollections();

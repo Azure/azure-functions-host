@@ -159,8 +159,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             if (_hostingConfigOptions.Value.EnableOrderedInvocationMessages ||
                 FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableOrderedInvocationmessages, _environment))
             {
-                _workerChannelLogger.LogDebug($"Using {nameof(OrderedInvocationProcessorFactory)}.");
-                return new OrderedInvocationProcessorFactory(ProcessItem, _workerChannelLogger);
+                _workerChannelLogger.LogDebug($"Using {nameof(OrderedInvocationMessageDispatcherFactory)}.");
+                return new OrderedInvocationMessageDispatcherFactory(ProcessItem, _workerChannelLogger);
             }
             else
             {

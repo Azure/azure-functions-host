@@ -128,18 +128,3 @@ internal sealed class OrderedInvocationMessageDispatcher : IInvocationMessageDis
         }
     }
 }
-
-internal class OrderedInvocationProcessorFactory : IInvocationMessageDispatcherFactory
-{
-    private readonly Action<InboundGrpcEvent> _processItem;
-    private readonly ILogger _logger;
-
-    public OrderedInvocationProcessorFactory(Action<InboundGrpcEvent> processItem, ILogger logger)
-    {
-        _processItem = processItem;
-        _logger = logger;
-    }
-
-    public IInvocationMessageDispatcher Create(string invocationId) =>
-        new OrderedInvocationMessageDispatcher(invocationId, _logger, _processItem);
-}
