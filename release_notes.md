@@ -3,6 +3,7 @@
 <!-- Please add your release notes in the following format:
 - My change description (#PR)
 -->
+- Update Python Worker Version to [4.21.0](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.21.0)
 - Update Python Worker Version to [4.20.0](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.20.0)
 - Update Java Worker Version to [2.13.0](https://github.com/Azure/azure-functions-java-worker/releases/tag/2.13.0)
 - Update WebJobsScriptHostService to remove hardcoded sleep during application shut down (#9520)
