@@ -19,6 +19,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 {
     public class HostWarmupMiddleware
     {
+#if PLACEHOLDERSIMULATION
+        private const bool IsInPlaceholderSimulationMode = true;
+#else
+        private const bool IsInPlaceholderSimulationMode = false;
+#endif
         private readonly IWebHostRpcWorkerChannelManager _webHostRpcWorkerChannelManager;
         private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions;
         private readonly RequestDelegate _next;
@@ -168,7 +173,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
         public static bool IsWarmUpRequest(HttpRequest request, bool inStandbyMode, IEnvironment environment)
         {
             return inStandbyMode
-                && ((environment.IsAppService() && request.IsAppServiceInternalRequest(environment)) || environment.IsAnyLinuxConsumption())
+                && (IsInPlaceholderSimulationMode || (environment.IsAppService() && request.IsAppServiceInternalRequest(environment)) || environment.IsAnyLinuxConsumption())
                 && (request.Path.StartsWithSegments(_warmupRoutePath) || request.Path.StartsWithSegments(_warmupRouteAlternatePath));
         }
     }
