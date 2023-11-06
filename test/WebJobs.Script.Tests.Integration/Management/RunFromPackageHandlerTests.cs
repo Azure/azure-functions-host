@@ -58,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
 
             _packageDownloadHandler = new Mock<IPackageDownloadHandler>(MockBehavior.Strict);
 
-            _runFromPackageHandler = new RunFromPackageHandler(_environment, _meshServiceClientMock.Object,
+            _runFromPackageHandler = new RunFromPackageHandler(_environment, _meshServiceClientMock.Object, 
                 _bashCmdHandlerMock.Object, _zipHandler.Object, _packageDownloadHandler.Object, _metricsLogger, _logger);
 
             _fileSystem = GetFileSystem();
@@ -95,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
         {
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath, HomeDirectory);
 
-            var hostAssignmentContext = new HostAssignmentContext { Environment = new Dictionary<string, string>() };
+            var hostAssignmentContext = new HostAssignmentContext {Environment = new Dictionary<string, string>()};
 
             const string connectionString = "connection-string";
             hostAssignmentContext.Environment[EnvironmentSettingNames.AzureFilesConnectionString] = connectionString;
@@ -117,7 +117,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
         {
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath, HomeDirectory);
 
-            var hostAssignmentContext = new HostAssignmentContext { Environment = new Dictionary<string, string>() };
+            var hostAssignmentContext = new HostAssignmentContext {Environment = new Dictionary<string, string>()};
 
             const string connectionString = "connection-string";
             hostAssignmentContext.Environment[EnvironmentSettingNames.AzureFilesConnectionString] = connectionString;
@@ -152,15 +152,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             handlerMock.Protected().Setup<Task<HttpResponseMessage>>("SendAsync",
                 ItExpr.IsAny<HttpRequestMessage>(),
                 ItExpr.IsAny<CancellationToken>()).ReturnsAsync(new HttpResponseMessage
-                {
-                    StatusCode = HttpStatusCode.OK,
-                    Content = new ReadOnlyMemoryContent(ReadOnlyMemory<byte>.Empty)
-                });
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new ReadOnlyMemoryContent(ReadOnlyMemory<byte>.Empty)
+            });
 
             _httpClientFactory = TestHelpers.CreateHttpClientFactory(handlerMock.Object);
 
             var packageDownloadHandler = new PackageDownloadHandler(_httpClientFactory,
-                new Mock<IManagedIdentityTokenProvider>(MockBehavior.Strict).Object, _bashCmdHandlerMock.Object,
+                new Mock<IManagedIdentityTokenProvider>(MockBehavior.Strict).Object, _bashCmdHandlerMock.Object, 
                 _environment, _fileSystem.Object, NullLogger<PackageDownloadHandler>.Instance, _metricsLogger);
 
             _runFromPackageHandler = new RunFromPackageHandler(_environment, _meshServiceClientMock.Object,
