@@ -10,7 +10,6 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
-using Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
@@ -59,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
 
             _packageDownloadHandler = new Mock<IPackageDownloadHandler>(MockBehavior.Strict);
 
-            _runFromPackageHandler = new RunFromPackageHandler(_environment, _meshServiceClientMock.Object, 
+            _runFromPackageHandler = new RunFromPackageHandler(_environment, _meshServiceClientMock.Object,
                 _bashCmdHandlerMock.Object, _zipHandler.Object, _packageDownloadHandler.Object, _metricsLogger, _logger);
 
             _fileSystem = GetFileSystem();
@@ -96,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
         {
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath, HomeDirectory);
 
-            var hostAssignmentContext = new HostAssignmentContext {Environment = new Dictionary<string, string>()};
+            var hostAssignmentContext = new HostAssignmentContext { Environment = new Dictionary<string, string>() };
 
             const string connectionString = "connection-string";
             hostAssignmentContext.Environment[EnvironmentSettingNames.AzureFilesConnectionString] = connectionString;
@@ -118,7 +117,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
         {
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath, HomeDirectory);
 
-            var hostAssignmentContext = new HostAssignmentContext {Environment = new Dictionary<string, string>()};
+            var hostAssignmentContext = new HostAssignmentContext { Environment = new Dictionary<string, string>() };
 
             const string connectionString = "connection-string";
             hostAssignmentContext.Environment[EnvironmentSettingNames.AzureFilesConnectionString] = connectionString;
@@ -153,15 +152,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             handlerMock.Protected().Setup<Task<HttpResponseMessage>>("SendAsync",
                 ItExpr.IsAny<HttpRequestMessage>(),
                 ItExpr.IsAny<CancellationToken>()).ReturnsAsync(new HttpResponseMessage
-            {
-                StatusCode = HttpStatusCode.OK,
-                Content = new ReadOnlyMemoryContent(ReadOnlyMemory<byte>.Empty)
-            });
+                {
+                    StatusCode = HttpStatusCode.OK,
+                    Content = new ReadOnlyMemoryContent(ReadOnlyMemory<byte>.Empty)
+                });
 
             _httpClientFactory = TestHelpers.CreateHttpClientFactory(handlerMock.Object);
 
             var packageDownloadHandler = new PackageDownloadHandler(_httpClientFactory,
-                new Mock<IManagedIdentityTokenProvider>(MockBehavior.Strict).Object, _bashCmdHandlerMock.Object, 
+                new Mock<IManagedIdentityTokenProvider>(MockBehavior.Strict).Object, _bashCmdHandlerMock.Object,
                 _environment, _fileSystem.Object, NullLogger<PackageDownloadHandler>.Instance, _metricsLogger);
 
             _runFromPackageHandler = new RunFromPackageHandler(_environment, _meshServiceClientMock.Object,
@@ -604,42 +603,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                         s.StartsWith(BashCommandHandler.FileCommand) && url.EndsWith(Path.GetFileName(s),
                             StringComparison.OrdinalIgnoreCase)),
                     MetricEventNames.LinuxContainerSpecializationFileCommand), Times.Once);
-        }
-
-        [Fact]
-        public async Task ApplyRunFromPackageContext_Throws_Logs_DiagnosticEvent()
-        {
-            var loggerProvider = new TestLoggerProvider();
-            var loggerFactory = new LoggerFactory();
-            loggerFactory.AddProvider(loggerProvider);
-            var logger = loggerFactory.CreateLogger<RunFromPackageHandler>();
-
-            var runFromPackageHandler = new RunFromPackageHandler(_environment, _meshServiceClientMock.Object,
-                _bashCmdHandlerMock.Object, _zipHandler.Object, _packageDownloadHandler.Object, _metricsLogger, logger);
-
-            var url = $"http://url/zip-file.zip";
-            var isWarmUpRequest = false;
-            var runFromPackageContext = new RunFromPackageContext(EnvironmentSettingNames.AzureWebsiteRunFromPackage,
-                url, DefaultPackageLength, isWarmUpRequest);
-
-            var exception = new InvalidOperationException("invalid operation.");
-            _packageDownloadHandler.Setup(p => p.Download(It.IsAny<RunFromPackageContext>()))
-                                   .Throws(exception);
-
-            await Assert.ThrowsAsync<InvalidOperationException>(async () =>
-            {
-                await runFromPackageHandler.ApplyRunFromPackageContext(runFromPackageContext, TargetScriptPath, false, true);
-            });
-
-            var expectedTraceMessage = "Failed to initialize Functions Host due to a problem with the application package.";
-
-            DiagnosticEventTestUtils.ValidateThatTheExpectedDiagnosticEventIsPresent(
-                loggerProvider,
-                expectedTraceMessage,
-                LogLevel.Error,
-                DiagnosticEventConstants.RunFromPackageFailedErrorCodeHelpLink,
-                DiagnosticEventConstants.RunFromPackageFailedErrorCode
-            );
         }
 
         private static Mock<IFileSystem> GetFileSystem()

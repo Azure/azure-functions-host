@@ -101,22 +101,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             catch (RequestFailedException rfex) when (rfex.Status == 409)
             {
                 // If the read operation failed because the blob access tier is set to archived, log a diagnostic event.
-                if (rfex.ErrorCode.Equals(BlobArchivedName, StringComparison.OrdinalIgnoreCase))
-                {
-                    DiagnosticEventLoggerExtensions.LogDiagnosticEventError(
-                        Logger,
-                        DiagnosticEventConstants.FailedToReadBlobStorageRepositoryErrorCode,
-                        Resources.FailedToReadBlobSecretRepositoryTierSetToArchive,
-                        DiagnosticEventConstants.FailedToReadBlobStorageRepositoryHelpLink,
-                        rfex);
-                }
-
-                LogErrorMessage(operation, rfex);
-                throw;
-            }
-            catch (RequestFailedException rfex) when (rfex.Status == 409)
-            {
-                // If the read operation failed because the blob access tier is set to archived, log a diagnostic event.
                 if (rfex.ErrorCode.Equals(_blobArchivedName, StringComparison.OrdinalIgnoreCase))
                 {
                     Logger?.LogDiagnosticEventError(
