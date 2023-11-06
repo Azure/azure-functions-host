@@ -20,5 +20,5 @@
 - Sending command line arguments to language workers with `functions-` prefix to prevent conflicts (#9514)
 - Adding code to simulate placeholder and specilization locally (#9618)
 - Bug fix: Comparisons in the Azure Key Vault Secrets Repository are now case insensitive (#9644)
-  - This fixes a bug where Host and System keys could be automatically recreated if they had been manually added to Key Vault with all lowercase secret names
+  - This fixes a bug where keys could be automatically recreated if they had been manually added to Key Vault with all lowercase secret names
 
