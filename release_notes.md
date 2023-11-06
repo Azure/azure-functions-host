@@ -3,7 +3,7 @@
 <!-- Please add your release notes in the following format:
 - My change description (#PR)
 -->
-- Update Python Worker Version to [4.20.0](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.20.0)
+- Update Python Worker Version to [4.21.0](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.21.0)
 - Update Java Worker Version to [2.13.0](https://github.com/Azure/azure-functions-java-worker/releases/tag/2.13.0)
 - Update WebJobsScriptHostService to remove hardcoded sleep during application shut down (#9520)
 - Update PowerShell 7.2 Worker Version to [4.0.2974](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.2974)
@@ -19,6 +19,12 @@
 - Limit dotnet-isolated specialization to 64 bit host process (#9548)
 - Sending command line arguments to language workers with `functions-` prefix to prevent conflicts (#9514)
 - Adding code to simulate placeholder and specilization locally (#9618)
+- Delaying execution of `LogWorkerMetadata` method until after coldstart is done. (#9627)
+- Update PowerShell Worker 7.2 to 4.0.3070 [Release Note](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.3070)
+- Update PowerShell Worker 7.4 to 4.0.3030 [Release Note](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.3030)
+- Update Node.js Worker Version to [3.9.0](https://github.com/Azure/azure-functions-nodejs-worker/releases/tag/v3.9.0)
+- Upgrading dependent packages to latest versions. #9646
+   - Azure.Identity (1.10.0 to 1.10.3)
+   - Azure.Core (1.34.0 to 1.35.0)
 - Bug fix: Comparisons in the Azure Key Vault Secrets Repository are now case insensitive (#9644)
   - This fixes a bug where keys could be automatically recreated if they had been manually added to Key Vault with all lowercase secret names
-

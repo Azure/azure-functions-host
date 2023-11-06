@@ -112,7 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Health
                     if (difference.TotalDays <= 0)
                     {
                         string message = string.Format(Resources.SasTokenExpiredFormat, setting.Key);
-                        DiagnosticEventLoggerExtensions.LogDiagnosticEventError(_logger, message, DiagnosticEventConstants.SasTokenExpiringErrorCode, DiagnosticEventConstants.SasTokenExpiringErrorHelpLink, new Exception(message));
+                        DiagnosticEventLoggerExtensions.LogDiagnosticEventError(_logger, DiagnosticEventConstants.SasTokenExpiringErrorCode, message, DiagnosticEventConstants.SasTokenExpiringErrorHelpLink, new Exception(message));
                     }
                     else if (difference.TotalDays <= 45)
                     {

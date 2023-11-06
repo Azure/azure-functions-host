@@ -73,7 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             repository.WriteDiagnosticEvent(DateTime.UtcNow, "eh1", LogLevel.Information, "This is the message", "https://fwlink/", new Exception("exception message"));
 
             var messages = _loggerProvider.GetAllLogMessages();
-            Assert.Equal(messages[0].FormattedMessage, "Unable to write diagnostic events. Host id is set to null.");
+            Assert.Equal(0, repository.Events.Values.Count());
         }
 
         [Fact]
@@ -195,25 +195,35 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
         [Fact]
         public async Task FlushLogs_LogsErrorAndClearsEvents_WhenTableCreatingFails()
         {
-            // Clear events by flush logs if table creation attempts fail
+            // Arrange
             IEnvironment testEnvironment = new TestEnvironment();
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
 
+            var testData = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                { "AzureWebJobsStorage", null }
+            };
+
+            var configuration = new ConfigurationBuilder()
+                .AddEnvironmentVariables()
+                .AddInMemoryCollection(testData)
+                .Build();
+
             DiagnosticEventTableStorageRepository repository =
-                new DiagnosticEventTableStorageRepository(_configuration, _hostIdProvider, testEnvironment, _logger);
+                new DiagnosticEventTableStorageRepository(configuration, _hostIdProvider, testEnvironment, _logger);
 
-            var tableClient = repository.TableClient;
-            var cloudTable = tableClient.GetTableReference("aa");
-
+            // Act
             repository.WriteDiagnosticEvent(DateTime.UtcNow, "eh1", LogLevel.Information, "This is the message", "https://fwlink/", new Exception("exception message"));
+            await repository.FlushLogs();
 
-            Assert.Equal(1, repository.Events.Values.Count());
+            // Assert 
+            var logMessage = _loggerProvider.GetAllLogMessages().SingleOrDefault(m => m.FormattedMessage.Contains("Unable to get table reference"));
+            Assert.NotNull(logMessage);
 
-            await repository.FlushLogs(cloudTable);
-
+            var messagePresent = _loggerProvider.GetAllLogMessages().Any(m => m.FormattedMessage.Contains("Azure Storage connection string is empty or invalid. Unable to write diagnostic events."));
+            Assert.True(messagePresent);
+            
             Assert.Equal(0, repository.Events.Values.Count());
-            var logMessage = _loggerProvider.GetAllLogMessages()[0];
-            Assert.True(logMessage.FormattedMessage.StartsWith("Unable to create table 'aa'"));
         }
 
         [Fact]

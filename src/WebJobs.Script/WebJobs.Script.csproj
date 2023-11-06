@@ -39,8 +39,8 @@
   </ItemGroup>
   <ItemGroup>
     <!-- Dependencies needed for Storage Providers -->
-    <PackageReference Include="Azure.Core" Version="1.34.0" />
-    <PackageReference Include="Azure.Identity" Version="1.10.0" />
+    <PackageReference Include="Azure.Core" Version="1.35.0" />
+    <PackageReference Include="Azure.Identity" Version="1.10.2" />
     <PackageReference Include="Azure.Storage.Blobs" Version="12.13.0" />
     <PackageReference Include="Microsoft.ApplicationInsights" Version="2.21.0" />
     <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.21.0" />
@@ -58,15 +58,15 @@
     <!-- Workers -->
     <PackageReference Include="Microsoft.Azure.AppService.Proxy.Client" Version="2.2.20220831.41" />
     <PackageReference Include="Microsoft.Azure.Functions.JavaWorker" Version="2.13.0" />
-    <PackageReference Include="Microsoft.Azure.Functions.NodeJsWorker" Version="3.8.1" />
+    <PackageReference Include="Microsoft.Azure.Functions.NodeJsWorker" Version="3.9.0" />
     <PackageReference Include="Microsoft.Azure.Functions.PowerShellWorker.PS7.0" Version="4.0.2973" />
-    <PackageReference Include="Microsoft.Azure.Functions.PowerShellWorker.PS7.2" Version="4.0.2974" />
-    <PackageReference Include="Microsoft.Azure.Functions.PowerShellWorker.PS7.4" Version="4.0.2975" />
+    <PackageReference Include="Microsoft.Azure.Functions.PowerShellWorker.PS7.2" Version="4.0.3070" />
+    <PackageReference Include="Microsoft.Azure.Functions.PowerShellWorker.PS7.4" Version="4.0.3030" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions" Version="5.0.0-beta.2-10879" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Http" Version="3.2.0" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Timers.Storage" Version="1.0.0-beta.1" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Script.Abstractions" Version="1.0.4-preview" />
-    <PackageReference Include="Microsoft.Azure.WebJobs.Logging.ApplicationInsights" Version="3.0.37" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Logging.ApplicationInsights" Version="3.0.38" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Scripting" Version="3.3.1" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="6.0.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="6.0.0" />

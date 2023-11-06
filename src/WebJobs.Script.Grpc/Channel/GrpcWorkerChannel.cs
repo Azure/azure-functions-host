@@ -367,7 +367,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         {
             _workerChannelLogger.LogDebug("Received FunctionEnvironmentReloadResponse from WorkerProcess with Pid: '{0}'", _rpcWorkerProcess.Id);
 
-            LogWorkerMetadata(res.WorkerMetadata);
+            res.WorkerMetadata?.UpdateWorkerMetadata(_workerConfig);
+
+            Utility.ExecuteAfterColdStartDelay(_environment, () => LogWorkerMetadata(res.WorkerMetadata));
 
             _workerConfig.Description.DefaultRuntimeVersion = _workerConfig.Description.DefaultRuntimeVersion ?? res?.WorkerMetadata?.RuntimeVersion;
             _workerConfig.Description.DefaultRuntimeName = _workerConfig.Description.DefaultRuntimeName ?? res?.WorkerMetadata?.RuntimeName;
@@ -398,10 +400,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _initMessage = initEvent.Message.WorkerInitResponse;
             _workerChannelLogger.LogDebug("Worker capabilities: {capabilities}", _initMessage.Capabilities);
 
-            // In placeholder scenario, the capabilities and worker metadata will not be available
-            // until specialization is done (env reload request). So these can be removed from worker init response code path.
-            // to do to track this: https://github.com/Azure/azure-functions-host/issues/9019
-            LogWorkerMetadata(_initMessage.WorkerMetadata);
+            _initMessage.WorkerMetadata?.UpdateWorkerMetadata(_workerConfig);
+
+            Utility.ExecuteAfterColdStartDelay(_environment, () => LogWorkerMetadata(_initMessage.WorkerMetadata));
 
             _workerConfig.Description.DefaultRuntimeVersion = _workerConfig.Description.DefaultRuntimeVersion ?? _initMessage?.WorkerMetadata?.RuntimeVersion;
             _workerConfig.Description.DefaultRuntimeName = _workerConfig.Description.DefaultRuntimeName ?? _initMessage?.WorkerMetadata?.RuntimeName;
@@ -436,7 +437,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 return;
             }
 
-            workerMetadata.UpdateWorkerMetadata(_workerConfig);
             var workerMetadataString = workerMetadata.ToString();
             _metricsLogger.LogEvent(MetricEventNames.WorkerMetadata, functionName: null, Sanitizer.Sanitize(workerMetadataString));
             _workerChannelLogger.LogDebug("Worker metadata: {workerMetadata}", workerMetadataString);
@@ -1477,7 +1477,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
             catch
             {
-                // Don't allow background execptions to escape
+                // Don't allow background exceptions to escape
                 // E.g. when a rpc channel is shutting down we can process exceptions
             }
             try
@@ -1508,13 +1508,13 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             if (_environment.IsApplicationInsightsAgentEnabled())
             {
                 attributes[ScriptConstants.LogPropertyProcessIdKey] = Convert.ToString(_rpcWorkerProcess.Id);
-                if (context.FunctionMetadata.Properties.ContainsKey(ScriptConstants.LogPropertyHostInstanceIdKey))
+                if (context.FunctionMetadata.Properties.TryGetValue(ScriptConstants.LogPropertyHostInstanceIdKey, out var hostInstanceIdValue))
                 {
-                    attributes[ScriptConstants.LogPropertyHostInstanceIdKey] = Convert.ToString(context.FunctionMetadata.Properties[ScriptConstants.LogPropertyHostInstanceIdKey]);
+                    attributes[ScriptConstants.LogPropertyHostInstanceIdKey] = Convert.ToString(hostInstanceIdValue);
                 }
-                if (context.FunctionMetadata.Properties.ContainsKey(LogConstants.CategoryNameKey))
+                if (context.FunctionMetadata.Properties.TryGetValue(LogConstants.CategoryNameKey, out var categoryNameValue))
                 {
-                    attributes[LogConstants.CategoryNameKey] = Convert.ToString(context.FunctionMetadata.Properties[LogConstants.CategoryNameKey]);
+                    attributes[LogConstants.CategoryNameKey] = Convert.ToString(categoryNameValue);
                 }
                 string sessionid = Activity.Current?.GetBaggageItem(ScriptConstants.LiveLogsSessionAIKey);
                 if (!string.IsNullOrEmpty(sessionid))
