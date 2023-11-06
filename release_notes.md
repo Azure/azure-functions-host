@@ -26,3 +26,4 @@
 - Upgrading dependent packages to latest versions. #9646
    - Azure.Identity (1.10.0 to 1.10.3)
    - Azure.Core (1.34.0 to 1.35.0)
+- Updating HostWarmupMiddleware to enable /warmup API call when testing locally using DebugPlaceholder or ReleasePlaceholder configuration.
