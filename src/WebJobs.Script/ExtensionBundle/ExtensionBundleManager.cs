@@ -275,14 +275,14 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
             if (!string.IsNullOrEmpty(configOption.MaximumBundleV3Version))
             {
                 var maximumBundleV3Version = NuGetVersion.Parse(configOption.MaximumBundleV3Version);
-                matchingVersion = matchingVersion?.Major == 3 && matchingVersion > maximumBundleV3Version
+                matchingVersion = matchingVersion?.Major == ScriptConstants.ExtensionBundleV3MajorVersion && matchingVersion > maximumBundleV3Version
                                 ? maximumBundleV3Version
                                 : matchingVersion;
             }
             if (!string.IsNullOrEmpty(configOption.MaximumBundleV4Version))
             {
                 var maximumBundleV4Version = NuGetVersion.Parse(configOption.MaximumBundleV4Version);
-                matchingVersion = matchingVersion?.Major == 4 && matchingVersion > maximumBundleV4Version
+                matchingVersion = matchingVersion?.Major == ScriptConstants.ExtensionBundleV4MajorVersion && matchingVersion > maximumBundleV4Version
                                 ? maximumBundleV4Version
                                 : matchingVersion;
             }

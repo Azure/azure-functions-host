@@ -389,6 +389,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
         [InlineData("[3.*, 4.0.0)", "3.19.0")]
         [InlineData("[4.*, 5.0.0)", "4.2.0")]
         [InlineData("[4.*, 5.0.0)", null)]
+        [InlineData("[3.*, 4.0.0)", null)]
         public void LimitMaxVersion(string versionRange, string version)
         {
             var range = VersionRange.Parse(versionRange);

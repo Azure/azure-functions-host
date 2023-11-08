@@ -180,6 +180,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureWebJobsHostsContainerName = "azure-webjobs-hosts";
 
         public const string DefaultExtensionBundleDirectory = "FuncExtensionBundles";
+        public const int ExtensionBundleV3MajorVersion = 3;
+        public const int ExtensionBundleV4MajorVersion = 4;
         public const string ExtensionBundleDirectory = "ExtensionBundles";
         public const string ExtensionBundleDefaultSourceUri = "https://functionscdn.azureedge.net/public";
         public const string ExtensionBundleMetadataFile = "bundle.json";
