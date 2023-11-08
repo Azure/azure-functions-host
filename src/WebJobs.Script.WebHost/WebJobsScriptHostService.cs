@@ -224,7 +224,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
-        private void ValidateLinuxSKUConfiguration()
+        private void ValidateLinuxSKUConfiguration(ILogger logger)
         {
             var websiteRunFromPackageValue = _environment.GetEnvironmentVariable(AzureWebsiteRunFromPackage);
             var scmRunFromPackageValue = _environment.GetEnvironmentVariable(ScmRunFromPackage);
@@ -234,7 +234,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 _environment.IsLinuxConsumptionOnAtlas() &&
                 !_environment.IsManagedAppEnvironment())
             {
-                _logger.LogError($"Unable to load the functions payload since the app was not provisioned with valid {AzureWebJobsSecretStorage} connection string.");
+                logger.LogError($"Unable to load the functions payload since the app was not provisioned with valid {AzureWebJobsSecretStorage} connection string.");
             }
 
             var functionsTimeZone = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsTimeZone);
@@ -248,10 +248,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 string message = Script.Properties.Resources.LinuxConsumptionRemoveTimeZone;
 
                 // Log diagnostic event
-                DiagnosticEventLoggerExtensions.LogDiagnosticEventError(_logger, DiagnosticEventConstants.LinuxConsumptionTimeZoneErrorCode, message, DiagnosticEventConstants.LinuxConsumptionTimeZoneErrorHelpLink, new Exception(message));
+                logger.LogDiagnosticEventError(DiagnosticEventConstants.LinuxConsumptionTimeZoneErrorCode, message, DiagnosticEventConstants.LinuxConsumptionTimeZoneErrorHelpLink, new Exception(message));
 
                 // Log warning so this message goes to App insights
-                _logger.LogWarning(message);
+                logger.LogWarning(message);
             }
         }
 
@@ -343,7 +343,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                 LogInitialization(localHost, isOffline, attemptCount, ++_hostStartCount, activeOperation.Id);
 
-                ValidateLinuxSKUConfiguration();
+                ValidateLinuxSKUConfiguration(GetHostLogger(localHost));
 
                 if (!_scriptWebHostEnvironment.InStandbyMode)
                 {
