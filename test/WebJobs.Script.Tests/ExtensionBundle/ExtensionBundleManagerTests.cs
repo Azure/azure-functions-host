@@ -399,7 +399,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
 
             if (string.IsNullOrEmpty(version))
             {
-                Assert.Equal("4.3.0", resolvedVersion);
+                if (versionRange.StartsWith("3"))
+                {
+                    Assert.Equal("3.20.0", resolvedVersion);
+                }
+
+                if (versionRange.StartsWith("4"))
+                {
+                    Assert.Equal("4.3.0", resolvedVersion);
+                }
             }
         }
 
