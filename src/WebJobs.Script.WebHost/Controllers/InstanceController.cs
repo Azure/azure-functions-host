@@ -64,6 +64,27 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 : StatusCode(StatusCodes.Status409Conflict, "Instance already assigned");
         }
 
+        [HttpPost]
+        [Route("admin/instance/legion-assign")]
+        [Authorize(Policy = PolicyNames.AdminAuthLevel)]
+        public async Task<IActionResult> LegionAssign([FromBody] HostAssignmentContext hostAssignmentContext)
+        {
+            _logger.LogDebug($"Starting legion container assignment for host : {Request?.Host}");
+
+            if (!_environment.IsFlexConsumptionSku())
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, "Legion assignment is not allowed on this instance");
+            }
+
+            _startupContextProvider.SetLegionContext(hostAssignmentContext);
+
+            var succeeded = _instanceManager.StartAssignment(hostAssignmentContext);
+
+            return succeeded
+                ? Accepted()
+                : StatusCode(StatusCodes.Status409Conflict, "Instance already assigned");
+        }
+
         [HttpGet]
         [Route("admin/instance/info")]
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]

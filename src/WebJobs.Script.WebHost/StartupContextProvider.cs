@@ -155,6 +155,24 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return hostAssignmentContext;
         }
 
+        /// <summary>
+        /// Decrypt and deserialize the specified context, and apply values from it to the
+        /// startup cache context.
+        /// </summary>
+        /// <param name="hostAssignmentContext">The encrypted assignment context.</param>
+        public virtual void SetLegionContext(HostAssignmentContext hostAssignmentContext)
+        {
+            // Don't update StartupContext for warmup requests
+            if (!hostAssignmentContext.IsWarmupRequest)
+            {
+                // apply values from the context to our cached context
+                Context = new StartupContext
+                {
+                    Secrets = hostAssignmentContext.Secrets
+                };
+            }
+        }
+
         public class StartupContext
         {
             [JsonProperty("secrets")]
