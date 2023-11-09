@@ -67,7 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [HttpPost]
         [Route("admin/instance/legion-assign")]
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
-        public async Task<IActionResult> LegionAssign([FromBody] HostAssignmentContext hostAssignmentContext)
+        public IActionResult LegionAssign([FromBody] HostAssignmentContext hostAssignmentContext)
         {
             _logger.LogDebug($"Starting legion container assignment for host : {Request?.Host}");
 
