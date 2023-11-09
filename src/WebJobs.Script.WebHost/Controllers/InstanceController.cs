@@ -67,18 +67,29 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [HttpPost]
         [Route("admin/instance/legion-assign")]
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
-        public IActionResult LegionAssign([FromBody] HostAssignmentContext hostAssignmentContext)
+        public IActionResult LegionAssign([FromBody] EncryptedHostAssignmentContext encryptedAssignmentContext)
         {
-            _logger.LogDebug($"Starting legion container assignment for host : {Request?.Host}");
+            _logger.LogDebug($"[TEST] LEGION Starting container assignment for host : {Request?.Host}. ContextLength is: {encryptedAssignmentContext.EncryptedContext?.Length}");
 
-            if (!_environment.IsFlexConsumptionSku())
+            var assignmentContext = _startupContextProvider.SetContext(encryptedAssignmentContext);
+
+            // before starting the assignment we want to perform as much
+            // up front validation on the context as possible
+            string error = await _instanceManager.ValidateContext(assignmentContext);
+            if (error != null)
             {
-                return StatusCode(StatusCodes.Status403Forbidden, "Legion assignment is not allowed on this instance");
+                return StatusCode(StatusCodes.Status400BadRequest, error);
             }
 
-            _startupContextProvider.SetLegionContext(hostAssignmentContext);
+            // Wait for Sidecar specialization to complete before returning ok.
+            // This shouldn't take too long so ok to do this sequentially.
+            error = await _instanceManager.SpecializeMSISidecar(assignmentContext);
+            if (error != null)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, error);
+            }
 
-            var succeeded = _instanceManager.StartAssignment(hostAssignmentContext);
+            var succeeded = _instanceManager.StartAssignment(assignmentContext);
 
             return succeeded
                 ? Accepted()
