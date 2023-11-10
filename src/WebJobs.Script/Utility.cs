@@ -47,6 +47,8 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <summary>
         /// Gets a value indicating whether the host is running in placeholder simulation mode.
         /// This mode is used for testing placeholder scenarios locally.
+        /// Running using either "DebugPlaceholder" or "ReleasePlaceholder" configuration mode will
+        /// cause the host to run in placeholder simulation mode.
         /// </summary>
 #if PLACEHOLDERSIMULATION
         public const bool IsInPlaceholderSimulationMode = true;

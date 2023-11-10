@@ -68,8 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 config.UseMiddleware<HostAvailabilityCheckMiddleware>();
             });
 
-            builder.UseWhen(context => HostWarmupMiddleware.IsWarmUpRequest(context.Request, standbyOptions.InStandbyMode, environment)
-            || HostWarmupMiddleware.IsWarmUpRequestInPlaceHolderSimulationMode(context.Request, standbyOptions.InStandbyMode), config =>
+            builder.UseWhen(context => HostWarmupMiddleware.IsWarmUpRequest(context.Request, standbyOptions.InStandbyMode, environment), config =>
             {
                 config.UseMiddleware<HostWarmupMiddleware>();
             });

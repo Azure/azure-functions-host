@@ -167,20 +167,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
         public static bool IsWarmUpRequest(HttpRequest request, bool inStandbyMode, IEnvironment environment)
         {
+            // In placeholder simulation mode, we want the homepage request to also trigger warmup code.
+            var isWarmupViaHomePageRequest = Utility.IsInPlaceholderSimulationMode && inStandbyMode && request.Path.Value == "/";
+            if (isWarmupViaHomePageRequest)
+            {
+                return true;
+            }
+
             return inStandbyMode
                 && ((environment.IsAppService() && request.IsAppServiceInternalRequest(environment)) || environment.IsAnyLinuxConsumption())
                 && (request.Path.StartsWithSegments(_warmupRoutePath) || request.Path.StartsWithSegments(_warmupRouteAlternatePath));
-        }
-
-        /// <summary>
-        /// Retuns a value indicating whether the current request should trigger warmup of the host when in placeholder simulation mode.
-        /// When testing locally in placeholder simulation mode, we want the homepage request to also trigger warmup code.
-        /// </summary>
-        public static bool IsWarmUpRequestInPlaceHolderSimulationMode(HttpRequest request, bool inStandbyMode)
-        {
-            return Utility.IsInPlaceholderSimulationMode
-                && inStandbyMode
-                && request.Path.Value == "/";
         }
     }
 }
