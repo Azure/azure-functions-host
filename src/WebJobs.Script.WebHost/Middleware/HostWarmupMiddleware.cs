@@ -53,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
         public Task Invoke(HttpContext httpContext)
         {
-            if (IsWarmUpRequest(httpContext.Request, _webHostEnvironment.InStandbyMode, _environment))
+            if (_webHostEnvironment.InStandbyMode)
             {
                 return WarmupInvoke(httpContext);
             }
@@ -167,6 +167,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
         public static bool IsWarmUpRequest(HttpRequest request, bool inStandbyMode, IEnvironment environment)
         {
+            // In placeholder simulation mode, we want the homepage request to also trigger warmup code.
+            var isWarmupViaHomePageRequest = Utility.IsInPlaceholderSimulationMode && inStandbyMode && request.Path.Value == "/";
+            if (isWarmupViaHomePageRequest)
+            {
+                return true;
+            }
+
             return inStandbyMode
                 && ((environment.IsAppService() && request.IsAppServiceInternalRequest(environment)) || environment.IsAnyLinuxConsumption())
                 && (request.Path.StartsWithSegments(_warmupRoutePath) || request.Path.StartsWithSegments(_warmupRouteAlternatePath));

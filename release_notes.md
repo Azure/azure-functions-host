@@ -26,6 +26,7 @@
 - Upgrading dependent packages to latest versions. #9646
    - Azure.Identity (1.10.0 to 1.10.3)
    - Azure.Core (1.34.0 to 1.35.0)
+- Updating HostWarmupMiddleware to trigger warmup code on home page request when testing locally using DebugPlaceholder or ReleasePlaceholder configuration.
 - Bug fix: Comparisons in the Azure Key Vault Secrets Repository are now case insensitive (#9644)
   - This fixes a bug where keys could be automatically recreated if they had been manually added to Key Vault with all lowercase secret names
 - Update DotNetIsolatedNativeHost version to 1.0.3 (#9671)

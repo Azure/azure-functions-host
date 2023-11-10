@@ -44,6 +44,18 @@ namespace Microsoft.Azure.WebJobs.Script
         private const string SasVersionQueryParam = "sv";
         private const string SasTokenExpirationDate = "se";
 
+        /// <summary>
+        /// Gets a value indicating whether the host is running in placeholder simulation mode.
+        /// This mode is used for testing placeholder scenarios locally.
+        /// Running using either "DebugPlaceholder" or "ReleasePlaceholder" configuration mode will
+        /// cause the host to run in placeholder simulation mode.
+        /// </summary>
+#if PLACEHOLDERSIMULATION
+        public const bool IsInPlaceholderSimulationMode = true;
+#else
+        public const bool IsInPlaceholderSimulationMode = false;
+#endif
+
         private static readonly Regex FunctionNameValidationRegex = new Regex(@"^[a-z][a-z0-9_\-]{0,127}$(?<!^host$)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
         private static readonly Regex BindingNameValidationRegex = new Regex(string.Format("^([a-zA-Z][a-zA-Z0-9]{{0,127}}|{0})$", Regex.Escape(ScriptConstants.SystemReturnParameterBindingName)));
 
@@ -51,12 +63,6 @@ namespace Microsoft.Azure.WebJobs.Script
         private static readonly FilteredExpandoObjectConverter _filteredExpandoObjectConverter = new FilteredExpandoObjectConverter();
 
         private static List<string> dotNetLanguages = new List<string>() { DotNetScriptTypes.CSharp, DotNetScriptTypes.DotNetAssembly };
-
-#if PLACEHOLDERSIMULATION
-        private static bool isInPlaceholderSimulationMode = true;
-#else
-        private static bool isInPlaceholderSimulationMode = false;
-#endif
 
         public static int ColdStartDelayMS { get; set; } = 5000;
 
@@ -780,7 +786,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public static void ExecuteAfterColdStartDelay(IEnvironment environment, Action targetAction, CancellationToken cancellationToken = default)
         {
             // for Dynamic SKUs where coldstart is important, we want to delay the action
-            if (isInPlaceholderSimulationMode || environment.IsDynamicSku())
+            if (IsInPlaceholderSimulationMode || environment.IsDynamicSku())
             {
                 ExecuteAfterDelay(targetAction, TimeSpan.FromMilliseconds(ColdStartDelayMS), cancellationToken);
             }
