@@ -241,14 +241,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             var functionsWebsiteTimeZone = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsWebsiteTimeZone);
 
             // If we have a linux consumption app and the time zone env variable is set, log a warning and diagnostic event
-            if (EnvironmentExtensions.IsLinuxConsumptionOnAtlas(_environment) &&
+            if (_environment.IsLinuxConsumptionOnAtlas() &&
                 (!string.IsNullOrEmpty(functionsTimeZone) ||
                 !string.IsNullOrEmpty(functionsWebsiteTimeZone)))
             {
                 string message = Script.Properties.Resources.LinuxConsumptionRemoveTimeZone;
 
                 // Log diagnostic event
-                logger?.LogDiagnosticEventError(DiagnosticEventConstants.LinuxConsumptionTimeZoneErrorCode, message, DiagnosticEventConstants.LinuxConsumptionTimeZoneErrorHelpLink, new Exception(message));
+                logger?.LogDiagnosticEventError(DiagnosticEventConstants.LinuxConsumptionTimeZoneErrorCode, message, DiagnosticEventConstants.LinuxConsumptionTimeZoneErrorHelpLink, new InvalidOperationException(message));
 
                 // Log warning so this message goes to App insights
                 logger?.LogWarning(message);

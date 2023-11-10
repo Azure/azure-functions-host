@@ -192,7 +192,7 @@ namespace Microsoft.Azure.WebJobs.Script.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to WEBSITE_TIME_ZONE and TZ are not currently supported on the Linux Consumption plan. Please remove these environment variables..
+        ///   Looks up a localized string similar to The environment variables &apos;WEBSITE_TIME_ZONE&apos; and &apos;TZ&apos; are not supported on this platform. For more information, see https://go.microsoft.com/fwlink/?linkid=2250165..
         /// </summary>
         internal static string LinuxConsumptionRemoveTimeZone {
             get {

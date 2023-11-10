@@ -60,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Health
                     await Task.Delay(TimeSpan.FromHours(1), cancellationToken);
                 }
             }
-            catch (Exception ex) when (ex.GetType() != typeof(OperationCanceledException))
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 _logger.LogWarning(ex.ToString());
             }
