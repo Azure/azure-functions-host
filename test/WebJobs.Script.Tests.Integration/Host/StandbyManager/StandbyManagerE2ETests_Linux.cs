@@ -188,7 +188,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             await InitializeTestHostAsync("Linux", environment);
 
-            var expectedTraceMessage = "WEBSITE_TIME_ZONE and TZ are not currently supported on the Linux Consumption plan. Please remove these environment variables.";
+            var expectedTraceMessage = "The environment variables 'WEBSITE_TIME_ZONE' and 'TZ' are not supported on this platform. For more information, see https://go.microsoft.com/fwlink/?linkid=2250165.";
 
             // verify the expected logs
             var logLines = _loggerProvider.GetAllLogMessages().Where(p => p.FormattedMessage != null).Select(p => p.FormattedMessage).ToArray();
