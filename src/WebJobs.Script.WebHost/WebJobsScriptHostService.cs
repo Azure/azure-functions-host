@@ -224,7 +224,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
-        private void ValidateLinuxSKUConfiguration()
+        private void ValidateLinuxSKUConfiguration(ILogger logger)
         {
             var websiteRunFromPackageValue = _environment.GetEnvironmentVariable(AzureWebsiteRunFromPackage);
             var scmRunFromPackageValue = _environment.GetEnvironmentVariable(ScmRunFromPackage);
@@ -234,7 +234,24 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 _environment.IsLinuxConsumptionOnAtlas() &&
                 !_environment.IsManagedAppEnvironment())
             {
-                _logger.LogError($"Unable to load the functions payload since the app was not provisioned with valid {AzureWebJobsSecretStorage} connection string.");
+                logger?.LogError($"Unable to load the functions payload since the app was not provisioned with valid {AzureWebJobsSecretStorage} connection string.");
+            }
+
+            var functionsTimeZone = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsTimeZone);
+            var functionsWebsiteTimeZone = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsWebsiteTimeZone);
+
+            // If we have a linux consumption app and the time zone env variable is set, log a warning and diagnostic event
+            if (_environment.IsLinuxConsumptionOnAtlas() &&
+                (!string.IsNullOrEmpty(functionsTimeZone) ||
+                !string.IsNullOrEmpty(functionsWebsiteTimeZone)))
+            {
+                string message = Script.Properties.Resources.LinuxConsumptionRemoveTimeZone;
+
+                // Log diagnostic event
+                logger?.LogDiagnosticEventError(DiagnosticEventConstants.LinuxConsumptionTimeZoneErrorCode, message, DiagnosticEventConstants.LinuxConsumptionTimeZoneErrorHelpLink, new InvalidOperationException(message));
+
+                // Log warning so this message goes to App insights
+                logger?.LogWarning(message);
             }
         }
 
@@ -326,7 +343,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                 LogInitialization(localHost, isOffline, attemptCount, ++_hostStartCount, activeOperation.Id);
 
-                ValidateLinuxSKUConfiguration();
+                ValidateLinuxSKUConfiguration(GetHostLogger(localHost));
 
                 if (!_scriptWebHostEnvironment.InStandbyMode)
                 {

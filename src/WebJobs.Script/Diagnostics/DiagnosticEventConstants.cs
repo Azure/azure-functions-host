@@ -22,5 +22,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public const string UnableToParseHostConfigurationFileErrorCode = "AZFD0009";
         public const string UnableToParseHostConfigurationFileHelpLink = "https://go.microsoft.com/fwlink/?linkid=2248917";
+
+        public const string LinuxConsumptionTimeZoneErrorCode = "AZFD0010";
+        public const string LinuxConsumptionTimeZoneErrorHelpLink = "https://go.microsoft.com/fwlink/?linkid=2250165";
     }
 }

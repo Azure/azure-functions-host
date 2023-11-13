@@ -7,8 +7,11 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Reactive.Joins;
 using System.Text;
 using System.Threading.Tasks;
+using DryIoc;
+using Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
@@ -17,6 +20,8 @@ using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Newtonsoft.Json;
@@ -151,6 +156,52 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // Verify that the internal cache has reset
             Assert.NotSame(GetCachedTimeZoneInfo(), _originalTimeZoneInfoCache);
+        }
+
+        [Fact]
+        public async Task LinuxContainer_TimeZoneEnvVariableE2E()
+        {
+            byte[] bytes = TestHelpers.GenerateKeyBytes();
+            var encryptionKey = Convert.ToBase64String(bytes);
+            var containerName = "testContainer";
+
+            var vars = new Dictionary<string, string>
+            {
+                { EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1" },
+                { EnvironmentSettingNames.ContainerName, containerName },
+                { EnvironmentSettingNames.AzureWebsiteHostName, "testapp.azurewebsites.net" },
+                { EnvironmentSettingNames.AzureWebsiteName, "TestApp" },
+                { EnvironmentSettingNames.ContainerEncryptionKey, encryptionKey },
+                { EnvironmentSettingNames.AzureWebsiteContainerReady, null },
+                { EnvironmentSettingNames.AzureWebsiteSku, "Dynamic" },
+                { EnvironmentSettingNames.AzureWebsiteZipDeployment, null },
+                { EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableProxies },
+                { "AzureWebEncryptionKey", "0F75CA46E7EBDD39E4CA6B074D1F9A5972B849A55F91A248" },
+                { EnvironmentSettingNames.FunctionsTimeZone, "Europe/Berlin" }
+            };
+
+            var environment = new TestEnvironment(vars);
+
+            Assert.True(environment.IsLinuxConsumptionOnAtlas());
+            Assert.False(environment.IsFlexConsumptionSku());
+            Assert.True(environment.IsAnyLinuxConsumption());
+
+            await InitializeTestHostAsync("Linux", environment);
+
+            var expectedTraceMessage = "The environment variables 'WEBSITE_TIME_ZONE' and 'TZ' are not supported on this platform. For more information, see https://go.microsoft.com/fwlink/?linkid=2250165.";
+
+            // verify the expected logs
+            var logLines = _loggerProvider.GetAllLogMessages().Where(p => p.FormattedMessage != null).Select(p => p.FormattedMessage).ToArray();
+            Assert.Equal(2, logLines.Count(p => p.Contains(expectedTraceMessage)));
+
+            DiagnosticEventTestUtils.ValidateThatTheExpectedDiagnosticEventIsPresent(
+            _loggerProvider,
+                expectedTraceMessage,
+                LogLevel.Error,
+                DiagnosticEventConstants.LinuxConsumptionTimeZoneErrorHelpLink,
+                DiagnosticEventConstants.LinuxConsumptionTimeZoneErrorCode
+            );
+
         }
 
         private async Task Assign(string encryptionKey)

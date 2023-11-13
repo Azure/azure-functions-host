@@ -74,6 +74,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string WebsiteNodeDefaultVersion = "WEBSITE_NODE_DEFAULT_VERSION";
         public const string FunctionsMetricsPublishPath = "FUNCTIONS_METRICS_PUBLISH_PATH";
         public const string FunctionsAlwaysReadyInstance = "FUNCTIONS_ALWAYSREADY_INSTANCE";
+        public const string FunctionsTimeZone = "TZ";
+        public const string FunctionsWebsiteTimeZone = "WEBSITE_TIME_ZONE";
 
         //Function in Kubernetes
         public const string PodNamespace = "POD_NAMESPACE";

@@ -43,19 +43,26 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Health
 
         protected override async Task ExecuteAsync(CancellationToken cancellationToken)
         {
-            await Task.Yield(); // force a yield, so our synchronous code does not slowdown startup
-            await _standby.Task.WaitAsync(cancellationToken);
-
-            if (_environment.IsCoreTools())
+            try
             {
-                return;
+                await Task.Yield(); // force a yield, so our synchronous code does not slowdown startup
+                await _standby.Task.WaitAsync(cancellationToken);
+
+                if (_environment.IsCoreTools())
+                {
+                    return;
+                }
+
+                while (!cancellationToken.IsCancellationRequested)
+                {
+                    // check at every hour
+                    AnalyzeSasTokenInUri();
+                    await Task.Delay(TimeSpan.FromHours(1), cancellationToken);
+                }
             }
-
-            while (!cancellationToken.IsCancellationRequested)
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                // check at every hour
-                AnalyzeSasTokenInUri();
-                await Task.Delay(TimeSpan.FromHours(1), cancellationToken);
+                _logger.LogWarning(ex.ToString());
             }
         }
 

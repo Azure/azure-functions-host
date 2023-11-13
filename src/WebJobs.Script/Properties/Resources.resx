@@ -176,4 +176,7 @@
   <data name="SasTokenExpiringInfoFormat" xml:space="preserve">
     <value>SAS token within '{1}' setting is set to expire in {0} days.</value>
   </data>
+  <data name="LinuxConsumptionRemoveTimeZone" xml:space="preserve">
+    <value>The environment variables 'WEBSITE_TIME_ZONE' and 'TZ' are not supported on this platform. For more information, see https://go.microsoft.com/fwlink/?linkid=2250165.</value>
+  </data>
 </root>
