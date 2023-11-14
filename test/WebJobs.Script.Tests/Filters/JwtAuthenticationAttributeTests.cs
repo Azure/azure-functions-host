@@ -52,6 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Filters
         [InlineData(nameof(HttpRequestHeader.Authorization), "https://testsite.azurewebsites.net", "https://testsite.azurewebsites.net")]
         [InlineData(ScriptConstants.SiteTokenHeaderName)]
         [InlineData(ScriptConstants.SiteTokenHeaderName, "https://appservice.core.azurewebsites.net", "https://testsite.azurewebsites.net")]
+        [InlineData(ScriptConstants.SiteTokenHeaderName, "https://AppService.Core.Azurewebsites.net", "https://TestSite.Azurewebsites.net")]
         [InlineData(ScriptConstants.SiteTokenHeaderName, "https://appservice.core.azurewebsites.net", "https://testsite.azurewebsites.net/azurefunctions")]
         [InlineData(ScriptConstants.SiteTokenHeaderName, "https://testsite.scm.azurewebsites.net", "https://testsite.azurewebsites.net")]
         [InlineData(ScriptConstants.SiteTokenHeaderName, "https://testsite.scm.azurewebsites.net", "https://testsite.azurewebsites.net/azurefunctions")]
