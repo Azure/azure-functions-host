@@ -13,6 +13,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
@@ -38,6 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
         [InlineData(nameof(HttpRequestHeader.Authorization), "https://testsite.azurewebsites.net", "https://testsite.azurewebsites.net")]
         [InlineData(ScriptConstants.SiteTokenHeaderName)]
         [InlineData(ScriptConstants.SiteTokenHeaderName, "https://appservice.core.azurewebsites.net", "https://testsite.azurewebsites.net")]
+        [InlineData(ScriptConstants.SiteTokenHeaderName, "https://AppService.Core.Azurewebsites.net", "https://TestSite.Azurewebsites.net")]
         [InlineData(ScriptConstants.SiteTokenHeaderName, "https://appservice.core.azurewebsites.net", "https://testsite.azurewebsites.net/azurefunctions")]
         [InlineData(ScriptConstants.SiteTokenHeaderName, "https://testsite.scm.azurewebsites.net", "https://testsite.azurewebsites.net")]
         [InlineData(ScriptConstants.SiteTokenHeaderName, "https://testsite.scm.azurewebsites.net", "https://testsite.azurewebsites.net/azurefunctions")]
@@ -63,10 +65,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
         [Theory]
         [InlineData(nameof(HttpRequestHeader.Authorization))]
         [InlineData(ScriptConstants.SiteTokenHeaderName)]
-        public async Task InvokeAdminApi_InvalidToken_Fails(string headerName)
+        public async Task InvokeAdminApi_InvalidAudience_Fails(string headerName)
         {
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "admin/host/status");
-            string token = _fixture.Host.GenerateAdminJwtToken("invalid", "invalid");
+            string token = _fixture.Host.GenerateAdminJwtToken(audience: "invalid");
 
             if (string.Compare(nameof(HttpRequestHeader.Authorization), headerName) == 0)
             {
@@ -77,8 +79,73 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
                 request.Headers.Add(headerName, token);
             }
 
+            _fixture.Host.ClearLogMessages();
+
             var response = await _fixture.Host.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+
+            var validationError = _fixture.Host.GetScriptHostLogMessages().Single(p => p.Level == LogLevel.Error);
+            Assert.Equal(ScriptConstants.LogCategoryHostAuthentication, validationError.Category);
+            Assert.Equal("Token audience validation failed for audience 'invalid'.", validationError.FormattedMessage);
+            Assert.True(validationError.Exception.Message.StartsWith("IDX10231: Audience validation failed."));
+        }
+
+        [Theory]
+        [InlineData(nameof(HttpRequestHeader.Authorization))]
+        [InlineData(ScriptConstants.SiteTokenHeaderName)]
+        public async Task InvokeAdminApi_InvalidIssuer_Fails(string headerName)
+        {
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "admin/host/status");
+            string token = _fixture.Host.GenerateAdminJwtToken(issuer: "invalid");
+
+            if (string.Compare(nameof(HttpRequestHeader.Authorization), headerName) == 0)
+            {
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            }
+            else
+            {
+                request.Headers.Add(headerName, token);
+            }
+
+            _fixture.Host.ClearLogMessages();
+
+            var response = await _fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+
+            var validationError = _fixture.Host.GetScriptHostLogMessages().Single(p => p.Level == LogLevel.Error);
+            Assert.Equal(ScriptConstants.LogCategoryHostAuthentication, validationError.Category);
+            Assert.Equal("Token issuer validation failed for issuer 'invalid'.", validationError.FormattedMessage);
+            Assert.Equal("IDX10205: Issuer validation failed.", validationError.Exception.Message);
+        }
+
+        [Theory]
+        [InlineData(nameof(HttpRequestHeader.Authorization))]
+        [InlineData(ScriptConstants.SiteTokenHeaderName)]
+        public async Task InvokeAdminApi_InvalidSignature_Fails(string headerName)
+        {
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "admin/host/status");
+
+            byte[] keyBytes = TestHelpers.GenerateKeyBytes();
+            string token = _fixture.Host.GenerateAdminJwtToken(key: keyBytes);
+
+            if (string.Compare(nameof(HttpRequestHeader.Authorization), headerName) == 0)
+            {
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            }
+            else
+            {
+                request.Headers.Add(headerName, token);
+            }
+
+            _fixture.Host.ClearLogMessages();
+
+            var response = await _fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+
+            var validationError = _fixture.Host.GetScriptHostLogMessages().Single(p => p.Level == LogLevel.Error);
+            Assert.Equal(ScriptConstants.LogCategoryHostAuthentication, validationError.Category);
+            Assert.Equal("Token validation failed.", validationError.FormattedMessage);
+            Assert.True(validationError.Exception.Message.StartsWith("IDX10503: Signature validation failed."));
         }
 
         [Fact]

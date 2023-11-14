@@ -50,6 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string LogCategoryFunctionsController = "Host.Controllers.Functions";
         public const string LogCategoryInstanceController = "Host.Controllers.Instance";
         public const string LogCategoryKeysController = "Host.Controllers.Keys";
+        public const string LogCategoryHostAuthentication = "Host.Authentication";
         public const string LogCategoryHostGeneral = "Host.General";
         public const string LogCategoryHostMetrics = "Host.Metrics";
         public const string LogCategoryHost = "Host";

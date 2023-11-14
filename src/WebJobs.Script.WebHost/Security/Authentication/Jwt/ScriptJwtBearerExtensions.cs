@@ -1,6 +1,8 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
 using System.Threading;
@@ -12,6 +14,7 @@ using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authentication;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
 using Microsoft.IdentityModel.Tokens;
 using static Microsoft.Azure.WebJobs.Script.EnvironmentSettingNames;
@@ -57,6 +60,12 @@ namespace Microsoft.Extensions.DependencyInjection
                                     c.Success();
 
                                     return Task.CompletedTask;
+                                },
+                                OnAuthenticationFailed = c =>
+                                {
+                                    LogAuthenticationFailure(c);
+
+                                    return Task.CompletedTask;
                                 }
                             };
 
@@ -77,8 +86,8 @@ namespace Microsoft.Extensions.DependencyInjection
             if (signingKeys.Length > 0)
             {
                 result.IssuerSigningKeys = signingKeys;
-                result.ValidateAudience = true;
-                result.ValidateIssuer = true;
+                result.AudienceValidator = AudienceValidator;
+                result.IssuerValidator = IssuerValidator;
                 result.ValidAudiences = new string[]
                 {
                     string.Format(SiteAzureFunctionsUriFormat, ScriptSettingsManager.Instance.GetSetting(AzureWebsiteName)),
@@ -93,6 +102,54 @@ namespace Microsoft.Extensions.DependencyInjection
             }
 
             return result;
+        }
+
+        private static string IssuerValidator(string issuer, SecurityToken securityToken, TokenValidationParameters validationParameters)
+        {
+            if (!validationParameters.ValidIssuers.Any(p => string.Equals(issuer, p, StringComparison.OrdinalIgnoreCase)))
+            {
+                throw new SecurityTokenInvalidIssuerException("IDX10205: Issuer validation failed.")
+                {
+                    InvalidIssuer = issuer,
+                };
+            }
+
+            return issuer;
+        }
+
+        private static bool AudienceValidator(IEnumerable<string> audiences, SecurityToken securityToken, TokenValidationParameters validationParameters)
+        {
+            foreach (string audience in audiences)
+            {
+                if (validationParameters.ValidAudiences.Any(p => string.Equals(audience, p, StringComparison.OrdinalIgnoreCase)))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static void LogAuthenticationFailure(AuthenticationFailedContext context)
+        {
+            var loggerFactory = context.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>();
+            var logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostAuthentication);
+
+            string message = null;
+            switch (context.Exception)
+            {
+                case SecurityTokenInvalidIssuerException iex:
+                    message = $"Token issuer validation failed for issuer '{iex.InvalidIssuer}'.";
+                    break;
+                case SecurityTokenInvalidAudienceException iaex:
+                    message = $"Token audience validation failed for audience '{iaex.InvalidAudience}'.";
+                    break;
+                default:
+                    message = $"Token validation failed.";
+                    break;
+            }
+
+            logger.LogError(context.Exception, message);
         }
     }
 }
