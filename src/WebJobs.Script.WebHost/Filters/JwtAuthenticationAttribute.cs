@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http.Headers;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web.Http.Filters;
@@ -50,8 +49,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
                     var validationParameters = new TokenValidationParameters()
                     {
                         IssuerSigningKeys = signingKeys,
-                        ValidateAudience = true,
-                        ValidateIssuer = true,
+                        AudienceValidator = AudienceValidator,
+                        IssuerValidator = IssuerValidator,
                         ValidAudiences = new string[]
                         {
                             string.Format(SiteAzureFunctionsUriFormat, ScriptSettingsManager.Instance.GetSetting(AzureWebsiteName)),
@@ -76,5 +75,31 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
         }
 
         public Task ChallengeAsync(HttpAuthenticationChallengeContext context, CancellationToken cancellationToken) => Task.CompletedTask;
+
+        private static string IssuerValidator(string issuer, SecurityToken securityToken, TokenValidationParameters validationParameters)
+        {
+            if (!validationParameters.ValidIssuers.Any(p => string.Equals(issuer, p, StringComparison.OrdinalIgnoreCase)))
+            {
+                throw new SecurityTokenInvalidIssuerException("IDX10205: Issuer validation failed.")
+                {
+                    InvalidIssuer = issuer,
+                };
+            }
+
+            return issuer;
+        }
+
+        private static bool AudienceValidator(IEnumerable<string> audiences, SecurityToken securityToken, TokenValidationParameters validationParameters)
+        {
+            foreach (string audience in audiences)
+            {
+                if (validationParameters.ValidAudiences.Any(p => string.Equals(audience, p, StringComparison.OrdinalIgnoreCase)))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
     }
 }
