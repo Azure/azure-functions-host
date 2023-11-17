@@ -115,7 +115,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Health
 
                     var difference = parsedDate.Subtract(currentDate);
 
-                    // Log an error event if the token is already expired; otherwise log a warning event
+                    // Log an error event if the token is already expired
+                    // If it is expiring in 30 days or less, log a warning event
+                    // If it is expiring in 90 days or less, log an information event
                     if (difference.TotalDays <= 0)
                     {
                         string message = string.Format(Resources.SasTokenExpiredFormat, setting.Key);
