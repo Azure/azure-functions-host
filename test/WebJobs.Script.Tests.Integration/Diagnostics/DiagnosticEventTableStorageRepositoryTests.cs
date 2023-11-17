@@ -250,6 +250,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
         }
 
         [Fact]
+        public async Task FlushLogs_WritesToTableStorage()
+        {
+            IEnvironment testEnvironment = new TestEnvironment();
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+
+            DiagnosticEventTableStorageRepository repository =
+                new DiagnosticEventTableStorageRepository(_configuration, _hostIdProvider, testEnvironment, _logger);
+
+            var table = repository.GetDiagnosticEventsTable();
+            await TableStorageHelpers.CreateIfNotExistsAsync(table, 2);
+            await EmptyTableAsync(table);
+
+            var dateTime = DateTime.UtcNow;
+            var diagnosticEvent = new DiagnosticEvent("hostId", dateTime);
+            repository.Events.TryAdd("EC123", diagnosticEvent);
+            await repository.FlushLogs(table);
+
+            var results = ExecuteQuery(table, new TableQuery());
+            Assert.Equal(results.Count(), 1);
+        }
+
+        [Fact]
         public async Task ExecuteBatchAsync_LogsError()
         {
             IEnvironment testEnvironment = new TestEnvironment();
