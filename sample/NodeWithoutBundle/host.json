@@ -1,10 +1,5 @@
 {
     "version": "2.0",
-    "extensionBundle": {
-        "id": "Microsoft.Azure.Functions.ExtensionBundle",
-        "version": "[3.*, 4.0.0)"
-    },
-    "watchDirectories": [ "Shared", "Test" ],
     "healthMonitor": {
         "enabled": true,
         "healthCheckInterval": "00:00:10",
