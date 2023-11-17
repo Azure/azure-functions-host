@@ -399,7 +399,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             await _rpcWorkerChannelManager.ShutdownChannelIfExistsAsync(RpcWorkerConstants.JavaLanguageWorkerName, javaWorkerChannel1.Id);
             await _rpcWorkerChannelManager.ShutdownChannelIfExistsAsync(RpcWorkerConstants.JavaLanguageWorkerName, javaWorkerChannel2.Id);
 
-            Assert.Null(_rpcWorkerChannelManager.GetChannels(RpcWorkerConstants.JavaLanguageWorkerName));
+            var channels = _rpcWorkerChannelManager.GetChannels(RpcWorkerConstants.JavaLanguageWorkerName);
+            Assert.Equal(0, channels.Values.Count);
 
             var initializedChannel = await _rpcWorkerChannelManager.GetChannelAsync(RpcWorkerConstants.JavaLanguageWorkerName);
             Assert.Null(initializedChannel);
@@ -423,7 +424,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             // Channel is removed immediately but is not failed immediately
             await _rpcWorkerChannelManager.ShutdownChannelIfExistsAsync(RpcWorkerConstants.JavaLanguageWorkerName, javaWorkerChannel.Id, workerException);
 
-            Assert.Null(_rpcWorkerChannelManager.GetChannels(RpcWorkerConstants.JavaLanguageWorkerName));
+            var channels = _rpcWorkerChannelManager.GetChannels(RpcWorkerConstants.JavaLanguageWorkerName);
+            Assert.Equal(0, channels.Values.Count);
 
             var initializedChannel = await _rpcWorkerChannelManager.GetChannelAsync(RpcWorkerConstants.JavaLanguageWorkerName);
             Assert.Null(initializedChannel);
