@@ -144,12 +144,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             catch (Exception ex)
             {
                 _logger.LogError(ex, $"Unable to get table reference or create table. Aborting write operation.");
-                return;
-            }
-            finally
-            {
                 // Clearing the memory cache to avoid memory build up.
                 _events.Clear();
+                return;
             }
 
             // Assigning a new empty directory to reset the event count in the new duration window.
