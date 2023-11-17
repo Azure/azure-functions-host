@@ -1007,12 +1007,12 @@ namespace Microsoft.Azure.WebJobs.Script
         // WORKER_INDEXING_DISABLED contains the customers app name worker indexing is then disabled for that customer only
         public static bool CanWorkerIndex(IEnumerable<RpcWorkerConfig> workerConfigs, IEnvironment environment, FunctionsHostingConfigOptions functionsHostingConfigOptions)
         {
-            string appName = environment.GetAzureWebsiteUniqueSlotName();
-
             if (environment.IsLogicApp())
             {
                 return false;
             }
+
+            string appName = environment.GetAzureWebsiteUniqueSlotName();
 
             bool workerIndexingFeatureFlagSet = FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableWorkerIndexing, environment);
             bool workerIndexingDisabledViaHostingConfig = functionsHostingConfigOptions.WorkerIndexingDisabledApps.ToLowerInvariant().Split("|").Contains(appName);
