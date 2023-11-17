@@ -121,12 +121,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Health
                         string message = string.Format(Resources.SasTokenExpiredFormat, setting.Key);
                         DiagnosticEventLoggerExtensions.LogDiagnosticEventError(_logger, DiagnosticEventConstants.SasTokenExpiringErrorCode, message, DiagnosticEventConstants.SasTokenExpiringErrorHelpLink, new Exception(message));
                     }
-                    else if (difference.TotalDays <= 45)
+                    else if (difference.TotalDays <= 30)
                     {
                         string message = string.Format(Resources.SasTokenExpiringFormat, (int)difference.TotalDays, setting.Key);
                         DiagnosticEventLoggerExtensions.LogDiagnosticEvent(_logger, Microsoft.Extensions.Logging.LogLevel.Warning, 0, DiagnosticEventConstants.SasTokenExpiringErrorCode, message, DiagnosticEventConstants.SasTokenExpiringErrorHelpLink, exception: null);
                     }
-                    else
+                    else if (difference.TotalDays <= 90)
                     {
                         string message = string.Format(Resources.SasTokenExpiringInfoFormat, (int)difference.TotalDays, setting.Key);
                         DiagnosticEventLoggerExtensions.LogDiagnosticEventInformation(_logger, DiagnosticEventConstants.SasTokenExpiringErrorCode, message, DiagnosticEventConstants.SasTokenExpiringErrorHelpLink);
