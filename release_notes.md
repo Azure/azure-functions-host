@@ -30,3 +30,4 @@
 - Bug fix: Comparisons in the Azure Key Vault Secrets Repository are now case insensitive (#9644)
   - This fixes a bug where keys could be automatically recreated if they had been manually added to Key Vault with all lowercase secret names
 - Update DotNetIsolatedNativeHost version to 1.0.3 (#9671)
+- Update PowerShell Worker 7.4 to 4.0.3085 [Release Note](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.3085)
