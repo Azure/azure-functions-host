@@ -2,9 +2,13 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Script;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Tests;
@@ -99,9 +103,12 @@ namespace Microsoft.WebJobs.Script.Tests
 
         private static IServiceCollection AddFunctionMetadataManager(this IServiceCollection services)
         {
-            AddMockedSingleton<IWorkerFunctionMetadataProvider>(services);
+            var workerMetadataProvider = new Mock<IWorkerFunctionMetadataProvider>();
+            workerMetadataProvider.Setup(m => m.GetFunctionMetadataAsync(It.IsAny<IEnumerable<RpcWorkerConfig>>(), false)).Returns(Task.FromResult(new FunctionMetadataResult(true, ImmutableArray<FunctionMetadata>.Empty)));
+
             services.AddSingleton<IHostFunctionMetadataProvider, HostFunctionMetadataProvider>();
             services.AddSingleton<IFunctionMetadataProvider, FunctionMetadataProvider>();
+            services.AddSingleton<IWorkerFunctionMetadataProvider>(workerMetadataProvider.Object);
 
             services.AddSingleton<IScriptHostManager>(s =>
             {

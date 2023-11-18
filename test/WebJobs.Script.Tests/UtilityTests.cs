@@ -868,7 +868,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
-        [InlineData(false, true, false)]
+        [InlineData(false, true, true)]
         [InlineData(false, false, false)]
         [InlineData(true, false, false)]
         [InlineData(true, true, true)]
@@ -886,57 +886,51 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
-        [InlineData(true, true, false, "", true)]
-        [InlineData(true, true, true, "NonApp", true)]
-        [InlineData(true, true, true, "AppName", true)]
-        [InlineData(true, true, false, "NonApp", true)]
-        [InlineData(true, true, false, "AppName", true)]
-        public void VerifyWorkerIndexingFeatureFlagTakesPrecedence(bool workerIndexingFeatureFlag, bool workerIndexingConfigProperty, bool enabledHostingConfig, string disabledHostingConfig, bool expected)
+        [InlineData(true, true, "", true)]
+        [InlineData(true, true, "NonApp", true)]
+        [InlineData(true, true, "AppName", true)]
+        public void VerifyWorkerIndexingFeatureFlagTakesPrecedence(bool workerIndexingFeatureFlag, bool workerIndexingConfigProperty, string disabledHostingConfig, bool expected)
         {
-            VerifyCanWorkerIndexUtility(workerIndexingFeatureFlag, workerIndexingConfigProperty, enabledHostingConfig, disabledHostingConfig, expected);
+            VerifyCanWorkerIndexUtility(workerIndexingFeatureFlag, workerIndexingConfigProperty, disabledHostingConfig, expected);
         }
 
         [Theory]
-        [InlineData(true, false, false, "", false)]
-        [InlineData(true, false, true, "NonApp", false)]
-        [InlineData(true, false, true, "AppName", false)]
-        [InlineData(true, false, false, "NonApp", false)]
-        [InlineData(true, false, false, "AppName", false)]
-        [InlineData(true, true, false, "AppName", true)]
-        public void VerifyWorkerConfigTakesPrecedence(bool workerIndexingFeatureFlag, bool workerIndexingConfigProperty, bool enabledHostingConfig, string disabledHostingConfig, bool expected)
+        [InlineData(true, false, "", false)]
+        [InlineData(true, false, "NonApp", false)]
+        [InlineData(true, false, "AppName", false)]
+        [InlineData(true, true, "AppName", true)]
+        public void VerifyWorkerConfigTakesPrecedence(bool workerIndexingFeatureFlag, bool workerIndexingConfigProperty, string disabledHostingConfig, bool expected)
         {
-            VerifyCanWorkerIndexUtility(workerIndexingFeatureFlag, workerIndexingConfigProperty, enabledHostingConfig, disabledHostingConfig, expected);
+            VerifyCanWorkerIndexUtility(workerIndexingFeatureFlag, workerIndexingConfigProperty, disabledHostingConfig, expected);
         }
 
         [Theory]
-        [InlineData(false, true, true, "", true)]
-        [InlineData(false, true, true, "NonApp", true)]
-        [InlineData(false, true, false, "NonApp", false)]
-        [InlineData(false, false, false, "NonApp", false)]
-        public void VerifyStampLevelHostingConfigHonored(bool workerIndexingFeatureFlag, bool workerIndexingConfigProperty, bool enabledHostingConfig, string disabledHostingConfig, bool expected)
+        [InlineData(false, true, "", true)]
+        [InlineData(false, true, "NonApp", true)]
+        [InlineData(false, false, "NonApp", false)]
+        public void VerifyStampLevelHostingConfigHonored(bool workerIndexingFeatureFlag, bool workerIndexingConfigProperty, string disabledHostingConfig, bool expected)
         {
-            VerifyCanWorkerIndexUtility(workerIndexingFeatureFlag, workerIndexingConfigProperty, enabledHostingConfig, disabledHostingConfig, expected);
+            VerifyCanWorkerIndexUtility(workerIndexingFeatureFlag, workerIndexingConfigProperty, disabledHostingConfig, expected);
         }
 
         [Theory]
-        [InlineData(false, true, true, "", true)]
-        [InlineData(false, true, true, "NonApp|AppName", false)]
-        [InlineData(false, true, true, "NonApp|AnotherAppName", true)]
-        [InlineData(false, true, true, "nonapp|AppName", false)]
-        [InlineData(false, true, true, "appname", false)]
-        [InlineData(false, true, true, "nonapp|appname", false)]
-        [InlineData(false, true, true, "NonApp|anotherAppname", true)]
-        [InlineData(false, false, true, "NonApp", false)]
-        [InlineData(false, false, true, "AppName", false)]
-        [InlineData(false, false, false, "Appname", false)]
-        [InlineData(false, true, false, "AppName", false)]
-        [InlineData(false, true, true, "AppName", false)]
-        public void VerifyDisabledAppConfigHonored(bool workerIndexingFeatureFlag, bool workerIndexingConfigProperty, bool enabledHostingConfig, string disabledHostingConfig, bool expected)
+        [InlineData(false, true, "", true)]
+        [InlineData(false, true, "NonApp|AppName", false)]
+        [InlineData(false, true, "NonApp|AnotherAppName", true)]
+        [InlineData(false, true, "nonapp|AppName", false)]
+        [InlineData(false, true, "appname", false)]
+        [InlineData(false, true, "nonapp|appname", false)]
+        [InlineData(false, true, "NonApp|anotherAppname", true)]
+        [InlineData(false, false, "NonApp", false)]
+        [InlineData(false, false, "AppName", false)]
+        [InlineData(false, false, "Appname", false)]
+        [InlineData(false, true, "AppName", false)]
+        public void VerifyDisabledAppConfigHonored(bool workerIndexingFeatureFlag, bool workerIndexingConfigProperty, string disabledHostingConfig, bool expected)
         {
-            VerifyCanWorkerIndexUtility(workerIndexingFeatureFlag, workerIndexingConfigProperty, enabledHostingConfig, disabledHostingConfig, expected);
+            VerifyCanWorkerIndexUtility(workerIndexingFeatureFlag, workerIndexingConfigProperty, disabledHostingConfig, expected);
         }
 
-        private void VerifyCanWorkerIndexUtility(bool workerIndexingFeatureFlag, bool workerIndexingConfigProperty, bool enabledHostingConfig, string disabledHostingConfig, bool expected)
+        private void VerifyCanWorkerIndexUtility(bool workerIndexingFeatureFlag, bool workerIndexingConfigProperty, string disabledHostingConfig, bool expected)
         {
             var testEnv = new TestEnvironment();
             testEnv.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.PythonLanguageWorkerName);
@@ -950,10 +944,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             RpcWorkerConfig workerConfig = new RpcWorkerConfig() { Description = TestHelpers.GetTestWorkerDescription("python", "none", workerIndexingConfigProperty) };
             var hostingOptions = new FunctionsHostingConfigOptions();
-            if (enabledHostingConfig)
-            {
-                hostingOptions.Features.Add(RpcWorkerConstants.WorkerIndexingEnabled, "1");
-            }
 
             hostingOptions.Features.Add(RpcWorkerConstants.WorkerIndexingDisabledApps, disabledHostingConfig);
 
