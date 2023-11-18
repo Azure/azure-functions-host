@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.AppService.Proxy.Common.Extensions;
 using Microsoft.Azure.AppService.Proxy.Common.Infra;
 using Microsoft.Azure.AppService.Proxy.Runtime;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
@@ -24,6 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly ILogger _logger = null;
         private readonly TimeSpan workerInitTimeout = TimeSpan.FromSeconds(30);
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions = null;
+        private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions;
         private readonly IScriptEventManager _eventManager = null;
         private readonly IEnvironment _environment;
         private readonly ILoggerFactory _loggerFactory = null;
@@ -43,7 +45,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                                               IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions,
                                               IMetricsLogger metricsLogger,
                                               IConfiguration config,
-                                              IWorkerProfileManager workerProfileManager)
+                                              IWorkerProfileManager workerProfileManager,
+                                              IOptions<FunctionsHostingConfigOptions> hostingConfigOptions)
         {
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _config = config ?? throw new ArgumentNullException(nameof(config));
@@ -54,6 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _rpcWorkerChannelFactory = rpcWorkerChannelFactory;
             _logger = loggerFactory.CreateLogger<WebHostRpcWorkerChannelManager>();
             _applicationHostOptions = applicationHostOptions;
+            _hostingConfigOptions = hostingConfigOptions;
 
             _shutdownStandbyWorkerChannels = ScheduleShutdownStandbyChannels;
             _shutdownStandbyWorkerChannels = _shutdownStandbyWorkerChannels.Debounce(milliseconds: 5000);
@@ -231,27 +235,57 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 throw new ArgumentNullException(nameof(language));
             }
 
-            if (_workerChannels.TryGetValue(language, out Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>> rpcWorkerChannels)
-                && rpcWorkerChannels.TryRemove(workerId, out TaskCompletionSource<IRpcWorkerChannel> value))
+            if (_hostingConfigOptions.Value.RevertWorkerShutdownBehaviour)
             {
-                value?.Task.ContinueWith(channelTask =>
+                if (_workerChannels.TryRemove(language, out Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>> rpcWorkerChannels))
                 {
-                    if (channelTask.Status == TaskStatus.Faulted)
+                    if (rpcWorkerChannels.TryGetValue(workerId, out TaskCompletionSource<IRpcWorkerChannel> value))
                     {
-                        _logger.LogDebug(channelTask.Exception, "Removing errored worker channel");
-                    }
-                    else
-                    {
-                        IRpcWorkerChannel workerChannel = channelTask.Result;
-                        if (workerChannel != null)
+                        value?.Task.ContinueWith(channelTask =>
                         {
-                            _logger.LogDebug("Disposing WebHost channel for workerId: {channelId}, for runtime:{language}", workerId, language);
-                            workerChannel.TryFailExecutions(workerException);
-                            (channelTask.Result as IDisposable)?.Dispose();
-                        }
+                            if (channelTask.Status == TaskStatus.Faulted)
+                            {
+                                _logger.LogDebug(channelTask.Exception, "Removing errored worker channel");
+                            }
+                            else
+                            {
+                                IRpcWorkerChannel workerChannel = channelTask.Result;
+                                if (workerChannel != null)
+                                {
+                                    _logger.LogDebug("Disposing WebHost channel for workerId: {channelId}, for runtime:{language}", workerId, language);
+                                    workerChannel.TryFailExecutions(workerException);
+                                    (channelTask.Result as IDisposable)?.Dispose();
+                                }
+                            }
+                        });
+                        return Task.FromResult(true);
                     }
-                });
-                return Task.FromResult(true);
+                }
+            }
+            else
+            {
+                if (_workerChannels.TryGetValue(language, out Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>> rpcWorkerChannels)
+                    && rpcWorkerChannels.TryRemove(workerId, out TaskCompletionSource<IRpcWorkerChannel> value))
+                {
+                    value?.Task.ContinueWith(channelTask =>
+                    {
+                        if (channelTask.Status == TaskStatus.Faulted)
+                        {
+                            _logger.LogDebug(channelTask.Exception, "Removing errored worker channel");
+                        }
+                        else
+                        {
+                            IRpcWorkerChannel workerChannel = channelTask.Result;
+                            if (workerChannel != null)
+                            {
+                                _logger.LogDebug("Disposing WebHost channel for workerId: {channelId}, for runtime:{language}", workerId, language);
+                                workerChannel.TryFailExecutions(workerException);
+                                (channelTask.Result as IDisposable)?.Dispose();
+                            }
+                        }
+                    });
+                    return Task.FromResult(true);
+                }
             }
 
             return Task.FromResult(false);

@@ -82,6 +82,17 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         }
 
         /// <summary>
+        /// Gets a value indicating whether the host should revert the worker shutdown behavior in the webhostworkerchannelmanager.
+        /// </summary>
+        public bool RevertWorkerShutdownBehaviour
+        {
+            get
+            {
+                return GetFeature(RpcWorkerConstants.RevertWorkerShutdownBehavior) == "1";
+            }
+        }
+
+        /// <summary>
         /// Gets feature by name.
         /// </summary>
         /// <param name="name">Feature name.</param>

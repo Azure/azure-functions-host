@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -471,7 +472,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             channelFactory ??= _rpcWorkerChannelFactory;
             config ??= _emptyConfig;
             return new WebHostRpcWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, channelFactory,
-                _optionsMonitor, metrics, config, _workerProfileManager);
+                _optionsMonitor, metrics, config, _workerProfileManager, new OptionsWrapper<FunctionsHostingConfigOptions>(new FunctionsHostingConfigOptions()));
         }
 
         private bool AreRequiredMetricsEmitted(TestMetricsLogger metricsLogger)
