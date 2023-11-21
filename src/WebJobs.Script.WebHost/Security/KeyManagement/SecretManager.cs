@@ -151,6 +151,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 }
             }
 
+            _logger.LogInformation("Host secret master key value: " + _hostSecrets.MasterKey);
+
             return _hostSecrets;
         }
 
