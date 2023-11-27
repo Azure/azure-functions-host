@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         /// Builds the <see cref="FunctionsHostingConfigSource"/> for this source.
         /// </summary>
         /// <param name="builder">The <see cref="IConfigurationBuilder"/>.</param>
-        /// <returns>A <see cref="FunctionsHostingConfigProvider"/></returns>
+        /// <returns>A <see cref="FunctionsHostingConfigProvider"/>.</returns>
         public override IConfigurationProvider Build(IConfigurationBuilder builder)
         {
             Path = _path;

@@ -49,6 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         private readonly Mock<ISecretManagerProvider> _secretManagerProviderMock;
         private readonly Mock<ISecretManager> _secretManagerMock;
         private readonly TestScriptHostService _scriptHostManager; // To refresh underlying IConfiguration for IAzureBlobStorageProvider
+        private readonly FunctionsHostingConfigOptions _hostingConfigOptions;
         private string _function1;
         private bool _emptyContent;
         private bool _secretsEnabled;
@@ -152,7 +153,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             _scriptHostManager = new TestScriptHostService(configuration);
             var azureBlobStorageProvider = TestHelpers.GetAzureBlobStorageProvider(configuration, scriptHostManager: _scriptHostManager);
 
-            _functionsSyncManager = new FunctionsSyncManager(configuration, hostIdProviderMock.Object, optionsMonitor, loggerFactory.CreateLogger<FunctionsSyncManager>(), httpClientFactory, _secretManagerProviderMock.Object, _mockWebHostEnvironment.Object, _mockEnvironment.Object, _hostNameProvider, functionMetadataManager, azureBlobStorageProvider);
+            _hostingConfigOptions = new FunctionsHostingConfigOptions();
+            var hostingConfigOptionsWrapper = new OptionsWrapper<FunctionsHostingConfigOptions>(_hostingConfigOptions);
+
+            _functionsSyncManager = new FunctionsSyncManager(hostIdProviderMock.Object, optionsMonitor, loggerFactory.CreateLogger<FunctionsSyncManager>(), httpClientFactory, _secretManagerProviderMock.Object, _mockWebHostEnvironment.Object, _mockEnvironment.Object, _hostNameProvider, functionMetadataManager, azureBlobStorageProvider, hostingConfigOptionsWrapper);
         }
 
         private string GetExpectedTriggersPayload(string postedConnection = DefaultTestConnection, string postedTaskHub = DefaultTestTaskHub, string durableVersion = "V2")
@@ -242,11 +246,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         }
 
         [Theory]
-        [InlineData(true)]
-        [InlineData(false)]
-        public async Task TrySyncTriggers_PostsExpectedContent(bool cacheEnabled)
+        [InlineData(true, true)]
+        [InlineData(false, true)]
+        [InlineData(true, false)]
+        public async Task TrySyncTriggers_PostsExpectedContent(bool cacheEnabled, bool swtIssuerEnabled)
         {
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteArmCacheEnabled)).Returns(cacheEnabled ? "1" : "0");
+            _hostingConfigOptions.SwtIssuerEnabled = swtIssuerEnabled;
 
             using (var env = new TestScopedEnvironmentVariable(_vars))
             {
@@ -262,7 +268,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 // verify expected headers
                 Assert.Equal(ScriptConstants.FunctionsUserAgent, _mockHttpHandler.LastRequest.Headers.UserAgent.ToString());
                 Assert.True(_mockHttpHandler.LastRequest.Headers.Contains(ScriptConstants.AntaresLogIdHeaderName));
-                Assert.NotEmpty(_mockHttpHandler.LastRequest.Headers.GetValues(ScriptConstants.SiteRestrictedTokenHeaderName));
+
+                if (swtIssuerEnabled)
+                {
+                    Assert.NotEmpty(_mockHttpHandler.LastRequest.Headers.GetValues(ScriptConstants.SiteRestrictedTokenHeaderName));
+                }
+                else
+                {
+                    Assert.False(_mockHttpHandler.LastRequest.Headers.Contains(ScriptConstants.SiteRestrictedTokenHeaderName));
+                }
+                
                 Assert.NotEmpty(_mockHttpHandler.LastRequest.Headers.GetValues(ScriptConstants.SiteTokenHeaderName));
 
                 if (cacheEnabled)
