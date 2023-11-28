@@ -124,6 +124,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string FeatureFlagDisableWorkerIndexing = "DisableWorkerIndexing";
         public const string FeatureFlagEnableMultiLanguageWorker = "EnableMultiLanguageWorker";
         public const string FeatureFlagEnableLinuxEPExecutionCount = "EnableLinuxFEC";
+        public const string HostingConfigSwtAuthenticationEnabled = "SwtAuthenticationEnabled";
+        public const string HostingConfigSwtIssuerEnabled = "SwtIssuerEnabled";
 
         public const string SiteAzureFunctionsUriFormat = "https://{0}.azurewebsites.net/azurefunctions";
         public const string ScmSiteUriFormat = "https://{0}.scm.azurewebsites.net";

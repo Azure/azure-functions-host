@@ -9,10 +9,12 @@ using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Metrics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Moq.Protected;
@@ -27,6 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
         private const string _testHostName = "test-host";
         private const string _testStampName = "test-stamp";
         private const string _testTenant = "test-tenant";
+        private readonly FunctionsHostingConfigOptions _hostingConfigOptions;
 
         private readonly FunctionActivity _testFunctionActivity = new FunctionActivity
         {
@@ -80,10 +83,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             var loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(_testLoggerProvider);
 
+            _hostingConfigOptions = new FunctionsHostingConfigOptions();
+            var hostingConfigOptionsWrapper = new OptionsWrapper<FunctionsHostingConfigOptions>(_hostingConfigOptions);
+
             ILogger<LinuxContainerMetricsPublisher> logger = loggerFactory.CreateLogger<LinuxContainerMetricsPublisher>();
             var hostNameProvider = new HostNameProvider(mockEnvironment.Object);
             var standbyOptions = new TestOptionsMonitor<StandbyOptions>(new StandbyOptions { InStandbyMode = true });
-            _metricsPublisher = new LinuxContainerMetricsPublisher(mockEnvironment.Object, standbyOptions, logger, hostNameProvider, _httpClient);
+            _metricsPublisher = new LinuxContainerMetricsPublisher(mockEnvironment.Object, standbyOptions, logger, hostNameProvider, hostingConfigOptionsWrapper, _httpClient);
             _testLoggerProvider.ClearAllLogMessages();
         }
 
@@ -92,7 +98,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             Assert.Equal(request.Headers.GetValues(LinuxContainerMetricsPublisher.ContainerNameHeader).Single(), _containerName);
             Assert.Equal(request.Headers.GetValues(LinuxContainerMetricsPublisher.HostNameHeader).Single(), _testHostName);
             Assert.Equal(request.Headers.GetValues(LinuxContainerMetricsPublisher.StampNameHeader).Single(), _testStampName);
-            Assert.NotEmpty(request.Headers.GetValues(ScriptConstants.SiteRestrictedTokenHeaderName));
+
+            if (_hostingConfigOptions.SwtIssuerEnabled)
+            {
+                Assert.NotEmpty(request.Headers.GetValues(ScriptConstants.SiteRestrictedTokenHeaderName));
+            }
+            else
+            {
+                Assert.False(request.Headers.Contains(ScriptConstants.SiteRestrictedTokenHeaderName));
+            }
+
             Assert.NotEmpty(request.Headers.GetValues(ScriptConstants.SiteTokenHeaderName));
 
             Assert.Equal(request.RequestUri.Host, _testIpAddress);
@@ -126,9 +141,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             }
         }
 
-        [Fact]
-        public void PublishFunctionActivity_SendsRequestHeaders()
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public void PublishFunctionActivity_SendsRequestHeaders(bool swtIssuerEnabled)
         {
+            _hostingConfigOptions.SwtIssuerEnabled = swtIssuerEnabled;
+
             _metricsPublisher.Initialize();
             _metricsPublisher.AddFunctionExecutionActivity(
                 _testFunctionActivity.FunctionName,

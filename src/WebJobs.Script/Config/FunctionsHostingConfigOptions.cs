@@ -54,6 +54,38 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         }
 
         /// <summary>
+        /// Gets or sets a value indicating whether SWT tokens should be accepted.
+        /// </summary>
+        public bool SwtAuthenticationEnabled
+        {
+            get
+            {
+                return GetFeatureOrDefault(ScriptConstants.HostingConfigSwtAuthenticationEnabled, "1") == "1";
+            }
+
+            set
+            {
+                _features[ScriptConstants.HostingConfigSwtAuthenticationEnabled] = value ? "1" : "0";
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether SWT tokens should be sent on outgoing requests.
+        /// </summary>
+        public bool SwtIssuerEnabled
+        {
+            get
+            {
+                return GetFeatureOrDefault(ScriptConstants.HostingConfigSwtIssuerEnabled, "1") == "1";
+            }
+
+            set
+            {
+                _features[ScriptConstants.HostingConfigSwtIssuerEnabled] = value ? "1" : "0";
+            }
+        }
+
+        /// <summary>
         /// Gets feature by name.
         /// </summary>
         /// <param name="name">Feature name.</param>
@@ -65,6 +97,17 @@ namespace Microsoft.Azure.WebJobs.Script.Config
                 return value;
             }
             return null;
+        }
+
+        /// <summary>
+        /// Gets a feature by name, returning the specified default value if not found.
+        /// </summary>
+        /// <param name="name">Feature name.</param>
+        /// <param name="defaultValue">The default value to use.</param>
+        /// <returns>String value from hostig configuration.</returns>
+        public string GetFeatureOrDefault(string name, string defaultValue)
+        {
+            return GetFeature(name) ?? defaultValue;
         }
     }
 }
