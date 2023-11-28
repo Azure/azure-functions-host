@@ -36,6 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         private readonly WebFunctionsManager _webFunctionsManager;
         private readonly Mock<IEnvironment> _mockEnvironment;
         private readonly IFileSystem _fileSystem;
+        private readonly FunctionsHostingConfigOptions _hostingConfigOptions;
 
         public WebFunctionsManagerTests()
         {
@@ -82,6 +83,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName)).Returns(TestHostName);
             var hostNameProvider = new HostNameProvider(_mockEnvironment.Object);
 
+            _hostingConfigOptions = new FunctionsHostingConfigOptions();
+            var hostingConfigOptionsWrapper = new OptionsWrapper<FunctionsHostingConfigOptions>(_hostingConfigOptions);
+
             var workerOptions = new LanguageWorkerOptions();
             FileUtility.Instance = fileSystem;
             _fileSystem = fileSystem;
@@ -91,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var emptyOptions = new JobHostInternalStorageOptions();
             var azureBlobStorageProvider = TestHelpers.GetAzureBlobStorageProvider(configurationMock.Object, storageOptions: emptyOptions);
-            var functionsSyncManager = new FunctionsSyncManager(configurationMock.Object, hostIdProviderMock.Object, optionsMonitor, loggerFactory.CreateLogger<FunctionsSyncManager>(), httpClientFactory, secretManagerProviderMock.Object, mockWebHostEnvironment.Object, _mockEnvironment.Object, hostNameProvider, functionMetadataManager, azureBlobStorageProvider);
+            var functionsSyncManager = new FunctionsSyncManager(hostIdProviderMock.Object, optionsMonitor, loggerFactory.CreateLogger<FunctionsSyncManager>(), httpClientFactory, secretManagerProviderMock.Object, mockWebHostEnvironment.Object, _mockEnvironment.Object, hostNameProvider, functionMetadataManager, azureBlobStorageProvider, hostingConfigOptionsWrapper);
             _webFunctionsManager = new WebFunctionsManager(optionsMonitor, loggerFactory, httpClientFactory, secretManagerProviderMock.Object, functionsSyncManager, hostNameProvider, functionMetadataManager);
         }
 

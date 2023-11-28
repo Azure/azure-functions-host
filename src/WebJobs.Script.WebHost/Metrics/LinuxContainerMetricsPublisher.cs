@@ -11,6 +11,7 @@ using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security;
 using Microsoft.Extensions.Logging;
@@ -38,6 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         private readonly IDisposable _standbyOptionsOnChangeSubscription;
         private readonly string _requestUri;
         private readonly IEnvironment _environment;
+        private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions;
 
         // Buffer for all memory activities for this container.
         private BlockingCollection<MemoryActivity> _memoryActivities;
@@ -63,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         private string _stampName;
         private bool _initialized = false;
 
-        public LinuxContainerMetricsPublisher(IEnvironment environment, IOptionsMonitor<StandbyOptions> standbyOptions, ILogger<LinuxContainerMetricsPublisher> logger, HostNameProvider hostNameProvider, HttpClient httpClient = null)
+        public LinuxContainerMetricsPublisher(IEnvironment environment, IOptionsMonitor<StandbyOptions> standbyOptions, ILogger<LinuxContainerMetricsPublisher> logger, HostNameProvider hostNameProvider, IOptions<FunctionsHostingConfigOptions> functionsHostingConfigOptions, HttpClient httpClient = null)
         {
             _standbyOptions = standbyOptions ?? throw new ArgumentNullException(nameof(standbyOptions));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
@@ -71,6 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
             _hostNameProvider = hostNameProvider ?? throw new ArgumentNullException(nameof(hostNameProvider));
             _memoryActivities = new BlockingCollection<MemoryActivity>(new ConcurrentQueue<MemoryActivity>(), boundedCapacity: _maxBufferSize);
             _functionActivities = new BlockingCollection<FunctionActivity>(new ConcurrentQueue<FunctionActivity>(), boundedCapacity: _maxBufferSize);
+            _hostingConfigOptions = functionsHostingConfigOptions;
 
             _currentMemoryActivities = new ConcurrentQueue<MemoryActivity>();
             _currentFunctionActivities = new ConcurrentQueue<FunctionActivity>();
@@ -284,15 +287,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
                 Content = new ObjectContent<TContent>(content, new JsonMediaTypeFormatter())
             };
 
-            string swtToken = SimpleWebTokenHelper.CreateToken(DateTime.UtcNow.AddMinutes(5));
-            string jwtToken = JwtTokenHelper.CreateToken(DateTime.UtcNow.AddMinutes(5));
-
             // add the required authentication headers
             request.Headers.Add(ContainerNameHeader, _containerName);
             request.Headers.Add(HostNameHeader, _hostNameProvider.Value);
-            request.Headers.Add(ScriptConstants.SiteRestrictedTokenHeaderName, swtToken);
-            request.Headers.Add(ScriptConstants.SiteTokenHeaderName, jwtToken);
             request.Headers.Add(StampNameHeader, _stampName);
+
+            if (_hostingConfigOptions.Value.SwtIssuerEnabled)
+            {
+                string swtToken = SimpleWebTokenHelper.CreateToken(DateTime.UtcNow.AddMinutes(5));
+                request.Headers.Add(ScriptConstants.SiteRestrictedTokenHeaderName, swtToken);
+            }
+
+            string jwtToken = JwtTokenHelper.CreateToken(DateTime.UtcNow.AddMinutes(5));
+            request.Headers.Add(ScriptConstants.SiteTokenHeaderName, jwtToken);
 
             return request;
         }

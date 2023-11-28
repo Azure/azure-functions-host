@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Extensions.Http;
-using Microsoft.Azure.WebJobs.Script.Tests.Helpers;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authentication;
 using Microsoft.Extensions.DependencyInjection;

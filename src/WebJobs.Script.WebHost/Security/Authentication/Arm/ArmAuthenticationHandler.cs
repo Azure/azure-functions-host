@@ -9,6 +9,7 @@ using System.Text.Encodings.Web;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
@@ -18,11 +19,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security.Authentication
     public class ArmAuthenticationHandler : AuthenticationHandler<ArmAuthenticationOptions>
     {
         private readonly ILogger _logger;
+        private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions;
 
-        public ArmAuthenticationHandler(IOptionsMonitor<ArmAuthenticationOptions> options, ILoggerFactory logger, UrlEncoder encoder, ISystemClock clock)
+        public ArmAuthenticationHandler(IOptionsMonitor<ArmAuthenticationOptions> options, ILoggerFactory logger, UrlEncoder encoder, ISystemClock clock, IOptions<FunctionsHostingConfigOptions> functionsHostingConfigOptions)
             : base(options, logger, encoder, clock)
         {
             _logger = logger.CreateLogger<ArmAuthenticationHandler>();
+            _hostingConfigOptions = functionsHostingConfigOptions;
         }
 
         protected override Task<AuthenticateResult> HandleAuthenticateAsync()
@@ -35,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security.Authentication
         private AuthenticateResult HandleAuthenticate()
         {
             string token = null;
-            if (!Context.Request.Headers.TryGetValue(ScriptConstants.SiteRestrictedTokenHeaderName, out StringValues values))
+            if (!_hostingConfigOptions.Value.SwtAuthenticationEnabled || !Context.Request.Headers.TryGetValue(ScriptConstants.SiteRestrictedTokenHeaderName, out StringValues values))
             {
                 return AuthenticateResult.NoResult();
             }

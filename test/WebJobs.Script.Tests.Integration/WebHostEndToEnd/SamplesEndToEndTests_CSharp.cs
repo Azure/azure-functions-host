@@ -22,9 +22,11 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security;
+using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authentication;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Newtonsoft.Json;
@@ -63,6 +65,49 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
             response = await _fixture.Host.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task HostAdminApis_IgnoresSwtTokenWhenDisabled()
+        {
+            // expect success when enabled
+            string uri = "admin/host/status";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
+            string swtToken = SimpleWebTokenHelper.CreateToken(DateTime.UtcNow.AddMinutes(1));
+            request.Headers.Add(ScriptConstants.SiteRestrictedTokenHeaderName, swtToken);
+            HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            var hostingConfigOptions = _fixture.Host.WebHostServices.GetService<IOptions<FunctionsHostingConfigOptions>>();
+
+            try
+            {
+                // now disable and expect failure
+                hostingConfigOptions.Value.SwtAuthenticationEnabled = false;
+
+                request = new HttpRequestMessage(HttpMethod.Get, uri);
+                request.Headers.Add(ScriptConstants.SiteRestrictedTokenHeaderName, swtToken);
+                response = await _fixture.Host.HttpClient.SendAsync(request);
+                Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+
+                // expect success when both a jwt and an swt are sent
+                request = new HttpRequestMessage(HttpMethod.Get, uri);
+                var jwtToken = _fixture.Host.GenerateAdminJwtToken();
+                request.Headers.Add(ScriptConstants.SiteRestrictedTokenHeaderName, swtToken);
+                request.Headers.Add(ScriptConstants.SiteTokenHeaderName, jwtToken);
+                response = await _fixture.Host.HttpClient.SendAsync(request);
+                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+                // expect success when only a jwt is sent
+                request = new HttpRequestMessage(HttpMethod.Get, uri);
+                request.Headers.Add(ScriptConstants.SiteTokenHeaderName, jwtToken);
+                response = await _fixture.Host.HttpClient.SendAsync(request);
+                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            }
+            finally
+            {
+                hostingConfigOptions.Value.SwtAuthenticationEnabled = true;
+            }
         }
 
         [Fact]
