@@ -100,5 +100,49 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             Assert.Equal(3, log["items"].Count());
             Assert.Null(log.Value<string>("errorMessage"));
         }
+
+        [Fact]
+        public void FormattedLog_InstrumentationKeys()
+        {
+            TransmissionStatusHandler handler = new();
+            var request1 = new RequestTelemetry();
+            request1.Context.InstrumentationKey = "AAAAA-AAAAAAAAAA-AAAAAAAA-AAAAAAAA";
+
+            var request2 = new RequestTelemetry();
+            request2.Context.InstrumentationKey = "CCCCC-CCCCCCCCCCCCCCCCC-";
+
+            var trace1 = new TraceTelemetry();
+            trace1.Context.InstrumentationKey = "BBBBB-BBBBBBBBB-BBBBBBBBBBB-BBBBBBB";
+
+            var trace2 = new TraceTelemetry();
+            trace2.Context.InstrumentationKey = "BBBBB-BBBBBBBBB-BBBBBBBBBBB-BBBBBBB";
+
+            Transmission transmission = new(new("https://test"), new List<ITelemetry>() { request1, request2, trace1, trace2 }, new TimeSpan(500));
+            IngestionServiceResponse backendResponse = new()
+            {
+                ItemsAccepted = 100,
+                ItemsReceived = 100
+            };
+            HttpWebResponseWrapper response = new()
+            {
+                StatusCode = 200,
+                StatusDescription = "ok",
+                Content = JsonConvert.SerializeObject(backendResponse, new JsonSerializerSettings { ContractResolver = new CamelCasePropertyNamesContractResolver() })
+            };
+
+            TransmissionStatusEventArgs args = new(response, 100);
+            JObject log = JsonConvert.DeserializeObject<JObject>(TransmissionStatusHandler.FormattedLog(transmission, args));
+
+            Assert.Equal(200, log.Value<int>("statusCode"));
+            Assert.Equal("https://test", log.Value<string>("endpointAddress"));
+            Assert.Equal("ok", log.Value<string>("statusDescription"));
+            Assert.Equal(100, log.Value<int>("responseTimeInMs"));
+            Assert.True(log.ContainsKey("id"));
+            Assert.Equal(2, log["items"].Count());
+            Assert.Equal(3, log["iKeys"].Count());
+            Assert.Null(log.Value<string>("errorMessage"));
+            string keys = log["iKeys"].ToString();
+            Assert.True(keys.Contains("AAAAA-AAAAAAAAAA-AAAAAAA") && keys.Contains("BBBBB-BBBBBBBBB-BBBBBBBB") && keys.Contains("CCCCC-CCCCCCCCCCCCCCCCC-"));
+        }
     }
 }
