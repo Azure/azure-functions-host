@@ -101,6 +101,40 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             }
         }
 
+        [Fact]
+        public void SwtAuthenticationEnabled_ReturnsExpectedValue()
+        {
+            FunctionsHostingConfigOptions options = new FunctionsHostingConfigOptions();
+
+            // defaults to true
+            Assert.True(options.SwtAuthenticationEnabled);
+
+            // returns true when explicitly enabled
+            options.Features[ScriptConstants.HostingConfigSwtAuthenticationEnabled] = "1";
+            Assert.True(options.SwtAuthenticationEnabled);
+
+            // returns false when disabled
+            options.Features[ScriptConstants.HostingConfigSwtAuthenticationEnabled] = "0";
+            Assert.False(options.SwtAuthenticationEnabled);
+        }
+
+        [Fact]
+        public void SwtIssuerEnabled_ReturnsExpectedValue()
+        {
+            FunctionsHostingConfigOptions options = new FunctionsHostingConfigOptions();
+
+            // defaults to true
+            Assert.True(options.SwtIssuerEnabled);
+
+            // returns true when explicitly enabled
+            options.Features[ScriptConstants.HostingConfigSwtIssuerEnabled] = "1";
+            Assert.True(options.SwtIssuerEnabled);
+
+            // returns false when disabled
+            options.Features[ScriptConstants.HostingConfigSwtIssuerEnabled] = "0";
+            Assert.False(options.SwtIssuerEnabled);
+        }
+
         internal static IHostBuilder GetScriptHostBuilder(string fileName, string fileContent)
         {
             if (!string.IsNullOrEmpty(fileContent))

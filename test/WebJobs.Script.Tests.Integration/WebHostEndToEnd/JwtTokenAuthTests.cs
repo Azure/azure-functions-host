@@ -14,6 +14,7 @@ using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
@@ -84,7 +85,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             var response = await _fixture.Host.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
 
-            var validationError = _fixture.Host.GetScriptHostLogMessages().Single(p => p.Level == LogLevel.Error);
+            var validationError = _fixture.Host.GetScriptHostLogMessages().Single(p => p.Level == LogLevel.Debug);
             Assert.Equal(ScriptConstants.LogCategoryHostAuthentication, validationError.Category);
             Assert.Equal("Token audience validation failed for audience 'invalid'.", validationError.FormattedMessage);
             Assert.True(validationError.Exception.Message.StartsWith("IDX10231: Audience validation failed."));
@@ -112,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             var response = await _fixture.Host.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
 
-            var validationError = _fixture.Host.GetScriptHostLogMessages().Single(p => p.Level == LogLevel.Error);
+            var validationError = _fixture.Host.GetScriptHostLogMessages().Single(p => p.Level == LogLevel.Debug);
             Assert.Equal(ScriptConstants.LogCategoryHostAuthentication, validationError.Category);
             Assert.Equal("Token issuer validation failed for issuer 'invalid'.", validationError.FormattedMessage);
             Assert.Equal("IDX10205: Issuer validation failed.", validationError.Exception.Message);
@@ -142,7 +143,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             var response = await _fixture.Host.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
 
-            var validationError = _fixture.Host.GetScriptHostLogMessages().Single(p => p.Level == LogLevel.Error);
+            var validationError = _fixture.Host.GetScriptHostLogMessages().Single(p => p.Level == LogLevel.Debug);
             Assert.Equal(ScriptConstants.LogCategoryHostAuthentication, validationError.Category);
             Assert.Equal("Token validation failed.", validationError.FormattedMessage);
             Assert.True(validationError.Exception.Message.StartsWith("IDX10503: Signature validation failed."));
@@ -158,6 +159,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
 
             var response = await _fixture.Host.HttpClient.SendAsync(request);
             response.EnsureSuccessStatusCode();
+        }
+
+        [Fact]
+        public async Task InvokeNonAdminApi_InvalidToken_DoesNotLogTokenAuthFailure()
+        {
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, $"api/HttpTrigger-Scenarios?code=test");
+            request.Content = new StringContent(JsonConvert.SerializeObject(new { scenario = "staticWebApp" }));
+            string key = SecretsUtility.GetEncryptionKeyValue();
+            string token = _fixture.Host.GenerateAdminJwtToken(issuer: "invalid");
+            request.Headers.Add(ScriptConstants.SiteTokenHeaderName, token);
+
+            var response = await _fixture.Host.HttpClient.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+
+            var validationErrors = _fixture.Host.GetScriptHostLogMessages().Where(p => p.Category == ScriptConstants.LogCategoryHostAuthentication).ToArray();
+            Assert.Empty(validationErrors);
         }
 
         public class TestFixture : EndToEndTestFixture

@@ -13,12 +13,12 @@ using System.Threading;
 using System.Threading.Tasks;
 using Azure.Storage.Blobs;
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Extensions;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
@@ -54,7 +54,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private readonly ILogger _logger;
         private readonly HttpClient _httpClient;
         private readonly ISecretManagerProvider _secretManagerProvider;
-        private readonly IConfiguration _configuration;
         private readonly IHostIdProvider _hostIdProvider;
         private readonly IScriptWebHostEnvironment _webHostEnvironment;
         private readonly IEnvironment _environment;
@@ -62,22 +61,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private readonly IFunctionMetadataManager _functionMetadataManager;
         private readonly SemaphoreSlim _syncSemaphore = new SemaphoreSlim(1, 1);
         private readonly IAzureStorageProvider _azureStorageProvider;
+        private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions;
 
         private BlobClient _hashBlobClient;
 
-        public FunctionsSyncManager(IConfiguration configuration, IHostIdProvider hostIdProvider, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger<FunctionsSyncManager> logger, HttpClient httpClient, ISecretManagerProvider secretManagerProvider, IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment, HostNameProvider hostNameProvider, IFunctionMetadataManager functionMetadataManager, IAzureStorageProvider azureStorageProvider)
+        public FunctionsSyncManager(IHostIdProvider hostIdProvider, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger<FunctionsSyncManager> logger, HttpClient httpClient, ISecretManagerProvider secretManagerProvider, IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment, HostNameProvider hostNameProvider, IFunctionMetadataManager functionMetadataManager, IAzureStorageProvider azureStorageProvider, IOptions<FunctionsHostingConfigOptions> functionsHostingConfigOptions)
         {
             _applicationHostOptions = applicationHostOptions;
             _logger = logger;
             _httpClient = httpClient;
             _secretManagerProvider = secretManagerProvider;
-            _configuration = configuration;
             _hostIdProvider = hostIdProvider;
             _webHostEnvironment = webHostEnvironment;
             _environment = environment;
             _hostNameProvider = hostNameProvider;
             _functionMetadataManager = functionMetadataManager;
             _azureStorageProvider = azureStorageProvider;
+            _hostingConfigOptions = functionsHostingConfigOptions;
         }
 
         internal bool ArmCacheEnabled
@@ -688,9 +688,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         // of triggers. It'll verify app ownership using a SWT token valid for 5 minutes. It should be plenty.
         private async Task<(bool, string)> SetTriggersAsync(string content)
         {
-            string swtToken = SimpleWebTokenHelper.CreateToken(DateTime.UtcNow.AddMinutes(5));
-            string jwtToken = JwtTokenHelper.CreateToken(DateTime.UtcNow.AddMinutes(5));
-
             string sanitizedContentString = content;
             if (ArmCacheEnabled)
             {
@@ -708,9 +705,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 var requestId = Guid.NewGuid().ToString();
                 request.Headers.Add(ScriptConstants.AntaresLogIdHeaderName, requestId);
                 request.Headers.Add("User-Agent", ScriptConstants.FunctionsUserAgent);
-                request.Headers.Add(ScriptConstants.SiteRestrictedTokenHeaderName, swtToken);
-                request.Headers.Add(ScriptConstants.SiteTokenHeaderName, jwtToken);
                 request.Content = new StringContent(content, Encoding.UTF8, "application/json");
+
+                if (_hostingConfigOptions.Value.SwtIssuerEnabled)
+                {
+                    string swtToken = SimpleWebTokenHelper.CreateToken(DateTime.UtcNow.AddMinutes(5));
+                    request.Headers.Add(ScriptConstants.SiteRestrictedTokenHeaderName, swtToken);
+                }
+
+                string jwtToken = JwtTokenHelper.CreateToken(DateTime.UtcNow.AddMinutes(5));
+                request.Headers.Add(ScriptConstants.SiteTokenHeaderName, jwtToken);
 
                 if (_environment.IsKubernetesManagedHosting())
                 {

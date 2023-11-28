@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authentication;
 using Microsoft.Extensions.Logging;
@@ -132,6 +133,11 @@ namespace Microsoft.Extensions.DependencyInjection
 
         private static void LogAuthenticationFailure(AuthenticationFailedContext context)
         {
+            if (!context.Request.IsAdminRequest())
+            {
+                return;
+            }
+
             var loggerFactory = context.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>();
             var logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostAuthentication);
 
@@ -149,7 +155,7 @@ namespace Microsoft.Extensions.DependencyInjection
                     break;
             }
 
-            logger.LogError(context.Exception, message);
+            logger.LogDebug(context.Exception, message);
         }
     }
 }
