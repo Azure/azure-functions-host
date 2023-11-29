@@ -142,7 +142,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             Assert.Equal(3, log["iKeys"].Count());
             Assert.Null(log.Value<string>("errorMessage"));
             string keys = log["iKeys"].ToString();
-            Assert.True(keys.Contains("AAAAA-AAAAAAAAAA-AAAAAAA") && keys.Contains("BBBBB-BBBBBBBBB-BBBBBBBB") && keys.Contains("CCCCC-CCCCCCCCCCCCCCCCC-"));
+            Assert.True(keys.Contains("AAAAA-AAAAAAAAAA-AAAAAAA************") && keys.Contains("BBBBB-BBBBBBBBB-BBBBBBBB************") && keys.Contains("CCCCC-CCCCCCCCCCCCCCCCC-"));
         }
     }
 }
