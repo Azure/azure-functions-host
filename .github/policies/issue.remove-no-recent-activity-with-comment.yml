@@ -1,0 +1,15 @@
+name: Remove no recent activity label
+description: Remove no recent activity label when issue is commented on
+resource: repository
+  resourceManagementConfiguration:
+    eventResponderTasks:
+    - description: Remove no recent activity label when issue is commented on
+      if:
+      - payloadType: Issue_Comment
+      - hasLabel:
+          label: no-recent-activity
+      then:
+      - removeLabel:
+          label: no-recent-activity
+onFailure: 
+onSuccess: 

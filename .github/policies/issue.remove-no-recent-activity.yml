@@ -1,0 +1,18 @@
+name: Remove no recent activity label
+description: Removes the no-recent-activity label from issues
+resource: repository
+  resourceManagementConfiguration:
+    eventResponderTasks:
+    - description: Remove the no-recent-activity label from issues
+      if:
+      - payloadType: Issues
+      - not:
+          isAction:
+            action: Closed
+      - hasLabel:
+          label: no-recent-activity
+      then:
+      - removeLabel:
+          label: no-recent-activity
+onFailure: 
+onSuccess: 

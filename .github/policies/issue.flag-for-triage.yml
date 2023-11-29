@@ -1,0 +1,20 @@
+name: Flag for triage
+description: Add needs triage label to new issues
+resource: repository
+  resourceManagementConfiguration:
+    eventResponderTasks:
+    - description: Add needs triage label to new issues
+      if:
+      - payloadType: Issues
+      - and:
+        - isAction:
+            action: Opened
+        - not:
+          - isAssignedToSomeone
+      then:
+      - addLabel:
+          label: '"Needs: Triage (Functions)'
+      - addReply:
+          reply: Thank you ${contextualAuthor}. This issue will not be automatically closed and a member of the team will review it soon.
+onFailure: 
+onSuccess: 
