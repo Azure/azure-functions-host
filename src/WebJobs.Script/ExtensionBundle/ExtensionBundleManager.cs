@@ -271,18 +271,21 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
             }
 
             // Check to see if there is a max bundle version set via hosting configuration, if yes then use that instead of the one
-            // available on VM or local machine
-            if (!string.IsNullOrEmpty(configOption.MaximumBundleV3Version))
+            // available on VM or local machine. Only use MaximumBundleV3Version or MaximumBundleV4Version if the version configured
+            // by the customer resolved to version higher than the version set via hosting config.
+            if (!string.IsNullOrEmpty(configOption.MaximumBundleV3Version)
+                && matchingVersion?.Major == ScriptConstants.ExtensionBundleV3MajorVersion)
             {
                 var maximumBundleV3Version = NuGetVersion.Parse(configOption.MaximumBundleV3Version);
-                matchingVersion = matchingVersion?.Major == ScriptConstants.ExtensionBundleV3MajorVersion && matchingVersion > maximumBundleV3Version
-                                ? maximumBundleV3Version
-                                : matchingVersion;
+                matchingVersion = matchingVersion > maximumBundleV3Version ? maximumBundleV3Version : matchingVersion;
+                return matchingVersion?.ToString();
             }
-            if (!string.IsNullOrEmpty(configOption.MaximumBundleV4Version))
+
+            if (!string.IsNullOrEmpty(configOption.MaximumBundleV4Version)
+                && matchingVersion?.Major == ScriptConstants.ExtensionBundleV4MajorVersion)
             {
                 var maximumBundleV4Version = NuGetVersion.Parse(configOption.MaximumBundleV4Version);
-                matchingVersion = matchingVersion?.Major == ScriptConstants.ExtensionBundleV4MajorVersion && matchingVersion > maximumBundleV4Version
+                matchingVersion = matchingVersion > maximumBundleV4Version
                                 ? maximumBundleV4Version
                                 : matchingVersion;
             }
