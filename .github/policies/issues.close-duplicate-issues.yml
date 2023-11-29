@@ -1,0 +1,22 @@
+name: Issue Triage
+description: Actions associated with the issues triage process
+resource: repository
+  resourceManagementConfiguration:
+    scheduledSearches:
+    - description: Close duplicate issues
+      frequencies:
+      - hourly:
+          hour: 3
+      filters:
+      - isIssue
+      - isOpen
+      - hasLabel:
+          label: duplicate
+      - noActivitySince:
+          days: 3
+      actions:
+      - addReply:
+          reply: This issue has been marked as duplicate and has not had any activity for **3 days**. It will be closed for housekeeping purposes.
+      - closeIssue
+onFailure: 
+onSuccess: 
