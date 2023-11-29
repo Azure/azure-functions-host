@@ -1,6 +1,7 @@
 name: Close duplicate issues
 description: Close duplicate issues
 resource: repository
+configuration:
   resourceManagementConfiguration:
     scheduledSearches:
     - description: Close duplicate issues
