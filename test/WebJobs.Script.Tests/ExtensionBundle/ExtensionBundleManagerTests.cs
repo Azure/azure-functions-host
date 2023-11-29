@@ -386,29 +386,32 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
         }
 
         [Theory]
-        [InlineData("[3.*, 4.0.0)", "3.19.0")]
-        [InlineData("[4.*, 5.0.0)", "4.2.0")]
-        [InlineData("[4.*, 5.0.0)", null)]
-        [InlineData("[3.*, 4.0.0)", null)]
-        public void LimitMaxVersion(string versionRange, string version)
+        [InlineData("[3.*, 4.0.0)", "3.19.0", "3.19.0")]
+        [InlineData("[4.*, 5.0.0)", "4.2.0", "4.2.0")]
+        [InlineData("[4.*, 5.0.0)", null, "4.3.0")]
+        [InlineData("[3.*, 4.0.0)", null, "3.20.0")]
+        public void LimitMaxVersion(string versionRange, string hostConfigVersion, string expectedVersion)
         {
             var range = VersionRange.Parse(versionRange);
-            var resolvedVersion = ExtensionBundleManager.FindBestVersionMatch(range, new List<string>()
-            { "3.7.0", "3.10.0", "3.11.0", "3.15.0", "3.14.0", "2.16.0", "3.13.0", "3.12.0", "3.9.1", "2.12.1", "2.18.0", "3.16.0", "2.19.0", "3.17.0", "4.0.2", "2.20.0", "3.18.0", "4.1.0", "4.2.0", "2.21.0", "3.19.0", "3.19.2", "4.3.0", "3.20.0" },
-            ScriptConstants.DefaultExtensionBundleId, new FunctionsHostingConfigOptions());
-
-            if (string.IsNullOrEmpty(version))
+            var hostingConfiguration = new FunctionsHostingConfigOptions();
+            if (!string.IsNullOrEmpty(hostConfigVersion))
             {
-                if (versionRange.StartsWith("3"))
+                if (range.MinVersion.Major == 3)
                 {
-                    Assert.Equal("3.20.0", resolvedVersion);
+                    hostingConfiguration.Features.Add(ScriptConstants.MaximumBundleV3Version, hostConfigVersion);
                 }
 
-                if (versionRange.StartsWith("4"))
+                if (range.MinVersion.Major == 4)
                 {
-                    Assert.Equal("4.3.0", resolvedVersion);
+                    hostingConfiguration.Features.Add(ScriptConstants.MaximumBundleV4Version, hostConfigVersion);
                 }
             }
+
+            var resolvedVersion = ExtensionBundleManager.FindBestVersionMatch(range, new List<string>()
+            { "3.7.0", "3.10.0", "3.11.0", "3.15.0", "3.14.0", "2.16.0", "3.13.0", "3.12.0", "3.9.1", "2.12.1", "2.18.0", "3.16.0", "2.19.0", "3.17.0", "4.0.2", "2.20.0", "3.18.0", "4.1.0", "4.2.0", "2.21.0", "3.19.0", "3.19.2", "4.3.0", "3.20.0" },
+            ScriptConstants.DefaultExtensionBundleId, hostingConfiguration);
+
+            Assert.Equal(expectedVersion, resolvedVersion);
         }
 
         private ExtensionBundleManager GetExtensionBundleManager(ExtensionBundleOptions bundleOptions, TestEnvironment environment = null)
