@@ -1,5 +1,5 @@
-name: Close duplicate issues
-description: Close duplicate issues
+name: Issue Triage
+description: Actions associated with the issues triage process
 resource: repository
 configuration:
   resourceManagementConfiguration:

@@ -1,6 +1,7 @@
 name: Add no recent activity
 description: Takes action to handle issues with no recent activity
 resource: repository
+configuration:
   resourceManagementConfiguration:
     scheduledSearches:
     - description: Add no recent activity label to issues

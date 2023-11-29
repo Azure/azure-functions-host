@@ -1,6 +1,7 @@
 name: Prevent auto-close
 description: Prevents issue from being closed by the automation
 resource: repository
+configuration:
   resourceManagementConfiguration:
     eventResponderTasks:
     - description: Prevents issue from being closed by the automation

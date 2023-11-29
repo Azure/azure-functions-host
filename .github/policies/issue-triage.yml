@@ -1,0 +1,135 @@
+name: Issue Triage
+description: Actions associated with the issues triage process
+resource: repository
+  resourceManagementConfiguration:
+    scheduledSearches:
+    - description: Close stale issues
+      frequencies:
+      - hourly:
+          hour: 3
+      filters:
+      - isIssue
+      - isOpen
+      - hasLabel:
+          label: 'Needs: Author Feedback'
+      - hasLabel:
+          label: no-recent-activity
+      - noActivitySince:
+          days: 3
+      - isNotLabeledWith:
+          label: 'bot: do not close'
+      actions:
+      - closeIssue
+    - description: Add no recent activity label to issues
+      frequencies:
+      - hourly:
+          hour: 3
+      filters:
+      - isIssue
+      - isOpen
+      - hasLabel:
+          label: 'Needs: Author Feedback'
+      - noActivitySince:
+          days: 4
+      - isNotLabeledWith:
+          label: no-recent-activity
+      actions:
+      - addLabel:
+          label: no-recent-activity
+      - addReply:
+          reply: >-
+            This issue has been automatically marked as stale because it has been marked as requiring author feedback but has not had any activity for **4 days**. It will be closed if no further activity occurs **within 3 days of this comment**.
+
+
+            If you are not the original author (${issueAuthor}) and believe this issue is not stale, please comment with `/bot not-stale` and I will not close it. 
+    - description: Close duplicate issues
+      frequencies:
+      - hourly:
+          hour: 3
+      filters:
+      - isIssue
+      - isOpen
+      - hasLabel:
+          label: duplicate
+      - noActivitySince:
+          days: 3
+      actions:
+      - addReply:
+          reply: This issue has been marked as duplicate and has not had any activity for **3 days**. It will be closed for housekeeping purposes.
+      - closeIssue
+    eventResponderTasks:
+    - description: Remove needs author feedback label. Add needs attention 
+      if:
+      - payloadType: Issue_Comment
+      - not:
+          isAction:
+            action: Created
+      - isActivitySender:
+          issueAuthor: True
+      - hasLabel:
+          label: 'Needs: Author Feedback'
+      then:
+      - addLabel:
+          label: 'Needs: Attention :wave:'
+      - removeLabel:
+          label: 'Needs: Author Feedback'
+    - description: Remove no-recent-activity label from issues
+      if:
+      - payloadType: Issues
+      - not:
+          isAction:
+            action: Closed
+      - hasLabel:
+          label: no-recent-activity
+      then:
+      - removeLabel:
+          label: no-recent-activity
+    - description: Remove needs triage label from closed issues
+      if:
+      - payloadType: Issues
+      - isAction:
+          action: Closed
+      - hasLabel:
+          label: 'Needs: Triage (Functions)'
+      then:
+      - removeLabel:
+          label: 'Needs: Triage (Functions)'
+    - description: Remove no recent activity label when issue is commented on
+      if:
+      - payloadType: Issue_Comment
+      - hasLabel:
+          label: no-recent-activity
+      then:
+      - removeLabel:
+          label: no-recent-activity
+    - description: Prevents issue from being closed by the automation
+      if:
+      - payloadType: Issue_Comment
+      - commentContains:
+          pattern: /bot not-stale
+          isRegex: False
+      - and:
+        - hasLabel:
+            label: 'Needs: Author Feedback'
+        - hasLabel:
+            label: no-recent-activity
+      then:
+      - addLabel:
+          label: 'bot: do not close'
+      - addLabel:
+          label: 'Needs: Attention :wave:'
+      - addReply:
+          reply: Thank you ${contextualAuthor}. This issue will not be automatically closed and a member of the team will review it soon.
+    - description: Add needs triage label to new issues
+      if:
+      - payloadType: Issues
+      - and:
+        - isAction:
+            action: Opened
+        - not:
+            isAssignedToSomeone
+      then:
+      - addLabel:
+          label: '"Needs: Triage (Functions)'
+      - addReply:
+          reply: Thank you ${contextualAuthor}. This issue will not be automatically closed and a member of the team will review it soon.

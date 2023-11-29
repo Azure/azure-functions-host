@@ -1,6 +1,7 @@
 name: Close stale issues
 description: Action to handle stale issues
 resource: repository
+configuration:
   resourceManagementConfiguration:
     scheduledSearches:
     - description: Close stale issues

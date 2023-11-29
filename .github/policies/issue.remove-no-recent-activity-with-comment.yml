@@ -1,6 +1,7 @@
 name: Remove no recent activity label
 description: Remove no recent activity label when issue is commented on
 resource: repository
+configuration:
   resourceManagementConfiguration:
     eventResponderTasks:
     - description: Remove no recent activity label when issue is commented on

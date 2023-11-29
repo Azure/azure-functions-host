@@ -1,6 +1,7 @@
 name: Remove needs author feedback label.
 description: Remove needs author feedback label and adds needs attention
 resource: repository
+configuration:
   resourceManagementConfiguration:
     eventResponderTasks:
     - description: Remove needs author feedback label. Add needs attention 
@@ -18,16 +19,5 @@ resource: repository
           label: 'Needs: Attention :wave:'
       - removeLabel:
           label: 'Needs: Author Feedback'
-    - description: Remove no-recent-activity label from issues
-      if:
-      - payloadType: Issues
-      - not:
-          isAction:
-            action: Closed
-      - hasLabel:
-          label: no-recent-activity
-      then:
-      - removeLabel:
-          label: no-recent-activity
 onFailure: 
 onSuccess: 
