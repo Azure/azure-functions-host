@@ -104,6 +104,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     configBuilder.Add(new HostJsonFileConfigurationSource(applicationOptions, SystemEnvironment.Instance, loggerFactory, metricsLogger));
                 }
                 // Adding hosting config into job host configuration
+                configBuilder.Add(new FunctionsHostingConfigSource(SystemEnvironment.Instance));
                 IConfiguration scriptHostConfiguration = applicationOptions.RootServiceProvider.GetService<IConfiguration>();
                 if (scriptHostConfiguration != null)
                 {
@@ -120,7 +121,11 @@ namespace Microsoft.Azure.WebJobs.Script
                 // Pre-build configuration here to load bundles and to store for later validation.
                 var config = configBuilder.Build();
                 var extensionBundleOptions = GetExtensionBundleOptions(config);
-                var bundleManager = new ExtensionBundleManager(extensionBundleOptions, SystemEnvironment.Instance, loggerFactory);
+                FunctionsHostingConfigOptions configOption = new FunctionsHostingConfigOptions();
+                var optionsSetup = new FunctionsHostingConfigOptionsSetup(config);
+                optionsSetup.Configure(configOption);
+
+                var bundleManager = new ExtensionBundleManager(extensionBundleOptions, SystemEnvironment.Instance, loggerFactory, configOption);
                 var metadataServiceManager = applicationOptions.RootServiceProvider.GetService<IFunctionMetadataManager>();
                 var languageWorkerOptions = applicationOptions.RootServiceProvider.GetService<IOptionsMonitor<LanguageWorkerOptions>>();
 

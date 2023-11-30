@@ -104,7 +104,7 @@ namespace WebJobsStartupTests
         {
             if (_config is ConfigurationRoot root)
             {
-                if (root.Providers.Count() != 8)
+                if (root.Providers.Count() != 9)
                 {
                     return false;
                 }
@@ -115,6 +115,7 @@ namespace WebJobsStartupTests
                     root.Providers.ElementAt(i++) is ChainedConfigurationProvider &&
                     root.Providers.ElementAt(i++) is MemoryConfigurationProvider &&
                     root.Providers.ElementAt(i++).GetType().Name.StartsWith("HostJsonFile") &&
+                    root.Providers.ElementAt(i++).GetType().Name.StartsWith("FunctionsHostingConfigProvider") &&
                     root.Providers.ElementAt(i++) is ChainedConfigurationProvider &&
                     root.Providers.ElementAt(i++) is JsonConfigurationProvider &&
                     root.Providers.ElementAt(i++) is EnvironmentVariablesConfigurationProvider &&

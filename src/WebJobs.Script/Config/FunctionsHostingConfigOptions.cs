@@ -109,7 +109,29 @@ namespace Microsoft.Azure.WebJobs.Script.Config
 
             set
             {
-               _features[ScriptConstants.HostingConfigDisableLinuxAppServiceDetailedExecutionEvents] = value ? "1" : "0";
+                _features[ScriptConstants.HostingConfigDisableLinuxAppServiceDetailedExecutionEvents] = value ? "1" : "0";
+            }
+        }
+
+        /// <summary>
+        /// Gets the highest version of extension bundle v3 supported
+        /// </summary>
+        public string MaximumBundleV3Version
+        {
+            get
+            {
+                return GetFeature(ScriptConstants.MaximumBundleV3Version);
+            }
+        }
+
+        /// <summary>
+        /// Gets the highest version of extension bundle v4 supported
+        /// </summary>
+        public string MaximumBundleV4Version
+        {
+            get
+            {
+                return GetFeature(ScriptConstants.MaximumBundleV4Version);
             }
         }
 

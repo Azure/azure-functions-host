@@ -183,6 +183,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureWebJobsHostsContainerName = "azure-webjobs-hosts";
 
         public const string DefaultExtensionBundleDirectory = "FuncExtensionBundles";
+        public const int ExtensionBundleV3MajorVersion = 3;
+        public const int ExtensionBundleV4MajorVersion = 4;
         public const string ExtensionBundleDirectory = "ExtensionBundles";
         public const string ExtensionBundleDefaultSourceUri = "https://functionscdn.azureedge.net/public";
         public const string ExtensionBundleMetadataFile = "bundle.json";
@@ -231,6 +233,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public static readonly string LiveLogsSessionAIKey = "#AzFuncLiveLogsSessionId";
 
         public static readonly string FunctionsHostingConfigSectionName = "FunctionsHostingConfig";
+        public static readonly string MaximumBundleV3Version = "FunctionRuntimeV4MaxBundleV3Version";
+        public static readonly string MaximumBundleV4Version = "FunctionRuntimeV4MaxBundleV4Version";
 
         // HTTP Proxying constants
         public static readonly string HttpProxyingEnabled = "HttpProxyingEnabled";
