@@ -115,7 +115,7 @@ jobs:
       projects: |
         **\ExtensionsMetadataGenerator.csproj
         **\WebJobs.Script.Abstractions.csproj
-  - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@1
+  - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@2
     displayName: 'ESRP CodeSigning: Strong Name and Authenticode'
     inputs:
       ConnectedServiceName: 'ESRP Service'
@@ -157,7 +157,7 @@ jobs:
       arguments: '--no-build -c Release -o packages'
       projects: |
         **\WebJobs.Script.Abstractions.csproj
-  - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@1
+  - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@2
     displayName: 'ESRP CodeSigning: Nupkg'
     inputs:
       ConnectedServiceName: 'ESRP Service'
@@ -181,7 +181,7 @@ jobs:
               "ToolVersion": "1.0"
             }
         ]
-  - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@1
+  - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@2
     displayName: 'ESRP CodeSigning: Strong Name and Authenticode'
     inputs:
       ConnectedServiceName: 'ESRP Service'
@@ -239,7 +239,7 @@ jobs:
       projects: |
         **\ExtensionsMetadataGenerator.csproj
         steps:
-  - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@1
+  - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@2
     displayName: 'ESRP CodeSigning: Nupkg'
     inputs:
       ConnectedServiceName: 'ESRP Service'
