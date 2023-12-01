@@ -465,11 +465,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Theory]
-        [InlineData(true, true, false)] // CancellationCapability:true SendCanceledInvocationsToTheWorker:true = ResultSource not canceled (send invocation)
-        [InlineData(true, false, true)] // CancellationCapability:true SendCanceledInvocationsToTheWorker:false = ResultSource canceled
-        [InlineData(false, true, true)] // CancellationCapability:false SendCanceledInvocationsToTheWorker:true  = ResultSource canceled
-        [InlineData(false, false, true)] // CancellationCapability:false SendCanceledInvocationsToTheWorker:false = ResultSource canceled
-        public async Task SendInvocationRequest_CancellationAlreadyRequested(bool invocationCancelCapability, bool sendCanceledInvocationsToTheWorker, bool cancelResultSource)
+        [InlineData(true, true, false)] // CancellationCapability:true SendCanceledInvocationsToWorker:true = ResultSource not canceled (send invocation)
+        [InlineData(true, false, true)] // CancellationCapability:true SendCanceledInvocationsToWorker:false = ResultSource canceled
+        [InlineData(false, true, true)] // CancellationCapability:false SendCanceledInvocationsToWorker:true  = ResultSource canceled
+        [InlineData(false, false, true)] // CancellationCapability:false SendCanceledInvocationsToWorker:false = ResultSource canceled
+        public async Task SendInvocationRequest_CancellationAlreadyRequested(bool invocationCancelCapability, bool sendCanceledInvocationsToWorker, bool cancelResultSource)
         {
             var cancellationWaitTimeMs = 3000;
             var invocationId = Guid.NewGuid();
@@ -486,7 +486,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             await CreateDefaultWorkerChannel(capabilities: capabilities);
 
-            _workerChannel.JobHostOptions.Value.SendCanceledInvocationsToTheWorker = sendCanceledInvocationsToTheWorker;
+            _workerChannel.JobHostOptions.Value.SendCanceledInvocationsToWorker = sendCanceledInvocationsToWorker;
 
             while (!token.IsCancellationRequested)
             {

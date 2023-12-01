@@ -128,6 +128,6 @@ namespace Microsoft.Azure.WebJobs.Script
         /// This defaults to true, meaning if cancellation is signalled we will still send the pre-cancelled
         /// invocation to the worker.
         /// </summary>
-        public bool SendCanceledInvocationsToTheWorker { get; set; }
+        public bool SendCanceledInvocationsToWorker { get; set; }
     }
 }

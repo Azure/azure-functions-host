@@ -852,8 +852,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
                     // If the worker does not support handling InvocationCancel grpc messages, or if cancellation is supported and the customer opts-out
                     // of sending cancelled invocations to the worker, we will cancel the result source and not send the invocation to the worker.
-                    if (!_isHandlesInvocationCancelMessageCapabilityEnabled ||
-                        (_isHandlesInvocationCancelMessageCapabilityEnabled && !JobHostOptions.Value.SendCanceledInvocationsToTheWorker))
+                    if (!_isHandlesInvocationCancelMessageCapabilityEnabled || !JobHostOptions.Value.SendCanceledInvocationsToWorker)
                     {
                         _workerChannelLogger.LogInformation("Cancelling invocation '{invocationId}' due to cancellation token being signaled. "
                             + "This invocation was not sent to the worker. Read more about this here: https://aka.ms/azure-functions-cancellations", invocationId);
@@ -1419,7 +1418,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     }
 
                     (_rpcWorkerProcess as IDisposable)?.Dispose();
-                    // (_scriptHostManager as IDisposable)?.Dispose();
 
                     if (_eventSubscriptions is not null)
                     {
