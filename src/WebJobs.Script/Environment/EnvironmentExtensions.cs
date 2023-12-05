@@ -316,12 +316,26 @@ namespace Microsoft.Azure.WebJobs.Script
                    string.IsNullOrEmpty(environment.GetEnvironmentVariable(LegionServiceHost));
         }
 
+        /// <summary>
+        /// Returns a value indicating whether the app is Linux Consumption running on Legion (either V1 or Flex).
+        /// </summary>
+        /// <param name="environment">The environment to verify.</param>
+        /// <returns><see cref="true"/> if the app is Linux Consumption running on Legion; otherwise, <see cref="false"/>.</returns>
         private static bool IsLinuxConsumptionOnLegion(this IEnvironment environment)
         {
             return !environment.IsAppService() &&
-                   (!string.IsNullOrEmpty(environment.GetEnvironmentVariable(ContainerName)) ||
-                   !string.IsNullOrEmpty(environment.GetEnvironmentVariable(WebsitePodName))) &&
+                   (!string.IsNullOrEmpty(environment.GetEnvironmentVariable(ContainerName)) || !string.IsNullOrEmpty(environment.GetEnvironmentVariable(WebsitePodName))) &&
                    !string.IsNullOrEmpty(environment.GetEnvironmentVariable(LegionServiceHost));
+        }
+
+        /// <summary>
+        /// Returns a value indicating whether the app is V1 Linux Consumption running on Legion.
+        /// </summary>
+        /// <param name="environment">The environment to verify.</param>
+        /// <returns><see cref="true"/> if the app is V1 Linux Consumption running on Legion; otherwise, <see cref="false"/>.</returns>
+        public static bool IsV1LinuxConsumptionOnLegion(this IEnvironment environment)
+        {
+            return IsLinuxConsumptionOnLegion(environment) && string.IsNullOrEmpty(environment.GetEnvironmentVariable(FunctionsMetricsPublishPath));
         }
 
         /// <summary>

@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using Grpc.Net.Client.Configuration;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.WebJobs.Script.Tests;
 using Xunit;
@@ -271,6 +272,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             }
 
             Assert.Equal(expectedValue, env.IsManagedAppEnvironment());
+        }
+
+        [Theory]
+        [InlineData(false, null, false)]
+        [InlineData(false, "", false)]
+        [InlineData(false, "TestPath", false)]
+        [InlineData(true, null, true)]
+        [InlineData(true, "", true)]
+        [InlineData(true, "TestPath", false)]
+        public void IsV1LinuxConsumptionOnLegion_ReturnsExpectedResult(bool isLinuxConsumptionOnLegion, string metricsPublishPath, bool expectedValue)
+        {
+            IEnvironment env = new TestEnvironment();
+
+            if (isLinuxConsumptionOnLegion)
+            {
+                env.SetEnvironmentVariable(WebsitePodName, "RandomPodName");
+                env.SetEnvironmentVariable(LegionServiceHost, "RandomLegionServiceHostName");
+            }
+
+            if (metricsPublishPath != null)
+            {
+                env.SetEnvironmentVariable(FunctionsMetricsPublishPath, metricsPublishPath);
+            }
+
+            Assert.Equal(expectedValue, env.IsV1LinuxConsumptionOnLegion());
         }
 
         [Theory]
