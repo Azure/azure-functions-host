@@ -45,8 +45,8 @@ namespace Microsoft.Azure.WebJobs.Script.Config
                         });
 
             // Log all the unique ikeys in the transmission, avoid storing the complete key.
-            IEnumerable<string> iKeys = transmission.TelemetryItems.GroupBy(n => n.Context.InstrumentationKey)
-                                        .Select(n => n.Key.Length > 24 ? string.Concat(n.Key.Substring(0, 24), "************") : n.Key);
+            IEnumerable<string> iKeys = transmission?.TelemetryItems.GroupBy(n => n.Context.InstrumentationKey)
+                                        .Select(n => n.Key.Length > 24 ? $"{n.Key[..24]}************" : n.Key);
 
             IngestionServiceResponse response = null;
             if (!string.IsNullOrWhiteSpace(args?.Response?.Content))
