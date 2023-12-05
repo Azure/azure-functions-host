@@ -1,0 +1,30 @@
+name: Add no recent activity
+description: Takes action to handle issues with no recent activity
+resource: repository
+configuration:
+  resourceManagementConfiguration:
+    scheduledSearches:
+    - description: Add no recent activity label to issues
+      frequencies:
+      - hourly:
+          hour: 3
+      filters:
+      - isIssue
+      - isOpen
+      - hasLabel:
+          label: 'Needs: Author Feedback'
+      - noActivitySince:
+          days: 4
+      - isNotLabeledWith:
+          label: no-recent-activity
+      actions:
+      - addLabel:
+          label: no-recent-activity
+      - addReply:
+          reply: >-
+            This issue has been automatically marked as stale because it has been marked as requiring author feedback but has not had any activity for **4 days**. It will be closed if no further activity occurs **within 3 days of this comment**.
+
+
+            If you are not the original author (${issueAuthor}) and believe this issue is not stale, please comment with `/bot not-stale` and I will not close it. 
+onFailure: 
+onSuccess: 

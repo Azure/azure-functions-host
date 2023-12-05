@@ -1,0 +1,26 @@
+name: Prevent auto-close
+description: Prevents issue from being closed by the automation
+resource: repository
+configuration:
+  resourceManagementConfiguration:
+    eventResponderTasks:
+    - description: Prevents issue from being closed by the automation
+      if:
+      - payloadType: Issue_Comment
+      - commentContains:
+          pattern: /bot not-stale
+          isRegex: False
+      - and:
+        - hasLabel:
+            label: 'Needs: Author Feedback'
+        - hasLabel:
+            label: no-recent-activity
+      then:
+      - addLabel:
+          label: 'bot: do not close'
+      - addLabel:
+          label: 'Needs: Attention :wave:'
+      - addReply:
+          reply: Thank you ${contextualAuthor}. This issue will not be automatically closed and a member of the team will review it soon.
+onFailure: 
+onSuccess: 
