@@ -89,7 +89,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private Uri _httpProxyEndpoint;
         private System.Timers.Timer _timer;
         private bool _functionMetadataRequestSent = false;
-        private CancellationTokenRegistration _cancellationCtr;
         private IOptions<ScriptJobHostOptions> _scriptHostOptions;
 
         internal GrpcWorkerChannel(
@@ -875,7 +874,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
                 if (_isHandlesInvocationCancelMessageCapabilityEnabled)
                 {
-                    _cancellationCtr = context.CancellationToken.Register(() => SendInvocationCancel(invocationRequest.InvocationId));
+                    var cancellationCtr = context.CancellationToken.Register(() => SendInvocationCancel(invocationRequest.InvocationId));
+                    context.Properties.Add("CancellationTokenRegistration", cancellationCtr);
                 }
 
                 if (IsHttpProxyingWorker && context.FunctionMetadata.IsHttpTriggerFunction())
@@ -1077,6 +1077,12 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             if (_executingInvocations.TryRemove(invokeResponse.InvocationId, out var invocation))
             {
                 var context = invocation.Context;
+
+                if (context.Properties.TryGetValue("CancellationTokenRegistration", out CancellationTokenRegistration ctr))
+                {
+                    ctr.Dispose();
+                }
+
                 if (invokeResponse.Result.IsInvocationSuccess(context.ResultSource, capabilityEnabled))
                 {
                     _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvokeSucceeded, Id));
@@ -1394,7 +1400,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     _startLatencyMetric?.Dispose();
                     _workerInitTask?.TrySetCanceled();
                     _timer?.Dispose();
-                    _cancellationCtr.Dispose();
                     _scriptHostManager.ActiveHostChanged -= HandleActiveHostChange;
 
                     // unlink function inputs
