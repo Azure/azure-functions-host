@@ -75,7 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
                 ErrorCode = topStatusCode,
                 ResponseTimeInMs = args?.ResponseDurationInMs,
                 RetryAfterHeader = args?.Response?.RetryAfterHeader,
-                EndpointAddress = transmission.EndpointAddress.OriginalString,
+                EndpointAddress = transmission?.EndpointAddress.OriginalString,
                 IKeys = iKeys
             };
             return JsonSerializer.Serialize(log, LogMessageContext.Default.LogMessage);
