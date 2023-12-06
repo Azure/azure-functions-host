@@ -7,9 +7,8 @@ configuration:
     - description: Remove needs author feedback label. Add needs attention 
       if:
       - payloadType: Issue_Comment
-      - not:
-          isAction:
-            action: Created
+      - isAction:
+          action: Created
       - isActivitySender:
           issueAuthor: True
       - hasLabel:
