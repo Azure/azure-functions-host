@@ -1,0 +1,24 @@
+name: Assign issues
+description: Assigns issues to team members
+resource: repository
+configuration:
+  resourceManagementConfiguration:
+    eventResponderTasks:
+    - description: Assign issues when marked for triage or when attention needed again
+      if:
+      - payloadType: Issues
+      - not:
+          isAssignedToSomeone
+      - or:
+        - labelAdded:
+            label: 'Needs: Triage (Functions)'
+        - labelAdded:
+            label: 'Needs: Attention :wave:'
+      then:
+        - assignIcmUsers:
+            teamId: 114785
+            primary: True
+            secondary: False
+      triggerOnOwnActions: true
+onFailure: 
+onSuccess: 
