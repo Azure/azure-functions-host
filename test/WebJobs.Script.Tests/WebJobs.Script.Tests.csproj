@@ -35,6 +35,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Remove="Scale\**" />
+    <EmbeddedResource Remove="Scale\**" />
+    <None Remove="Scale\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Include="Description\DotNet\TestFiles\PackageReferences\ProjectWithLockMatch\function.proj">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -168,7 +174,6 @@
 
   <ItemGroup>
     <Folder Include="Description\DotNet\TestFiles\DepsFiles\" />
-    <Folder Include="Scale\" />
   </ItemGroup>
 
   <Import Project="..\..\build\GrpcTestFix.targets" />

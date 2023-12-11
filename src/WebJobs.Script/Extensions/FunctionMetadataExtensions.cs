@@ -2,9 +2,9 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Extensions;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script
@@ -15,6 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private const string IsDisabledKey = "IsDisabled";
         private const string IsCodelessKey = "IsCodeless";
         private const string FunctionIdKey = "FunctionId";
+        private const string FunctionGroupKey = "FunctionGroup";
         private const string HttpTriggerKey = "HttpTrigger";
         private const string HttpOutputKey = "Http";
         private const string BlobTriggerType = "blobTrigger";
@@ -41,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static bool IsHttpTriggerFunction(this FunctionMetadata metadata)
         {
-            return metadata.InputBindings.Any(b => string.Equals(HttpTriggerKey, b.Type, StringComparison.OrdinalIgnoreCase));
+            return metadata.InputBindings.Any(b => b.IsHttpTrigger());
         }
 
         public static bool IsLegacyBlobTriggerFunction(this FunctionMetadata metadata)
@@ -58,6 +59,40 @@ namespace Microsoft.Azure.WebJobs.Script
                 return true;
             }
             return false;
+        }
+
+        /// <summary>
+        /// Gets the function group for the specified <see cref="FunctionMetadata"/>.
+        /// </summary>
+        /// <param name="metadata">The function metadata.</param>
+        /// <returns>The function group for this metadata or <c>null</c> if no group specified.</returns>
+        public static string GetFunctionGroup(this FunctionMetadata metadata)
+        {
+            if (metadata == null)
+            {
+                throw new ArgumentNullException(nameof(metadata));
+            }
+
+            if (metadata.Properties.TryGetValue(FunctionGroupKey, out object group))
+            {
+                return group.ToString();
+            }
+
+            // Ensure http and durable triggers are grouped together.
+            foreach (BindingMetadata binding in metadata.InputBindings)
+            {
+                if (binding.IsHttpTrigger())
+                {
+                    return "http";
+                }
+
+                if (binding.IsDurableTrigger())
+                {
+                    return "durable";
+                }
+            }
+
+            return null;
         }
 
         public static string GetFunctionId(this FunctionMetadata metadata)
