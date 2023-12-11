@@ -54,5 +54,36 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             bool result = bindingMetadata.SkipDeferredBinding();
             Assert.False(result);
         }
+
+        [Theory]
+        [InlineData("httpTrigger", true)]
+        [InlineData("otherTrigger", false)]
+        [InlineData("http2Trigger", false)]
+        [InlineData("inputBinding", false)]
+        public void IsHttpTrigger_ReturnsExpectedValue(string type, bool expected)
+        {
+            var bindingMetadata = new BindingMetadata
+            {
+                Type = type,
+            };
+
+            Assert.Equal(expected, bindingMetadata.IsHttpTrigger());
+        }
+
+        [Theory]
+        [InlineData("orchestrationTrigger", true)]
+        [InlineData("activityTrigger", true)]
+        [InlineData("entityTrigger", true)]
+        [InlineData("httpTrigger", false)]
+        [InlineData("inputBinding", false)]
+        public void IsDurableTrigger_ReturnsExpectedValue(string type, bool expected)
+        {
+            var bindingMetadata = new BindingMetadata
+            {
+                Type = type,
+            };
+
+            Assert.Equal(expected, bindingMetadata.IsDurableTrigger());
+        }
     }
 }
