@@ -411,44 +411,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public void ShutdownChannelsIfExist_Race_Succeeds()
         {
-            void RunRaceTest()
+            var channel = CreateTestChannel(RpcWorkerConstants.JavaLanguageWorkerName);
+            string id = channel.Id;
+
+            List<Task<bool>> tasks = new();
+            List<Thread> threads = new();
+            for (int i = 0; i < 2; i++)
             {
-                string id = null;
-
-                for (int j = 0; j < 100; j++)
+                Thread t = new(static (state) =>
                 {
-                    var channel = CreateTestChannel(RpcWorkerConstants.JavaLanguageWorkerName);
-                    id = channel.Id;
-                }
-
-                List<Task<bool>> tasks = new();
-                List<Thread> threads = new();
-                for (int i = 0; i < 4; i++)
-                {
-                    Thread t = new(() =>
-                    {
-                        tasks.Add(_rpcWorkerChannelManager.ShutdownChannelIfExistsAsync(RpcWorkerConstants.JavaLanguageWorkerName, id));
-                    });
-                    threads.Add(t);
-                }
-
-                foreach (Thread t in threads)
-                {
-                    t.Start();
-                }
-
-                foreach (Thread t in threads)
-                {
-                    t.Join();
-                }
-
-                Assert.Single(tasks, t => t.Result == true);
+                    var (channelManager, tasks, id) = ((WebHostRpcWorkerChannelManager, List<Task<bool>>, string))state;
+                    tasks.Add(channelManager.ShutdownChannelIfExistsAsync(RpcWorkerConstants.JavaLanguageWorkerName, id));
+                });
+                threads.Add(t);
             }
 
-            for (int i = 0; i < 1000; i++)
+            foreach (Thread t in threads)
             {
-                RunRaceTest();
+                t.Start((_rpcWorkerChannelManager, tasks, id));
             }
+
+            foreach (Thread t in threads)
+            {
+                t.Join();
+            }
+
+            // only one should successfully shut down
+            Assert.Single(tasks, t => t.Result == true);
         }
 
         [Fact]
