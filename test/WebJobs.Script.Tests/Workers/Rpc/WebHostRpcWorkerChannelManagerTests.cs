@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -405,6 +406,49 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             var initializedChannel = await _rpcWorkerChannelManager.GetChannelAsync(RpcWorkerConstants.JavaLanguageWorkerName);
             Assert.Null(initializedChannel);
+        }
+
+        [Fact]
+        public void ShutdownChannelsIfExist_Race_Succeeds()
+        {
+            void RunRaceTest()
+            {
+                string id = null;
+
+                for (int j = 0; j < 100; j++)
+                {
+                    var channel = CreateTestChannel(RpcWorkerConstants.JavaLanguageWorkerName);
+                    id = channel.Id;
+                }
+
+                List<Task<bool>> tasks = new();
+                List<Thread> threads = new();
+                for (int i = 0; i < 4; i++)
+                {
+                    Thread t = new(() =>
+                    {
+                        tasks.Add(_rpcWorkerChannelManager.ShutdownChannelIfExistsAsync(RpcWorkerConstants.JavaLanguageWorkerName, id));
+                    });
+                    threads.Add(t);
+                }
+
+                foreach (Thread t in threads)
+                {
+                    t.Start();
+                }
+
+                foreach (Thread t in threads)
+                {
+                    t.Join();
+                }
+
+                Assert.Single(tasks, t => t.Result == true);
+            }
+
+            for (int i = 0; i < 1000; i++)
+            {
+                RunRaceTest();
+            }
         }
 
         [Fact]
