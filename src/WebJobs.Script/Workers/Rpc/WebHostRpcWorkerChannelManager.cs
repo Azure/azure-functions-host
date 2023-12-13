@@ -7,9 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
-using Microsoft.Azure.AppService.Proxy.Common.Extensions;
 using Microsoft.Azure.AppService.Proxy.Common.Infra;
-using Microsoft.Azure.AppService.Proxy.Runtime;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -36,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private Action _shutdownStandbyWorkerChannels;
         private IConfiguration _config;
 
-        private ConcurrentDictionary<string, Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>>> _workerChannels = new ConcurrentDictionary<string, Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>>>(StringComparer.OrdinalIgnoreCase);
+        private ConcurrentDictionary<string, ConcurrentDictionary<string, TaskCompletionSource<IRpcWorkerChannel>>> _workerChannels = new(StringComparer.OrdinalIgnoreCase);
 
         public WebHostRpcWorkerChannelManager(IScriptEventManager eventManager,
                                               IEnvironment environment,
@@ -101,7 +99,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal Task<IRpcWorkerChannel> GetChannelAsync(string language)
         {
-            if (!string.IsNullOrEmpty(language) && _workerChannels.TryGetValue(language, out Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>> workerChannels))
+            if (!string.IsNullOrEmpty(language) && _workerChannels.TryGetValue(language, out ConcurrentDictionary<string, TaskCompletionSource<IRpcWorkerChannel>> workerChannels))
             {
                 if (workerChannels.Count > 0 && workerChannels.TryGetValue(workerChannels.Keys.First(), out TaskCompletionSource<IRpcWorkerChannel> valueTask))
                 {
@@ -111,9 +109,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             return Task.FromResult<IRpcWorkerChannel>(null);
         }
 
-        public Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>> GetChannels(string language)
+        public IDictionary<string, TaskCompletionSource<IRpcWorkerChannel>> GetChannels(string language)
         {
-            if (!string.IsNullOrEmpty(language) && _workerChannels.TryGetValue(language, out Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>> workerChannels))
+            if (!string.IsNullOrEmpty(language) && _workerChannels.TryGetValue(language, out ConcurrentDictionary<string, TaskCompletionSource<IRpcWorkerChannel>> workerChannels))
             {
                 return workerChannels;
             }
@@ -237,7 +235,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             if (_hostingConfigOptions.Value.RevertWorkerShutdownBehaviour)
             {
-                if (_workerChannels.TryRemove(language, out Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>> rpcWorkerChannels))
+                if (_workerChannels.TryRemove(language, out ConcurrentDictionary<string, TaskCompletionSource<IRpcWorkerChannel>> rpcWorkerChannels))
                 {
                     if (rpcWorkerChannels.TryGetValue(workerId, out TaskCompletionSource<IRpcWorkerChannel> value))
                     {
@@ -264,7 +262,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
             else
             {
-                if (_workerChannels.TryGetValue(language, out Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>> rpcWorkerChannels)
+                if (_workerChannels.TryGetValue(language, out ConcurrentDictionary<string, TaskCompletionSource<IRpcWorkerChannel>> rpcWorkerChannels)
                     && rpcWorkerChannels.TryRemove(workerId, out TaskCompletionSource<IRpcWorkerChannel> value))
                 {
                     value?.Task.ContinueWith(channelTask =>
@@ -304,7 +302,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                         using (_metricsLogger.LatencyEvent(string.Format(MetricEventNames.SpecializationShutdownStandbyChannels, runtime.Key)))
                         {
                             _logger.LogInformation("Disposing standby channel for runtime:{language}", runtime.Key);
-                            if (_workerChannels.TryRemove(runtime.Key, out Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>> standbyChannels))
+                            if (_workerChannels.TryRemove(runtime.Key, out ConcurrentDictionary<string, TaskCompletionSource<IRpcWorkerChannel>> standbyChannels))
                             {
                                 foreach (string workerId in standbyChannels.Keys)
                                 {
@@ -338,7 +336,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             foreach (string runtime in _workerChannels.Keys)
             {
                 _logger.LogInformation("Shutting down language worker channels for runtime:{runtime}", runtime);
-                if (_workerChannels.TryRemove(runtime, out Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>> standbyChannels))
+                if (_workerChannels.TryRemove(runtime, out ConcurrentDictionary<string, TaskCompletionSource<IRpcWorkerChannel>> standbyChannels))
                 {
                     foreach (string workerId in standbyChannels.Keys)
                     {
@@ -378,13 +376,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _workerChannels.AddOrUpdate(initializedRuntime,
                     (runtime) =>
                     {
-                        Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>> newLanguageWorkerChannels = new Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>>();
-                        newLanguageWorkerChannels.Add(initializedLanguageWorkerChannel.Id, new TaskCompletionSource<IRpcWorkerChannel>());
+                        ConcurrentDictionary<string, TaskCompletionSource<IRpcWorkerChannel>> newLanguageWorkerChannels = new(StringComparer.OrdinalIgnoreCase);
+                        newLanguageWorkerChannels.TryAdd(initializedLanguageWorkerChannel.Id, new TaskCompletionSource<IRpcWorkerChannel>());
                         return newLanguageWorkerChannels;
                     },
                     (runtime, existingLanguageWorkerChannels) =>
                     {
-                        existingLanguageWorkerChannels.Add(initializedLanguageWorkerChannel.Id, new TaskCompletionSource<IRpcWorkerChannel>());
+                        existingLanguageWorkerChannels.TryAdd(initializedLanguageWorkerChannel.Id, new TaskCompletionSource<IRpcWorkerChannel>());
                         return existingLanguageWorkerChannels;
                     });
         }
@@ -392,7 +390,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         internal void SetInitializedWorkerChannel(string initializedRuntime, IRpcWorkerChannel initializedLanguageWorkerChannel)
         {
             _logger.LogDebug("Adding webhost language worker channel for runtime: {language}. workerId:{id}", initializedRuntime, initializedLanguageWorkerChannel.Id);
-            if (_workerChannels.TryGetValue(initializedRuntime, out Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>> channel))
+            if (_workerChannels.TryGetValue(initializedRuntime, out ConcurrentDictionary<string, TaskCompletionSource<IRpcWorkerChannel>> channel))
             {
                 if (channel.TryGetValue(initializedLanguageWorkerChannel.Id, out TaskCompletionSource<IRpcWorkerChannel> value))
                 {
@@ -404,7 +402,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         internal void SetExceptionOnInitializedWorkerChannel(string initializedRuntime, IRpcWorkerChannel initializedLanguageWorkerChannel, Exception exception)
         {
             _logger.LogDebug("Failed to initialize webhost language worker channel for runtime: {language}. workerId:{id}", initializedRuntime, initializedLanguageWorkerChannel.Id);
-            if (_workerChannels.TryGetValue(initializedRuntime, out Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>> channel))
+            if (_workerChannels.TryGetValue(initializedRuntime, out ConcurrentDictionary<string, TaskCompletionSource<IRpcWorkerChannel>> channel))
             {
                 if (channel.TryGetValue(initializedLanguageWorkerChannel.Id, out TaskCompletionSource<IRpcWorkerChannel> value))
                 {
