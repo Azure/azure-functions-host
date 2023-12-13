@@ -4,4 +4,4 @@
 - My change description (#PR)
 -->
 
-- Updated `Microsoft.Azure.Functions.DotNetIsolatedNativeHost` version to 1.0.4 (#9739)
+- Updated `Microsoft.Azure.Functions.DotNetIsolatedNativeHost` version to 1.0.4 (#9740)
