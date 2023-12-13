@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             throw new System.NotImplementedException();
         }
 
-        public Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>> GetChannels(string language)
+        public IDictionary<string, TaskCompletionSource<IRpcWorkerChannel>> GetChannels(string language)
         {
             if (_workerChannels.TryGetValue(language, out Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>> workerChannels))
             {
