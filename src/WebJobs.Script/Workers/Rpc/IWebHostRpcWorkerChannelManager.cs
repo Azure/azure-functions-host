@@ -11,7 +11,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
     {
         Task<IRpcWorkerChannel> InitializeChannelAsync(IEnumerable<RpcWorkerConfig> workerConfigs, string language);
 
-        Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>> GetChannels(string language);
+        IDictionary<string, TaskCompletionSource<IRpcWorkerChannel>> GetChannels(string language);
 
         Task SpecializeAsync();
 
