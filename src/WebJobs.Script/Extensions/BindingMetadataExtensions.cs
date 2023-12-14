@@ -4,18 +4,21 @@
 using System;
 using System.Collections.Generic;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Extensions
 {
     public static class BindingMetadataExtensions
     {
-        private const string HttpTriggerKey = "HttpTrigger";
+        private const string HttpTriggerKey = "httpTrigger";
+        private const string EventGridTriggerKey = "eventGridTrigger";
+        private const string BlobTriggerKey = "blobTrigger";
 
         private static readonly HashSet<string> DurableTriggers = new(StringComparer.OrdinalIgnoreCase)
         {
-            "EntityTrigger",
-            "ActivityTrigger",
-            "OrchestrationTrigger"
+            "entityTrigger",
+            "activityTrigger",
+            "orchestrationTrigger"
         };
 
         /// <summary>
@@ -31,6 +34,40 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
             }
 
             return string.Equals(HttpTriggerKey, binding.Type, StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// Checks if a <see cref="BindingMetadata"/> represents an webhook trigger.
+        /// </summary>
+        /// <param name="binding">The binding metadata to check.</param>
+        /// <returns><c>true</c> if a webhook trigger, <c>false</c> otherwise.</returns>
+        /// <remarks>
+        /// Known webhook triggers includes Event Grid and Event Grid sourced blob triggers.
+        /// </remarks>
+        public static bool IsWebHookTrigger(this BindingMetadata binding)
+        {
+            if (binding is null)
+            {
+                throw new ArgumentNullException(nameof(binding));
+            }
+
+            if (string.Equals(EventGridTriggerKey, binding.Type, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            if (string.Equals(BlobTriggerKey, binding.Type, StringComparison.OrdinalIgnoreCase))
+            {
+                if (binding.Raw is { } obj)
+                {
+                    if (obj.TryGetValue("source", StringComparison.OrdinalIgnoreCase, out JToken token) && token is not null)
+                    {
+                        return string.Equals(token.ToString(), "eventGrid", StringComparison.OrdinalIgnoreCase);
+                    }
+                }
+            }
+
+            return false;
         }
 
         /// <summary>
