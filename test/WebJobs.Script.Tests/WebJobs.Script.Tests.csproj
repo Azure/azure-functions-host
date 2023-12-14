@@ -35,12 +35,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Remove="Scale\**" />
-    <EmbeddedResource Remove="Scale\**" />
-    <None Remove="Scale\**" />
-  </ItemGroup>
-
-  <ItemGroup>
     <None Include="Description\DotNet\TestFiles\PackageReferences\ProjectWithLockMatch\function.proj">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -170,10 +164,6 @@
     <EmbeddedResource Include="Resources\FileProvisioning\PowerShell\profile.ps1">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </EmbeddedResource>
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Description\DotNet\TestFiles\DepsFiles\" />
   </ItemGroup>
 
   <Import Project="..\..\build\GrpcTestFix.targets" />

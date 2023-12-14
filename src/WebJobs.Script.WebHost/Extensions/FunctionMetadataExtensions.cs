@@ -76,8 +76,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
         /// </summary>
         /// <param name="functionMetadata">FunctionMetadata object to convert to a JObject.</param>
         /// <param name="config">ScriptHostConfiguration to read RootScriptPath from.</param>
+        /// <param name="isFlexConsumption">True if this is for flex consumption, false otherwise.</param>
         /// <returns>JObject that represent the trigger for scale controller to consume.</returns>
-        public static async Task<JObject> ToFunctionTrigger(this FunctionMetadata functionMetadata, ScriptJobHostOptions config)
+        public static async Task<JObject> ToFunctionTrigger(
+            this FunctionMetadata functionMetadata, ScriptJobHostOptions config, bool isFlexConsumption)
         {
             var functionPath = Path.Combine(config.RootScriptPath, functionMetadata.Name);
             var functionMetadataFilePath = Path.Combine(functionPath, ScriptConstants.FunctionMetadataFileName);
@@ -95,10 +97,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
                     {
                         binding.Add("functionName", functionMetadata.Name);
 
-                        string group = functionMetadata.GetFunctionGroup();
-                        if (!string.IsNullOrEmpty(group))
+                        if (isFlexConsumption)
                         {
-                            binding.Add("functionGroup", group);
+                            string group = functionMetadata.GetFunctionGroup();
+                            if (!string.IsNullOrEmpty(group))
+                            {
+                                binding.Add("functionGroup", group);
+                            }
                         }
 
                         return binding;

@@ -81,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script
             // Ensure http and durable triggers are grouped together.
             foreach (BindingMetadata binding in metadata.InputBindings)
             {
-                if (binding.IsHttpTrigger())
+                if (binding.IsHttpTrigger() || binding.IsWebHookTrigger())
                 {
                     return "http";
                 }

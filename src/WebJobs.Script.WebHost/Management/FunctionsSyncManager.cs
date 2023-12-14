@@ -456,7 +456,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         {
             var triggers = (await functionsMetadata
                 .Where(f => !f.IsProxy())
-                .Select(f => f.ToFunctionTrigger(hostOptions))
+                .Select(f => f.ToFunctionTrigger(hostOptions, _environment.IsFlexConsumptionSku()))
                 .WhenAll())
                 .Where(t => t != null);
 
