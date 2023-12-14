@@ -187,7 +187,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             await _webHostLanguageWorkerChannelManager?.ShutdownChannelsAsync();
         }
 
-        private void SetDispatcherStateToInitialized(Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>> webhostLanguageWorkerChannel = null)
+        private void SetDispatcherStateToInitialized(IDictionary<string, TaskCompletionSource<IRpcWorkerChannel>> webhostLanguageWorkerChannel = null)
         {
             // RanToCompletion indicates successful process startup
             if (State != FunctionInvocationDispatcherState.Initialized
@@ -198,7 +198,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
         }
 
-        private void StartWorkerProcesses(int startIndex, Func<IEnumerable<string>, Task> startAction, bool initializeDispatcher = false, Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>> webhostLanguageWorkerChannel = null, IEnumerable<string> functionLanguages = null)
+        private void StartWorkerProcesses(int startIndex, Func<IEnumerable<string>, Task> startAction, bool initializeDispatcher = false, IDictionary<string, TaskCompletionSource<IRpcWorkerChannel>> webhostLanguageWorkerChannel = null, IEnumerable<string> functionLanguages = null)
         {
             Task.Run(async () =>
             {
@@ -309,7 +309,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             if (Utility.IsSupportedRuntime(_workerRuntime, _workerConfigs) || _environment.IsMultiLanguageRuntimeEnvironment())
             {
                 State = FunctionInvocationDispatcherState.Initializing;
-                Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>> webhostLanguageWorkerChannels = _webHostLanguageWorkerChannelManager.GetChannels(_workerRuntime);
+                IDictionary<string, TaskCompletionSource<IRpcWorkerChannel>> webhostLanguageWorkerChannels = _webHostLanguageWorkerChannelManager.GetChannels(_workerRuntime);
                 if (webhostLanguageWorkerChannels != null)
                 {
                     int workerProcessCount = 0;

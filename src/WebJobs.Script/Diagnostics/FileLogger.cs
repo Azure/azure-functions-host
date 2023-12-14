@@ -93,7 +93,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
             {
                 _fileWriter.AppendLine(formattedMessage);
             }
-            catch (Exception ex) when (!ex.IsFatal())
+            catch (Exception)
             {
                 // Make sure the Logger doesn't throw if there are Exceptions (disk full, etc).
             }
