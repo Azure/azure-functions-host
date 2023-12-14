@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -411,33 +412,48 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public void ShutdownChannelsIfExist_Race_Succeeds()
         {
-            var channel = CreateTestChannel(RpcWorkerConstants.JavaLanguageWorkerName);
-            string id = channel.Id;
+            // This test covers an issue that was fixed by https://github.com/Azure/azure-functions-host/pull/9738
+            // To repro, it requires ShutdownChannelIfExistsAsync to be called by multiple threads simultaneously. Using
+            // Tasks did not repro, so using Semaphores and Threads for more precise timing. We run this several times
+            // just to ensure it's not continuing to repro (it did not repro on every invocation).
 
-            List<Task<bool>> tasks = new();
-            List<Thread> threads = new();
-            for (int i = 0; i < 2; i++)
+            IEnumerable<bool> RunRaceTest()
             {
-                Thread t = new(static (state) =>
+                var channel = CreateTestChannel(RpcWorkerConstants.JavaLanguageWorkerName);
+
+                int count = 4;
+                SemaphoreSlim semaphore = new(0, count);
+                List<Thread> threads = new();
+                ConcurrentBag<bool> results = new();
+
+                for (int i = 0; i < count; i++)
                 {
-                    var (channelManager, tasks, id) = ((WebHostRpcWorkerChannelManager, List<Task<bool>>, string))state;
-                    tasks.Add(channelManager.ShutdownChannelIfExistsAsync(RpcWorkerConstants.JavaLanguageWorkerName, id));
-                });
-                threads.Add(t);
+                    Thread t = new(() =>
+                    {
+                        // Pause threads here. They will all be released simultaneously.
+                        semaphore.Wait();
+                        results.Add(_rpcWorkerChannelManager.ShutdownChannelIfExistsAsync(RpcWorkerConstants.JavaLanguageWorkerName, channel.Id).GetAwaiter().GetResult());
+                    });
+                    t.Start();
+                    threads.Add(t);
+                }
+
+                // Release all threads.
+                semaphore.Release(count);
+
+                foreach (Thread t in threads)
+                {
+                    t.Join();
+                }
+
+                return results;
             }
 
-            foreach (Thread t in threads)
+            for (int i = 0; i < 50; i++)
             {
-                t.Start((_rpcWorkerChannelManager, tasks, id));
+                var results = RunRaceTest();
+                Assert.Single(results, true);
             }
-
-            foreach (Thread t in threads)
-            {
-                t.Join();
-            }
-
-            // only one should successfully shut down
-            Assert.Single(tasks, t => t.Result == true);
         }
 
         [Fact]
