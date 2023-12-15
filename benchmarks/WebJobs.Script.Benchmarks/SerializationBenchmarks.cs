@@ -64,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Benchmarks
 
     }
 
-    [JsonSourceGenerationOptions(WriteIndented = true)]
+    [JsonSourceGenerationOptions(WriteIndented = true, IncludeFields = false)]
     [JsonSerializable(typeof(List<RpcWorkerConfig>))]
     internal partial class SourceGenerationContext: JsonSerializerContext
     {

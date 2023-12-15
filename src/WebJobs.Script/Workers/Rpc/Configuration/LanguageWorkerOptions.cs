@@ -1,5 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
-// Licensed under the MIT License. See License.txt in the project root for license information.
+﻿// Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
 using System.Text.Json;
@@ -14,12 +13,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         public string Format()
         {
-            return JsonSerializer.Serialize(WorkerConfigs, typeof(List<RpcWorkerConfig>), SourceGenerationContextWorkerConfig.Default);
+            return JsonSerializer.Serialize(this, typeof(LanguageWorkerOptions), SourceGenerationContextWorkerConfig.Default);
         }
     }
 
-    [JsonSourceGenerationOptions(WriteIndented = true)]
-    [JsonSerializable(typeof(IList<RpcWorkerConfig>))]
+    [JsonSourceGenerationOptions(WriteIndented = true, IncludeFields = false)]
+    [JsonSerializable(typeof(LanguageWorkerOptions))]
     internal partial class SourceGenerationContextWorkerConfig : JsonSerializerContext
     {
     }
