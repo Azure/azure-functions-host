@@ -13,13 +13,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         public string Format()
         {
-            return JsonSerializer.Serialize(this, typeof(LanguageWorkerOptions), SourceGenerationContextWorkerConfig.Default);
+            return JsonSerializer.Serialize(this, typeof(LanguageWorkerOptions), LanguageWorkerOptionsJsonSerializerContext.Default);
         }
     }
 
-    [JsonSourceGenerationOptions(WriteIndented = true, IncludeFields = false)]
+    [JsonSourceGenerationOptions(WriteIndented = true)]
     [JsonSerializable(typeof(LanguageWorkerOptions))]
-    internal partial class SourceGenerationContextWorkerConfig : JsonSerializerContext
+    internal partial class LanguageWorkerOptionsJsonSerializerContext : JsonSerializerContext
     {
     }
 }
