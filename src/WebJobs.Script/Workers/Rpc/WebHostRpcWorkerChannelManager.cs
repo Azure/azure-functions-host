@@ -80,12 +80,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 {
                     if (processStartTask.Status == TaskStatus.RanToCompletion)
                     {
-                        _logger.LogDebug("Adding jobhost language worker channel for runtime: {language}. workerId:{id}", _workerRuntime, rpcWorkerChannel.Id);
+                        _logger.LogDebug("Adding WebHost language worker channel for runtime: {language}. workerId:{id}", runtime, rpcWorkerChannel.Id);
                         SetInitializedWorkerChannel(runtime, rpcWorkerChannel);
                     }
                     else if (processStartTask.Status == TaskStatus.Faulted)
                     {
-                        _logger.LogError("Failed to start language worker process for runtime: {language}. workerId:{id}", _workerRuntime, rpcWorkerChannel.Id);
+                        _logger.LogError("Failed to start language worker process for runtime: {language}. workerId:{id}", runtime, rpcWorkerChannel.Id);
                         SetExceptionOnInitializedWorkerChannel(runtime, rpcWorkerChannel, processStartTask.Exception);
                     }
                 });
