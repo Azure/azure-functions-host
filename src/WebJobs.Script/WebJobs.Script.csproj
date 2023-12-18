@@ -88,7 +88,7 @@
     of the Source Generator is used, which causes issues. This reference can be removed in future framework versions.
 
     https://github.com/dotnet/runtime/issues/62354
-https://github.com/dotnet/runtime/issues/62082
+    https://github.com/dotnet/runtime/issues/62082
     -->
     <PackageReference Include="System.Text.Json" Version="6.0.9" />
   </ItemGroup>
