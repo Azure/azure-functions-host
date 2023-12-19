@@ -182,6 +182,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions
                 new EventId(529, nameof(HostStateChanged)),
                 "Host state changed from {previousState} to {newState}.");
 
+        private static readonly Action<ILogger, string, string, string, string, Exception> _logSettings =
+            LoggerMessage.Define<string, string, string, string>(
+                LogLevel.Information,
+                new EventId(530, nameof(LogSettings)),
+                Properties.Resources.LogSettings);
+
         public static void HostStateChanged(this ILogger logger, ScriptHostState previousHostState, ScriptHostState newHostState)
         {
             var newState = newHostState.ToString();
@@ -322,6 +328,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions
         public static void ScriptHostServiceRestartCanceledByRuntime(this ILogger logger)
         {
             _scriptHostServiceRestartCanceledByRuntime(logger, null);
+        }
+
+        public static void LogSettings(this ILogger logger, string functionWorkerRuntime, string functionExtensionVersion, string currentDirectory, string inStandbyMode)
+        {
+            _logSettings(logger, functionWorkerRuntime, functionExtensionVersion, currentDirectory, inStandbyMode, null);
         }
     }
 }

@@ -685,6 +685,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 // Reading the string from resources to make sure resource loading code path is warmed up during placeholder as well.
                 logger.InStandByMode(operationId);
             }
+
+            // Log settings
+            var functionWorkerRuntime = _environment.GetEnvironmentVariable(FunctionWorkerRuntime);
+            var functionExtensionVersion = _environment.GetEnvironmentVariable(FunctionsExtensionVersion);
+            var currentDirectory = Directory.GetCurrentDirectory();
+            var inStandbyMode = _scriptWebHostEnvironment.InStandbyMode.ToString();
+
+            logger.LogSettings(functionWorkerRuntime, functionExtensionVersion, currentDirectory, inStandbyMode);
         }
 
         private void OnHostHealthCheckTimer(object state)

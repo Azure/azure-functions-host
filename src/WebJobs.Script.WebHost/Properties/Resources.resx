@@ -283,6 +283,14 @@
   <data name="HostSpecializationTrace" xml:space="preserve">
     <value>Starting host specialization</value>
   </data>
+  <data name="LogSettings" xml:space="preserve">
+    <value>Settings: {{
+  "functionsWorkerRuntime": "{functionWorkerRuntime}",
+  "functionsExtensionVersion": "{functionsExtensionVersion}",
+  "currentDirectory": "{currentDirectory}",
+  "inStandbyMode": "{inStandbyMode}"
+}}</value>
+  </data>
   <data name="TraceAddOrUpdateFunctionSecret" xml:space="preserve">
     <value>{0} secret '{1}' for '{2}' {3}.</value>
   </data>
