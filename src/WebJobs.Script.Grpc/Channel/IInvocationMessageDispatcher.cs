@@ -26,7 +26,7 @@ internal interface IInvocationMessageDispatcher
     /// <summary>
     /// Inspects the incoming RpcLog and dispatches to a Thread or background Task as quickly as possible. This method is
     /// called from a loop processing incoming grpc messages and any thread blocking will delay the processing of that loop.
-    /// It can be assumed that this thread will never be called from multiple threads simultaneously and thus does not need
+    /// It can be assumed that this method will never be called from multiple threads simultaneously and thus does not need
     /// to be thread-safe.
     /// </summary>
     /// <param name="msg">The RpcLog message. Implementors can assume that this message is an RpcLog.</param>
@@ -35,7 +35,7 @@ internal interface IInvocationMessageDispatcher
     /// <summary>
     /// Inspects an incoming InvocationResponse message and dispatches to a Thread or background Task as quickly as possible.
     /// This method is called from a loop processing incoming grpc messages and any thread blocking will delay the processing
-    /// of that loop. It can be assumed that this thread will never be called from multiple threads simultaneously and thus
+    /// of that loop. It can be assumed that this method will never be called from multiple threads simultaneously and thus
     /// does not need to be thread-safe.
     /// </summary>
     /// <param name="msg">The InvocationResponse message. Implementors can assume that this message is an InvocationResponse.</param>
