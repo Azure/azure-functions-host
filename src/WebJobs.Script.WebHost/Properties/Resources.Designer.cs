@@ -235,12 +235,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
         ///  &quot;functionsWorkerRuntime&quot;: &quot;{functionWorkerRuntime}&quot;,
         ///  &quot;functionsExtensionVersion&quot;: &quot;{functionsExtensionVersion}&quot;,
         ///  &quot;currentDirectory&quot;: &quot;{currentDirectory}&quot;,
-        ///  &quot;inStandbyMode&quot;: &quot;{inStandbyMode}&quot;
+        ///  &quot;inStandbyMode&quot;: {inStandbyMode}
         ///}}.
         /// </summary>
-        internal static string LogSettings {
+        internal static string LogHostInitializationSettings {
             get {
-                return ResourceManager.GetString("LogSettings", resourceCulture);
+                return ResourceManager.GetString("LogHostInitializationSettings", resourceCulture);
             }
         }
         

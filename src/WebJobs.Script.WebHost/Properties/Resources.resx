@@ -283,12 +283,12 @@
   <data name="HostSpecializationTrace" xml:space="preserve">
     <value>Starting host specialization</value>
   </data>
-  <data name="LogSettings" xml:space="preserve">
+  <data name="LogHostInitializationSettings" xml:space="preserve">
     <value>Settings: {{
   "functionsWorkerRuntime": "{functionWorkerRuntime}",
   "functionsExtensionVersion": "{functionsExtensionVersion}",
   "currentDirectory": "{currentDirectory}",
-  "inStandbyMode": "{inStandbyMode}"
+  "inStandbyMode": {inStandbyMode}
 }}</value>
   </data>
   <data name="TraceAddOrUpdateFunctionSecret" xml:space="preserve">

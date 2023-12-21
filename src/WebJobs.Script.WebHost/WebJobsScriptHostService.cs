@@ -690,9 +690,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             var functionWorkerRuntime = _environment.GetEnvironmentVariable(FunctionWorkerRuntime);
             var functionExtensionVersion = _environment.GetEnvironmentVariable(FunctionsExtensionVersion);
             var currentDirectory = Directory.GetCurrentDirectory();
-            var inStandbyMode = _scriptWebHostEnvironment.InStandbyMode.ToString();
+            var inStandbyMode = _scriptWebHostEnvironment.InStandbyMode;
 
-            logger.LogSettings(functionWorkerRuntime, functionExtensionVersion, currentDirectory, inStandbyMode);
+            logger.LogHostInitializationSettings(functionWorkerRuntime, functionExtensionVersion, currentDirectory, inStandbyMode);
         }
 
         private void OnHostHealthCheckTimer(object state)
