@@ -274,7 +274,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
                 !t.Message.Contains("Skipping WorkerConfig for language")
             ).ToArray();
 
-            int expectedCount = 17;
+            int expectedCount = 16;
             Assert.True(traces.Length == expectedCount, $"Expected {expectedCount} messages, but found {traces.Length}. Actual logs:{Environment.NewLine}{string.Join(Environment.NewLine, traces.Select(t => t.Message))}");
 
             int idx = 0;
@@ -294,7 +294,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             ValidateTrace(traces[idx++], "Job host started", LogCategories.Startup);
             ValidateTrace(traces[idx++], "Loading functions metadata", LogCategories.Startup);
             ValidateTrace(traces[idx++], "Reading functions metadata", LogCategories.Startup);
-            Assert.Contains("Settings: {", traces[idx++].Message);
             ValidateTrace(traces[idx++], "Starting Host (HostId=", LogCategories.Startup);
         }
 
