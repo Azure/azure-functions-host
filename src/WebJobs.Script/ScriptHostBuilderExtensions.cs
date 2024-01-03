@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics.Tracing;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -430,7 +431,7 @@ namespace Microsoft.Azure.WebJobs.Script
                         }
                         else
                         {
-                            throw new ArgumentException(nameof(EnvironmentSettingNames.AppInsightsEventListenerLogLevel));
+                            throw new InvalidEnumArgumentException($"Invalid `{EnvironmentSettingNames.AppInsightsEventListenerLogLevel}`.");
                         }
                     }
 
