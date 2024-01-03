@@ -409,7 +409,8 @@ namespace Microsoft.Azure.WebJobs.Script
             // Initializing AppInsights services during placeholder mode as well to avoid the cost of JITting these objects during specialization
             if (!string.IsNullOrEmpty(appInsightsInstrumentationKey) || !string.IsNullOrEmpty(appInsightsConnectionString) || SystemEnvironment.Instance.IsPlaceholderModeEnabled())
             {
-                // Initialize ScriptTelemetryInitializer before any other telemetry initializers. This will allow HostInstanceId to be removed as part of MetricsCustomDimensionOptimization
+                // Initialize ScriptTelemetryInitializer before any other telemetry initializers.
+                // This will allow HostInstanceId to be removed as part of MetricsCustomDimensionOptimization.
                 builder.Services.AddSingleton<ITelemetryInitializer, ScriptTelemetryInitializer>();
                 builder.AddApplicationInsightsWebJobs(o =>
                 {
