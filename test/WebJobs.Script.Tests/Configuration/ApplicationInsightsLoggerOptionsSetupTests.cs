@@ -286,6 +286,69 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             Assert.Equal(expectedValue, options.EnableLiveMetricsFilters);
         }
 
+        [Theory]
+        [InlineData(null, false)] // default value
+        [InlineData("true", true)]
+        [InlineData("false", false)]
+        public void Configure_EnableMetricsCustomDimensionOptimization(string value, bool expectedValue)
+        {
+            IConfiguration config = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string>
+                {
+                    { "EnableMetricsCustomDimensionOptimization", value },
+                })
+                .Build();
+
+            ApplicationInsightsLoggerOptionsSetup setup = new ApplicationInsightsLoggerOptionsSetup(new MockLoggerConfiguration(config), _environment);
+
+            ApplicationInsightsLoggerOptions options = new ApplicationInsightsLoggerOptions();
+            setup.Configure(options);
+
+            Assert.Equal(expectedValue, options.EnableMetricsCustomDimensionOptimization);
+        }
+
+        [Theory]
+        [InlineData(null, false)] // default value
+        [InlineData("true", true)]
+        [InlineData("false", false)]
+        public void Configure_EnableQueryStringTracing(string value, bool expectedValue)
+        {
+            IConfiguration config = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string>
+                {
+                    { "EnableQueryStringTracing", value },
+                })
+                .Build();
+
+            ApplicationInsightsLoggerOptionsSetup setup = new ApplicationInsightsLoggerOptionsSetup(new MockLoggerConfiguration(config), _environment);
+
+            ApplicationInsightsLoggerOptions options = new ApplicationInsightsLoggerOptions();
+            setup.Configure(options);
+
+            Assert.Equal(expectedValue, options.EnableQueryStringTracing);
+        }
+
+        [Theory]
+        [InlineData(null, false)] // default value
+        [InlineData("true", true)]
+        [InlineData("false", false)]
+        public void Configure_EnableAutocollectedMetricsExtractor(string value, bool expectedValue)
+        {
+            IConfiguration config = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string>
+                {
+                    { "EnableAutocollectedMetricsExtractor", value },
+                })
+                .Build();
+
+            ApplicationInsightsLoggerOptionsSetup setup = new ApplicationInsightsLoggerOptionsSetup(new MockLoggerConfiguration(config), _environment);
+
+            ApplicationInsightsLoggerOptions options = new ApplicationInsightsLoggerOptions();
+            setup.Configure(options);
+
+            Assert.Equal(expectedValue, options.EnableAutocollectedMetricsExtractor);
+        }
+
         private class MockLoggerConfiguration : ILoggerProviderConfiguration<ApplicationInsightsLoggerProvider>
         {
             public MockLoggerConfiguration(IConfiguration configuration)

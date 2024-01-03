@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.Tracing;
 using System.Runtime.InteropServices;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Channel;
@@ -408,10 +409,22 @@ namespace Microsoft.Azure.WebJobs.Script
             // Initializing AppInsights services during placeholder mode as well to avoid the cost of JITting these objects during specialization
             if (!string.IsNullOrEmpty(appInsightsInstrumentationKey) || !string.IsNullOrEmpty(appInsightsConnectionString) || SystemEnvironment.Instance.IsPlaceholderModeEnabled())
             {
+                // Initialize ScriptTelemetryInitializer before any other telemetry initializers. This will allow HostInstanceId to be removed as part of MetricsCustomDimensionOptimization
+                builder.Services.AddSingleton<ITelemetryInitializer, ScriptTelemetryInitializer>();
                 builder.AddApplicationInsightsWebJobs(o =>
                 {
                     o.InstrumentationKey = appInsightsInstrumentationKey;
                     o.ConnectionString = appInsightsConnectionString;
+
+                    if (Enum.TryParse(context.Configuration[EnvironmentSettingNames.AppInsightsEventListenerLogLevel], ignoreCase: true, out EventLevel level))
+                    {
+                        o.DiagnosticsEventListenerLogLevel = level;
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(context.Configuration[EnvironmentSettingNames.AppInsightsAuthenticationString]))
+                    {
+                        o.TokenCredentialOptions = TokenCredentialOptions.ParseAuthenticationString(context.Configuration[EnvironmentSettingNames.AppInsightsAuthenticationString]);
+                    }
                 }, t =>
                 {
                     if (t.TelemetryChannel is ServerTelemetryChannel channel)
@@ -425,7 +438,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 builder.Services.ConfigureOptions<ApplicationInsightsLoggerOptionsSetup>();
                 builder.Services.AddSingleton<ISdkVersionProvider, FunctionsSdkVersionProvider>();
-                builder.Services.AddSingleton<ITelemetryInitializer, ScriptTelemetryInitializer>();
 
                 if (SystemEnvironment.Instance.IsPlaceholderModeEnabled())
                 {
