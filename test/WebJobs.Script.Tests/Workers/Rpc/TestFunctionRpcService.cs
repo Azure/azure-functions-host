@@ -7,7 +7,6 @@ using System.Collections.Generic;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
-using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
@@ -267,6 +266,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 RpcLog = rpcLog
             };
+            Write(logMessage);
+        }
+
+        public void PublishLogEvent(string message, string invocationId)
+        {
+            RpcLog rpcLog = new RpcLog()
+            {
+                LogCategory = RpcLog.Types.RpcLogCategory.User,
+                Level = RpcLog.Types.Level.Information,
+                InvocationId = invocationId,
+                Message = message
+            };
+
+            StreamingMessage logMessage = new StreamingMessage()
+            {
+                RpcLog = rpcLog
+            };
+
             Write(logMessage);
         }
 
