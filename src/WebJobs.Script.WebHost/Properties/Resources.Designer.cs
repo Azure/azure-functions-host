@@ -231,20 +231,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Settings: {{
-        ///  &quot;functionsWorkerRuntime&quot;: &quot;{functionWorkerRuntime}&quot;,
-        ///  &quot;functionsExtensionVersion&quot;: &quot;{functionsExtensionVersion}&quot;,
-        ///  &quot;currentDirectory&quot;: &quot;{currentDirectory}&quot;,
-        ///  &quot;inStandbyMode&quot;: {inStandbyMode}
-        ///}}.
-        /// </summary>
-        internal static string LogHostInitializationSettings {
-            get {
-                return ResourceManager.GetString("LogHostInitializationSettings", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to {0} secret &apos;{1}&apos; for &apos;{2}&apos; {3}..
         /// </summary>
         internal static string TraceAddOrUpdateFunctionSecret {
