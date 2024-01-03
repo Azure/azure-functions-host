@@ -548,7 +548,6 @@ namespace Microsoft.Azure.WebJobs.Script
                     if (!string.IsNullOrEmpty(appInsightsAuthString))
                     {
                         TokenCredentialOptions credentialOptions = TokenCredentialOptions.ParseAuthenticationString(appInsightsAuthString);
-
                         // Default is connection string based ingestion
                         telemetryConfiguration.SetAzureTokenCredential(new ManagedIdentityCredential(credentialOptions.ClientId));
                     }
@@ -558,8 +557,8 @@ namespace Microsoft.Azure.WebJobs.Script
                     telemetryClient.TrackTrace(startupEx.ToString(), SeverityLevel.Error);
                     telemetryClient.TrackException(startupEx);
                     telemetryClient.Flush();
-                    // Flush is async, sleep for 2 sec to give it time to flush
-                    Thread.Sleep(2000);
+                    // Flush is async, sleep for 1 sec to give it time to flush
+                    Thread.Sleep(1000);
                 }
             }
             throw startupEx;

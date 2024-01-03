@@ -300,10 +300,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 .Build();
 
             ApplicationInsightsLoggerOptionsSetup setup = new ApplicationInsightsLoggerOptionsSetup(new MockLoggerConfiguration(config), _environment);
-
             ApplicationInsightsLoggerOptions options = new ApplicationInsightsLoggerOptions();
             setup.Configure(options);
-
             Assert.Equal(expectedValue, options.EnableMetricsCustomDimensionOptimization);
         }
 
@@ -321,10 +319,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 .Build();
 
             ApplicationInsightsLoggerOptionsSetup setup = new ApplicationInsightsLoggerOptionsSetup(new MockLoggerConfiguration(config), _environment);
-
             ApplicationInsightsLoggerOptions options = new ApplicationInsightsLoggerOptions();
             setup.Configure(options);
-
             Assert.Equal(expectedValue, options.EnableQueryStringTracing);
         }
 
@@ -342,10 +338,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 .Build();
 
             ApplicationInsightsLoggerOptionsSetup setup = new ApplicationInsightsLoggerOptionsSetup(new MockLoggerConfiguration(config), _environment);
-
             ApplicationInsightsLoggerOptions options = new ApplicationInsightsLoggerOptions();
             setup.Configure(options);
-
             Assert.Equal(expectedValue, options.EnableAutocollectedMetricsExtractor);
         }
 
