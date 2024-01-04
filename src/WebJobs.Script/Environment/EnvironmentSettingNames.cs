@@ -76,6 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string FunctionsAlwaysReadyInstance = "FUNCTIONS_ALWAYSREADY_INSTANCE";
         public const string FunctionsTimeZone = "TZ";
         public const string FunctionsWebsiteTimeZone = "WEBSITE_TIME_ZONE";
+        public const string FunctionsTargetGroup = "FUNCTIONS_TARGET_GROUP";
 
         //Function in Kubernetes
         public const string PodNamespace = "POD_NAMESPACE";
