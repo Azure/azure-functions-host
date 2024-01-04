@@ -71,6 +71,30 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         }
 
         [Theory]
+        [InlineData("eventGridTrigger", true)]
+        [InlineData("blobTrigger", true, "eventGrid")]
+        [InlineData("blobTrigger", false, "other")]
+        [InlineData("httpTrigger", false)]
+        [InlineData("inputBinding", false)]
+        public void IsWebHookTrigger_ReturnsExpectedValue(string type, bool expected, string source = null)
+        {
+            var bindingMetadata = new BindingMetadata
+            {
+                Type = type,
+            };
+
+            if (source is not null)
+            {
+                bindingMetadata.Raw = new JObject
+                {
+                    ["source"] = source,
+                };
+            }
+
+            Assert.Equal(expected, bindingMetadata.IsHttpTrigger());
+        }
+
+        [Theory]
         [InlineData("orchestrationTrigger", true)]
         [InlineData("activityTrigger", true)]
         [InlineData("entityTrigger", true)]
