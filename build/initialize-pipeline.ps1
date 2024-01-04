@@ -1,6 +1,3 @@
-param (
-  [string]$buildNumber
-)
 
 $buildReason = $env:BUILD_REASON
 $sourceBranch = $env:BUILD_SOURCEBRANCH

@@ -1,5 +1,4 @@
 variables:
-  buildNumber: $[ counter('constant', 13000) ]
   isReleaseBranch: $[contains(variables['Build.SourceBranch'], 'release/')]
 
 pr:
@@ -34,7 +33,6 @@ jobs:
     name: Initialize
     inputs:
       filePath: '$(Build.Repository.LocalPath)\build\initialize-pipeline.ps1'
-      arguments: '-buildNumber ''$(buildNumber)'''
 - job: BuildArtifacts
   dependsOn: InitializePipeline
   # condition: and(succeeded(), or(ne(variables['Build.Reason'], 'PullRequest'), eq(dependencies.InitializePipeline.outputs['Initialize.BuildArtifacts'], true)))
