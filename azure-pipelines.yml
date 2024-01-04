@@ -68,7 +68,7 @@ jobs:
     displayName: "Build artifacts"
     inputs:
       filePath: '$(Build.Repository.LocalPath)\build\build-extensions.ps1'
-      arguments: '-buildNumber "$(buildNumberSuffix)" -majorMinorVersion "$(majorVersion).$(minorVersion)" -patchVersion "$(patchVersion)" -suffix "$(suffix)" -commitHash "$(Build.SourceVersion)"'
+      arguments: '-buildNumber "$(buildNumberSuffix)" -majorMinorVersion "$(majorVersion).$(minorVersion)" -patchVersion "$(patchVersion)" -suffix "$(suffix)"'
   - task: PowerShell@2
     condition: eq(variables['RUNBUILDFORINTEGRATIONTESTS'], 'True')
     displayName: "Update host references"
@@ -84,7 +84,7 @@ jobs:
     inputs:
       command: 'custom'
       custom: 'pack'
-      arguments: -o packages -p:BuildNumber=$(buildNumberSuffix) -p:CommitHash=$(Build.SourceVersion) -c Release $(packSuffixSwitch)
+      arguments: -o packages -p:BuildNumber=$(buildNumberSuffix) -c Release $(packSuffixSwitch)
       projects: |
         **\WebJobs.Script.csproj
         **\WebJobs.Script.WebHost.csproj
