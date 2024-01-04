@@ -184,7 +184,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions
 
         private static readonly Action<ILogger, string, Exception> _logHostInitializationSettings =
             LoggerMessage.Define<string>(
-                LogLevel.Debug,
+                LogLevel.Information,
                 new EventId(530, nameof(LogHostInitializationSettings)),
                 "{hostInitializationSettings}");
 
@@ -330,13 +330,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions
             _scriptHostServiceRestartCanceledByRuntime(logger, null);
         }
 
-        public static void LogHostInitializationSettings(this ILogger logger, string functionWorkerRuntime, string functionExtensionVersion, string currentDirectory, bool inStandbyMode)
+        public static void LogHostInitializationSettings(this ILogger logger, string functionWorkerRuntime, string functionExtensionVersion, string siteExtensionDirectory, bool inStandbyMode)
         {
             var hostInitializationSettings = $@"{{
     ""HostInitializationSettings"": {{
         ""functionsWorkerRuntime"": ""{functionWorkerRuntime}"",
         ""functionsExtensionVersion"": ""{functionExtensionVersion}"",
-        ""currentDirectory"": ""{currentDirectory}"",
+        ""siteExtensionDirectory"": ""{siteExtensionDirectory}"",
         ""inStandbyMode"": {inStandbyMode}
     }}
 }}";
