@@ -38,8 +38,4 @@ $XMLContents.GetElementsByTagName("PatchVersion") |  ForEach-Object {
 
 #Update buildnumber with the same (Will be used by release pipelines)
 $customBuildNumber = "$majorVersion.$minorVersion.$patchVersion"
-if(($buildReason -eq "PullRequest") -or !($sourceBranch.ToLower().Contains("release")))
-{
-  $customBuildNumber = "$customBuildNumber-$buildNumber"
-}
 Write-Host "##vso[build.updatebuildnumber]$customBuildNumber"
