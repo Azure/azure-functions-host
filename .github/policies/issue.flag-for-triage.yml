@@ -1,0 +1,19 @@
+name: Flag for triage
+description: Add needs triage label to new issues
+resource: repository
+configuration:
+  resourceManagementConfiguration:
+    eventResponderTasks:
+    - description: Add needs triage label to new issues
+      if:
+      - payloadType: Issues
+      - and:
+        - isAction:
+            action: Opened
+        - not:
+            isAssignedToSomeone
+      then:
+      - addLabel:
+          label: 'Needs: Triage (Functions)'
+onFailure: 
+onSuccess: 

@@ -187,13 +187,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             }
         }
 
-        [Theory]
-        [InlineData(ScriptConstants.DynamicSku)]
-        [InlineData(ScriptConstants.FlexConsumptionSku)]
-        public async Task TrySyncTriggers_MaxSyncTriggersPayloadSize_Succeeds(string sku)
+        [Fact]
+        public async Task TrySyncTriggers_MaxSyncTriggersPayloadSize_Succeeds()
         {
-            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku)).Returns(sku);
-
             // create a dummy file that pushes us over size
             string maxString = new string('x', ScriptConstants.MaxTriggersStringLength + 1);
             _function1 = $"{{ bindings: [], test: '{maxString}'}}";
@@ -209,16 +205,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 Assert.True(syncString.Length < ScriptConstants.MaxTriggersStringLength);
                 var syncContent = JObject.Parse(syncString);
 
-                if (_mockEnvironment.Object.IsFlexConsumptionSku())
-                {
-                    Assert.Equal(2, syncContent.Count);
-                    Assert.Equal("testhostid123", syncContent["hostId"]);
-                }
-                else
-                {
-                    Assert.Equal(1, syncContent.Count);
-                    Assert.Equal(null, syncContent["hostId"]);
-                }
+                Assert.Equal(2, syncContent.Count);
+                Assert.Equal("testhostid123", syncContent["hostId"]);
                 
                 JArray triggers = (JArray)syncContent["triggers"];
                 Assert.Equal(2, triggers.Count);
@@ -291,32 +279,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             }
         }
 
-        [Theory]
-        [InlineData(ScriptConstants.DynamicSku)]
-        [InlineData(ScriptConstants.FlexConsumptionSku)]
-        public async Task TrySyncTriggers_PostsExpectedContent_BySku(string sku)
-        {
-            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku)).Returns(sku);
-
-            using (var env = new TestScopedEnvironmentVariable(_vars))
-            {
-                // Act
-                var syncResult = await _functionsSyncManager.TrySyncTriggersAsync();
-
-                // Assert
-                Assert.True(syncResult.Success, "SyncTriggers should return success true");
-                Assert.True(string.IsNullOrEmpty(syncResult.Error), "Error should be null or empty");
-
-                // verify expected headers
-                Assert.Equal(ScriptConstants.FunctionsUserAgent, _mockHttpHandler.LastRequest.Headers.UserAgent.ToString());
-                Assert.True(_mockHttpHandler.LastRequest.Headers.Contains(ScriptConstants.AntaresLogIdHeaderName));
-                Assert.NotEmpty(_mockHttpHandler.LastRequest.Headers.GetValues(ScriptConstants.SiteRestrictedTokenHeaderName));
-                Assert.NotEmpty(_mockHttpHandler.LastRequest.Headers.GetValues(ScriptConstants.SiteTokenHeaderName));
-
-                VerifyResultWithCacheOn(durableVersion: "V1");
-            }
-        }
-
         private void VerifyResultWithCacheOn(string connection = DefaultTestConnection, string expectedTaskHub = "TestHubValue", string durableVersion = "V2")
         {
             var result = VerifyResultCommon(connection, expectedTaskHub, durableVersion);
@@ -356,16 +318,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             string expectedTriggersPayload = GetExpectedTriggersPayload(postedConnection: connection, postedTaskHub: expectedTaskHub, durableVersion);
 
             var result = JObject.Parse(_contentBuilder.ToString());
-
-            bool isFlexConsumptionSku = _mockEnvironment.Object.IsFlexConsumptionSku();
-            if (isFlexConsumptionSku)
-            {
-                Assert.Equal("testhostid123", result["hostId"]);
-            }
-            else
-            {
-                Assert.Null(result["hostId"]);
-            }
+            Assert.Equal("testhostid123", result["hostId"]);
 
             // verify triggers
             var triggers = result["triggers"];
@@ -378,15 +331,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var triggersLog = log.FormattedMessage.Substring(startIdx, endIdx - startIdx).Trim();
             var logObject = JObject.Parse(triggersLog);
 
-            if (isFlexConsumptionSku)
-            {
-                Assert.Equal("testhostid123", logObject["hostId"]);
-            }
-            else
-            {
-                Assert.Null(logObject["hostId"]);
-            }
-            
+            Assert.Equal("testhostid123", logObject["hostId"]);
             Assert.Equal(expectedTriggersPayload, logObject["triggers"].ToString(Formatting.None));
             Assert.False(triggersLog.Contains("secrets"));
 

@@ -1,0 +1,22 @@
+name: Remove needs author feedback label.
+description: Remove needs author feedback label and adds needs attention
+resource: repository
+configuration:
+  resourceManagementConfiguration:
+    eventResponderTasks:
+    - description: Remove needs author feedback label. Add needs attention 
+      if:
+      - payloadType: Issue_Comment
+      - isAction:
+          action: Created
+      - isActivitySender:
+          issueAuthor: True
+      - hasLabel:
+          label: 'Needs: Author Feedback'
+      then:
+      - addLabel:
+          label: 'Needs: Attention :wave:'
+      - removeLabel:
+          label: 'Needs: Author Feedback'
+onFailure: 
+onSuccess: 

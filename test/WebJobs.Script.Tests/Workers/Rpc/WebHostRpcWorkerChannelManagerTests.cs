@@ -2,8 +2,10 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -405,6 +407,53 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             var initializedChannel = await _rpcWorkerChannelManager.GetChannelAsync(RpcWorkerConstants.JavaLanguageWorkerName);
             Assert.Null(initializedChannel);
+        }
+
+        [Fact]
+        public void ShutdownChannelsIfExist_Race_Succeeds()
+        {
+            // This test covers an issue that was fixed by https://github.com/Azure/azure-functions-host/pull/9738
+            // To repro, it requires ShutdownChannelIfExistsAsync to be called by multiple threads simultaneously. Using
+            // Tasks did not repro, so using Semaphores and Threads for more precise timing. We run this several times
+            // just to ensure it's not continuing to repro (it did not repro on every invocation).
+
+            IEnumerable<bool> RunRaceTest()
+            {
+                var channel = CreateTestChannel(RpcWorkerConstants.JavaLanguageWorkerName);
+
+                int count = 4;
+                SemaphoreSlim semaphore = new(0, count);
+                List<Thread> threads = new();
+                ConcurrentBag<bool> results = new();
+
+                for (int i = 0; i < count; i++)
+                {
+                    Thread t = new(() =>
+                    {
+                        // Pause threads here. They will all be released simultaneously.
+                        semaphore.Wait();
+                        results.Add(_rpcWorkerChannelManager.ShutdownChannelIfExistsAsync(RpcWorkerConstants.JavaLanguageWorkerName, channel.Id).GetAwaiter().GetResult());
+                    });
+                    t.Start();
+                    threads.Add(t);
+                }
+
+                // Release all threads.
+                semaphore.Release(count);
+
+                foreach (Thread t in threads)
+                {
+                    t.Join();
+                }
+
+                return results;
+            }
+
+            for (int i = 0; i < 50; i++)
+            {
+                var results = RunRaceTest();
+                Assert.Single(results, true);
+            }
         }
 
         [Fact]

@@ -1355,7 +1355,47 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.Same(functionsTask1, functionsTask2);
         }
 
-        private IEnumerable<FunctionMetadata> GetTestFunctionsList(string runtime, bool addWorkerProperties = false)
+        [Fact]
+        public async Task Log_And_InvocationResult_OrderedCorrectly()
+        {
+            // Without this feature flag, this test fails every time on multi-core machines as the logs will
+            // be processed out-of-order
+            _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableOrderedInvocationmessages);
+
+            await CreateDefaultWorkerChannel();
+            _metricsLogger.ClearCollections();
+
+            _logger.ClearLogMessages();
+
+            var invocationId = Guid.NewGuid();
+            ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(invocationId, new TaskCompletionSource<ScriptInvocationResult>(), logger: _logger);
+            await _workerChannel.SendInvocationRequest(scriptInvocationContext);
+
+            int logLoop = 10;
+            for (int j = 0; j < logLoop; j++)
+            {
+                _testFunctionRpcService.PublishLogEvent($"{invocationId} {j}", invocationId.ToString());
+            }
+
+            _testFunctionRpcService.PublishInvocationResponseEvent(invocationId.ToString());
+
+            LogMessage[] GetInvocationLogs()
+            {
+                return _logger.GetLogMessages().Where(m => m.FormattedMessage.StartsWith(invocationId.ToString())).ToArray();
+            }
+
+            await TestHelpers.Await(() => GetInvocationLogs().Length == logLoop,
+                timeout: 3000, userMessageCallback: () => $"Expected {logLoop} logs. Received {GetInvocationLogs().Length}");
+
+            // ensure they came in the correct order
+            var logs = GetInvocationLogs();
+            for (int i = 0; i < logLoop; i++)
+            {
+                Assert.EndsWith(i.ToString(), logs[i].FormattedMessage);
+            }
+        }
+
+        private static IEnumerable<FunctionMetadata> GetTestFunctionsList(string runtime, bool addWorkerProperties = false)
         {
             var metadata1 = new FunctionMetadata()
             {
@@ -1394,7 +1434,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             };
         }
 
-        private ScriptInvocationContext GetTestScriptInvocationContext(Guid invocationId, TaskCompletionSource<ScriptInvocationResult> resultSource, CancellationToken? token = null)
+        public static ScriptInvocationContext GetTestScriptInvocationContext(Guid invocationId, TaskCompletionSource<ScriptInvocationResult> resultSource,
+             CancellationToken? token = null, ILogger logger = null, string scriptRootPath = null)
         {
             return new ScriptInvocationContext()
             {
@@ -1403,13 +1444,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 {
                     InvocationId = invocationId,
                     FunctionName = "js1",
-                    FunctionAppDirectory = _scriptRootPath,
-                    FunctionDirectory = _scriptRootPath
+                    FunctionAppDirectory = scriptRootPath,
+                    FunctionDirectory = scriptRootPath
                 },
                 BindingData = new Dictionary<string, object>(),
                 Inputs = new List<(string Name, DataType Type, object Val)>(),
                 ResultSource = resultSource,
-                CancellationToken = token == null ? CancellationToken.None : (CancellationToken)token
+                CancellationToken = token == null ? CancellationToken.None : (CancellationToken)token,
+                AsyncExecutionContext = System.Threading.ExecutionContext.Capture(),
+                Logger = logger
             };
         }
 

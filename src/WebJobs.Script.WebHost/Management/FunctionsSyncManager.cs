@@ -409,19 +409,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         private JObject GetMinimalPayload(string hostId, JArray triggersArray)
         {
-            JObject result = new JObject
+            // When the HostId is sent, ScaleController will use it directly rather than compute it itself.
+            return new JObject
             {
-                { "triggers", triggersArray }
+                { "triggers", triggersArray },
+                { "hostId", hostId }
             };
-
-            if (_environment.IsFlexConsumptionSku())
-            {
-                // Currently we're only sending the HostId for Flex Consumption. Eventually we'll do this for all SKUs.
-                // When the HostId is sent, ScaleController will use it directly rather than compute it itself.
-                result["hostId"] = hostId;
-            }
-
-            return result;
         }
 
         internal static async Task<JObject> GetHostJsonExtensionsAsync(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger logger)
