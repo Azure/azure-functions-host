@@ -42,11 +42,9 @@ jobs:
     ${{ if or( eq( variables['Build.Reason'], 'PullRequest' ), and( not( contains( variables['Build.SourceBranch'], 'release/3.0' ) ), not( contains( variables['Build.SourceBranch'], 'release/ExtensionsMetadataGenerator/' ) ) ) ) }}:
       suffixTemp: ci
       packSuffixSwitchTemp: --version-suffix ci
-      emgSuffixSwitchTemp: --version-suffix ci$(buildNumber)
-      artifactSuffix: -ci
-      buildNumberSuffixTemp: $(buildNumber)
+      emgSuffixSwitchTemp: --version-suffix ci
+      artifactSuffix: '-connectionString
     suffix: $[variables.suffixTemp] # this resolves to an empty string if it is missing
-    buildNumberSuffix: $[variables.buildNumberSuffixTemp]
     packSuffixSwitch: $[variables.packSuffixSwitchTemp]
     emgSuffixSwitch: $[variables.emgSuffixSwitchTemp]
     majorVersion: $[dependencies.InitializePipeline.outputs['Initialize.MajorVersion']]
@@ -68,7 +66,7 @@ jobs:
     displayName: "Build artifacts"
     inputs:
       filePath: '$(Build.Repository.LocalPath)\build\build-extensions.ps1'
-      arguments: '-buildNumber "$(buildNumberSuffix)" -majorMinorVersion "$(majorVersion).$(minorVersion)" -patchVersion "$(patchVersion)" -suffix "$(suffix)"'
+      arguments: '-majorMinorVersion "$(majorVersion).$(minorVersion)" -patchVersion "$(patchVersion)" -suffix "$(suffix)"'
   - task: PowerShell@2
     condition: eq(variables['RUNBUILDFORINTEGRATIONTESTS'], 'True')
     displayName: "Update host references"
@@ -84,7 +82,7 @@ jobs:
     inputs:
       command: 'custom'
       custom: 'pack'
-      arguments: -o packages -p:BuildNumber=$(buildNumberSuffix) -c Release $(packSuffixSwitch)
+      arguments: -o packages -c Release $(packSuffixSwitch)
       projects: |
         **\WebJobs.Script.csproj
         **\WebJobs.Script.WebHost.csproj

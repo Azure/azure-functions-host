@@ -1,5 +1,4 @@
 param (
-  [string]$buildNumber,
   [string]$majorMinorVersion,
   [string]$patchVersion,
   [string]$suffix = "",
@@ -8,7 +7,6 @@ param (
 
 $extensionVersion = "$majorMinorVersion.$patchVersion"
 Write-Host "ExtensionVersion is $extensionVersion"
-Write-Host "BuildNumber is $buildNumber"
 
 $rootDir = Split-Path -Parent $PSScriptRoot
 $buildOutput = Join-Path $rootDir "buildoutput"
@@ -57,7 +55,7 @@ function BuildRuntime([string] $targetRid, [bool] $isSelfContained) {
         throw "Project path '$projectPath' does not exist."
     }
 
-    $cmd = "publish", "$PSScriptRoot\..\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj", "-r", "$targetRid", "--self-contained", "$isSelfContained", "/p:PublishReadyToRun=true", "/p:PublishReadyToRunEmitSymbols=true", "-o", "$publishTarget", "-v", "m", "/p:BuildNumber=$buildNumber", "/p:IsPackable=false", "-c", "Release", $suffixCmd
+    $cmd = "publish", "$PSScriptRoot\..\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj", "-r", "$targetRid", "--self-contained", "$isSelfContained", "/p:PublishReadyToRun=true", "/p:PublishReadyToRunEmitSymbols=true", "-o", "$publishTarget", "-v", "m", "/p:IsPackable=false", "-c", "Release", $suffixCmd
 
     Write-Host "======================================"
     Write-Host "Building $targetRid"
