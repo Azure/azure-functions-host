@@ -332,11 +332,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions
 
         public static void LogHostInitializationSettings(this ILogger logger, string functionWorkerRuntime, string functionExtensionVersion, string currentDirectory, bool inStandbyMode)
         {
-            var hostInitializationSettings = $@"Settings: {{
-    ""functionsWorkerRuntime"": ""{functionWorkerRuntime}"",
-    ""functionsExtensionVersion"": ""{functionExtensionVersion}"",
-    ""currentDirectory"": ""{currentDirectory}"",
-    ""inStandbyMode"": {inStandbyMode}
+            var hostInitializationSettings = $@"{{
+    ""HostInitializationSettings"": {{
+        ""functionsWorkerRuntime"": ""{functionWorkerRuntime}"",
+        ""functionsExtensionVersion"": ""{functionExtensionVersion}"",
+        ""currentDirectory"": ""{currentDirectory}"",
+        ""inStandbyMode"": {inStandbyMode}
+    }}
 }}";
             _logHostInitializationSettings(logger, hostInitializationSettings, null);
         }
