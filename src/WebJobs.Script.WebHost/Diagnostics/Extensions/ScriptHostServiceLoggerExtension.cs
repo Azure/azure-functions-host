@@ -184,7 +184,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions
 
         private static readonly Action<ILogger, string, Exception> _logHostInitializationSettings =
             LoggerMessage.Define<string>(
-                LogLevel.Information,
+                LogLevel.Debug,
                 new EventId(530, nameof(LogHostInitializationSettings)),
                 "{hostInitializationSettings}");
 
