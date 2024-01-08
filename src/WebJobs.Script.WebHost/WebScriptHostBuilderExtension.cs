@@ -29,6 +29,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using OpenTelemetry.Exporter;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
@@ -49,6 +50,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         serviceName: "Azure.Functions.Service",
                         serviceVersion: typeof(Program).Assembly.GetName().Version?.ToString() ?? "unknown",
                         serviceInstanceId: Environment.MachineName);
+
+            Action<AzureMonitorExporterOptions, ServiceProvider> configureAzureMonitorLogExporterOptions = (c, sp) => sp.GetRequiredService<IConfigureOptions<AzureMonitorExporterOptions>>().Configure(c);
+            Action<OtlpExporterOptions, ServiceProvider> configureOtlpExporterOptions = (c, sp) => sp.GetRequiredService<IConfigureOptions<OtlpExporterOptions>>().Configure(c);
+            Action<ConsoleExporterOptions, ServiceProvider> configureConsoleExporterOptions = (c, sp) => sp.GetRequiredService<IConfigureOptions<ConsoleExporterOptions>>().Configure(c);
 
             OpenTelemetryEventListener openTelemetryEventListener = new OpenTelemetryEventListener(EventLevel.Verbose);
             builder.UseServiceProviderFactory(new JobHostScopedServiceProviderFactory(rootServiceProvider, rootServices, validator))
@@ -110,6 +115,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     }
 
                     ConfigureRegisteredBuilders(loggingBuilder, rootServiceProvider);
+                    var sp = loggingBuilder.Services.BuildServiceProvider();
                     loggingBuilder.AddOpenTelemetry(options =>
                     {
                         // Note: See appsettings.json Logging:OpenTelemetry section for configuration.
@@ -117,16 +123,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         var resourceBuilder = ResourceBuilder.CreateDefault();
                         configureResource(resourceBuilder);
                         options.SetResourceBuilder(resourceBuilder);
-                        options.AddOtlpExporter(o =>
-                        {
-                            o.Endpoint = new Uri("<>");
-                            o.Headers = "<>";
-                        });
-                        options.AddConsoleExporter();
-                        options.AddAzureMonitorLogExporter(o =>
-                        {
-                            o.ConnectionString = "<>";
-                        });
+
+                        // Set up a TracerProvider using the configuration.
+                        options.AddAzureMonitorLogExporter(c => configureAzureMonitorLogExporterOptions(c, sp));
+                        options.AddOtlpExporter(c => configureOtlpExporterOptions(c, sp));
+                        options.AddConsoleExporter(c => configureConsoleExporterOptions(c, sp));
                     });
                 })
                 .ConfigureServices(services =>
@@ -174,36 +175,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                     services.AddSingleton<IDelegatingHandlerProvider, DefaultDelegatingHandlerProvider>();
 
+                    var sp = services.BuildServiceProvider();
                     services.AddOpenTelemetry()
-                    .ConfigureResource(configureResource)
-                    .WithMetrics(builder =>
-                    {
-                        builder.AddMeter("Azure.Functions");
-                        //builder.AddConsoleExporter();
-                        builder.AddAzureMonitorMetricExporter(o =>
+                        .ConfigureResource(configureResource)
+                        .WithMetrics(builder =>
                         {
-                            o.ConnectionString = "<>";
-                        });
-                        builder.AddOtlpExporter(o =>
+                            builder.AddMeter("Azure.Functions");
+                            //builder.AddConsoleExporter();
+                            builder.AddAzureMonitorMetricExporter(c => configureAzureMonitorLogExporterOptions(c, sp));
+                            builder.AddOtlpExporter(c => configureOtlpExporterOptions(c, sp));
+                        })
+                        .WithTracing(builder =>
                         {
-                            o.Endpoint = new Uri("<>");
-                            o.Headers = "<>";
+                            builder.AddAspNetCoreInstrumentation();
+                            //builder.AddConsoleExporter();
+                            builder.AddAzureMonitorTraceExporter(c => configureAzureMonitorLogExporterOptions(c, sp));
+                            builder.AddOtlpExporter(c => configureOtlpExporterOptions(c, sp));
                         });
-                    })
-                    .WithTracing(builder =>
-                    {
-                        builder.AddAspNetCoreInstrumentation();
-                        //builder.AddConsoleExporter();
-                        builder.AddAzureMonitorTraceExporter(o =>
-                        {
-                            o.ConnectionString = "<>";
-                        });
-                        builder.AddOtlpExporter(o =>
-                        {
-                            o.Endpoint = new Uri("<>");
-                            o.Headers = "<>";
-                        });
-                    });
 
                     // Logging and diagnostics
                     services.AddSingleton<IMetricsLogger>(a => new NonDisposableMetricsLogger(metricsLogger));

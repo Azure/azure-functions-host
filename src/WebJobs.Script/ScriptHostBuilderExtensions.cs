@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using Azure.Monitor.OpenTelemetry.Exporter;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Channel;
 using Microsoft.ApplicationInsights.DataContracts;
@@ -12,7 +13,6 @@ using Microsoft.ApplicationInsights.Extensibility.Implementation;
 using Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
-using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Hosting;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
@@ -86,7 +86,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 loggingBuilder.AddDefaultWebJobsFilters();
 
-                string loggingPath = ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "Logging");
+                string loggingPath = ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, ConfigurationSectionNames.Logging);
                 loggingBuilder.AddConfiguration(context.Configuration.GetSection(loggingPath));
 
                 loggingBuilder.Services.AddSingleton<IFileWriterFactory, DefaultFileWriterFactory>();
@@ -96,6 +96,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 loggingBuilder.AddConsoleIfEnabled(context);
 
                 ConfigureApplicationInsights(context, loggingBuilder);
+                ConfigureOpenTelemetry(context, loggingBuilder);
             })
             .ConfigureAppConfiguration((context, configBuilder) =>
             {
@@ -398,6 +399,18 @@ namespace Microsoft.Azure.WebJobs.Script
             });
 
             return builder;
+        }
+
+        private static void ConfigureOpenTelemetry(HostBuilderContext context, ILoggingBuilder loggingBuilder)
+        {
+            // OpenTelemetry configuration for the host is specified in host.json under logging:openTelemetry
+            // It follows the schema used by OpenTelemetry.NET's support for IOptions
+            // See https://github.com/open-telemetry/opentelemetry-dotnet/blob/main/docs/trace/customizing-the-sdk/README.md#configuration-files-and-environment-variables
+            var otelHostJsonConfigSection = context.Configuration.GetSection(ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, ConfigurationSectionNames.Logging, "openTelemetry"));
+
+            loggingBuilder.Services.AddSingleton<IConfigureOptions<AzureMonitorExporterOptions>>(new ConfigureOptions<AzureMonitorExporterOptions>(o => otelHostJsonConfigSection.GetSection("azureMonitor").Bind(o)));
+            loggingBuilder.Services.AddSingleton<IConfigureOptions<OpenTelemetry.Exporter.OtlpExporterOptions>>(new ConfigureOptions<OpenTelemetry.Exporter.OtlpExporterOptions>(o => otelHostJsonConfigSection.GetSection("otlp").Bind(o)));
+            loggingBuilder.Services.AddSingleton<IConfigureOptions<OpenTelemetry.Exporter.ConsoleExporterOptions>>(new ConfigureOptions<OpenTelemetry.Exporter.ConsoleExporterOptions>(o => otelHostJsonConfigSection.GetSection("console").Bind(o)));
         }
 
         internal static void ConfigureApplicationInsights(HostBuilderContext context, ILoggingBuilder builder)

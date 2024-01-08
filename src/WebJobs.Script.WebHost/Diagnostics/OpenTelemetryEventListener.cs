@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Concurrent;
-using System.Diagnostics;
 using System.Diagnostics.Tracing;
 using System.Globalization;
 using System.IO;
@@ -19,10 +18,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private const string EventSourceNamePrefix = "OpenTelemetry-"; //OpenTelemetry-AzureMonitor-Exporter
         private const int MaxLogLinesPerFlushInterval = 30;
         private readonly EventLevel _eventLevel;
-        private Timer _flushTimer;
+        private readonly Timer _flushTimer;
         private ConcurrentQueue<string> _logBuffer = new ConcurrentQueue<string>();
-        private ConcurrentQueue<EventSource> _eventSource = new ConcurrentQueue<EventSource>();
-        private static object _syncLock = new object();
+        private readonly ConcurrentQueue<EventSource> _eventSource = new ConcurrentQueue<EventSource>();
+        private static readonly object _syncLock = new object();
         private bool _disposed = false;
 
         public OpenTelemetryEventListener(EventLevel eventLevel)
