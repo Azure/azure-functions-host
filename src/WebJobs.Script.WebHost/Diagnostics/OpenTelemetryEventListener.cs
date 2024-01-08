@@ -86,7 +86,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             {
                 sb.AppendLine(line);
             }
-            File.AppendAllLines(Path.Combine("C:\\home\\LogFiles\\", "OpenTelemetryLogs.txt"), new[] { sb.ToString() });
+
+            var targetFilePath = Path.Combine("C:\\home\\LogFiles\\", "OpenTelemetryLogs.txt");
+            if (!File.Exists(targetFilePath))
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(targetFilePath));
+                File.Create(targetFilePath);
+            }
+
+            File.AppendAllLines(targetFilePath, new[] { sb.ToString() });
         }
 
         protected virtual void Dispose(bool disposing)
