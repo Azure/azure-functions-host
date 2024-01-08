@@ -13,7 +13,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Azure.WebJobs.Extensions.Http;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Primitives;
 using Newtonsoft.Json;
@@ -85,9 +84,9 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
             }
 
             // this header will *always* be present on requests originating externally (i.e. going
-            // through the Anatares front end). For requests originating internally it will NOT be
+            // through the Antares front end). For requests originating internally it will NOT be
             // present.
-            return !request.Headers.Keys.Contains(ScriptConstants.AntaresLogIdHeaderName);
+            return !request.Headers.ContainsKey(ScriptConstants.AntaresLogIdHeaderName);
         }
 
         public static bool IsPlatformInternalRequest(this HttpRequest request, IEnvironment environment = null)
