@@ -91,7 +91,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
                 };
             }
 
-            Assert.Equal(expected, bindingMetadata.IsHttpTrigger());
+            Assert.Equal(expected, bindingMetadata.IsWebHookTrigger());
         }
 
         [Theory]
