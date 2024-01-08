@@ -79,7 +79,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
         /// <param name="isFlexConsumption">True if this is for flex consumption, false otherwise.</param>
         /// <returns>JObject that represent the trigger for scale controller to consume.</returns>
         public static async Task<JObject> ToFunctionTrigger(
-            this FunctionMetadata functionMetadata, ScriptJobHostOptions config, bool isFlexConsumption)
+            this FunctionMetadata functionMetadata, ScriptJobHostOptions config, bool isFlexConsumption = false)
         {
             var functionPath = Path.Combine(config.RootScriptPath, functionMetadata.Name);
             var functionMetadataFilePath = Path.Combine(functionPath, ScriptConstants.FunctionMetadataFileName);
