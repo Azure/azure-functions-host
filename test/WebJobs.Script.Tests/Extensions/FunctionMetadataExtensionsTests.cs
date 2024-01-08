@@ -1,9 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
 using System.IO;
-using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.WebHost.Extensions;
@@ -148,7 +146,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
                 RootScriptPath = _testRootScriptPath
             };
 
-            var result = await functionMetadata.ToFunctionTrigger(options);
+            var result = await functionMetadata.ToFunctionTrigger(options, isFlexConsumption: true);
             Assert.Equal("TestFunction1", result["functionName"].Value<string>());
             Assert.Equal(trigger, result["type"].Value<string>());
 
@@ -195,7 +193,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
                 RootScriptPath = _testRootScriptPath
             };
 
-            var result = await functionMetadata.ToFunctionTrigger(options);
+            var result = await functionMetadata.ToFunctionTrigger(options, isFlexConsumption: true);
             Assert.Equal("TestFunction1", result["functionName"].Value<string>());
             Assert.Equal(group, result["functionGroup"].Value<string>());
             Assert.Equal(trigger, result["type"].Value<string>());
