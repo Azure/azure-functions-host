@@ -57,6 +57,11 @@ namespace Microsoft.Extensions.DependencyInjection
                         }));
                         c.Success();
                         return Task.CompletedTask;
+                    },
+                    OnAuthenticationFailed = c =>
+                    {
+                        LogAuthenticationFailure(c);
+                        return Task.CompletedTask;
                     }
                 };
                 o.TokenValidationParameters = CreateTokenValidationParameters();
@@ -93,8 +98,8 @@ namespace Microsoft.Extensions.DependencyInjection
             if (signingKeys.Length > 0)
             {
                 result.IssuerSigningKeys = signingKeys;
-                result.ValidateAudience = true;
-                result.ValidateIssuer = true;
+                result.AudienceValidator = AudienceValidator;
+                result.IssuerValidator = IssuerValidator;
                 result.ValidAudiences = GetValidAudiences();
                 result.ValidIssuers = new string[]
                 {
