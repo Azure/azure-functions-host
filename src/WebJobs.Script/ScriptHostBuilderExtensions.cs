@@ -4,12 +4,13 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
-using Azure.Monitor.OpenTelemetry.Exporter;
+using Azure.Monitor.OpenTelemetry.AspNetCore;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Channel;
 using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.ApplicationInsights.Extensibility.Implementation;
+using Microsoft.ApplicationInsights.Extensibility.PerfCounterCollector.QuickPulse;
 using Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
@@ -42,6 +43,10 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging.Configuration;
 using Microsoft.Extensions.Options;
+using OpenTelemetry.Logs;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -407,10 +412,58 @@ namespace Microsoft.Azure.WebJobs.Script
             // It follows the schema used by OpenTelemetry.NET's support for IOptions
             // See https://github.com/open-telemetry/opentelemetry-dotnet/blob/main/docs/trace/customizing-the-sdk/README.md#configuration-files-and-environment-variables
             var otelHostJsonConfigSection = context.Configuration.GetSection(ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, ConfigurationSectionNames.Logging, "openTelemetry"));
+            var azureMonitorHostConfigSetting = otelHostJsonConfigSection.GetSection("azureMonitor");
 
-            loggingBuilder.Services.AddSingleton<IConfigureOptions<AzureMonitorExporterOptions>>(new ConfigureOptions<AzureMonitorExporterOptions>(o => otelHostJsonConfigSection.GetSection("azureMonitor").Bind(o)));
-            loggingBuilder.Services.AddSingleton<IConfigureOptions<OpenTelemetry.Exporter.OtlpExporterOptions>>(new ConfigureOptions<OpenTelemetry.Exporter.OtlpExporterOptions>(o => otelHostJsonConfigSection.GetSection("otlp").Bind(o)));
-            loggingBuilder.Services.AddSingleton<IConfigureOptions<OpenTelemetry.Exporter.ConsoleExporterOptions>>(new ConfigureOptions<OpenTelemetry.Exporter.ConsoleExporterOptions>(o => otelHostJsonConfigSection.GetSection("console").Bind(o)));
+            var otBuilder = loggingBuilder.Services.AddOpenTelemetry();
+            otBuilder.ConfigureResource(r => r.AddService(
+                    serviceName: "Azure.Functions.Service",
+                    serviceVersion: typeof(ScriptHostBuilderExtensions).Assembly.GetName().Version?.ToString() ?? "unknown",
+                    serviceInstanceId: Environment.MachineName));
+            if (azureMonitorHostConfigSetting.Exists())
+            {
+                otBuilder.UseAzureMonitor(c => otelHostJsonConfigSection.GetSection("azureMonitor").Bind(c));
+
+                // The Azure Monitor 'Distro' variant for Otel doesn't support quickpulse telemetry (e.g. Live Stream)
+                // So configure it manually here for now.
+                // From https://learn.microsoft.com/en-us/azure/azure-monitor/app/live-stream?tabs=dotnet6#get-started
+
+                // Create a TelemetryConfiguration instance.
+                TelemetryConfiguration config = TelemetryConfiguration.CreateDefault();
+                config.ConnectionString = azureMonitorHostConfigSetting["connectionString"];
+                QuickPulseTelemetryProcessor quickPulseProcessor = null;
+                config.DefaultTelemetrySink.TelemetryProcessorChainBuilder
+                    .Use((next) =>
+                    {
+                        quickPulseProcessor = new QuickPulseTelemetryProcessor(next);
+                        return quickPulseProcessor;
+                    })
+                    .Build();
+
+                var quickPulseModule = new QuickPulseTelemetryModule();
+
+                // Secure the control channel.
+                // This is optional, but recommended.
+                quickPulseModule.Initialize(config);
+                quickPulseModule.RegisterTelemetryProcessor(quickPulseProcessor);
+
+                loggingBuilder.Services.AddSingleton(quickPulseModule);
+            }
+
+            loggingBuilder.Services.ConfigureOpenTelemetryMeterProvider(b =>
+                b.AddMeter("Azure.Functions")
+                    .AddOtlpExporter(o => otelHostJsonConfigSection.GetSection("otlp").Bind(o))
+                    .AddConsoleExporter(o => otelHostJsonConfigSection.GetSection("console").Bind(o)));
+            loggingBuilder.Services.ConfigureOpenTelemetryTracerProvider(b =>
+                b.AddConsoleExporter(o => otelHostJsonConfigSection.GetSection("console").Bind(o))
+                    .AddOtlpExporter(o => otelHostJsonConfigSection.GetSection("otlp").Bind(o)));
+
+            loggingBuilder.AddOpenTelemetry(config =>
+            {
+                otelHostJsonConfigSection.Bind(config);
+
+                config.AddOtlpExporter(o => otelHostJsonConfigSection.GetSection("otlp").Bind(o));
+                config.AddConsoleExporter(o => otelHostJsonConfigSection.GetSection("console").Bind(o));
+            });
         }
 
         internal static void ConfigureApplicationInsights(HostBuilderContext context, ILoggingBuilder builder)

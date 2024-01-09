@@ -40,7 +40,7 @@
   <ItemGroup>
     <!-- Dependencies needed for Storage Providers -->
     <PackageReference Include="Azure.Identity" Version="1.10.2" />
-    <PackageReference Include="Azure.Monitor.OpenTelemetry.Exporter" Version="1.1.0" />
+    <PackageReference Include="Azure.Monitor.OpenTelemetry.AspNetCore" Version="1.0.0" />
     <PackageReference Include="Azure.Storage.Blobs" Version="12.13.0" />
     <PackageReference Include="Microsoft.ApplicationInsights" Version="2.21.0" />
     <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.21.0" />

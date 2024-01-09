@@ -115,20 +115,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     }
 
                     ConfigureRegisteredBuilders(loggingBuilder, rootServiceProvider);
-                    var sp = loggingBuilder.Services.BuildServiceProvider();
-                    loggingBuilder.AddOpenTelemetry(options =>
-                    {
-                        // Note: See appsettings.json Logging:OpenTelemetry section for configuration.
-
-                        var resourceBuilder = ResourceBuilder.CreateDefault();
-                        configureResource(resourceBuilder);
-                        options.SetResourceBuilder(resourceBuilder);
-
-                        // Set up a TracerProvider using the configuration.
-                        options.AddAzureMonitorLogExporter(c => configureAzureMonitorLogExporterOptions(c, sp));
-                        options.AddOtlpExporter(c => configureOtlpExporterOptions(c, sp));
-                        options.AddConsoleExporter(c => configureConsoleExporterOptions(c, sp));
-                    });
                 })
                 .ConfigureServices(services =>
                 {
@@ -174,24 +160,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     }
 
                     services.AddSingleton<IDelegatingHandlerProvider, DefaultDelegatingHandlerProvider>();
-
-                    var sp = services.BuildServiceProvider();
-                    services.AddOpenTelemetry()
-                        .ConfigureResource(configureResource)
-                        .WithMetrics(builder =>
-                        {
-                            builder.AddMeter("Azure.Functions");
-                            //builder.AddConsoleExporter();
-                            builder.AddAzureMonitorMetricExporter(c => configureAzureMonitorLogExporterOptions(c, sp));
-                            builder.AddOtlpExporter(c => configureOtlpExporterOptions(c, sp));
-                        })
-                        .WithTracing(builder =>
-                        {
-                            builder.AddAspNetCoreInstrumentation();
-                            //builder.AddConsoleExporter();
-                            builder.AddAzureMonitorTraceExporter(c => configureAzureMonitorLogExporterOptions(c, sp));
-                            builder.AddOtlpExporter(c => configureOtlpExporterOptions(c, sp));
-                        });
 
                     // Logging and diagnostics
                     services.AddSingleton<IMetricsLogger>(a => new NonDisposableMetricsLogger(metricsLogger));
