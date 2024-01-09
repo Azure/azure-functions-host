@@ -29,7 +29,7 @@ namespace Microsoft.Extensions.DependencyInjection
 
         public static AuthenticationBuilder AddScriptJwtBearer(this AuthenticationBuilder builder)
             => builder.AddJwtBearer(o =>
-                        {
+            {
                 o.Events = new JwtBearerEvents()
                 {
                     OnMessageReceived = c =>
@@ -41,6 +41,7 @@ namespace Microsoft.Extensions.DependencyInjection
                             // the token we set here will be the one used - Authorization header won't be checked.
                             c.Token = values.FirstOrDefault();
                         }
+
                         // Temporary: Tactical fix to address specialization issues. This should likely be moved to a token validator
                         // TODO: DI (FACAVAL) This will be fixed once the permanent fix is in place
                         if (_specialized == 0 && !SystemEnvironment.Instance.IsPlaceholderModeEnabled() && Interlocked.CompareExchange(ref _specialized, 1, 0) == 0)
