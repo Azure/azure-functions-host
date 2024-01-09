@@ -846,7 +846,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private void RegisterApplicationLifetimeEvents()
         {
-            _applicationLifetime.ApplicationStopping.Register(() =>
+            _applicationLifetime.ApplicationStopping.Register(async () =>
             {
                 Interlocked.Exchange(ref _applicationStopping, 1);
                 if (_environment.DrainOnApplicationStoppingEnabled())
@@ -855,7 +855,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     if (drainModeManager != null)
                     {
                         _logger.LogDebug("Application Stopping: initiate drain mode");
-                        drainModeManager.EnableDrainModeAsync(CancellationToken.None);
+                        await drainModeManager.EnableDrainModeAsync(CancellationToken.None);
                     }
                 }
             });
