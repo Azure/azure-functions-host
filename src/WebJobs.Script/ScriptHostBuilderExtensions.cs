@@ -10,7 +10,6 @@ using Microsoft.ApplicationInsights.Channel;
 using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.ApplicationInsights.Extensibility.Implementation;
-using Microsoft.ApplicationInsights.Extensibility.PerfCounterCollector.QuickPulse;
 using Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
@@ -414,40 +413,12 @@ namespace Microsoft.Azure.WebJobs.Script
             var otelHostJsonConfigSection = context.Configuration.GetSection(ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, ConfigurationSectionNames.Logging, "openTelemetry"));
             var azureMonitorHostConfigSetting = otelHostJsonConfigSection.GetSection("azureMonitor");
 
-            var otBuilder = loggingBuilder.Services.AddOpenTelemetry();
-            otBuilder.ConfigureResource(r => r.AddService(
+            var otBuilder = loggingBuilder.Services.AddOpenTelemetry()
+                .ConfigureResource(r => r.AddService(
                     serviceName: "Azure.Functions.Service",
                     serviceVersion: typeof(ScriptHostBuilderExtensions).Assembly.GetName().Version?.ToString() ?? "unknown",
-                    serviceInstanceId: Environment.MachineName));
-            if (azureMonitorHostConfigSetting.Exists())
-            {
-                otBuilder.UseAzureMonitor(c => otelHostJsonConfigSection.GetSection("azureMonitor").Bind(c));
-
-                // The Azure Monitor 'Distro' variant for Otel doesn't support quickpulse telemetry (e.g. Live Stream)
-                // So configure it manually here for now.
-                // From https://learn.microsoft.com/en-us/azure/azure-monitor/app/live-stream?tabs=dotnet6#get-started
-
-                // Create a TelemetryConfiguration instance.
-                TelemetryConfiguration config = TelemetryConfiguration.CreateDefault();
-                config.ConnectionString = azureMonitorHostConfigSetting["connectionString"];
-                QuickPulseTelemetryProcessor quickPulseProcessor = null;
-                config.DefaultTelemetrySink.TelemetryProcessorChainBuilder
-                    .Use((next) =>
-                    {
-                        quickPulseProcessor = new QuickPulseTelemetryProcessor(next);
-                        return quickPulseProcessor;
-                    })
-                    .Build();
-
-                var quickPulseModule = new QuickPulseTelemetryModule();
-
-                // Secure the control channel.
-                // This is optional, but recommended.
-                quickPulseModule.Initialize(config);
-                quickPulseModule.RegisterTelemetryProcessor(quickPulseProcessor);
-
-                loggingBuilder.Services.AddSingleton(quickPulseModule);
-            }
+                    serviceInstanceId: Environment.MachineName))
+                .UseAzureMonitor(c => otelHostJsonConfigSection.GetSection("azureMonitor").Bind(c));
 
             loggingBuilder.Services.ConfigureOpenTelemetryMeterProvider(b =>
                 b.AddMeter("Azure.Functions")
