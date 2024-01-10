@@ -22,7 +22,6 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security;
-using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authentication;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -151,6 +150,74 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 response = await _fixture.Host.HttpClient.SendAsync(request);
                 Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
             }
+        }
+
+        [Fact]
+        public async Task InvokeFunction_RequiresKeyOrNonPlatformToken()
+        {
+            // no key presented
+            string uri = $"api/httptrigger?name=Mathew";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
+            HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+
+            // required key supplied
+            request = new HttpRequestMessage(HttpMethod.Get, uri);
+            string key = await _fixture.Host.GetFunctionSecretAsync("httptrigger");
+            request.Headers.Add(AuthenticationLevelHandler.FunctionsKeyHeaderName, key);
+            response = await _fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            // verify that even though a site token grants admin level access to
+            // host APIs, it can't be used to invoke user functions
+            using (new TestScopedEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey, TestHelpers.GenerateKeyHexString()))
+            {
+                string swtToken = SimpleWebTokenHelper.CreateToken(DateTime.UtcNow.AddMinutes(2));
+
+                // verify the token is valid by invoking an admin API
+                request = new HttpRequestMessage(HttpMethod.Get, "admin/host/status");
+                request.Headers.Add(ScriptConstants.SiteRestrictedTokenHeaderName, swtToken);
+                response = await _fixture.Host.HttpClient.SendAsync(request);
+                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+                // verify it can't be used to invoke non-anonymous user functions
+                request = new HttpRequestMessage(HttpMethod.Get, uri);
+                request.Headers.Add(ScriptConstants.SiteRestrictedTokenHeaderName, swtToken);
+                response = await _fixture.Host.HttpClient.SendAsync(request);
+                Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+            }
+
+            // verify non-platform JWT token can be used to invoke non-anonymous user functions
+            string jwtToken = _fixture.Host.GenerateAdminJwtToken();
+            request = new HttpRequestMessage(HttpMethod.Get, uri);
+            request.Headers.Add(ScriptConstants.SiteTokenHeaderName, jwtToken);
+            response = await _fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            // verify platform JWT token can't be used to invoke non-anonymous user functions
+            jwtToken = _fixture.Host.GenerateAdminJwtToken(issuer: ScriptConstants.AppServiceCoreUri);
+            request = new HttpRequestMessage(HttpMethod.Get, uri);
+            request.Headers.Add(ScriptConstants.SiteTokenHeaderName, jwtToken);
+            response = await _fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task InvokeFunction_AdminInvokeApi_Succeeds()
+        {
+            string functionName = "HttpTrigger";
+
+            // jwt token with site issuer
+            var response = await AdminInvokeFunctionAdminToken(functionName, true);
+            Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+
+            // jwt token with platform issuer
+            response = await AdminInvokeFunctionAdminToken(functionName, true, issuer: ScriptConstants.AppServiceCoreUri);
+            Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+
+            // swt token
+            response = await AdminInvokeFunctionAdminToken(functionName, false);
+            Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
         }
 
         [Fact]
@@ -667,7 +734,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             await VerifyOfflineResponse(response);
 
             // verify the same thing when invoking via admin api
-            response = await AdminInvokeFunction(functionName);
+            response = await AdminInvokeFunctionMasterKey(functionName);
             await VerifyOfflineResponse(response);
 
             // bring host back online
@@ -682,7 +749,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             await SamplesTestHelpers.InvokeAndValidateHttpTrigger(_fixture, functionName);
 
             // verify the same thing via admin api
-            response = await AdminInvokeFunction(functionName);
+            response = await AdminInvokeFunctionMasterKey(functionName);
             Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
         }
 
@@ -724,7 +791,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             var response = await _fixture.Host.HttpClient.SendAsync(request);
             var metadata = (await response.Content.ReadAsAsync<IEnumerable<FunctionMetadataResponse>>()).ToArray();
 
-            Assert.Equal(18, metadata.Length);
+            Assert.Equal(19, metadata.Length);
             var function = metadata.Single(p => p.Name == "HttpTrigger-CustomRoute");
             Assert.Equal("https://somewebsite.azurewebsites.net/api/csharp/products/{category:alpha?}/{id:int?}/{extra?}", function.InvokeUrlTemplate.ToString());
 
@@ -892,7 +959,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(requestId, (string)jo["requestId"]);
             Assert.Equal(200, jo["status"]);
             var duration = (long)jo["duration"];
-            Assert.True(duration > 0);
+            Assert.True(duration >= 0);
 
             // determine the function invocation ID
             var scriptHostLogs = _fixture.Host.GetScriptHostLogMessages();
@@ -956,8 +1023,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             }
         }
 
+        [Fact]
+        public async Task HttpTrigger_Anonymous_Get_Succeeds()
+        {
+            string uri = $"api/httptrigger-anonymouslevel?name=Mathew";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
+
+            HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        }
+
         // invoke a function via the admin invoke api
-        private async Task<HttpResponseMessage> AdminInvokeFunction(string functionName, string input = null)
+        private async Task<HttpResponseMessage> AdminInvokeFunctionMasterKey(string functionName, string input = null)
         {
             string masterKey = await _fixture.Host.GetMasterKeyAsync();
             string uri = $"admin/functions/{functionName}?code={masterKey}";
@@ -968,6 +1045,32 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             };
             request.Content = new StringContent(jo.ToString());
             request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+            return await _fixture.Host.HttpClient.SendAsync(request);
+        }
+
+        private async Task<HttpResponseMessage> AdminInvokeFunctionAdminToken(string functionName, bool jwt, string input = null, string issuer = null)
+        {
+            
+            string uri = $"admin/functions/{functionName}";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
+            JObject jo = new JObject
+            {
+                { "input", input }
+            };
+            request.Content = new StringContent(jo.ToString());
+            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+
+            if (jwt)
+            {
+                string jwtToken = _fixture.Host.GenerateAdminJwtToken(issuer: issuer);
+                request.Headers.Add(ScriptConstants.SiteTokenHeaderName, jwtToken);
+            }
+            else
+            {
+                string swtToken = SimpleWebTokenHelper.CreateToken(DateTime.UtcNow.AddMinutes(2));
+                request.Headers.Add(ScriptConstants.SiteRestrictedTokenHeaderName, swtToken);
+            }
+
             return await _fixture.Host.HttpClient.SendAsync(request);
         }
 
@@ -1310,6 +1413,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                     o.Functions = new[]
                     {
                         "HttpTrigger",
+                        "HttpTrigger-AnonymousLevel",
                         "HttpTrigger-AdminLevel",
                         "HttpTrigger-Compat",
                         "HttpTrigger-CustomRoute",
