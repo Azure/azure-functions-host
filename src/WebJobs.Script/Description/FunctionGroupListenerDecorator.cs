@@ -57,6 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             // A target function group is configured and this function is not part of it.
             // By giving a no-op listener, we will prevent it from triggering without 'disabling' it.
             _logger.LogDebug("Disabling function {functionName}", functionName);
+            context.Listener?.Dispose(); // this will not be used, lets dispose it now.
             return _noOpListener;
         }
 
