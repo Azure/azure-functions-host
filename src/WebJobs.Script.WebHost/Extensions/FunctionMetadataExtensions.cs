@@ -18,8 +18,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
         /// Maps FunctionMetadata to FunctionMetadataResponse.
         /// </summary>
         /// <param name="functionMetadata">FunctionMetadata to be mapped.</param>
-        /// <param name="hostOptions">The host options</param>
-        /// <returns>Promise of a FunctionMetadataResponse</returns>
+        /// <param name="hostOptions">The host options.</param>
+        /// <returns>Promise of a FunctionMetadataResponse.</returns>
         public static async Task<FunctionMetadataResponse> ToFunctionMetadataResponse(this FunctionMetadata functionMetadata, ScriptJobHostOptions hostOptions, string routePrefix, string baseUrl)
         {
             string functionPath = GetFunctionPathOrNull(hostOptions.RootScriptPath, functionMetadata.Name);
@@ -76,8 +76,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
         /// </summary>
         /// <param name="functionMetadata">FunctionMetadata object to convert to a JObject.</param>
         /// <param name="config">ScriptHostConfiguration to read RootScriptPath from.</param>
-        /// <returns>JObject that represent the trigger for scale controller to consume</returns>
-        public static async Task<JObject> ToFunctionTrigger(this FunctionMetadata functionMetadata, ScriptJobHostOptions config)
+        /// <param name="isFlexConsumption">True if this is for flex consumption, false otherwise.</param>
+        /// <returns>JObject that represent the trigger for scale controller to consume.</returns>
+        public static async Task<JObject> ToFunctionTrigger(
+            this FunctionMetadata functionMetadata, ScriptJobHostOptions config, bool isFlexConsumption = false)
         {
             var functionPath = Path.Combine(config.RootScriptPath, functionMetadata.Name);
             var functionMetadataFilePath = Path.Combine(functionPath, ScriptConstants.FunctionMetadataFileName);
@@ -85,16 +87,25 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
             // Read function.json as a JObject
             var functionConfig = await GetFunctionConfig(functionMetadata, functionMetadataFilePath);
 
-            if (functionConfig.TryGetValue("bindings", out JToken value) &&
-                value is JArray)
+            if (functionConfig.TryGetValue("bindings", out JToken value) && value is JArray jArray)
             {
                 // Find the trigger and add functionName to it
-                foreach (JObject binding in (JArray)value)
+                foreach (JObject binding in jArray)
                 {
                     var type = (string)binding["type"];
                     if (type != null && type.EndsWith("Trigger", StringComparison.OrdinalIgnoreCase))
                     {
                         binding.Add("functionName", functionMetadata.Name);
+
+                        if (isFlexConsumption)
+                        {
+                            string group = functionMetadata.GetFunctionGroup();
+                            if (!string.IsNullOrEmpty(group))
+                            {
+                                binding.Add("functionGroup", group);
+                            }
+                        }
+
                         return binding;
                     }
                 }
