@@ -4,8 +4,8 @@
     <TargetFramework>netstandard2.1</TargetFramework>
     <LangVersion>latest</LangVersion>
     <MajorVersion>4</MajorVersion>
-    <MinorVersion>28</MinorVersion>
-    <PatchVersion>4</PatchVersion>
+    <MinorVersion>29</MinorVersion>
+    <PatchVersion>1</PatchVersion>
     <BuildNumber Condition="'$(BuildNumber)' == '' ">0</BuildNumber>
     <PreviewVersion></PreviewVersion>
     
