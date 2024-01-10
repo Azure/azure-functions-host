@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Runtime.InteropServices;
 using Azure.Monitor.OpenTelemetry.AspNetCore;
 using Microsoft.ApplicationInsights;
@@ -42,6 +43,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging.Configuration;
 using Microsoft.Extensions.Options;
+using OpenTelemetry.Exporter.Geneva;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
@@ -405,36 +407,69 @@ namespace Microsoft.Azure.WebJobs.Script
             return builder;
         }
 
+        private static readonly ImmutableArray<string> WellKnownOpenTelemetryConfigSections = ImmutableArray.Create("console", "geneva", "azureMonitor");
         private static void ConfigureOpenTelemetry(HostBuilderContext context, ILoggingBuilder loggingBuilder)
         {
             // OpenTelemetry configuration for the host is specified in host.json under logging:openTelemetry
             // It follows the schema used by OpenTelemetry.NET's support for IOptions
             // See https://github.com/open-telemetry/opentelemetry-dotnet/blob/main/docs/trace/customizing-the-sdk/README.md#configuration-files-and-environment-variables
+
             var otelHostJsonConfigSection = context.Configuration.GetSection(ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, ConfigurationSectionNames.Logging, "openTelemetry"));
-            var azureMonitorHostConfigSetting = otelHostJsonConfigSection.GetSection("azureMonitor");
-
-            var otBuilder = loggingBuilder.Services.AddOpenTelemetry()
-                .ConfigureResource(r => r.AddService(
-                    serviceName: "Azure.Functions.Service",
-                    serviceVersion: typeof(ScriptHostBuilderExtensions).Assembly.GetName().Version?.ToString() ?? "unknown",
-                    serviceInstanceId: Environment.MachineName))
-                .UseAzureMonitor(c => otelHostJsonConfigSection.GetSection("azureMonitor").Bind(c));
-
-            loggingBuilder.Services.ConfigureOpenTelemetryMeterProvider(b =>
-                b.AddMeter("Azure.Functions")
-                    .AddOtlpExporter(o => otelHostJsonConfigSection.GetSection("otlp").Bind(o))
-                    .AddConsoleExporter(o => otelHostJsonConfigSection.GetSection("console").Bind(o)));
-            loggingBuilder.Services.ConfigureOpenTelemetryTracerProvider(b =>
-                b.AddConsoleExporter(o => otelHostJsonConfigSection.GetSection("console").Bind(o))
-                    .AddOtlpExporter(o => otelHostJsonConfigSection.GetSection("otlp").Bind(o)));
-
-            loggingBuilder.AddOpenTelemetry(config =>
+            if (otelHostJsonConfigSection.Exists())
             {
-                otelHostJsonConfigSection.Bind(config);
+                var otBuilder = loggingBuilder.Services.AddOpenTelemetry()
+                    .ConfigureResource(r => r.AddService(
+                        serviceName: "Azure.Functions.Service",
+                        serviceVersion: typeof(ScriptHostBuilderExtensions).Assembly.GetName().Version?.ToString() ?? "unknown",
+                        serviceInstanceId: Environment.MachineName));
 
-                config.AddOtlpExporter(o => otelHostJsonConfigSection.GetSection("otlp").Bind(o));
-                config.AddConsoleExporter(o => otelHostJsonConfigSection.GetSection("console").Bind(o));
-            });
+                AddAzureMonitorDistro(otelHostJsonConfigSection.GetSection("azureMonitor"), otBuilder);
+                AddConsoleExporter(otelHostJsonConfigSection.GetSection("console"), loggingBuilder.Services);
+                AddGenevaExporter(otelHostJsonConfigSection.GetSection("geneva"), loggingBuilder);
+
+                // All other sections in the config are named OTLP exporters, so register each as such
+                foreach (var section in otelHostJsonConfigSection.GetChildren())
+                {
+                    if (!WellKnownOpenTelemetryConfigSections.Contains(section.Key))
+                    {
+                        loggingBuilder.AddOpenTelemetry(o => o.AddOtlpExporter(section.Key, section.Bind));
+                        loggingBuilder.Services.ConfigureOpenTelemetryMeterProvider(b => b.AddOtlpExporter(section.Key, section.Bind));
+                        loggingBuilder.Services.ConfigureOpenTelemetryTracerProvider(b => b.AddOtlpExporter(section.Key, section.Bind));
+                    }
+                }
+            }
+        }
+
+        private static IServiceCollection AddConsoleExporter(IConfigurationSection configurationSection, IServiceCollection services)
+        {
+            if (configurationSection.Exists())
+            {
+                services.ConfigureOpenTelemetryMeterProvider(b => b.AddConsoleExporter(configurationSection.Bind));
+                services.ConfigureOpenTelemetryTracerProvider(b => b.AddConsoleExporter(configurationSection.Bind));
+            }
+
+            return services;
+        }
+
+        private static OpenTelemetry.OpenTelemetryBuilder AddAzureMonitorDistro(IConfigurationSection configurationSection, OpenTelemetry.OpenTelemetryBuilder otBuilder)
+        {
+            if (configurationSection.Exists())
+            {
+                return otBuilder.UseAzureMonitor(configurationSection.Bind);
+            }
+
+            return otBuilder;
+        }
+
+        private static void AddGenevaExporter(IConfigurationSection configurationSection, ILoggingBuilder loggingBuilder)
+        {
+            if (configurationSection.Exists())
+            {
+                loggingBuilder.AddOpenTelemetry(o => o.AddGenevaLogExporter(configurationSection.Bind));
+
+                loggingBuilder.Services.ConfigureOpenTelemetryTracerProvider(b => b.AddGenevaTraceExporter(configurationSection.Bind));
+                loggingBuilder.Services.ConfigureOpenTelemetryMeterProvider(b => b.AddGenevaMetricExporter(configurationSection.Bind));
+            }
         }
 
         internal static void ConfigureApplicationInsights(HostBuilderContext context, ILoggingBuilder builder)
