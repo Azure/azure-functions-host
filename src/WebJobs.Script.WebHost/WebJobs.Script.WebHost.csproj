@@ -80,7 +80,6 @@
     <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.39" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Host.Storage" Version="5.0.0-beta.2-11957" />
     <PackageReference Include="Microsoft.Azure.WebSites.DataProtection" Version="2.1.91-alpha" />
-    <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="$(IdentityDependencyVersion)" />
     <PackageReference Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="$(IdentityDependencyVersion)" />
     <PackageReference Include="OpenTelemetry.Exporter.Console" Version="1.7.0" />
     <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.7.0" />
@@ -88,7 +87,7 @@
     <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.7.0" />
     <PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.7.0" />
     <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" Version="1.7.0" />
-    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="$(IdentityDependencyVersion)" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="6.35.0" />
     <PackageReference Include="Microsoft.Security.Utilities" Version="1.3.0" />
     <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.435">
       <PrivateAssets>all</PrivateAssets>
