@@ -166,11 +166,6 @@
     </EmbeddedResource>
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Description\DotNet\TestFiles\DepsFiles\" />
-    <Folder Include="Scale\" />
-  </ItemGroup>
-
   <Import Project="..\..\build\GrpcTestFix.targets" />
   <Import Project="..\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems" Label="Shared" />
 
