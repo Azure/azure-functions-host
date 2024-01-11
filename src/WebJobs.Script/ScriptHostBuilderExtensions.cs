@@ -442,7 +442,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private static IServiceCollection AddConsoleExporter(IConfigurationSection configurationSection, IServiceCollection services)
         {
-            if (configurationSection.Exists())
+            if (configurationSection.Exists() && bool.TryParse(configurationSection["enabled"], out var b) && b)
             {
                 services.ConfigureOpenTelemetryMeterProvider(b => b.AddConsoleExporter(configurationSection.Bind));
                 services.ConfigureOpenTelemetryTracerProvider(b => b.AddConsoleExporter(configurationSection.Bind));
