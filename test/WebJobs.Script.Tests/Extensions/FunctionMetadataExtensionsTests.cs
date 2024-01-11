@@ -1,9 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
 using System.IO;
-using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.WebHost.Extensions;
@@ -110,6 +108,95 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             // make sure original binding did not change
             Assert.Null(functionMetadata.Bindings[0].Raw["functionName"]?.Value<string>());
             Assert.Equal("httpTrigger", functionMetadata.Bindings[0].Raw["type"].Value<string>());
+        }
+
+        [Theory]
+        [InlineData("httpTrigger", "http")]
+        [InlineData("orchestrationTrigger", "durable")]
+        [InlineData("activityTrigger", "durable")]
+        [InlineData("entityTrigger", "durable")]
+        [InlineData("timerTrigger", null)]
+        [InlineData("blobTrigger", null)]
+        [InlineData("queueTrigger", null)]
+        [InlineData("serviceBusTrigger", null)]
+        [InlineData("otherTrigger", null)]
+        public async Task ToFunctionTrigger_Grouping_ReturnsExpected(string trigger, string group)
+        {
+            var functionMetadata = new FunctionMetadata
+            {
+                Name = "TestFunction1",
+                Bindings =
+                {
+                    new BindingMetadata
+                    {
+                        Name = "input",
+                        Type = trigger,
+                        Direction = BindingDirection.In,
+                        Raw = new JObject()
+                        {
+                            ["name"] = "input",
+                            ["type"] = trigger,
+                            ["direction"] = "in",
+                        },
+                    }
+                }
+            };
+            var options = new ScriptJobHostOptions
+            {
+                RootScriptPath = _testRootScriptPath
+            };
+
+            var result = await functionMetadata.ToFunctionTrigger(options, isFlexConsumption: true);
+            Assert.Equal("TestFunction1", result["functionName"].Value<string>());
+            Assert.Equal(trigger, result["type"].Value<string>());
+
+            Assert.Equal(group != null, result.TryGetValue("functionGroup", out JToken functionGroup));
+            if (functionGroup is not null)
+            {
+                Assert.Equal(group, functionGroup.Value<string>());
+            }
+        }
+
+        [Theory]
+        [InlineData("httpTrigger", "other0")]
+        [InlineData("orchestrationTrigger", "other1")]
+        [InlineData("activityTrigger", "other2")]
+        [InlineData("entityTrigger", "other3")]
+        [InlineData("otherTrigger", "other4")]
+        public async Task ToFunctionTrigger_ExplicitGrouping_ReturnsExpected(string trigger, string group)
+        {
+            var functionMetadata = new FunctionMetadata
+            {
+                Name = "TestFunction1",
+                Bindings =
+                {
+                    new BindingMetadata
+                    {
+                        Name = "input",
+                        Type = trigger,
+                        Direction = BindingDirection.In,
+                        Raw = new JObject()
+                        {
+                            ["name"] = "input",
+                            ["type"] = trigger,
+                            ["direction"] = "in",
+                        },
+                    }
+                },
+                Properties =
+                {
+                   ["FunctionGroup"] = group,
+                },
+            };
+            var options = new ScriptJobHostOptions
+            {
+                RootScriptPath = _testRootScriptPath
+            };
+
+            var result = await functionMetadata.ToFunctionTrigger(options, isFlexConsumption: true);
+            Assert.Equal("TestFunction1", result["functionName"].Value<string>());
+            Assert.Equal(group, result["functionGroup"].Value<string>());
+            Assert.Equal(trigger, result["type"].Value<string>());
         }
 
         [Fact]
