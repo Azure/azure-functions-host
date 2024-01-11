@@ -5,3 +5,4 @@
 -->
 
 - Updated `Microsoft.Azure.Functions.DotNetIsolatedNativeHost` version to 1.0.5 (#9753)
+- Add function grouping information (#9735)
