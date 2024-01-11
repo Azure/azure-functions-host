@@ -80,7 +80,25 @@ namespace Microsoft.Extensions.DependencyInjection
                             }
                         });
 
-        private static TokenValidationParameters CreateTokenValidationParameters()
+        private static string[] GetValidAudiences()
+        {
+            if (SystemEnvironment.Instance.IsPlaceholderModeEnabled()
+                && SystemEnvironment.Instance.IsLinuxConsumptionOnAtlas())
+            {
+                return new string[]
+                {
+                    ScriptSettingsManager.Instance.GetSetting(ContainerName)
+                };
+            }
+
+            return new string[]
+            {
+                string.Format(SiteAzureFunctionsUriFormat, ScriptSettingsManager.Instance.GetSetting(AzureWebsiteName)),
+                string.Format(SiteUriFormat, ScriptSettingsManager.Instance.GetSetting(AzureWebsiteName))
+            };
+        }
+
+        public static TokenValidationParameters CreateTokenValidationParameters()
         {
             var signingKeys = SecretsUtility.GetTokenIssuerSigningKeys();
             var result = new TokenValidationParameters();
@@ -89,11 +107,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 result.IssuerSigningKeys = signingKeys;
                 result.AudienceValidator = AudienceValidator;
                 result.IssuerValidator = IssuerValidator;
-                result.ValidAudiences = new string[]
-                {
-                    string.Format(SiteAzureFunctionsUriFormat, ScriptSettingsManager.Instance.GetSetting(AzureWebsiteName)),
-                    string.Format(SiteUriFormat, ScriptSettingsManager.Instance.GetSetting(AzureWebsiteName))
-                };
+                result.ValidAudiences = GetValidAudiences();
                 result.ValidIssuers = new string[]
                 {
                     AppServiceCoreUri,
