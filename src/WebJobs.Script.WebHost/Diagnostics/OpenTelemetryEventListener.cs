@@ -61,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public void Flush()
         {
-            if (_logBuffer.Count == 0)
+            if (_logBuffer.IsEmpty)
             {
                 return;
             }
@@ -69,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             ConcurrentQueue<string> currentBuffer = null;
             lock (_syncLock)
             {
-                if (_logBuffer.Count == 0)
+                if (_logBuffer.IsEmpty)
                 {
                     return;
                 }
@@ -86,12 +86,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 sb.AppendLine(line);
             }
 
-            var targetFilePath = Path.Combine("C:\\home\\LogFiles\\", "OpenTelemetryLogs.txt");
-            if (!File.Exists(targetFilePath))
-            {
-                Directory.CreateDirectory(Path.GetDirectoryName(targetFilePath));
-                File.Create(targetFilePath);
-            }
+            var targetFilePath = Path.Combine(@"C:\home\LogFiles", "OpenTelemetryLogs.txt");
+            Directory.CreateDirectory(Path.GetDirectoryName(targetFilePath));
 
             File.AppendAllLines(targetFilePath, new[] { sb.ToString() });
         }

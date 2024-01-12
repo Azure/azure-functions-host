@@ -1,10 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
-using System.Diagnostics.Tracing;
-using System.Net.Http;
-using Azure.Monitor.OpenTelemetry.Exporter;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Host.Executors;
@@ -29,11 +25,8 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using OpenTelemetry.Exporter;
-using OpenTelemetry.Logs;
-using OpenTelemetry.Metrics;
-using OpenTelemetry.Resources;
-using OpenTelemetry.Trace;
+using System;
+using System.Net.Http;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -46,16 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             IDependencyValidator validator = rootServiceProvider.GetService<IDependencyValidator>();
             IMetricsLogger metricsLogger = rootServiceProvider.GetService<IMetricsLogger>();
             IEnvironment environment = rootServiceProvider.GetService<IEnvironment>();
-            Action<ResourceBuilder> configureResource = r => r.AddService(
-                        serviceName: "Azure.Functions.Service",
-                        serviceVersion: typeof(Program).Assembly.GetName().Version?.ToString() ?? "unknown",
-                        serviceInstanceId: Environment.MachineName);
 
-            Action<AzureMonitorExporterOptions, ServiceProvider> configureAzureMonitorLogExporterOptions = (c, sp) => sp.GetRequiredService<IConfigureOptions<AzureMonitorExporterOptions>>().Configure(c);
-            Action<OtlpExporterOptions, ServiceProvider> configureOtlpExporterOptions = (c, sp) => sp.GetRequiredService<IConfigureOptions<OtlpExporterOptions>>().Configure(c);
-            Action<ConsoleExporterOptions, ServiceProvider> configureConsoleExporterOptions = (c, sp) => sp.GetRequiredService<IConfigureOptions<ConsoleExporterOptions>>().Configure(c);
-
-            OpenTelemetryEventListener openTelemetryEventListener = new OpenTelemetryEventListener(EventLevel.Verbose);
             builder.UseServiceProviderFactory(new JobHostScopedServiceProviderFactory(rootServiceProvider, rootServices, validator))
                 .ConfigureServices(services =>
                 {
@@ -97,10 +81,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 {
                     ConfigureRegisteredBuilders(configurationBuilder, rootServiceProvider);
                 })
-                .ConfigureLogging(loggingBuilder =>
+                .ConfigureLogging((hostContext, loggingBuilder) =>
                 {
+                    if (hostContext.HostingEnvironment.IsDevelopment())
+                    {
+                        loggingBuilder.Services.AddSingleton(new OpenTelemetryEventListener(System.Diagnostics.Tracing.EventLevel.Verbose));
+                    }
+
                     loggingBuilder.Services.AddSingleton<ILoggerFactory, ScriptLoggerFactory>();
-                    loggingBuilder.Services.AddSingleton<ILoggerProvider, MeterLoggerProvider>();
+                    //loggingBuilder.Services.AddSingleton<ILoggerProvider, MeterLoggerProvider>();
 
                     loggingBuilder.AddWebJobsSystem<SystemLoggerProvider>();
                     if (environment.IsAzureMonitorEnabled())

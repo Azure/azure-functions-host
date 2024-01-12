@@ -87,6 +87,11 @@
     <PackageReference Include="System.Reactive.Core" Version="5.0.0" />
     <PackageReference Include="System.Runtime.Loader" Version="4.3.0" />
   </ItemGroup>
+  <ItemGroup>
+    <Reference Include="Azure.Monitor.OpenTelemetry.AspNetCore">
+      <HintPath>..\..\..\azure-sdk-for-net\artifacts\bin\Azure.Monitor.OpenTelemetry.AspNetCore\Debug\netstandard2.0\Azure.Monitor.OpenTelemetry.AspNetCore.dll</HintPath>
+    </Reference>
+  </ItemGroup>
 
   <ItemGroup>
     <Compile Update="Properties\Resources.Designer.cs">
