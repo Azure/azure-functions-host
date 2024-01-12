@@ -10,7 +10,7 @@
     <AspNetCoreHostingModel>InProcess</AspNetCoreHostingModel>
     <TieredCompilation>false</TieredCompilation>
     <NoWarn>NU5104</NoWarn>
-    <IdentityDependencyVersion>6.32.0</IdentityDependencyVersion>
+    <IdentityDependencyVersion>6.35.0</IdentityDependencyVersion>
   </PropertyGroup>
   <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
     <PublishReadyToRun>true</PublishReadyToRun>
