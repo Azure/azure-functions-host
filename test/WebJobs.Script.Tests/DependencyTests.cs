@@ -20,6 +20,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             "Microsoft.Azure.WebJobs.Script.WebHost.dll",
             "Microsoft.Azure.WebJobs.dll",
+            "Microsoft.Azure.WebJobs.Script.dll",
+            "Microsoft.Azure.WebJobs.Script.Grpc.dll",
             "Microsoft.Azure.WebJobs.Host.dll",
             "Microsoft.Azure.WebJobs.Logging.ApplicationInsights.dll",
             "Microsoft.Azure.WebJobs.Script.Abstractions.dll",
