@@ -419,32 +419,31 @@ namespace Microsoft.Azure.WebJobs.Script
             if (otelHostJsonConfigSection.Exists())
             {
                 var sp = loggingBuilder.Services.BuildServiceProvider();
-                var otBuilder = loggingBuilder.Services.AddOpenTelemetry()
-                    .ConfigureResource(r =>
-                        r.AddService(
+                var otBuilder = loggingBuilder.AddOpenTelemetry(o =>
+                    {
+                        otelHostJsonConfigSection.Bind(o);
+                        // Add enrichment to all logs
+                        o.AddProcessor(sp => new OpenTelemetryLogEnrichmentProcessor(sp.GetRequiredService<IOptions<ScriptJobHostOptions>>()));
+                    }).Services.AddOpenTelemetry()
+                    .AddAzureMonitorDistro(otelHostJsonConfigSection.GetSection("azureMonitor"))
+                    .AddConsoleExporter(otelHostJsonConfigSection.GetSection("console"), loggingBuilder)
+                    .AddGenevaExporter(otelHostJsonConfigSection.GetSection("geneva"), loggingBuilder)
+                    .ConfigureResource(r => r
+                        .Clear() // AzureMonitorDistro adds a bunch of stuff we don't want
+                        .AddService(
                             serviceName: "Azure.Functions.Service",
+                            serviceNamespace: "Azure.Functions.Service.Host",
                             serviceVersion: typeof(ScriptHostBuilderExtensions).Assembly.GetName().Version?.ToString() ?? "unknown",
                             serviceInstanceId: Environment.MachineName)
                         // this doesn't work for some reason - bug?
                         .AddAttributes([
                                 new(ScriptConstants.LogPropertyProcessIdKey + "_addattr", System.Diagnostics.Process.GetCurrentProcess().Id),
                                 new(ScriptConstants.LogPropertyHostInstanceIdKey + "_addattr", sp.GetService<IOptions<ScriptJobHostOptions>>()?.Value?.InstanceId)
-                                ]));
-
-                AddAzureMonitorDistro(otelHostJsonConfigSection.GetSection("azureMonitor"), ref otBuilder);
-                AddConsoleExporter(otelHostJsonConfigSection.GetSection("console"), loggingBuilder, ref otBuilder);
-                AddGenevaExporter(otelHostJsonConfigSection.GetSection("geneva"), loggingBuilder, ref otBuilder);
-
-                // Add enrichment to all traces
-                //otBuilder.WithTracing(b => b.AddProcessor<OpenTelemetryTraceEnrichmentProcessor>());
-                // Add enrichment to all logs
-                otBuilder.Services.Configure<OpenTelemetryLoggerOptions>(o =>
-                {
-                    otelHostJsonConfigSection.Bind(o);
-                    o.AddProcessor(sp => new OpenTelemetryLogEnrichmentProcessor(sp.GetRequiredService<IOptions<ScriptJobHostOptions>>()));
-                });
-
-                otBuilder.WithMetrics(b => b.AddMeter("Azure.Functions.Service"));
+                                ])
+                        .AddEnvironmentVariableDetector())
+                    .WithMetrics(b => b.AddMeter("Azure.Functions.Service"))
+                    //Add enrichment to all traces
+                    .WithTracing(b => b.AddProcessor<OpenTelemetryTraceEnrichmentProcessor>());
                 //TODO: Add enrichment to all meters when OpenTelemetry.NET exposes Meter Attributes(Tags) and / or the ability to add a processor to Meters
 
                 // All other sections in the config are named OTLP exporters, so register each as such
@@ -461,12 +460,10 @@ namespace Microsoft.Azure.WebJobs.Script
                         otBuilder.WithTracing(b => b.AddOtlpExporter(section.Key, section.Bind));
                     }
                 }
-
-                // TODO: Enrich all opentelemetry things w/ standard properties as done today for appinsights
             }
         }
 
-        private static void AddConsoleExporter(IConfigurationSection configurationSection, ILoggingBuilder loggingBuilder, ref OpenTelemetryBuilder otBuilder)
+        private static OpenTelemetryBuilder AddConsoleExporter(this OpenTelemetryBuilder otBuilder, IConfigurationSection configurationSection, ILoggingBuilder loggingBuilder)
         {
             if (configurationSection.Exists() && bool.TryParse(configurationSection["enabled"], out var b) && b)
             {
@@ -475,17 +472,21 @@ namespace Microsoft.Azure.WebJobs.Script
                 otBuilder.WithMetrics(b => b.AddConsoleExporter(configurationSection.Bind));
                 otBuilder.WithTracing(b => b.AddConsoleExporter(configurationSection.Bind));
             }
+
+            return otBuilder;
         }
 
-        private static void AddAzureMonitorDistro(IConfigurationSection configurationSection, ref OpenTelemetryBuilder otBuilder)
+        private static OpenTelemetryBuilder AddAzureMonitorDistro(this OpenTelemetryBuilder otBuilder, IConfigurationSection configurationSection)
         {
             if (configurationSection.Exists())
             {
                 otBuilder.UseAzureMonitor(configurationSection.Bind);
             }
+
+            return otBuilder;
         }
 
-        private static void AddGenevaExporter(IConfigurationSection configurationSection, ILoggingBuilder loggingBuilder, ref OpenTelemetryBuilder otBuilder)
+        private static OpenTelemetryBuilder AddGenevaExporter(this OpenTelemetryBuilder otBuilder, IConfigurationSection configurationSection, ILoggingBuilder loggingBuilder)
         {
             if (configurationSection.Exists())
             {
@@ -494,6 +495,8 @@ namespace Microsoft.Azure.WebJobs.Script
                 otBuilder.WithTracing(b => b.AddGenevaTraceExporter(configurationSection.Bind));
                 otBuilder.WithMetrics(b => b.AddGenevaMetricExporter(configurationSection.Bind));
             }
+
+            return otBuilder;
         }
 
         internal static void ConfigureApplicationInsights(HostBuilderContext context, ILoggingBuilder builder)
