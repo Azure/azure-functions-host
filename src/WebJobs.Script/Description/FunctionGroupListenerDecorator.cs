@@ -41,13 +41,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             _logger.LogInformation("Function group target is {targetGroup}", targetGroup);
             string functionName = context.FunctionDefinition.Descriptor.ShortName;
-            if (!_metadata.TryGetFunctionMetadata(functionName, out FunctionMetadata m))
+            if (!_metadata.TryGetFunctionMetadata(functionName, out FunctionMetadata functionMetadata))
             {
                 _logger.LogWarning("Unable to find function metadata for function {functionName}", functionName);
                 return context.Listener;
             }
 
-            string group = m.GetFunctionGroup() ?? functionName;
+            string group = functionMetadata.GetFunctionGroup() ?? functionName;
             if (string.Equals(targetGroup, group, StringComparison.OrdinalIgnoreCase))
             {
                 _logger.LogDebug("Enabling function {functionName}", functionName);
@@ -56,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             // A target function group is configured and this function is not part of it.
             // By giving a no-op listener, we will prevent it from triggering without 'disabling' it.
-            _logger.LogDebug("Disabling function {functionName}", functionName);
+            _logger.LogDebug("Function {functionName} is not part of group {functionGroup}. Listener will not be enabled.", functionName, targetGroup);
             context.Listener?.Dispose(); // this will not be used, lets dispose it now.
             return _noOpListener;
         }
