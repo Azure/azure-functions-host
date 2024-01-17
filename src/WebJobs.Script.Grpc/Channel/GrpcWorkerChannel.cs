@@ -179,6 +179,10 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             {
                 _scriptHostOptions = scriptHostOptions;
             }
+            else
+            {
+                _workerChannelLogger.LogDebug("Unable to resolve ScriptJobHostOptions");
+            }
         }
 
         // Temporary switch that allows us to move between the "old" ThreadPool-only processor
@@ -875,7 +879,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 if (_isHandlesInvocationCancelMessageCapabilityEnabled)
                 {
                     var cancellationCtr = context.CancellationToken.Register(() => SendInvocationCancel(invocationRequest.InvocationId));
-                    context.Properties.Add("CancellationTokenRegistration", cancellationCtr);
+                    context.Properties.Add(ScriptConstants.CancellationTokenRegistration, cancellationCtr);
                 }
 
                 if (IsHttpProxyingWorker && context.FunctionMetadata.IsHttpTriggerFunction())
@@ -1078,7 +1082,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             {
                 var context = invocation.Context;
 
-                if (context.Properties.TryGetValue("CancellationTokenRegistration", out CancellationTokenRegistration ctr))
+                if (context.Properties.TryGetValue(ScriptConstants.CancellationTokenRegistration, out CancellationTokenRegistration ctr))
                 {
                     ctr.Dispose();
                 }

@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                 }
 
                 // Default SendCanceledInvocationsToWorker to true if not provided
-                var sendCanceledInvocationsToWorker = jobHostSection.GetValue<bool?>(ConfigurationPropertyNames.SendCanceledInvocationsToWorker);
+                var sendCanceledInvocationsToWorker = jobHostSection.GetValue<bool?>(ConfigurationSectionNames.SendCanceledInvocationsToWorker);
                 if (sendCanceledInvocationsToWorker is null)
                 {
                     options.SendCanceledInvocationsToWorker = true;

@@ -286,7 +286,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         [InlineData("never", FileLoggingMode.Never)]
         [InlineData("always", FileLoggingMode.Always)]
         [InlineData("debugOnly", FileLoggingMode.DebugOnly)]
-        public void ConfigureW_WithConfiguration_AppliesFileLoggingMode(string setting, FileLoggingMode expectedMode)
+        public void Configure_WithConfiguration_AppliesFileLoggingMode(string setting, FileLoggingMode expectedMode)
         {
             var settings = new Dictionary<string, string>
             {
@@ -296,6 +296,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var options = GetConfiguredOptions(settings);
 
             Assert.Equal(expectedMode, options.FileLoggingMode);
+        }
+
+        [Theory]
+        [InlineData(null, true)]
+        [InlineData("true", true)]
+        [InlineData("false", false)]
+        public void Configure_WithConfiguration_AppliesSendCanceledInvocationsToWorker(string setting, bool expected)
+        {
+            var settings = new Dictionary<string, string>();
+
+            if (setting != null)
+            {
+                settings.Add(ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "sendCanceledInvocationsToWorker"), setting);
+            }
+
+            var options = GetConfiguredOptions(settings);
+
+            Assert.Equal(expected, options.SendCanceledInvocationsToWorker);
         }
 
         private ScriptJobHostOptions GetConfiguredOptions(Dictionary<string, string> settings, IEnvironment environment = null)
