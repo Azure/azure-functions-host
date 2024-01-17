@@ -164,11 +164,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             _fixture.MockWebHookProvider.Setup(p => p.TryGetHandler("test", out handler)).Returns(true);
             _fixture.MockWebHookProvider.Setup(p => p.TryGetHandler("invalid", out handler)).Returns(false);
 
-            // successful request
+            // successful request for all supported verbs
             string uri = "runtime/webhooks/test?code=SystemValue3";
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
-            HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            HttpRequestMessage request = null;
+            HttpResponseMessage response = null;
+            var httpMethods = new HttpMethod[] { HttpMethod.Get, HttpMethod.Put, HttpMethod.Post, HttpMethod.Delete, HttpMethod.Options };
+            foreach (var httpMethod in httpMethods)
+            {
+                uri = "runtime/webhooks/test?code=SystemValue3";
+                request = new HttpRequestMessage(httpMethod, uri);
+                response = await _fixture.Host.HttpClient.SendAsync(request);
+                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            }
 
             // invalid system key value - no key match
             uri = "runtime/webhooks/test?code=invalid";
