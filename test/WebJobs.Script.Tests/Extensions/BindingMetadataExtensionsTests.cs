@@ -54,5 +54,60 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             bool result = bindingMetadata.SkipDeferredBinding();
             Assert.False(result);
         }
+
+        [Theory]
+        [InlineData("httpTrigger", true)]
+        [InlineData("otherTrigger", false)]
+        [InlineData("http2Trigger", false)]
+        [InlineData("inputBinding", false)]
+        public void IsHttpTrigger_ReturnsExpectedValue(string type, bool expected)
+        {
+            var bindingMetadata = new BindingMetadata
+            {
+                Type = type,
+            };
+
+            Assert.Equal(expected, bindingMetadata.IsHttpTrigger());
+        }
+
+        [Theory]
+        [InlineData("eventGridTrigger", true)]
+        [InlineData("blobTrigger", true, "eventGrid")]
+        [InlineData("blobTrigger", false, "other")]
+        [InlineData("httpTrigger", false)]
+        [InlineData("inputBinding", false)]
+        public void IsWebHookTrigger_ReturnsExpectedValue(string type, bool expected, string source = null)
+        {
+            var bindingMetadata = new BindingMetadata
+            {
+                Type = type,
+            };
+
+            if (source is not null)
+            {
+                bindingMetadata.Raw = new JObject
+                {
+                    ["source"] = source,
+                };
+            }
+
+            Assert.Equal(expected, bindingMetadata.IsWebHookTrigger());
+        }
+
+        [Theory]
+        [InlineData("orchestrationTrigger", true)]
+        [InlineData("activityTrigger", true)]
+        [InlineData("entityTrigger", true)]
+        [InlineData("httpTrigger", false)]
+        [InlineData("inputBinding", false)]
+        public void IsDurableTrigger_ReturnsExpectedValue(string type, bool expected)
+        {
+            var bindingMetadata = new BindingMetadata
+            {
+                Type = type,
+            };
+
+            Assert.Equal(expected, bindingMetadata.IsDurableTrigger());
+        }
     }
 }
