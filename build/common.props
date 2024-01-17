@@ -5,7 +5,7 @@
     <LangVersion>latest</LangVersion>
     <MajorVersion>4</MajorVersion>
     <MinorVersion>28</MinorVersion>
-    <PatchVersion>4</PatchVersion>
+    <PatchVersion>5</PatchVersion>
     <BuildNumber Condition="'$(BuildNumber)' == '' ">0</BuildNumber>
     <PreviewVersion></PreviewVersion>
     
