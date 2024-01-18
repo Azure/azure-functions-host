@@ -59,7 +59,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Authentication
             {
                 var claims = new List<Claim>
                 {
-                    new Claim(SecurityConstants.AuthLevelClaimType, requestAuthorizationLevel.ToString())
+                    new Claim(SecurityConstants.AuthLevelClaimType, requestAuthorizationLevel.ToString()),
+                    new Claim(SecurityConstants.InvokeClaimType, "true")
                 };
 
                 if (!string.IsNullOrEmpty(name))

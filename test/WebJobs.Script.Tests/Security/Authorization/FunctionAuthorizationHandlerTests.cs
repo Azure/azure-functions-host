@@ -1,15 +1,11 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Security.Claims;
-using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Azure.WebJobs.Extensions.Http;
-using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization;
@@ -23,13 +19,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security.Authorization
         [Fact]
         public async Task Authorization_WithExpectedAuthLevelMatch_Succeeds()
         {
-            await TestAuthorizationAsync(claimAuthLevel: AuthorizationLevel.Function, requiredFunctionLevel: AuthorizationLevel.Function);
+            await TestAuthorizationAsync(claimAuthLevel: AuthorizationLevel.Function, requiredFunctionLevel: AuthorizationLevel.Function, invokeClaimValue: "true");
         }
 
         [Fact]
         public async Task Authorization_WithAdminAuthLevel_Succeeds()
         {
-            await TestAuthorizationAsync(claimAuthLevel: AuthorizationLevel.Admin, requiredFunctionLevel: AuthorizationLevel.Function);
+            await TestAuthorizationAsync(claimAuthLevel: AuthorizationLevel.Admin, requiredFunctionLevel: AuthorizationLevel.Function, invokeClaimValue: "true");
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("invalid")]
+        [InlineData("False")]
+        public async Task Authorization_WithoutInvokeClaim_Fails(string invokeClaimValue)
+        {
+            await TestAuthorizationAsync(claimAuthLevel: AuthorizationLevel.Function, requiredFunctionLevel: AuthorizationLevel.Function, invokeClaimValue: invokeClaimValue, expectSuccess: false);
+        }
+
+        [Fact]
+        public async Task Authorization_Anonymous_WithoutInvokeClaim_Succeeds()
+        {
+            await TestAuthorizationAsync(claimAuthLevel: AuthorizationLevel.Anonymous, requiredFunctionLevel: AuthorizationLevel.Anonymous, invokeClaimValue: null);
         }
 
         [Fact]
@@ -38,6 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security.Authorization
             await TestAuthorizationAsync(
                 claimAuthLevel: AuthorizationLevel.Function,
                 requiredFunctionLevel: AuthorizationLevel.Function,
+                invokeClaimValue: bool.TrueString,
                 descriptor: new Mock<FunctionDescriptor>(),
                 expectSuccess: false);
         }
@@ -45,6 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security.Authorization
         private async Task TestAuthorizationAsync(
             AuthorizationLevel claimAuthLevel,
             AuthorizationLevel requiredFunctionLevel,
+            string invokeClaimValue,
             bool expectSuccess = true,
             Mock<FunctionDescriptor> descriptor = null)
         {
@@ -54,9 +67,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security.Authorization
 
             var requirements = new IAuthorizationRequirement[] { new FunctionAuthorizationRequirement() };
             var claims = new List<Claim>
-                {
-                    new Claim(SecurityConstants.AuthLevelClaimType, claimAuthLevel.ToString())
-                };
+            {
+                new Claim(SecurityConstants.AuthLevelClaimType, claimAuthLevel.ToString())
+            };
+            if (invokeClaimValue != null)
+            {
+                claims.Add(new Claim(SecurityConstants.InvokeClaimType, invokeClaimValue));
+            }
 
             var user = new ClaimsPrincipal(new ClaimsIdentity(claims, "Test"));
 
