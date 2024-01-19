@@ -212,5 +212,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             await DisposeAndRestartWorkerChannel(_httpWorkerChannel.Id);    // Since there's only one channel for httpworker
             return true;
         }
+
+        public void PreShutdown()
+        {
+        }
     }
 }

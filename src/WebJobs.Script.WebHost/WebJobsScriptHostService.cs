@@ -5,7 +5,6 @@ using System;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.ApplicationInsights.AspNetCore;
@@ -20,6 +19,7 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -565,6 +565,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         }
                         else
                         {
+                            StopCurrentDispatcher(previousHost);
                             startTask = UnsynchronizedStartHostAsync(activeOperation);
                             stopTask = Orphan(previousHost, cancellationToken);
                         }
@@ -590,6 +591,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     _hostStartSemaphore.Release();
                 }
             }
+        }
+
+        private static void StopCurrentDispatcher(IHost previousHost)
+        {
+            // It's important to prevent any new workers from starting on the orphaned host. Due to
+            // the multi-threaded flow and the fact that workers can exist at the WebHost-level, the
+            // only way to guarantee this is to signal to the dispatcher that it's done with process
+            // creation before we begin a new host.
+            var dispatcherFactory = previousHost?.Services?.GetService<IFunctionInvocationDispatcherFactory>();
+            IFunctionInvocationDispatcher dispatcher = dispatcherFactory?.GetFunctionDispatcher();
+            dispatcher?.PreShutdown();
         }
 
         internal bool ShouldEnforceSequentialRestart()
