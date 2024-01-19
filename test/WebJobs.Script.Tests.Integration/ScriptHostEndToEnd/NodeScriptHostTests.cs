@@ -211,6 +211,64 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(logs.Any(l => l.Contains($"FunctionDirectory:{Path.Combine(Fixture.JobHost.ScriptOptions.RootScriptPath, "Scenarios")}")));
         }
 
+        [Fact]
+        public Task Repro()
+        {
+            return Task.CompletedTask;
+            //var fd = Fixture.JobHost.FunctionDispatcher as RpcFunctionInvocationDispatcher;
+
+            //List<Task<bool>> tasks = new();
+            //List<Thread> threads = new();
+            //Thread t = new(static (state) =>
+            //{
+            //    var (jobhost, tasks) = ((ScriptHost, List<Task>))state;
+            //    tasks.Add(jobhost.RestartAsync());
+            //    var dispatcher = jobhost.FunctionDispatcher as RpcFunctionInvocationDispatcher;
+            //    tasks.Add(WaitForJobhostWorkerChannelsToStartup(dispatcher, 3, false));
+
+            //});
+            //threads.Add(t);
+
+            //Thread t2 = new(static (state) =>
+            //{
+            //    var (jobhost, tasks) = ((ScriptHost, List<Task<int>>))state;
+            //    var dispatcher = jobhost.FunctionDispatcher as RpcFunctionInvocationDispatcher;
+            //    tasks.Add(WaitForJobhostWorkerChannelsToStartup(dispatcher, 3));
+            //});
+            //threads.Add(t2);
+
+            //foreach (Thread thread in threads)
+            //{
+            //    thread.Start((Fixture.JobHost, tasks));
+            //}
+
+            //// channels = await WaitForJobhostWorkerChannelsToStartup(fd, 3);
+
+            //// Invoke function, should fail
+            //string userAgent = "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.71 Safari/537.36";
+            //string accept = "text/html, application/xhtml+xml, application/xml; q=0.9, */*; q=0.8";
+            //string customHeader = "foo,bar,baz";
+            //string url = $"http://localhost/api/httptrigger?name=Mathew%20Charles&location=Seattle";
+            //var request = HttpTestHelpers.CreateHttpRequest(
+            //    "GET",
+            //    url,
+            //    new HeaderDictionary()
+            //    {
+            //        ["test-header"] = "Test Request Header",
+            //        ["user-agent"] = userAgent,
+            //        ["accept"] = accept,
+            //        ["custom-1"] = customHeader
+            //    });
+            //Dictionary<string, object> arguments = new Dictionary<string, object>
+            //{
+            //    { "request", request }
+            //};
+            //await Fixture.JobHost.CallAsync("HttpTrigger", arguments);
+            //var result = (IActionResult)request.HttpContext.Items[ScriptConstants.AzureFunctionsHttpResponseKey];
+            //var objResult = result as RawScriptResult;
+            //Assert.Equal(200, objResult.StatusCode);
+        }
+
         public class TestFixture : ScriptHostEndToEndTestFixture
         {
             static TestFixture()
