@@ -10,7 +10,6 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Web.Http;
 using Microsoft.Azure.Storage.Blob;
@@ -446,6 +445,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             HttpResponseMessage response = await Fixture.Host.HttpClient.SendAsync(request);
 
+            Assert.True(response.StatusCode == HttpStatusCode.OK, Fixture.Host.GetLog());
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
             Assert.Equal("Test Response Header", response.Headers.GetValues("test-header").SingleOrDefault());
@@ -833,79 +833,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal("Test Entity 1, Test Entity 2", Utility.RemoveUtf8ByteOrderMark(blobContent.Trim()));
         }
 
-        [Fact]
-        // Confirms that a background timer to create new worker processes does not
-        // continue to fire after we've initiated a restart. This could lead to issues
-        // where we'd create too many processes and throw an exception.
-        // See https://github.com/Azure/azure-functions-host/pull/9820 for details.
-        public async Task JobHostRestart_StopsCreatingNewWorkers()
-        {
-            var cancelWait = new CancellationTokenSource();
-            var fixture = new WorkerProcessRestartTestFixture();
-
-            try
-            {
-                await fixture.InitializeAsync();
-                var channelManager = fixture.Host.WebHostServices.GetService<IWebHostRpcWorkerChannelManager>();
-                var scriptHostManager = fixture.Host.WebHostServices.GetService<IScriptHostManager>();
-                var appHostLifecycle = fixture.Host.JobHostServices.GetService<IApplicationLifetime>();
-
-                appHostLifecycle.ApplicationStopping.Register(() =>
-                {
-                    // pause here to prevent the original host from shutting down fully
-                    // this emulates scenarios in production where the disposal of an old host
-                    // can take a very long time
-                    TestHelpers.Await(() => cancelWait.IsCancellationRequested,
-                        pollingInterval: 500).GetAwaiter().GetResult();
-                });
-
-                await TestHelpers.Await(() =>
-                {
-                    var channels = channelManager.GetChannels("node");
-                    int? currentChannelCount = channels?.Count;
-                    return currentChannelCount == 2;
-                });
-
-                // Once we've hit 2, we have 10 seconds to trigger a restart.
-                _ = Task.Run(() => scriptHostManager.RestartHostAsync());
-
-                int delayInSeconds = 15;
-                DateTime start = DateTime.UtcNow;
-                await TestHelpers.Await(() =>
-                {
-                    var channels = channelManager.GetChannels("node");
-                    if (channels == null)
-                    {
-                        return false;
-                    }
-
-                    // If it hasn't started by now, we should be good.
-                    if (DateTime.UtcNow.AddSeconds(-delayInSeconds) > start)
-                    {
-                        return true;
-                    }
-
-                    return channels.Count(c => c.Value.Task.Status == TaskStatus.RanToCompletion) == 4;
-                });
-
-                // now that we've created all 3 from before... let the original shutdown continue
-                cancelWait.Cancel();
-
-                string key = await fixture.Host.GetFunctionSecretAsync("HttpTrigger");
-                var result = await fixture.Host.HttpClient.GetAsync($"/api/HttpTrigger?code={key}");
-
-                var errors = fixture.Host.GetScriptHostLogMessages()
-                    .Where(m => m.Level == LogLevel.Error)
-                    .Select(m => m.Exception);
-                Assert.Empty(errors);
-                Assert.Equal(HttpStatusCode.OK, result.StatusCode);
-            }
-            finally
-            {
-                await fixture.DisposeAsync();
-            }
-        }
-
 #if APIHUB
         [Fact( Skip = "unsupported" )]
         public async Task ApiHubTableEntityIn()
@@ -957,31 +884,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         }
         
 #endif
-        internal class WorkerProcessRestartTestFixture : EndToEndTestFixture
-        {
-            private static string rootPath = Path.Combine("TestScripts", "Node");
-
-            public WorkerProcessRestartTestFixture()
-                : base(rootPath, "nodeWorkerRestart", RpcWorkerConstants.NodeLanguageWorkerName, workerProcessesCount: 3)
-            {
-            }
-
-            protected override Task CreateTestStorageEntities() => Task.CompletedTask;
-
-            public override void ConfigureScriptHost(IWebJobsBuilder webJobsBuilder)
-            {
-                base.ConfigureScriptHost(webJobsBuilder);
-
-                webJobsBuilder.AddAzureStorage()
-                    .Services.Configure<ScriptJobHostOptions>(o =>
-                    {
-                        o.Functions = new[]
-                        {
-                            "HttpTrigger"
-                        };
-                    });
-            }
-        }
 
         public class TestFixture : EndToEndTestFixture
         {

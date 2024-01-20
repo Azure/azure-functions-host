@@ -565,7 +565,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         }
                         else
                         {
-                            StopCurrentDispatcher(previousHost);
+                            NotifyHostStopping(previousHost);
                             startTask = UnsynchronizedStartHostAsync(activeOperation);
                             stopTask = Orphan(previousHost, cancellationToken);
                         }
@@ -593,10 +593,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
-        private static void StopCurrentDispatcher(IHost previousHost)
+        // Because we fire-and-forget the host disposal, we cannot be guaranteed when it will be stopped
+        // or disposed. Use this method to explicitly stop any services in the host that may be
+        // problematic to run side-by-side with the new host that is starting.
+        private static void NotifyHostStopping(IHost previousHost)
         {
-            // It's important to prevent any new workers from starting on the orphaned host. Due to
-            // the multi-threaded flow and the fact that workers can exist at the WebHost-level, the
+            // It's important to prevent any new workers from starting on the orphaned host. The
             // only way to guarantee this is to signal to the dispatcher that it's done with process
             // creation before we begin a new host.
             var dispatcherFactory = previousHost?.Services?.GetService<IFunctionInvocationDispatcherFactory>();
