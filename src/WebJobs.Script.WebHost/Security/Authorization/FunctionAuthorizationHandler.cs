@@ -13,7 +13,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization
         protected override Task HandleRequirementAsync(AuthorizationHandlerContext context, FunctionAuthorizationRequirement requirement, FunctionDescriptor resource)
         {
             var httpTrigger = resource.HttpTriggerAttribute;
-            if (httpTrigger != null && PrincipalHasAuthLevelClaim(context.User, httpTrigger.AuthLevel))
+            if (httpTrigger != null &&
+                PrincipalHasInvokeClaim(context.User, httpTrigger.AuthLevel) &&
+                PrincipalHasAuthLevelClaim(context.User, httpTrigger.AuthLevel))
             {
                 context.Succeed(requirement);
             }
