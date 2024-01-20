@@ -603,7 +603,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // creation before we begin a new host.
             var dispatcherFactory = previousHost?.Services?.GetService<IFunctionInvocationDispatcherFactory>();
             IFunctionInvocationDispatcher dispatcher = dispatcherFactory?.GetFunctionDispatcher();
-            // dispatcher?.PreShutdown();
+            dispatcher?.PreShutdown();
         }
 
         internal bool ShouldEnforceSequentialRestart()
