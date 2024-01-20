@@ -454,7 +454,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             return Accepted();
         }
 
-        [AcceptVerbs("GET", "POST", "DELETE", "OPTIONS")]
+        [AcceptVerbs("GET", "PUT", "POST", "DELETE", "OPTIONS")]
         [Authorize(Policy = PolicyNames.SystemKeyAuthLevel)]
         [Route("runtime/webhooks/{extensionName}/{*extra}")]
         [RequiresRunningHost]
