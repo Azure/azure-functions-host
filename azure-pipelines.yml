@@ -1,7 +1,7 @@
 variables:
   buildNumber: $[ counter('constant', 13000) ]
   isReleaseBranch: $[contains(variables['Build.SourceBranch'], 'release/')]
-  ${{ if contains(variables['Build.SourceBranch'], 'inproc') }}:
+  ${{ if contains(variables['Build.SourceBranch'], 'release/inproc6/') }}:
     minorVersionPrefix: "6"
   DOTNET_NOLOGO: 1
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
