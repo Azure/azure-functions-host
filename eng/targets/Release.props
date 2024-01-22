@@ -1,0 +1,55 @@
+<Project>
+
+  <!-- Product Information -->
+  <PropertyGroup>
+    <Product>Microsoft Azure WebJobs SDK Script</Product>
+    <Authors>Microsoft</Authors>
+    <Company>Microsoft Corporation</Company>
+    <Copyright>© Microsoft Corporation. All rights reserved.</Copyright>
+    <RepositoryUrl>https://github.com/Azure/azure-functions-host</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
+    <PackageProjectUrl>http://go.microsoft.com/fwlink/?LinkID=320972</PackageProjectUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <AssemblyOriginatorKeyFile>$(EngRoot)key.snk</AssemblyOriginatorKeyFile>
+  </PropertyGroup>
+
+  <!-- Package details files -->
+  <PropertyGroup>
+    <!--
+      For Icon, Readme, and ReleaseNotes there are two properties each:
+      First is the representation on disk: IconFile, ReadmeFile, and ReleaseNotesFile.
+      Second is the representation in the nupkg: PackageIcon, PackageReadmeFile, PackageReleaseNotes
+      This is why there are seemingly redundant properties below, they represent a different stage in
+      the contents of this property during the packaging process.
+      -->
+    <IconFile Condition="'$(IconFile)' == ''">$(MSBuildThisFileDirectory)../webjobs.png</IconFile>
+    <PackageIcon Condition="'$(PackageIcon)' == ''">webjobs.png</PackageIcon>
+    <ReadmeFile Condition="'$(ReadmeFile)' == ''">README.md</ReadmeFile>
+    <PackageReadmeFile Condition="'$(PackageReadmeFile)' == ''">README.md</PackageReadmeFile>
+    <ReleaseNotesFile Condition="'$(ReleaseNotesFile)' == ''">release_notes.md</ReleaseNotesFile>
+    <!-- PackageReleaseNotes: see Release.targets -->
+  </PropertyGroup>
+
+  <!-- Continuous Integration -->
+  <PropertyGroup>
+    <BuildReason>dev</BuildReason>
+    <BuildReason Condition="'$(BUILD_REASON)' != ''">ci</BuildReason>
+    <BuildReason Condition="'$(BUILD_REASON)' == 'PullRequest'">pr</BuildReason>
+    <BuildCounter>$(BUILD_COUNTER)</BuildCounter>
+    <BuildCounter Condition="'$(BUILD_COUNTER)' == ''">0</BuildCounter>
+
+    <BuildNumber Condition="'$(BuildNumber)' == ''">$([System.DateTime]::Now.ToString(yyMMdd)).0</BuildNumber>
+    <ContinuousIntegrationBuild Condition="'$(TF_BUILD)' == 'true'">true</ContinuousIntegrationBuild>
+    <ContinuousIntegrationBuild Condition="'$(ContinuousIntegrationBuild)' == ''">$(CI)</ContinuousIntegrationBuild>
+    <WarningsAsErrors Condition="'$(ContinuousIntegrationBuild)' == 'true'">true</WarningsAsErrors>
+
+    <!-- Only set release tag if this is a tag, and not a branch. -->
+    <!-- tag must be either 'v{Version}' or {name}-v{Version} for a match -->
+    <IsRelease>false</IsRelease>
+    <IsRelease Condition="'$(BUILD_SOURCEBRANCH)' != '' AND $(BUILD_SOURCEBRANCH.StartsWith('/refs/heads/release/'))">true</IsRelease>
+    <ReleaseTag Condition="$([System.Text.RegularExpressions.Regex]::IsMatch($(BUILD_SOURCEBRANCH), `refs/tags/(?:.*-)?v.*`))">$(BUILD_SOURCEBRANCHNAME)</ReleaseTag>
+  </PropertyGroup>
+
+</Project>

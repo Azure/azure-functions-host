@@ -1,0 +1,46 @@
+<Project>
+
+  <!--
+    Release.targets: targets relating to the release integrity of our product.
+    - Nuget packaging targets
+    - Versioning targets
+  -->
+
+  <PropertyGroup>
+    <BeforePack>$(BeforePack);GetReleaseNotes;AddTagToReleaseNotes</BeforePack>
+  </PropertyGroup>
+
+  <!-- CI versioning steps -->
+  <PropertyGroup Condition="'$(IsRelease)' != 'true'">
+    <VersionSuffix Condition="'$(VersionSuffix)' != ''">$(VersionSuffix).$(BuildReason).$(BuildNumber)</VersionSuffix>
+    <VersionSuffix Condition="'$(VersionSuffix)' == ''">$(BuildReason).$(BuildNumber)</VersionSuffix>
+    <Version>$(VersionPrefix)-$(VersionSuffix)</Version>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <FileVersion>$(VersionPrefix).$(BuildNumber)</FileVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="$(IconFile)" Pack="true" PackagePath="/" />
+    <Content Include="$(ReadmeFile)" Pack="true" PackagePath="/" />
+  </ItemGroup>
+
+  <!-- This target lets us define a release notes file per package. -->
+  <Target Name="GetReleaseNotes" Condition="'$(PackageReleaseNotes)' == '' and Exists('$(ReleaseNotesFile)')">
+    <PropertyGroup>
+      <PackageReleaseNotes>$([System.IO.File]::ReadAllText('$(ReleaseNotesFile)'))</PackageReleaseNotes>
+    </PropertyGroup>
+  </Target>
+
+  <Target Name="AddTagToReleaseNotes" Condition="'$(ReleaseTag)' != ''">
+    <PropertyGroup>
+      <PackageReleaseNotes>
+See $(RepositoryUrl)/releases/tag/$(ReleaseTag)
+
+$(PackageReleaseNotes)
+      </PackageReleaseNotes>
+    </PropertyGroup>
+  </Target>
+
+</Project>

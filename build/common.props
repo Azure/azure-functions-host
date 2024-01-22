@@ -2,25 +2,9 @@
   <Import Project=".\package.props" />
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
-    <LangVersion>latest</LangVersion>
-    <MajorVersion>4</MajorVersion>
-    <MinorVersion>30</MinorVersion>
-    <PatchVersion>0</PatchVersion>
-    <BuildNumber Condition="'$(BuildNumber)' == '' ">0</BuildNumber>
-    <PreviewVersion></PreviewVersion>
-    
-    <!-- During previews, always generate this suffix, even for official releases -->
-    <_VersionSuffix Condition="'$(PreviewVersion)' != ''">-preview.$(PreviewVersion).$(BuildNumber)</_VersionSuffix>
-    <!-- Otherwise, use the suffix directly, adding a '-' -->
-    <_VersionSuffix Condition="'$(PreviewVersion)' == '' and '$(VersionSuffix)' != ''">-$(VersionSuffix)</_VersionSuffix>
-    
-    <VersionPrefix>$(MajorVersion).$(MinorVersion).$(PatchVersion)</VersionPrefix>
-    <Version>$(VersionPrefix)$(_VersionSuffix)</Version>
-    <AssemblyVersion>$(MajorVersion).$(MinorVersion).0.0</AssemblyVersion>
-    <FileVersion>$(VersionPrefix).$(BuildNumber)</FileVersion>
 
     <CodeAnalysisRuleSet>$(MSBuildThisFileDirectory)..\src.ruleset</CodeAnalysisRuleSet>
-    <NoWarn>$(NoWarn);NU1701</NoWarn>
+    <NoWarn>$(NoWarn);NU1701;CS7035;7035</NoWarn>
 
     <ContinuousIntegrationBuild Condition="'$(TF_BUILD)' == 'true'">true</ContinuousIntegrationBuild>
     <DebugType>embedded</DebugType>

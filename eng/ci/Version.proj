@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk" DefaultTargets="EchoVersion">
+  <!-- This project when built will output the current version. -->
+  <!-- Not using Microsoft.Build.NoTargets as it requires a restore. -->
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+  </PropertyGroup>
+ 
+  <Target Name="EchoVersion">
+      <Message Importance="high" Text="$(Version)" />
+  </Target>
+
+</Project>
