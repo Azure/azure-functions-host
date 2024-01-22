@@ -173,7 +173,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             LoadScriptJobHostOptions(e.NewHost.Services);
         }
 
-        public void LoadScriptJobHostOptions(IServiceProvider provider)
+        private void LoadScriptJobHostOptions(IServiceProvider provider)
         {
             if (provider?.GetService(typeof(IOptions<ScriptJobHostOptions>)) is IOptions<ScriptJobHostOptions> scriptHostOptions)
             {
@@ -1084,7 +1084,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
                 if (context.Properties.TryGetValue(ScriptConstants.CancellationTokenRegistration, out CancellationTokenRegistration ctr))
                 {
-                    ctr.Dispose();
+                    await ctr.DisposeAsync();
+                    context.Properties.Remove(ScriptConstants.CancellationTokenRegistration);
                 }
 
                 if (invokeResponse.Result.IsInvocationSuccess(context.ResultSource, capabilityEnabled))
