@@ -55,7 +55,7 @@ jobs:
     displayName: "Build artifacts"
     inputs:
       filePath: '$(Build.Repository.LocalPath)\build\build-extensions.ps1'
-      arguments: '-buildNumber "$(buildNumber)" -suffix "$(suffix)"'
+      arguments: '-buildNumber "$(buildNumber)" -suffix "$(suffix)" -minorVersionPrefix "$(minorVersionPrefix)"'
   - task: PowerShell@2
     displayName: "Check for security vulnerabilities"
     inputs:
