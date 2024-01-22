@@ -243,5 +243,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public static readonly string HttpProxyTask = "HttpProxyTask";
 
         public static readonly string OperationNameKey = "OperationName";
+
+        public static readonly string CancellationTokenRegistration = "CancellationTokenRegistration";
     }
 }
