@@ -122,5 +122,12 @@ namespace Microsoft.Azure.WebJobs.Script
         /// Gets or sets a value indicating whether the ScriptHost is in standby mode.
         /// </summary>
         public bool IsStandbyConfiguration { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether the host sends cancelled invocations to the worker.
+        /// This defaults to true, meaning if cancellation is signalled we will still send the pre-cancelled
+        /// invocation to the worker.
+        /// </summary>
+        public bool SendCanceledInvocationsToWorker { get; set; } = true;
     }
 }
