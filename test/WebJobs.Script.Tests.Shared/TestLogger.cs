@@ -105,7 +105,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public override string ToString()
         {
-            return $"[{Timestamp.ToString("HH:mm:ss.fff")}] [{Category}] {FormattedMessage}";
+            return $"[{Timestamp.ToString("HH:mm:ss.fff")}] [{Category}] {FormattedMessage} {Exception}";
         }
     }
 }

@@ -152,6 +152,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var metricsLogger = new TestMetricsLogger();
             _host.Setup(h => h.StartAsync(It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
+            _host.SetupGet(h => h.Services)
+                .Returns((IServiceProvider)null);
 
             var hostBuilder = new Mock<IScriptHostBuilder>();
             hostBuilder.Setup(b => b.BuildHost(It.IsAny<bool>(), It.IsAny<bool>()))

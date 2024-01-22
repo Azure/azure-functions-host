@@ -12,9 +12,9 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
 using System.Web.Http;
+using Microsoft.Azure.Storage.Blob;
+using Microsoft.Azure.Storage.Queue;
 using Microsoft.Azure.WebJobs.Logging;
-using Microsoft.Azure.WebJobs.Script.Diagnostics;
-using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -22,8 +22,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
-using Microsoft.Azure.Storage.Blob;
-using Microsoft.Azure.Storage.Queue;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -205,11 +203,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             // verify log levels in traces
             LogMessage[] traces = Fixture.Host.GetScriptHostLogMessages(userCategory).Where(t => t.FormattedMessage != null && t.FormattedMessage.Contains("loglevel")).ToArray();
-            Assert.True(traces.Any(t => t.Level == LogLevel.Information && t.FormattedMessage == "loglevel default" ));
-            Assert.True(traces.Any(t => t.Level == LogLevel.Information && t.FormattedMessage == "loglevel info" ));
-            Assert.True(traces.Any(t => t.Level == LogLevel.Trace && t.FormattedMessage == "loglevel verbose" ));
-            Assert.True(traces.Any(t => t.Level == LogLevel.Warning && t.FormattedMessage == "loglevel warn" ));
-            Assert.True(traces.Any(t => t.Level == LogLevel.Error && t.FormattedMessage == "loglevel error" ));
+            Assert.True(traces.Any(t => t.Level == LogLevel.Information && t.FormattedMessage == "loglevel default"));
+            Assert.True(traces.Any(t => t.Level == LogLevel.Information && t.FormattedMessage == "loglevel info"));
+            Assert.True(traces.Any(t => t.Level == LogLevel.Trace && t.FormattedMessage == "loglevel verbose"));
+            Assert.True(traces.Any(t => t.Level == LogLevel.Warning && t.FormattedMessage == "loglevel warn"));
+            Assert.True(traces.Any(t => t.Level == LogLevel.Error && t.FormattedMessage == "loglevel error"));
 
             // verify most of the logs look correct
             Assert.True(userLogs.Contains("Mathew Charles"));
@@ -447,6 +445,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             HttpResponseMessage response = await Fixture.Host.HttpClient.SendAsync(request);
 
+            Assert.True(response.StatusCode == HttpStatusCode.OK, Fixture.Host.GetLog());
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
             Assert.Equal("Test Response Header", response.Headers.GetValues("test-header").SingleOrDefault());
@@ -885,6 +884,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         }
         
 #endif
+
         public class TestFixture : EndToEndTestFixture
         {
             private static string rootPath = Path.Combine("TestScripts", "Node");
