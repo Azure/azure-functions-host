@@ -1,6 +1,8 @@
 variables:
   buildNumber: $[ counter('constant', 13000) ]
   isReleaseBranch: $[contains(variables['Build.SourceBranch'], 'release/')]
+  ${{ if contains(variables['Build.SourceBranch'], 'inproc') }}:
+    minorVersionPrefix: "6"
   DOTNET_NOLOGO: 1
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
   DOTNET_CLI_TELEMETRY_OPTOUT: 1
@@ -10,12 +12,14 @@ pr:
     include:
     - dev
     - release/4.*
+    - release/inproc6/4.*
 
 trigger:
   branches:
     include:
     - dev
     - release/4.*
+    - release/inproc6/4.*
 
 jobs:
 - job: InitializePipeline

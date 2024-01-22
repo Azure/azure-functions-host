@@ -1,6 +1,7 @@
 param (
   [string]$buildNumber = "0",  
-  [string]$suffix = "",  
+  [string]$suffix = "",
+  [string]$minorVersionPrefix = "10",
   [string]$hashesForHardlinksFile = "hashesForHardlinks.txt"
 )
 
@@ -8,7 +9,7 @@ $rootDir = Split-Path -Parent $PSScriptRoot
 $buildOutput = Join-Path $rootDir "buildoutput"
 
 Import-Module $PSScriptRoot\Get-AzureFunctionsVersion -Force
-$extensionVersion = Get-AzureFunctionsVersion $buildNumber $suffix
+$extensionVersion = Get-AzureFunctionsVersion $buildNumber $suffix $minorVersionPrefix
 Write-Host "Site extension version: $extensionVersion"
 
 # Construct variables for strings like "4.1.0-15898" and "4.1.0"
@@ -50,7 +51,7 @@ function BuildRuntime([string] $targetRid, [bool] $isSelfContained) {
         throw "Project path '$projectPath' does not exist."
     }
 
-    $cmd = "publish", "$PSScriptRoot\..\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj", "-r", "$targetRid", "--self-contained", "$isSelfContained", "-o", "$publishTarget", "-v", "m", "/p:BuildNumber=$buildNumber", "/p:IsPackable=false", "-c", "Release", $suffixCmd
+    $cmd = "publish", "$PSScriptRoot\..\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj", "-r", "$targetRid", "--self-contained", "$isSelfContained", "-o", "$publishTarget", "-v", "m", "/p:BuildNumber=$buildNumber", "/p:IsPackable=false", "/p:MinorVersionPrefix=$minorVersionPrefix", "-c", "Release", $suffixCmd
 
     Write-Host "======================================"
     Write-Host "Building $targetRid"
@@ -241,8 +242,11 @@ function CreateSiteExtensions() {
     
     $zipOutput = "$buildOutput\SiteExtension"
     New-Item -Itemtype directory -path $zipOutput -Force > $null
-    ZipContent $siteExtensionPath "$zipOutput\Functions.$extensionVersion$runtimeSuffix.zip"
-    ZipContent $siteExtensionPath "$zipOutput\FunctionsInProc.$extensionVersion$runtimeSuffix.zip"
+    if ($minorVersionPrefix -eq "10") {
+        ZipContent $siteExtensionPath "$zipOutput\Functions.$extensionVersion$runtimeSuffix.zip"
+    } else {
+		ZipContent $siteExtensionPath "$zipOutput\FunctionsInProc.$extensionVersion$runtimeSuffix.zip"
+	}
 
     # Create directory for content even if there is no patch build. This makes artifact uploading easier.
     $patchedContentDirectory = "$buildOutput\PatchedSiteExtension"

@@ -4,7 +4,8 @@
     <TargetFramework>netstandard2.1</TargetFramework>
     <LangVersion>latest</LangVersion>
     <MajorVersion>4</MajorVersion>
-    <MinorVersion>30</MinorVersion>
+	<MinorVersionPrefix Condition="'$(MinorVersionPrefix)' == ''">10</MinorVersionPrefix>
+    <MinorVersion>$(MinorVersionPrefix)30</MinorVersion>
     <PatchVersion>0</PatchVersion>
     <BuildNumber Condition="'$(BuildNumber)' == '' ">0</BuildNumber>
     <PreviewVersion></PreviewVersion>
