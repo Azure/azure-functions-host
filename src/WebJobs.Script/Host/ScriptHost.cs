@@ -66,6 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly string _instanceId;
         private readonly IEnvironment _environment;
         private readonly IFunctionDataCache _functionDataCache;
+        private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions;
         private readonly IOptionsMonitor<LanguageWorkerOptions> _languageWorkerOptions;
         private readonly ILogger _logger;
         private readonly IPrimaryHostStateProvider _primaryHostStateProvider;
@@ -106,6 +107,7 @@ namespace Microsoft.Azure.WebJobs.Script
             IExtensionBundleManager extensionBundleManager,
             IFunctionDataCache functionDataCache,
             IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions,
+            IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
             ScriptSettingsManager settingsManager = null)
             : base(options, jobHostContextFactory)
         {
@@ -153,6 +155,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 }));
 
             _functionDataCache = functionDataCache;
+            _hostingConfigOptions = hostingConfigOptions;
         }
 
         public event EventHandler HostInitializing;
@@ -441,6 +444,21 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     _logger.VersionRecommendation(extensionVersion);
                 }
+            }
+
+            if (string.IsNullOrEmpty(_environment.GetFunctionsWorkerRuntime()))
+            {
+                string baseMessage = $"The '{EnvironmentSettingNames.FunctionWorkerRuntime}' setting is required. Please specify a valid value. See {DiagnosticEventConstants.MissingFunctionsWorkerRuntimeHelpLink} for more information.";
+
+                if (_hostingConfigOptions.Value.ThrowOnMissingFunctionsWorkerRuntime)
+                {
+                    _logger.LogDiagnosticEventError(DiagnosticEventConstants.MissingFunctionsWorkerRuntimeErrorCode, baseMessage, DiagnosticEventConstants.MissingFunctionsWorkerRuntimeHelpLink, null);
+                    throw new HostInitializationException(baseMessage);
+                }
+
+                string warningMessage = baseMessage + " The application will continue to run, but may throw an exception in a future release.";
+                _logger.LogDiagnosticEventWarning(DiagnosticEventConstants.MissingFunctionsWorkerRuntimeErrorCode, warningMessage, DiagnosticEventConstants.MissingFunctionsWorkerRuntimeHelpLink, null);
+                _logger.MissingFunctionsWorkerRuntime(warningMessage);
             }
 
             // Log whether App Insights is enabled

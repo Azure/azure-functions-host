@@ -3,8 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Diagnostics
@@ -27,6 +25,12 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         {
             int eventId = 0; // Dummy value - diagnostic events does not log an eventId.
             logger.LogDiagnosticEvent(LogLevel.Information, eventId, errorCode, message, helpLink, null);
+        }
+
+        public static void LogDiagnosticEventWarning(this ILogger logger, string errorCode, string message, string helpLink, Exception exception)
+        {
+            int eventId = 0; // Dummy value - diagnostic events does not log an eventId.
+            logger.LogDiagnosticEvent(LogLevel.Warning, eventId, errorCode, message, helpLink, exception);
         }
 
         public static void LogDiagnosticEventError(this ILogger logger, string errorCode, string message, string helpLink, Exception exception)

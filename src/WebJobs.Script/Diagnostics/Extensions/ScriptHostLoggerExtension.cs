@@ -130,6 +130,12 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
                 new EventId(420, nameof(ResolvedWorkerRuntimeFromMetadata)),
                 $"{EnvironmentSettingNames.FunctionWorkerRuntime} is null. Resolved worker runtime from function metadata: '{{workerRuntime}}'");
 
+        private static readonly Action<ILogger, string, Exception> _missingFunctionsWorkerRuntime =
+            LoggerMessage.Define<string>(
+                LogLevel.Warning,
+                new EventId(421, nameof(MissingFunctionsWorkerRuntime)),
+                "{message}");
+
         public static void HostIdIsSet(this ILogger logger)
         {
             _hostIdIsSet(logger, null);
@@ -236,6 +242,11 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
         public static void ResolvedWorkerRuntimeFromMetadata(this ILogger logger, string workerRuntime)
         {
             _resolvedWorkerRuntimeFromMetadata(logger, workerRuntime, null);
+        }
+
+        public static void MissingFunctionsWorkerRuntime(this ILogger logger, string message)
+        {
+            _missingFunctionsWorkerRuntime(logger, message, null);
         }
     }
 }
