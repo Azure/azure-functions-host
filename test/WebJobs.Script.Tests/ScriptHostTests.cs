@@ -18,16 +18,20 @@ using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Newtonsoft.Json.Linq;
 using WebJobs.Script.Tests;
 using Xunit;
+using static Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.DiagnosticEventLoggerTests;
 using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -1709,6 +1713,54 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 FileUtility.Instance = null;
                 EnvironmentExtensions.BaseDirectory = null;
+            }
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("node")]
+        public void Missing_FunctionsWorkerRuntime_LogsWarning(string functionsWorkerRuntime)
+        {
+            var environment = new TestEnvironment();
+            if (functionsWorkerRuntime != null)
+            {
+                environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, functionsWorkerRuntime);
+            }
+
+            var diagnosticEventRepository = new TestDiagnosticEventRepository();
+            var diagnosticEventRepositoryFactory = new TestDiagnosticEventRepositoryFactory(diagnosticEventRepository);
+            var standbyOptions = new StandbyOptions { InStandbyMode = false };
+            var mockStandbyOptionsMonitor = new Mock<IOptionsMonitor<StandbyOptions>>();
+            mockStandbyOptionsMonitor
+                .SetupGet(m => m.CurrentValue)
+                .Returns(standbyOptions);
+            var diagnosticEventLogger = new DiagnosticEventLoggerProvider(diagnosticEventRepositoryFactory, environment, mockStandbyOptionsMonitor.Object);
+
+            var loggerFactory = new LoggerFactory();
+            loggerFactory.AddTestLoggerProvider(out TestLoggerProvider testLoggerProvider);
+            loggerFactory.AddProvider(diagnosticEventLogger);
+
+            var configOptions = new OptionsWrapper<FunctionsHostingConfigOptions>(new FunctionsHostingConfigOptions());
+
+            ScriptHost.ValidateFunctionsWorkerRuntime(environment, configOptions, loggerFactory.CreateLogger<ScriptHost>());
+
+            if (string.IsNullOrEmpty(functionsWorkerRuntime))
+            {
+                var diagnosticEvent = diagnosticEventRepository.Events.Single();
+                Assert.Equal(diagnosticEvent.LogLevel, LogLevel.Warning);
+                Assert.NotNull(diagnosticEvent.Message);
+                Assert.NotNull(diagnosticEvent.HelpLink);
+
+                // The diagnostic event and the "normal" log will both be here
+                var warnings = testLoggerProvider.GetAllLogMessages().Where(m => m.Level == LogLevel.Warning);
+                Assert.Collection(warnings,
+                    m => Assert.Contains(DiagnosticEventConstants.MissingFunctionsWorkerRuntimeHelpLink, m.FormattedMessage),
+                    m => Assert.Contains(DiagnosticEventConstants.MissingFunctionsWorkerRuntimeHelpLink, m.FormattedMessage));
+            }
+            else
+            {
+                Assert.Empty(diagnosticEventRepository.Events);
+                Assert.Empty(testLoggerProvider.GetAllLogMessages().Where(m => m.Level == LogLevel.Warning));
             }
         }
 
