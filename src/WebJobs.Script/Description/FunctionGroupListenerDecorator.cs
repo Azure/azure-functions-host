@@ -11,17 +11,16 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 {
     internal class FunctionGroupListenerDecorator : IListenerDecorator
     {
-        private static readonly NoOpListener _noOpListener = new();
-        private readonly IFunctionMetadataManager _metadata;
+        private readonly IFunctionMetadataManager _metadataManager;
         private readonly IEnvironment _environment; // TODO: replace options pattern
         private readonly ILogger _logger;
 
         public FunctionGroupListenerDecorator(
-            IFunctionMetadataManager metadata,
+            IFunctionMetadataManager metadataManager,
             IEnvironment environment,
             ILogger<FunctionGroupListenerDecorator> logger)
         {
-            _metadata = metadata ?? throw new ArgumentNullException(nameof(metadata));
+            _metadataManager = metadataManager ?? throw new ArgumentNullException(nameof(metadataManager));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
@@ -40,8 +39,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
 
             _logger.LogInformation("Function group target is {targetGroup}", targetGroup);
-            string functionName = context.FunctionDefinition.Descriptor.ShortName;
-            if (!_metadata.TryGetFunctionMetadata(functionName, out FunctionMetadata functionMetadata))
+
+            // The log name matches the internal metadata we track.
+            string functionName = context.FunctionDefinition.Descriptor.LogName;
+            if (!_metadataManager.TryGetFunctionMetadata(functionName, out FunctionMetadata functionMetadata))
             {
                 _logger.LogWarning("Unable to find function metadata for function {functionName}", functionName);
                 return context.Listener;
@@ -57,18 +58,26 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             // A target function group is configured and this function is not part of it.
             // By giving a no-op listener, we will prevent it from triggering without 'disabling' it.
             _logger.LogDebug("Function {functionName} is not part of group {functionGroup}. Listener will not be enabled.", functionName, targetGroup);
-            context.Listener?.Dispose(); // this will not be used, lets dispose it now.
-            return _noOpListener;
+            return new NoOpListener(context.Listener);
         }
 
         private class NoOpListener : IListener
         {
+            private readonly IListener _listener;
+
+            public NoOpListener(IListener listener)
+            {
+                // Only hold onto this listener for disposal.
+                _listener = listener;
+            }
+
             public void Cancel()
             {
             }
 
             public void Dispose()
             {
+                _listener.Dispose();
             }
 
             public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
