@@ -57,10 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
         [Fact]
         public async Task Invoke_OriginAllowed_AddsExpectedHeaders()
         {
-            var envars = new Dictionary<string, string>()
-            {
-                { EnvironmentSettingNames.ContainerName, "foo" },
-            };
+            var envars = new Dictionary<string, string>() { };
             var testEnv = new TestEnvironment(envars);
             var testOrigin = "https://functions.azure.com";
             var hostCorsOptions = new HostCorsOptions
@@ -110,10 +107,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
         [Fact]
         public async Task Invoke_OriginNotAllowed_DoesNotAddHeaders()
         {
-            var envars = new Dictionary<string, string>()
-            {
-                { EnvironmentSettingNames.ContainerName, "foo" },
-            };
+            var envars = new Dictionary<string, string>() { };
             var testEnv = new TestEnvironment(envars);
             var badOrigin = "http://badorigin.com";
             var hostCorsOptions = new HostCorsOptions
@@ -164,10 +158,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
         [Fact]
         public async Task Invoke_Adds_AccessControlAllowMethods()
         {
-            var envars = new Dictionary<string, string>()
-            {
-                { EnvironmentSettingNames.ContainerName, "foo" },
-            };
+            var envars = new Dictionary<string, string>() { };
             var testEnv = new TestEnvironment(envars);
             var testOrigin = "https://functions.azure.com";
             var hostCorsOptions = new HostCorsOptions
