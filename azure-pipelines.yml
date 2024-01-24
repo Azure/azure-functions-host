@@ -34,6 +34,7 @@ jobs:
     name: Initialize
     inputs:
       filePath: '$(Build.Repository.LocalPath)\build\initialize-pipeline.ps1'
+      showWarnings: true
 
 - job: BuildArtifacts
   dependsOn: InitializePipeline
