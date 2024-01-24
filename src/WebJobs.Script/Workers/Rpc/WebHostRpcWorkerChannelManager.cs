@@ -233,7 +233,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 throw new ArgumentNullException(nameof(language));
             }
 
-            if (_hostingConfigOptions.Value.RevertWorkerShutdownBehaviour)
+            if (_hostingConfigOptions.Value.RevertWorkerShutdownBehavior)
             {
                 if (_workerChannels.TryRemove(language, out ConcurrentDictionary<string, TaskCompletionSource<IRpcWorkerChannel>> rpcWorkerChannels))
                 {

@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         public Dictionary<string, string> Features => _features;
 
         /// <summary>
-        /// Gets a value indicating whether worker concurency feature is enabled in the hosting config.
+        /// Gets a value indicating whether worker concurrency feature is enabled in the hosting config.
         /// </summary>
         public bool FunctionsWorkerDynamicConcurrencyEnabled
         {
@@ -98,7 +98,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         }
 
         /// <summary>
-        /// Gets or sets a value indicating whether Linux Appservice/EP Detailed Execution Event is disabled in the hosting config.
+        /// Gets or sets a value indicating whether Linux AppService/EP Detailed Execution Event is disabled in the hosting config.
         /// </summary>
         public bool DisableLinuxAppServiceExecutionDetails
         {
@@ -127,7 +127,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         }
 
         /// <summary>
-        /// Gets the highest version of extension bundle v3 supported
+        /// Gets the highest version of extension bundle v3 supported.
         /// </summary>
         public string MaximumBundleV3Version
         {
@@ -138,7 +138,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         }
 
         /// <summary>
-        /// Gets the highest version of extension bundle v4 supported
+        /// Gets the highest version of extension bundle v4 supported.
         /// </summary>
         public string MaximumBundleV4Version
         {
@@ -149,9 +149,9 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         }
 
         /// <summary>
-        /// Gets a value indicating whether the host should revert the worker shutdown behavior in the webhostworkerchannelmanager.
+        /// Gets a value indicating whether the host should revert the worker shutdown behavior in the WebHostWorkerChannelManager.
         /// </summary>
-        public bool RevertWorkerShutdownBehaviour
+        public bool RevertWorkerShutdownBehavior
         {
             get
             {
@@ -159,11 +159,19 @@ namespace Microsoft.Azure.WebJobs.Script.Config
             }
         }
 
+        public bool ThrowOnMissingFunctionsWorkerRuntime
+        {
+            get
+            {
+                return GetFeature(RpcWorkerConstants.ThrowOnMissingFunctionsWorkerRuntime) == "1";
+            }
+        }
+
         /// <summary>
         /// Gets feature by name.
         /// </summary>
         /// <param name="name">Feature name.</param>
-        /// <returns>String value from hostig configuration.</returns>
+        /// <returns>String value from hosting configuration.</returns>
         public string GetFeature(string name)
         {
             if (_features.TryGetValue(name, out string value))
@@ -178,7 +186,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         /// </summary>
         /// <param name="name">Feature name.</param>
         /// <param name="defaultValue">The default value to use.</param>
-        /// <returns>String value from hostig configuration.</returns>
+        /// <returns>String value from hosting configuration.</returns>
         public string GetFeatureOrDefault(string name, string defaultValue)
         {
             return GetFeature(name) ?? defaultValue;
