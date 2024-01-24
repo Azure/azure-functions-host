@@ -16,7 +16,7 @@ if ($buildReason -eq "PullRequest") {
     }
   }
   catch {
-    Write-Warning "Failed to get pull request title."
+    Write-Warning "Failed to get pull request title. Artifacts will not be built or packed."
     Write-Warning $_
   }
 }
