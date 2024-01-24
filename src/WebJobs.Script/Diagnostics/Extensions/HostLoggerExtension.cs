@@ -56,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
         private static readonly Action<ILogger, Exception> _debugerManagerUnableToUpdateSentinelFile =
             LoggerMessage.Define(
             LogLevel.Error,
-            new EventId(207, nameof(DebugerManagerUnableToUpdateSentinelFile)),
+            new EventId(207, nameof(DebuggerManagerUnableToUpdateSentinelFile)),
             "Unable to update the debug sentinel file.");
 
         private static readonly Action<ILogger, string, string, Exception> _addExtensionBundleConfiguration =
