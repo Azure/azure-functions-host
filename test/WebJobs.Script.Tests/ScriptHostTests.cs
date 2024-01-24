@@ -31,7 +31,6 @@ using Moq;
 using Newtonsoft.Json.Linq;
 using WebJobs.Script.Tests;
 using Xunit;
-using static Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.DiagnosticEventLoggerTests;
 using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -1751,11 +1750,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Assert.NotNull(diagnosticEvent.Message);
                 Assert.NotNull(diagnosticEvent.HelpLink);
 
-                // The diagnostic event and the "normal" log will both be here
-                var warnings = testLoggerProvider.GetAllLogMessages().Where(m => m.Level == LogLevel.Warning);
-                Assert.Collection(warnings,
-                    m => Assert.Contains(DiagnosticEventConstants.MissingFunctionsWorkerRuntimeHelpLink, m.FormattedMessage),
-                    m => Assert.Contains(DiagnosticEventConstants.MissingFunctionsWorkerRuntimeHelpLink, m.FormattedMessage));
+                // Ensure it goes to App Insights as well
+                var log = testLoggerProvider.GetAllLogMessages().Single(m => m.Level == LogLevel.Warning);
+                Assert.Contains(DiagnosticEventConstants.MissingFunctionsWorkerRuntimeHelpLink, log.FormattedMessage);
             }
             else
             {

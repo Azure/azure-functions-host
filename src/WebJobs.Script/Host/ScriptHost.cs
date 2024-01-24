@@ -475,7 +475,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 string warningMessage = baseMessage + " The application will continue to run, but may throw an exception in a future release.";
                 logger.LogDiagnosticEventWarning(DiagnosticEventConstants.MissingFunctionsWorkerRuntimeErrorCode, warningMessage, DiagnosticEventConstants.MissingFunctionsWorkerRuntimeHelpLink, null);
-                logger.MissingFunctionsWorkerRuntime(warningMessage);
             }
         }
 
