@@ -65,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// Gets the function group for the specified <see cref="FunctionMetadata"/>.
         /// </summary>
         /// <param name="metadata">The function metadata.</param>
-        /// <returns>The function group for this metadata or <c>null</c> if no group specified.</returns>
+        /// <returns>The function group for this metadata.</returns>
         public static string GetFunctionGroup(this FunctionMetadata metadata)
         {
             if (metadata == null)
@@ -92,7 +92,8 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
             }
 
-            return null;
+            // A function with no specified group will be assigned to a group of itself.
+            return $"function__{metadata.Name}";
         }
 
         public static string GetFunctionId(this FunctionMetadata metadata)
