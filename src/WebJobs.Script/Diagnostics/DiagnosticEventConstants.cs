@@ -25,5 +25,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public const string LinuxConsumptionTimeZoneErrorCode = "AZFD0010";
         public const string LinuxConsumptionTimeZoneErrorHelpLink = "https://go.microsoft.com/fwlink/?linkid=2250165";
+
+        public const string MissingFunctionsWorkerRuntimeErrorCode = "AZFD0011";
+        public const string MissingFunctionsWorkerRuntimeHelpLink = "https://go.microsoft.com/fwlink/?linkid=2257963";
     }
 }

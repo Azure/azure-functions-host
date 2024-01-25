@@ -64,7 +64,8 @@ namespace Microsoft.WebJobs.Script.Tests
             AddMockedSingleton<IApplicationLifetime>(services);
             AddMockedSingleton<IDependencyValidator>(services);
             AddMockedSingleton<IAzureBlobStorageProvider>(services);
-            AddMockedSingleton<IDiagnosticEventRepositoryFactory>(services);
+            services.AddSingleton<IDiagnosticEventRepository, TestDiagnosticEventRepository>();
+            services.AddSingleton<IDiagnosticEventRepositoryFactory, TestDiagnosticEventRepositoryFactory>();
             services.AddSingleton<HostNameProvider>();
             services.AddSingleton<IMetricsLogger>(metricsLogger);
             services.AddWebJobsScriptHostRouting();
