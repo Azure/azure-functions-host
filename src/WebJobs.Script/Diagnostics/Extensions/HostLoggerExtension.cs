@@ -53,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
             new EventId(206, nameof(HostConfigFileSystemReadOnly)),
             "File system is read-only. Skipping {fileName} creation.");
 
-        private static readonly Action<ILogger, Exception> _debugerManagerUnableToUpdateSentinelFile =
+        private static readonly Action<ILogger, Exception> _debuggerManagerUnableToUpdateSentinelFile =
             LoggerMessage.Define(
             LogLevel.Error,
             new EventId(207, nameof(DebuggerManagerUnableToUpdateSentinelFile)),
@@ -111,9 +111,9 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
             _hostConfigFileSystemReadOnly(logger, fileName, null);
         }
 
-        public static void DebugerManagerUnableToUpdateSentinelFile(this ILogger logger, Exception ex)
+        public static void DebuggerManagerUnableToUpdateSentinelFile(this ILogger logger, Exception ex)
         {
-            _debugerManagerUnableToUpdateSentinelFile(logger, null);
+            _debuggerManagerUnableToUpdateSentinelFile(logger, null);
         }
     }
 }
