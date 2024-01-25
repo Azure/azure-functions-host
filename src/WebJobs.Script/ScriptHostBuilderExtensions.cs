@@ -1,7 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using Azure.Monitor.OpenTelemetry.AspNetCore;
+using Azure.Monitor.OpenTelemetry.Exporter;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Channel;
 using Microsoft.ApplicationInsights.DataContracts;
@@ -39,7 +39,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging.Configuration;
 using Microsoft.Extensions.Options;
-using OpenTelemetry;
 using OpenTelemetry.Exporter.Geneva;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
@@ -48,6 +47,7 @@ using OpenTelemetry.Trace;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 using System.Runtime.InteropServices;
 
 namespace Microsoft.Azure.WebJobs.Script
@@ -118,6 +118,8 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     configBuilder.AddConfiguration(scriptHostConfiguration.GetSection(ScriptConstants.FunctionsHostingConfigSectionName));
                 }
+
+                AddOpenTelemetryConfigurations(context, configBuilder);
             });
 
             // WebJobs configuration
@@ -408,95 +410,162 @@ namespace Microsoft.Azure.WebJobs.Script
             return builder;
         }
 
-        private static readonly ImmutableArray<string> WellKnownOpenTelemetryConfigSections = ImmutableArray.Create("console", "geneva", "azureMonitor");
+        private static readonly ImmutableArray<string> WellKnownOpenTelemetryExporters = ImmutableArray.Create("console", "geneva", "azureMonitor");
         private static void ConfigureOpenTelemetry(HostBuilderContext context, ScriptApplicationHostOptions hostOptions, ILoggingBuilder loggingBuilder)
         {
             // OpenTelemetry configuration for the host is specified in host.json under logging:openTelemetry
             // It follows the schema used by OpenTelemetry.NET's support for IOptions
             // See https://github.com/open-telemetry/opentelemetry-dotnet/blob/main/docs/trace/customizing-the-sdk/README.md#configuration-files-and-environment-variables
 
-            var otelHostJsonConfigSection = context.Configuration.GetSection(ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, ConfigurationSectionNames.Logging, "openTelemetry"));
-            if (otelHostJsonConfigSection.Exists())
+            var services = loggingBuilder.Services;
+            // Configure opentelemetry exporters from host.config / opentelemetry / exporters
+            var exporterConfig = context.Configuration.GetSection(ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "openTelemetry", "exporters"));
+            if (exporterConfig.Exists())
             {
-                var sp = loggingBuilder.Services.BuildServiceProvider();
-                var otBuilder = loggingBuilder.AddOpenTelemetry(o =>
-                    {
-                        otelHostJsonConfigSection.Bind(o);
-                        // Add enrichment to all logs
-                        o.AddProcessor(sp => new OpenTelemetryLogEnrichmentProcessor(sp.GetRequiredService<IOptions<ScriptJobHostOptions>>()));
-                    }).Services.AddOpenTelemetry()
-                    .AddAzureMonitorDistro(otelHostJsonConfigSection.GetSection("azureMonitor"))
-                    .AddConsoleExporter(otelHostJsonConfigSection.GetSection("console"), loggingBuilder)
-                    .AddGenevaExporter(otelHostJsonConfigSection.GetSection("geneva"), loggingBuilder)
-                    .ConfigureResource(r => r
-                        .Clear() // AzureMonitorDistro adds a bunch of stuff we don't want
-                        .AddService(
-                            serviceName: "Azure.Functions.Service",
-                            serviceNamespace: "Azure.Functions.Service.Host",
-                            serviceVersion: typeof(ScriptHostBuilderExtensions).Assembly.GetName().Version?.ToString() ?? "unknown",
-                            serviceInstanceId: Environment.MachineName)
-                        // this doesn't work for some reason - bug?
-                        .AddAttributes([
-                                new(ScriptConstants.LogPropertyProcessIdKey + "_addattr", System.Diagnostics.Process.GetCurrentProcess().Id),
-                                new(ScriptConstants.LogPropertyHostInstanceIdKey + "_addattr", sp.GetService<IOptions<ScriptJobHostOptions>>()?.Value?.InstanceId)
-                                ])
-                        .AddEnvironmentVariableDetector())
-                    .WithMetrics(b => b.AddMeter("Azure.Functions.Service"))
-                    //Add enrichment to all traces
-                    .WithTracing(b => b.AddProcessor<OpenTelemetryTraceEnrichmentProcessor>());
-                //TODO: Add enrichment to all meters when OpenTelemetry.NET exposes Meter Attributes(Tags) and / or the ability to add a processor to Meters
-
-                // All other sections in the config are named OTLP exporters, so register each as such
-                foreach (var section in otelHostJsonConfigSection.GetChildren())
+                var logExporters = exporterConfig.GetSection("log");
+                if (logExporters.Exists())
                 {
-                    if (!WellKnownOpenTelemetryConfigSections.Contains(section.Key))
+                    foreach (var section in logExporters.GetChildren())
                     {
-                        loggingBuilder.AddOpenTelemetry(o =>
+                        if (!WellKnownOpenTelemetryExporters.Contains(section.Key))
                         {
-                            o.AddOtlpExporter(section.Key, section.Bind);
-                        });
+                            loggingBuilder.AddOpenTelemetry(o =>
+                            {
+                                o.AddOtlpExporter(section.Key, section.Bind);
+                            });
+                        }
+                        else
+                        {
+                            loggingBuilder.AddOpenTelemetry(b =>
+                            {
+                                _ = section.Key.ToLowerInvariant() switch
+                                {
+                                    "azuremonitor" => b.AddAzureMonitorLogExporter(section.Bind),
+                                    "geneva" => b.AddGenevaLogExporter(section.Bind),
+                                    "console" => b.AddConsoleExporter(section.Bind),
+                                    _ => throw new InvalidOperationException($"Unknown exporter type {section.Key}")
+                                };
+                            });
+                        }
+                    }
+                }
 
-                        otBuilder.WithMetrics(b => b.AddOtlpExporter(section.Key, section.Bind));
-                        otBuilder.WithTracing(b => b.AddOtlpExporter(section.Key, section.Bind));
+                var metricExporters = exporterConfig.GetSection("metric");
+                if (metricExporters.Exists())
+                {
+                    foreach (var section in metricExporters.GetChildren())
+                    {
+                        if (!WellKnownOpenTelemetryExporters.Contains(section.Key))
+                        {
+                            services.ConfigureOpenTelemetryMeterProvider(b => b.AddOtlpExporter(section.Key, section.Bind));
+                        }
+                        else
+                        {
+                            services.ConfigureOpenTelemetryMeterProvider(b =>
+                            {
+                                _ = section.Key.ToLowerInvariant() switch
+                                {
+                                    "azuremonitor" => b.AddAzureMonitorMetricExporter(section.Bind),
+                                    "geneva" => b.AddGenevaMetricExporter(section.Bind),
+                                    "console" => b.AddConsoleExporter(section.Bind),
+                                    _ => throw new InvalidOperationException($"Unknown exporter type {section.Key}")
+                                };
+                            });
+                        }
+                    }
+                }
+
+                var traceExporters = exporterConfig.GetSection("trace");
+                if (traceExporters.Exists())
+                {
+                    foreach (var section in traceExporters.GetChildren())
+                    {
+                        if (!WellKnownOpenTelemetryExporters.Contains(section.Key))
+                        {
+                            services.ConfigureOpenTelemetryTracerProvider(b => b.AddOtlpExporter(section.Key, section.Bind));
+                        }
+                        else
+                        {
+                            services.ConfigureOpenTelemetryTracerProvider(b =>
+                            {
+                                _ = section.Key.ToLowerInvariant() switch
+                                {
+                                    "azuremonitor" => b.AddAzureMonitorTraceExporter(section.Bind),
+                                    "geneva" => b.AddGenevaTraceExporter(section.Bind),
+                                    "console" => b.AddConsoleExporter(section.Bind),
+                                    _ => throw new InvalidOperationException($"Unknown exporter type {section.Key}")
+                                };
+                            });
+                        }
                     }
                 }
             }
-        }
 
-        private static OpenTelemetryBuilder AddConsoleExporter(this OpenTelemetryBuilder otBuilder, IConfigurationSection configurationSection, ILoggingBuilder loggingBuilder)
-        {
-            if (configurationSection.Exists() && bool.TryParse(configurationSection["enabled"], out var b) && b)
+            // Configure resources from host.config / opentelemetry / resources
+            var configuredResources = context.Configuration.GetValue<IEnumerable<Dictionary<string, object>>>(ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "openTelemetry", "resources"));
+            var r = ResourceBuilder.CreateDefault();
+            if (configuredResources.Any())
             {
-                loggingBuilder.AddOpenTelemetry(o => o.AddConsoleExporter(configurationSection.Bind));
+                r = ResourceBuilder.CreateEmpty();
 
-                otBuilder.WithMetrics(b => b.AddConsoleExporter(configurationSection.Bind));
-                otBuilder.WithTracing(b => b.AddConsoleExporter(configurationSection.Bind));
+                foreach (var rConfig in configuredResources)
+                {
+                    r.AddService(rConfig["serviceName"].ToString(),
+                        rConfig.TryGetValue("serviceNamespace", out string n) ? n : null,
+                        rConfig.TryGetValue("serviceVersion", out string v) ? v : null,
+                        rConfig.TryGetValue("autoGenerateServiceInstanceId", out bool a) ? a : true,
+                        rConfig.TryGetValue("serviceInstanceId", out string i) ? i : null);
+
+                    if (rConfig.TryGetValue("attributes", out Dictionary<string, object> aConfig))
+                    {
+                        r.AddAttributes(aConfig);
+                    }
+                }
             }
 
-            return otBuilder;
+            // Configure Otel Logging based on host.config / logging / openTelemetry
+            var oteLoggingConfig = context.Configuration.GetSection(ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, ConfigurationSectionNames.Logging, "openTelemetry"));
+            if (oteLoggingConfig.Exists())
+            {
+                loggingBuilder.AddOpenTelemetry(oteLoggingConfig.Bind);
+            }
         }
 
-        private static OpenTelemetryBuilder AddAzureMonitorDistro(this OpenTelemetryBuilder otBuilder, IConfigurationSection configurationSection)
+        private static void AddOpenTelemetryConfigurations(HostBuilderContext context, IConfigurationBuilder configBuilder)
         {
-            if (configurationSection.Exists())
+            // .NET would pick up otel config automatically if we stored it at <root> { Metrics { ...
+            // but we've chosen to put it at <root> { openTelemetry { Metrics { ... 
+            // so, we need to change its structure accordingly, then manually add it to the config builder so .NET picks it up as though it were in the format expected
+            var customOtelSection = context.Configuration.GetSection(ConfigurationPath.Combine("metrics", "openTelemetry"));
+            if (!customOtelSection.Exists())
             {
-                otBuilder.UseAzureMonitor(configurationSection.Bind);
+                return;
             }
 
-            return otBuilder;
-        }
-
-        private static OpenTelemetryBuilder AddGenevaExporter(this OpenTelemetryBuilder otBuilder, IConfigurationSection configurationSection, ILoggingBuilder loggingBuilder)
-        {
-            if (configurationSection.Exists())
+            // Create a new configuration that removes the 'openTelemetry' layer
+            var newConfigBuilder = new ConfigurationBuilder();
+            newConfigBuilder.AddInMemoryCollection(new Dictionary<string, string>
             {
-                loggingBuilder.AddOpenTelemetry(o => o.AddGenevaLogExporter(configurationSection.Bind));
+                { ConfigurationPath.Combine("metrics"), customOtelSection.Value }
+            });
 
-                otBuilder.WithTracing(b => b.AddGenevaTraceExporter(configurationSection.Bind));
-                otBuilder.WithMetrics(b => b.AddGenevaMetricExporter(configurationSection.Bind));
+            configBuilder.AddConfiguration(newConfigBuilder.Build());
+
+            // Do the same with 'traces' section
+            customOtelSection = context.Configuration.GetSection(ConfigurationPath.Combine("traces", "openTelemetry"));
+            if (!customOtelSection.Exists())
+            {
+                return;
             }
 
-            return otBuilder;
+            // Create a new configuration that removes the 'openTelemetry' layer
+            newConfigBuilder = new ConfigurationBuilder();
+            newConfigBuilder.AddInMemoryCollection(new Dictionary<string, string>
+            {
+                { ConfigurationPath.Combine("traces"), customOtelSection.Value }
+            });
+
+            configBuilder.AddConfiguration(newConfigBuilder.Build());
         }
 
         internal static void ConfigureApplicationInsights(HostBuilderContext context, ILoggingBuilder builder)
