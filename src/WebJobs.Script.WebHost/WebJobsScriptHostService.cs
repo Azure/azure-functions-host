@@ -14,12 +14,14 @@ using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.ApplicationInsights.Extensibility.Implementation.ApplicationId;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Workers;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -47,6 +49,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly SemaphoreSlim _hostStartSemaphore = new SemaphoreSlim(1, 1);
         private readonly TaskCompletionSource<bool> _hostStartedSource = new TaskCompletionSource<bool>();
         private readonly Task _hostStarted;
+        private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions;
+        private readonly bool _originalStandbyModeValue;
         private IScriptEventManager _eventManager;
 
         private IHost _host;
@@ -64,7 +68,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public WebJobsScriptHostService(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IScriptHostBuilder scriptHostBuilder, ILoggerFactory loggerFactory,
             IScriptWebHostEnvironment scriptWebHostEnvironment, IEnvironment environment,
             HostPerformanceManager hostPerformanceManager, IOptions<HostHealthMonitorOptions> healthMonitorOptions,
-            IMetricsLogger metricsLogger, IApplicationLifetime applicationLifetime, IConfiguration config, IScriptEventManager eventManager)
+            IMetricsLogger metricsLogger, IApplicationLifetime applicationLifetime, IConfiguration config, IScriptEventManager eventManager,
+            IOptions<FunctionsHostingConfigOptions> hostingConfigOptions)
         {
             ArgumentNullException.ThrowIfNull(loggerFactory);
 
@@ -94,6 +99,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 _healthCheckWindow = new SlidingWindow<bool>(_healthMonitorOptions.Value.HealthCheckWindow);
                 _hostHealthCheckTimer = new Timer(OnHostHealthCheckTimer, null, TimeSpan.Zero, _healthMonitorOptions.Value.HealthCheckInterval);
             }
+
+            _hostingConfigOptions = hostingConfigOptions;
+
+            // we'll use this to determine if this process has ever been specialized
+            _originalStandbyModeValue = _scriptWebHostEnvironment.InStandbyMode;
         }
 
         public event EventHandler HostInitializing;
@@ -702,11 +712,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             // Log settings
             var functionWorkerRuntime = _environment.GetEnvironmentVariable(FunctionWorkerRuntime);
+            var functionWorkerRuntimeVersion = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName);
             var functionExtensionVersion = _environment.GetEnvironmentVariable(FunctionsExtensionVersion);
             var currentDirectory = Directory.GetCurrentDirectory();
             var inStandbyMode = _scriptWebHostEnvironment.InStandbyMode;
+            var hasBeenSpecialized = _originalStandbyModeValue && !inStandbyMode;
+            var usePlaceholderDotNetIsolated = _environment.UsePlaceholderDotNetIsolated();
+            var websiteSku = _environment.GetEnvironmentVariable(AzureWebsiteSku);
+            var featureFlags = _environment.GetEnvironmentVariable(AzureWebJobsFeatureFlags);
+            var hostingConfigDict = _hostingConfigOptions.Value.Features;
 
-            logger.LogHostInitializationSettings(functionWorkerRuntime, functionExtensionVersion, currentDirectory, inStandbyMode);
+            logger.LogHostInitializationSettings(functionWorkerRuntime, functionWorkerRuntimeVersion, functionExtensionVersion, currentDirectory, inStandbyMode,
+                hasBeenSpecialized, usePlaceholderDotNetIsolated, websiteSku, featureFlags, hostingConfigDict);
         }
 
         private void OnHostHealthCheckTimer(object state)
