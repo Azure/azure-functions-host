@@ -15,6 +15,17 @@
     <AssemblyOriginatorKeyFile>$(EngRoot)key.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
 
+  <!-- Versioning -->
+ <PropertyGroup>
+    <!-- MinorVersionPrefix is used to differentiate in proc (6) and out of proc (10) at a glance -->
+    <MajorVersion>4</MajorVersion>
+    <MinorVersionPrefix>6</MinorVersionPrefix> <!-- Do not change -->
+    <MinorVersion>30</MinorVersion>
+    <PatchVersion>0</PatchVersion>
+    <VersionPrefix>$(MajorVersion).$(MinorVersionPrefix)$(MinorVersion).$(PatchVersion)</VersionPrefix>
+    <VersionSuffix></VersionSuffix>
+  </PropertyGroup>
+
   <!-- Package details files -->
   <PropertyGroup>
     <!--

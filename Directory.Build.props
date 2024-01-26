@@ -9,14 +9,13 @@
     <ArtifactsPath>$(RepoRootPath)out</ArtifactsPath>
     <ArtifactsPublishOutputName>pub</ArtifactsPublishOutputName>
     <ArtifactsPackageOutputName>pkg</ArtifactsPackageOutputName>
-    <NugetAudit>false</NugetAudit>
   </PropertyGroup>
 
   <PropertyGroup>
+    <NugetAudit>false</NugetAudit> <!-- TODO: remove when addressing nuget issues -->
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
 
-  <Import Project="$(EngPath)targets/Release.props" />
-  <Import Project="$(EngPath)targets/Version.props" />
+  <Import Project="$(EngPath)/targets/Release.props" />
 
 </Project>
