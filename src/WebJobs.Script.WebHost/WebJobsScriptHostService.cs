@@ -51,6 +51,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly Task _hostStarted;
         private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions;
         private readonly bool _originalStandbyModeValue;
+        private readonly string _originalFunctionsWorkerRuntime;
+        private readonly string _originalFunctionsWorkerRuntimeVersion;
         private IScriptEventManager _eventManager;
 
         private IHost _host;
@@ -102,8 +104,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             _hostingConfigOptions = hostingConfigOptions;
 
-            // we'll use this to determine if this process has ever been specialized
+            // we'll use this to emit telemetry on if and how this process has been specialized
             _originalStandbyModeValue = _scriptWebHostEnvironment.InStandbyMode;
+            _originalFunctionsWorkerRuntime = _environment.GetFunctionsWorkerRuntime();
+            _originalFunctionsWorkerRuntimeVersion = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName);
         }
 
         public event EventHandler HostInitializing;
@@ -722,8 +726,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             var featureFlags = _environment.GetEnvironmentVariable(AzureWebJobsFeatureFlags);
             var hostingConfigDict = _hostingConfigOptions.Value.Features;
 
-            logger.LogHostInitializationSettings(functionWorkerRuntime, functionWorkerRuntimeVersion, functionExtensionVersion, currentDirectory, inStandbyMode,
-                hasBeenSpecialized, usePlaceholderDotNetIsolated, websiteSku, featureFlags, hostingConfigDict);
+            logger.LogHostInitializationSettings(_originalFunctionsWorkerRuntime, functionWorkerRuntime, _originalFunctionsWorkerRuntimeVersion, functionWorkerRuntimeVersion,
+                functionExtensionVersion, currentDirectory, inStandbyMode, hasBeenSpecialized, usePlaceholderDotNetIsolated, websiteSku, featureFlags, hostingConfigDict);
         }
 
         private void OnHostHealthCheckTimer(object state)

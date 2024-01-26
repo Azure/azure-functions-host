@@ -330,15 +330,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions
             _scriptHostServiceRestartCanceledByRuntime(logger, null);
         }
 
-        public static void LogHostInitializationSettings(this ILogger logger, string functionWorkerRuntime, string functionsWorkerRuntimeVersion,
-            string functionExtensionVersion, string siteExtensionDirectory, bool inStandbyMode, bool hasBeenSpecialized, bool usePlaceholderDotNetIsolated,
-            string websiteSku, string featureFlags, IDictionary<string, string> hostingConfig)
+        public static void LogHostInitializationSettings(this ILogger logger, string originalFunctionWorkerRuntime, string functionWorkerRuntime,
+            string originalFunctionWorkerRuntimeVersion, string functionsWorkerRuntimeVersion, string functionExtensionVersion, string siteExtensionDirectory,
+            bool inStandbyMode, bool hasBeenSpecialized, bool usePlaceholderDotNetIsolated, string websiteSku, string featureFlags,
+            IDictionary<string, string> hostingConfig)
         {
             // This is a dump of values for telemetry right now, but eventually we will refactor this
             // into a proper Options object
             var initializationSettings = new
             {
+                OriginalFunctionWorkerRuntime = originalFunctionWorkerRuntime,
                 FunctionsWorkerRuntime = functionWorkerRuntime,
+                OriginalFunctionWorkerRuntimeVersion = originalFunctionWorkerRuntimeVersion,
                 FunctionsWorkerRuntimeVersion = functionsWorkerRuntimeVersion,
                 FunctionsExtensionVesion = functionExtensionVersion,
                 SiteExtensionDirectory = siteExtensionDirectory,
