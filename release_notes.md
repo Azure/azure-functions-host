@@ -13,3 +13,5 @@
     - Customers can opt-out of this behavior by setting `SendCanceledInvocationsToWorker` to `false` in host.json
   - If a worker does not support CancellationTokens, cancelled invocations will not be sent to the worker
 - Warn when `FUNCTIONS_WORKER_RUNTIME` is not set (#9799)
+- Added support for ManagedIdentity authentication in ApplicationInsights pipeline. (#9758)
+- Added support for AutocollectedMetricsExtractor, MetricsCustomDimensionOptimization and QueryStringTracing. (#9758)

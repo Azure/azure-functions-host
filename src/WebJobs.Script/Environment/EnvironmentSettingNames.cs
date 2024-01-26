@@ -26,6 +26,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureWebJobsSecretStorage = "AzureWebJobsStorage";
         public const string AppInsightsInstrumentationKey = "APPINSIGHTS_INSTRUMENTATIONKEY";
         public const string AppInsightsConnectionString = "APPLICATIONINSIGHTS_CONNECTION_STRING";
+        public const string AppInsightsAuthenticationString = "APPLICATIONINSIGHTS_AUTHENTICATION_STRING";
+        public const string AppInsightsEventListenerLogLevel = "APPLICATIONINSIGHTS_EVENT_LISTENER_LOGLEVEL";
         public const string AppInsightsQuickPulseAuthApiKey = "APPINSIGHTS_QUICKPULSEAUTHAPIKEY";
         public const string AppInsightsAgent = "APPLICATIONINSIGHTS_ENABLE_AGENT";
         public const string FunctionsExtensionVersion = "FUNCTIONS_EXTENSION_VERSION";
