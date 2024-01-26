@@ -39,7 +39,7 @@
   </ItemGroup>
   <ItemGroup>
     <!-- Dependencies needed for Storage Providers -->
-    <PackageReference Include="Azure.Monitor.OpenTelemetry.AspNetCore" Version="1.0.0" />
+    <PackageReference Include="Azure.Monitor.OpenTelemetry.AspNetCore" Version="1.1.0" />
     <PackageReference Include="Microsoft.Azure.Functions.DotNetIsolatedNativeHost" Version="1.0.4" />
     <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.39">
       <TreatAsUsed>true</TreatAsUsed>
@@ -59,7 +59,6 @@
     <PackageReference Include="Microsoft.Azure.WebJobs.Logging.ApplicationInsights" Version="3.0.38" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Scripting" Version="3.3.1" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="6.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="6.0.0" />
     <PackageReference Include="Mono.Posix.NETStandard" Version="1.0.0" />
     <PackageReference Include="NuGet.ProjectModel" Version="5.11.5" />
     <PackageReference Include="OpenTelemetry.Exporter.Console" Version="1.7.0" />
@@ -72,11 +71,6 @@
       <NoWarn>NU1701</NoWarn>
     </PackageReference>
     <PackageReference Include="System.Runtime.Loader" Version="4.3.0" />
-  </ItemGroup>
-  <ItemGroup>
-    <Reference Include="Azure.Monitor.OpenTelemetry.AspNetCore">
-      <HintPath>..\..\..\azure-sdk-for-net\artifacts\bin\Azure.Monitor.OpenTelemetry.AspNetCore\Debug\netstandard2.0\Azure.Monitor.OpenTelemetry.AspNetCore.dll</HintPath>
-    </Reference>
   </ItemGroup>
 
   <ItemGroup>
