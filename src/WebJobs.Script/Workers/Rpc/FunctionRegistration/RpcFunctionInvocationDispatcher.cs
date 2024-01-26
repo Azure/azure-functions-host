@@ -678,5 +678,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 }
             }
         }
+
+        public void PreShutdown()
+        {
+            _logger.LogDebug($"Preventing any new worker processes from starting during shutdown.");
+            _processStartCancellationToken.Cancel();
+        }
     }
 }

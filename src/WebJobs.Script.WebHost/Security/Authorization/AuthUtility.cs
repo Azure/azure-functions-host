@@ -58,5 +58,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization
 
             return false;
         }
+
+        public static bool PrincipalHasInvokeClaim(ClaimsPrincipal principal, AuthorizationLevel requiredLevel)
+        {
+            // If the required auth level is anonymous, the requirement is met
+            if (requiredLevel == AuthorizationLevel.Anonymous)
+            {
+                return true;
+            }
+
+            return principal.HasClaim(SecurityConstants.InvokeClaimType, "true");
+        }
     }
 }

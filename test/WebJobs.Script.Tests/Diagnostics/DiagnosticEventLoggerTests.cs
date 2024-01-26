@@ -1,8 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
-using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost;
@@ -86,50 +84,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             }
 
             Assert.Empty(repository.Events);
-        }
-
-        public class TestDiagnosticEventRepositoryFactory : IDiagnosticEventRepositoryFactory
-        {
-            private IDiagnosticEventRepository _repository;
-
-            public TestDiagnosticEventRepositoryFactory(IDiagnosticEventRepository repository)
-            {
-                _repository = repository;
-            }
-
-            public IDiagnosticEventRepository Create()
-            {
-                return _repository;
-            }
-        }
-
-        public class TestDiagnosticEventRepository : IDiagnosticEventRepository
-        {
-            private readonly List<DiagnosticEvent> _events;
-
-            public TestDiagnosticEventRepository()
-            {
-                _events = new List<DiagnosticEvent>();
-            }
-
-            public List<DiagnosticEvent> Events => _events;
-
-            public void WriteDiagnosticEvent(DateTime timestamp, string errorCode, LogLevel level, string message, string helpLink, Exception exception)
-            {
-                _events.Add(new DiagnosticEvent("hostid", timestamp)
-                {
-                    ErrorCode = errorCode,
-                    LogLevel = level,
-                    Message = message,
-                    HelpLink = helpLink,
-                    Details = exception?.Message
-                });
-            }
-
-            public void FlushLogs()
-            {
-                Events.Clear();
-            }
         }
     }
 }

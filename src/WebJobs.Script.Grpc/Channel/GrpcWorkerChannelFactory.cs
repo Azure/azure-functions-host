@@ -21,6 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private readonly ILoggerFactory _loggerFactory = null;
         private readonly IRpcWorkerProcessFactory _rpcWorkerProcessFactory = null;
         private readonly IScriptEventManager _eventManager = null;
+        private readonly IScriptHostManager _hostManager = null;
         private readonly IEnvironment _environment = null;
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions = null;
         private readonly ISharedMemoryManager _sharedMemoryManager = null;
@@ -28,11 +29,12 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions;
         private readonly IHttpProxyService _httpProxyService;
 
-        public GrpcWorkerChannelFactory(IScriptEventManager eventManager, IEnvironment environment, ILoggerFactory loggerFactory,
+        public GrpcWorkerChannelFactory(IScriptEventManager eventManager, IScriptHostManager hostManager, IEnvironment environment, ILoggerFactory loggerFactory,
             IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IRpcWorkerProcessFactory rpcWorkerProcessManager, ISharedMemoryManager sharedMemoryManager,
             IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions, IOptions<FunctionsHostingConfigOptions> hostingConfigOptions, IHttpProxyService httpProxyService)
         {
             _eventManager = eventManager;
+            _hostManager = hostManager;
             _loggerFactory = loggerFactory;
             _rpcWorkerProcessFactory = rpcWorkerProcessManager;
             _environment = environment;
@@ -55,17 +57,18 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             ILogger workerLogger = _loggerFactory.CreateLogger($"Worker.LanguageWorkerChannel.{runtime}.{workerId}");
             IWorkerProcess rpcWorkerProcess = _rpcWorkerProcessFactory.Create(workerId, runtime, scriptRootPath, languageWorkerConfig);
 
-            return CreateInternal(workerId, _eventManager, languageWorkerConfig, rpcWorkerProcess, workerLogger, metricsLogger, attemptCount,
+            return CreateInternal(workerId, _eventManager, _hostManager, languageWorkerConfig, rpcWorkerProcess, workerLogger, metricsLogger, attemptCount,
                 _environment, _applicationHostOptions, _sharedMemoryManager, _workerConcurrencyOptions, _hostingConfigOptions, _httpProxyService);
         }
 
-        internal virtual IRpcWorkerChannel CreateInternal(string workerId, IScriptEventManager eventManager, RpcWorkerConfig languageWorkerConfig, IWorkerProcess rpcWorkerProcess,
+        internal virtual IRpcWorkerChannel CreateInternal(string workerId, IScriptEventManager eventManager, IScriptHostManager hostManager, RpcWorkerConfig languageWorkerConfig, IWorkerProcess rpcWorkerProcess,
             ILogger workerLogger, IMetricsLogger metricsLogger, int attemptCount, IEnvironment environment, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions,
             ISharedMemoryManager sharedMemoryManager, IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions, IOptions<FunctionsHostingConfigOptions> hostingConfigOptions, IHttpProxyService httpProxyService)
         {
             return new GrpcWorkerChannel(
                          workerId,
                          eventManager,
+                         hostManager,
                          languageWorkerConfig,
                          rpcWorkerProcess,
                          workerLogger,

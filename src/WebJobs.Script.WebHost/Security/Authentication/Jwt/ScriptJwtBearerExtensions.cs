@@ -53,10 +53,16 @@ namespace Microsoft.Extensions.DependencyInjection
                     },
                     OnTokenValidated = c =>
                     {
-                        c.Principal.AddIdentity(new ClaimsIdentity(new Claim[]
+                        var claims = new List<Claim>
                         {
                             new Claim(SecurityConstants.AuthLevelClaimType, AuthorizationLevel.Admin.ToString())
-                        }));
+                        };
+                        if (!string.Equals(c.SecurityToken.Issuer, ScriptConstants.AppServiceCoreUri, StringComparison.OrdinalIgnoreCase))
+                        {
+                            claims.Add(new Claim(SecurityConstants.InvokeClaimType, "true"));
+                        }
+
+                        c.Principal.AddIdentity(new ClaimsIdentity(claims));
 
                         c.Success();
 

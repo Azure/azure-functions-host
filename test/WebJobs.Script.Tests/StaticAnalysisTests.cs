@@ -1,10 +1,11 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using System.Collections.Generic;
+using System;
 using System.Linq;
 using System.Reflection;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Controllers;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
@@ -39,6 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 "FunctionsController.GetFunctionStatus",
                 "FunctionsController.List",
                 "HostController.DrainStatus",
+                "HostController.ExtensionWebHookHandler",
                 "HostController.GetConfig",
                 "HostController.GetHostStatus",
                 "HostController.GetWorkerProcesses",
@@ -49,12 +51,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // looking for all GET actions that aren't marked with the ResourceContainsSecretsAttribute
             var methodInfos = typeof(HostController).Assembly.GetTypes().Where(p => typeof(Controller).IsAssignableFrom(p)).SelectMany(type => type.GetMethods())
-                .Where(method => method.IsPublic && method.IsDefined(typeof(HttpGetAttribute)) && !method.IsDefined(typeof(NonActionAttribute)) && Utility.GetHierarchicalAttributeOrNull<ResourceContainsSecretsAttribute>(method) == null).ToArray();
+                .Where(method => HasNonAttributedGetAction(method)).ToArray();
             var methodNames = methodInfos.Select(p => $"{p.DeclaringType.Name}.{p.Name}").OrderBy(p => p).ToArray();
 
             // if this check is failing, it means you've added new host GET API. If the API doesn't return secrets (i.e. is safe for an ARM Reader),
             // add it to the list above. If the API returns secrets, apply the ResourceContainsSecretsAttribute to the action method.
             Assert.Equal(safeReaderApis, methodNames);
+        }
+
+        private bool HasNonAttributedGetAction(MethodInfo method)
+        {
+            if (!method.IsPublic || method.IsDefined(typeof(NonActionAttribute)))
+            {
+                return false;
+            }
+
+            bool supportsGet = false;
+            foreach (var attribute in method.GetCustomAttributes())
+            {
+                if (attribute is IActionHttpMethodProvider httpMethodProvider &&
+                    httpMethodProvider.HttpMethods.Contains("GET", StringComparer.OrdinalIgnoreCase))
+                {
+                    supportsGet = true;
+                    break;
+                }
+            }
+
+            return supportsGet && Utility.GetHierarchicalAttributeOrNull<ResourceContainsSecretsAttribute>(method) == null;
         }
     }
 }

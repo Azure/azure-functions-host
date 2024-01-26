@@ -29,6 +29,7 @@ using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Yarp.ReverseProxy.Forwarder;
@@ -42,6 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
     internal partial class GrpcWorkerChannel : IRpcWorkerChannel, IDisposable
     {
         private readonly IScriptEventManager _eventManager;
+        private readonly IScriptHostManager _scriptHostManager;
         private readonly RpcWorkerConfig _workerConfig;
         private readonly string _runtime;
         private readonly IEnvironment _environment;
@@ -81,16 +83,18 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private TaskCompletionSource<List<RawFunctionMetadata>> _functionsIndexingTask = new TaskCompletionSource<List<RawFunctionMetadata>>(TaskCreationOptions.RunContinuationsAsynchronously);
         private TimeSpan _functionLoadTimeout = TimeSpan.FromMinutes(1);
         private bool _isSharedMemoryDataTransferEnabled;
-        private bool? _cancelCapabilityEnabled;
+        private bool _isHandlesInvocationCancelMessageCapabilityEnabled;
         private bool _isWorkerApplicationInsightsLoggingEnabled;
         private IHttpProxyService _httpProxyService;
         private Uri _httpProxyEndpoint;
         private System.Timers.Timer _timer;
         private bool _functionMetadataRequestSent = false;
+        private IOptions<ScriptJobHostOptions> _scriptHostOptions;
 
         internal GrpcWorkerChannel(
             string workerId,
             IScriptEventManager eventManager,
+            IScriptHostManager hostManager,
             RpcWorkerConfig workerConfig,
             IWorkerProcess rpcWorkerProcess,
             ILogger logger,
@@ -105,6 +109,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         {
             _workerId = workerId;
             _eventManager = eventManager;
+            _scriptHostManager = hostManager;
             _workerConfig = workerConfig;
             _runtime = workerConfig.Description.Language;
             _rpcWorkerProcess = rpcWorkerProcess;
@@ -140,6 +145,10 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             // Temporary switch to allow fully testing new algorithm in production
             _messageDispatcherFactory = GetProcessorFactory();
+
+            _scriptHostManager.ActiveHostChanged += HandleActiveHostChange;
+
+            LoadScriptJobHostOptions(_scriptHostManager as IServiceProvider);
         }
 
         private bool IsHttpProxyingWorker => _httpProxyEndpoint is not null;
@@ -151,6 +160,30 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         public IWorkerProcess WorkerProcess => _rpcWorkerProcess;
 
         public RpcWorkerConfig WorkerConfig => _workerConfig;
+
+        public IOptions<ScriptJobHostOptions> JobHostOptions => _scriptHostOptions;
+
+        private void HandleActiveHostChange(object sender, ActiveHostChangedEventArgs e)
+        {
+            if (e.NewHost is null)
+            {
+                return;
+            }
+
+            LoadScriptJobHostOptions(e.NewHost.Services);
+        }
+
+        private void LoadScriptJobHostOptions(IServiceProvider provider)
+        {
+            if (provider?.GetService(typeof(IOptions<ScriptJobHostOptions>)) is IOptions<ScriptJobHostOptions> scriptHostOptions)
+            {
+                _scriptHostOptions = scriptHostOptions;
+            }
+            else
+            {
+                _workerChannelLogger.LogDebug("Unable to resolve ScriptJobHostOptions");
+            }
+        }
 
         // Temporary switch that allows us to move between the "old" ThreadPool-only processor
         // and a "new" Channel processor (for proper ordering of messages).
@@ -511,7 +544,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             UpdateCapabilities(capabilities, strategy);
 
             _isSharedMemoryDataTransferEnabled = IsSharedMemoryDataTransferEnabled();
-            _cancelCapabilityEnabled ??= !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.HandlesInvocationCancelMessage));
+            _isHandlesInvocationCancelMessageCapabilityEnabled = !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.HandlesInvocationCancelMessage));
 
             if (!_isSharedMemoryDataTransferEnabled)
             {
@@ -816,12 +849,21 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     return;
                 }
 
-                // do not send an invocation request if cancellation has been requested
                 if (context.CancellationToken.IsCancellationRequested)
                 {
-                    _workerChannelLogger.LogWarning("Cancellation has been requested. The invocation request with id '{invocationId}' is canceled and will not be sent to the worker.", invocationId);
-                    context.ResultSource.TrySetCanceled();
-                    return;
+                    _workerChannelLogger.LogDebug("Cancellation was requested prior to the invocation request ('{invocationId}') being sent to the worker.", invocationId);
+
+                    // If the worker does not support handling InvocationCancel grpc messages, or if cancellation is supported and the customer opts-out
+                    // of sending cancelled invocations to the worker, we will cancel the result source and not send the invocation to the worker.
+                    if (!_isHandlesInvocationCancelMessageCapabilityEnabled || !JobHostOptions.Value.SendCanceledInvocationsToWorker)
+                    {
+                        _workerChannelLogger.LogInformation("Cancelling invocation '{invocationId}' due to cancellation token being signaled. "
+                            + "This invocation was not sent to the worker. Read more about this here: https://aka.ms/azure-functions-cancellations", invocationId);
+
+                        // This will result in an invocation failure with a "FunctionInvocationCanceled" exception.
+                        context.ResultSource.TrySetCanceled();
+                        return;
+                    }
                 }
 
                 var invocationRequest = await context.ToRpcInvocationRequest(_workerChannelLogger, _workerCapabilities, _isSharedMemoryDataTransferEnabled, _sharedMemoryManager);
@@ -834,9 +876,10 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     InvocationRequest = invocationRequest
                 });
 
-                if (_cancelCapabilityEnabled != null && _cancelCapabilityEnabled.Value)
+                if (_isHandlesInvocationCancelMessageCapabilityEnabled)
                 {
-                    context.CancellationToken.Register(() => SendInvocationCancel(invocationRequest.InvocationId));
+                    var cancellationCtr = context.CancellationToken.Register(() => SendInvocationCancel(invocationRequest.InvocationId));
+                    context.Properties.Add(ScriptConstants.CancellationTokenRegistration, cancellationCtr);
                 }
 
                 if (IsHttpProxyingWorker && context.FunctionMetadata.IsHttpTriggerFunction())
@@ -1038,6 +1081,13 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             if (_executingInvocations.TryRemove(invokeResponse.InvocationId, out var invocation))
             {
                 var context = invocation.Context;
+
+                if (context.Properties.TryGetValue(ScriptConstants.CancellationTokenRegistration, out CancellationTokenRegistration ctr))
+                {
+                    await ctr.DisposeAsync();
+                    context.Properties.Remove(ScriptConstants.CancellationTokenRegistration);
+                }
+
                 if (invokeResponse.Result.IsInvocationSuccess(context.ResultSource, capabilityEnabled))
                 {
                     _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvokeSucceeded, Id));
@@ -1355,6 +1405,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     _startLatencyMetric?.Dispose();
                     _workerInitTask?.TrySetCanceled();
                     _timer?.Dispose();
+                    _scriptHostManager.ActiveHostChanged -= HandleActiveHostChange;
 
                     // unlink function inputs
                     if (_inputLinks is not null)
