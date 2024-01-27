@@ -331,7 +331,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions
         }
 
         public static void LogHostInitializationSettings(this ILogger logger, string originalFunctionWorkerRuntime, string functionWorkerRuntime,
-            string originalFunctionWorkerRuntimeVersion, string functionsWorkerRuntimeVersion, string functionExtensionVersion, string siteExtensionDirectory,
+            string originalFunctionWorkerRuntimeVersion, string functionsWorkerRuntimeVersion, string functionExtensionVersion, string currentDirectory,
             bool inStandbyMode, bool hasBeenSpecialized, bool usePlaceholderDotNetIsolated, string websiteSku, string featureFlags,
             IDictionary<string, string> hostingConfig)
         {
@@ -344,7 +344,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions
                 OriginalFunctionWorkerRuntimeVersion = originalFunctionWorkerRuntimeVersion,
                 FunctionsWorkerRuntimeVersion = functionsWorkerRuntimeVersion,
                 FunctionsExtensionVesion = functionExtensionVersion,
-                SiteExtensionDirectory = siteExtensionDirectory,
+                HostDirectory = currentDirectory,
                 InStandbyMode = inStandbyMode,
                 HasBeenSpecialized = hasBeenSpecialized,
                 UsePlaceholderDotNetIsolated = usePlaceholderDotNetIsolated,
