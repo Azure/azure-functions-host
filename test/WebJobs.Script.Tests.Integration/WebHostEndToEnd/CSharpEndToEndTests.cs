@@ -351,7 +351,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.True(JObject.DeepEquals(req, res), res.ToString());
         }
 
-        [Fact]
+        [Fact(Skip = "V2 is out of support")]
         public async Task HttpTrigger_Model_Binding_V2CompatMode()
         {
             // We need a custom host to set this to v2 compat mode.
