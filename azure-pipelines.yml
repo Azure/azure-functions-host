@@ -124,6 +124,40 @@ jobs:
       projects: |
         **\ExtensionsMetadataGenerator.csproj
         **\WebJobs.Script.Abstractions.csproj
+  - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@2
+    displayName: 'ESRP CodeSigning: Strong Name and Authenticode'
+    inputs:
+      ConnectedServiceName: 'ESRP Service'
+      FolderPath: 'src\WebJobs.Script.Abstractions\bin\Release'
+      Pattern: Microsoft.Azure.WebJobs.Script.Abstractions*.dll
+      signConfigType: inlineSignParams
+      inlineOperation: |
+        [
+          {
+            "KeyCode": "CP-230012",
+            "OperationCode": "SigntoolSign",
+            "Parameters": {
+              "OpusName": "Microsoft",
+              "OpusInfo": "http://www.microsoft.com",
+              "FileDigest": "/fd \"SHA256\"",
+              "PageHash": "/NPH",
+              "TimeStamp": "/tr \"http://rfc3161.gtm.corp.microsoft.com/TSS/HttpTspServer\" /td sha256"
+            },
+            "ToolName": "sign",
+            "ToolVersion": "1.0"
+          },
+          {
+            "KeyCode": "CP-230012",
+            "OperationCode": "SigntoolVerify",
+            "Parameters": {},
+            "ToolName": "sign",
+            "ToolVersion": "1.0"
+          }
+        ]
+  - task: DeleteFiles@1
+    displayName: 'Delete CodeSignSummary files'
+    inputs:
+      contents: '**\CodeSignSummary-*.md'
   - task: DotNetCoreCLI@2
     displayName: 'Pack WebJobs.Script.Abstractions package'
     inputs:
@@ -132,6 +166,79 @@ jobs:
       arguments: '--no-build -c Release -o packages'
       projects: |
         **\WebJobs.Script.Abstractions.csproj
+  - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@2
+    displayName: 'ESRP CodeSigning: Nupkg'
+    inputs:
+      ConnectedServiceName: 'ESRP Service'
+      FolderPath: 'packages'
+      Pattern: 'Microsoft.Azure.WebJobs.Script.Abstractions*.nupkg'
+      signConfigType: inlineSignParams
+      inlineOperation: |
+        [
+            {
+              "KeyCode": "CP-401405",
+              "OperationCode": "NuGetSign",
+              "Parameters": {},
+              "ToolName": "sign",
+              "ToolVersion": "1.0"
+            },
+            {
+              "KeyCode": "CP-401405",
+              "OperationCode": "NuGetVerify",
+              "Parameters": {},
+              "ToolName": "sign",
+              "ToolVersion": "1.0"
+            }
+        ]
+  - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@2
+    displayName: 'ESRP CodeSigning: Strong Name and Authenticode'
+    inputs:
+      ConnectedServiceName: 'ESRP Service'
+      FolderPath: 'tools\ExtensionsMetadataGenerator\src\ExtensionsMetadataGenerator\bin\Release'
+      Pattern: Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator*.dll
+      signConfigType: inlineSignParams
+      inlineOperation: |
+        [
+          {
+              "KeyCode" : "CP-233863-SN",
+              "OperationCode" : "StrongNameSign",
+              "Parameters" : {},
+              "ToolName" : "sign",
+              "ToolVersion" : "1.0"
+          },
+          {
+              "KeyCode" : "CP-233863-SN",
+              "OperationCode" : "StrongNameVerify",
+              "Parameters" : {},
+              "ToolName" : "sign",
+              "ToolVersion" : "1.0"
+          },
+          {
+            "KeyCode": "CP-230012",
+            "OperationCode": "SigntoolSign",
+            "Parameters": {
+              "OpusName": "Microsoft",
+              "OpusInfo": "http://www.microsoft.com",
+              "FileDigest": "/fd \"SHA256\"",
+              "PageHash": "/NPH",
+              "TimeStamp": "/tr \"http://rfc3161.gtm.corp.microsoft.com/TSS/HttpTspServer\" /td sha256"
+            },
+            "ToolName": "sign",
+            "ToolVersion": "1.0"
+          },
+          {
+            "KeyCode": "CP-230012",
+            "OperationCode": "SigntoolVerify",
+            "Parameters": {},
+            "ToolName": "sign",
+            "ToolVersion": "1.0"
+          }
+        ]
+    condition: and(succeeded(), startsWith(variables['SignArtifacts'], 'true'))
+  - task: DeleteFiles@1
+    displayName: 'Delete CodeSignSummary files'
+    inputs:
+      contents: '**\CodeSignSummary-*.md'
   - task: DotNetCoreCLI@2
     displayName: 'Pack ExtensionsMetadataGenerator package'
     inputs:
@@ -141,6 +248,40 @@ jobs:
       projects: |
         **\ExtensionsMetadataGenerator.csproj
         steps:
+  - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@2
+    displayName: 'ESRP CodeSigning: Nupkg'
+    inputs:
+      ConnectedServiceName: 'ESRP Service'
+      FolderPath: 'packages'
+      Pattern: 'Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator*.nupkg'
+      signConfigType: inlineSignParams
+      inlineOperation: |
+        [
+            {
+              "KeyCode": "CP-401405",
+              "OperationCode": "NuGetSign",
+              "Parameters": {},
+              "ToolName": "sign",
+              "ToolVersion": "1.0"
+            },
+            {
+              "KeyCode": "CP-401405",
+              "OperationCode": "NuGetVerify",
+              "Parameters": {},
+              "ToolName": "sign",
+              "ToolVersion": "1.0"
+            }
+        ]
+    condition: and(succeeded(), startsWith(variables['SignArtifacts'], 'true'))
+  - task: DeleteFiles@1
+    displayName: 'Delete CodeSignSummary files'
+    inputs:
+      contents: '**\CodeSignSummary-*.md'
+  - task: ManifestGeneratorTask@0
+    displayName: 'SBOM Generation Task - SiteExtension'
+    inputs:
+      BuildDropPath: '$(Build.ArtifactStagingDirectory)\SiteExtension'
+      Verbosity: 'Information'
   - publish: $(Build.ArtifactStagingDirectory)\SiteExtension
     artifact: SiteExtension
   - pwsh: |
@@ -150,14 +291,245 @@ jobs:
         Write-Host "##vso[task.setvariable variable=isPatchVersion]true"
       }
     displayName: 'Set isPatchVersion'
+  - task: ManifestGeneratorTask@0
+    displayName: 'SBOM Generation Task - ZippedPatchSiteExtension'
+    inputs:
+      BuildDropPath: '$(Build.ArtifactStagingDirectory)\ZippedPatchSiteExtension'
+      Verbosity: 'Information'
+    condition: and(succeeded(), eq(variables['isPatchVersion'], 'true'))
   - publish: $(Build.ArtifactStagingDirectory)\ZippedPatchSiteExtension
     artifact: PatchedSiteExtension
-    condition: and(succeeded(), eq(variables['isPatchVersion'], 'true'))  
+    condition: and(succeeded(), eq(variables['isPatchVersion'], 'true'))
+  - task: ManifestGeneratorTask@0
+    displayName: 'SBOM Generation Task - PrivateSiteExtension'
+    inputs:
+      BuildDropPath: '$(Build.ArtifactStagingDirectory)\PrivateSiteExtension'
+      Verbosity: 'Information'
   - publish: $(Build.ArtifactStagingDirectory)\PrivateSiteExtension
     artifact: PrivateSiteExtension
+  - task: ManifestGeneratorTask@0
+    displayName: 'SBOM Generation Task - Symbols'
+    inputs:
+      BuildDropPath: '$(Build.ArtifactStagingDirectory)\Symbols'
+      Verbosity: 'Information'
   - publish: $(Build.ArtifactStagingDirectory)\Symbols
     artifact: Symbols
+  - task: ManifestGeneratorTask@0
+    displayName: 'SBOM Generation Task - NugetPackages'
+    inputs:
+      BuildDropPath: '$(Build.Repository.LocalPath)\packages'
+      Verbosity: 'Information'
   - publish: $(Build.Repository.LocalPath)\packages
     artifact: NugetPackages
+  - task: ManifestGeneratorTask@0
+    displayName: 'SBOM Generation Task - Performance'
+    inputs:
+      BuildDropPath: '$(Build.Repository.LocalPath)\WebJobs.Script.Performance.App'
+      Verbosity: 'Information'
   - publish: $(Build.Repository.LocalPath)\WebJobs.Script.Performance.App
     artifact: Performance
+
+- job: RunUnitTests
+  pool:
+    name: '1ES-Hosted-AzFunc'
+    demands:
+      - ImageOverride -equals MMS2019TLS
+  steps:
+  - template: build/install-dotnet.yml
+  - task: DotNetCoreCLI@2
+    displayName: 'Unit Tests'
+    inputs:
+      command: 'test'
+      testRunTitle: 'Unit Tests'
+      arguments: '-v n'
+      projects: |
+        **\ExtensionsMetadataGeneratorTests.csproj
+        **\WebJobs.Script.Scaling.Tests.csproj
+        **\WebJobs.Script.Tests.csproj
+- job: RunIntegrationTests
+  pool:
+    name: '1ES-Hosted-AzFunc'
+    demands:
+      - ImageOverride -equals MMS2019TLS
+  steps:
+  - template: build/install-dotnet.yml
+  - task: UseNode@1
+    inputs:
+      version: '14.x'
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: '3.7.x'
+      addToPath: true
+  - task: PowerShell@2
+    displayName: 'Install Az.Storage Powershell module'
+    inputs:
+      targetType: 'inline'
+      script: 'Install-Module -Name Az.Storage -RequiredVersion 1.11.0 -Scope CurrentUser -Force -AllowClobber'
+  - task: Npm@1
+    displayName: 'npm ci'
+    inputs:
+      command: ci
+      workingDir: sample/CustomHandlerRetry
+  - task: AzureKeyVault@1
+    inputs:
+      # Note: This is actually a Service Connection in DevOps, not an Azure subscription name
+      azureSubscription: 'Azure-Functions-Host-CI'
+      keyVaultName: 'azure-functions-host-ci'
+      secretsFilter: '*'
+  - task: PowerShell@2
+    displayName: 'Checkout secrets'
+    inputs:
+      filePath: '$(Build.Repository.LocalPath)\build\checkout-secrets.ps1'
+      arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'''
+  - task: AzureKeyVault@1
+    inputs:
+      # Note: This is actually a Service Connection in DevOps, not an Azure subscription name
+      azureSubscription: 'Azure-Functions-Host-CI'
+      keyVaultName: azure-functions-host-$(LeaseBlob)
+      secretsFilter: '*'
+  - task: PowerShell@2
+    displayName: 'Set environment variables'
+    inputs:
+      targetType: 'inline'
+      script: |
+        Write-Host "##vso[task.setvariable variable=AzureWebJobsStorage]$env:AzureWebJobsStorageSecretMap"
+        Write-Host "##vso[task.setvariable variable=AzureWebJobsSeconaryStorage]$env:AzureWebJobsSecondaryStorageSecretMap"
+        Write-Host "##vso[task.setvariable variable=ConnectionStrings__CosmosDB]$env:CosmosDbSecretMap"
+        Write-Host "##vso[task.setvariable variable=AzureWebJobsEventHubSender]$env:AzureWebJobsEventHubSenderSecretMap"
+        Write-Host "##vso[task.setvariable variable=AzureWebJobsEventHubReceiver]$env:AzureWebJobsEventHubReceiverSecretMap"
+    env:
+      AzureWebJobsStorageSecretMap: $(Storage)
+      AzureWebJobsSecondaryStorageSecretMap: $(SecondaryStorage)
+      CosmosDbSecretMap: $(CosmosDb)
+      AzureWebJobsEventHubSenderSecretMap: $(EventHub)
+      AzureWebJobsEventHubReceiverSecretMap: $(EventHub)
+  - task: JavaToolInstaller@0
+    inputs:
+      versionSpec: '11'
+      jdkArchitectureOption: 'x64'
+      jdkSourceOption: 'PreInstalled'
+  - task: DotNetCoreCLI@2
+    displayName: "C# end to end tests"
+    condition: succeededOrFailed()
+    inputs:
+      command: 'test'
+      testRunTitle: "C# end to end tests"
+      arguments: '--filter "Group=CSharpEndToEndTests"'
+      projects: |
+        **\WebJobs.Script.Tests.Integration.csproj
+  - task: DotNetCoreCLI@2
+    displayName: "Node end to end tests"
+    condition: succeededOrFailed()
+    inputs:
+      command: 'test'
+      testRunTitle: "Node end to end tests"
+      arguments: '--filter "Group=NodeEndToEndTests" --no-build'
+      projects: |
+        **\WebJobs.Script.Tests.Integration.csproj
+  - task: DotNetCoreCLI@2
+    displayName: "Direct load end to end tests"
+    condition: succeededOrFailed()
+    inputs:
+      command: 'test'
+      testRunTitle: "Direct load end to end tests"
+      arguments: '--filter "Group=DirectLoadEndToEndTests" --no-build'
+      projects: |
+        **\WebJobs.Script.Tests.Integration.csproj
+  - task: DotNetCoreCLI@2
+    displayName: "F# end to end tests"
+    condition: succeededOrFailed()
+    inputs:
+      command: 'test'
+      testRunTitle: "F# end to end tests"
+      arguments: '--filter "Group=FSharpEndToEndTests" --no-build'
+      projects: |
+        **\WebJobs.Script.Tests.Integration.csproj
+  - task: DotNetCoreCLI@2
+    displayName: "Language worker end to end tests"
+    condition: succeededOrFailed()
+    inputs:
+      command: 'test'
+      testRunTitle: "Language worker end to end tests"
+      arguments: '--filter "Group=LanguageWorkerSelectionEndToEndTests" --no-build'
+      projects: |
+        **\WebJobs.Script.Tests.Integration.csproj
+  - task: DotNetCoreCLI@2
+    displayName: "Node script host end to end tests"
+    condition: succeededOrFailed()
+    inputs:
+      command: 'test'
+      testRunTitle: "Node script host end to end tests"
+      arguments: '--filter "Group=NodeScriptHostTests" --no-build'
+      projects: |
+        **\WebJobs.Script.Tests.Integration.csproj
+  - task: DotNetCoreCLI@2
+    displayName: "Raw assembly end to end tests"
+    condition: succeededOrFailed()
+    inputs:
+      command: 'test'
+      testRunTitle: "Raw assembly end to end tests"
+      arguments: '--filter "Group=RawAssemblyEndToEndTests" --no-build'
+      projects: |
+        **\WebJobs.Script.Tests.Integration.csproj
+  # Disabled to unblock in 202401. Will fix shortly.
+  # - task: DotNetCoreCLI@2
+  #   displayName: "Samples end to end tests"
+  #   condition: succeededOrFailed()
+  #   inputs:
+  #     command: 'test'
+  #     testRunTitle: "Samples end to end tests"
+  #     arguments: '--filter "Group=SamplesEndToEndTests" --no-build'
+  #     projects: |
+  #       **\WebJobs.Script.Tests.Integration.csproj
+  - task: DotNetCoreCLI@2
+    displayName: "Drain mode end to end tests"
+    condition: succeededOrFailed()
+    inputs:
+      command: 'test'
+      testRunTitle: "Drain mode end to end tests"
+      arguments: '--filter "Group=DrainModeEndToEndTests" --no-build'
+      projects: |
+        **\WebJobs.Script.Tests.Integration.csproj
+  - task: DotNetCoreCLI@2
+    displayName: "Standby mode end to end tests Windows"
+    condition: succeededOrFailed()
+    inputs:
+      command: 'test'
+      testRunTitle: "Standby mode end to end tests Windows"
+      arguments: '--filter "Group=StandbyModeEndToEndTests_Windows" --no-build'
+      projects: |
+        **\WebJobs.Script.Tests.Integration.csproj
+  # Disabled to unblock in 202401. Will fix shortly.
+  # - task: DotNetCoreCLI@2
+  #   displayName: "Standby mode end to end tests Linux"
+  #   condition: succeededOrFailed()
+  #   inputs:
+  #     command: 'test'
+  #     testRunTitle: "Standby mode end to end tests Linux"
+  #     arguments: '--filter "Group=StandbyModeEndToEndTests_Linux" --no-build'
+  #     projects: |
+  #       **\WebJobs.Script.Tests.Integration.csproj
+  - task: DotNetCoreCLI@2
+    displayName: "Linux container end to end tests Windows"
+    condition: succeededOrFailed()
+    inputs:
+      command: 'test'
+      testRunTitle: "Linux container end to end tests Windows"
+      arguments: '--filter "Group=ContainerInstanceTests" --no-build'
+      projects: |
+        **\WebJobs.Script.Tests.Integration.csproj
+  - task: DotNetCoreCLI@2
+    displayName: "Release verification tests"
+    condition: eq(variables['isReleaseBranch'], 'True')
+    inputs:
+      command: 'test'
+      testRunTitle: "Release verification tests"
+      arguments: '--filter "Group=ReleaseTests" --no-build'
+      projects: |
+        **\WebJobs.Script.Tests.Integration.csproj
+  - task: PowerShell@2
+    condition: always()
+    displayName: 'Checkin secrets'
+    inputs:
+      filePath: '$(Build.Repository.LocalPath)\build\checkin-secrets.ps1'
+      arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'' -leaseBlob $(LeaseBlob) -leaseToken $(LeaseToken)'
