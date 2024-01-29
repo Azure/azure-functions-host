@@ -16,6 +16,14 @@
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <!--
+      When transitioning to common artifacts there may be leftovers in the old locations.
+      Exclude them so they do not cause build issues.
+    -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);bin/**;obj/**</DefaultItemExcludes>
+  </PropertyGroup>
+
   <Import Project="$(EngPath)/targets/Release.props" />
 
 </Project>

@@ -12,9 +12,14 @@ function Get-DirectoryAbove([string] $fileName, [string] $startPath = $null) {
   }
 
   while ($true) {
-    $path = Split-Path -Parent $path
-    if (Test-Path "$path\$name") {
-      return $path
+    if (Test-Path "$startPath\$fileName") {
+      return $startPath
+    }
+
+    $startPath = Split-Path -Parent $startPath
+
+    if (-not $startPath) {
+      throw "Could not find $fileName in any parent directory"
     }
   }
 }

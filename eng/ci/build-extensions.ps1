@@ -12,8 +12,8 @@ function GetFileAbove([string] $name) {
   }
 }
 
-Import-Module "$PSScriptRoot\Helpers" -Force
-$rootDir = Get-DirectoryAbove "global.json" # global.json will mark our repo root
+Import-Module "$PSScriptRoot\Helpers.psm1" -Force
+$rootDir = Get-DirectoryAbove "global.json" $PSScriptRoot # global.json will mark our repo root
 $outDir = "$rootDir\out"
 $publishDir = "$outDir\pub\WebJobs.Script.WebHost"
 
@@ -55,7 +55,7 @@ function BuildRuntime([string] $targetRid, [bool] $isSelfContained) {
         throw "Project path '$projectPath' does not exist."
     }
 
-    $cmd = "publish", $projectPath , "-r", "$targetRid", "--self-contained", "$isSelfContained", "-v", "m", "/p:IsPackable=false", "-c", "Release"
+    $cmd = "publish", $projectPath , "-r", "$targetRid", "--self-contained", "$isSelfContained", "-v", "m", "-p:IsPackable=false", "-c", "Release"
 
     Write-Host "======================================"
     Write-Host "Building $targetRid"
@@ -74,19 +74,23 @@ function BuildRuntime([string] $targetRid, [bool] $isSelfContained) {
 
     Write-Host ""
     $symbols = Get-ChildItem -Path $publishTarget -Filter *.pdb
-    Write-Host "Zipping symbols:"
-    Write-Host $symbols
-    Compress-Archive -Path $symbols -DestinationPath "$publishDir\Symbols\Functions.Symbols.$extensionVersion.$targetRid.zip"
-    $symboles | Remove-Item | Out-Null
+    Write-Host "Zipping symbols: $($symbols.Count) symbols found"
+
+    $symbolsPath = "$publishDir\Symbols"
+    if (!(Test-Path -PathType Container $symbolsPath))
+    {
+        New-Item -ItemType Directory -Path $symbolsPath | Out-Null
+    }
+
+    Compress-Archive -Path $symbols -DestinationPath "$symbolsPath\Functions.Symbols.$extensionVersion.$targetRid.zip" | Out-Null
+    $symbols | Remove-Item | Out-Null
 
     Write-Host ""
-    CleanOutput "$publishTarget"
+    CleanOutput $publishTarget
     Write-Host ""
     Write-Host "Done building $targetRid. Elapsed: $($stopwatch.Elapsed)"
     Write-Host "======================================"
     Write-Host ""
-
-    New-Item -Itemtype directory -path $symbols -Force > $null
 }
 
 function GetFolderSizeInMb([string] $rootPath) {
@@ -212,6 +216,11 @@ function CreateSiteExtensions() {
     $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
     $siteExtensionPath = "$publishDir\temp_extension"
 
+    if (Test-Path $siteExtensionPath) {
+        Write-Host "  Existing site extension path found. Deleting."
+        Remove-Item $siteExtensionPath -Recurse -Force | Out-Null
+    }
+
     # The official site extension needs to be nested inside a folder with its version.
     # Not using the suffix (eg: '-ci') here as it may not work correctly in a private stamp
     $officialSiteExtensionPath = "$siteExtensionPath\$extensionVersion"
@@ -290,14 +299,12 @@ function WriteHashesFile([string] $directoryPath) {
   Remove-Item "$directoryPath/../temp_hashes" -Recurse -Force > $null
 }
 
-Write-Host
-dotnet --info
-Write-Host
 Write-Host "Output directory: $publishDir"
 if (Test-Path $publishDir) {
     Write-Host "  Existing build output found. Deleting."
     Remove-Item $publishDir -Recurse -Force
 }
+
 Write-Host "Extensions version: $extensionVersion"
 Write-Host ""
 
