@@ -10,12 +10,14 @@ pr:
     include:
     - dev
     - release/4.*
+    - feature/oop-host   
 
 trigger:
   branches:
     include:
     - dev
     - release/4.*
+    - feature/oop-host 
 
 jobs:
 - job: InitializePipeline
