@@ -125,7 +125,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             return proxyMetadata.ToImmutableArray();
         }
 
-        [Fact]
+        [Fact(Skip = "Proxy - https://github.com/Azure/azure-functions-host/issues/9803#issuecomment-1907098537")]
         public async Task ValidateProxyFunctionDescriptor()
         {
             var proxy = _proxyClient as ProxyClientExecutor;
@@ -142,7 +142,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.NotNull(proxyInvoker);
         }
 
-        [Fact]
+        [Fact(Skip = "Proxy - https://github.com/Azure/azure-functions-host/issues/9803#issuecomment-1907098537")]
         public async Task ValidateProxyFunctionInvoker()
         {
             var proxyFunctionDescriptor = new ProxyFunctionDescriptorProvider(_scriptHost, _scriptHost.ScriptOptions, _host.Services.GetService<ICollection<IScriptBindingProvider>>(), NullLoggerFactory.Instance);
