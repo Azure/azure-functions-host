@@ -1,11 +1,6 @@
 variables:
   buildNumber: $[ counter('constant', 13000) ]
   isReleaseBranch: $[contains(variables['Build.SourceBranch'], 'release/')]
-  ${{ if contains(variables['Build.SourceBranch'], 'release/inproc6/') }}:
-    minorVersionPrefix: "6"
-  ${{ else }}:
-    minorVersionPrefix: "10"
-  ${{ endif }}
   DOTNET_NOLOGO: 1
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
   DOTNET_CLI_TELEMETRY_OPTOUT: 1
@@ -48,6 +43,9 @@ jobs:
     suffix: $[variables.suffixTemp] # this resolves to an empty string if it is missing
     packSuffixSwitch: $[variables.packSuffixSwitchTemp]
     emgSuffixSwitch: $[variables.emgSuffixSwitchTemp]
+    ${{ if contains(variables['Build.SourceBranch'], 'release/inproc6/') }}:
+        minorVersionPrefix: "6"
+    minorVersionPrefix: $[variables.minorVersionPrefixTemp]
   pool:
     name: '1ES-Hosted-AzFunc'
     demands:
