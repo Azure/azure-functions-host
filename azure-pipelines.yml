@@ -3,6 +3,9 @@ variables:
   isReleaseBranch: $[contains(variables['Build.SourceBranch'], 'release/')]
   ${{ if contains(variables['Build.SourceBranch'], 'release/inproc6/') }}:
     minorVersionPrefix: "6"
+  {{ else }}:
+    minorVersionPrefix: "10"
+  {{ endif }}
   DOTNET_NOLOGO: 1
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
   DOTNET_CLI_TELEMETRY_OPTOUT: 1
