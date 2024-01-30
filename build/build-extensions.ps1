@@ -246,7 +246,7 @@ function CreateSiteExtensions() {
         ZipContent $siteExtensionPath "$zipOutput\Functions.$extensionVersion$runtimeSuffix.zip"
     } else {
         ZipContent $siteExtensionPath "$zipOutput\FunctionsInProc.$extensionVersion$runtimeSuffix.zip"
-	}
+    }
 
     # Create directory for content even if there is no patch build. This makes artifact uploading easier.
     $patchedContentDirectory = "$buildOutput\PatchedSiteExtension"
