@@ -45,6 +45,7 @@ jobs:
     suffix: $[variables.suffixTemp] # this resolves to an empty string if it is missing
     packSuffixSwitch: $[variables.packSuffixSwitchTemp]
     emgSuffixSwitch: $[variables.emgSuffixSwitchTemp]
+    minorVersionPrefix: $[variables.minorVersionPrefix]
   pool:
     name: '1ES-Hosted-AzFunc'
     demands:
