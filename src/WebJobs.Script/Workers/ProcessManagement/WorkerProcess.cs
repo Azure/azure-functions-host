@@ -325,7 +325,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 }
 
                 string filePath = p.StartInfo.FileName;
-                _workerProcessLogger.Log( $"Searching for FileName ",filePath);
+                _workerProcessLogger.LogDebug( $"Searching for FileName ", filePath);
                 UnixFileInfo fileInfo = new UnixFileInfo(filePath);
                 if (!fileInfo.FileAccessPermissions.HasFlag(FileAccessPermissions.UserExecute))
                 {
