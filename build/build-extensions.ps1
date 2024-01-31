@@ -1,7 +1,7 @@
 param (
   [string]$buildNumber = "0",  
   [string]$suffix = "",
-  [string]$minorVersionPrefix = "",
+  [string]$minorVersionPrefix = "10",
   [string]$hashesForHardlinksFile = "hashesForHardlinks.txt"
 )
 
@@ -242,10 +242,10 @@ function CreateSiteExtensions() {
     
     $zipOutput = "$buildOutput\SiteExtension"
     New-Item -Itemtype directory -path $zipOutput -Force > $null
-    if ($minorVersionPrefix -eq "6") {
-        ZipContent $siteExtensionPath "$zipOutput\FunctionsInProc.$extensionVersion$runtimeSuffix.zip"
-    } else {
+    if ($minorVersionPrefix -eq "10") {
         ZipContent $siteExtensionPath "$zipOutput\Functions.$extensionVersion$runtimeSuffix.zip"
+    } else {
+        ZipContent $siteExtensionPath "$zipOutput\FunctionsInProc.$extensionVersion$runtimeSuffix.zip"
     }
 
     # Create directory for content even if there is no patch build. This makes artifact uploading easier.

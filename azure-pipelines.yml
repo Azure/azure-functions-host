@@ -43,9 +43,6 @@ jobs:
     suffix: $[variables.suffixTemp] # this resolves to an empty string if it is missing
     packSuffixSwitch: $[variables.packSuffixSwitchTemp]
     emgSuffixSwitch: $[variables.emgSuffixSwitchTemp]
-    ${{ if contains(variables['Build.SourceBranch'], 'release/inproc6/') }}:
-        minorVersionPrefixTemp: "6"
-    minorVersionPrefix: $[variables.minorVersionPrefixTemp]
   pool:
     name: '1ES-Hosted-AzFunc'
     demands:
