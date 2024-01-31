@@ -8,12 +8,14 @@ using System.IO.Abstractions;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.Metrics;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
+using Moq;
 using Newtonsoft.Json;
 using Xunit;
 
@@ -28,6 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
         private TestOptionsMonitor<StandbyOptions> _standbyOptionsMonitor;
         private FlexConsumptionMetricsPublisherOptions _options;
         private TestLogger<FlexConsumptionMetricsPublisher> _logger;
+        private HostMetricsProvider _metricsProvider;
 
         public FlexConsumptionMetricsPublisherTests()
         {
@@ -78,7 +81,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             }
             var optionsWrapper = new OptionsWrapper<FlexConsumptionMetricsPublisherOptions>(_options);
             _logger = new TestLogger<FlexConsumptionMetricsPublisher>();
-            var publisher = new FlexConsumptionMetricsPublisher(_environment, _standbyOptionsMonitor, optionsWrapper, _logger, new FileSystem());
+            var scriptHostManager = new Mock<IScriptHostManager>();
+            _metricsProvider = new HostMetricsProvider(scriptHostManager.Object);
+            var publisher = new FlexConsumptionMetricsPublisher(_environment, _standbyOptionsMonitor, optionsWrapper, _logger, new FileSystem(), _metricsProvider);
 
             return publisher;
         }
