@@ -320,10 +320,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             {
                 if (Process is not { } p)
                 {
+                    _workerProcessLogger.LogWarning(ex, "Process DNE");
                     return;
                 }
 
                 string filePath = p.StartInfo.FileName;
+                _workerProcessLogger.LogWarning(ex, $"Searching for FileName {filePath}");
                 UnixFileInfo fileInfo = new UnixFileInfo(filePath);
                 if (!fileInfo.FileAccessPermissions.HasFlag(FileAccessPermissions.UserExecute))
                 {
