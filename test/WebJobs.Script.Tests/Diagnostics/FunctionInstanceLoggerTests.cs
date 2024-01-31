@@ -1,9 +1,12 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Diagnostics.Metrics;
 using System.Linq;
+using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Moq;
 using Xunit;
@@ -18,8 +21,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         public FunctionInstanceLoggerTests()
         {
             var metadataManager = new Mock<IFunctionMetadataManager>(MockBehavior.Strict);
+            var meterFactory = new Mock<IMeterFactory>(MockBehavior.Strict);
+            var environment = new Mock<IEnvironment>(MockBehavior.Strict);
+            var hostMetrics = new HostMetrics(meterFactory.Object, environment.Object);
+
             _metrics = new TestMetricsLogger();
-            _functionInstanceLogger = new FunctionInstanceLogger(metadataManager.Object, _metrics);
+            _functionInstanceLogger = new FunctionInstanceLogger(metadataManager.Object, _metrics, hostMetrics);
         }
 
         [Fact]
