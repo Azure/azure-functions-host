@@ -7,6 +7,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Cors.Infrastructure;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
@@ -24,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
 
         public void Configure(CorsOptions options)
         {
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            if (_env.IsAnyLinuxConsumption() || _env.IsCorsConfigurationAllowed())
             {
                 string[] allowedOrigins = _hostCorsOptions.Value.AllowedOrigins?.ToArray() ?? Array.Empty<string>();
                 var policyBuilder = new CorsPolicyBuilder(allowedOrigins);
