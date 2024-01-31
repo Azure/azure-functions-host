@@ -1,5 +1,5 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk" InitialTargets="UpdateRuntimeAssemblies">
-  <Import Project="..\..\build\metadatagenerator.props" />
+
   <PropertyGroup>
     <Version>4.0.2</Version>
     <OutputType>Library</OutputType>
@@ -20,7 +20,7 @@
   </ItemGroup>
 
   <Target Name="BuildGeneratorConsole" Condition="'$(TargetFramework)' == 'netstandard2.0'" AfterTargets="Build">
-    <MSBuild Projects="@(ConsoleProject)" Targets="Restore;Build" Properties="Configuration=$(Configuration);Platform=$(Platform);TargetFramework=netcoreapp2.0;OutputPath=$(MSBuildProjectDirectory)\$(OutputPath)\generator" />
+    <MSBuild Projects="@(ConsoleProject)" Targets="Restore;Build" Properties="Configuration=$(Configuration);Platform=$(Platform);TargetFramework=netcoreapp2.0;OutputPath=$(OutputPath)\generator" />
   </Target>
 
   <ItemGroup>
@@ -32,7 +32,7 @@
 
   <Target Name="UpdateRuntimeAssemblies" BeforeTargets="Build">
     <Exec Command="pwsh ./updateruntimeassemblies.ps1" Condition=" '$(OS)' == 'Unix' "/>
-    <Exec Command="powershell.exe –command .\updateruntimeassemblies.ps1" Condition=" '$(OS)' == 'Windows_NT' "/>
+    <Exec Command="powershell.exe -command .\updateruntimeassemblies.ps1" Condition=" '$(OS)' == 'Windows_NT' "/>
   </Target>
 
   <Target Name="PackReferenceAssemblies">
@@ -75,4 +75,5 @@
       <Version>4.3.0</Version>
     </PackageReference>
   </ItemGroup>
+
 </Project>

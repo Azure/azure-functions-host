@@ -2,17 +2,16 @@
 
   <!-- Product Information -->
   <PropertyGroup>
-    <Product>Microsoft Azure WebJobs SDK Script</Product>
+    <Product>Azure WebJobs SDK Script Runtime</Product>
     <Authors>Microsoft</Authors>
-    <Company>Microsoft Corporation</Company>
+    <Company>Microsoft</Company>
     <Copyright>© Microsoft Corporation. All rights reserved.</Copyright>
     <RepositoryUrl>https://github.com/Azure/azure-functions-host</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
     <PackageProjectUrl>http://go.microsoft.com/fwlink/?LinkID=320972</PackageProjectUrl>
+    <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
-    <AssemblyOriginatorKeyFile>$(EngRoot)key.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
 
   <!-- Versioning -->
@@ -38,7 +37,7 @@
     <IconFile Condition="'$(IconFile)' == ''">$(MSBuildThisFileDirectory)../webjobs.png</IconFile>
     <PackageIcon Condition="'$(PackageIcon)' == ''">webjobs.png</PackageIcon>
     <ReadmeFile Condition="'$(ReadmeFile)' == ''">README.md</ReadmeFile>
-    <PackageReadmeFile Condition="'$(PackageReadmeFile)' == ''">README.md</PackageReadmeFile>
+    <PackageReadmeFile Condition="'$(PackageReadmeFile)' == '' AND Exists('$(ReadmeFile)')">README.md</PackageReadmeFile>
     <ReleaseNotesFile Condition="'$(ReleaseNotesFile)' == ''">release_notes.md</ReleaseNotesFile>
     <!-- PackageReleaseNotes: see Release.targets -->
   </PropertyGroup>

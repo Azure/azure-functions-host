@@ -1,13 +1,9 @@
 <Project>
-  <Import Project=".\package.props" />
+
   <PropertyGroup>
-    <TargetFramework>netstandard2.1</TargetFramework>
-
-    <CodeAnalysisRuleSet>$(MSBuildThisFileDirectory)..\src.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRuleSet>$(RepoRootPath)\src.ruleset</CodeAnalysisRuleSet>
     <NoWarn>$(NoWarn);NU1701;CS7035;7035</NoWarn>
-
-    <ContinuousIntegrationBuild Condition="'$(TF_BUILD)' == 'true'">true</ContinuousIntegrationBuild>
-    <DebugType>embedded</DebugType>
+    <AssemblyOriginatorKeyFile>$(EngPath)\key.snk</AssemblyOriginatorKeyFile>
     <GenerateRuntimeConfigDevFile>true</GenerateRuntimeConfigDevFile><!-- https://github.com/dotnet/runtime/issues/54684 -->
     <DisableImplicitNamespaceImports>true</DisableImplicitNamespaceImports>
     <Configurations>$(Configurations);DebugPlaceholder;ReleasePlaceholder</Configurations>
@@ -20,16 +16,12 @@
     <DefineConstants>$(DefineConstants);PLACEHOLDERSIMULATION</DefineConstants>
   </PropertyGroup>
 
-  <Target Name="EchoVersion">
-      <Message Importance="high" Text="$(Version)" />
-  </Target>
-
   <ItemGroup>
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="All"/>
   </ItemGroup>
-  
+
   <ItemGroup>
-    <AdditionalFiles Include="$(MSBuildThisFileDirectory)..\stylecop.json" Link="stylecop.json" />
+    <AdditionalFiles Include="$(RepoRootPath)\stylecop.json" Link="stylecop.json" />
   </ItemGroup>
 
 </Project>

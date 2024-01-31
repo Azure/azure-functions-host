@@ -6,6 +6,7 @@
     <SourcePath>$(RepoRootPath)src</SourcePath>
     <EngPath>$(RepoRootPath)eng</EngPath>
     <ToolsPath>$(EngPath)/tools</ToolsPath>
+    <TargetsPath>$(EngPath)/targets</TargetsPath>
     <ArtifactsPath>$(RepoRootPath)out</ArtifactsPath>
     <ArtifactsPublishOutputName>pub</ArtifactsPublishOutputName>
     <ArtifactsPackageOutputName>pkg</ArtifactsPackageOutputName>
@@ -24,6 +25,7 @@
     <DefaultItemExcludes>$(DefaultItemExcludes);bin/**;obj/**</DefaultItemExcludes>
   </PropertyGroup>
 
+  <Import Project="$(EngPath)/targets/Common.props" />
   <Import Project="$(EngPath)/targets/Release.props" />
 
 </Project>

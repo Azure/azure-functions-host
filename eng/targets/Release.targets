@@ -23,7 +23,7 @@
 
   <ItemGroup>
     <Content Include="$(IconFile)" Pack="true" PackagePath="/" />
-    <Content Include="$(ReadmeFile)" Pack="true" PackagePath="/" />
+    <Content Include="$(ReadmeFile)" Pack="true" PackagePath="/" Condition="Exists('$(ReadmeFile)')" />
   </ItemGroup>
 
   <!-- This target lets us define a release notes file per package. -->

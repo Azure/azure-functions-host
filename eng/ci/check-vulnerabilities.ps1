@@ -1,5 +1,4 @@
-$projectPath = "$PSScriptRoot\..\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj"
-$logFilePath = "$PSScriptRoot\..\build.log"
+$projectPath = "$PSScriptRoot\..\..\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj"
 if (-not (Test-Path $projectPath))
 {
     throw "Project path '$projectPath' does not exist."
@@ -7,15 +6,9 @@ if (-not (Test-Path $projectPath))
 
 $cmd = "list", $projectPath, "package", "--include-transitive", "--vulnerable"
 Write-Host "dotnet $cmd"
-dotnet $cmd | Tee-Object build.log
+dotnet $cmd | Tee-Object -Variable output
 
-$result = Get-content $logFilePath | select-string "has no vulnerable packages given the current sources"
-
-$logFileExists = Test-Path $logFilePath -PathType Leaf
-if ($logFileExists)
-{
-  Remove-Item $logFilePath
-}
+$result = $output | Select-String "has no vulnerable packages given the current sources"
 
 if (!$result)
 {

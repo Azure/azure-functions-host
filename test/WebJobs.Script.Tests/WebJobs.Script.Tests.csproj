@@ -1,5 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <Import Project="..\..\build\common.props" />
+
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
     <IsTestProject>true</IsTestProject>
@@ -166,7 +166,7 @@
     </EmbeddedResource>
   </ItemGroup>
 
-  <Import Project="..\..\build\GrpcTestFix.targets" />
+  <Import Project="$(TargetsPath)\GrpcTestFix.targets" />
   <Import Project="..\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems" Label="Shared" />
 
 </Project>

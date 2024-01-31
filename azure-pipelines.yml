@@ -1,6 +1,13 @@
 variables:
-  buildNumber: $[ counter('constant', 13000) ]
-  isReleaseBranch: $[contains(variables['Build.SourceBranch'], 'release/')]
+  Build.AltReason:
+    ${{ if eq(variables['Build.Reason'], 'PullRequest') }}:
+      value: 'pr'
+    ${{ if startsWith(variables['Build.SourceBranch'], 'refs/heads/release/')}}:
+      value: 'release'
+    ${{ else }}:
+      value: 'ci'
+  Build.Counter: $[ counter(format('{0}-{1:yyyyMMdd}', variables['Build.AltReason'], pipeline.startTime), 0) ]
+  Build.IsRelease: $[ eq(variables['Build.AltReason'], 'release') ]
   DOTNET_NOLOGO: 1
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
   DOTNET_CLI_TELEMETRY_OPTOUT: 1
@@ -33,43 +40,34 @@ jobs:
     displayName: 'Initialize'
     name: Initialize
     inputs:
-      filePath: '$(Build.Repository.LocalPath)\build\initialize-pipeline.ps1'
+      filePath: '$(Build.Repository.LocalPath)\eng\ci\initialize-pipeline.ps1'
       showWarnings: true
 
 - job: BuildArtifacts
   dependsOn: InitializePipeline
   condition: and(succeeded(), or(ne(variables['Build.Reason'], 'PullRequest'), eq(dependencies.InitializePipeline.outputs['Initialize.BuildArtifacts'], true)))
-  variables:
-    ${{ if or( eq( variables['Build.Reason'], 'PullRequest' ), and( not( contains( variables['Build.SourceBranch'], 'release/4.' ) ), not( contains( variables['Build.SourceBranch'], 'release/ExtensionsMetadataGenerator/' ) ) ) ) }}:
-      suffixTemp: $(buildNumber)
-      packSuffixSwitchTemp: --version-suffix $(buildNumber)
-      emgSuffixSwitchTemp: --version-suffix ci$(buildNumber)
-    suffix: $[variables.suffixTemp] # this resolves to an empty string if it is missing
-    packSuffixSwitch: $[variables.packSuffixSwitchTemp]
-    emgSuffixSwitch: $[variables.emgSuffixSwitchTemp]
   pool:
     name: '1ES-Hosted-AzFunc'
     demands:
       - ImageOverride -equals MMS2019TLS
   steps:
-  - template: build/install-dotnet.yml
+  - template: eng/ci/install-dotnet.yml
   - task: PowerShell@2
     displayName: "Build artifacts"
     inputs:
-      filePath: '$(Build.Repository.LocalPath)\build\build-extensions.ps1'
-      arguments: '-buildNumber "$(buildNumber)" -suffix "$(suffix)"'
+      filePath: '$(Build.Repository.LocalPath)\eng\ci\build-extensions.ps1'
   - task: PowerShell@2
     displayName: "Check for security vulnerabilities"
     inputs:
-      filePath: '$(Build.Repository.LocalPath)\build\check-vulnerabilities.ps1'
+      filePath: '$(Build.Repository.LocalPath)\eng\ci\check-vulnerabilities.ps1'
   - task: PowerShell@2
     condition: eq(variables['RUNBUILDFORINTEGRATIONTESTS'], 'True')
     displayName: "Update host references"
     inputs:
-      filePath: '$(Build.Repository.LocalPath)\build\update-hostreferences.ps1'
+      filePath: '$(Build.Repository.LocalPath)\eng\ci\update-hostreferences.ps1'
   - task: CopyFiles@2
     inputs:
-      SourceFolder: '$(Build.Repository.LocalPath)\buildoutput'
+      SourceFolder: '$(Build.Repository.LocalPath)\out\pub\'
       Contents: '**\*.zip'
       TargetFolder: '$(Build.ArtifactStagingDirectory)'
   - task: DotNetCoreCLI@2
@@ -77,22 +75,22 @@ jobs:
     inputs:
       command: 'custom'
       custom: 'pack'
-      arguments: -o packages -p:BuildNumber=$(buildNumber) -c Release $(packSuffixSwitch)
+      arguments: -c release
       projects: |
         **\WebJobs.Script.csproj
         **\WebJobs.Script.WebHost.csproj
         **\WebJobs.Script.Grpc.csproj
 
   - pwsh: |
-      foreach ($baseName in @("WebJobs.Script", "WebJobs.Script.WebHost", "WebJobs.Script.Grpc"))
-      {
+      foreach ($baseName in @("WebJobs.Script", "WebJobs.Script.WebHost", "WebJobs.Script.Grpc")) {
         $packageName = "Microsoft.Azure." + $baseName + "*.nupkg"
-        $sourcePath = "$(Build.Repository.LocalPath)/packages/$packageName"
+        $sourcePath = "$(Build.Repository.LocalPath)/out/pkg/$packageName"
         if (-not (test-path $sourcePath))
         {
-          throw "Unable to find '$packageName' at './package'"
+          throw "Unable to find '$packageName' at './out/pkg/'"
         }
-        Copy-Item -Path $sourcePath -Destination $(Build.ArtifactStagingDirectory) -ErrorAction Stop -Verbose -Force}
+        Copy-Item -Path $sourcePath -Destination $(Build.ArtifactStagingDirectory) -ErrorAction Stop -Verbose -Force
+      }
     condition: eq(variables['RUNBUILDFORINTEGRATIONTESTS'], 'True')
     displayName: 'Copy package to ArtifactStagingDirectory'
 
@@ -117,7 +115,7 @@ jobs:
     displayName: 'Build Abstractions and ExtensionsMetadataGenerator'
     inputs:
       command: 'build'
-      arguments: '-c Release'
+      arguments: '-c release'
       projects: |
         **\ExtensionsMetadataGenerator.csproj
         **\WebJobs.Script.Abstractions.csproj
@@ -125,7 +123,7 @@ jobs:
     displayName: 'ESRP CodeSigning: Strong Name and Authenticode'
     inputs:
       ConnectedServiceName: 'ESRP Service'
-      FolderPath: 'src\WebJobs.Script.Abstractions\bin\Release'
+      FolderPath: 'out\bin\WebJobs.Script.Abstractions\release'
       Pattern: Microsoft.Azure.WebJobs.Script.Abstractions*.dll
       signConfigType: inlineSignParams
       inlineOperation: |
@@ -160,14 +158,14 @@ jobs:
     inputs:
       command: 'custom'
       custom: 'pack'
-      arguments: '--no-build -c Release -o packages'
+      arguments: '--no-build -c release'
       projects: |
         **\WebJobs.Script.Abstractions.csproj
   - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@2
     displayName: 'ESRP CodeSigning: Nupkg'
     inputs:
       ConnectedServiceName: 'ESRP Service'
-      FolderPath: 'packages'
+      FolderPath: 'out/pkg/release'
       Pattern: 'Microsoft.Azure.WebJobs.Script.Abstractions*.nupkg'
       signConfigType: inlineSignParams
       inlineOperation: |
@@ -191,7 +189,7 @@ jobs:
     displayName: 'ESRP CodeSigning: Strong Name and Authenticode'
     inputs:
       ConnectedServiceName: 'ESRP Service'
-      FolderPath: 'tools\ExtensionsMetadataGenerator\src\ExtensionsMetadataGenerator\bin\Release'
+      FolderPath: 'out\bin\ExtensionsMetadataGenerator'
       Pattern: Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator*.dll
       signConfigType: inlineSignParams
       inlineOperation: |
@@ -241,7 +239,7 @@ jobs:
     inputs:
       command: 'custom'
       custom: 'pack'
-      arguments: '--no-build -c Release -o packages $(emgSuffixSwitch)'
+      arguments: '--no-build -c release'
       projects: |
         **\ExtensionsMetadataGenerator.csproj
         steps:
@@ -249,7 +247,7 @@ jobs:
     displayName: 'ESRP CodeSigning: Nupkg'
     inputs:
       ConnectedServiceName: 'ESRP Service'
-      FolderPath: 'packages'
+      FolderPath: 'out/pkg/release'
       Pattern: 'Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator*.nupkg'
       signConfigType: inlineSignParams
       inlineOperation: |
@@ -314,9 +312,9 @@ jobs:
   - task: ManifestGeneratorTask@0
     displayName: 'SBOM Generation Task - NugetPackages'
     inputs:
-      BuildDropPath: '$(Build.Repository.LocalPath)\packages'
+      BuildDropPath: '$(Build.Repository.LocalPath)\out\pkg'
       Verbosity: 'Information'
-  - publish: $(Build.Repository.LocalPath)\packages
+  - publish: $(Build.Repository.LocalPath)\out\pkg
     artifact: NugetPackages
   - task: ManifestGeneratorTask@0
     displayName: 'SBOM Generation Task - Performance'
@@ -350,7 +348,7 @@ jobs:
     demands:
       - ImageOverride -equals MMS2019TLS
   steps:
-  - template: build/install-dotnet.yml
+  - template: eng/ci/install-dotnet.yml
   - task: UseNode@1
     inputs:
       version: '14.x'
@@ -369,7 +367,7 @@ jobs:
   - task: PowerShell@2
     displayName: 'Checkout secrets'
     inputs:
-      filePath: '$(Build.Repository.LocalPath)\build\checkout-secrets.ps1'
+      filePath: 'eng/ci/checkout-secrets.ps1'
       arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'''
   - task: AzureKeyVault@1
     inputs:
@@ -399,7 +397,7 @@ jobs:
     condition: always()
     displayName: 'Checkin secrets'
     inputs:
-      filePath: '$(Build.Repository.LocalPath)\build\checkin-secrets.ps1'
+      filePath: 'eng/ci/checkin-secrets.ps1'
       arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'' -leaseBlob $(LeaseBlob) -leaseToken $(LeaseToken)'
 
 - job: RunIntegrationTests
@@ -408,7 +406,7 @@ jobs:
     demands:
       - ImageOverride -equals MMS2019TLS
   steps:
-  - template: build/install-dotnet.yml
+  - template: eng/ci/install-dotnet.yml
   - task: UseNode@1
     inputs:
       version: '14.x'
@@ -574,7 +572,7 @@ jobs:
         **\WebJobs.Script.Tests.Integration.csproj
   - task: DotNetCoreCLI@2
     displayName: "Release verification tests"
-    condition: eq(variables['isReleaseBranch'], 'True')
+    condition: eq(variables['Build.IsRelease'], 'True')
     inputs:
       command: 'test'
       testRunTitle: "Release verification tests"
@@ -585,5 +583,5 @@ jobs:
     condition: always()
     displayName: 'Checkin secrets'
     inputs:
-      filePath: '$(Build.Repository.LocalPath)\build\checkin-secrets.ps1'
+      filePath: 'eng\ci\checkin-secrets.ps1'
       arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'' -leaseBlob $(LeaseBlob) -leaseToken $(LeaseToken)'

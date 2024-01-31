@@ -95,7 +95,7 @@ function GetPackageInfo
 WriteLog "Script started."
 
 # Make sure the project path exits
-$path = "$PSScriptRoot\..\src\WebJobs.Script"
+$path = "$PSScriptRoot\..\..\src\WebJobs.Script"
 if (-not (Test-Path $path))
 {
     WriteLog "Failed to find '$path' to update package references" -Throw
@@ -126,9 +126,9 @@ try
 
         if ($package.Name -eq "Microsoft.Azure.Functions.PythonWorker")
         {
-            # The PythonWorker is not defined in the src/WebJobs.Script/WebJobs.Script.csproj. It is defined in build/python.props.
-            # To update the package version, the xml file build/python.props needs to be updated directly.
-            $pythonPropsFilePath = "$PSScriptRoot\python.props"
+            # The PythonWorker is not defined in the src/WebJobs.Script/WebJobs.Script.csproj. It is defined in eng/targets/python.props.
+            # To update the package version, the xml file eng/targets/python.props needs to be updated directly.
+            $pythonPropsFilePath = "$PSScriptRoot\..\targets\python.props"
 
             if (-not (Test-Path $pythonPropsFilePath))
             {
