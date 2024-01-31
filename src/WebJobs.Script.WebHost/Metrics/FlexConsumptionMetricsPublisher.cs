@@ -111,14 +111,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
                         TotalTimeMS = (long)_intervalStopwatch.GetElapsedTime().TotalMilliseconds,
                         ExecutionCount = FunctionExecutionCount,
                         ExecutionTimeMS = FunctionExecutionTimeMS,
-                        IsAlwaysReady = IsAlwaysReady
+                        IsAlwaysReady = IsAlwaysReady,
+                        InstanceId = _metricsProvider.InstanceId,
+                        FunctionGroup = _metricsProvider.FunctionGroup
                     };
 
                     var scaleMetrics = _metricsProvider.GetHostMetricsOrNull();
                     if (scaleMetrics is not null)
                     {
-                        metrics.InstanceId = _metricsProvider.InstanceId;
-                        metrics.FunctionGroup = _metricsProvider.FunctionGroup;
                         metrics.AppFailureCount = scaleMetrics.TryGetValue(HostMetrics.AppFailureCount, out long appFailureCount) ? appFailureCount : 0;
                         metrics.StartedInvocationCount = scaleMetrics.TryGetValue(HostMetrics.StartedInvocationCount, out long startedInvocationCount) ? startedInvocationCount : 0;
                         metrics.ActiveInvocationCount = scaleMetrics.TryGetValue(HostMetrics.ActiveInvocationCount, out long activeInvocationCount) ? activeInvocationCount : 0;
