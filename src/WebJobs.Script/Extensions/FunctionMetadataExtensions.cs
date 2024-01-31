@@ -93,7 +93,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             // A function with no specified group will be assigned to a group of itself.
-            return $"function__{metadata.Name}";
+            return $"function:{metadata.Name}";
         }
 
         public static string GetFunctionId(this FunctionMetadata metadata)

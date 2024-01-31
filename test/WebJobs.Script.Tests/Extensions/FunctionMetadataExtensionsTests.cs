@@ -146,7 +146,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
                 RootScriptPath = _testRootScriptPath
             };
 
-            group ??= $"function__{functionMetadata.Name}";
+            group ??= $"function:{functionMetadata.Name}";
             var result = await functionMetadata.ToFunctionTrigger(options, isFlexConsumption: true);
             Assert.Equal("TestFunction1", result["functionName"].Value<string>());
             Assert.Equal(trigger, result["type"].Value<string>());
