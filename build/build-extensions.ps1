@@ -1,7 +1,7 @@
 param (
   [string]$buildNumber = "0",  
   [string]$suffix = "",
-  [string]$minorVersionPrefix = "",
+  [string]$minorVersionPrefix = "10",
   [string]$hashesForHardlinksFile = "hashesForHardlinks.txt"
 )
 
