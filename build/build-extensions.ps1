@@ -242,7 +242,9 @@ function CreateSiteExtensions() {
     
     $zipOutput = "$buildOutput\SiteExtension"
     New-Item -Itemtype directory -path $zipOutput -Force > $null
-    if ($minorVersionPrefix -eq "10") {
+    if ($minorVersionPrefix -eq "6") {
+        ZipContent $siteExtensionPath "$zipOutput\FunctionsInProc.$extensionVersion$runtimeSuffix.zip"
+    } else {
         ZipContent $siteExtensionPath "$zipOutput\Functions.$extensionVersion$runtimeSuffix.zip"
     } else {
 		ZipContent $siteExtensionPath "$zipOutput\FunctionsInProc.$extensionVersion$runtimeSuffix.zip"
