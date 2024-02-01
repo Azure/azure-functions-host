@@ -126,9 +126,9 @@ try
 
         if ($package.Name -eq "Microsoft.Azure.Functions.PythonWorker")
         {
-            # The PythonWorker is not defined in the src/WebJobs.Script/WebJobs.Script.csproj. It is defined in eng/targets/python.props.
-            # To update the package version, the xml file eng/targets/python.props needs to be updated directly.
-            $pythonPropsFilePath = "$PSScriptRoot\..\targets\python.props"
+            # The PythonWorker is not defined in the src/WebJobs.Script/WebJobs.Script.csproj. It is defined in eng/targets/Python.props.
+            # To update the package version, the xml file eng/targets/Python.props needs to be updated directly.
+            $pythonPropsFilePath = "$PSScriptRoot\..\targets\Python.props"
 
             if (-not (Test-Path $pythonPropsFilePath))
             {
