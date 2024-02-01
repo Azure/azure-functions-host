@@ -29,5 +29,6 @@ TestResults/
 /tools/ExtensionsMetadataGenerator/test/ExtensionsMetadataGeneratorTests/runtimeAssemblies.txt
 
 local.settings.json
-msbuild.binlog
+*.binlog
+pp.xml
 BenchmarkDotNet.Artifacts/

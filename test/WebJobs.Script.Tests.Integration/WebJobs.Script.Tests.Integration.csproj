@@ -112,10 +112,8 @@
   <Import Project="$(TargetsPath)\GrpcTestFix.targets" />
   <Import Project="..\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems" Label="Shared" />
 
-  <!-- Ensure this is built for tests; we cannot have a project reference due to conflicting nuget references -->
-  <Target Name="BuildTestProjects" AfterTargets="Build">
-    <MSBuild Projects="..\CSharpPrecompiledTestProjects\CSharpPrecompiledTestProjects.sln" Targets="Restore" />
-    <MSBuild Projects="..\CSharpPrecompiledTestProjects\CSharpPrecompiledTestProjects.sln" Targets="Publish" Properties="Configuration=Debug" />
-  </Target>
+  <ItemGroup>
+    <ProjectReference Include="..\CSharpPrecompiledTestProjects\**\*.csproj" ReferenceOutputAssembly="false" />
+  </ItemGroup>
 
 </Project>

@@ -1,0 +1,17 @@
+<Project>
+
+  <PropertyGroup>
+    <!-- Intentionally in targets so they are defined AFTER Debug/Release configs. -->
+    <Configurations>$(Configurations);DebugPlaceholder;ReleasePlaceholder</Configurations>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'DebugPlaceholder'">
+    <DefineConstants>$(DefineConstants);PLACEHOLDERSIMULATION;DEBUG</DefineConstants>
+    <Optimize Condition="'$(Optimize)' == ''">false</Optimize>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'ReleasePlaceholder'">
+    <DefineConstants>$(DefineConstants);PLACEHOLDERSIMULATION;RELEASE</DefineConstants>
+    <Optimize Condition="'$(Optimize)' == ''">true</Optimize>
+  </PropertyGroup>
+
+</Project>

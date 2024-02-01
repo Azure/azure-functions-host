@@ -25,7 +25,7 @@
     <DefaultItemExcludes>$(DefaultItemExcludes);bin/**;obj/**</DefaultItemExcludes>
   </PropertyGroup>
 
-  <Import Project="$(EngPath)/targets/Common.props" />
-  <Import Project="$(EngPath)/targets/Release.props" />
+  <Import Project="$(TargetsPath)/Common.props" />
+  <Import Project="$(TargetsPath)/Release.props" />
 
 </Project>

@@ -1,5 +1,6 @@
 <Project>
 
-  <Import Project="$(EngPath)/targets/Release.targets" />
+  <Import Project="$(TargetsPath)/Common.targets" />
+  <Import Project="$(TargetsPath)/Release.targets" />
 
 </Project>
