@@ -539,6 +539,14 @@ namespace Microsoft.Azure.WebJobs.Script
                     r.AddAttributes(attributes.Select(a => new KeyValuePair<string, object>(a.Key, a.Value)));
                 }
             }
+
+            // Set the AI SDK to a key so we know all the telemetry came from the Functions Host
+            // NOTE: This ties to \azure-sdk-for-net\sdk\monitor\Azure.Monitor.OpenTelemetry.Exporter\src\Internals\ResourceExtensions.cs :: AiSdkPrefixKey used in CreateAzureMonitorResource()
+            var version = typeof(ScriptHost).Assembly.GetName().Version.ToString();
+            r.AddAttributes([
+                new KeyValuePair<string, object>("ai.sdk.prefix", $@"azurefunctionscoretools: {version} "),
+                new KeyValuePair<string, object>("azurefunctionscoretools_version", version)
+            ]);
         }
 
         private static void AddOpenTelemetryConfigurations(HostBuilderContext context, IConfigurationBuilder configBuilder)
