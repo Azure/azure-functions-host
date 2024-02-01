@@ -165,12 +165,9 @@ namespace Microsoft.Azure.WebJobs.Script
                 && runningInContainerValue;
         }
 
-        public static bool IsCorsConfigurationAllowed(this IEnvironment environment)
+        public static bool IsCorsConfigurationEnabled(this IEnvironment environment)
         {
-            var allowCorsConfiguration = environment.GetEnvironmentVariable(AllowCorsConfiguration);
-            return !string.IsNullOrEmpty(allowCorsConfiguration)
-                && bool.TryParse(allowCorsConfiguration, out bool allowCorsConfigurationValue)
-                && allowCorsConfigurationValue;
+            return environment.GetEnvironmentVariable(EnableCorsConfiguration) == "1";
         }
 
         public static bool IsPersistentFileSystemAvailable(this IEnvironment environment)

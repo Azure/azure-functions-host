@@ -2,12 +2,8 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.InteropServices;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Cors.Infrastructure;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
@@ -25,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
 
         public void Configure(CorsOptions options)
         {
-            if (_env.IsAnyLinuxConsumption() || _env.IsCorsConfigurationAllowed())
+            if (_env.IsAnyLinuxConsumption() || _env.IsCorsConfigurationEnabled())
             {
                 string[] allowedOrigins = _hostCorsOptions.Value.AllowedOrigins?.ToArray() ?? Array.Empty<string>();
                 var policyBuilder = new CorsPolicyBuilder(allowedOrigins);

@@ -56,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
 
         [Theory]
         [InlineData(EnvironmentSettingNames.ContainerName, "foo")]
-        [InlineData(EnvironmentSettingNames.AllowCorsConfiguration, "true")]
+        [InlineData(EnvironmentSettingNames.EnableCorsConfiguration, "1")]
         public async Task Invoke_OriginAllowed_AddsExpectedHeaders(string appSettingName, string appSettingValue)
         {
             var envars = new Dictionary<string, string>()
@@ -111,7 +111,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
 
         [Theory]
         [InlineData(EnvironmentSettingNames.ContainerName, "foo")]
-        [InlineData(EnvironmentSettingNames.AllowCorsConfiguration, "true")]
+        [InlineData(EnvironmentSettingNames.EnableCorsConfiguration, "1")]
         public async Task Invoke_OriginNotAllowed_DoesNotAddHeaders(string appSettingName, string appSettingValue)
         {
             var envars = new Dictionary<string, string>()
@@ -167,7 +167,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
 
         [Theory]
         [InlineData(EnvironmentSettingNames.ContainerName, "foo")]
-        [InlineData(EnvironmentSettingNames.AllowCorsConfiguration, "true")]
+        [InlineData(EnvironmentSettingNames.EnableCorsConfiguration, "1")]
         public async Task Invoke_Adds_AccessControlAllowMethods(string appSettingName, string appSettingValue)
         {
             var envars = new Dictionary<string, string>()
