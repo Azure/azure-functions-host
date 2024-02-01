@@ -3,6 +3,8 @@ variables:
   isReleaseBranch: $[contains(variables['Build.SourceBranch'], 'release/')]
   ${{ if contains(variables['Build.SourceBranch'], 'release/inproc6/') }}:
     minorVersionPrefix: "6"
+  ${{ else if contains(variables['Build.SourceBranch'], 'release/inproc8/') }}:
+    minorVersionPrefix: "8"
   ${{ else }}:
     minorVersionPrefix: "10"
   DOTNET_NOLOGO: 1
@@ -15,6 +17,7 @@ pr:
     - dev
     - release/4.*
     - release/inproc6/4.*
+    - release/inproc8/4.*
 
 trigger:
   branches:
@@ -22,6 +25,7 @@ trigger:
     - dev
     - release/4.*
     - release/inproc6/4.*
+    - release/inproc8/4.*
 
 jobs:
 - job: InitializePipeline
@@ -46,7 +50,7 @@ jobs:
   dependsOn: InitializePipeline
   condition: and(succeeded(), or(ne(variables['Build.Reason'], 'PullRequest'), eq(dependencies.InitializePipeline.outputs['Initialize.BuildArtifacts'], true)))
   variables:
-    ${{ if or( eq( variables['Build.Reason'], 'PullRequest' ), and( not( contains( variables['Build.SourceBranch'], 'release/inproc6/4.' ) ), not( contains( variables['Build.SourceBranch'], 'release/4.' ) ), not( contains( variables['Build.SourceBranch'], 'release/ExtensionsMetadataGenerator/' ) ) ) ) }}:
+    ${{ if or( eq( variables['Build.Reason'], 'PullRequest' ), and( not( contains( variables['Build.SourceBranch'], 'release/inproc6/4.' ) ), not( contains( variables['Build.SourceBranch'], 'release/inproc8/4.' ) ), not( contains( variables['Build.SourceBranch'], 'release/4.' ) ), not( contains( variables['Build.SourceBranch'], 'release/ExtensionsMetadataGenerator/' ) ) ) ) }}:
       suffixTemp: $(buildNumber)
       packSuffixSwitchTemp: --version-suffix $(buildNumber)
       emgSuffixSwitchTemp: --version-suffix ci$(buildNumber)
