@@ -6,6 +6,7 @@ using System.Net.Http;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Host.Storage;
@@ -13,6 +14,7 @@ using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Middleware;
 using Microsoft.Azure.WebJobs.Script.Scale;
@@ -130,6 +132,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                         // EasyAuth must go after CORS, as CORS preflight requests can happen before authentication
                         services.TryAddEnumerable(ServiceDescriptor.Singleton<IJobHostHttpMiddleware, JobHostEasyAuthMiddleware>());
+                    }
+
+                    if (environment.IsFlexConsumptionSku())
+                    {
+                        services.TryAddEnumerable(ServiceDescriptor.Singleton<IListenerDecorator, FunctionGroupListenerDecorator>());
                     }
 
                     services.AddSingleton<IScaleMetricsRepository, TableStorageScaleMetricsRepository>();
