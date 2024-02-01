@@ -84,7 +84,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
 
             // dotnet app precompiled -> Do not use bundles
             var workerConfigs = _languageWorkerOptions.CurrentValue.WorkerConfigs;
-            ImmutableArray<FunctionMetadata> functionMetadataCollection = ImmutableArray.Create<FunctionMetadata>();
+            ImmutableArray<FunctionMetadata> functionMetadataCollection = ImmutableArray<FunctionMetadata>.Empty;
             if (bundleConfigured)
             {
                 ExtensionBundleDetails bundleDetails = await _extensionBundleManager.GetExtensionBundleDetails();
