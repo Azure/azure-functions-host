@@ -165,6 +165,11 @@ namespace Microsoft.Azure.WebJobs.Script
                 && runningInContainerValue;
         }
 
+        public static bool IsCorsConfigurationEnabled(this IEnvironment environment)
+        {
+            return environment.GetEnvironmentVariable(EnableCorsConfiguration) == "1";
+        }
+
         public static bool IsPersistentFileSystemAvailable(this IEnvironment environment)
         {
             return environment.IsWindowsAzureManagedHosting()

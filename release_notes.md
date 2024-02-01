@@ -13,3 +13,4 @@
     - Customers can opt-out of this behavior by setting `SendCanceledInvocationsToWorker` to `false` in host.json
   - If a worker does not support CancellationTokens, cancelled invocations will not be sent to the worker
 - Warn when `FUNCTIONS_WORKER_RUNTIME` is not set (#9799)
+- Add an app setting to allow CORS configuration (#9846)

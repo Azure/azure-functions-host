@@ -54,12 +54,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
             Assert.True(nextInvoked);
         }
 
-        [Fact]
-        public async Task Invoke_OriginAllowed_AddsExpectedHeaders()
+        [Theory]
+        [InlineData(EnvironmentSettingNames.ContainerName, "foo")]
+        [InlineData(EnvironmentSettingNames.EnableCorsConfiguration, "1")]
+        public async Task Invoke_OriginAllowed_AddsExpectedHeaders(string appSettingName, string appSettingValue)
         {
             var envars = new Dictionary<string, string>()
             {
-                { EnvironmentSettingNames.ContainerName, "foo" },
+                { appSettingName, appSettingValue }
             };
             var testEnv = new TestEnvironment(envars);
             var testOrigin = "https://functions.azure.com";
@@ -107,12 +109,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
             Assert.Equal("true", allowCredsHeaderValues.FirstOrDefault());
         }
 
-        [Fact]
-        public async Task Invoke_OriginNotAllowed_DoesNotAddHeaders()
+        [Theory]
+        [InlineData(EnvironmentSettingNames.ContainerName, "foo")]
+        [InlineData(EnvironmentSettingNames.EnableCorsConfiguration, "1")]
+        public async Task Invoke_OriginNotAllowed_DoesNotAddHeaders(string appSettingName, string appSettingValue)
         {
             var envars = new Dictionary<string, string>()
             {
-                { EnvironmentSettingNames.ContainerName, "foo" },
+                { appSettingName, appSettingValue }
             };
             var testEnv = new TestEnvironment(envars);
             var badOrigin = "http://badorigin.com";
@@ -161,12 +165,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
             Assert.False(response.Headers.TryGetValues("Access-Control-Allow-Methods", out allowMethods));
         }
 
-        [Fact]
-        public async Task Invoke_Adds_AccessControlAllowMethods()
+        [Theory]
+        [InlineData(EnvironmentSettingNames.ContainerName, "foo")]
+        [InlineData(EnvironmentSettingNames.EnableCorsConfiguration, "1")]
+        public async Task Invoke_Adds_AccessControlAllowMethods(string appSettingName, string appSettingValue)
         {
             var envars = new Dictionary<string, string>()
             {
-                { EnvironmentSettingNames.ContainerName, "foo" },
+                { appSettingName, appSettingValue }
             };
             var testEnv = new TestEnvironment(envars);
             var testOrigin = "https://functions.azure.com";

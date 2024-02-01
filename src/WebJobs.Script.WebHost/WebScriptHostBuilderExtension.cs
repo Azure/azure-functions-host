@@ -3,6 +3,7 @@
 
 using System;
 using System.Net.Http;
+using System.Runtime.InteropServices;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Host.Executors;
@@ -125,11 +126,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     services.TryAddSingleton<IJobHostMiddlewarePipeline, DefaultMiddlewarePipeline>();
                     services.TryAddEnumerable(ServiceDescriptor.Singleton<IJobHostHttpMiddleware, CustomHttpHeadersMiddleware>());
                     services.TryAddEnumerable(ServiceDescriptor.Singleton<IJobHostHttpMiddleware, HstsConfigurationMiddleware>());
-                    if (environment.IsAnyLinuxConsumption())
+
+                    bool isAnyLinuxConsumption = environment.IsAnyLinuxConsumption();
+
+                    if (isAnyLinuxConsumption || environment.IsCorsConfigurationEnabled())
                     {
                         services.AddSingleton<ICorsMiddlewareFactory, CorsMiddlewareFactory>();
                         services.TryAddEnumerable(ServiceDescriptor.Singleton<IJobHostHttpMiddleware, JobHostCorsMiddleware>());
+                    }
 
+                    if (isAnyLinuxConsumption)
+                    {
                         // EasyAuth must go after CORS, as CORS preflight requests can happen before authentication
                         services.TryAddEnumerable(ServiceDescriptor.Singleton<IJobHostHttpMiddleware, JobHostEasyAuthMiddleware>());
                     }
