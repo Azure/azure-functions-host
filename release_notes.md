@@ -15,3 +15,4 @@
 - Warn when `FUNCTIONS_WORKER_RUNTIME` is not set (#9799)
 - Added support for ManagedIdentity authentication in ApplicationInsights pipeline. (#9758)
 - Added support for AutocollectedMetricsExtractor, MetricsCustomDimensionOptimization and QueryStringTracing. (#9758)
+- Add an app setting to allow CORS configuration (#9846)
