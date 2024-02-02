@@ -103,7 +103,7 @@ jobs:
     displayName: 'ESRP CodeSigning: Strong Name and Authenticode'
     inputs:
       ConnectedServiceName: 'ESRP Service'
-      FolderPath: 'out/bin/WebJobs.Script.Abstractions/release'
+      FolderPath: 'out/bin/WebJobs.Script.Abstractions'
       Pattern: Microsoft.Azure.WebJobs.Script.Abstractions*.dll
       signConfigType: inlineSignParams
       inlineOperation: |
