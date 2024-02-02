@@ -17,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
     /// </summary>
     public class HostProcessLauncher : IDisposable
     {
-        private const string TestPathTemplate = "..\\..\\..\\..\\..\\test\\CSharpPrecompiledTestProjects\\{0}\\bin\\Debug\\{1}";
+        private const string TestPathTemplate = "..\\..\\{0}\\debug\\{1}";
         private const int _port = 3479;
 
         private readonly string _testPath;

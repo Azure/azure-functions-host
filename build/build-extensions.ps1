@@ -1,15 +1,13 @@
 param (
-  [string]$buildNumber = "0",  
-  [string]$suffix = "",
-  [string]$minorVersionPrefix = "",
   [string]$hashesForHardlinksFile = "hashesForHardlinks.txt"
 )
 
-$rootDir = Split-Path -Parent $PSScriptRoot
-$buildOutput = Join-Path $rootDir "buildoutput"
+Import-Module "$PSScriptRoot\Get-AzureFunctionsVersion.psm1" -Force
+$rootDir = (Get-Item $PSScriptRoot).Parent.FullName
+$outDir = "$rootDir\out"
+$publishDir = "$outDir\pub\WebJobs.Script.WebHost"
 
-Import-Module $PSScriptRoot\Get-AzureFunctionsVersion -Force
-$extensionVersion = Get-AzureFunctionsVersion $buildNumber $suffix $minorVersionPrefix
+$extensionVersion = Get-AzureFunctionsVersion
 Write-Host "Site extension version: $extensionVersion"
 
 # Construct variables for strings like "4.1.0-15898" and "4.1.0"
@@ -19,19 +17,19 @@ $patchVersion = [int]$versionParts[2]
 $isPatch = $patchVersion -gt 0
 Write-Host "MajorMinorVersion is '$majorMinorVersion'. Patch version is '$patchVersion'. IsPatch: '$isPatch'"
 
-function ZipContent([string] $sourceDirectory, [string] $target)
-{
+function ZipContent([string] $sourceDirectory, [string] $target) {
     $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
-    
+
     Write-Host "======================================"
     Write-Host "Zipping $sourceDirectory into $target"
-      
+
     if (Test-Path $target) {
       Remove-Item $target
     }
+
     Add-Type -assembly "system.io.compression.filesystem"
     [IO.Compression.ZipFile]::CreateFromDirectory($sourceDirectory, $target)
-    
+
     Write-Host "Done zipping $target. Elapsed: $($stopwatch.Elapsed)"
     Write-Host "======================================"
     Write-Host ""
@@ -39,29 +37,24 @@ function ZipContent([string] $sourceDirectory, [string] $target)
 
 function BuildRuntime([string] $targetRid, [bool] $isSelfContained) {
     $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
-    $runtimeSuffix = ".$targetRid"
-    $ridSwitch = ""
-    
-    $publishTarget = "$buildOutput\publish\$targetRid"
-    $symbolsTarget = "$buildOutput\symbols\$targetRid"
 
-    $projectPath = "$PSScriptRoot\..\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj"
+    $publishTarget = "$publishDir\release_$targetRid"
+    $projectPath = "$rootDir\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj"
     if (-not (Test-Path $projectPath))
     {
         throw "Project path '$projectPath' does not exist."
     }
 
-    $cmd = "publish", "$PSScriptRoot\..\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj", "-r", "$targetRid", "--self-contained", "$isSelfContained", "-o", "$publishTarget", "-v", "m", "/p:BuildNumber=$buildNumber", "/p:IsPackable=false", "/p:MinorVersionPrefix=$minorVersionPrefix", "-c", "Release", $suffixCmd
+    $cmd = "publish", $projectPath , "-r", "$targetRid", "--self-contained", "$isSelfContained", "-v", "m", "-p:IsPackable=false", "-c", "Release"
 
     Write-Host "======================================"
     Write-Host "Building $targetRid"
     Write-Host "  Self-Contained:    $isSelfContained"
-    Write-Host "  Output Directory:  $publishTarget"
-    Write-Host "  Symbols Directory: $symbolsTarget"
+    Write-Host "  Publish Directory:  $publishTarget"
     Write-Host ""
     Write-Host "dotnet $cmd"
     Write-Host ""
-    
+
     & dotnet $cmd
 
     if ($LASTEXITCODE -ne 0)
@@ -70,20 +63,24 @@ function BuildRuntime([string] $targetRid, [bool] $isSelfContained) {
     }
 
     Write-Host ""
-    Write-Host "Moving symbols to $symbolsTarget"
-    New-Item -Itemtype directory -path $symbolsTarget -Force > $null
-    Move-Item -Path $publishTarget\*.pdb -Destination $symbolsTarget -Force > $null
-    Write-Host ""    
-    CleanOutput "$publishTarget"        
+    $symbols = Get-ChildItem -Path $publishTarget -Filter *.pdb
+    Write-Host "Zipping symbols: $($symbols.Count) symbols found"
+
+    $symbolsPath = "$publishDir\Symbols"
+    if (!(Test-Path -PathType Container $symbolsPath))
+    {
+        New-Item -ItemType Directory -Path $symbolsPath | Out-Null
+    }
+
+    Compress-Archive -Path $symbols -DestinationPath "$symbolsPath\Functions.Symbols.$extensionVersion.$targetRid.zip" | Out-Null
+    $symbols | Remove-Item | Out-Null
+
+    Write-Host ""
+    CleanOutput $publishTarget
     Write-Host ""
     Write-Host "Done building $targetRid. Elapsed: $($stopwatch.Elapsed)"
     Write-Host "======================================"
     Write-Host ""
-
-    $zipOutput = "$buildOutput\Symbols"
-    New-Item -Itemtype directory -path $zipOutput -Force > $null
-
-    ZipContent $symbolsTarget "$zipOutput\Functions.Symbols.$extensionVersion$runtimeSuffix.zip"
 }
 
 function GetFolderSizeInMb([string] $rootPath) {
@@ -93,11 +90,11 @@ function GetFolderSizeInMb([string] $rootPath) {
 function CleanOutput([string] $rootPath) {
     Write-Host "Cleaning build output under $rootPath"
     Write-Host "  Current size: $(GetFolderSizeInMb $rootPath) Mb"
-    
+
     Write-Host "  Removing any linux and osx runtimes"
     Remove-Item -Recurse -Force "$privateSiteExtensionPath\$bitness\runtimes\linux" -ErrorAction SilentlyContinue
     Remove-Item -Recurse -Force "$privateSiteExtensionPath\$bitness\runtimes\osx" -ErrorAction SilentlyContinue
-    
+
     Write-Host "  Removing python worker"
     Remove-Item -Recurse -Force "$rootPath\workers\python" -ErrorAction SilentlyContinue
 
@@ -106,7 +103,7 @@ function CleanOutput([string] $rootPath) {
     Get-ChildItem "$rootPath\workers\powershell" -Directory -ErrorAction SilentlyContinue |
       ForEach-Object { Get-ChildItem "$($_.FullName)\runtimes" -Directory -Exclude $keepRuntimes } |
         Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
-    
+
     Write-Host "  Current size: $(GetFolderSizeInMb $rootPath) Mb"
 }
 
@@ -115,9 +112,9 @@ function CreatePatchedSiteExtension([string] $siteExtensionPath) {
     Write-Host "SiteExtensionPath is $siteExtensionPath"
     $officialSiteExtensionPath = "$siteExtensionPath\$extensionVersion"
     $baseVersion = "$majorMinorVersion.0"
-    $baseZipPath = "$buildOutput\BaseZipDirectory"
-    $baseExtractedPath = "$buildOutput\BaseZipDirectory\Extracted"
-    
+    $baseZipPath = "$publishDir\BaseZipDirectory"
+    $baseExtractedPath = "$publishDir\BaseZipDirectory\Extracted"
+
     # Try to download base version
     New-Item -Itemtype "directory" -path "$baseZipPath" -Force > $null
     New-Item -Itemtype "directory" -path "$baseExtractedPath" -Force > $null
@@ -131,7 +128,7 @@ function CreatePatchedSiteExtension([string] $siteExtensionPath) {
     Expand-Archive -LiteralPath "$baseZipPath\Functions.$majorMinorVersion.0.zip" -DestinationPath "$baseExtractedPath"
     
     # Create directory for patch
-    $zipOutput = "$buildOutput\ZippedPatchSiteExtension"
+    $zipOutput = "$publishDir\ZippedPatchSiteExtension"
     New-Item -Itemtype directory -path $zipOutput -Force > $null
 
     # Copy extensions.xml as is
@@ -207,7 +204,12 @@ function CreatePatchedSiteExtension([string] $siteExtensionPath) {
 
 function CreateSiteExtensions() {
     $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
-    $siteExtensionPath = "$buildOutput\temp_extension"
+    $siteExtensionPath = "$publishDir\temp_extension"
+
+    if (Test-Path $siteExtensionPath) {
+        Write-Host "  Existing site extension path found. Deleting."
+        Remove-Item $siteExtensionPath -Recurse -Force | Out-Null
+    }
 
     # The official site extension needs to be nested inside a folder with its version.
     # Not using the suffix (eg: '-ci') here as it may not work correctly in a private stamp
@@ -215,8 +217,8 @@ function CreateSiteExtensions() {
     
     Write-Host "======================================"
     Write-Host "Copying build to temp directory to prepare for zipping official site extension."
-    Copy-Item -Path $buildOutput\publish\win-x86\ -Destination $officialSiteExtensionPath\32bit -Force -Recurse > $null
-    Copy-Item -Path $buildOutput\publish\win-x64 -Destination $officialSiteExtensionPath\64bit -Force -Recurse > $null
+    Copy-Item -Path $publishDir\release_win-x86\ -Destination $officialSiteExtensionPath\32bit -Force -Recurse > $null
+    Copy-Item -Path $publishDir\release_win-x64 -Destination $officialSiteExtensionPath\64bit -Force -Recurse > $null
     Copy-Item -Path $officialSiteExtensionPath\32bit\applicationHost.xdt -Destination $officialSiteExtensionPath -Force > $null
     Write-Host "  Deleting workers directory: $officialSiteExtensionPath\32bit\workers" 
     Remove-Item -Recurse -Force "$officialSiteExtensionPath\32bit\workers" -ErrorAction SilentlyContinue
@@ -239,17 +241,13 @@ function CreateSiteExtensions() {
     Write-Host "Done generating hashes for hard links into $siteExtensionPath/$extensionVersion"
     Write-Host "======================================"
     Write-Host
-    
-    $zipOutput = "$buildOutput\SiteExtension"
+
+    $zipOutput = "$publishDir\SiteExtension"
     New-Item -Itemtype directory -path $zipOutput -Force > $null
-    if ($minorVersionPrefix -eq "10") {
-        ZipContent $siteExtensionPath "$zipOutput\Functions.$extensionVersion$runtimeSuffix.zip"
-    } else {
-        ZipContent $siteExtensionPath "$zipOutput\FunctionsInProc.$extensionVersion$runtimeSuffix.zip"
-    }
+    ZipContent $siteExtensionPath "$zipOutput\Functions.$extensionVersion.zip"
 
     # Create directory for content even if there is no patch build. This makes artifact uploading easier.
-    $patchedContentDirectory = "$buildOutput\PatchedSiteExtension"
+    $patchedContentDirectory = "$publishDir\PatchedSiteExtension"
     New-Item -Itemtype directory -path $patchedContentDirectory -Force > $null
 
     # Construct patch
@@ -262,19 +260,19 @@ function CreateSiteExtensions() {
       Write-Host "======================================"
       Write-Host
     }
-    
-    Remove-Item $siteExtensionPath -Recurse -Force > $null    
-    
+
+    Remove-Item $siteExtensionPath -Recurse -Force > $null
+
     Write-Host "======================================"
     $stopwatch.Reset()
     Write-Host "Copying build to temp directory to prepare for zipping private site extension."
-    Copy-Item -Path $buildOutput\publish\win-x86\ -Destination $siteExtensionPath\SiteExtensions\Functions\32bit -Force -Recurse > $null
+    Copy-Item -Path $publishDir\release_win-x86\ -Destination $siteExtensionPath\SiteExtensions\Functions\32bit -Force -Recurse > $null
     Copy-Item -Path $siteExtensionPath\SiteExtensions\Functions\32bit\applicationHost.xdt -Destination $siteExtensionPath\SiteExtensions\Functions -Force > $null
     Write-Host "Done copying. Elapsed: $($stopwatch.Elapsed)"
     Write-Host "======================================"
     Write-Host ""
-    
-    $zipOutput = "$buildOutput\PrivateSiteExtension"
+
+    $zipOutput = "$publishDir\PrivateSiteExtension"
     New-Item -Itemtype directory -path $zipOutput -Force > $null
     ZipContent $siteExtensionPath "$zipOutput\Functions.Private.$extensionVersion.win-x32.inproc.zip"
     
@@ -285,20 +283,18 @@ function WriteHashesFile([string] $directoryPath) {
   New-Item -Path "$directoryPath/../temp_hashes" -ItemType Directory | Out-Null
   $temp_current = (Get-Location)
   Set-Location $directoryPath
-  Get-ChildItem -Recurse $directoryPath | where { $_.PsIsContainer -eq $false } | Foreach-Object { "Hash:" + [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes((Get-FileHash -Algorithm MD5 $_.FullName).Hash)) + " FileName:" + (Resolve-Path -Relative -Path $_.FullName) } | Out-File -FilePath "$directoryPath\..\temp_hashes\$hashesForHardlinksFile"
+  Get-ChildItem -Recurse $directoryPath | Where-Object { $_.PsIsContainer -eq $false } | Foreach-Object { "Hash:" + [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes((Get-FileHash -Algorithm MD5 $_.FullName).Hash)) + " FileName:" + (Resolve-Path -Relative -Path $_.FullName) } | Out-File -FilePath "$directoryPath\..\temp_hashes\$hashesForHardlinksFile"
   Move-Item -Path "$directoryPath/../temp_hashes/$hashesForHardlinksFile" -Destination "$directoryPath" -Force
   Set-Location $temp_current
   Remove-Item "$directoryPath/../temp_hashes" -Recurse -Force > $null
 }
 
-Write-Host
-dotnet --info
-Write-Host
-Write-Host "Output directory: $buildOutput"
-if (Test-Path $buildOutput) {
+Write-Host "Output directory: $publishDir"
+if (Test-Path $publishDir) {
     Write-Host "  Existing build output found. Deleting."
-    Remove-Item $buildOutput -Recurse -Force
+    Remove-Item $publishDir -Recurse -Force
 }
+
 Write-Host "Extensions version: $extensionVersion"
 Write-Host ""
 
