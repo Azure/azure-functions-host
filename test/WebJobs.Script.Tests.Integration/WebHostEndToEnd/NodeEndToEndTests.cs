@@ -887,9 +887,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
         public class TestFixture : EndToEndTestFixture
         {
-            private static string rootPath = Path.Combine("TestScripts", "Node");
+            private static readonly string rootPath = Path.Combine("TestScripts", "Node");
 
-            public TestFixture() : base(rootPath, "node", RpcWorkerConstants.NodeLanguageWorkerName)
+            public TestFixture()
+                : base(rootPath, "node", RpcWorkerConstants.NodeLanguageWorkerName)
             {
             }
 

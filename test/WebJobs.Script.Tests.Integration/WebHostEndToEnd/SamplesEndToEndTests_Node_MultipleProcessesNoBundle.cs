@@ -65,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             }
 
             public MultiplepleProcessesTestFixtureNoBundles()
-                : base(Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "..", "sample", "NodeWithoutBundle"), "samples", RpcWorkerConstants.NodeLanguageWorkerName, 3)
+                : base(Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "sample", "NodeWithoutBundle"), "samples", RpcWorkerConstants.NodeLanguageWorkerName, 3)
             {
                 _nodeProcessesBeforeTestStarted = Process.GetProcessesByName("node").Select(p => p.Id);
                 _nodeProcessesBeforeTestStarted = _nodeProcessesBeforeTestStarted ?? new List<int>();

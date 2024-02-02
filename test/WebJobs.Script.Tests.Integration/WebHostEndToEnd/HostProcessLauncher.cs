@@ -17,8 +17,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
     /// </summary>
     public class HostProcessLauncher : IDisposable
     {
-        private const string TestPathTemplate = "..\\..\\{0}\\debug\\{1}";
-        private const int _port = 3479;
+        private const string BuildPathTemplate = "..\\..\\{0}\\{1}";
+        private const string PublishPathTemplate = "..\\..\\..\\pub\\{0}\\{1}";
+        private const int Port = 3479;
 
         private readonly string _testPath;
         private readonly IDictionary<string, string> _envVars;
@@ -29,20 +30,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
         private Lazy<HttpClient> _lazyClient = new Lazy<HttpClient>(() =>
         {
             var client = new HttpClient();
-            client.BaseAddress = new Uri($"http://localhost:{_port}");
+            client.BaseAddress = new Uri($"http://localhost:{Port}");
             return client;
         });
 
-        public HostProcessLauncher(string testProjectName, IDictionary<string, string> envVars = null,
-            bool usePublishPath = false, string targetFramework = "netcoreapp3.1")
+        public HostProcessLauncher(
+            string testProjectName,
+            IDictionary<string, string> envVars = null,
+            bool usePublishPath = false)
         {
-            _testPath = Path.GetFullPath(string.Format(TestPathTemplate, testProjectName, targetFramework));
-
-            if (usePublishPath)
-            {
-                _testPath = Path.Combine(_testPath, "publish");
-            }
-
+            string template = usePublishPath ? PublishPathTemplate : BuildPathTemplate;
+            _testPath = Path.GetFullPath(string.Format(template, testProjectName, "debug"));
             _envVars = envVars ?? new Dictionary<string, string>();
         }
 
@@ -58,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             var dirPath = Path.GetDirectoryName(typeof(HostProcessLauncher).Assembly.Location);
             var dirName = new DirectoryInfo(dirPath).Name;
 
-            string workingDir = Path.Combine("..", "..", "..", "..", "..", "src", "WebJobs.Script.WebHost", "bin", "Debug", $"{dirName}");
+            string workingDir = Path.Combine("..", "..", "WebJobs.Script.WebHost", dirName);
             workingDir = Path.GetFullPath(workingDir);
             string filePath = Path.Combine(workingDir, "Microsoft.Azure.WebJobs.Script.WebHost.exe");
 
@@ -66,12 +64,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             outputHelper?.WriteLine($"  Test host.json exists: {File.Exists(Path.Join(_testPath, "host.json"))}");
             outputHelper?.WriteLine($"  Exe:                   {filePath}");
             outputHelper?.WriteLine($"  Exe exists:            {File.Exists(filePath)}");
-            outputHelper?.WriteLine($"  Port:                  {_port}");
+            outputHelper?.WriteLine($"  Port:                  {Port}");
 
             _process.StartInfo = new ProcessStartInfo
             {
                 FileName = filePath,
-                Arguments = $"--urls=http://localhost:{_port}",
+                Arguments = $"--urls=http://localhost:{Port}",
                 RedirectStandardError = true,
                 RedirectStandardOutput = true,
                 CreateNoWindow = true,

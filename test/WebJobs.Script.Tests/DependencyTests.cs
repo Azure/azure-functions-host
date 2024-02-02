@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
@@ -45,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             string depsJsonFileName = "Microsoft.Azure.WebJobs.Script.WebHost.deps.json";
             string oldDepsJson = Path.GetFullPath(depsJsonFileName);
-            string webhostBinPath = Path.Combine("..", "..", "..", "..", "..", "src", "WebJobs.Script.WebHost", "bin");
+            string webhostBinPath = Path.Combine("..", "..", "WebJobs.Script.WebHost");
             string newDepsJson = Directory.GetFiles(Path.GetFullPath(webhostBinPath), depsJsonFileName, SearchOption.AllDirectories).FirstOrDefault();
 
             Assert.True(File.Exists(oldDepsJson), $"{oldDepsJson} not found.");
