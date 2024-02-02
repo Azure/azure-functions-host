@@ -5,7 +5,7 @@
     <LangVersion>latest</LangVersion>
     <MajorVersion>4</MajorVersion>
     <MinorVersionPrefix Condition="'$(MinorVersionPrefix)' == ''">10</MinorVersionPrefix>
-    <MinorVersion>$(MinorVersionPrefix)30</MinorVersion>
+    <MinorVersion>$(MinorVersionPrefix)31</MinorVersion>
     <PatchVersion>0</PatchVersion>
     <BuildNumber Condition="'$(BuildNumber)' == '' ">0</BuildNumber>
     <PreviewVersion></PreviewVersion>
