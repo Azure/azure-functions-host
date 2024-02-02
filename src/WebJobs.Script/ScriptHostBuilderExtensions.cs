@@ -237,11 +237,8 @@ namespace Microsoft.Azure.WebJobs.Script
                     catch (Exception ex)
                     {
                         string appInsightsConnStr = GetConfigurationValue(EnvironmentSettingNames.AppInsightsConnectionString, context.Configuration);
-                        if (!string.IsNullOrEmpty(appInsightsConnStr))
-                        {
-                            string appInsightsAuthStr = GetConfigurationValue(EnvironmentSettingNames.AppInsightsAuthenticationString, context.Configuration);
-                            RecordAndThrowExternalStartupException("Error configuring services in an external startup class.", ex, loggerFactory, appInsightsConnStr, appInsightsAuthStr);
-                        }
+                        string appInsightsAuthStr = GetConfigurationValue(EnvironmentSettingNames.AppInsightsAuthenticationString, context.Configuration);
+                        RecordAndThrowExternalStartupException("Error configuring services in an external startup class.", ex, loggerFactory, appInsightsConnStr, appInsightsAuthStr);
                     }
                 }
 
@@ -269,11 +266,8 @@ namespace Microsoft.Azure.WebJobs.Script
                         {
                             // Go directly to the environment; We have no valid configuration from the customer at this point.
                             string appInsightsConnStr = GetConfigurationValue(EnvironmentSettingNames.AppInsightsConnectionString);
-                            if (!string.IsNullOrEmpty(appInsightsConnStr))
-                            {
-                                string appInsightsAuthStr = GetConfigurationValue(EnvironmentSettingNames.AppInsightsAuthenticationString);
-                                RecordAndThrowExternalStartupException("Error building configuration in an external startup class.", ex, loggerFactory, appInsightsConnStr, appInsightsAuthStr);
-                            }
+                            string appInsightsAuthStr = GetConfigurationValue(EnvironmentSettingNames.AppInsightsAuthenticationString);
+                            RecordAndThrowExternalStartupException("Error building configuration in an external startup class.", ex, loggerFactory, appInsightsConnStr, appInsightsAuthStr);
                         }
                     });
                 }
@@ -543,27 +537,29 @@ namespace Microsoft.Azure.WebJobs.Script
 
             // Send the error to App Insights if possible. This is happening during ScriptHost construction so we
             // have no existing TelemetryClient to use. Create a one-off client and flush it ASAP.
-            using TelemetryConfiguration telemetryConfiguration = new()
+            if (!string.IsNullOrEmpty(appInsightsConnStr))
             {
-                ConnectionString = appInsightsConnStr,
-                TelemetryChannel = new InMemoryChannel()
-            };
+                using TelemetryConfiguration telemetryConfiguration = new()
+                {
+                    ConnectionString = appInsightsConnStr,
+                    TelemetryChannel = new InMemoryChannel()
+                };
 
-            if (!string.IsNullOrEmpty(appInsightsAuthString))
-            {
-                TokenCredentialOptions credentialOptions = TokenCredentialOptions.ParseAuthenticationString(appInsightsAuthString);
-                // Default is connection string based ingestion
-                telemetryConfiguration.SetAzureTokenCredential(new ManagedIdentityCredential(credentialOptions.ClientId));
+                if (!string.IsNullOrEmpty(appInsightsAuthString))
+                {
+                    TokenCredentialOptions credentialOptions = TokenCredentialOptions.ParseAuthenticationString(appInsightsAuthString);
+                    // Default is connection string based ingestion
+                    telemetryConfiguration.SetAzureTokenCredential(new ManagedIdentityCredential(credentialOptions.ClientId));
+                }
+
+                TelemetryClient telemetryClient = new(telemetryConfiguration);
+                telemetryClient.Context.GetInternalContext().SdkVersion = new ApplicationInsightsSdkVersionProvider().GetSdkVersion();
+                telemetryClient.TrackTrace(startupEx.ToString(), SeverityLevel.Error);
+                telemetryClient.TrackException(startupEx);
+                telemetryClient.Flush();
+                // Flush is async, sleep for 1 sec to give it time to flush
+                Thread.Sleep(1000);
             }
-
-            TelemetryClient telemetryClient = new(telemetryConfiguration);
-            telemetryClient.Context.GetInternalContext().SdkVersion = new ApplicationInsightsSdkVersionProvider().GetSdkVersion();
-            telemetryClient.TrackTrace(startupEx.ToString(), SeverityLevel.Error);
-            telemetryClient.TrackException(startupEx);
-            telemetryClient.Flush();
-            // Flush is async, sleep for 1 sec to give it time to flush
-            Thread.Sleep(1000);
-
             throw startupEx;
         }
 
