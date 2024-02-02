@@ -165,6 +165,11 @@ namespace Microsoft.Azure.WebJobs.Script
                 && runningInContainerValue;
         }
 
+        public static bool IsCorsConfigurationEnabled(this IEnvironment environment)
+        {
+            return environment.GetEnvironmentVariable(EnableCorsConfiguration) == "1";
+        }
+
         public static bool IsPersistentFileSystemAvailable(this IEnvironment environment)
         {
             return environment.IsWindowsAzureManagedHosting()
@@ -649,6 +654,24 @@ namespace Microsoft.Azure.WebJobs.Script
         public static bool IsTargetBasedScalingEnabled(this IEnvironment environment)
         {
             return !string.Equals(environment.GetEnvironmentVariable(TargetBaseScalingEnabled), "0");
+        }
+
+        /// <summary>
+        /// Tries to get the target functions group to run, if any specified.
+        /// </summary>
+        /// <param name="environment">The environment to use.</param>
+        /// <param name="group">The target group, if any.</param>
+        /// <returns>True if group specified, false otherwise.</returns>
+        public static bool TryGetFunctionsTargetGroup(this IEnvironment environment, out string group)
+        {
+            group = environment.GetEnvironmentVariable(FunctionsTargetGroup);
+            if (group is "")
+            {
+                // standardize empty string to null
+                group = null;
+            }
+
+            return group is not null;
         }
     }
 }

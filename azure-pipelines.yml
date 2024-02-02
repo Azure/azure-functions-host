@@ -1,6 +1,10 @@
 variables:
   buildNumber: $[ counter('constant', 13000) ]
   isReleaseBranch: $[contains(variables['Build.SourceBranch'], 'release/')]
+  ${{ if contains(variables['Build.SourceBranch'], 'release/inproc6/') }}:
+    minorVersionPrefix: "6"
+  ${{ else }}:
+    minorVersionPrefix: "10"
   DOTNET_NOLOGO: 1
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
   DOTNET_CLI_TELEMETRY_OPTOUT: 1
@@ -10,12 +14,14 @@ pr:
     include:
     - dev
     - release/4.*
+    - release/inproc6/4.*
 
 trigger:
   branches:
     include:
     - dev
     - release/4.*
+    - release/inproc6/4.*
 
 jobs:
 - job: InitializePipeline
@@ -24,17 +30,23 @@ jobs:
     demands:
       - ImageOverride -equals MMS2019TLS
   steps:
+  - task: UseDotNet@2 # The pinned SDK we use to build
+    displayName: 'Install .NET SDK from global.json'
+    inputs:
+      packageType: sdk
+      useGlobalJson: true
   - task: PowerShell@2
     displayName: 'Initialize'
     name: Initialize
     inputs:
       filePath: '$(Build.Repository.LocalPath)\build\initialize-pipeline.ps1'
+      showWarnings: true
 
 - job: BuildArtifacts
   dependsOn: InitializePipeline
   condition: and(succeeded(), or(ne(variables['Build.Reason'], 'PullRequest'), eq(dependencies.InitializePipeline.outputs['Initialize.BuildArtifacts'], true)))
   variables:
-    ${{ if or( eq( variables['Build.Reason'], 'PullRequest' ), and( not( contains( variables['Build.SourceBranch'], 'release/4.' ) ), not( contains( variables['Build.SourceBranch'], 'release/ExtensionsMetadataGenerator/' ) ) ) ) }}:
+    ${{ if or( eq( variables['Build.Reason'], 'PullRequest' ), and( not( contains( variables['Build.SourceBranch'], 'release/inproc6/4.' ) ), not( contains( variables['Build.SourceBranch'], 'release/4.' ) ), not( contains( variables['Build.SourceBranch'], 'release/ExtensionsMetadataGenerator/' ) ) ) ) }}:
       suffixTemp: $(buildNumber)
       packSuffixSwitchTemp: --version-suffix $(buildNumber)
       emgSuffixSwitchTemp: --version-suffix ci$(buildNumber)
@@ -51,7 +63,7 @@ jobs:
     displayName: "Build artifacts"
     inputs:
       filePath: '$(Build.Repository.LocalPath)\build\build-extensions.ps1'
-      arguments: '-buildNumber "$(buildNumber)" -suffix "$(suffix)"'
+      arguments: '-buildNumber "$(buildNumber)" -suffix "$(suffix)" -minorVersionPrefix "$(minorVersionPrefix)"'
   - task: PowerShell@2
     displayName: "Check for security vulnerabilities"
     inputs:
