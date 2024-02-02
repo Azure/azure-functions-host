@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
         public void AppFailure_Increments_AppFailureCount()
         {
             // Arrange
-            var metrics = _serviceProvider.GetRequiredService<HostMetrics>();
+            var metrics = _serviceProvider.GetRequiredService<IHostMetrics>();
             var meterFactory = _serviceProvider.GetRequiredService<IMeterFactory>();
             var collector = new MetricCollector<long>(meterFactory, HostMetrics.MeterName, HostMetrics.AppFailureCount);
 
@@ -47,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
         public void IncrementStartedInvocationCount_Increments_StartedInvocationCount()
         {
             // Arrange
-            var metrics = _serviceProvider.GetRequiredService<HostMetrics>();
+            var metrics = _serviceProvider.GetRequiredService<IHostMetrics>();
             var meterFactory = _serviceProvider.GetRequiredService<IMeterFactory>();
             var collector = new MetricCollector<long>(meterFactory, HostMetrics.MeterName, HostMetrics.StartedInvocationCount);
 
