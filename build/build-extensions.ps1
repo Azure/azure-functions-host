@@ -1,7 +1,7 @@
 param (
-  [string]$buildNumber = "0",  
+  [string]$buildNumber = "0",    
   [string]$suffix = "",
-  [string]$minorVersionPrefix = "",
+  [ValidateSet("6", "8", "10")][string]$minorVersionPrefix = "10",
   [string]$hashesForHardlinksFile = "hashesForHardlinks.txt"
 )
 
@@ -251,8 +251,8 @@ function CreateSiteExtensions() {
         # The host requires that this folder exists, even if it's empty
         New-Item -Itemtype directory -path $siteExtensionPath\workers
         Write-Host
-        ZipContent $siteExtensionPath "$zipOutput\Functions.$extensionVersion$runtimeSuffix.zip"
-    } else {
+        ZipContent $siteExtensionPath "$zipOutput\FunctionsInProc8.$extensionVersion$runtimeSuffix.zip"
+    } elseif ($minorVersionPrefix -eq "6") {
         ZipContent $siteExtensionPath "$zipOutput\FunctionsInProc.$extensionVersion$runtimeSuffix.zip"
     }
 
