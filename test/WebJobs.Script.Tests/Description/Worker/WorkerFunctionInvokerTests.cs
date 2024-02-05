@@ -3,10 +3,14 @@
 
 using System;
 using System.Collections.ObjectModel;
+using System.Diagnostics.Metrics;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.Workers;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.WebJobs.Script.Tests;
@@ -33,7 +37,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     o.ScriptPath = TestHelpers.FunctionsTestDirectory;
                     o.LogPath = TestHelpers.GetHostLogFileDirectory().Parent.FullName;
+                })
+                .ConfigureServices((context, services) =>
+                {
+                    services.AddMetrics();
+                    services.AddSingleton<IEnvironment>(new TestEnvironment());
+                    services.AddSingleton<IHostMetrics, HostMetrics>();
                 });
+
             var host = hostBuilder.Build();
 
             var sc = host.GetScriptHost();

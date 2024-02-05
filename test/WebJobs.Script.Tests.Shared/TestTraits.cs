@@ -57,5 +57,7 @@ namespace Microsoft.WebJobs.Script.Tests
         public const string FunctionsControllerEndToEnd = "FunctionsControllerEndToEnd";
 
         public const string FlexConsumptionMetricsTests = "FlexConsumptionMetricsTests";
+
+        public const string HostMetricsTests = "HostMetricsTests";
     }
 }
