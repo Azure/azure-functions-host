@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics.Metrics;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Host.Storage;
@@ -11,6 +12,7 @@ using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Grpc;
+using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.Tests;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
@@ -75,6 +77,7 @@ namespace Microsoft.WebJobs.Script.Tests
             services.AddWebJobsScriptHostRouting();
             services.AddLogging();
             services.AddFunctionMetadataManager();
+            services.AddHostMetrics();
 
             configureRootServices?.Invoke(services);
 
@@ -104,6 +107,13 @@ namespace Microsoft.WebJobs.Script.Tests
         {
             var mock = new Mock<T>();
             return services.AddSingleton<T>(mock.Object);
+        }
+
+        private static IServiceCollection AddHostMetrics(this IServiceCollection services)
+        {
+            services.AddMetrics();
+            services.AddSingleton<IHostMetrics, HostMetrics>();
+            return services;
         }
 
         private static IServiceCollection AddFunctionMetadataManager(this IServiceCollection services)
