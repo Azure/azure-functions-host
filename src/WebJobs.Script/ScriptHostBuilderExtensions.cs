@@ -39,7 +39,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging.Configuration;
 using Microsoft.Extensions.Options;
-
+using OpenTelemetry.Exporter;
 using OpenTelemetry.Exporter.Geneva;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
@@ -49,8 +49,10 @@ using OpenTelemetry.Trace;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -87,7 +89,7 @@ namespace Microsoft.Azure.WebJobs.Script
                                                  IMetricsLogger metricsLogger,
                                                  Action<IWebJobsBuilder> configureWebJobs = null)
         {
-            loggerFactory = loggerFactory ?? NullLoggerFactory.Instance;
+            loggerFactory ??= NullLoggerFactory.Instance;
 
             builder.SetAzureFunctionsConfigurationRoot();
             // Host configuration
@@ -104,8 +106,11 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 loggingBuilder.AddConsoleIfEnabled(context);
 
-                ConfigureApplicationInsights(context, loggingBuilder);
-                ConfigureOpenTelemetry(context, loggingBuilder);
+                ConfigureOpenTelemetry(context, loggingBuilder, out bool appInsightsOtelConfigured);
+                if (!appInsightsOtelConfigured)
+                {
+                    ConfigureApplicationInsights(context, loggingBuilder);
+                }
             })
             .ConfigureAppConfiguration((context, configBuilder) =>
             {
@@ -413,6 +418,9 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private static void OtelBind<T>(this IConfigurationSection section, T options) => section.Bind(options, bo => bo.BindNonPublicProperties = true);
 
+        // A regular expression that will match `Function.*.User`
+        private static readonly Regex FuncUserLogMessageCategoryMatcher = new(@"^Function\..*\.User$", RegexOptions.Compiled | RegexOptions.Singleline);
+
         private static readonly ImmutableArray<string> WellKnownOpenTelemetryExporters = ImmutableArray.Create("console", "geneva", "azureMonitor");
         private static void ConfigureOpenTelemetry(HostBuilderContext context, ILoggingBuilder loggingBuilder, out bool appInsightsConfigured)
         {
@@ -426,7 +434,8 @@ namespace Microsoft.Azure.WebJobs.Script
             var oteLoggingConfig = context.Configuration.GetSection(ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, ConfigurationSectionNames.Logging, "openTelemetry"));
             if (oteLoggingConfig.Exists())
             {
-                loggingBuilder.AddOpenTelemetry(oteLoggingConfig.OtelBind);
+                loggingBuilder.AddOpenTelemetry(oteLoggingConfig.OtelBind)
+                    .AddFilter((cat, level) => cat != "Host.Function.Console" && !FuncUserLogMessageCategoryMatcher.IsMatch(cat));
             }
 
             var services = loggingBuilder.Services;
