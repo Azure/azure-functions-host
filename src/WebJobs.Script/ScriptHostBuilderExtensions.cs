@@ -414,8 +414,10 @@ namespace Microsoft.Azure.WebJobs.Script
         private static void OtelBind<T>(this IConfigurationSection section, T options) => section.Bind(options, bo => bo.BindNonPublicProperties = true);
 
         private static readonly ImmutableArray<string> WellKnownOpenTelemetryExporters = ImmutableArray.Create("console", "geneva", "azureMonitor");
-        private static void ConfigureOpenTelemetry(HostBuilderContext context, ILoggingBuilder loggingBuilder)
+        private static void ConfigureOpenTelemetry(HostBuilderContext context, ILoggingBuilder loggingBuilder, out bool appInsightsConfigured)
         {
+            appInsightsConfigured = false;
+
             // OpenTelemetry configuration for the host is specified in host.json under logging:openTelemetry
             // It follows the schema used by OpenTelemetry.NET's support for IOptions
             // See https://github.com/open-telemetry/opentelemetry-dotnet/blob/main/docs/trace/customizing-the-sdk/README.md#configuration-files-and-environment-variables
@@ -441,6 +443,7 @@ namespace Microsoft.Azure.WebJobs.Script
                         if (!WellKnownOpenTelemetryExporters.Contains(section.Key, StringComparer.OrdinalIgnoreCase))
                         {
                             loggingBuilder.AddOpenTelemetry(o => o.AddOtlpExporter(section.Key, section.Bind));
+                            appInsightsConfigured = true;
                         }
                         else
                         {
@@ -462,6 +465,9 @@ namespace Microsoft.Azure.WebJobs.Script
                                         case "console":
                                             b.AddConsoleExporter(section.OtelBind);
                                             break;
+                                        default:
+                                            Debug.Fail($@"Unhandled 'Well Known' otel exporter: {section.Key}");
+                                            break;
                                     }
                                 });
                             }
@@ -482,13 +488,19 @@ namespace Microsoft.Azure.WebJobs.Script
                         {
                             services.ConfigureOpenTelemetryMeterProvider(b =>
                             {
-                                _ = section.Key.ToLowerInvariant() switch
+                                switch (section.Key.ToLowerInvariant())
                                 {
-                                    "azuremonitor" => null, // Ignore any attempt to override azureMonitor at the traces/metrics level because 'Distro' only supports one definition; we've chosen to use the 'logging' area for that.
-                                    "geneva" => b.AddGenevaMetricExporter(section.OtelBind),
-                                    "console" => b.AddConsoleExporter(section.OtelBind),
-                                    _ => throw new InvalidOperationException($"Unknown exporter type {section.Key}")
-                                };
+                                    case "azuremonitor": break; // Ignore any attempt to override azureMonitor at the traces/metrics level because 'Distro' only supports one definition; we've chosen to use the 'logging' area for that.
+                                    case "geneva":
+                                        b.AddGenevaMetricExporter(section.OtelBind);
+                                        break;
+                                    case "console":
+                                        b.AddConsoleExporter(section.OtelBind);
+                                        break;
+                                    default:
+                                        Debug.Fail($@"Unhandled 'Well Known' otel exporter: {section.Key}");
+                                        break;
+                                }
                             });
                         }
                     }
