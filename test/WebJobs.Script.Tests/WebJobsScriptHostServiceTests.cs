@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -41,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private OptionsWrapper<HostHealthMonitorOptions> _healthMonitorOptions;
         private HostPerformanceManager _hostPerformanceManager;
         private Mock<IHost> _host;
-        private HostMetrics _hostMetrics;
+        private IHostMetrics _hostMetrics;
 
         public WebJobsScriptHostServiceTests()
         {
@@ -57,25 +58,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _host = CreateMockHost();
 
             _mockScriptWebHostEnvironment = new Mock<IScriptWebHostEnvironment>();
-            _mockEnvironment = new Mock<IEnvironment>();
             _healthMonitorOptions = new OptionsWrapper<HostHealthMonitorOptions>(new HostHealthMonitorOptions());
             var serviceProviderMock = new Mock<IServiceProvider>(MockBehavior.Strict);
             _hostPerformanceManager = new HostPerformanceManager(_mockEnvironment.Object, _healthMonitorOptions, serviceProviderMock.Object);
             _mockConfig = new Mock<IConfiguration>().Object;
-            _hostMetrics = _host.Object.Services.GetService<HostMetrics>();
+            _hostMetrics = _host.Object.Services.GetService<IHostMetrics>();
         }
 
         private Mock<IHost> CreateMockHost(SemaphoreSlim disposedSemaphore = null)
         {
+            _mockEnvironment = new Mock<IEnvironment>();
+
             // The tests can pull the logger from a specific host if they need to.
             var services = new ServiceCollection()
-               .AddLogging(l =>
-               {
-                   l.Services.AddSingleton<ILoggerProvider, TestLoggerProvider>();
-                   l.AddFilter(_ => true);
-               })
-               .AddSingleton<HostMetrics>()
-               .BuildServiceProvider();
+                .AddLogging(l =>
+                {
+                    l.Services.AddSingleton<ILoggerProvider, TestLoggerProvider>();
+                    l.AddFilter(_ => true);
+                })
+                .AddMetrics()
+                .AddSingleton<IEnvironment>(_mockEnvironment.Object)
+                .AddSingleton<IHostMetrics, HostMetrics>()
+                .BuildServiceProvider();
 
             var host = new Mock<IHost>();
 
@@ -397,6 +401,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     l.Services.AddSingleton<ILoggerProvider, TestLoggerProvider>();
                     l.AddFilter(_ => true);
                 })
+                .AddSingleton<IHostMetrics, HostMetrics>()
                 .BuildServiceProvider();
 
             var host = new Mock<IHost>();

@@ -21,8 +21,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         public FunctionInstanceLoggerTests()
         {
             var metadataManager = new Mock<IFunctionMetadataManager>(MockBehavior.Strict);
-            var meterFactory = new Mock<IMeterFactory>(MockBehavior.Strict);
-            var environment = new Mock<IEnvironment>(MockBehavior.Strict);
+            var meterFactory = new Mock<IMeterFactory>();
+            var environment = new Mock<IEnvironment>();
             var hostMetrics = new HostMetrics(meterFactory.Object, environment.Object);
 
             _metrics = new TestMetricsLogger();
