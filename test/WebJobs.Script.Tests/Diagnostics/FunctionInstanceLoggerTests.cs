@@ -21,12 +21,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         public FunctionInstanceLoggerTests()
         {
             var metadataManager = new Mock<IFunctionMetadataManager>(MockBehavior.Strict);
-            var meterFactory = new Mock<IMeterFactory>();
-            var environment = new Mock<IEnvironment>();
-            var hostMetrics = new HostMetrics(meterFactory.Object, environment.Object);
+            var hostMetricsMock = new Mock<IHostMetrics>();
 
             _metrics = new TestMetricsLogger();
-            _functionInstanceLogger = new FunctionInstanceLogger(metadataManager.Object, _metrics, hostMetrics);
+            _functionInstanceLogger = new FunctionInstanceLogger(metadataManager.Object, _metrics, hostMetricsMock.Object);
         }
 
         [Fact]
