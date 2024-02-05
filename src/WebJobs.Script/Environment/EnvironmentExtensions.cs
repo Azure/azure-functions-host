@@ -442,7 +442,12 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             if (environment.IsAnyLinuxConsumption())
             {
-                return environment.GetEnvironmentVariableOrDefault(ContainerName, string.Empty);
+                var instanceId = environment.GetEnvironmentVariableOrDefault(WebsitePodName, string.Empty);
+                if (string.IsNullOrEmpty(instanceId))
+                {
+                    instanceId = environment.GetEnvironmentVariableOrDefault(ContainerName, string.Empty);
+                }
+                return instanceId;
             }
             else
             {

@@ -58,6 +58,7 @@
     <PackageReference Include="appinsights.testlogger" Version="1.0.0" />
     <PackageReference Include="FluentAssertions" Version="5.9.0" />
     <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.Testing" Version="8.1.0" />
     <PackageReference Include="Microsoft.Azure.Functions.PythonWorker" Version="4.26.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.9.4" />
     <PackageReference Include="Moq" Version="4.9.0" />
@@ -66,6 +67,7 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Storage" Version="4.0.5-11874" />
+    <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="8.0.0" />
     <PackageReference Include="System.IO.Abstractions.TestingHelpers" Version="2.1.0.227">
     </PackageReference>
     <PackageReference Include="xunit" Version="2.4.1" />
