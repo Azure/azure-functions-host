@@ -64,7 +64,8 @@ function BuildRuntime([string] $targetRid, [bool] $isSelfContained) {
 
     Write-Host ""
     $symbols = Get-ChildItem -Path $publishTarget -Filter *.pdb
-    Write-Host "Zipping symbols: $($symbols.Count) symbols found"
+    Write-Host "Zipping symbols: $($symbols.Count) symbols found:"
+    $symbols | Write-Host
 
     $symbolsPath = "$publishDir\Symbols"
     if (!(Test-Path -PathType Container $symbolsPath))
@@ -72,7 +73,7 @@ function BuildRuntime([string] $targetRid, [bool] $isSelfContained) {
         New-Item -ItemType Directory -Path $symbolsPath | Out-Null
     }
 
-    Compress-Archive -Path $symbols -DestinationPath "$symbolsPath\Functions.Symbols.$extensionVersion.$targetRid.zip" | Out-Null
+    $symbols | Compress-Archive -DestinationPath "$symbolsPath\Functions.Symbols.$extensionVersion.$targetRid.zip" | Out-Null
     $symbols | Remove-Item | Out-Null
 
     Write-Host ""
