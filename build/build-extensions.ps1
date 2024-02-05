@@ -245,15 +245,12 @@ function CreateSiteExtensions() {
     if ($minorVersionPrefix -eq "10") {
         ZipContent $siteExtensionPath "$zipOutput\Functions.$extensionVersion$runtimeSuffix.zip"
     } elseif ($minorVersionPrefix -eq "8") {
-        Write-Host "Removing workers directory from 32bit and 64bit folder."
-        Remove-Item -Recurse -Force "$siteExtensionPath\32bit\workers" -ErrorAction SilentlyContinue
-        Remove-Item -Recurse -Force "$siteExtensionPath\64bit\workers" -ErrorAction SilentlyContinue
-
+        # The .NET 8 host doesn't require any workers. Doing this to save space.
+        Write-Host "Removing workers."
+        Remove-Item -Recurse -Force "$siteExtensionPath\workers" -ErrorAction SilentlyContinue
+        # The host requires that this folder exists, even if it's empty
+        New-Item -Itemtype directory -path $siteExtensionPath\workers
         Write-Host
-        Write-Host "Add an empty worker directory for 32bit and 64bit folders"
-        New-Item -Itemtype directory -path $siteExtensionPath\32bit\workers
-        Write-Host
-
         ZipContent $siteExtensionPath "$zipOutput\Functions.$extensionVersion$runtimeSuffix.zip"
     } else {
         ZipContent $siteExtensionPath "$zipOutput\FunctionsInProc.$extensionVersion$runtimeSuffix.zip"
