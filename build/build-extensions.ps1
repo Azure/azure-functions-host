@@ -247,9 +247,9 @@ function CreateSiteExtensions() {
     } elseif ($minorVersionPrefix -eq "8") {
         # The .NET 8 host doesn't require any workers. Doing this to save space.
         Write-Host "Removing workers."
-        Remove-Item -Recurse -Force "$siteExtensionPath\workers" -ErrorAction SilentlyContinue
+        Remove-Item -Recurse -Force "$siteExtensionPath\$extensionVersion$runtimeSuffix\workers" -ErrorAction SilentlyContinue
         # The host requires that this folder exists, even if it's empty
-        New-Item -Itemtype directory -path $siteExtensionPath\workers
+        New-Item -Itemtype directory -path $siteExtensionPath\$extensionVersion$runtimeSuffix\workers
         Write-Host
         ZipContent $siteExtensionPath "$zipOutput\FunctionsInProc8.$extensionVersion$runtimeSuffix.zip"
     } elseif ($minorVersionPrefix -eq "6") {
