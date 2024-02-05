@@ -4,12 +4,15 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics.Metrics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
+using Microsoft.Azure.WebJobs.Script.Metrics;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
@@ -40,7 +43,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     o.ScriptPath = rootPath;
                     o.LogPath = TestHelpers.GetHostLogFileDirectory().Parent.FullName;
                 })
+                .ConfigureServices((context, services) =>
+                {
+                    services.AddMetrics();
+                    services.AddSingleton<IEnvironment>(new TestEnvironment());
+                    services.AddSingleton<IHostMetrics, HostMetrics>();
+                })
                 .Build();
+
             _scriptHost = _host.GetScriptHost();
             _scriptHost.InitializeAsync().GetAwaiter().GetResult();
             var serviceBindingProviders = _host.Services.GetService<IEnumerable<IScriptBindingProvider>>().ToArray();

@@ -9,10 +9,12 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
+using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 {
@@ -22,6 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         private readonly FlexConsumptionMetricsPublisherOptions _options;
         private readonly IEnvironment _environment;
         private readonly ILogger<FlexConsumptionMetricsPublisher> _logger;
+        private readonly IHostMetricsProvider _metricsProvider;
         private readonly object _lock = new object();
         private readonly IFileSystem _fileSystem;
 
@@ -33,13 +36,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         private TimeSpan _metricPublishInterval;
         private TimeSpan _initialPublishDelay;
 
-        public FlexConsumptionMetricsPublisher(IEnvironment environment, IOptionsMonitor<StandbyOptions> standbyOptions, IOptions<FlexConsumptionMetricsPublisherOptions> options, ILogger<FlexConsumptionMetricsPublisher> logger, IFileSystem fileSystem)
+        public FlexConsumptionMetricsPublisher(IEnvironment environment, IOptionsMonitor<StandbyOptions> standbyOptions, IOptions<FlexConsumptionMetricsPublisherOptions> options,
+            ILogger<FlexConsumptionMetricsPublisher> logger, IFileSystem fileSystem, IHostMetricsProvider metricsProvider)
         {
             _standbyOptions = standbyOptions ?? throw new ArgumentNullException(nameof(standbyOptions));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _fileSystem = fileSystem ?? new FileSystem();
+            _metricsProvider = metricsProvider ?? throw new ArgumentNullException(nameof(metricsProvider));
 
             if (_standbyOptions.CurrentValue.InStandbyMode)
             {
@@ -90,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         {
             try
             {
-                if (FunctionExecutionCount == 0 && FunctionExecutionTimeMS == 0 && !IsAlwaysReady)
+                if (FunctionExecutionCount == 0 && FunctionExecutionTimeMS == 0 && !IsAlwaysReady && !_metricsProvider.HasMetrics())
                 {
                     // no activity to report
                     return;
@@ -106,8 +111,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
                         TotalTimeMS = (long)_intervalStopwatch.GetElapsedTime().TotalMilliseconds,
                         ExecutionCount = FunctionExecutionCount,
                         ExecutionTimeMS = FunctionExecutionTimeMS,
-                        IsAlwaysReady = IsAlwaysReady
+                        IsAlwaysReady = IsAlwaysReady,
+                        InstanceId = _metricsProvider.InstanceId,
+                        FunctionGroup = _metricsProvider.FunctionGroup
                     };
+
+                    var scaleMetrics = _metricsProvider.GetHostMetricsOrNull();
+                    if (scaleMetrics is not null)
+                    {
+                        metrics.AppFailureCount = scaleMetrics.TryGetValue(HostMetrics.AppFailureCount, out long appFailureCount) ? appFailureCount : 0;
+                        metrics.StartedInvocationCount = scaleMetrics.TryGetValue(HostMetrics.StartedInvocationCount, out long startedInvocationCount) ? startedInvocationCount : 0;
+                        metrics.ActiveInvocationCount = scaleMetrics.TryGetValue(HostMetrics.ActiveInvocationCount, out long activeInvocationCount) ? activeInvocationCount : 0;
+                    }
 
                     FunctionExecutionTimeMS = FunctionExecutionCount = 0;
                 }
@@ -296,6 +311,32 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
             /// AlwaysReady.
             /// </summary>
             public bool IsAlwaysReady { get; set; }
+
+            /// <summary>
+            /// Gets or sets the instance Id.
+            /// </summary>
+            public string InstanceId { get; set; }
+
+            /// <summary>
+            /// Gets or sets the function group name. This can be either http, durable or
+            /// the name of a function.
+            /// </summary>
+            public string FunctionGroup { get; set; }
+
+            /// <summary>
+            /// Gets or sets the total number of permanent host failures.
+            /// </summary>
+            public long AppFailureCount { get; set; }
+
+            /// <summary>
+            /// Gets or sets the total number of in-progress function invocations.
+            /// </summary>
+            public long ActiveInvocationCount { get; set; }
+
+            /// <summary>
+            /// Gets or sets the total number of function invocations that have started.
+            /// </summary>
+            public long StartedInvocationCount { get; set; }
         }
     }
 }
