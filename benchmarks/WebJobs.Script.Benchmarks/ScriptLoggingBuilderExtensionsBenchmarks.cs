@@ -9,9 +9,9 @@ namespace Microsoft.Azure.WebJobs.Script.Benchmarks
     public class ScriptLoggingBuilderExtensionsBenchmarks
     {
         [Benchmark]
-        public void Filter()
+        public void ShouldLog()
         {
-            ScriptLoggingBuilderExtensions.Filter("test", LogLevel.Information, LogLevel.Information);
+            ScriptLoggingBuilderExtensions.ShouldLog("test-provider", "test", LogLevel.Information, LogLevel.Information);
         }
     }
 }

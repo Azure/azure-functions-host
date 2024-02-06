@@ -96,7 +96,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // ScriptSettingsManager should be replaced. We're setting this here as a temporary step until
             // broader configuration changes are made:
             services.AddSingleton<ScriptSettingsManager>();
-            services.AddSingleton<IEventGenerator>(p =>
+
+            // TODO: Is there another way to allow tests to override this?
+            services.TryAddSingleton<IEventGenerator>(p =>
             {
                 var environment = p.GetService<IEnvironment>();
                 if (environment.IsAnyLinuxConsumption())

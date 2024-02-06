@@ -11,8 +11,6 @@ namespace Microsoft.Extensions.Logging
         public static void AddWebJobsSystem<T>(this ILoggingBuilder builder) where T : SystemLoggerProvider
         {
             builder.Services.AddSingleton<ILoggerProvider, T>();
-
-            // Log all logs to SystemLogger
             builder.AddDefaultWebJobsFilters<T>(LogLevel.Trace);
         }
     }

@@ -1,10 +1,11 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Concurrent;
+using System.Collections.Immutable;
 using System.Linq;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.Configuration;
@@ -14,30 +15,36 @@ namespace Microsoft.Extensions.Logging
 {
     public static class ScriptLoggingBuilderExtensions
     {
-        private static ConcurrentDictionary<string, bool> _filteredCategoryCache = new ConcurrentDictionary<string, bool>();
+        private static readonly ImmutableArray<string> SystemLogCategoryPrefixes = ImmutableArray.Create("Microsoft.Azure.Functions", "Microsoft.Azure.WebJobs.", "Function.", "Worker.", "Host.");
+        private static readonly ImmutableArray<string> SystemOnlyCategorySuffixes = ImmutableArray.Create(".LinuxConsumptionMetricsTracker", ".LinuxContainerLegionMetricsPublisher");
+
+        private static ConcurrentDictionary<string, bool> _shouldLogCategoryCache = new ConcurrentDictionary<string, bool>();
+        private static ConcurrentDictionary<string, bool> _systemOnlyCategoryCache = new ConcurrentDictionary<string, bool>();
 
         public static ILoggingBuilder AddDefaultWebJobsFilters(this ILoggingBuilder builder)
         {
             builder.SetMinimumLevel(LogLevel.None);
-            builder.AddFilter((c, l) => Filter(c, l, LogLevel.Information));
+            builder.AddFilter((p, c, l) => ShouldLog(p, c, l, LogLevel.Information));
             return builder;
         }
 
         public static ILoggingBuilder AddDefaultWebJobsFilters<T>(this ILoggingBuilder builder, LogLevel level) where T : ILoggerProvider
         {
             builder.AddFilter<T>(null, LogLevel.None);
-            builder.AddFilter<T>((c, l) => Filter(c, l, level));
+            builder.AddFilter<T>((c, l) => ShouldLog(typeof(T).FullName, c, l, level));
             return builder;
         }
 
-        internal static bool Filter(string category, LogLevel actualLevel, LogLevel minLevel)
+        internal static bool ShouldLog(string provider, string category, LogLevel actualLevel, LogLevel minLevel)
         {
-            return actualLevel >= minLevel && IsFiltered(category);
-        }
+            if (IsSystemOnlyLogCategory(category) && !IsSystemLoggerProvider(provider))
+            {
+                // Some categories are only logged to the system provider to avoid flooding user logs
+                // with platform level details
+                return false;
+            }
 
-        private static bool IsFiltered(string category)
-        {
-            return _filteredCategoryCache.GetOrAdd(category, static cat => ScriptConstants.SystemLogCategoryPrefixes.Any(p => cat.StartsWith(p)));
+            return actualLevel >= minLevel && ShouldLogCategory(category);
         }
 
         public static void AddConsoleIfEnabled(this ILoggingBuilder builder, HostBuilderContext context)
@@ -71,6 +78,23 @@ namespace Microsoft.Extensions.Logging
                        // Users are not supposed to set the log level for this category via host.JSON logging settings.
                        .AddFilter(WorkerConstants.ToolingConsoleLogCategoryName, LogLevel.Information);
             }
+        }
+
+        private static bool IsSystemLoggerProvider(string provider)
+        {
+            return
+                provider.EndsWith(".WebHostSystemLoggerProvider", StringComparison.OrdinalIgnoreCase) ||
+                provider.EndsWith(".SystemLoggerProvider", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsSystemOnlyLogCategory(string category)
+        {
+            return _systemOnlyCategoryCache.GetOrAdd(category, static cat => SystemOnlyCategorySuffixes.Any(s => cat.EndsWith(s, StringComparison.OrdinalIgnoreCase)));
+        }
+
+        private static bool ShouldLogCategory(string category)
+        {
+            return _shouldLogCategoryCache.GetOrAdd(category, static cat => SystemLogCategoryPrefixes.Any(p => cat.StartsWith(p)));
         }
     }
 }
