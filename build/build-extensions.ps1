@@ -226,9 +226,6 @@ function CreateSiteExtensions() {
     # This goes in the root dir
     Copy-Item $rootDir\src\WebJobs.Script.WebHost\extension.xml $siteExtensionPath > $null
     
-    #This needs to be removed post Ant 99 as it's a temporary workaround
-    New-Item "$siteExtensionPath\$extensionVersion.hardlinksCreated" > $null
-    
     Write-Host "Done copying. Elapsed: $($stopwatch.Elapsed)"
     Write-Host "======================================"
     Write-Host ""
@@ -241,18 +238,25 @@ function CreateSiteExtensions() {
     Write-Host
     
     $zipOutput = "$buildOutput\SiteExtension"
+    $hashesForHardLinksPath = "$siteExtensionPath\$extensionVersion\$hashesForHardlinksFile"
     New-Item -Itemtype directory -path $zipOutput -Force > $null
     if ($minorVersionPrefix -eq "10") {
         ZipContent $siteExtensionPath "$zipOutput\Functions.$extensionVersion$runtimeSuffix.zip"
     } elseif ($minorVersionPrefix -eq "8") {
+        # Only the "Functions" site extension supports hard links
+        Write-Host "Removing $hashesForHardLinksPath before zipping."
+        Remove-Item -Force "$hashesForHardLinksPath" -ErrorAction Stop
         # The .NET 8 host doesn't require any workers. Doing this to save space.
-        Write-Host "Removing workers."
+        Write-Host "Removing workers before zipping."
         Remove-Item -Recurse -Force "$siteExtensionPath\$extensionVersion$runtimeSuffix\workers" -ErrorAction Stop
         # The host requires that this folder exists, even if it's empty
-        New-Item -Itemtype directory -path $siteExtensionPath\$extensionVersion$runtimeSuffix\workers
+        New-Item -Itemtype directory -path $siteExtensionPath\$extensionVersion$runtimeSuffix\workers > $null 
         Write-Host
         ZipContent $siteExtensionPath "$zipOutput\FunctionsInProc8.$extensionVersion$runtimeSuffix.zip"
     } elseif ($minorVersionPrefix -eq "6") {
+        # Only the "Functions" site extension supports hard links
+        Write-Host "Removing $hashesForHardLinksPath before zipping."
+        Remove-Item -Force "$hashesForHardLinksPath" -ErrorAction Stop
         ZipContent $siteExtensionPath "$zipOutput\FunctionsInProc.$extensionVersion$runtimeSuffix.zip"
     }
 
