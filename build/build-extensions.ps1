@@ -6,11 +6,11 @@ param (
 )
 
 Import-Module "$PSScriptRoot\Get-AzureFunctionsVersion.psm1" -Force
-$rootDir = (Get-Item $PSScriptRoot).Parent.FullName
+$rootDir = Split-Path -Parent $PSScriptRoot
 $outDir = "$rootDir\out"
 $publishDir = "$outDir\pub\WebJobs.Script.WebHost"
 
-$extensionVersion = Get-AzureFunctionsVersion
+$extensionVersion = Get-AzureFunctionsVersion $buildNumber $suffix $minorVersionPrefix
 Write-Host "Site extension version: $extensionVersion"
 
 # Construct variables for strings like "4.1.0-15898" and "4.1.0"
@@ -48,7 +48,7 @@ function BuildRuntime([string] $targetRid, [bool] $isSelfContained) {
         throw "Project path '$projectPath' does not exist."
     }
 
-    $cmd = "publish", $projectPath , "-r", "$targetRid", "--self-contained", "$isSelfContained", "-v", "m", "-p:IsPackable=false", "-c", "Release"
+    $cmd = "publish", $projectPath , "-r", "$targetRid", "--self-contained", "$isSelfContained", "-v", "m", "-c", "Release", "-p:IsPackable=false", "-p:BuildNumber=$buildNumber", "-p:MinorVersionPrefix=$minorVersionPrefix"
 
     Write-Host "======================================"
     Write-Host "Building $targetRid"
@@ -246,23 +246,23 @@ function CreateSiteExtensions() {
 
     $hashesForHardLinksPath = "$siteExtensionPath\$extensionVersion\$hashesForHardlinksFile"
     if ($minorVersionPrefix -eq "10") {
-        ZipContent $siteExtensionPath "$zipOutput\Functions.$extensionVersion$runtimeSuffix.zip"
+        ZipContent $siteExtensionPath "$zipOutput\Functions.$extensionVersion.zip"
     } elseif ($minorVersionPrefix -eq "8") {
         # Only the "Functions" site extension supports hard links
         Write-Host "Removing $hashesForHardLinksPath before zipping."
         Remove-Item -Force "$hashesForHardLinksPath" -ErrorAction Stop
         # The .NET 8 host doesn't require any workers. Doing this to save space.
         Write-Host "Removing workers before zipping."
-        Remove-Item -Recurse -Force "$siteExtensionPath\$extensionVersion$runtimeSuffix\workers" -ErrorAction Stop
+        Remove-Item -Recurse -Force "$siteExtensionPath\$extensionVersion\workers" -ErrorAction Stop
         # The host requires that this folder exists, even if it's empty
-        New-Item -Itemtype directory -path $siteExtensionPath\$extensionVersion$runtimeSuffix\workers > $null 
+        New-Item -Itemtype directory -path $siteExtensionPath\$extensionVersion\workers > $null 
         Write-Host
-        ZipContent $siteExtensionPath "$zipOutput\FunctionsInProc8.$extensionVersion$runtimeSuffix.zip"
+        ZipContent $siteExtensionPath "$zipOutput\FunctionsInProc8.$extensionVersion.zip"
     } elseif ($minorVersionPrefix -eq "6") {
         # Only the "Functions" site extension supports hard links
         Write-Host "Removing $hashesForHardLinksPath before zipping."
         Remove-Item -Force "$hashesForHardLinksPath" -ErrorAction Stop
-        ZipContent $siteExtensionPath "$zipOutput\FunctionsInProc.$extensionVersion$runtimeSuffix.zip"
+        ZipContent $siteExtensionPath "$zipOutput\FunctionsInProc.$extensionVersion.zip"
     }
 
     # Create directory for content even if there is no patch build. This makes artifact uploading easier.
