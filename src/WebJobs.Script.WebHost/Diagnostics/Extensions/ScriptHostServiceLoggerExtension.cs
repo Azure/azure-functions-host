@@ -2,8 +2,8 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using Microsoft.ApplicationInsights.AspNetCore;
-using Microsoft.Azure.Documents;
+using System.Collections.Generic;
+using System.Text.Json;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions
@@ -330,17 +330,33 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions
             _scriptHostServiceRestartCanceledByRuntime(logger, null);
         }
 
-        public static void LogHostInitializationSettings(this ILogger logger, string functionWorkerRuntime, string functionExtensionVersion, string siteExtensionDirectory, bool inStandbyMode)
+        public static void LogHostInitializationSettings(this ILogger logger, string originalFunctionWorkerRuntime, string functionWorkerRuntime,
+            string originalFunctionWorkerRuntimeVersion, string functionsWorkerRuntimeVersion, string functionExtensionVersion, string hostDirectory,
+            bool inStandbyMode, bool hasBeenSpecialized, bool usePlaceholderDotNetIsolated, string websiteSku, string featureFlags,
+            IDictionary<string, string> hostingConfig)
         {
-            var hostInitializationSettings = $@"{{
-    ""HostInitializationSettings"": {{
-        ""functionsWorkerRuntime"": ""{functionWorkerRuntime}"",
-        ""functionsExtensionVersion"": ""{functionExtensionVersion}"",
-        ""siteExtensionDirectory"": ""{siteExtensionDirectory}"",
-        ""inStandbyMode"": {inStandbyMode}
-    }}
-}}";
-            _logHostInitializationSettings(logger, hostInitializationSettings, null);
+            // This is a dump of values for telemetry right now, but eventually we will refactor this
+            // into a proper Options object
+            var initializationSettings = new
+            {
+                OriginalFunctionWorkerRuntime = originalFunctionWorkerRuntime,
+                FunctionsWorkerRuntime = functionWorkerRuntime,
+                OriginalFunctionWorkerRuntimeVersion = originalFunctionWorkerRuntimeVersion,
+                FunctionsWorkerRuntimeVersion = functionsWorkerRuntimeVersion,
+                FunctionsExtensionVesion = functionExtensionVersion,
+                HostDirectory = hostDirectory,
+                InStandbyMode = inStandbyMode,
+                HasBeenSpecialized = hasBeenSpecialized,
+                UsePlaceholderDotNetIsolated = usePlaceholderDotNetIsolated,
+                WebSiteSku = websiteSku,
+                FeatureFlags = featureFlags,
+                HostingConfig = hostingConfig
+            };
+
+            var options = new JsonSerializerOptions { WriteIndented = true };
+            string settingsJson = JsonSerializer.Serialize(initializationSettings, options);
+
+            _logHostInitializationSettings(logger, settingsJson, null);
         }
     }
 }

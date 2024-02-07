@@ -1,4 +1,7 @@
 param (
+  [string]$buildNumber = "0",
+  [string]$suffix = "",
+  [ValidateSet("6", "8", "10")][string]$minorVersionPrefix = "10",
   [string]$hashesForHardlinksFile = "hashesForHardlinks.txt"
 )
 
@@ -227,9 +230,6 @@ function CreateSiteExtensions() {
     # This goes in the root dir
     Copy-Item $rootDir\src\WebJobs.Script.WebHost\extension.xml $siteExtensionPath > $null
     
-    #This needs to be removed post Ant 99 as it's a temporary workaround
-    New-Item "$siteExtensionPath\$extensionVersion.hardlinksCreated" > $null
-    
     Write-Host "Done copying. Elapsed: $($stopwatch.Elapsed)"
     Write-Host "======================================"
     Write-Host ""
@@ -243,7 +243,27 @@ function CreateSiteExtensions() {
 
     $zipOutput = "$publishDir\SiteExtension"
     New-Item -Itemtype directory -path $zipOutput -Force > $null
-    ZipContent $siteExtensionPath "$zipOutput\Functions.$extensionVersion.zip"
+
+    $hashesForHardLinksPath = "$siteExtensionPath\$extensionVersion\$hashesForHardlinksFile"
+    if ($minorVersionPrefix -eq "10") {
+        ZipContent $siteExtensionPath "$zipOutput\Functions.$extensionVersion$runtimeSuffix.zip"
+    } elseif ($minorVersionPrefix -eq "8") {
+        # Only the "Functions" site extension supports hard links
+        Write-Host "Removing $hashesForHardLinksPath before zipping."
+        Remove-Item -Force "$hashesForHardLinksPath" -ErrorAction Stop
+        # The .NET 8 host doesn't require any workers. Doing this to save space.
+        Write-Host "Removing workers before zipping."
+        Remove-Item -Recurse -Force "$siteExtensionPath\$extensionVersion$runtimeSuffix\workers" -ErrorAction Stop
+        # The host requires that this folder exists, even if it's empty
+        New-Item -Itemtype directory -path $siteExtensionPath\$extensionVersion$runtimeSuffix\workers > $null 
+        Write-Host
+        ZipContent $siteExtensionPath "$zipOutput\FunctionsInProc8.$extensionVersion$runtimeSuffix.zip"
+    } elseif ($minorVersionPrefix -eq "6") {
+        # Only the "Functions" site extension supports hard links
+        Write-Host "Removing $hashesForHardLinksPath before zipping."
+        Remove-Item -Force "$hashesForHardLinksPath" -ErrorAction Stop
+        ZipContent $siteExtensionPath "$zipOutput\FunctionsInProc.$extensionVersion$runtimeSuffix.zip"
+    }
 
     # Create directory for content even if there is no patch build. This makes artifact uploading easier.
     $patchedContentDirectory = "$publishDir\PatchedSiteExtension"

@@ -146,15 +146,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
                 RootScriptPath = _testRootScriptPath
             };
 
+            group ??= $"function:{functionMetadata.Name}";
             var result = await functionMetadata.ToFunctionTrigger(options, isFlexConsumption: true);
             Assert.Equal("TestFunction1", result["functionName"].Value<string>());
             Assert.Equal(trigger, result["type"].Value<string>());
 
-            Assert.Equal(group != null, result.TryGetValue("functionGroup", out JToken functionGroup));
-            if (functionGroup is not null)
-            {
-                Assert.Equal(group, functionGroup.Value<string>());
-            }
+            Assert.True(result.TryGetValue("functionGroup", out JToken functionGroup));
+            Assert.Equal(group, functionGroup.Value<string>());
         }
 
         [Theory]
