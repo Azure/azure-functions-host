@@ -1,7 +1,7 @@
 param (
-  [string]$buildNumber = "0",  
+  [string]$buildNumber = "0",    
   [string]$suffix = "",
-  [string]$minorVersionPrefix = "",
+  [ValidateSet("6", "8", "10")][string]$minorVersionPrefix = "10",
   [string]$hashesForHardlinksFile = "hashesForHardlinks.txt"
 )
 
@@ -244,7 +244,15 @@ function CreateSiteExtensions() {
     New-Item -Itemtype directory -path $zipOutput -Force > $null
     if ($minorVersionPrefix -eq "10") {
         ZipContent $siteExtensionPath "$zipOutput\Functions.$extensionVersion$runtimeSuffix.zip"
-    } else {
+    } elseif ($minorVersionPrefix -eq "8") {
+        # The .NET 8 host doesn't require any workers. Doing this to save space.
+        Write-Host "Removing workers."
+        Remove-Item -Recurse -Force "$siteExtensionPath\$extensionVersion$runtimeSuffix\workers" -ErrorAction Stop
+        # The host requires that this folder exists, even if it's empty
+        New-Item -Itemtype directory -path $siteExtensionPath\$extensionVersion$runtimeSuffix\workers
+        Write-Host
+        ZipContent $siteExtensionPath "$zipOutput\FunctionsInProc8.$extensionVersion$runtimeSuffix.zip"
+    } elseif ($minorVersionPrefix -eq "6") {
         ZipContent $siteExtensionPath "$zipOutput\FunctionsInProc.$extensionVersion$runtimeSuffix.zip"
     }
 
