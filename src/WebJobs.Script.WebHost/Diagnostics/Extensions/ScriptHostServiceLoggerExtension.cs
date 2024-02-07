@@ -333,7 +333,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions
         public static void LogHostInitializationSettings(this ILogger logger, string originalFunctionWorkerRuntime, string functionWorkerRuntime,
             string originalFunctionWorkerRuntimeVersion, string functionsWorkerRuntimeVersion, string functionExtensionVersion, string hostDirectory,
             bool inStandbyMode, bool hasBeenSpecialized, bool usePlaceholderDotNetIsolated, string websiteSku, string featureFlags,
-            IDictionary<string, string> hostingConfig)
+            IDictionary<string, string> hostingConfig, string hisMode)
         {
             // This is a dump of values for telemetry right now, but eventually we will refactor this
             // into a proper Options object
@@ -350,7 +350,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions
                 UsePlaceholderDotNetIsolated = usePlaceholderDotNetIsolated,
                 WebSiteSku = websiteSku,
                 FeatureFlags = featureFlags,
-                HostingConfig = hostingConfig
+                HostingConfig = hostingConfig,
+                HISMode = hisMode
             };
 
             var options = new JsonSerializerOptions { WriteIndented = true };

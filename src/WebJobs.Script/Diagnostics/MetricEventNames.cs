@@ -16,6 +16,10 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         public const string HostStartupGetFunctionDescriptorsLatency = "host.startup.getfunctiondescriptors.latency";
         public const string HostStartupGrpcServerLatency = "host.startup.outofproc.grpcserver.initialize.latency";
         public const string HostStartupRuntimeLanguage = "host.startup.runtime.language.{0}";
+        public const string NonIdentifiableSecretLoaded = "host.secrets.nonidentifiable";
+        public const string IdentifiableSecretLoaded = "host.secrets.identifiable";
+        public const string HISStrictModeEnabled = "host.hismode.strict";
+        public const string HISStrictModeWarn = "host.hismode.warn";
 
         // Script host level events
         public const string ScriptHostManagerBuildScriptHost = "scripthostmanager.buildscripthost.latency";

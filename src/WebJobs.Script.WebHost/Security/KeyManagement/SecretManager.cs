@@ -11,14 +11,13 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using DryIoc;
-using Microsoft.Azure.Web.DataProtection;
 using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using static Microsoft.Azure.WebJobs.Script.WebHost.Models.FunctionAppSecrets;
 using DataProtectionConstants = Microsoft.Azure.Web.DataProtection.Constants;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
@@ -30,6 +29,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly ISecretsRepository _repository;
         private readonly HostNameProvider _hostNameProvider;
         private readonly StartupContextProvider _startupContextProvider;
+        private readonly Lazy<bool> _strictHISFeatureEnabled = new Lazy<bool>(() => FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagStrictHISModeEnabled));
+        private readonly Lazy<bool> _strictHISWarnFeatureEnabled = new Lazy<bool>(() => FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagStrictHISModeWarn));
+        private readonly HashSet<string> _invalidNonHISKeys = new HashSet<string>();
         private ConcurrentDictionary<string, IDictionary<string, string>> _functionSecrets;
         private ConcurrentDictionary<string, (string, AuthorizationLevel)> _authorizationCache = new ConcurrentDictionary<string, (string, AuthorizationLevel)>(StringComparer.OrdinalIgnoreCase);
         private HostSecretsInfo _hostSecrets;
@@ -137,11 +139,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                             await RefreshSecretsAsync(hostSecrets);
                         }
 
+                        // before caching  any secrets, validate them
+                        string masterKeyValue = hostSecrets.MasterKey.Value;
+                        var functionKeys = hostSecrets.FunctionKeys.ToDictionary(p => p.Name, p => p.Value);
+                        var systemKeys = hostSecrets.SystemKeys.ToDictionary(p => p.Name, p => p.Value);
+                        ValidateHostSecrets(masterKeyValue, functionKeys, systemKeys);
+
                         _hostSecrets = new HostSecretsInfo
                         {
-                            MasterKey = hostSecrets.MasterKey.Value,
-                            FunctionKeys = hostSecrets.FunctionKeys.ToDictionary(s => s.Name, s => s.Value),
-                            SystemKeys = hostSecrets.SystemKeys.ToDictionary(s => s.Name, s => s.Value)
+                            MasterKey = masterKeyValue,
+                            FunctionKeys = functionKeys,
+                            SystemKeys = systemKeys
                         };
                     }
                     finally
@@ -219,7 +227,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                             await RefreshSecretsAsync(secrets, functionName);
                         }
 
+                        // before caching any secrets, validate them
                         var result = secrets.Keys.ToDictionary(s => s.Name, s => s.Value);
+                        ValidateSecrets(result, SecretGenerator.FunctionKeySeed, functionName);
+
                         functionSecrets = _functionSecrets.AddOrUpdate(functionName, result, (n, r) => result);
                     }
                     finally
@@ -290,6 +301,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 }
                 else
                 {
+                    if (_strictHISFeatureEnabled.Value)
+                    {
+                        // if an explicit value has been provided and strict HIS mode is enabled, validate the secret
+                        if (!SecretGenerator.TryValidateSecret(value, SecretGenerator.MasterKeySeed))
+                        {
+                            return new KeyOperationResult(value, OperationResult.BadRequest);
+                        }
+                    }
+
                     // Use the provided secret
                     masterKey = value;
                     result = OperationResult.Updated;
@@ -329,10 +349,56 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
+        internal static ulong GetKeySeed(ScriptSecretsType secretsType, string keyScope)
+        {
+            if (secretsType == ScriptSecretsType.Function)
+            {
+                return SecretGenerator.FunctionKeySeed;
+            }
+            else if (secretsType == ScriptSecretsType.Host)
+            {
+                if (string.Equals(keyScope, HostKeyScopes.FunctionKeys, StringComparison.OrdinalIgnoreCase))
+                {
+                    return SecretGenerator.FunctionKeySeed;
+                }
+                else if (string.Equals(keyScope, HostKeyScopes.SystemKeys, StringComparison.OrdinalIgnoreCase))
+                {
+                    return SecretGenerator.SystemKeySeed;
+                }
+            }
+
+            return 0;
+        }
+
+        public static string GetKeyType(ulong seed)
+        {
+            switch (seed)
+            {
+                case SecretGenerator.MasterKeySeed:
+                    return "Master";
+                case SecretGenerator.SystemKeySeed:
+                    return "System";
+                case SecretGenerator.FunctionKeySeed:
+                    return "Function";
+                default:
+                    return "Unknown";
+            }
+        }
+
         private async Task<KeyOperationResult> AddOrUpdateSecretAsync(ScriptSecretsType secretsType, string keyScope,
             string secretName, string secret, Func<ScriptSecrets> secretsFactory)
         {
             OperationResult result = OperationResult.NotFound;
+
+            if (!string.IsNullOrEmpty(secret) && _strictHISFeatureEnabled.Value)
+            {
+                // if an explicit value has been provided and strict HIS mode is enabled, validate the secret
+                ulong seed = GetKeySeed(secretsType, keyScope);
+                if (seed > 0 && !SecretGenerator.TryValidateSecret(secret, seed))
+                {
+                    return new KeyOperationResult(secret, OperationResult.BadRequest);
+                }
+            }
 
             secret ??= SecretGenerator.GenerateFunctionKeyValue();
 
@@ -400,8 +466,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
-        private Task<FunctionSecrets> LoadFunctionSecretsAsync(string functionName)
-            => LoadSecretsAsync<FunctionSecrets>(functionName);
+        private Task<FunctionSecrets> LoadFunctionSecretsAsync(string functionName) => LoadSecretsAsync<FunctionSecrets>(functionName);
 
         private async Task<T> LoadSecretsAsync<T>(string keyScope = null) where T : ScriptSecrets
         {
@@ -419,6 +484,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public async Task<(string KeyName, AuthorizationLevel Level)> GetAuthorizationLevelOrNullAsync(string keyValue, string functionName = null)
         {
+            // local helper function to get auth level and also enforce HIS validation
+            async Task<(string KeyName, AuthorizationLevel Level)> GetAuthorizationLevelAndValidateAsync(string keyValue, string functionName)
+            {
+                var result = await GetAuthorizationLevelAsync(this, keyValue, functionName);
+
+                if (result.Level != AuthorizationLevel.Anonymous &&
+                    _strictHISFeatureEnabled.Value && _invalidNonHISKeys.Contains(keyValue))
+                {
+                    // HIS strict mode is enabled and the matched key is invalid
+                    // Such keys cannot grant access.
+                    return (null, AuthorizationLevel.Anonymous);
+                }
+
+                return result;
+            }
+
             if (keyValue != null)
             {
                 string cacheKey = $"{keyValue}{functionName}";
@@ -432,7 +513,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 // cause the secrets to be loaded into cache - we want to know if they were cached BEFORE this check.
                 bool secretsCached = _hostSecrets != null || _functionSecrets.Any();
 
-                var result = await GetAuthorizationLevelAsync(this, keyValue, functionName);
+                var result = await GetAuthorizationLevelAndValidateAsync(keyValue, functionName);
                 if (result.Level != AuthorizationLevel.Anonymous)
                 {
                     // key match
@@ -448,9 +529,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     {
                         _hostSecrets = null;
                         _functionSecrets.Clear();
+                        _invalidNonHISKeys.Clear();
                         _lastCacheResetTime = DateTime.UtcNow;
 
-                        return await GetAuthorizationLevelAsync(this, keyValue, functionName);
+                        return await GetAuthorizationLevelAndValidateAsync(keyValue, functionName);
                     }
                 }
             }
@@ -512,6 +594,47 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return typeof(HostSecrets).IsAssignableFrom(typeof(T))
                 ? ScriptSecretsType.Host
                 : ScriptSecretsType.Function;
+        }
+
+        private void ValidateHostSecrets(string masterKey, IDictionary<string, string> functionKeys, IDictionary<string, string> systemKeys)
+        {
+            ValidateSecret(ScriptConstants.MasterKeyName, masterKey, SecretGenerator.MasterKeySeed);
+            ValidateSecrets(functionKeys, SecretGenerator.FunctionKeySeed);
+            ValidateSecrets(systemKeys, SecretGenerator.SystemKeySeed);
+        }
+
+        private void ValidateSecret(string keyName, string keyValue, ulong seed, string functionName = null)
+        {
+            if (SecretGenerator.TryValidateSecret(keyValue, seed))
+            {
+                _metricsLogger.LogEvent(MetricEventNames.IdentifiableSecretLoaded, functionName);
+            }
+            else
+            {
+                _metricsLogger.LogEvent(MetricEventNames.NonIdentifiableSecretLoaded, functionName);
+
+                if (_strictHISFeatureEnabled.Value || _strictHISWarnFeatureEnabled.Value)
+                {
+                    // if either HIS mode is enabled log the appropriate diagnostic event
+                    // and track the secret as invalid
+                    string message = string.Format(Resources.NonHISSecret, GetKeyType(seed), keyName, functionName);
+                    LogLevel level = _strictHISFeatureEnabled.Value ? LogLevel.Error : LogLevel.Warning;
+                    _logger.LogDiagnosticEvent(level, 0, DiagnosticEventConstants.NonHISSecretLoaded, message, DiagnosticEventConstants.NonHISSecretLoadedHelpLink, exception: null);
+
+                    _invalidNonHISKeys.Add(keyValue);
+                }
+            }
+        }
+
+        private void ValidateSecrets(IDictionary<string, string> keys, ulong seed, string functionName = null)
+        {
+            if (keys != null)
+            {
+                foreach (var key in keys)
+                {
+                    ValidateSecret(key.Key, key.Value, seed, functionName);
+                }
+            }
         }
 
         private HostSecrets GenerateHostSecrets()
@@ -661,6 +784,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // clear the cached secrets if they exist
             // they'll be reloaded on demand next time
             _authorizationCache.Clear();
+
             if (secretsType == ScriptSecretsType.Host && _hostSecrets != null)
             {
                 _logger.LogInformation("Host keys change detected. Clearing cache.");
@@ -686,6 +810,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _authorizationCache.Clear();
             _hostSecrets = null;
             _functionSecrets.Clear();
+            _invalidNonHISKeys.Clear();
         }
 
         private async Task<string> AnalyzeSnapshots(string[] secretBackups)
@@ -745,11 +870,26 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private void InitializeCache()
         {
             var cachedFunctionSecrets = _startupContextProvider.GetFunctionSecretsOrNull();
-            _functionSecrets = cachedFunctionSecrets != null ?
-                new ConcurrentDictionary<string, IDictionary<string, string>>(cachedFunctionSecrets, StringComparer.OrdinalIgnoreCase) :
-                new ConcurrentDictionary<string, IDictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
+            if (cachedFunctionSecrets != null)
+            {
+                foreach (var functionKeys in cachedFunctionSecrets)
+                {
+                    ValidateSecrets(functionKeys.Value, SecretGenerator.FunctionKeySeed, functionKeys.Key);
+                }
 
-            _hostSecrets = _startupContextProvider.GetHostSecretsOrNull();
+                _functionSecrets = new ConcurrentDictionary<string, IDictionary<string, string>>(cachedFunctionSecrets, StringComparer.OrdinalIgnoreCase);
+            }
+            else
+            {
+                _functionSecrets = new ConcurrentDictionary<string, IDictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
+            }
+
+            var hostSecrets = _startupContextProvider.GetHostSecretsOrNull();
+            if (hostSecrets != null)
+            {
+                ValidateHostSecrets(hostSecrets.MasterKey, hostSecrets.FunctionKeys, hostSecrets.SystemKeys);
+                _hostSecrets = hostSecrets;
+            }
         }
 
         private string GetEncryptionKeysHashes()

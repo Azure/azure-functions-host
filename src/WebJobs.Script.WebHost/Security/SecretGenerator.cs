@@ -45,5 +45,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security
             // equal signs do not require encoding.
             return IdentifiableSecrets.GenerateUrlSafeBase64Key(seed, 40, AzureFunctionsSignature, elidePadding: false);
         }
+
+        internal static bool ValidateSecret(string key, ulong seed)
+        {
+            return IdentifiableSecrets.ValidateBase64Key(key, seed, AzureFunctionsSignature, encodeForUrl: true);
+        }
+
+        internal static bool TryValidateSecret(string key, ulong seed)
+        {
+            try
+            {
+                return ValidateSecret(key, seed);
+            }
+            catch
+            {
+                return false;
+            }
+        }
     }
 }
