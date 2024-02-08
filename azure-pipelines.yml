@@ -202,7 +202,7 @@ jobs:
     inputs:
       ConnectedServiceName: 'ESRP Service'
       FolderPath: 'out/bin/ExtensionsMetadataGenerator'
-      Pattern: 'release_*/Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator*.dll'
+      Pattern: 'Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator*.dll'
       signConfigType: inlineSignParams
       inlineOperation: |
         [
