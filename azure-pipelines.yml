@@ -42,6 +42,7 @@ jobs:
   - task: PowerShell@2
     displayName: 'Initialize'
     name: Initialize
+    pwsh: true
     inputs:
       filePath: '$(Build.Repository.LocalPath)\build\initialize-pipeline.ps1'
       showWarnings: true
