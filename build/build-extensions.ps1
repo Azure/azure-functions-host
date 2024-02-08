@@ -1,7 +1,7 @@
 param (
   [string]$buildNumber = "0",
   [string]$suffix = "",
-  [ValidateSet("6", "8", "10")][string]$minorVersionPrefix = "10",
+  [ValidateSet("6", "8", "")][string]$minorVersionPrefix = "",
   [string]$hashesForHardlinksFile = "hashesForHardlinks.txt"
 )
 
@@ -242,10 +242,9 @@ function CreateSiteExtensions() {
     Write-Host
 
     $zipOutput = "$publishDir\SiteExtension"
-    New-Item -Itemtype directory -path $zipOutput -Force > $null
-
     $hashesForHardLinksPath = "$siteExtensionPath\$extensionVersion\$hashesForHardlinksFile"
-    if ($minorVersionPrefix -eq "10") {
+    New-Item -Itemtype directory -path $zipOutput -Force > $null
+    if ($minorVersionPrefix -eq "") {
         ZipContent $siteExtensionPath "$zipOutput\Functions.$extensionVersion.zip"
     } elseif ($minorVersionPrefix -eq "8") {
         # Only the "Functions" site extension supports hard links

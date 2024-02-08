@@ -7,3 +7,5 @@
 - Added support for ManagedIdentity authentication in ApplicationInsights pipeline. (#9758)
 - Added support for AutocollectedMetricsExtractor, MetricsCustomDimensionOptimization and QueryStringTracing. (#9758)
 - Add an app setting to allow CORS configuration (#9846)
+- Updated `Microsoft.Azure.Functions.DotNetIsolatedNativeHost` version to 1.0.6 (#9863)
+	- [Forwarding command line arguments to app assembly from NetHost](https://github.com/Azure/azure-functions-dotnet-worker/pull/2258)	
