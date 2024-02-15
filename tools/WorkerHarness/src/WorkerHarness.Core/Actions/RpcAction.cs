@@ -59,7 +59,10 @@ namespace WorkerHarness.Core.Actions
 
         public async Task<ActionResult> ExecuteAsync(ExecutionContext executionContext)
         {
-            _logger.LogInformation($"Executing the action: {Name} ...");
+            if (!_actionData.RunInSilentMode)
+            {
+                _logger.LogInformation($"Executing the action: {Name} ...");
+            }
 
             CancellationTokenSource tokenSource = new();
 
@@ -94,7 +97,11 @@ namespace WorkerHarness.Core.Actions
 
             if (actionResult.Status == StatusCode.Success)
             {
-                _logger.LogInformation($"Success!");
+                if (!_actionData.RunInSilentMode)
+                {
+                    var message = _actionData.SuccessMessage ?? "Success!";
+                    _logger.LogInformation(message);
+                }
             }
             else
             {
@@ -123,7 +130,12 @@ namespace WorkerHarness.Core.Actions
 
                     if (streamingMessage.ContentCase == StreamingMessage.ContentOneofCase.InvocationResponse)
                     {
-                        _logger.LogInformation($"Received an HTTP trigger invocation response");
+                        var httpResponse = streamingMessage.InvocationResponse.ReturnValue.ToObject();
+                        if (httpResponse is HttpResponseData response)
+                        {
+                            string responseBodyString = response.Body == null ? string.Empty : System.Text.Encoding.UTF8.GetString(response.Body);
+                            _logger.LogInformation($"HTTP trigger invocation response: {response.StatusCode} {Environment.NewLine}{responseBodyString}");
+                        }
                     }
 
                     var matchedRpcMesseages = unprocessedRpcMessages

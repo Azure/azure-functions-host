@@ -19,5 +19,11 @@ namespace WorkerHarness.Core.Actions
 
         public IEnumerable<RpcActionMessage> Messages { get; set; } = new List<RpcActionMessage>();
 
+        // If true, log messages indicating the progress will not be emitted, except for failures.
+        public bool RunInSilentMode { get; set; } = false;
+
+        // The custom message to print when the rpc action is successful.
+        // If not set, the default message will be printed.
+        public string? SuccessMessage { get; set; } = string.Empty;
     }
 }

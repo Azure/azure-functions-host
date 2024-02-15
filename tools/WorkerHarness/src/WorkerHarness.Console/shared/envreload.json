@@ -1,29 +1,29 @@
 {
-    "scenarioName": "load function",
-    "actions": [
+  "scenarioName": "load function",
+  "actions": [
+    {
+      "actionType": "rpc",
+      "actionName": "Sending env reload request",
+      "messages": [
         {
-            "actionType": "rpc",
-            "actionName": "validate the worker's ability to handle Env reload request",
-            "messages": [
-                {
-                    "direction": "outgoing",
-                    "messageType": "FunctionEnvironmentReloadRequest",
-                    "payload": {
-                        "FunctionAppDirectory": "C:\\Dev\\app\\funcapp44"
-                    }
-                },
-                {
-                    "direction": "incoming",
-                    "messageType": "FunctionEnvironmentReloadResponse",
-                    "validators": [
-                        {
-                            "type": "string",
-                            "query": "$.FunctionEnvironmentReloadResponse.Result.Status",
-                            "expected": "Success"
-                        }
-                    ]
-                }
-            ]
+          "direction": "outgoing",
+          "messageType": "FunctionEnvironmentReloadRequest",
+          "payload": {
+            "FunctionAppDirectory": "C:\\Dev\\app\\funcapp44"
+          }
+        },
+        {
+          "direction": "incoming",
+          "messageType": "FunctionEnvironmentReloadResponse",
+          "validators": [
+            {
+              "type": "string",
+              "query": "$.FunctionEnvironmentReloadResponse.Result.Status",
+              "expected": "Success"
+            }
+          ]
         }
-    ]
+      ]
+    }
+  ]
 }

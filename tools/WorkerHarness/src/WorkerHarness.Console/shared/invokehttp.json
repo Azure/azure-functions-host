@@ -1,48 +1,49 @@
 {
     "scenarioName": "invoke http-trigger function",
     "actions": [
-        {
-            "actionType": "rpc",
-            "actionName": "validate the worker's ability to handle a http invocation request",
-            "messages": [
+      {
+        "actionType": "rpc",
+        "actionName": "Sending cold start http request",
+        "SuccessMessage": "Cold start request response received",
+        "messages": [
+          {
+            "direction": "outgoing",
+            "messageType": "InvocationRequest",
+            "payload": {
+              "InvocationId": "D3BE1530-53CA-4D2D-9F1F-AFE5F0547AE7",
+              "FunctionId": "@{HttpTriggerFunctionId}",
+              "InputData": [
                 {
-                    "direction": "outgoing",
-                    "messageType": "InvocationRequest",
-                    "payload": {
-                        "InvocationId": "D3BE1530-53CA-4D2D-9F1F-AFE5F0547AE7",
-                        "FunctionId": "@{HttpTriggerFunctionId}",
-                        "InputData": [
-                            {
-                              "name": "req",
-                              "data": {
-                                "http": {
-                                  "method": "GET",
-                                  "url": "http://localhost:7071/api/HelloHttp"
-                                }
-                              }
-                            }
-                        ],
-                        "TraceContext": {}
+                  "name": "req",
+                  "data": {
+                    "http": {
+                      "method": "GET",
+                      "url": "http://localhost:7071/api/HelloHttp"
                     }
-                },
-                {
-                    "direction": "incoming",
-                    "messageType": "InvocationResponse",
-                    "matchingCriteria": [
-                        {
-                            "query": "$.InvocationResponse.InvocationId",
-                            "expected": "D3BE1530-53CA-4D2D-9F1F-AFE5F0547AE7"
-                        }
-                    ],
-                    "validators": [
-                        {
-                            "type": "string",
-                            "query": "$.InvocationResponse.Result.Status",
-                            "expected": "Success"
-                        }
-                    ]
+                  }
                 }
+              ],
+              "TraceContext": {}
+            }
+          },
+          {
+            "direction": "incoming",
+            "messageType": "InvocationResponse",
+            "matchingCriteria": [
+              {
+                "query": "$.InvocationResponse.InvocationId",
+                "expected": "D3BE1530-53CA-4D2D-9F1F-AFE5F0547AE7"
+              }
+            ],
+            "validators": [
+              {
+                "type": "string",
+                "query": "$.InvocationResponse.Result.Status",
+                "expected": "Success"
+              }
             ]
-        }
+          }
+        ]
+      }
     ]
 }

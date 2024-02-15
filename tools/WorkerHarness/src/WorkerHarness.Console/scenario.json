@@ -6,6 +6,10 @@
       "scenarioFile": "shared\\start.json"
     },
     {
+      "actionType": "delay",
+      "delay": 10000
+    },
+    {
       "actionType": "import",
       "scenarioFile": "shared\\envreload.json"
     },
@@ -16,10 +20,6 @@
     {
       "actionType": "import",
       "scenarioFile": "shared\\load.json"
-    },
-    {
-      "actionType": "delay",
-      "delay": 1000
     },
     {
       "actionType": "import",

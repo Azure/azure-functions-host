@@ -4,6 +4,7 @@
     {
       "actionType": "rpc",
       "actionName": "validate the worker's ability to handle a FunctionLoadRequest message",
+      "runInSilentMode": true,
       "messages": [
         {
           "direction": "outgoing",
