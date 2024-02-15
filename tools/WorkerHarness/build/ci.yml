@@ -32,11 +32,9 @@ jobs:
     buildConfiguration: 'Release'
 
   steps:
-    - pwsh: |
-        Invoke-WebRequest 'https://raw.githubusercontent.com/dotnet/cli/master/scripts/obtain/dotnet-install.ps1' -OutFile 'dotnet-install.ps1'
-        ./dotnet-install.ps1 -InstallDir "$env:ProgramFiles/dotnet" -Version "6.0.100" -Channel 'release'
-      displayName: 'Install the .Net version used by the Core Tools for Windows'
-      condition: and(eq( variables['Agent.OS'], 'Windows_NT' ), eq(variables['FUNCTIONSRUNTIMEVERSION'], '4'))
+    - task: UseDotNet@2
+      inputs:
+        version: "8.x"
     - task: DotNetCoreCLI@2
       displayName: 'Build projects'
       inputs:
