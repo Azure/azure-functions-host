@@ -22,7 +22,7 @@ namespace WorkerHarness.Core.StreamingMessageService
         internal static string NullPayloadMessage = "Cannot create a {0} message from a null payload";
         internal static string UnsupportedMessageType = "The Worker Harness is currently not able to create a {0} message";
 
-        public StreamingMessageProvider(IOptions<HarnessOptions> workerOptions, 
+        public StreamingMessageProvider(IOptions<HarnessOptions> workerOptions,
             IPayloadVariableSolver payloadVariableSolver)
         {
             _workerOptions = workerOptions.Value;
@@ -158,6 +158,8 @@ namespace WorkerHarness.Core.StreamingMessageService
                 }
             }
 
+            request.EnvironmentVariables["FUNCTIONS_APPLICATION_DIRECTORY"] = _workerOptions.FunctionAppDirectory;
+
             return request;
         }
 
@@ -214,7 +216,14 @@ namespace WorkerHarness.Core.StreamingMessageService
 
         private InvocationRequest CreateInvocationRequest(JsonNode content)
         {
-            InvocationRequest invocationRequest = JsonSerializer.Deserialize<InvocationRequest>(content, _serializerOptions)!;
+            InvocationRequest invocationRequest= new();
+
+            var functionId = content["FunctionId"]!.ToString();
+            invocationRequest.FunctionId = functionId;
+            invocationRequest.InvocationId = content["InvocationId"]!.ToString();
+
+            invocationRequest.TraceContext = new RpcTraceContext();
+            //invocationRequest = JsonSerializer.Deserialize<InvocationRequest>(content, _serializerOptions)!;
 
             // if user does not specify a FunctionId in the scenario file, create a new Guid
             if (string.IsNullOrEmpty(invocationRequest.FunctionId))
@@ -262,7 +271,20 @@ namespace WorkerHarness.Core.StreamingMessageService
 
         private FunctionLoadRequest CreateFunctionLoadRequest(JsonNode content)
         {
-            FunctionLoadRequest? functionLoadRequest = JsonSerializer.Deserialize<FunctionLoadRequest>(content, _serializerOptions)!;
+            FunctionLoadRequest? functionLoadRequest = new FunctionLoadRequest();
+            try
+            {
+                functionLoadRequest.FunctionId = content["FunctionId"]!.ToString();
+                functionLoadRequest.Metadata = JsonSerializer.Deserialize<RpcFunctionMetadata>(content["Metadata"])!;
+
+                // Deserialization failing for FunctionId (number value) to string type even with WriteAsString option for number handling,
+                //functionLoadRequest = JsonSerializer.Deserialize<FunctionLoadRequest>(content, _serializerOptions)!;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+                throw;
+            }
 
             // if user does not specify a FunctionId in the scenario file, create a new Guid
             if (string.IsNullOrEmpty(functionLoadRequest.FunctionId))

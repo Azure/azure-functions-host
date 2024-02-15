@@ -31,9 +31,16 @@ namespace WorkerHarness.Core.WorkerProcess
         {
             if (Process != null)
             {
-                if (!Process.HasExited)
+                try
                 {
-                    Process.Kill();
+                    if (!Process.HasExited)
+                    {
+                        Process.Kill();
+                    }
+                }
+                catch (InvalidOperationException)
+                {
+                    // Handle the exception, e.g. log it or ignore it
                 }
 
                 Process.Dispose();

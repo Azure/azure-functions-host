@@ -1,0 +1,29 @@
+{
+  "scenarioName": "a scenario to test worker indexing",
+  "actions": [
+    {
+      "actionType": "import",
+      "scenarioFile": "shared\\start.json"
+    },
+    {
+      "actionType": "import",
+      "scenarioFile": "shared\\envreload.json"
+    },
+    {
+      "actionType": "import",
+      "scenarioFile": "shared\\index.json"
+    },
+    {
+      "actionType": "import",
+      "scenarioFile": "shared\\load.json"
+    },
+    {
+      "actionType": "delay",
+      "delay": 1000
+    },
+    {
+      "actionType": "import",
+      "scenarioFile": "shared\\invokehttp.json"
+    }
+  ]
+}

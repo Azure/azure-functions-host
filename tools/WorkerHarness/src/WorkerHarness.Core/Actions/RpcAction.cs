@@ -34,9 +34,9 @@ namespace WorkerHarness.Core.Actions
         // _logger logs info/error of the action execution
         private readonly ILogger<RpcAction> _logger;
 
-        internal RpcAction(IValidatorFactory validatorFactory, 
+        internal RpcAction(IValidatorFactory validatorFactory,
             IMessageMatcher matchService,
-            IStreamingMessageProvider grpcMessageProvider, 
+            IStreamingMessageProvider grpcMessageProvider,
             RpcActionData actionData,
             Channel<StreamingMessage> inboundChannel,
             Channel<StreamingMessage> outboundChannel,
@@ -106,7 +106,7 @@ namespace WorkerHarness.Core.Actions
             return actionResult;
         }
 
-        private async Task<bool> ReceiveFromGrpcAsync(IEnumerable<RpcActionMessage> incomingRpcMessages, 
+        private async Task<bool> ReceiveFromGrpcAsync(IEnumerable<RpcActionMessage> incomingRpcMessages,
             ExecutionContext executionContext, CancellationToken token)
         {
             RegisterExpressions(incomingRpcMessages, executionContext);
@@ -120,6 +120,11 @@ namespace WorkerHarness.Core.Actions
                 try
                 {
                     StreamingMessage streamingMessage = await _inboundChannel.Reader.ReadAsync(token);
+
+                    if (streamingMessage.ContentCase == StreamingMessage.ContentOneofCase.InvocationResponse)
+                    {
+                        _logger.LogInformation($"Received an HTTP trigger invocation response");
+                    }
 
                     var matchedRpcMesseages = unprocessedRpcMessages
                         .Where(msg => _messageMatcher.Match(msg, streamingMessage));
@@ -326,7 +331,7 @@ namespace WorkerHarness.Core.Actions
                 executionContext.GlobalVariables.Subscribe(validator);
             }
         }
-        
+
         private bool SetVariables(RpcActionMessage rpcActionMessage, StreamingMessage streamingMessage, ExecutionContext executionContext)
         {
             if (rpcActionMessage.SetVariables == null)

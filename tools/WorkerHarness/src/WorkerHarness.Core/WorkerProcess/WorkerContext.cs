@@ -45,7 +45,7 @@ namespace WorkerHarness.Core.WorkerProcess
 
         internal string GetFormattedArguments()
         {
-            return $" --host {ServerUri.Host} --port {ServerUri.Port} --workerId {WorkerId} --requestId {RequestId} --grpcMaxMessageLength {MaxMessageLength}";
+            return $" --functions-uri http://{ServerUri.Host}:{ServerUri.Port} --functions-worker-id {WorkerId} --functions-request-id {RequestId} --functions-grpc-max-message-length {MaxMessageLength}";
         }
     }
 }
