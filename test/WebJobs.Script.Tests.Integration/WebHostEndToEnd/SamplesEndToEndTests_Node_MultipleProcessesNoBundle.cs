@@ -34,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             _settingsManager = ScriptSettingsManager.Instance;
         }
 
-        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues")]
+        [Fact]
         public async Task NodeProcessNoBundleConfigured_Different_AfterHostRestart()
         {
             await SamplesTestHelpers.InvokeAndValidateHttpTrigger(_fixture, "HttpTrigger");

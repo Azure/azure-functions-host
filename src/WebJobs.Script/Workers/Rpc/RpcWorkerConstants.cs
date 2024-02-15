@@ -85,6 +85,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public const string WorkerIndexingEnabled = "WORKER_INDEXING_ENABLED";
         public const string WorkerIndexingDisabledApps = "WORKER_INDEXING_DISABLED_APPS";
         public const string RevertWorkerShutdownBehavior = "REVERT_WORKER_SHUTDOWN_BEHAVIOR";
+        public const string ShutdownWebhostWorkerChannelsOnHostShutdown = "ShutdownWebhostWorkerChannelsOnHostShutdown";
         public const string ThrowOnMissingFunctionsWorkerRuntime = "THROW_ON_MISSING_FUNCTIONS_WORKER_RUNTIME";
     }
 }

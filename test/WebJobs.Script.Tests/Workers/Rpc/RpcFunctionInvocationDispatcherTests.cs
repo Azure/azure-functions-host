@@ -8,6 +8,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -696,7 +697,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 jobHostLanguageWorkerChannelManager,
                 new OptionsWrapper<ManagedDependencyOptions>(new ManagedDependencyOptions()),
                 mockFunctionDispatcherLoadBalancer.Object,
-                Options.Create(new WorkerConcurrencyOptions()));
+                Options.Create(new WorkerConcurrencyOptions()),
+                Options.Create(new FunctionsHostingConfigOptions()));
         }
 
         private async Task<int> WaitForJobhostWorkerChannelsToStartup(RpcFunctionInvocationDispatcher functionDispatcher, int expectedCount, bool allReadyForInvocations = true)

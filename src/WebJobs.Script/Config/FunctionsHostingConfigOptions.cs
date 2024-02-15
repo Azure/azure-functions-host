@@ -44,6 +44,22 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         }
 
         /// <summary>
+        /// Gets or Sets a value indicating whether the host should shutdown webhost worker channels during shutdown.
+        /// </summary>
+        public bool ShutdownWebhostWorkerChannelsOnHostShutdown
+        {
+            get
+            {
+                return GetFeatureOrDefault(RpcWorkerConstants.ShutdownWebhostWorkerChannelsOnHostShutdown, "1") == "1";
+            }
+
+            set
+            {
+                _features[RpcWorkerConstants.ShutdownWebhostWorkerChannelsOnHostShutdown] = value ? "1" : "0";
+            }
+        }
+
+        /// <summary>
         /// Gets or sets a value indicating whether SWT tokens should be accepted.
         /// </summary>
         public bool SwtAuthenticationEnabled
