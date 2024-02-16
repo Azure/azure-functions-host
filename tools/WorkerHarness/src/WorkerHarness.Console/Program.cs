@@ -18,6 +18,7 @@ using WorkerHarness.Core.GrpcService;
 using WorkerHarness.Core.StreamingMessageService;
 using WorkerHarness.Core.Actions;
 using System.Reflection;
+using WorkerHarness.Core.Diagnostics;
 
 namespace WorkerHarness
 {
@@ -25,39 +26,52 @@ namespace WorkerHarness
     {
         public static async Task Main(string[] args)
         {
-            Console.WriteLine($"Worker Harness version: {GetHarnessVersion()}");
-
-            if (!TryGetHarnessSetting(out string harnessSettingsPath))
+            HarnessEventSource.Log.AppStarted();
+            ServiceProvider? serviceProvider = null;
+            IGrpcServer? grpcServer = null;
+            try
             {
-                return;
+                Console.WriteLine($"Worker Harness version: {GetHarnessVersion()}");
+
+                if (!TryGetHarnessSetting(out string harnessSettingsPath))
+                {
+                    return;
+                }
+
+                serviceProvider = SetupDependencyInjection(harnessSettingsPath);
+
+                // validate user input
+                IOptions<HarnessOptions> harnessOptions = serviceProvider.GetRequiredService<IOptions<HarnessOptions>>()!;
+
+                IHarnessOptionsValidate harnessValidate = serviceProvider.GetRequiredService<IHarnessOptionsValidate>();
+
+                if (!harnessValidate.Validate(harnessOptions.Value))
+                {
+                    serviceProvider.Dispose();
+                    return;
+                }
+
+                // start the grpc server
+                grpcServer = serviceProvider.GetRequiredService<IGrpcServer>();
+                grpcServer.Start();
+
+                // run the harness
+                var harnessExecutor = serviceProvider.GetRequiredService<IWorkerHarnessExecutor>();
+                await harnessExecutor.StartAsync();
             }
-
-            ServiceProvider serviceProvider = SetupDependencyInjection(harnessSettingsPath);
-
-            // validate user input
-            IOptions<HarnessOptions> harnessOptions = serviceProvider.GetRequiredService<IOptions<HarnessOptions>>()!;
-
-            IHarnessOptionsValidate harnessValidate = serviceProvider.GetRequiredService<IHarnessOptionsValidate>();
-
-            if (!harnessValidate.Validate(harnessOptions.Value)) 
+            catch (Exception ex)
             {
-                serviceProvider.Dispose();
-                return;
+                Console.WriteLine($"An exception occurred: {ex.Message}");
             }
-
-            // start the grpc server
-            var grpcServer = serviceProvider.GetRequiredService<IGrpcServer>();
-            grpcServer.Start();
-
-            // run the harness
-            var harnessExecutor = serviceProvider.GetRequiredService<IWorkerHarnessExecutor>();
-            await harnessExecutor.StartAsync();
-
-            // clean up
-            await grpcServer.Shutdown();
-            serviceProvider.Dispose();
-
-            return;
+            finally
+            {
+                Console.WriteLine($"Exiting...");
+                if (grpcServer is not null)
+                {
+                    await grpcServer.Shutdown();
+                }
+                serviceProvider?.Dispose();
+            }
         }
 
         private static ServiceProvider SetupDependencyInjection(string harnessSettingsPath)

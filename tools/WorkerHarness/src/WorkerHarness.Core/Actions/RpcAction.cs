@@ -5,6 +5,7 @@ using Microsoft.Azure.Functions.WorkerHarness.Grpc.Messages;
 using Microsoft.Extensions.Logging;
 using System.Threading.Channels;
 using WorkerHarness.Core.Commons;
+using WorkerHarness.Core.Diagnostics;
 using WorkerHarness.Core.Matching;
 using WorkerHarness.Core.StreamingMessageService;
 using WorkerHarness.Core.Validators;
@@ -133,6 +134,7 @@ namespace WorkerHarness.Core.Actions
                         var httpResponse = streamingMessage.InvocationResponse.ReturnValue.ToObject();
                         if (httpResponse is HttpResponseData response)
                         {
+                            HarnessEventSource.Log.ColdStartRequestStop(response.StatusCode);
                             string responseBodyString = response.Body == null ? string.Empty : System.Text.Encoding.UTF8.GetString(response.Body);
                             _logger.LogInformation($"HTTP trigger invocation response: {response.StatusCode} {Environment.NewLine}{responseBodyString}");
                         }

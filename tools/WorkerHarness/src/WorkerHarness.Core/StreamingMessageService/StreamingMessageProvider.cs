@@ -7,6 +7,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using WorkerHarness.Core.Commons;
+using WorkerHarness.Core.Diagnostics;
 using WorkerHarness.Core.Options;
 using WorkerHarness.Core.Variables;
 
@@ -104,6 +105,9 @@ namespace WorkerHarness.Core.StreamingMessageService
                 case "FunctionEnvironmentReloadRequest":
                     FunctionEnvironmentReloadRequest environmentReloadRequest = CreateFunctionEnvironmentReloadRequest(payload);
                     message.FunctionEnvironmentReloadRequest = environmentReloadRequest;
+
+                    // The closest we can log before sending the request.
+                    HarnessEventSource.Log.ColdStartRequestStart();
                     break;
                 case "CloseSharedMemoryResourcesRequest":
                     CloseSharedMemoryResourcesRequest closeMemoryRequest = CreateCloseSharedMemoryResourcesRequest(payload);
