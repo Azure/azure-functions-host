@@ -19,6 +19,8 @@ namespace WorkerHarness.Core.Options
             bool valid = true;
             string errorMessage = "Invalid or missing --{0} argument";
 
+            ValidateFunctionAppDir(harnessOptions, ref valid, errorMessage);
+
             // validate scenario file
             ValidateScenarioFile(harnessOptions, ref valid, errorMessage);
 
@@ -34,15 +36,28 @@ namespace WorkerHarness.Core.Options
             return valid;
         }
 
-
-        private void ValidateLanguageExecutable(HarnessOptions harnessOptions, ref bool valid, string errorMessage)
+        private void ValidateFunctionAppDir(HarnessOptions harnessOptions, ref bool valid, string errorMessage)
         {
-            if (string.IsNullOrEmpty(harnessOptions.LanguageExecutable))
+            if (string.IsNullOrEmpty(harnessOptions.FunctionAppDirectory))
             {
-                _logger.LogError(errorMessage, "languageExecutable");
+                _logger.LogError(errorMessage, "FunctionAppDirectory");
                 valid = false;
             }
             else
+            {
+                harnessOptions.FunctionAppDirectory = Path.GetFullPath(harnessOptions.FunctionAppDirectory);
+
+                if (!Directory.Exists(harnessOptions.FunctionAppDirectory))
+                {
+                    _logger.LogError(errorMessage, "FunctionAppDirectory");
+                    valid = false;
+                }
+            }
+        }
+
+        private void ValidateLanguageExecutable(HarnessOptions harnessOptions, ref bool valid, string errorMessage)
+        {
+            if (!string.IsNullOrEmpty(harnessOptions.LanguageExecutable))
             {
                 harnessOptions.LanguageExecutable = Path.GetFullPath(harnessOptions.LanguageExecutable);
 
@@ -69,6 +84,12 @@ namespace WorkerHarness.Core.Options
                 {
                     _logger.LogError(errorMessage, "workerPath");
                     valid = false;
+                }
+
+                // If no explicit language executable is provided, set workerpath as the value for it.
+                if (harnessOptions.LanguageExecutable == null)
+                {
+                    harnessOptions.LanguageExecutable = harnessOptions.WorkerPath;
                 }
             }
         }

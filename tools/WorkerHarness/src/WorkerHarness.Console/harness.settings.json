@@ -1,7 +1,6 @@
 {
   "scenarioFile": "scenario.json",
-  "languageExecutable": "C:\\Dev\\app\\fnh\\FunctionsNetHost.exe",
-  "workerPath": "C:\\Dev\\app\\fnh\\FunctionsNetHost.exe",
-  "functionAppDirectory": "C:\\Dev\\app\\functionapp44",
+  "workerPath": "fnh2\\FunctionsNetHost.exe",
+  "functionAppDirectory": "functionapp44",
   "DisplayVerboseError": true
 }

@@ -25,7 +25,7 @@ namespace WorkerHarness
     {
         public static async Task Main(string[] args)
         {
-            System.Console.WriteLine($"Worker Harness version: {GetHarnessVersion()}");
+            Console.WriteLine($"Worker Harness version: {GetHarnessVersion()}");
 
             if (!TryGetHarnessSetting(out string harnessSettingsPath))
             {
@@ -109,8 +109,8 @@ namespace WorkerHarness
 
             if (!File.Exists(harnessSettingPath))
             {
-                System.Console.WriteLine(MissingHarnessSettingJsonFile);
-                System.Console.WriteLine(harnessSettingPath);
+                Console.WriteLine(MissingHarnessSettingJsonFile);
+                Console.WriteLine(harnessSettingPath);
                 return false;
             }
 

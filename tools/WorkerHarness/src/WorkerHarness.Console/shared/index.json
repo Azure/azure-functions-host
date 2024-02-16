@@ -4,7 +4,7 @@
     {
       "actionType": "rpc",
       "actionName": "send worker FunctionsMetadataRequest",
-      "runInSilentMode": true,
+      "runInSilentMode": false,
       "messages": [
         {
           "direction": "outgoing",

@@ -9,7 +9,7 @@
           "direction": "outgoing",
           "messageType": "FunctionEnvironmentReloadRequest",
           "payload": {
-            "FunctionAppDirectory": "C:\\Dev\\app\\funcapp44"
+            "FunctionAppDirectory": ""
           }
         },
         {

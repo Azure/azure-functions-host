@@ -7,7 +7,7 @@
     },
     {
       "actionType": "delay",
-      "delay": 10000
+      "delay": 1000
     },
     {
       "actionType": "import",

@@ -12,7 +12,7 @@
 	<AssemblyName>Microsoft.Azure.Functions.Worker.Harness</AssemblyName>
 	<Description>This package installs the Worker Harness as a dotnet CLI tool, which validates a language worker implementation.</Description>
 	<PackageProjectUrl>https://github.com/Azure/azure-functions-host/tree/features/harness/tools/WorkerHarness</PackageProjectUrl>
-	<Version>1.0.2</Version>
+	<Version>1.0.3</Version>
   </PropertyGroup>
 
   <ItemGroup>
