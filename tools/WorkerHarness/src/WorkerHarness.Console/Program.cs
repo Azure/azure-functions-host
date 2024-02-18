@@ -133,8 +133,13 @@ namespace WorkerHarness
 
         private static string GetHarnessVersion()
         {
+            const string version = Constants.WorkerHarnessVersion;
+            if(!string.IsNullOrWhiteSpace(version))
+            {
+                return version;
+            }
+            // fall back to reflection.
             return Assembly.GetAssembly(typeof(Program))!.GetName().Version!.ToString();
-
         }
     }
 }

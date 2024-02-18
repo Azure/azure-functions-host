@@ -60,6 +60,8 @@ namespace WorkerHarness.Core
 
                 myProcess.Start();
 
+                _logger.LogInformation("Executing scenario: {0}", scenario.ScenarioName);
+
                 foreach (IAction action in scenario.Actions)
                 {
                     ActionResult actionResult = await action.ExecuteAsync(executionContext);

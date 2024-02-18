@@ -1,9 +1,7 @@
 {
     "scenarioFile": "queueTriggerScenario.json",
     "languageExecutable": "<absolute path of your language executable>",
-    "languageExecutableArguments": [],
-    "workerPath": "<absolute path of your worker>",
-    "workerArguments": [],
-    "functionAppDirectory": "<absolute path of your function app directory>",
+    "workerExecutable": "<absolute path of your worker executable>",
+    "workerDirectory": "<absolute path of your worker directory>",
     "DisplayVerboseError": false
 }

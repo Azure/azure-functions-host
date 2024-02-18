@@ -13,11 +13,11 @@ namespace WorkerHarness.Core.Actions
         internal static string MissingScenarioFileException = "The import action is missing a scenarioFile property";
         internal static string ScenarioFileDoesNotExist = "The scenario file {0} does not exist";
 
-        private readonly ILoggerFactory _loggerFactory;
+        private readonly ILogger<ImportActionProvider> _logger;
 
         public ImportActionProvider(ILoggerFactory loggerFactory)
         {
-            _loggerFactory = loggerFactory;
+            _logger = loggerFactory?.CreateLogger<ImportActionProvider>() ?? throw new ArgumentNullException(nameof(loggerFactory));
         }
 
         public IAction Create(JsonNode actionNode)
@@ -26,16 +26,15 @@ namespace WorkerHarness.Core.Actions
             {
                 TryGetScenarioFile(out string scenarioFile, actionNode);
 
-                return new ImportAction(scenarioFile, _loggerFactory.CreateLogger<ImportAction>());
+                return new ImportAction(scenarioFile);
             }
-            catch (ArgumentException ex)
+            catch (ArgumentException)
             {
-                throw ex;
+                throw;
             }
-
         }
 
-        private static bool TryGetScenarioFile(out string scenarioFile, JsonNode actionNode)
+        private bool TryGetScenarioFile(out string scenarioFile, JsonNode actionNode)
         {
             if (actionNode["scenarioFile"] == null)
             {
@@ -45,8 +44,11 @@ namespace WorkerHarness.Core.Actions
             scenarioFile = actionNode["scenarioFile"]!.GetValue<string>();
             scenarioFile = Path.GetFullPath(scenarioFile);
 
-            if (!File.Exists(scenarioFile))
+            bool fileExist = File.Exists(scenarioFile);
+            
+            if (!fileExist)
             {
+                _logger.LogError($"Scenario file {scenarioFile} does not exist", scenarioFile);
                 throw new ArgumentException(ScenarioFileDoesNotExist, scenarioFile);
             }
 

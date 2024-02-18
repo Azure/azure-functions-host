@@ -4,7 +4,7 @@
 namespace WorkerHarness.Core
 {
     /// <summary>
-    /// abtraction for a HarnessExecutor
+    /// abstraction for a HarnessExecutor
     /// </summary>
     public interface IWorkerHarnessExecutor
     {

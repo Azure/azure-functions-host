@@ -25,5 +25,7 @@ namespace WorkerHarness.Core.Actions
         // The custom message to print when the rpc action is successful.
         // If not set, the default message will be printed.
         public string? SuccessMessage { get; set; } = string.Empty;
+
+        public bool WaitForUserInput { get; set; } = false; 
     }
 }

@@ -41,7 +41,7 @@ namespace WorkerHarness.Core.Tests.Actions
 
             var stubLogger = new LoggerFactory().CreateLogger<ImportAction>(); 
 
-            ImportAction action = new("path\\to\\scenario\\file", stubLogger);
+            ImportAction action = new("path\\to\\scenario\\file");
 
             // Act
             ActionResult actionResult = await action.ExecuteAsync(executionContext);
@@ -78,7 +78,7 @@ namespace WorkerHarness.Core.Tests.Actions
 
             var stubLogger = new LoggerFactory().CreateLogger<ImportAction>();
 
-            ImportAction action = new("path\\to\\scenario\\file", stubLogger);
+            ImportAction action = new("path\\to\\scenario\\file");
 
             // Act
             ActionResult actionResult = await action.ExecuteAsync(executionContext);

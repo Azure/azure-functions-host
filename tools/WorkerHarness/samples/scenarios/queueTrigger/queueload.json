@@ -11,7 +11,7 @@
                     "payload": {
                         "Metadata": {
                             "scriptFile": "<FunctionScriptFile>",
-                            "EntryPoint": "<QueueTriggerFunctionEntryPoint>",
+                            "EntryPoint": "<FunctionScriptFile>.<QueueTriggerFunctionName>.Run",
                             "Name": "<QueueTriggerFunctionName>",
                             "Bindings": {
                                 "myQueueItem": {

@@ -3,7 +3,7 @@
 namespace WorkerHarness.Core.Actions
 {
     /// <summary>
-    /// Provide an abtraction to create an action
+    /// Provide an abstraction to create an action
     /// </summary>
     public interface IActionProvider
     {

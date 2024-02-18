@@ -58,6 +58,8 @@ namespace WorkerHarness.Core.Actions
 
         internal int Timeout { get => _actionData.Timeout; }
 
+        internal bool WaitForUserInput => _actionData.WaitForUserInput;
+
         public async Task<ActionResult> ExecuteAsync(ExecutionContext executionContext)
         {
             if (!_actionData.RunInSilentMode)
@@ -101,7 +103,10 @@ namespace WorkerHarness.Core.Actions
                 if (!_actionData.RunInSilentMode)
                 {
                     var message = _actionData.SuccessMessage ?? "Success!";
-                    _logger.LogInformation(message);
+                    if (!string.IsNullOrEmpty(message))
+                    {
+                        _logger.LogInformation(message);
+                    }
                 }
             }
             else

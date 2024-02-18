@@ -3,8 +3,8 @@
   "actions": [
     {
       "actionType": "rpc",
-      "runInSilentMode": false,
-      "actionName": "validate the worker's ability to send a StartStream message",
+      "runInSilentMode": true,
+      "actionName": "validate the worker's ability to receive a StartStream message",
       "messages": [
         {
           "direction": "incoming",
@@ -21,7 +21,7 @@
     },
     {
       "actionType": "rpc",
-      "runInSilentMode": false,
+      "runInSilentMode": true,
       "actionName": "validate the worker's ability to handle a WorkerInitRequest message",
       "messages": [
         {

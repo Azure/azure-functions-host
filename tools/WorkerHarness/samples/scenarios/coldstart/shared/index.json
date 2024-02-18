@@ -4,7 +4,7 @@
     {
       "actionType": "rpc",
       "actionName": "send worker FunctionsMetadataRequest",
-      "runInSilentMode": false,
+      "runInSilentMode": true,
       "messages": [
         {
           "direction": "outgoing",
@@ -14,18 +14,6 @@
         {
           "direction": "incoming",
           "messageType": "FunctionMetadataResponse",
-          "validators": [
-            {
-              "type": "string",
-              "query": "$.FunctionMetadataResponse.Result.Status",
-              "expected": "Success"
-            },
-            {
-              "type": "string",
-              "query": "$.FunctionMetadataResponse.FunctionMetadataResults[0].Name",
-              "expected": "HelloHttp"
-            }
-          ],
           "setVariables": {
             "HttpTriggerFunctionId": "$.FunctionMetadataResponse.FunctionMetadataResults[0].FunctionId",
             "HttpTriggerFunctionMetadata": "$.FunctionMetadataResponse.FunctionMetadataResults[0]"

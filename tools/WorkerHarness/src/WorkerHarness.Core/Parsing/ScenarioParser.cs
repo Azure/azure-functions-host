@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using WorkerHarness.Core.Actions;
@@ -18,7 +19,7 @@ namespace WorkerHarness.Core.Parsing
         internal static string ScenarioFileNotFoundMessage = "The scenario file {0} is not found";
         internal static string ScenarioFileNotInJsonFormat = "ScenarioParser exception occurs when parsing {0}. {1}";
         internal static string ScenarioFileMissingActionsList = "Missing the 'actions' array in the scenario {0}";
-        internal static string ScenarioFileMissingActionType = "Mising the \"actionType\" property in an action {0}";
+        internal static string ScenarioFileMissingActionType = "Missing the \"actionType\" property in an action {0}";
         internal static string ScenarioFileHasInvalidActionType = "Worker Harness does not recognize the action type: {0}";
 
         public ScenarioParser(IEnumerable<IActionProvider> actionProviders)

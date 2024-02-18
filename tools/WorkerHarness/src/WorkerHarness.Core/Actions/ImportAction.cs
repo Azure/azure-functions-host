@@ -14,31 +14,37 @@ namespace WorkerHarness.Core.Actions
         internal static string ExceptionMessage = "An exception occurs inside ImportAction.";
 
         private readonly string _scenarioFile;
-        private readonly ILogger<ImportAction> _logger;
 
-        internal ImportAction(string scenarioFile,
-            ILogger<ImportAction> logger)
+        internal ImportAction(string scenarioFile)
         {
             _scenarioFile = scenarioFile;
-            _logger = logger;
         }
 
-        public async Task<ActionResult> ExecuteAsync(ExecutionContext execuationContext)
+        public async Task<ActionResult> ExecuteAsync(ExecutionContext executionContext)
         {
             ActionResult importActionResult = new();
-            
-            IScenarioParser scenarioParser = execuationContext.ScenarioParser;
+
+            IScenarioParser scenarioParser = executionContext.ScenarioParser;
             Scenario scenario = scenarioParser.Parse(_scenarioFile);
 
             foreach (IAction action in scenario.Actions)
             {
-                ActionResult actionResult = await action.ExecuteAsync(execuationContext);
+                if (action is RpcAction rpcAction)
+                {
+                    if (rpcAction.WaitForUserInput)
+                    {
+                        Console.WriteLine($"Press any key to continue executing the next action ({rpcAction.Name})");
+                        Console.ReadKey();
+                    }
+                }
+
+                ActionResult actionResult = await action.ExecuteAsync(executionContext);
 
                 if (actionResult.Status is StatusCode.Failure)
                 {
                     importActionResult.Status = StatusCode.Failure;
 
-                    if (!execuationContext.ContinueUponFailure)
+                    if (!executionContext.ContinueUponFailure)
                     {
                         break;
                     }

@@ -29,7 +29,9 @@ namespace WorkerHarness.Core.Actions
 
         public string Type => ActionTypes.Rpc;
 
-        public RpcActionProvider(IValidatorFactory validatorFactory, 
+        private static JsonSerializerOptions serializerOptions = new() { PropertyNameCaseInsensitive = true };
+
+        public RpcActionProvider(IValidatorFactory validatorFactory,
             IMessageMatcher messageMatcher,
             IStreamingMessageProvider rpcMessageProvider,
             GrpcServiceChannel channel,
@@ -72,7 +74,6 @@ namespace WorkerHarness.Core.Actions
         {
             ValidateRpcActionNode(actionNode);
 
-            JsonSerializerOptions serializerOptions = new() { PropertyNameCaseInsensitive = true };
             RpcActionData actionData = JsonSerializer.Deserialize<RpcActionData>(actionNode, serializerOptions)!;
 
             return actionData;
