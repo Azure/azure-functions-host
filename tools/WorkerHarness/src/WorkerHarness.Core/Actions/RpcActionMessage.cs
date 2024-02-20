@@ -7,14 +7,14 @@ using WorkerHarness.Core.Validators;
 
 namespace WorkerHarness.Core.Actions
 {
-    internal class RpcActionMessageTypes
+    internal sealed class RpcActionMessageTypes
     {
         public static string Incoming = "incoming";
 
         public static string Outgoing = "outgoing";
     }
 
-    public class RpcActionMessage
+    public sealed class RpcActionMessage
     {
         public string Id { get; set; } = Guid.NewGuid().ToString();
 

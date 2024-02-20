@@ -8,7 +8,7 @@ namespace WorkerHarness.Core.Parsing
     /// <summary>
     /// Encapsulates information about a scenario
     /// </summary>
-    public class Scenario
+    public sealed class Scenario
     {
         // name of a scenario file
         public string ScenarioName { get; private set; }

@@ -1,7 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using WorkerHarness.Core.Actions;
@@ -11,7 +10,7 @@ namespace WorkerHarness.Core.Parsing
     /// <summary>
     /// Parse a json scenario file into a Scenario object
     /// </summary>
-    public class ScenarioParser : IScenarioParser
+    public sealed class ScenarioParser : IScenarioParser
     {
         private readonly IEnumerable<IActionProvider> _actionProviders;
 
@@ -92,6 +91,5 @@ namespace WorkerHarness.Core.Parsing
                 throw new ArgumentException(string.Format(ScenarioFileMissingActionsList, scenarioPath));
             }
         }
-
     }
 }

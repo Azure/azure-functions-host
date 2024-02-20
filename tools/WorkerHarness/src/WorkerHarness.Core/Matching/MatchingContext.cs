@@ -8,7 +8,7 @@ namespace WorkerHarness.Core.Matching
     /// <summary>
     /// Encapsulate the criteria to match a Message to a Grpc StreamingMessage
     /// </summary>
-    public class MatchingContext : ExpressionBase
+    public sealed class MatchingContext : ExpressionBase
     {
         // the type of the match. The default is string comparison.
         public string Type { get; set; } = "string";

@@ -14,7 +14,6 @@ namespace WorkerHarness.Core.Profiling
         private readonly ILogger<PerfviewProfiler> _logger;
         private string _logFilePath = string.Empty;
         private string _traceDataFilePath = string.Empty;
-        private ProfilingStatus _profilingStatus;
         private Process? _startProcess;
         private Process? _endProcess;
         private object _lock = new object();
@@ -26,11 +25,13 @@ namespace WorkerHarness.Core.Profiling
             _logger = logger;
         }
 
+        public ProfilingStatus Status { get; private set; }
+
         public async ValueTask StartProfilingAsync()
         {
             lock (_lock)
             {
-                if (_profilingStatus == ProfilingStatus.Started)
+                if (Status == ProfilingStatus.Started)
                 {
                     _logger.LogWarning("Profiling has already started. No action will be taken.");
                     return;
@@ -44,7 +45,7 @@ namespace WorkerHarness.Core.Profiling
                     return;
                 }
 
-                _profilingStatus = ProfilingStatus.Started;
+                Status = ProfilingStatus.Started;
 
                 var timestamp = DateTime.UtcNow.ToString("yyyy_MM_dd_HH_mm_ss");
                 _logFilePath = $@"{_profilesPath}\PerfViewLog_{timestamp}.txt";
@@ -63,15 +64,16 @@ namespace WorkerHarness.Core.Profiling
                 _startProcess = RunCommand(_config.ExecutableDirectory, PerfViewExeName, startArgs);
             }
 
+            var waitTimeInSeconds = _config.WaitTimeInSecondsAfterStarting ?? 3;
             // Give it some time to start, otherwise we will miss some events we write right after this.
-            await Task.Delay(5000);
+            await Task.Delay(TimeSpan.FromSeconds(waitTimeInSeconds));
         }
 
-        public void StopProfiling()
+        public async ValueTask StopProfilingAsync()
         {
             lock (_lock)
             {
-                if (_profilingStatus == ProfilingStatus.Stopped)
+                if (Status == ProfilingStatus.Stopped)
                 {
                     return;
                 }
@@ -82,11 +84,15 @@ namespace WorkerHarness.Core.Profiling
                                   + " /NoV2Rundown /NoNGENRundown /NoNGenPdbs /Merge=true /Zip=false";
 
                 _endProcess = RunCommand(_config.ExecutableDirectory, PerfViewExeName, stopArgs);
-                _profilingStatus = ProfilingStatus.Stopped;
+
+                Status = ProfilingStatus.Stopped;
             }
+
+            var waitTimeInSeconds = _config.GraceTimeInSecondsAfterStopping ?? 5;
+            await Task.Delay(TimeSpan.FromSeconds(waitTimeInSeconds));
         }
 
-        private Process RunCommand(string workingDirectory, string exePath, string arguments)
+        private Process? RunCommand(string workingDirectory, string exePath, string arguments)
         {
             var processStartInfo = new ProcessStartInfo(exePath, arguments)
             {

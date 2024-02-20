@@ -26,5 +26,10 @@ namespace WorkerHarness.Core.Profiling
         public int? CircularMb { get; set; }
 
         public int? BufferSizeMb { get; set; }
+
+        public int? GraceTimeInSecondsAfterStopping { get; set; }
+
+        public int? WaitTimeInSecondsAfterStarting { get; set; }
+
     }
 }

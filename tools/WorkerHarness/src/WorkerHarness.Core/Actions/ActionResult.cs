@@ -9,7 +9,7 @@ namespace WorkerHarness.Core.Actions
         Failure,
     }
 
-    public class ActionResult
+    public sealed class ActionResult
     {
         public StatusCode Status { get; set; }
 

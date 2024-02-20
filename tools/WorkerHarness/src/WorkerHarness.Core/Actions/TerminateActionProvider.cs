@@ -10,7 +10,7 @@ using WorkerHarness.Core.StreamingMessageService;
 
 namespace WorkerHarness.Core.Actions
 {
-    public class TerminateActionProvider : IActionProvider
+    public sealed class TerminateActionProvider : IActionProvider
     {
         public string Type => ActionTypes.Terminate;
 

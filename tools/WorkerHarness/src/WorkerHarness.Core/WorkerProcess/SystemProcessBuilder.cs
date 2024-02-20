@@ -3,14 +3,13 @@
 
 using System.Diagnostics;
 using System.Text;
-using WorkerHarness.Core.Commons;
 
 namespace WorkerHarness.Core.WorkerProcess
 {
-    public class SystemProcessBuilder : IWorkerProcessBuilder
+    public sealed class SystemProcessBuilder : IWorkerProcessBuilder
     {
         public IWorkerProcess Build(WorkerContext workerContext)
-        {       
+        {
             var startInfo = new ProcessStartInfo(workerContext.ExecutablePath)
             {
                 RedirectStandardOutput = true,
@@ -22,7 +21,7 @@ namespace WorkerHarness.Core.WorkerProcess
                 Arguments = GetArguments(workerContext)
             };
 
-            Process process = new() { StartInfo = startInfo};
+            Process process = new() { StartInfo = startInfo };
 
             return new SystemProcess(process);
         }

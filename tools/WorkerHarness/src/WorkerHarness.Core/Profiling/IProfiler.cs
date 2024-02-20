@@ -5,7 +5,8 @@ namespace WorkerHarness.Core.Profiling
 {
     public interface IProfiler
     {
+        ProfilingStatus Status { get; }
         ValueTask StartProfilingAsync();
-        void StopProfiling();
+        ValueTask StopProfilingAsync();
     }
 }

@@ -7,7 +7,7 @@ using System.Threading.Channels;
 
 namespace WorkerHarness.Core.GrpcService
 {
-    public class GrpcService : FunctionRpc.FunctionRpcBase
+    public sealed class GrpcService : FunctionRpc.FunctionRpcBase
     {
         private readonly Channel<StreamingMessage> _inboundChannel;
 
@@ -29,7 +29,6 @@ namespace WorkerHarness.Core.GrpcService
             {
                 await _inboundChannel.Writer.WriteAsync(requestStream.Current);
             }
-
         }
 
         private async void SendOutgoingGrpcMessages(IServerStreamWriter<StreamingMessage> responseStream)

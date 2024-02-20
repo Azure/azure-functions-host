@@ -6,7 +6,7 @@ using WorkerHarness.Core.Actions;
 
 namespace WorkerHarness.Core.Matching
 {
-    public class MessageMatcher : IMessageMatcher
+    public sealed class MessageMatcher : IMessageMatcher
     {
         private readonly IContextMatcher _contextMatcher;
 
@@ -24,7 +24,7 @@ namespace WorkerHarness.Core.Matching
             }
 
             // match streamingMessage against the MatchingContexts in rpcActionMessage
-            return _contextMatcher.MatchAll(rpcActionMessage.MatchingCriteria, streamingMessage);   
+            return _contextMatcher.MatchAll(rpcActionMessage.MatchingCriteria, streamingMessage);
         }
     }
 }

@@ -42,10 +42,9 @@ namespace WorkerHarness.Core.Actions
 
                 ActionResult actionResult = await action.ExecuteAsync(executionContext!);
 
-                if (action is ICanStopProfiling { StopProfiling: true })
+                if (action is ICanStopProfiling { StopProfiling: true } && executionContext?.Profiler != null)
                 {
-                    await Task.Delay(5000);
-                    executionContext?.Profiler?.StopProfiling();
+                    await executionContext.Profiler.StopProfilingAsync();
                 }
 
                 if (actionResult.Status is StatusCode.Failure)
@@ -59,8 +58,6 @@ namespace WorkerHarness.Core.Actions
                 }
             }
 
-            // Safe to call StopProfiling to ensure we are cleaning up in case the stop profiling prop was not set in any of the actions.
-            executionContext?.Profiler?.StopProfiling();
 
             return importActionResult;
         }

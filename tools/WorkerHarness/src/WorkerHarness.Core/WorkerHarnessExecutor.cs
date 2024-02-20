@@ -67,7 +67,7 @@ namespace WorkerHarness.Core
 
                 foreach (IAction action in scenario.Actions)
                 {
-                    var actionResult = await action.ExecuteAsync(executionContext);
+                    var actionResult = await action.ExecuteAsync(executionContext!);
 
                     if (!_harnessOptions.ContinueUponFailure && actionResult.Status == StatusCode.Failure)
                     {
@@ -85,12 +85,28 @@ namespace WorkerHarness.Core
             }
             finally
             {
-                if (executionContext.Profiler is IDisposable profiler)
-                {
-                    profiler.Dispose();
-                }
-                
+                await CleanupProfilingIfNeeded(executionContext);
+
                 myProcess.Dispose();
+            }
+        }
+
+        private static async Task CleanupProfilingIfNeeded(ExecutionContext executionContext)
+        {
+            if (executionContext.Profiler == null)
+            {
+                return;
+            }
+            
+            // Safe to call StopProfiling to ensure we are cleaning up in case the stop profiling prop was not set in any of the actions.
+            if ( executionContext.Profiler.Status != ProfilingStatus.Stopped)
+            {
+                await executionContext.Profiler.StopProfilingAsync();
+            }
+
+            if (executionContext.Profiler is IDisposable profiler)
+            {
+                profiler.Dispose();
             }
         }
     }

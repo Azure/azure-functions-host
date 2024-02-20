@@ -14,9 +14,9 @@ using WorkerHarness.Core.Validators;
 namespace WorkerHarness.Core.Actions
 {
     /// <summary>
-    /// Default implemenation of IActionProvider
+    /// Default implementation of IActionProvider
     /// </summary>
-    public class RpcActionProvider : IActionProvider
+    public sealed class RpcActionProvider : IActionProvider
     {
         private readonly IValidatorFactory _validatorFactory;
         private readonly IMessageMatcher _messageMatcher;
@@ -86,6 +86,5 @@ namespace WorkerHarness.Core.Actions
                 throw new ArgumentException(ArgumentMissingMessagesProperty);
             }
         }
-
     }
 }

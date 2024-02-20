@@ -6,7 +6,7 @@ namespace WorkerHarness.Core.Options
     /// <summary>
     /// Encapsulates required user arguments 
     /// </summary>
-    public class HarnessOptions
+    public sealed class HarnessOptions
     {
         // Full path of a scenario file
         public string? ScenarioFile { get; set; }

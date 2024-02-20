@@ -6,7 +6,7 @@ using System.Text.Json.Nodes;
 
 namespace WorkerHarness.Core.Actions
 {
-    public class ImportActionProvider : IActionProvider
+    public sealed class ImportActionProvider : IActionProvider
     {
         public string Type => ActionTypes.Import;
 

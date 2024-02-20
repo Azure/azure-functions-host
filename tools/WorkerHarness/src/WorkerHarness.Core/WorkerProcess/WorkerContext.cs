@@ -1,11 +1,9 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using WorkerHarness.Core.Commons;
-
 namespace WorkerHarness.Core.WorkerProcess
 {
-    public class WorkerContext
+    public sealed class WorkerContext
     {
         internal string ExecutablePath { get; }
 
@@ -23,11 +21,11 @@ namespace WorkerHarness.Core.WorkerProcess
 
         internal int MaxMessageLength { get; }
 
-        internal Uri ServerUri { get;  }
+        internal Uri ServerUri { get; }
 
-        internal WorkerContext(string executablePath, 
-            List<string> executableArguments, 
-            string workerPath, 
+        internal WorkerContext(string executablePath,
+            List<string> executableArguments,
+            string workerPath,
             List<string> workerArguments,
             string workingDirectory,
             Uri serverUri)

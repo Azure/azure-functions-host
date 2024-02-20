@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 
 namespace WorkerHarness.Core.Options
 {
-    public class HarnessOptionsValidate : IHarnessOptionsValidate
+    public sealed class HarnessOptionsValidate : IHarnessOptionsValidate
     {
         private readonly ILogger<HarnessOptionsValidate> _logger;
 

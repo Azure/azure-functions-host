@@ -3,7 +3,7 @@
 
 namespace WorkerHarness.Core.Profiling
 {
-    internal enum ProfilingStatus
+    public enum ProfilingStatus
     {
         Stopped,
         Started,
