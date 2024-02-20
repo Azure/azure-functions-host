@@ -6,7 +6,7 @@ using System.Text.Json.Nodes;
 
 namespace WorkerHarness.Core.Actions
 {
-    public class DelayActionProvider : IActionProvider
+    public sealed class DelayActionProvider : IActionProvider
     {
         public string Type => ActionTypes.Delay;
 
@@ -23,6 +23,5 @@ namespace WorkerHarness.Core.Actions
 
             return new DelayAction(delayTime, _loggerFactory.CreateLogger<DelayAction>());
         }
-
     }
 }

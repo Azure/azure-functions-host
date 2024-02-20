@@ -1,0 +1,37 @@
+{
+  "scenarioName": "load function",
+  "actions": [
+    {
+      "actionType": "rpc",
+      "actionName": "validate the worker's ability to handle a FunctionLoadRequest message",
+      "runInSilentMode": true,
+      "messages": [
+        {
+          "direction": "outgoing",
+          "messageType": "FunctionLoadRequest",
+          "payload": {
+            "FunctionId": "@{HttpTriggerFunctionId}",
+            "Metadata": "${HttpTriggerFunctionMetadata}"
+          }
+        },
+        {
+          "direction": "incoming",
+          "messageType": "FunctionLoadResponse",
+          "matchingCriteria": [
+            {
+              "query": "$.FunctionLoadResponse.FunctionId",
+              "expected": "@{HttpTriggerFunctionId}"
+            }
+          ],
+          "validators": [
+            {
+              "type": "string",
+              "query": "$.FunctionLoadResponse.Result.Status",
+              "expected": "Success"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

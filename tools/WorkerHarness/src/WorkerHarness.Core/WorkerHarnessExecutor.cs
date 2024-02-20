@@ -7,12 +7,13 @@ using WorkerHarness.Core.Actions;
 using WorkerHarness.Core.GrpcService;
 using WorkerHarness.Core.Options;
 using WorkerHarness.Core.Parsing;
+using WorkerHarness.Core.Profiling;
 using WorkerHarness.Core.Variables;
 using WorkerHarness.Core.WorkerProcess;
 
 namespace WorkerHarness.Core
 {
-    public class WorkerHarnessExecutor : IWorkerHarnessExecutor
+    public sealed class WorkerHarnessExecutor : IWorkerHarnessExecutor
     {
         private readonly IWorkerProcessBuilder _workerProcessBuilder;
         private readonly IScenarioParser _scenarioParser;
@@ -20,6 +21,7 @@ namespace WorkerHarness.Core
         private readonly HarnessOptions _harnessOptions;
         private readonly IVariableObservable _globalVariables;
         private readonly Uri _serverUri;
+        private readonly IProfilerFactory _profilerFactory;
 
         public WorkerHarnessExecutor(
             IWorkerProcessBuilder workerProcessBuilder,
@@ -27,7 +29,8 @@ namespace WorkerHarness.Core
             ILogger<WorkerHarnessExecutor> logger,
             IOptions<HarnessOptions> harnessOptions,
             IVariableObservable variableObservable,
-            IGrpcServer grpcServer)
+            IGrpcServer grpcServer,
+            IProfilerFactory profilerFactory)
         {
             _workerProcessBuilder = workerProcessBuilder;
             _scenarioParser = scenarioParser;
@@ -35,8 +38,8 @@ namespace WorkerHarness.Core
             _harnessOptions = harnessOptions.Value;
             _globalVariables = variableObservable;
             _serverUri = grpcServer.Uri;
+            _profilerFactory = profilerFactory;
         }
-
         public async Task<bool> StartAsync()
         {
             WorkerContext context = new(_harnessOptions.LanguageExecutable!,
@@ -50,13 +53,13 @@ namespace WorkerHarness.Core
 
             ExecutionContext executionContext = new(_globalVariables, _scenarioParser, myProcess)
             {
-                DisplayVerboseError = _harnessOptions.DisplayVerboseError
+                DisplayVerboseError = _harnessOptions.DisplayVerboseError,
+                Profiler = _profilerFactory.CreateProfiler()
             };
 
             try
             {
-                string scenarioFile = _harnessOptions.ScenarioFile!;
-                Scenario scenario = _scenarioParser.Parse(scenarioFile);
+                Scenario scenario = _scenarioParser.Parse(_harnessOptions.ScenarioFile!);
 
                 myProcess.Start();
 
@@ -64,7 +67,7 @@ namespace WorkerHarness.Core
 
                 foreach (IAction action in scenario.Actions)
                 {
-                    ActionResult actionResult = await action.ExecuteAsync(executionContext);
+                    var actionResult = await action.ExecuteAsync(executionContext);
 
                     if (!_harnessOptions.ContinueUponFailure && actionResult.Status == StatusCode.Failure)
                     {
@@ -82,6 +85,11 @@ namespace WorkerHarness.Core
             }
             finally
             {
+                if (executionContext.Profiler is IDisposable profiler)
+                {
+                    profiler.Dispose();
+                }
+                
                 myProcess.Dispose();
             }
         }

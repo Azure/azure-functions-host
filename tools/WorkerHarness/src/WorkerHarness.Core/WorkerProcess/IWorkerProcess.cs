@@ -10,7 +10,7 @@ namespace WorkerHarness.Core.WorkerProcess
     {
         bool HasExited { get; }
         bool Start();
-        void WaitForProcessExit(int miliseconds);
+        void WaitForProcessExit(int milliseconds);
         void Dispose();
     }
 }

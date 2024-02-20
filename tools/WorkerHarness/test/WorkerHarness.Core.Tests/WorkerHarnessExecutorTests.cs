@@ -9,6 +9,7 @@ using WorkerHarness.Core.Actions;
 using WorkerHarness.Core.GrpcService;
 using WorkerHarness.Core.Options;
 using WorkerHarness.Core.Parsing;
+using WorkerHarness.Core.Profiling;
 using WorkerHarness.Core.Variables;
 using WorkerHarness.Core.WorkerProcess;
 
@@ -63,11 +64,13 @@ namespace WorkerHarness.Core.Tests
                 });
 
             var mockIVariableObservable = new Mock<IVariableObservable>();
+            var mockIProfilerFactory = new Mock<IProfilerFactory>();
 
             WorkerHarnessExecutor executor = new(mockIWorkerProcessBuilder.Object,
                 mockIScenarioParser.Object, mockILogger.Object, mockIOption.Object,
                 mockIVariableObservable.Object,
-                mockIGrpcServer.Object);
+                mockIGrpcServer.Object,
+                mockIProfilerFactory.Object);
 
             // Act
             bool executionResult = await executor.StartAsync();
@@ -120,11 +123,13 @@ namespace WorkerHarness.Core.Tests
                 });
 
             var mockIVariableObservable = new Mock<IVariableObservable>();
+            var mockIProfilerFactory = new Mock<IProfilerFactory>();
 
             WorkerHarnessExecutor executor = new(mockIWorkerProcessBuilder.Object,
                 mockIScenarioParser.Object, mockILogger.Object, mockIOption.Object,
                 mockIVariableObservable.Object,
-                mockIGrpcServer.Object);
+                mockIGrpcServer.Object,
+                mockIProfilerFactory.Object);
 
             // Act
             bool executionResult = await executor.StartAsync();
@@ -179,11 +184,11 @@ namespace WorkerHarness.Core.Tests
                 });
 
             var mockIVariableObservable = new Mock<IVariableObservable>();
+            var mockIProfilerFactory = new Mock<IProfilerFactory>();
 
             WorkerHarnessExecutor executor = new(mockIWorkerProcessBuilder.Object,
                 mockIScenarioParser.Object, mockILogger.Object, mockIOption.Object,
-                mockIVariableObservable.Object,
-                mockIGrpcServer.Object);
+                mockIVariableObservable.Object,null,null);
 
             // Act
             bool executionResult = await executor.StartAsync();

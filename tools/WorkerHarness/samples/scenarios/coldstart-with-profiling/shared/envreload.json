@@ -1,0 +1,24 @@
+{
+  "scenarioName": "env reload",
+  "actions": [
+    {
+      "actionType": "rpc",
+      "actionName": "Sending cold start http request to language worker. Step 1 - env reload request",
+      "waitForUserInput": false,
+      "StartProfiling":true,
+      "messages": [
+        {
+          "direction": "outgoing",
+          "messageType": "FunctionEnvironmentReloadRequest",
+          "payload": {
+            "FunctionAppDirectory": ""
+          }
+        },
+        {
+          "direction": "incoming",
+          "messageType": "FunctionEnvironmentReloadResponse"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "scenarioName": "send worker FunctionsMetadataRequest and validate FunctionMetadataResponse",
+  "actions": [
+    {
+      "actionType": "rpc",
+      "actionName": "send worker FunctionsMetadataRequest",
+      "runInSilentMode": true,
+      "messages": [
+        {
+          "direction": "outgoing",
+          "messageType": "FunctionsMetadataRequest",
+          "payload": {}
+        },
+        {
+          "direction": "incoming",
+          "messageType": "FunctionMetadataResponse",
+          "setVariables": {
+            "HttpTriggerFunctionId": "$.FunctionMetadataResponse.FunctionMetadataResults[0].FunctionId",
+            "HttpTriggerFunctionMetadata": "$.FunctionMetadataResponse.FunctionMetadataResults[0]"
+          }
+        }
+      ]
+    }
+  ]
+}

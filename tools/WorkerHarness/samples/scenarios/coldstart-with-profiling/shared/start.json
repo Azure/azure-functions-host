@@ -1,0 +1,46 @@
+{
+  "scenarioName": "confirm worker startup",
+  "actions": [
+    {
+      "actionType": "rpc",
+      "runInSilentMode": true,
+      "actionName": "validate the worker's ability to receive a StartStream message",
+      "messages": [
+        {
+          "direction": "incoming",
+          "messageType": "StartStream",
+          "validators": [
+            {
+              "type": "regex",
+              "query": "$.StartStream.WorkerId",
+              "expected": ".+"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "actionType": "rpc",
+      "runInSilentMode": true,
+      "actionName": "validate the worker's ability to handle a WorkerInitRequest message",
+      "messages": [
+        {
+          "direction": "outgoing",
+          "messageType": "WorkerInitRequest",
+          "payload": {}
+        },
+        {
+          "direction": "incoming",
+          "messageType": "WorkerInitResponse",
+          "validators": [
+            {
+              "type": "string",
+              "query": "$.WorkerInitResponse.Result.Status",
+              "expected": "Success"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

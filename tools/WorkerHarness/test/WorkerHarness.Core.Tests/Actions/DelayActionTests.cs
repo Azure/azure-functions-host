@@ -45,7 +45,7 @@ namespace WorkerHarness.Core.Tests.Actions
             DelayAction action = new(miliseconds, logger);
 
             // Assert
-            Assert.AreEqual(miliseconds, action.MilisecondsDelay);
+            Assert.AreEqual(miliseconds, action.DelayInMilliseconds);
         }
 
         [TestMethod]

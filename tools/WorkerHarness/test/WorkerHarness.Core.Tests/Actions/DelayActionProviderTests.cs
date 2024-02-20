@@ -27,7 +27,7 @@ namespace WorkerHarness.Core.Tests.Actions
             // Assert
             Assert.IsTrue(action is DelayAction);
             Assert.AreEqual(ActionTypes.Delay, provider.Type);
-            Assert.AreEqual(0, ((DelayAction) action).MilisecondsDelay);
+            Assert.AreEqual(0, ((DelayAction) action).DelayInMilliseconds);
         }
 
         [TestMethod]
@@ -49,7 +49,7 @@ namespace WorkerHarness.Core.Tests.Actions
             // Assert
             Assert.IsTrue(action is DelayAction);
             Assert.AreEqual(ActionTypes.Delay, provider.Type);
-            Assert.AreEqual(milisecondsDelay, ((DelayAction)action).MilisecondsDelay);
+            Assert.AreEqual(milisecondsDelay, ((DelayAction)action).DelayInMilliseconds);
         }
     }
 }

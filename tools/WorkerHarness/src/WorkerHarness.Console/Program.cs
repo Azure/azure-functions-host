@@ -17,8 +17,9 @@ using WorkerHarness.Core.Parsing;
 using WorkerHarness.Core.GrpcService;
 using WorkerHarness.Core.StreamingMessageService;
 using WorkerHarness.Core.Actions;
-using System.Reflection;
 using WorkerHarness.Core.Diagnostics;
+using Newtonsoft.Json;
+using WorkerHarness.Core.Profiling;
 
 namespace WorkerHarness
 {
@@ -80,7 +81,7 @@ namespace WorkerHarness
                 .AddJsonFile(harnessSettingsPath);
             IConfiguration config = configurationBuilder.Build();
 
-            ServiceProvider serviceProvider = new ServiceCollection()
+            var c = new ServiceCollection()
                 .AddSingleton<IWorkerProcessBuilder, SystemProcessBuilder>()
                 .AddSingleton<IScenarioParser, ScenarioParser>()
                 .AddSingleton<IStreamingMessageProvider, StreamingMessageProvider>()
@@ -94,6 +95,7 @@ namespace WorkerHarness
                 .AddSingleton<IActionProvider, ImportActionProvider>()
                 .AddSingleton<IActionProvider, TerminateActionProvider>()
                 .AddSingleton<IWorkerHarnessExecutor, WorkerHarnessExecutor>()
+                .AddSingleton<IProfilerFactory, ProfilerFactory>()
                 .AddSingleton<GrpcServiceChannel>(s =>
                 {
                     Channels.UnboundedChannelOptions outputOptions = new()
@@ -109,8 +111,18 @@ namespace WorkerHarness
                 .AddSingleton<IHarnessOptionsValidate, HarnessOptionsValidate>()
                 .AddSingleton<IGrpcServer, GrpcServer>()
                 .Configure<HarnessOptions>(config)
-                .AddLogging(c => { c.AddConsole(); })
-                .BuildServiceProvider();
+                .AddLogging(c => { c.AddConsole(); });
+
+            if (OperatingSystem.IsWindows())
+            {
+                var perfviewConfig = GetPerfviewConfig();
+                if (perfviewConfig is not null)
+                {
+                    c.AddSingleton(perfviewConfig);
+                }
+
+            }
+            ServiceProvider serviceProvider = c.BuildServiceProvider();
 
             return serviceProvider;
         }
@@ -131,15 +143,26 @@ namespace WorkerHarness
             return true;
         }
 
-        private static string GetHarnessVersion()
+        private static string? GetHarnessVersion()
         {
             const string version = Constants.WorkerHarnessVersion;
-            if(!string.IsNullOrWhiteSpace(version))
+            if (!string.IsNullOrWhiteSpace(version))
             {
                 return version;
             }
-            // fall back to reflection.
-            return Assembly.GetAssembly(typeof(Program))!.GetName().Version!.ToString();
+            return null;
+        }
+
+        private static PerfviewConfig? GetPerfviewConfig()
+        {
+            var configFilePath = Path.Combine(Directory.GetCurrentDirectory(), "perfviewconfig.json");
+            if (File.Exists(configFilePath))
+            {
+                var configJson = File.ReadAllText(configFilePath);
+                return JsonConvert.DeserializeObject<PerfviewConfig>(configJson);
+            }
+
+            return null;
         }
     }
 }

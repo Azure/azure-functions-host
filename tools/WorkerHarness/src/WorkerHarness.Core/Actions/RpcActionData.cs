@@ -6,7 +6,7 @@ namespace WorkerHarness.Core.Actions
     /// <summary>
     /// Encapsulate information about an action
     /// </summary>
-    internal class RpcActionData
+    internal sealed class RpcActionData
     {
         // the type of an action
         public string ActionType { get; } = ActionTypes.Rpc;
@@ -27,5 +27,10 @@ namespace WorkerHarness.Core.Actions
         public string? SuccessMessage { get; set; } = string.Empty;
 
         public bool WaitForUserInput { get; set; } = false; 
+
+        public bool StartProfiling { get; set;} = false;
+
+        public bool StopProfiling { get; set; } = false;
+
     }
 }

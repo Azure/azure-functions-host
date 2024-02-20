@@ -5,34 +5,30 @@ using Microsoft.Extensions.Logging;
 
 namespace WorkerHarness.Core.Actions
 {
-    internal class DelayAction : IAction
+    internal sealed class DelayAction : IAction
     {
-        private readonly int _milisecondsDelay;
         private readonly ILogger<DelayAction> _logger;
+        
+        internal const string InvalidArgumentMessage = "Cannot except delay time less than -1";
+        internal int DelayInMilliseconds { get; }
 
-        internal static string InvalidArgumentMessage = "Cannot except delay time less than -1";
-
-        internal int MilisecondsDelay => _milisecondsDelay;
-
-        internal DelayAction(int milisecondsDelay, ILogger<DelayAction> logger)
+        internal DelayAction(int millisecondsDelay, ILogger<DelayAction> logger)
         {
-            if (milisecondsDelay < -1)
+            if (millisecondsDelay < -1)
             {
                 throw new ArgumentException(InvalidArgumentMessage);
             }
-            _milisecondsDelay = milisecondsDelay;
+            DelayInMilliseconds = millisecondsDelay;
             _logger = logger;
         }
 
         public async Task<ActionResult> ExecuteAsync(ExecutionContext executionContext)
         {
-            _logger.LogInformation("Delay for {0} miliseconds", _milisecondsDelay);
+            _logger.LogInformation("Delay for {0} milliseconds", DelayInMilliseconds);
 
-            await Task.Delay(_milisecondsDelay);
+            await Task.Delay(DelayInMilliseconds);
 
-            ActionResult actionResult = new() { Status = StatusCode.Success };
-
-            return actionResult;
+            return new ActionResult() { Status = StatusCode.Success };
         }
     }
 }

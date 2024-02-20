@@ -7,12 +7,13 @@ using System.Threading.Channels;
 using WorkerHarness.Core.Commons;
 using WorkerHarness.Core.Diagnostics;
 using WorkerHarness.Core.Matching;
+using WorkerHarness.Core.Profiling;
 using WorkerHarness.Core.StreamingMessageService;
 using WorkerHarness.Core.Validators;
 
 namespace WorkerHarness.Core.Actions
 {
-    internal class RpcAction : IAction
+    internal sealed class RpcAction : IAction, ICanStartProfiling, ICanStopProfiling
     {
         // _validatorManager is responsible for validating message.
         private readonly IValidatorFactory _validatorFactory;
@@ -59,6 +60,10 @@ namespace WorkerHarness.Core.Actions
         internal int Timeout { get => _actionData.Timeout; }
 
         internal bool WaitForUserInput => _actionData.WaitForUserInput;
+
+        public bool StartProfiling => _actionData.StartProfiling;
+
+        public bool StopProfiling => _actionData.StopProfiling;
 
         public async Task<ActionResult> ExecuteAsync(ExecutionContext executionContext)
         {
