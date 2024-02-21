@@ -32,7 +32,7 @@ namespace WorkerHarness
             IGrpcServer? grpcServer = null;
             try
             {
-                Console.WriteLine($"Worker Harness version: {GetHarnessVersion()}");
+                Console.WriteLine($"Starting worker harness version {GetHarnessVersion()} at {DateTime.Now}");
 
                 if (!TryGetHarnessSetting(out string harnessSettingsPath))
                 {
@@ -66,7 +66,7 @@ namespace WorkerHarness
             }
             finally
             {
-                Console.WriteLine($"Exiting...");
+                Console.WriteLine($"Exiting at {DateTime.Now}");
                 if (grpcServer is not null)
                 {
                     await grpcServer.Shutdown();
@@ -111,7 +111,7 @@ namespace WorkerHarness
                 .AddSingleton<IHarnessOptionsValidate, HarnessOptionsValidate>()
                 .AddSingleton<IGrpcServer, GrpcServer>()
                 .Configure<HarnessOptions>(config)
-                .AddLogging(c => { c.AddConsole(); });
+                .AddLogging(builder => builder.AddConsole());
 
             if (OperatingSystem.IsWindows())
             {
@@ -155,14 +155,15 @@ namespace WorkerHarness
 
         private static PerfviewConfig? GetPerfviewConfig()
         {
+            PerfviewConfig? config = new();
             var configFilePath = Path.Combine(Directory.GetCurrentDirectory(), "perfviewconfig.json");
             if (File.Exists(configFilePath))
             {
                 var configJson = File.ReadAllText(configFilePath);
-                return JsonConvert.DeserializeObject<PerfviewConfig>(configJson);
+                config = JsonConvert.DeserializeObject<PerfviewConfig>(configJson);
             }
 
-            return null;
+            return config;
         }
     }
 }

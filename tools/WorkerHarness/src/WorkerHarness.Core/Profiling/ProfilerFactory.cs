@@ -8,8 +8,8 @@ namespace WorkerHarness.Core.Profiling
 {
     public sealed class ProfilerFactory : IProfilerFactory
     {
-        private PerfviewConfig perfviewConfig;
-        private ILoggerFactory _loggerFactory;
+        private readonly PerfviewConfig perfviewConfig;
+        private readonly ILoggerFactory _loggerFactory;
         public ProfilerFactory(PerfviewConfig perfviewConfig, ILoggerFactory loggerFactory)
         {
             this.perfviewConfig = perfviewConfig;

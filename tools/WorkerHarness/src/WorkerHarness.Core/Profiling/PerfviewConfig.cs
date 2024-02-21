@@ -11,7 +11,7 @@ namespace WorkerHarness.Core.Profiling
         /// <summary>
         /// The directory where the PerfView executable is located.
         /// </summary>
-        public required string ExecutableDirectory { get; set; }
+        public string ExecutableDirectory { get; set; } = string.Empty;
 
         /// <summary>
         /// The directory where the PerfView profiles are stored.
@@ -21,15 +21,14 @@ namespace WorkerHarness.Core.Profiling
         /// <summary>
         /// Comma separated list of providers to enable
         /// </summary>
-        public required string Providers { get; set; }
-        
+        public string Providers { get; set; } = string.Empty;
+
         public int? CircularMb { get; set; }
 
         public int? BufferSizeMb { get; set; }
 
-        public int? GraceTimeInSecondsAfterStopping { get; set; }
+        public int? StartTimeoutInSeconds { get; set; }
 
-        public int? WaitTimeInSecondsAfterStarting { get; set; }
-
+        public int? StopTimeoutInSeconds { get; set; }
     }
 }

@@ -69,7 +69,7 @@ namespace WorkerHarness.Core.Actions
         {
             if (!_actionData.RunInSilentMode)
             {
-                _logger.LogInformation($"Executing the action: {Name} ...");
+                _logger.LogInformation($"Executing action: {Name} ...");
             }
 
             CancellationTokenSource tokenSource = new();
