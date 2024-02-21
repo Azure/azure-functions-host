@@ -129,9 +129,17 @@ namespace WorkerHarness
 
         private static bool TryGetHarnessSetting(out string harnessSettingPath)
         {
+            // harness.settings file location convention:
+            // 1. App root
+            // 2. configs directory
             string MissingHarnessSettingJsonFile = "Missing the required harness.settings.json file in the current directory.";
 
             harnessSettingPath = Path.Combine(Directory.GetCurrentDirectory(), "harness.settings.json");
+            if (!File.Exists(harnessSettingPath))
+            {
+                // If not in the root, check for a configs directory
+                harnessSettingPath = Path.Combine(Directory.GetCurrentDirectory(), "configs", "harness.settings.json");
+            }
 
             if (!File.Exists(harnessSettingPath))
             {
