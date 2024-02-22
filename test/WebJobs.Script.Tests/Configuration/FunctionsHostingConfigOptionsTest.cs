@@ -8,6 +8,7 @@ using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
@@ -296,7 +297,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 })
                 .ConfigureServices((context, services) =>
                 {
-                    services.ConfigureOptions<FunctionsHostingConfigOptionsSetup>();
+                    WebHostServiceCollectionExtensions.AddHostingConfigOptions(services, context.Configuration);
                 }).Build();
 
             return new HostBuilder()
