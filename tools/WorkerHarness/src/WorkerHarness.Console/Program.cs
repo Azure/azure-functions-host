@@ -59,6 +59,12 @@ namespace WorkerHarness
                 // run the harness
                 var harnessExecutor = serviceProvider.GetRequiredService<IWorkerHarnessExecutor>();
                 await harnessExecutor.StartAsync();
+                
+                for(var i = 0; i < 10; i++)
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(30));
+                }
+                Console.WriteLine("Exiting...");
             }
             catch (Exception ex)
             {

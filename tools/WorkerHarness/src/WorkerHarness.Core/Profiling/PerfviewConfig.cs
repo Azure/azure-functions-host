@@ -30,5 +30,7 @@ namespace WorkerHarness.Core.Profiling
         public int? StartTimeoutInSeconds { get; set; }
 
         public int? StopTimeoutInSeconds { get; set; }
+
+        public string? UploadContainerUrl { get; set; }
     }
 }
