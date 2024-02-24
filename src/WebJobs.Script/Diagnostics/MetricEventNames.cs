@@ -20,6 +20,8 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         public const string IdentifiableSecretLoaded = "host.secrets.identifiable";
         public const string HISStrictModeEnabled = "host.hismode.strict";
         public const string HISStrictModeWarn = "host.hismode.warn";
+        public const string SyncTriggersInvoked = "host.synctriggers.invoke";
+        public const string SyncTriggersHostNotInitialized = "host.synctriggers.hostnotinitialized";
 
         // Script host level events
         public const string ScriptHostManagerBuildScriptHost = "scripthostmanager.buildscripthost.latency";

@@ -3,6 +3,7 @@
 
 using System;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,6 +12,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Scale;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.Scale;
@@ -39,6 +41,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly ScriptApplicationHostOptions _applicationHostOptions;
         private readonly Mock<IScaleStatusProvider> _scaleStatusProvider;
         private readonly LoggerFactory _loggerFactory;
+        private readonly TestMetricsLogger _testMetricsLogger;
+        private ScriptHostState _scriptHostState;
 
         public HostControllerTests()
         {
@@ -53,7 +57,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _mockEnvironment = new Mock<IEnvironment>(MockBehavior.Strict);
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(It.IsAny<string>())).Returns<string>(null);
             _mockScriptHostManager = new Mock<IScriptHostManager>(MockBehavior.Strict);
-            _mockScriptHostManager.SetupGet(p => p.State).Returns(ScriptHostState.Running);
+            _scriptHostState = ScriptHostState.Running;
+            _mockScriptHostManager.SetupGet(p => p.State).Returns(() => _scriptHostState);
             _functionsSyncManager = new Mock<IFunctionsSyncManager>(MockBehavior.Strict);
             _extensionBundleManager = new Mock<IExtensionBundleManager>(MockBehavior.Strict);
 
@@ -61,7 +66,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _hostHealthMonitorOptions = new HostHealthMonitorOptions();
             var wrappedHealthMonitorOptions = new OptionsWrapper<HostHealthMonitorOptions>(_hostHealthMonitorOptions);
             _mockHostPerformanceManager = new Mock<HostPerformanceManager>(_mockEnvironment.Object, wrappedHealthMonitorOptions, mockServiceProvider.Object);
-            _hostController = new HostController(optionsWrapper, _loggerFactory, _mockEnvironment.Object, _mockScriptHostManager.Object, _functionsSyncManager.Object, _mockHostPerformanceManager.Object);
+            _testMetricsLogger = new TestMetricsLogger();
+            _hostController = new HostController(optionsWrapper, _loggerFactory, _mockEnvironment.Object, _mockScriptHostManager.Object, _functionsSyncManager.Object, _mockHostPerformanceManager.Object, _testMetricsLogger);
 
             _appOfflineFilePath = Path.Combine(_scriptPath, ScriptConstants.AppOfflineFileName);
             if (File.Exists(_appOfflineFilePath))
@@ -241,6 +247,40 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var result = (StatusCodeResult)(await _hostController.Ping(_mockScriptHostManager.Object));
             Assert.Equal((int)HttpStatusCode.OK, result.StatusCode);
+        }
+
+        [Theory]
+        [InlineData(true, ScriptConstants.FlexConsumptionSku)]
+        [InlineData(false, ScriptConstants.FlexConsumptionSku)]
+        [InlineData(true, ScriptConstants.DynamicSku)]
+        [InlineData(false, ScriptConstants.DynamicSku)]
+        public async Task SyncTriggers_RequiresRunningHost_ForFlexSku(bool hostInitialized, string sku)
+        {
+            if (!hostInitialized)
+            {
+                _scriptHostState = ScriptHostState.Default;
+
+                _ = Task.Run(async () =>
+                {
+                    // simulate coming online after a short period
+                    await Task.Delay(1000);
+                    _scriptHostState = ScriptHostState.Running;
+                });
+            }
+
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku)).Returns(sku);
+            _functionsSyncManager.Setup(p => p.TrySyncTriggersAsync(false)).ReturnsAsync(new SyncTriggersResult { Success = true });
+
+            var result = (ObjectResult)(await _hostController.SyncTriggers());
+            Assert.Equal((int)HttpStatusCode.OK, result.StatusCode);
+
+            var loggedEvents = _testMetricsLogger.LoggedEvents.ToArray();
+            Assert.Single(loggedEvents.Where(p => p == MetricEventNames.SyncTriggersInvoked));
+
+            if (!hostInitialized)
+            {
+                Assert.Single(loggedEvents.Where(p => p == MetricEventNames.SyncTriggersHostNotInitialized));
+            }
         }
 
         [Theory]
