@@ -4,6 +4,7 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using WorkerHarness.Core.Actions;
+using WorkerHarness.Core.Diagnostics;
 using WorkerHarness.Core.GrpcService;
 using WorkerHarness.Core.Options;
 using WorkerHarness.Core.Parsing;
@@ -42,11 +43,13 @@ namespace WorkerHarness.Core
         }
         public async Task<bool> StartAsync()
         {
+            var lanugageExecutableDirectory = Path.GetDirectoryName(_harnessOptions.LanguageExecutable);
+
             WorkerContext context = new(_harnessOptions.LanguageExecutable!,
                 _harnessOptions.LanguageExecutableArguments,
                 _harnessOptions.WorkerPath!,
                 _harnessOptions.WorkerArguments,
-                _harnessOptions.FunctionAppDirectory!,
+                lanugageExecutableDirectory,
                 _serverUri);
 
             IWorkerProcess myProcess = _workerProcessBuilder.Build(context);
@@ -63,6 +66,7 @@ namespace WorkerHarness.Core
 
                 myProcess.Start();
 
+                _logger.LogDebug("Worker process started with process id: {0}", myProcess.Id);
                 _logger.LogInformation("Executing scenario: {0}", scenario.ScenarioName);
 
                 foreach (IAction action in scenario.Actions)
@@ -74,6 +78,9 @@ namespace WorkerHarness.Core
                         break;
                     }
                 }
+
+                HarnessEventSource.Log.ScenarioExecutionFinished("foo");
+                _logger.LogInformation("Executing scenario: {0} finished.", scenario.ScenarioName);
 
                 return true;
             }
@@ -97,9 +104,9 @@ namespace WorkerHarness.Core
             {
                 return;
             }
-            
+
             // Safe to call StopProfiling to ensure we are cleaning up in case the stop profiling prop was not set in any of the actions.
-            if ( executionContext.Profiler.Status != ProfilingStatus.Stopped)
+            if (executionContext.Profiler.Status != ProfilingStatus.Stopped)
             {
                 await executionContext.Profiler.StopProfilingAsync();
             }

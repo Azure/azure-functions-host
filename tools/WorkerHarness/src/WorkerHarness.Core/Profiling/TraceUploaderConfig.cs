@@ -1,0 +1,16 @@
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+
+namespace WorkerHarness.Core.Profiling
+{
+    public sealed class TraceUploaderConfig
+    {
+        public string? ExecutableDirectory { get; set; }
+        public string? UploadContainerUrl { get; set; }
+
+        /// <summary>
+        /// Time to wait before uploading the trace file.
+        /// </summary>
+        public int WaitTimeInSeconds { get; set; }
+    }
+}

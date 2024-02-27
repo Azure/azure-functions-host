@@ -35,5 +35,7 @@ namespace WorkerHarness.Core.Options
         // Optional flag to display verbose error messages to users
         public bool ContinueUponFailure { get; set; } = false;
 
+        // Wait time in seconds before exiting the harness process.
+        public int WaitTimeInSecondsBeforeExit { get; set; }
     }
 }

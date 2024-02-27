@@ -18,7 +18,6 @@ using WorkerHarness.Core.GrpcService;
 using WorkerHarness.Core.StreamingMessageService;
 using WorkerHarness.Core.Actions;
 using WorkerHarness.Core.Diagnostics;
-using Newtonsoft.Json;
 using WorkerHarness.Core.Profiling;
 
 namespace WorkerHarness
@@ -30,10 +29,9 @@ namespace WorkerHarness
             HarnessEventSource.Log.AppStarted();
             ServiceProvider? serviceProvider = null;
             IGrpcServer? grpcServer = null;
+            int waitTimeInSecondsBeforeExit = 60;
             try
             {
-                Console.WriteLine($"Starting worker harness version {GetHarnessVersion()} at {DateTime.Now}");
-
                 if (!TryGetHarnessSetting(out string harnessSettingsPath))
                 {
                     return;
@@ -41,9 +39,11 @@ namespace WorkerHarness
 
                 serviceProvider = SetupDependencyInjection(harnessSettingsPath);
 
+                ILogger<Program> logger = serviceProvider.GetRequiredService<ILogger<Program>>();
+                logger.LogInformation($"Worker harness version {GetHarnessVersion()}");
+
                 // validate user input
                 IOptions<HarnessOptions> harnessOptions = serviceProvider.GetRequiredService<IOptions<HarnessOptions>>()!;
-
                 IHarnessOptionsValidate harnessValidate = serviceProvider.GetRequiredService<IHarnessOptionsValidate>();
 
                 if (!harnessValidate.Validate(harnessOptions.Value))
@@ -51,6 +51,7 @@ namespace WorkerHarness
                     serviceProvider.Dispose();
                     return;
                 }
+                waitTimeInSecondsBeforeExit = harnessOptions.Value.WaitTimeInSecondsBeforeExit;
 
                 // start the grpc server
                 grpcServer = serviceProvider.GetRequiredService<IGrpcServer>();
@@ -59,12 +60,7 @@ namespace WorkerHarness
                 // run the harness
                 var harnessExecutor = serviceProvider.GetRequiredService<IWorkerHarnessExecutor>();
                 await harnessExecutor.StartAsync();
-                
-                for(var i = 0; i < 10; i++)
-                {
-                    await Task.Delay(TimeSpan.FromSeconds(30));
-                }
-                Console.WriteLine("Exiting...");
+
             }
             catch (Exception ex)
             {
@@ -72,6 +68,18 @@ namespace WorkerHarness
             }
             finally
             {
+                if (Environment.GetEnvironmentVariable("HARNESS_DONT_EXIT") == "1")
+                {
+                    Console.WriteLine("Worker harness will not exit since `HARNESS_DONT_EXIT` environment variable value is set to 1.");
+                    while (true)
+                    {
+                        await Task.Delay(TimeSpan.FromSeconds(10));
+                    }
+                }
+
+                Console.WriteLine($"Worker harness will exit in {waitTimeInSecondsBeforeExit} seconds.");
+                await Task.Delay(TimeSpan.FromSeconds(waitTimeInSecondsBeforeExit));
+
                 Console.WriteLine($"Exiting at {DateTime.Now}");
                 if (grpcServer is not null)
                 {
@@ -119,15 +127,6 @@ namespace WorkerHarness
                 .Configure<HarnessOptions>(config)
                 .AddLogging(builder => builder.AddConsole());
 
-            if (OperatingSystem.IsWindows())
-            {
-                var perfviewConfig = GetPerfviewConfig();
-                if (perfviewConfig is not null)
-                {
-                    c.AddSingleton(perfviewConfig);
-                }
-
-            }
             ServiceProvider serviceProvider = c.BuildServiceProvider();
 
             return serviceProvider;
@@ -165,19 +164,6 @@ namespace WorkerHarness
                 return version;
             }
             return null;
-        }
-
-        private static PerfviewConfig? GetPerfviewConfig()
-        {
-            PerfviewConfig? config = new();
-            var configFilePath = Path.Combine(Directory.GetCurrentDirectory(), "perfviewconfig.json");
-            if (File.Exists(configFilePath))
-            {
-                var configJson = File.ReadAllText(configFilePath);
-                config = JsonConvert.DeserializeObject<PerfviewConfig>(configJson);
-            }
-
-            return config;
         }
     }
 }

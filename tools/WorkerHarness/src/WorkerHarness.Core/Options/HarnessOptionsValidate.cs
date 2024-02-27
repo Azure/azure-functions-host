@@ -45,6 +45,7 @@ namespace WorkerHarness.Core.Options
             }
             else
             {
+                harnessOptions.FunctionAppDirectory = harnessOptions.FunctionAppDirectory.Replace("\\", Path.DirectorySeparatorChar.ToString());
                 harnessOptions.FunctionAppDirectory = Path.GetFullPath(harnessOptions.FunctionAppDirectory);
 
                 if (!Directory.Exists(harnessOptions.FunctionAppDirectory))
@@ -59,11 +60,12 @@ namespace WorkerHarness.Core.Options
         {
             if (!string.IsNullOrEmpty(harnessOptions.LanguageExecutable))
             {
+                harnessOptions.LanguageExecutable = harnessOptions.LanguageExecutable.Replace("\\", Path.DirectorySeparatorChar.ToString());
                 harnessOptions.LanguageExecutable = Path.GetFullPath(harnessOptions.LanguageExecutable);
 
                 if (!File.Exists(harnessOptions.LanguageExecutable))
                 {
-                    _logger.LogError(errorMessage, "languageExecutable");
+                    _logger.LogError(errorMessage, $"languageExecutable({harnessOptions.LanguageExecutable})");
                     valid = false;
                 }
             }
@@ -78,11 +80,12 @@ namespace WorkerHarness.Core.Options
             }
             else
             {
+                harnessOptions.WorkerPath = harnessOptions.WorkerPath.Replace("\\", Path.DirectorySeparatorChar.ToString());
                 harnessOptions.WorkerPath = Path.GetFullPath(harnessOptions.WorkerPath);
-
+              
                 if (!File.Exists(harnessOptions.WorkerPath))
                 {
-                    _logger.LogError(errorMessage, "workerPath");
+                    _logger.LogError(errorMessage, $"workerPath({harnessOptions.WorkerPath})");
                     valid = false;
                 }
 
@@ -103,6 +106,7 @@ namespace WorkerHarness.Core.Options
             }
             else
             {
+                harnessOptions.ScenarioFile = harnessOptions.ScenarioFile.Replace("\\", Path.DirectorySeparatorChar.ToString());
                 harnessOptions.ScenarioFile = Path.GetFullPath(harnessOptions.ScenarioFile);
 
                 if (!File.Exists(harnessOptions.ScenarioFile))

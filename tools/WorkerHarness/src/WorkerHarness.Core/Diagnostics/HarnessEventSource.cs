@@ -36,6 +36,15 @@ namespace WorkerHarness.Core.Diagnostics
             }
         }
 
+        [Event(9004)]
+        public void ScenarioExecutionFinished(string source)
+        {
+            if (IsEnabled())
+            {
+                WriteEvent(9004, source);
+            }
+        }
+
         public static readonly HarnessEventSource Log = new();
     }
 }

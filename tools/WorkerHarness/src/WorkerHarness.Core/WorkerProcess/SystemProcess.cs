@@ -11,12 +11,37 @@ namespace WorkerHarness.Core.WorkerProcess
 
         public bool HasExited => Process.HasExited;
 
+        public int Id => Process.Id;
+
         public SystemProcess(Process process)
         {
             Process = process;
+
+            process.OutputDataReceived += (sender, e) =>
+            {
+                if (e.Data != null)
+                {
+                    Console.WriteLine(e.Data);
+                }
+            };
+
+            process.ErrorDataReceived += (sender, e) =>
+            {
+                if (e.Data != null)
+                {
+                    Console.Error.WriteLine(e.Data);
+                }
+            };
         }
 
-        public bool Start() => Process.Start();
+        public bool Start()
+        {
+            var started = Process.Start();
+            Process.BeginOutputReadLine();
+            Process.BeginErrorReadLine();
+
+            return started;
+        }
 
         public void WaitForProcessExit(int milliseconds) => Process.WaitForExit(milliseconds);
 

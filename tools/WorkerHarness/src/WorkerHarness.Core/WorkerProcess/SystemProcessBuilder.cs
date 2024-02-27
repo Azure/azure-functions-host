@@ -10,6 +10,16 @@ namespace WorkerHarness.Core.WorkerProcess
     {
         public IWorkerProcess Build(WorkerContext workerContext)
         {
+            if (!File.Exists(workerContext.ExecutablePath))
+            {
+                throw new FileNotFoundException($"Executable not found: {workerContext.ExecutablePath}");
+            }
+
+            if (!Directory.Exists(workerContext.WorkingDirectory))
+            {
+                throw new DirectoryNotFoundException($"Working directory not found: {workerContext.WorkingDirectory}");
+            }
+
             var startInfo = new ProcessStartInfo(workerContext.ExecutablePath)
             {
                 RedirectStandardOutput = true,
