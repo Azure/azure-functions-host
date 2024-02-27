@@ -113,6 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             string source = _categoryName ?? stateSourceValue;
             if (exception is FunctionIndexingException && _eventManager != null)
             {
+                // publish failure metric here?
                 _eventManager.Publish(new FunctionIndexingEvent(nameof(FunctionIndexingException), source, exception));
             }
 
