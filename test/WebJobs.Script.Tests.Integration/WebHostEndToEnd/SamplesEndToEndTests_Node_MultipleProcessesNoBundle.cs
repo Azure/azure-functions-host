@@ -8,11 +8,11 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.WebJobs.Script.Tests;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 {
@@ -20,15 +20,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
     [Trait(TestTraits.Group, TestTraits.SamplesEndToEnd)]
     public class SamplesEndToEndTests_Node_MultipleProcessesNoBundle : IClassFixture<SamplesEndToEndTests_Node_MultipleProcessesNoBundle.MultiplepleProcessesTestFixtureNoBundles>
     {
-        private readonly ScriptSettingsManager _settingsManager;
         private MultiplepleProcessesTestFixtureNoBundles _fixture;
-        private IEnumerable<int> _nodeProcessesBeforeTestStarted;
+        private ITestOutputHelper _testOutput;
 
-        public SamplesEndToEndTests_Node_MultipleProcessesNoBundle(MultiplepleProcessesTestFixtureNoBundles fixture)
+        public SamplesEndToEndTests_Node_MultipleProcessesNoBundle(MultiplepleProcessesTestFixtureNoBundles fixture,
+            ITestOutputHelper testOutput)
         {
             _fixture = fixture;
-            _nodeProcessesBeforeTestStarted = fixture.NodeProcessesBeforeTestStarted;
-            _settingsManager = ScriptSettingsManager.Instance;
+            _testOutput = testOutput;
         }
 
         [Fact]
@@ -41,14 +40,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             await SamplesTestHelpers.InvokeAndValidateHttpTrigger(_fixture, "HttpTrigger");
 
-            Console.WriteLine("--- BEFORE1: " + string.Join(",", nodeProcessesBeforeHostRestart));
-            Console.WriteLine("--- BEFORE2: " + string.Join(",", _fixture.NodeProcessesBeforeTestStarted));
+            _testOutput.WriteLine("--- BEFORE1: " + string.Join(",", nodeProcessesBeforeHostRestart));
+            _testOutput.WriteLine("--- BEFORE2: " + string.Join(",", _fixture.NodeProcessesBeforeTestStarted));
 
             // Wait for all the 3 process to start
             await TestHelpers.Await(() =>
                 {
                     IEnumerable<int> nodeProcessesAfter = Process.GetProcessesByName("node").Select(p => p.Id);
-                    Console.WriteLine("--- AFTER: " + string.Join(", ", nodeProcessesAfter));
+                    _testOutput.WriteLine("--- AFTER: " + string.Join(", ", nodeProcessesAfter));
                     // Verify node process is different after host restart
                     var result = nodeProcessesAfter.Where(pId1 => !nodeProcessesBeforeHostRestart.Any(pId2 => pId2 == pId1) && !_fixture.NodeProcessesBeforeTestStarted.Any(pId3 => pId3 == pId1));
                     bool success = result.Count() == 3;
