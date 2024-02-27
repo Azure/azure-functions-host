@@ -12,7 +12,6 @@ using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.WebJobs.Script.Tests;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 {
@@ -20,14 +19,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
     [Trait(TestTraits.Group, TestTraits.SamplesEndToEnd)]
     public class SamplesEndToEndTests_Node_MultipleProcessesNoBundle : IClassFixture<SamplesEndToEndTests_Node_MultipleProcessesNoBundle.MultiplepleProcessesTestFixtureNoBundles>
     {
-        private MultiplepleProcessesTestFixtureNoBundles _fixture;
-        private ITestOutputHelper _testOutput;
+        private readonly MultiplepleProcessesTestFixtureNoBundles _fixture;
 
-        public SamplesEndToEndTests_Node_MultipleProcessesNoBundle(MultiplepleProcessesTestFixtureNoBundles fixture,
-            ITestOutputHelper testOutput)
+        public SamplesEndToEndTests_Node_MultipleProcessesNoBundle(MultiplepleProcessesTestFixtureNoBundles fixture)
         {
             _fixture = fixture;
-            _testOutput = testOutput;
         }
 
         [Fact]
@@ -40,19 +36,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             await SamplesTestHelpers.InvokeAndValidateHttpTrigger(_fixture, "HttpTrigger");
 
-            _testOutput.WriteLine("--- BEFORE1: " + string.Join(",", nodeProcessesBeforeHostRestart));
-            _testOutput.WriteLine("--- BEFORE2: " + string.Join(",", _fixture.NodeProcessesBeforeTestStarted));
-
             // Wait for all the 3 process to start
             await TestHelpers.Await(() =>
                 {
                     IEnumerable<int> nodeProcessesAfter = Process.GetProcessesByName("node").Select(p => p.Id);
-                    _testOutput.WriteLine("--- AFTER: " + string.Join(", ", nodeProcessesAfter));
                     // Verify node process is different after host restart
                     var result = nodeProcessesAfter.Where(pId1 => !nodeProcessesBeforeHostRestart.Any(pId2 => pId2 == pId1) && !_fixture.NodeProcessesBeforeTestStarted.Any(pId3 => pId3 == pId1));
-                    bool success = result.Count() == 3;
-                    return success;
-                }, timeout: 120000, pollingInterval: 1000);
+                    return result.Count() == 3;
+                });
         }
 
         public class MultiplepleProcessesTestFixtureNoBundles : EndToEndTestFixture
