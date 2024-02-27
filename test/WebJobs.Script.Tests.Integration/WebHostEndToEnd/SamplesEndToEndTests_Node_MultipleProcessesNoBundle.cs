@@ -35,13 +35,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         public async Task NodeProcessNoBundleConfigured_Different_AfterHostRestart()
         {
             await SamplesTestHelpers.InvokeAndValidateHttpTrigger(_fixture, "HttpTrigger");
-            IEnumerable<int> nodeProcessesBeforeHostRestart = Process.GetProcessesByName("node").Select(p => p.Id);
+            IEnumerable<int> nodeProcessesBeforeHostRestart = Process.GetProcessesByName("node").Select(p => p.Id).ToArray();
             // Trigger a restart
             await _fixture.Host.RestartAsync(CancellationToken.None);
 
             await SamplesTestHelpers.InvokeAndValidateHttpTrigger(_fixture, "HttpTrigger");
 
-            Console.WriteLine("--- BEFORE: " + string.Join(",", nodeProcessesBeforeHostRestart));
+            Console.WriteLine("--- BEFORE1: " + string.Join(",", nodeProcessesBeforeHostRestart));
+            Console.WriteLine("--- BEFORE2: " + string.Join(",", _fixture.NodeProcessesBeforeTestStarted));
 
             // Wait for all the 3 process to start
             await TestHelpers.Await(() =>
