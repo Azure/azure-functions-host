@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         /// <summary>
         /// Gets a value indicating whether worker concurrency feature is enabled in the hosting config.
         /// </summary>
-        public bool FunctionsWorkerDynamicConcurrencyEnabled
+        internal bool FunctionsWorkerDynamicConcurrencyEnabled
         {
             get
             {
@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         /// <summary>
         /// Gets a value indicating whether worker indexing feature is enabled in the hosting config.
         /// </summary>
-        public bool WorkerIndexingEnabled
+        internal bool WorkerIndexingEnabled
         {
             get
             {
@@ -46,11 +46,11 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         /// <summary>
         /// Gets or Sets a value indicating whether the host should shutdown webhost worker channels during shutdown.
         /// </summary>
-        public bool ShutdownWebhostWorkerChannelsOnHostShutdown
+        internal bool ShutdownWebhostWorkerChannelsOnHostShutdown
         {
             get
             {
-                return GetFeatureOrDefault(RpcWorkerConstants.ShutdownWebhostWorkerChannelsOnHostShutdown, "1") == "1";
+                return GetFeatureAsBooleanOrDefault(RpcWorkerConstants.ShutdownWebhostWorkerChannelsOnHostShutdown, true);
             }
 
             set
@@ -62,11 +62,11 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         /// <summary>
         /// Gets or sets a value indicating whether SWT tokens should be accepted.
         /// </summary>
-        public bool SwtAuthenticationEnabled
+        internal bool SwtAuthenticationEnabled
         {
             get
             {
-                return GetFeatureOrDefault(ScriptConstants.HostingConfigSwtAuthenticationEnabled, "1") == "1";
+                return GetFeatureAsBooleanOrDefault(ScriptConstants.HostingConfigSwtAuthenticationEnabled, true);
             }
 
             set
@@ -78,11 +78,11 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         /// <summary>
         /// Gets or sets a value indicating whether SWT tokens should be sent on outgoing requests.
         /// </summary>
-        public bool SwtIssuerEnabled
+        internal bool SwtIssuerEnabled
         {
             get
             {
-                return GetFeatureOrDefault(ScriptConstants.HostingConfigSwtIssuerEnabled, "1") == "1";
+                return GetFeatureAsBooleanOrDefault(ScriptConstants.HostingConfigSwtIssuerEnabled, true);
             }
 
             set
@@ -94,7 +94,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         /// <summary>
         /// Gets a string delimited by '|' that contains the name of the apps with worker indexing disabled.
         /// </summary>
-        public string WorkerIndexingDisabledApps
+        internal string WorkerIndexingDisabledApps
         {
             get
             {
@@ -105,7 +105,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         /// <summary>
         /// Gets a value indicating whether Linux Log Backoff is disabled in the hosting config.
         /// </summary>
-        public bool DisableLinuxAppServiceLogBackoff
+        internal bool DisableLinuxAppServiceLogBackoff
         {
             get
             {
@@ -116,7 +116,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         /// <summary>
         /// Gets or sets a value indicating whether Linux AppService/EP Detailed Execution Event is disabled in the hosting config.
         /// </summary>
-        public bool DisableLinuxAppServiceExecutionDetails
+        internal bool DisableLinuxAppServiceExecutionDetails
         {
             get
             {
@@ -129,11 +129,11 @@ namespace Microsoft.Azure.WebJobs.Script.Config
             }
         }
 
-        public bool EnableOrderedInvocationMessages
+        internal bool EnableOrderedInvocationMessages
         {
             get
             {
-                return GetFeature(ScriptConstants.FeatureFlagEnableOrderedInvocationmessages) == "1";
+                return GetFeatureAsBooleanOrDefault(ScriptConstants.FeatureFlagEnableOrderedInvocationmessages, false);
             }
 
             set
@@ -145,7 +145,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         /// <summary>
         /// Gets the highest version of extension bundle v3 supported.
         /// </summary>
-        public string MaximumBundleV3Version
+        internal string MaximumBundleV3Version
         {
             get
             {
@@ -156,7 +156,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         /// <summary>
         /// Gets the highest version of extension bundle v4 supported.
         /// </summary>
-        public string MaximumBundleV4Version
+        internal string MaximumBundleV4Version
         {
             get
             {
@@ -167,7 +167,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         /// <summary>
         /// Gets a value indicating whether the host should revert the worker shutdown behavior in the WebHostWorkerChannelManager.
         /// </summary>
-        public bool RevertWorkerShutdownBehavior
+        internal bool RevertWorkerShutdownBehavior
         {
             get
             {
@@ -175,7 +175,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
             }
         }
 
-        public bool ThrowOnMissingFunctionsWorkerRuntime
+        internal bool ThrowOnMissingFunctionsWorkerRuntime
         {
             get
             {
@@ -206,6 +206,36 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         public string GetFeatureOrDefault(string name, string defaultValue)
         {
             return GetFeature(name) ?? defaultValue;
+        }
+
+        /// <summary>
+        /// Gets a feature by name and attempts to parse it into a boolean.
+        /// Returns "True, False" or ints as booleans. Returns True for any non-zero integer.
+        /// If none of those (or empty), returns default.
+        /// </summary>
+        /// <param name="name">Feature name.</param>
+        /// <param name="defaultValue">The default value to return if the feature value cannot be parsed into a boolean.</param>
+        /// <returns>Boolean value if parse-able from hosting configuration. Otherwise, the defaultValue.</returns>
+        internal bool GetFeatureAsBooleanOrDefault(string name, bool defaultValue)
+        {
+            string featureValue = GetFeature(name);
+
+            if (string.IsNullOrWhiteSpace(featureValue))
+            {
+                return defaultValue;
+            }
+
+            if (bool.TryParse(featureValue, out bool parsedBool))
+            {
+                return parsedBool;
+            }
+
+            if (int.TryParse(featureValue, out int parsedInt))
+            {
+                return parsedInt != 0;
+            }
+
+            return defaultValue;
         }
     }
 }

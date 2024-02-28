@@ -208,17 +208,25 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.ConfigureOptionsWithChangeTokenSource<HttpBodyControlOptions, HttpBodyControlOptionsSetup, SpecializationChangeTokenSource<HttpBodyControlOptions>>();
             services.ConfigureOptions<FlexConsumptionMetricsPublisherOptionsSetup>();
             services.ConfigureOptions<ConsoleLoggingOptionsSetup>();
-            services.ConfigureOptions<FunctionsHostingConfigOptionsSetup>();
-            if (configuration != null)
-            {
-                services.Configure<FunctionsHostingConfigOptions>(configuration.GetSection(ScriptConstants.FunctionsHostingConfigSectionName));
-            }
+            services.AddHostingConfigOptions(configuration);
 
             services.TryAddSingleton<IDependencyValidator, DependencyValidator>();
             services.TryAddSingleton<IJobHostMiddlewarePipeline>(s => DefaultMiddlewarePipeline.Empty);
 
             // Add AzureBlobStorageProvider to WebHost (also needed for ScriptHost)
             services.AddAzureBlobStorageProvider();
+        }
+
+        internal static void AddHostingConfigOptions(this IServiceCollection services, IConfiguration configuration)
+        {
+            services.ConfigureOptions<FunctionsHostingConfigOptionsSetup>();
+
+            if (configuration != null)
+            {
+                // Refresh IOptionsMonitor<FunctionsHostingConfigOptions> when the config section changes
+                var configSection = configuration.GetSection(ScriptConstants.FunctionsHostingConfigSectionName);
+                services.AddSingleton<IOptionsChangeTokenSource<FunctionsHostingConfigOptions>>(new ConfigurationChangeTokenSource<FunctionsHostingConfigOptions>(configSection));
+            }
         }
 
         private static void AddStandbyServices(this IServiceCollection services)
