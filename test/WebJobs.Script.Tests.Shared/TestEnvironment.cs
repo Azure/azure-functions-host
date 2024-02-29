@@ -14,8 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly IDictionary<string, string> _variables;
         private bool _is64BitProcess;
 
-        public TestEnvironment()
-    : this(new Dictionary<string, string>())
+        public TestEnvironment() : this(new Dictionary<string, string>())
         {
         }
 

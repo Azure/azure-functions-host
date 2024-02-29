@@ -726,8 +726,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             var featureFlags = _environment.GetEnvironmentVariable(AzureWebJobsFeatureFlags);
             var hostingConfigDict = _hostingConfigOptions.Value.Features;
 
+            string hisMode = "Disabled";
+            if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagStrictHISModeEnabled))
+            {
+                hisMode = "Strict";
+                _metricsLogger.LogEvent(MetricEventNames.HISStrictModeEnabled);
+                _logger.LogDebug($"HIS Strict mode enabled.");
+            }
+            else if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagStrictHISModeWarn))
+            {
+                hisMode = "Warn";
+                _metricsLogger.LogEvent(MetricEventNames.HISStrictModeWarn);
+                _logger.LogDebug($"HIS Warn mode enabled.");
+            }
+
             logger.LogHostInitializationSettings(_originalFunctionsWorkerRuntime, functionWorkerRuntime, _originalFunctionsWorkerRuntimeVersion, functionWorkerRuntimeVersion,
-                functionExtensionVersion, currentDirectory, inStandbyMode, hasBeenSpecialized, usePlaceholderDotNetIsolated, websiteSku, featureFlags, hostingConfigDict);
+                functionExtensionVersion, currentDirectory, inStandbyMode, hasBeenSpecialized, usePlaceholderDotNetIsolated, websiteSku, featureFlags, hostingConfigDict, hisMode);
         }
 
         private void OnHostHealthCheckTimer(object state)

@@ -231,6 +231,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to A non highly-identifiable secret has been loaded by the application: (KeyType:{0}, KeyName:{1}, FunctionName:{2})..
+        /// </summary>
+        internal static string NonHISSecret {
+            get {
+                return ResourceManager.GetString("NonHISSecret", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to {0} secret &apos;{1}&apos; for &apos;{2}&apos; {3}..
         /// </summary>
         internal static string TraceAddOrUpdateFunctionSecret {

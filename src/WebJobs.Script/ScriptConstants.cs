@@ -128,6 +128,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string FeatureFlagEnableWorkerIndexing = "EnableWorkerIndexing";
         public const string FeatureFlagEnableDebugTracing = "EnableDebugTracing";
         public const string FeatureFlagEnableProxies = "EnableProxies";
+        public const string FeatureFlagStrictHISModeEnabled = "StrictHISModeEnabled";
+        public const string FeatureFlagStrictHISModeWarn = "StrictHISModeWarn";
         public const string FeatureFlagEnableOrderedInvocationmessages = "EnableOrderedInvocationMessages";
         public const string HostingConfigDisableLinuxAppServiceDetailedExecutionEvents = "DisableLinuxExecutionDetails";
         public const string HostingConfigDisableLinuxAppServiceExecutionEventLogBackoff = "DisableLinuxLogBackoff";
@@ -245,5 +247,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public static readonly string OperationNameKey = "OperationName";
 
         public static readonly string CancellationTokenRegistration = "CancellationTokenRegistration";
+
+        internal const string MasterKeyName = "_master";
     }
 }
