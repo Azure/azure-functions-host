@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
-using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.Properties;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -26,7 +25,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Health
         {
             _environment = environment;
             _logger = logger;
-
             if (standbyOptionsMonitor.CurrentValue.InStandbyMode)
             {
                 _listener = standbyOptionsMonitor.OnChange(standbyOptions =>
