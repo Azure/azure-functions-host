@@ -509,6 +509,8 @@ namespace Microsoft.Azure.WebJobs.Script
             var logger = loggerFactory.CreateLogger(LogCategories.Startup);
             logger.LogDiagnosticEventError(DiagnosticEventConstants.ExternalStartupErrorCode, message, DiagnosticEventConstants.ExternalStartupErrorHelpLink, startupEx);
 
+            // potential app failure count location
+
             // Send the error to App Insights if possible. This is happening during ScriptHost construction so we
             // have no existing TelemetryClient to use. Create a one-off client and flush it ASAP.
             if (appInsightsConnStr is not null)

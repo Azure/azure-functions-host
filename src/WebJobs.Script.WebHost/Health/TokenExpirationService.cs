@@ -19,15 +19,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Health
         private readonly TaskCompletionSource<object> _standby = new();
         private readonly IEnvironment _environment;
         private readonly ILogger<TokenExpirationService> _logger;
-        private readonly IHostMetrics _hostMetrics;
         private IDisposable _listener;
 
         // The TokenExpirationService is a good health check candidate if we start using Microsoft.Extensions.Diagnostics.HealthChecks
-        public TokenExpirationService(IEnvironment environment, ILogger<TokenExpirationService> logger, IOptionsMonitor<StandbyOptions> standbyOptionsMonitor, IHostMetrics hostMetrics)
+        public TokenExpirationService(IEnvironment environment, ILogger<TokenExpirationService> logger, IOptionsMonitor<StandbyOptions> standbyOptionsMonitor)
         {
             _environment = environment;
             _logger = logger;
-            _hostMetrics = hostMetrics ?? throw new ArgumentNullException(nameof(hostMetrics));
 
             if (standbyOptionsMonitor.CurrentValue.InStandbyMode)
             {
@@ -125,7 +123,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Health
                     if (difference.TotalDays <= 0)
                     {
                         string message = string.Format(Resources.SasTokenExpiredFormat, setting.Key);
-                        _hostMetrics.AppFailure();
                         DiagnosticEventLoggerExtensions.LogDiagnosticEventError(_logger, DiagnosticEventConstants.SasTokenExpiringErrorCode, message, DiagnosticEventConstants.SasTokenExpiringErrorHelpLink, new Exception(message));
                     }
                     else if (difference.TotalDays <= 30)

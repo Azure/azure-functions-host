@@ -13,6 +13,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security;
 using Microsoft.Extensions.Logging;
@@ -27,6 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly ISecretsRepository _repository;
         private readonly HostNameProvider _hostNameProvider;
         private readonly StartupContextProvider _startupContextProvider;
+        private readonly IHostMetrics _hostMetrics;
         private ConcurrentDictionary<string, IDictionary<string, string>> _functionSecrets;
         private ConcurrentDictionary<string, (string, AuthorizationLevel)> _authorizationCache = new ConcurrentDictionary<string, (string, AuthorizationLevel)>(StringComparer.OrdinalIgnoreCase);
         private HostSecretsInfo _hostSecrets;
@@ -40,17 +42,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
         }
 
-        public SecretManager(ISecretsRepository repository, ILogger logger, IMetricsLogger metricsLogger, HostNameProvider hostNameProvider, StartupContextProvider startupContextProvider)
-            : this(repository, new DefaultKeyValueConverterFactory(repository.IsEncryptionSupported), logger, metricsLogger, hostNameProvider, startupContextProvider)
+        public SecretManager(ISecretsRepository repository, ILogger logger, IMetricsLogger metricsLogger, IHostMetrics hostMetrics, HostNameProvider hostNameProvider, StartupContextProvider startupContextProvider)
+            : this(repository, new DefaultKeyValueConverterFactory(repository.IsEncryptionSupported), logger, metricsLogger, hostMetrics, hostNameProvider, startupContextProvider)
         {
         }
 
-        public SecretManager(ISecretsRepository repository, IKeyValueConverterFactory keyValueConverterFactory, ILogger logger, IMetricsLogger metricsLogger, HostNameProvider hostNameProvider, StartupContextProvider startupContextProvider)
+        public SecretManager(ISecretsRepository repository, IKeyValueConverterFactory keyValueConverterFactory, ILogger logger, IMetricsLogger metricsLogger, IHostMetrics hostMetrics, HostNameProvider hostNameProvider, StartupContextProvider startupContextProvider)
         {
             _repository = repository ?? throw new ArgumentNullException(nameof(repository));
             _keyValueConverterFactory = keyValueConverterFactory ?? throw new ArgumentNullException(nameof(keyValueConverterFactory));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _metricsLogger = metricsLogger ?? throw new ArgumentNullException(nameof(metricsLogger));
+            _hostMetrics = hostMetrics ?? throw new ArgumentNullException(nameof(hostMetrics));
             _hostNameProvider = hostNameProvider ?? throw new ArgumentNullException(nameof(hostNameProvider));
             _startupContextProvider = startupContextProvider ?? throw new ArgumentNullException(nameof(startupContextProvider));
 
@@ -590,6 +593,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                     var exception = new InvalidOperationException(message);
                     _logger?.LogDiagnosticEventError(DiagnosticEventConstants.MaximumSecretBackupCountErrorCode, message, DiagnosticEventConstants.MaximumSecretBackupCountHelpLink, exception);
+
+                    _hostMetrics.AppFailure();
 
                     throw exception;
                 }

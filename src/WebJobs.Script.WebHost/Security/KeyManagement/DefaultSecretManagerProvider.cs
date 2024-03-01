@@ -7,6 +7,7 @@ using System.Threading;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -21,6 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _options;
         private readonly IHostIdProvider _hostIdProvider;
         private readonly IEnvironment _environment;
+        private readonly IHostMetrics _hostMetrics;
         private readonly HostNameProvider _hostNameProvider;
         private readonly StartupContextProvider _startupContextProvider;
         private readonly IAzureBlobStorageProvider _azureBlobStorageProvider;
@@ -29,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public DefaultSecretManagerProvider(IOptionsMonitor<ScriptApplicationHostOptions> options, IHostIdProvider hostIdProvider, IEnvironment environment,
             ILoggerFactory loggerFactory, IMetricsLogger metricsLogger, HostNameProvider hostNameProvider, StartupContextProvider startupContextProvider,
-            IAzureBlobStorageProvider azureBlobStorageProvider)
+            IAzureBlobStorageProvider azureBlobStorageProvider, IHostMetrics hostMetrics)
         {
             ArgumentNullException.ThrowIfNull(loggerFactory);
 
@@ -38,6 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _hostNameProvider = hostNameProvider ?? throw new ArgumentNullException(nameof(hostNameProvider));
             _startupContextProvider = startupContextProvider ?? throw new ArgumentNullException(nameof(startupContextProvider));
+            _hostMetrics = hostMetrics ?? throw new ArgumentNullException(nameof(hostMetrics));
 
             _loggerFactory = loggerFactory;
             _logger = _loggerFactory.CreateLogger<DefaultSecretManagerProvider>();
@@ -74,7 +77,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _logger.LogDebug(new EventId(1, "ResetSecretManager"), "Reset SecretManager.");
         }
 
-        private ISecretManager Create() => new SecretManager(CreateSecretsRepository(), _loggerFactory.CreateLogger<SecretManager>(), _metricsLogger, _hostNameProvider, _startupContextProvider);
+        private ISecretManager Create() => new SecretManager(CreateSecretsRepository(), _loggerFactory.CreateLogger<SecretManager>(), _metricsLogger, _hostMetrics, _hostNameProvider, _startupContextProvider);
 
         internal ISecretsRepository CreateSecretsRepository()
         {
