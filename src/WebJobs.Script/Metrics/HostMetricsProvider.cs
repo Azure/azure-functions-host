@@ -96,8 +96,11 @@ namespace Microsoft.Azure.WebJobs.Script.Metrics
             try
             {
                 var functionActivityStatusProvider = _serviceProvider.GetScriptHostServiceOrNull<IFunctionActivityStatusProvider>();
-                var functionActivityStatus = functionActivityStatusProvider.GetStatus();
-                AddOrUpdateMetricsCache(HostMetrics.ActiveInvocationCount, functionActivityStatus.OutstandingInvocations);
+                if (functionActivityStatusProvider is not null)
+                {
+                    var functionActivityStatus = functionActivityStatusProvider.GetStatus();
+                    AddOrUpdateMetricsCache(HostMetrics.ActiveInvocationCount, functionActivityStatus.OutstandingInvocations);
+                }
 
                 return new Dictionary<string, long>(_metricsCache);
             }
