@@ -6,7 +6,7 @@ using System.Collections.Generic;
 
 namespace Microsoft.Azure.WebJobs.Script.Host
 {
-    public class ScriptInvocationArguments(IServiceProvider serviceProvider) : Dictionary<string, object>
+    internal class ScriptInvocationArguments(IServiceProvider serviceProvider) : Dictionary<string, object>
     {
         public IServiceProvider ServiceProvider { get; } = serviceProvider;
     }
