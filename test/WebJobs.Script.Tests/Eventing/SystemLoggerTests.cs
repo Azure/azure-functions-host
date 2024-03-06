@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost;
@@ -145,6 +146,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(LogLevel.Error, _subscriptionId, _websiteName, _functionName, eventName, _category, ex.ToFormattedString(), message, ex.GetType().ToString(), ex.Message, functionInvocationId, _hostInstanceId, activityId, _runtimeSiteName, _slotName, It.IsAny<DateTime>()));
 
             _logger.LogError(ex, message);
+
+            _mockEventGenerator.VerifyAll();
+        }
+
+        [Theory]
+        [InlineData("Function.TestFunction")]
+        [InlineData("TestFunction")]
+        public void Log_ListenerError_EmitsExpectedEvent(string functionName)
+        {
+            string eventName = string.Empty;
+            string message = $"The listener for function '{functionName}' was unable to start.";
+            string functionInvocationId = string.Empty;
+            string activityId = string.Empty;
+
+            Exception innerException = new Exception("Kaboom");
+            Exception ex = new FunctionListenerException(functionName, innerException);
+
+            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(LogLevel.Error, _subscriptionId, _websiteName, Utility.GetFunctionShortName(functionName), eventName, string.Empty, ex.ToFormattedString(), message, innerException.GetType().ToString(), innerException.Message, functionInvocationId, _hostInstanceId, activityId, _runtimeSiteName, _slotName, It.IsAny<DateTime>()));
+
+            ILogger localLogger = new SystemLogger(_hostInstanceId, string.Empty, _mockEventGenerator.Object, _environment, _debugStateProvider.Object, null, new LoggerExternalScopeProvider(), _appServiceOptions);
+            localLogger.LogError(ex, message);
 
             _mockEventGenerator.VerifyAll();
         }
