@@ -3,6 +3,7 @@
 <!-- Please add your release notes in the following format:
 - My change description (#PR)
 -->
+- Update Python Worker Version to [4.25.0](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.25.0)
 - Warn when `FUNCTIONS_WORKER_RUNTIME` is not set (#9799)
 - Added support for ManagedIdentity authentication in ApplicationInsights pipeline. (#9758)
 - Added support for AutocollectedMetricsExtractor, MetricsCustomDimensionOptimization and QueryStringTracing. (#9758)
