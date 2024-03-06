@@ -43,12 +43,12 @@
     <PackageReference Include="Azure.Identity" Version="1.10.2" />
     <PackageReference Include="Azure.Storage.Blobs" Version="12.13.0" />
     <PackageReference Include="Microsoft.ApplicationInsights" Version="2.22.0" />
-    <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.21.0" />
-    <PackageReference Include="Microsoft.ApplicationInsights.DependencyCollector" Version="2.21.0" />
-    <PackageReference Include="Microsoft.ApplicationInsights.WindowsServer" Version="2.21.0" />
-    <PackageReference Include="Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel" Version="2.21.0" />
+    <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.22.0" />
+    <PackageReference Include="Microsoft.ApplicationInsights.DependencyCollector" Version="2.22.0" />
+    <PackageReference Include="Microsoft.ApplicationInsights.WindowsServer" Version="2.22.0" />
+    <PackageReference Include="Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel" Version="2.22.0" />
     <PackageReference Include="Microsoft.Azure.Functions.DotNetIsolatedNativeHost" Version="1.0.6" />
-    <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.39" />
+    <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.41-11331" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Host.Storage" Version="5.0.0-beta.2-11957" />
     <PackageReference Include="Microsoft.Extensions.Azure" Version="1.7.0" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.WebApiCompatShim" Version="2.2.0">
@@ -66,7 +66,7 @@
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Http" Version="3.2.0" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Timers.Storage" Version="1.0.0-beta.1" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Script.Abstractions" Version="1.0.4-preview" />
-    <PackageReference Include="Microsoft.Azure.WebJobs.Logging.ApplicationInsights" Version="3.0.41-11321" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Logging.ApplicationInsights" Version="3.0.41-11331" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Scripting" Version="3.3.1" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.0" />
@@ -77,7 +77,7 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="8.0.0" />
-    <PackageReference Include="System.Drawing.Common" Version="4.7.3" />
+    <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
     <PackageReference Include="System.IO.Abstractions" Version="2.1.0.227">
       <NoWarn>NU1701</NoWarn>
     </PackageReference>
