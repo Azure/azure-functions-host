@@ -3,6 +3,8 @@
 
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 {
@@ -19,7 +21,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
         public Task Invoke(HttpContext httpContext)
         {
-            httpContext.RequestServices = _scriptHostService.Services;
+            var scopeFactory = _scriptHostService.Services.GetService<IServiceScopeFactory>();
+            if (scopeFactory is not null)
+            {
+                httpContext.Features.Set<IServiceProvidersFeature>(new RequestServicesFeature(httpContext, scopeFactory));
+            }
 
             return _next(httpContext);
         }

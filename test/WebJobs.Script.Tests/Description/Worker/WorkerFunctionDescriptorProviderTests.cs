@@ -177,8 +177,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         [Theory]
         [InlineData(true, true, typeof(byte[]))]
-        //[InlineData(false, true, typeof(byte[]))]
-        //[InlineData(false, false, typeof(byte[]))]
+        [InlineData(false, true, typeof(byte[]))]
+        [InlineData(false, false, typeof(byte[]))]
         public async Task CreateTriggerParameter_DeferredBindingFlags_SetsTriggerType(bool supportsDeferredBinding, bool skipDeferredBinding, Type expectedType)
         {
             string bindingJson = $@"{{""name"":""book"",""direction"":""In"",""type"":""blobTrigger"",""blobPath"":""expression-trigger"",""connection"":""AzureWebJobsStorage"",""properties"":{{""SupportsDeferredBinding"":""{supportsDeferredBinding}""}}}}";
