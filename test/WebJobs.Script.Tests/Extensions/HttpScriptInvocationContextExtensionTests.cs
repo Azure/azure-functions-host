@@ -73,7 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 ExecutionContext = new ExecutionContext()
                 {
-                    RetryContext = new Host.RetryContext()
+                    RetryContext = new RetryContext()
                     {
                         RetryCount = 1,
                         MaxRetryCount = 2,

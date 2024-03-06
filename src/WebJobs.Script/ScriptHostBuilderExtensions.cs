@@ -341,6 +341,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, FunctionInvocationDispatcherShutdownManager>());
 
                 services.AddSingleton<IHostOptionsProvider, HostOptionsProvider>();
+                services.AddSingleton<IInstanceServicesProviderFactory, ScriptInstanceServicesProviderFactory>();
             });
 
             RegisterFileProvisioningService(builder);

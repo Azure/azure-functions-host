@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Extensions;
+using Microsoft.Azure.WebJobs.Script.Host;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -61,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Features
 
             var sw = ValueStopwatch.StartNew();
 
-            var arguments = new Dictionary<string, object>();
+            var arguments = new ScriptInvocationArguments(request.HttpContext.RequestServices);
             if (_descriptor.IsWarmupFunction())
             {
                 arguments.Add(_descriptor.TriggerParameter.Name, new WarmupContext());
