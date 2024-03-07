@@ -321,12 +321,51 @@ namespace Microsoft.Azure.WebJobs.Script
                    string.IsNullOrEmpty(environment.GetEnvironmentVariable(LegionServiceHost));
         }
 
+        /// <summary>
+        /// Returns a value indicating whether the app is Linux Consumption running on Legion (either V1 or Flex).
+        /// </summary>
+        /// <param name="environment">The environment to verify.</param>
+        /// <returns><see cref="true"/> if the app is Linux Consumption running on Legion; otherwise, <see cref="false"/>.</returns>
         private static bool IsLinuxConsumptionOnLegion(this IEnvironment environment)
         {
             return !environment.IsAppService() &&
-                   (!string.IsNullOrEmpty(environment.GetEnvironmentVariable(ContainerName)) ||
-                   !string.IsNullOrEmpty(environment.GetEnvironmentVariable(WebsitePodName))) &&
+                   (!string.IsNullOrEmpty(environment.GetEnvironmentVariable(ContainerName)) || !string.IsNullOrEmpty(environment.GetEnvironmentVariable(WebsitePodName))) &&
                    !string.IsNullOrEmpty(environment.GetEnvironmentVariable(LegionServiceHost));
+        }
+
+        /// <summary>
+        /// Returns a value indicating whether the app is V1 Linux Consumption running on Legion.
+        /// </summary>
+        /// <param name="environment">The environment to verify.</param>
+        /// <returns><see cref="true"/> if the app is V1 Linux Consumption running on Legion; otherwise, <see cref="false"/>.</returns>
+        public static bool IsV1LinuxConsumptionOnLegion(this IEnvironment environment)
+        {
+            return IsLinuxConsumptionOnLegion(environment) && environment.WebsiteSkuIsDynamic();
+        }
+
+        /// <summary>
+        /// Checks both WEBSITE_SKU and WEBSITE_SKU_NAME and returns true IFF one is
+        /// set to "Dynamic".
+        /// </summary>
+        /// <param name="environment">The environment to check.</param>
+        /// <returns><see cref="true"/> if the sku is Dynamic; otherwise, <see cref="false"/>.</returns>
+        public static bool WebsiteSkuIsDynamic(this IEnvironment environment)
+        {
+            string value = environment.GetEnvironmentVariable(AzureWebsiteSku);
+            if (string.Equals(value, ScriptConstants.DynamicSku, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            // Linux Consumption v1 uses WEBSITE_SKU_NAME but is migrating to use WEBSTIE_SKU.
+            // So for now, we must check both.
+            value = environment.GetEnvironmentVariable(AzureWebsiteSkuName);
+            if (string.Equals(value, ScriptConstants.DynamicSku, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            return false;
         }
 
         /// <summary>
