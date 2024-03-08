@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             }
 
             public TestFixture()
-                : base(Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "..", "sample", "Python"), "samples", RpcWorkerConstants.PythonLanguageWorkerName, 1, "3.8")
+                : base(Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "..", "sample", "Python"), "samples", RpcWorkerConstants.PythonLanguageWorkerName, 1, "3.7")
             {
             }
 
