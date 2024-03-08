@@ -471,16 +471,15 @@ jobs:
       arguments: '--filter "Group=RawAssemblyEndToEndTests" --no-build'
       projects: |
         **\WebJobs.Script.Tests.Integration.csproj
-  # Disabled to unblock in 202401. Will fix shortly.
-  # - task: DotNetCoreCLI@2
-  #   displayName: "Samples end to end tests"
-  #   condition: succeededOrFailed()
-  #   inputs:
-  #     command: 'test'
-  #     testRunTitle: "Samples end to end tests"
-  #     arguments: '--filter "Group=SamplesEndToEndTests" --no-build'
-  #     projects: |
-  #       **\WebJobs.Script.Tests.Integration.csproj
+  - task: DotNetCoreCLI@2
+    displayName: "Samples end to end tests"
+    condition: succeededOrFailed()
+    inputs:
+      command: 'test'
+      testRunTitle: "Samples end to end tests"
+      arguments: '--filter "Group=SamplesEndToEndTests" --no-build'
+      projects: |
+        **\WebJobs.Script.Tests.Integration.csproj
   - task: DotNetCoreCLI@2
     displayName: "Drain mode end to end tests"
     condition: succeededOrFailed()
