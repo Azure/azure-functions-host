@@ -125,13 +125,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             return proxyMetadata.ToImmutableArray();
         }
 
-        [Fact(Skip = "Proxy - https://github.com/Azure/azure-functions-host/issues/9803#issuecomment-1907098537")]
+        [Fact]
         public async Task ValidateProxyFunctionDescriptor()
         {
             var proxy = _proxyClient as ProxyClientExecutor;
             Assert.NotNull(proxy);
 
-            var proxyFunctionDescriptor = new ProxyFunctionDescriptorProvider(_scriptHost, _scriptHost.ScriptOptions, _host.Services.GetService<ICollection<IScriptBindingProvider>>(), NullLoggerFactory.Instance);
+            var proxyFunctionDescriptor = new ProxyFunctionDescriptorProvider(_scriptHost, _scriptHost.ScriptOptions, _host.Services.GetService<IEnumerable<IScriptBindingProvider>>().ToArray(), NullLoggerFactory.Instance);
 
             var (created, functionDescriptor) = await proxyFunctionDescriptor.TryCreate(_metadataCollection[0]);
 
@@ -142,10 +142,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.NotNull(proxyInvoker);
         }
 
-        [Fact(Skip = "Proxy - https://github.com/Azure/azure-functions-host/issues/9803#issuecomment-1907098537")]
+        [Fact]
         public async Task ValidateProxyFunctionInvoker()
         {
-            var proxyFunctionDescriptor = new ProxyFunctionDescriptorProvider(_scriptHost, _scriptHost.ScriptOptions, _host.Services.GetService<ICollection<IScriptBindingProvider>>(), NullLoggerFactory.Instance);
+            var proxyFunctionDescriptor = new ProxyFunctionDescriptorProvider(_scriptHost, _scriptHost.ScriptOptions, _host.Services.GetService<IEnumerable<IScriptBindingProvider>>().ToArray(), NullLoggerFactory.Instance);
 
             var (created, functionDescriptor) = await proxyFunctionDescriptor.TryCreate(_metadataCollection[0]);
 
