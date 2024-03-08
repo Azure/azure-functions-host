@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class ProxyFunctionProviderTests
     {
-        [Fact(Skip = "Proxy - https://github.com/Azure/azure-functions-host/issues/9803#issuecomment-1907098537")]
+        [Fact]
         public async Task ProxyMetadata_WhenProxyFileChanges_IsRefreshed()
         {
             using (var tempDirectory = new TempDirectory())
