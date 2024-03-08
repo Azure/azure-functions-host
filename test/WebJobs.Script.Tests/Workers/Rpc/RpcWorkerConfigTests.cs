@@ -370,10 +370,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 Arguments = new List<string>(),
                 DefaultExecutablePath = "python",
                 DefaultWorkerPath = defaultWorkerPath,
-                DefaultRuntimeVersion = "3.6",
+                DefaultRuntimeVersion = "3.7",
                 SanitizeRuntimeVersionRegex = sanitizeRuntimeVersionRegex,
                 SupportedArchitectures = new List<string>() { Architecture.X64.ToString(), Architecture.X86.ToString() },
-                SupportedRuntimeVersions = new List<string>() { "3.6", "3.7" },
+                SupportedRuntimeVersions = new List<string>() { "3.7" },
                 SupportedOperatingSystems = new List<string>()
                     {
                         OSPlatform.Windows.ToString(),
@@ -408,11 +408,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Theory]
-        [InlineData("%FUNCTIONS_WORKER_RUNTIME_VERSION%/{os}/{architecture}", null, "3.6/LINUX/X64")]
-        [InlineData("%FUNCTIONS_WORKER_RUNTIME_VERSION%/{architecture}", null, "3.6/X64")]
-        [InlineData("%FUNCTIONS_WORKER_RUNTIME_VERSION%/{os}", null, "3.6/LINUX")]
-        [InlineData("%FUNCTIONS_WORKER_RUNTIME_VERSION%/{os}", "", "3.6/LINUX")]
-        [InlineData("%FUNCTIONS_WORKER_RUNTIME_VERSION%/{os}", "[\\d\\.]+", "3.6/LINUX")]
+        [InlineData("%FUNCTIONS_WORKER_RUNTIME_VERSION%/{os}/{architecture}", null, "3.7/LINUX/X64")]
+        [InlineData("%FUNCTIONS_WORKER_RUNTIME_VERSION%/{architecture}", null, "3.7/X64")]
+        [InlineData("%FUNCTIONS_WORKER_RUNTIME_VERSION%/{os}", null, "3.7/LINUX")]
+        [InlineData("%FUNCTIONS_WORKER_RUNTIME_VERSION%/{os}", "", "3.7/LINUX")]
+        [InlineData("%FUNCTIONS_WORKER_RUNTIME_VERSION%/{os}", "[\\d\\.]+", "3.7/LINUX")]
         public void LanguageWorker_FormatWorkerPath_EnvironmentVersionNotSet(
             string defaultWorkerPath,
             string sanitizeRuntimeVersionRegex,
@@ -426,7 +426,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 Arguments = new List<string>(),
                 DefaultExecutablePath = "python",
                 SupportedArchitectures = new List<string>() { Architecture.X64.ToString(), Architecture.X86.ToString() },
-                SupportedRuntimeVersions = new List<string>() { "3.6", "3.7" },
+                SupportedRuntimeVersions = new List<string>() { "3.7" },
                 SupportedOperatingSystems = new List<string>()
                     {
                         OSPlatform.Windows.ToString(),
@@ -437,7 +437,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 WorkerDirectory = string.Empty,
                 Extensions = new List<string>() { ".py" },
                 Language = "python",
-                DefaultRuntimeVersion = "3.6",
+                DefaultRuntimeVersion = "3.7",
                 SanitizeRuntimeVersionRegex = sanitizeRuntimeVersionRegex
             };
             var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
@@ -451,7 +451,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             workerDescription.FormatWorkerPathIfNeeded(_testSysRuntimeInfo, _testEnvironment, testLogger);
 
             Assert.Equal(expectedPath, workerDescription.DefaultWorkerPath);
-            Assert.Equal("3.6", workerDescription.DefaultRuntimeVersion);
+            Assert.Equal("3.7", workerDescription.DefaultRuntimeVersion);
         }
 
         [Theory]
@@ -466,7 +466,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 DefaultWorkerPath = "{architecture}/worker.py",
                 WorkerDirectory = string.Empty,
                 SupportedArchitectures = new List<string>() { Architecture.X64.ToString(), Architecture.X86.ToString() },
-                SupportedRuntimeVersions = new List<string>() { "3.6", "3.7" },
+                SupportedRuntimeVersions = new List<string>() { "3.7" },
                 SupportedOperatingSystems = new List<string>()
                     {
                         OSPlatform.Windows.ToString(),
@@ -536,7 +536,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 Arguments = new List<string>(),
                 DefaultExecutablePath = "python",
-                SupportedRuntimeVersions = new List<string>() { "3.6", "3.7" },
+                SupportedRuntimeVersions = new List<string>() { "3.7" },
                 DefaultWorkerPath = $"{RpcWorkerConstants.RuntimeVersionPlaceholder}/worker.py",
                 WorkerDirectory = string.Empty,
                 Extensions = new List<string>() { ".py" },
@@ -572,7 +572,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 Arguments = new List<string>(),
                 DefaultExecutablePath = "python",
-                SupportedRuntimeVersions = new List<string>() { "3.6", "3.7" },
+                SupportedRuntimeVersions = new List<string>() { "3.7" },
                 SanitizeRuntimeVersionRegex = sanitizeRuntimeVersionRegex,
                 DefaultWorkerPath = $"{RpcWorkerConstants.RuntimeVersionPlaceholder}/worker.py",
                 WorkerDirectory = string.Empty,
@@ -603,7 +603,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 Arguments = new List<string>(),
                 DefaultExecutablePath = "python",
-                SupportedRuntimeVersions = new List<string>() { "3.6", "3.7" },
+                SupportedRuntimeVersions = new List<string>() { "3.7" },
                 DefaultWorkerPath = $"{RpcWorkerConstants.RuntimeVersionPlaceholder}/worker.py",
                 WorkerDirectory = string.Empty,
                 Extensions = new List<string>() { ".py" },
