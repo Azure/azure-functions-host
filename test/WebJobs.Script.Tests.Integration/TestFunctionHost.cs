@@ -308,6 +308,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             else
             {
                 exit = true;
+                Console.WriteLine(GetLog());
                 throw new Exception("Functions Host timed out trying to start.");
             }
         }
