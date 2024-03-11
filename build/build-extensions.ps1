@@ -243,20 +243,26 @@ function CreateSiteExtensions() {
     if ($minorVersionPrefix -eq "") {
         ZipContent $siteExtensionPath "$zipOutput\Functions.$extensionVersion$runtimeSuffix.zip"
     } elseif ($minorVersionPrefix -eq "8") {
+        Write-Host "======================================"
         # Only the "Functions" site extension supports hard links
-        Write-Host "Removing $hashesForHardLinksPath before zipping."
+        Write-Host "MinorVersionPrefix is '8'. Removing $hashesForHardLinksPath before zipping."
         Remove-Item -Force "$hashesForHardLinksPath" -ErrorAction Stop
         # The .NET 8 host doesn't require any workers. Doing this to save space.
         Write-Host "Removing workers before zipping."
-        Remove-Item -Recurse -Force "$siteExtensionPath\$extensionVersion$runtimeSuffix\workers" -ErrorAction Stop
-        # The host requires that this folder exists, even if it's empty
-        New-Item -Itemtype directory -path $siteExtensionPath\$extensionVersion$runtimeSuffix\workers > $null 
+        # The host requires that this folder exists and it cannot be empty
+        Remove-Item -Recurse -Force "$siteExtensionPath\$extensionVersion$runtimeSuffix\workers" -ErrorAction Stop 
+        New-Item -Path "$siteExtensionPath\$extensionVersion$runtimeSuffix" -Name "workers" -ItemType Directory -ErrorAction Stop | Out-Null
+        Set-Content -Force -Path "$siteExtensionPath\$extensionVersion$runtimeSuffix\workers\this_folder_intentionally_empty.txt" -Value ".NET 8 builds do not have workers. However, this folder must contain at least one file." -ErrorAction Stop
+        Write-Host "======================================"
         Write-Host
         ZipContent $siteExtensionPath "$zipOutput\FunctionsInProc8.$extensionVersion$runtimeSuffix.zip"
     } elseif ($minorVersionPrefix -eq "6") {
         # Only the "Functions" site extension supports hard links
-        Write-Host "Removing $hashesForHardLinksPath before zipping."
+        Write-Host "======================================"
+        Write-Host "MinorVersionPrefix is '6'. Removing $hashesForHardLinksPath before zipping."
         Remove-Item -Force "$hashesForHardLinksPath" -ErrorAction Stop
+        Write-Host "======================================"
+        Write-Host
         ZipContent $siteExtensionPath "$zipOutput\FunctionsInProc.$extensionVersion$runtimeSuffix.zip"
     }
 
@@ -309,7 +315,7 @@ Write-Host
 Write-Host "Output directory: $buildOutput"
 if (Test-Path $buildOutput) {
     Write-Host "  Existing build output found. Deleting."
-    Remove-Item $buildOutput -Recurse -Force
+    Remove-Item $buildOutput -Recurse -Force -ErrorAction Stop
 }
 Write-Host "Extensions version: $extensionVersion"
 Write-Host ""
