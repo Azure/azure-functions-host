@@ -10,12 +10,10 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
-using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
+using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Options;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
@@ -31,10 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
 
         public TestServer HttpServer { get; set; }
 
-        protected virtual void ConfigureWebHostBuilder(IWebHostBuilder webHostBuilder)
-        {
-            webHostBuilder.ConfigureServices(c => c.AddSingleton(HostOptions));
-        }
+        protected virtual void ConfigureWebHostBuilder(IWebHostBuilder webHostBuilder) { }
 
         public void Dispose()
         {
@@ -47,21 +42,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
             _config = new HttpConfiguration();
             _settingsManager = ScriptSettingsManager.Instance;
 
-            HostOptions = new ScriptApplicationHostOptions
-            {
-                IsSelfHost = true,
-                ScriptPath = Path.Combine(Environment.CurrentDirectory, "..", "..", "..", "..", "..", "sample", "csharp"),
-                LogPath = Path.Combine(Path.GetTempPath(), @"Functions"),
-                SecretsPath = Path.Combine(Path.GetTempPath(), @"FunctionsTests\Secrets"),
-                HasParentScope = true
-            };
-
-            var optionsMonitor = TestHelpers.CreateOptionsMonitor(HostOptions);
             var webHostBuilder = new WebHostBuilder()
                 .ConfigureServices(services =>
                 {
-                    services.AddSingleton<IOptions<ScriptApplicationHostOptions>>(new OptionsWrapper<ScriptApplicationHostOptions>(HostOptions));
-                    services.Replace(new ServiceDescriptor(typeof(IOptionsMonitor<ScriptApplicationHostOptions>), optionsMonitor));
+                    services.AddSingleton<IDiagnosticEventRepository, DiagnosticEventNullRepository>();
+                    services.AddSingleton<IDiagnosticEventRepositoryFactory, TestDiagnosticEventRepositoryFactory>();
+                    services.Configure<ScriptApplicationHostOptions>(o=>
+                    {
+                        o.IsSelfHost = true;
+                        o.ScriptPath = Path.Combine(Environment.CurrentDirectory, "..", "..", "..", "..", "..", "sample", "csharp");
+                        o.LogPath = Path.Combine(Path.GetTempPath(), @"Functions");
+                        o.SecretsPath = Path.Combine(Path.GetTempPath(), @"FunctionsTests\Secrets");
+                        o.HasParentScope = true;
+
+                        HostOptions = o;
+                    });
                 })
                 .ConfigureAppConfiguration((builderContext, config) =>
                 {
