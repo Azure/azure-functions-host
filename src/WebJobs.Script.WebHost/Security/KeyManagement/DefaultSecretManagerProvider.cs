@@ -7,7 +7,6 @@ using System.Threading;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
-using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
