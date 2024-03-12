@@ -14,7 +14,6 @@ using Azure;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
-using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
@@ -39,7 +38,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
         private readonly TestLoggerProvider _loggerProvider;
         private readonly ILogger _logger;
         private readonly StartupContextProvider _startupContextProvider;
-        private readonly Mock<IHostMetrics> _mockHostMetrics = new Mock<IHostMetrics>();
 
         public SecretManagerTests(ITestOutputHelper outputHelper)
         {
@@ -699,7 +697,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             var testRepository = new TestSecretsRepository(true);
             string testFunctionName = $"TestFunction";
 
-            using (var secretManager = new SecretManager(testRepository, mockValueConverterFactory.Object, _logger, metricsLogger, _mockHostMetrics.Object, _hostNameProvider, _startupContextProvider))
+            using (var secretManager = new SecretManager(testRepository, mockValueConverterFactory.Object, _logger, metricsLogger, _hostNameProvider, _startupContextProvider))
             {
                 var tasks = new List<Task<IDictionary<string, string>>>();
                 for (int i = 0; i < 10; i++)
@@ -725,7 +723,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             var metricsLogger = new TestMetricsLogger();
             var testRepository = new TestSecretsRepository(true);
 
-            using (var secretManager = new SecretManager(testRepository, mockValueConverterFactory.Object, _logger, metricsLogger, _mockHostMetrics.Object, _hostNameProvider, _startupContextProvider))
+            using (var secretManager = new SecretManager(testRepository, mockValueConverterFactory.Object, _logger, metricsLogger, _hostNameProvider, _startupContextProvider))
             {
                 var tasks = new List<Task<HostSecretsInfo>>();
                 for (int i = 0; i < 10; i++)
@@ -757,7 +755,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             var testRepository = new TestSecretsRepository(true, true, true);
             string testFunctionName = "host";
 
-            using (var secretManager = new SecretManager(testRepository, mockValueConverterFactory.Object, _logger, metricsLogger, _mockHostMetrics.Object, _hostNameProvider, _startupContextProvider))
+            using (var secretManager = new SecretManager(testRepository, mockValueConverterFactory.Object, _logger, metricsLogger, _hostNameProvider, _startupContextProvider))
             {
                 var tasks = new List<Task<HostSecretsInfo>>();
                 for (int i = 0; i < 2; i++)
@@ -789,7 +787,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             var testRepository = new TestSecretsRepository(true, true, true);
             string testFunctionName = $"TestFunction";
 
-            using (var secretManager = new SecretManager(testRepository, mockValueConverterFactory.Object, _logger, metricsLogger, _mockHostMetrics.Object, _hostNameProvider, _startupContextProvider))
+            using (var secretManager = new SecretManager(testRepository, mockValueConverterFactory.Object, _logger, metricsLogger, _hostNameProvider, _startupContextProvider))
             {
                 var tasks = new List<Task<IDictionary<string, string>>>();
                 for (int i = 0; i < 2; i++)
@@ -1750,7 +1748,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             }
 
             ISecretsRepository repository = secretsRepository ?? new FileSystemSecretsRepository(secretsPath, logger, _testEnvironment);
-            var secretManager = new SecretManager(repository, keyConverterFactory, logger, metricsLogger, _mockHostMetrics.Object, _hostNameProvider, _startupContextProvider);
+            var secretManager = new SecretManager(repository, keyConverterFactory, logger, metricsLogger, _hostNameProvider, _startupContextProvider);
 
             if (createHostSecretsIfMissing)
             {
