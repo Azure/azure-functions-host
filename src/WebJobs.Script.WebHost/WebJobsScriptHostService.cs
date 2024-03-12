@@ -415,8 +415,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     logger.ErrorOccurredInactive(activeOperation.Id, exc);
                 }
 
-                _hostMetrics.AppFailure();
                 attemptCount++;
+
+                if (attemptCount > 3)
+                {
+                    _hostMetrics.AppFailure();
+                }
 
                 if (ShutdownHostIfUnhealthy())
                 {
