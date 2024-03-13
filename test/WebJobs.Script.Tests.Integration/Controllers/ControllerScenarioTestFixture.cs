@@ -47,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
                 {
                     services.AddSingleton<IDiagnosticEventRepository, DiagnosticEventNullRepository>();
                     services.AddSingleton<IDiagnosticEventRepositoryFactory, TestDiagnosticEventRepositoryFactory>();
-                    services.Configure<ScriptApplicationHostOptions>(o=>
+                    services.PostConfigure<ScriptApplicationHostOptions>(o=>
                     {
                         o.IsSelfHost = true;
                         o.ScriptPath = Path.Combine(Environment.CurrentDirectory, "..", "..", "..", "..", "..", "sample", "csharp");
