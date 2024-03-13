@@ -402,7 +402,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         public IActionResult Restart([FromServices] IScriptHostManager hostManager)
         {
             Task ignore = hostManager.RestartHostAsync();
-            return Ok(_applicationHostOptions.Value);
+            var options = new ApplicationHostOptions() // TODO: determine exactly which properties are required by the caller of this function
+            {
+                IsFileSystemReadOnly = _applicationHostOptions.Value.IsFileSystemReadOnly,
+                IsScmRunFromPackage = _applicationHostOptions.Value.IsScmRunFromPackage,
+                IsSelfHost = _applicationHostOptions.Value.IsSelfHost,
+                LogPath = _applicationHostOptions.Value.LogPath,
+                ScriptPath = _applicationHostOptions.Value.ScriptPath,
+                SecretsPath = _applicationHostOptions.Value.SecretsPath,
+                TestDataPath = _applicationHostOptions.Value.TestDataPath
+            };
+            return Ok(options);
         }
 
         /// <summary>
