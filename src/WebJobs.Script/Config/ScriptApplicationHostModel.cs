@@ -10,7 +10,7 @@ using System;
 /// </summary>
 namespace Microsoft.Azure.WebJobs.Script
 {
-    public class ApplicationHostOptions
+    public class ScriptApplicationHostModel
     {
         public bool IsSelfHost { get; set; }
 
