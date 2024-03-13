@@ -173,13 +173,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             if (exception != null)
             {
                 // Populate details from the exception.
-                if (string.IsNullOrEmpty(functionName) && exception is FunctionInvocationException fex)
+                if (string.IsNullOrEmpty(functionName) && exception is FunctionException fex)
                 {
                     functionName = string.IsNullOrEmpty(fex.MethodName) ? string.Empty : fex.MethodName.Replace("Host.Functions.", string.Empty);
-                }
-                else if (string.IsNullOrEmpty(functionName) && exception is FunctionListenerException flex)
-                {
-                    functionName = string.IsNullOrEmpty(flex.MethodName) ? string.Empty : Utility.GetFunctionShortName(flex.MethodName);
                 }
 
                 (innerExceptionType, innerExceptionMessage, details) = exception.GetExceptionDetails();
