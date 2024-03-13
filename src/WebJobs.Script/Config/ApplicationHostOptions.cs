@@ -3,11 +3,14 @@
 
 using System;
 
-// TODO: documentation. This is a copy of the ScriptApplicationHostOptions class from the Microsoft.Azure.WebJobs.Script namespace.
-// This is returned when admin/host/restart is called
+/// <summary>
+/// This is a copy of the <see cref="ScriptApplicationHostOptions"/> excluding the <see cref="IServiceProvider"/> property.
+/// The purpose of this class is to provide a subset of the <see cref="ScriptApplicationHostOptions"/> that can be serialized
+/// when used in API responses.
+/// </summary>
 namespace Microsoft.Azure.WebJobs.Script
 {
-    public class ApplicationHostOptions // TODO: name this more specifically to what the restart API needs?
+    public class ApplicationHostOptions
     {
         public bool IsSelfHost { get; set; }
 
@@ -21,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public bool HasParentScope { get; set; }
 
-        public bool IsStandbyConfiguration { get; internal set; }
+        public bool IsStandbyConfiguration { get; set; }
 
         public bool IsFileSystemReadOnly { get; set; }
 
