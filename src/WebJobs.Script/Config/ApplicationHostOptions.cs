@@ -19,6 +19,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public string TestDataPath { get; set; }
 
+        public bool HasParentScope { get; set; }
+
         public bool IsStandbyConfiguration { get; internal set; }
 
         public bool IsFileSystemReadOnly { get; set; }
