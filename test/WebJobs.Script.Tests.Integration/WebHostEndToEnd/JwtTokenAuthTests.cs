@@ -85,7 +85,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             var response = await _fixture.Host.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
 
-            var validationError = _fixture.Host.GetScriptHostLogMessages().Single(p => p.Level == LogLevel.Debug);
+            var validationError = _fixture.Host.GetScriptHostLogMessages().Single(p => p.Category == ScriptConstants.LogCategoryHostAuthentication && p.Level == LogLevel.Debug);
             Assert.Equal(ScriptConstants.LogCategoryHostAuthentication, validationError.Category);
             Assert.Equal("Token audience validation failed for audience 'invalid'.", validationError.FormattedMessage);
             Assert.True(validationError.Exception.Message.StartsWith("IDX10231: Audience validation failed."));
@@ -113,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             var response = await _fixture.Host.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
 
-            var validationError = _fixture.Host.GetScriptHostLogMessages().Single(p => p.Level == LogLevel.Debug);
+            var validationError = _fixture.Host.GetScriptHostLogMessages().Single(p => p.Category == ScriptConstants.LogCategoryHostAuthentication && p.Level == LogLevel.Debug);
             Assert.Equal(ScriptConstants.LogCategoryHostAuthentication, validationError.Category);
             Assert.Equal("Token issuer validation failed for issuer 'invalid'.", validationError.FormattedMessage);
             Assert.Equal("IDX10205: Issuer validation failed.", validationError.Exception.Message);
@@ -143,7 +143,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             var response = await _fixture.Host.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
 
-            var validationError = _fixture.Host.GetScriptHostLogMessages().Single(p => p.Level == LogLevel.Debug);
+            var validationError = _fixture.Host.GetScriptHostLogMessages().Single(p => p.Category == ScriptConstants.LogCategoryHostAuthentication && p.Level == LogLevel.Debug);
             Assert.Equal(ScriptConstants.LogCategoryHostAuthentication, validationError.Category);
             Assert.Equal("Token validation failed.", validationError.FormattedMessage);
             Assert.True(validationError.Exception.Message.StartsWith("IDX10503: Signature validation failed."));
