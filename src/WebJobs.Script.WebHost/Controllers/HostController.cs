@@ -404,7 +404,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             Task ignore = hostManager.RestartHostAsync();
 
             var hostOptionsValue = _applicationHostOptions.Value;
-            var options = new ScriptApplicationHostModel()
+            var response = new HostRestartResponse()
             {
                 IsFileSystemReadOnly = hostOptionsValue.IsFileSystemReadOnly,
                 IsScmRunFromPackage = hostOptionsValue.IsScmRunFromPackage,
@@ -416,7 +416,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 TestDataPath = hostOptionsValue.TestDataPath
             };
 
-            return Ok(options);
+            return Ok(response);
         }
 
         /// <summary>

@@ -4,13 +4,12 @@
 using System;
 
 /// <summary>
-/// This is a copy of the <see cref="ScriptApplicationHostOptions"/> excluding the <see cref="IServiceProvider"/> property.
-/// The purpose of this class is to provide a subset of the <see cref="ScriptApplicationHostOptions"/> that can be serialized
-/// when used in API responses.
+/// The model used for the response message in 'admin/host/restart' API endpoint.
+/// This contains all the properties from <see cref="ScriptApplicationHostOptions"/> excluding the <see cref="IServiceProvider"/> property.
 /// </summary>
-namespace Microsoft.Azure.WebJobs.Script
+namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
 {
-    public class ScriptApplicationHostModel
+    public class HostRestartResponse
     {
         public bool IsSelfHost { get; set; }
 
