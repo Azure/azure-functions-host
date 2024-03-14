@@ -283,6 +283,9 @@
   <data name="HostSpecializationTrace" xml:space="preserve">
     <value>Starting host specialization</value>
   </data>
+  <data name="NonHISSecret" xml:space="preserve">
+    <value>A non highly-identifiable secret has been loaded by the application: (KeyType:{0}, KeyName:{1}, FunctionName:{2}).</value>
+  </data>
   <data name="TraceAddOrUpdateFunctionSecret" xml:space="preserve">
     <value>{0} secret '{1}' for '{2}' {3}.</value>
   </data>

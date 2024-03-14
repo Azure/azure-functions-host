@@ -28,5 +28,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public const string MissingFunctionsWorkerRuntimeErrorCode = "AZFD0011";
         public const string MissingFunctionsWorkerRuntimeHelpLink = "https://go.microsoft.com/fwlink/?linkid=2257963";
+
+        public const string NonHISSecretLoaded = "AZFD0012";
+        public const string NonHISSecretLoadedHelpLink = "https://aka.ms/functions-non-his-secrets";
     }
 }

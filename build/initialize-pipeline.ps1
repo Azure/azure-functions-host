@@ -1,3 +1,7 @@
+param (
+  [ValidateSet("6", "8", "")][string]$minorVersionPrefix = ""
+)
+
 $buildReason = $env:BUILD_REASON
 $sourceBranch = $env:BUILD_SOURCEBRANCH
 
@@ -37,14 +41,21 @@ if ($buildReason -eq "PullRequest") {
 
 $buildNumber = ""
 
-if(($buildReason -eq "PullRequest") -or !($sourceBranch.ToLower().Contains("release/4.")))
+$branch = $sourceBranch.ToLower();
+$isRelease = $branch.Contains("release/4") -or $branch.Contains("release/inproc6/4") -or $branch.Contains("release/inproc8/4")
+
+if(($buildReason -eq "PullRequest") -or !$isRelease)
 {
   $buildNumber = $env:buildNumber
   Write-Host "BuildNumber: '$buildNumber'"
 }
+else 
+{
+  Write-Host "Release build; Not using a build number."
+}
 
 Import-Module $PSScriptRoot\Get-AzureFunctionsVersion -Force
-$version = Get-AzureFunctionsVersion $buildNumber $buildNumber
+$version = Get-AzureFunctionsVersion $buildNumber $buildNumber $minorVersionPrefix
 
 Write-Host "Site extension version: $version"
 Write-Host "##vso[build.updatebuildnumber]$version"

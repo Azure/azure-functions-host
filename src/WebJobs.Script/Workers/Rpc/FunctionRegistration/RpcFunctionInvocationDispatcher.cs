@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -36,6 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly IOptions<WorkerConcurrencyOptions> _workerConcurrencyOptions;
         private readonly IEnumerable<RpcWorkerConfig> _workerConfigs;
         private readonly Lazy<Task<int>> _maxProcessCount;
+        private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions;
 
         private IScriptEventManager _eventManager;
         private IWebHostRpcWorkerChannelManager _webHostLanguageWorkerChannelManager;
@@ -69,7 +71,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             IJobHostRpcWorkerChannelManager jobHostLanguageWorkerChannelManager,
             IOptions<ManagedDependencyOptions> managedDependencyOptions,
             IRpcFunctionInvocationDispatcherLoadBalancer functionDispatcherLoadBalancer,
-            IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions)
+            IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions,
+            IOptions<FunctionsHostingConfigOptions> hostingConfigOptions)
         {
             _metricsLogger = metricsLogger;
             _scriptOptions = scriptHostOptions.Value;
@@ -85,6 +88,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _workerRuntime = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
             _functionDispatcherLoadBalancer = functionDispatcherLoadBalancer;
             _workerConcurrencyOptions = workerConcurrencyOptions;
+            _hostingConfigOptions = hostingConfigOptions;
             State = FunctionInvocationDispatcherState.Default;
 
             _workerErrorSubscription = _eventManager.OfType<WorkerErrorEvent>().Subscribe(WorkerError);
@@ -683,6 +687,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         {
             _logger.LogDebug($"Preventing any new worker processes from starting during shutdown.");
             _processStartCancellationToken.Cancel();
+            if (_hostingConfigOptions.Value.ShutdownWebhostWorkerChannelsOnHostShutdown && !_scriptOptions.IsStandbyConfiguration)
+            {
+                ShutdownWebhostLanguageWorkerChannels();
+            }
         }
     }
 }
