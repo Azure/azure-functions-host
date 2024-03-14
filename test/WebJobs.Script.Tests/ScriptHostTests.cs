@@ -1657,7 +1657,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var metricsLogger = new TestMetricsLogger();
                 var environment = new TestEnvironment();
                 environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, functionsWorkerRuntime);
-
+                environment.SetEnvironmentVariable(EnvironmentSettingNames.InitializedFromPlaceholder, bool.TrueString);
                 FileUtility.Instance = CreateFileSystem(rootPath);
 
                 TaskCompletionSource<bool> processCreated = new();
