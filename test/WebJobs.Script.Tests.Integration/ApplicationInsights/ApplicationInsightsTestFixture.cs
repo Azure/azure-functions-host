@@ -19,6 +19,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
+using Moq;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
 {
@@ -30,7 +31,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
         {
             string scriptPath = Path.Combine(Environment.CurrentDirectory, scriptRoot);
             string logPath = Path.Combine(Path.GetTempPath(), @"Functions");
-            Environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, testId);
+
+            var environmentMock = new Mock<IEnvironment>();
+            environmentMock.Setup(e => e.GetEnvironmentVariable(EnvironmentSettingNames.InitializedFromPlaceholder)).Returns(bool.TrueString);
+            environmentMock.Setup(e=> e.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime)).Returns(testId);
 
             WebHostOptions = new ScriptApplicationHostOptions
             {
@@ -67,6 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
                     {
                         s.AddSingleton<IRpcWorkerChannelFactory, TestGrpcWorkerChannelFactory>();
                     }
+                    s.AddSingleton<IEnvironment>(environmentMock.Object);
                 });
 
             HttpClient = TestHost.HttpClient;

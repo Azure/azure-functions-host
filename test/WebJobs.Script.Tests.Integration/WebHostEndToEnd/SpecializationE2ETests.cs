@@ -69,6 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 { EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1" },
                 { EnvironmentSettingNames.AzureWebsiteContainerReady, null },
+                { EnvironmentSettingNames.InitializedFromPlaceholder, bool.TrueString },
              };
 
             _environment = new TestEnvironment(settings);
