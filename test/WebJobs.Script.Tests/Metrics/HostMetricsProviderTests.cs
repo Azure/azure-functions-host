@@ -72,6 +72,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
         }
 
         [Fact]
+        public void MetricsNotPersistedFromBeforeSpecialization()
+        {
+            // Arrange
+            var metrics = _serviceProvider.GetRequiredService<IHostMetrics>();
+            var hostMetricsProvider = CreateProvider(inStandbyMode: true);
+
+            // Act
+            metrics.IncrementStartedInvocationCount();
+            metrics.IncrementStartedInvocationCount();
+            metrics.IncrementStartedInvocationCount();
+
+            // Specialize
+            _standbyOptions.InStandbyMode = false;
+            _standbyOptionsMonitor.InvokeChanged();
+
+            // Assert
+            var result = hostMetricsProvider.GetHostMetricsOrNull();
+            Assert.Null(result);
+
+            metrics.IncrementStartedInvocationCount();
+
+            result = hostMetricsProvider.GetHostMetricsOrNull();
+            result.TryGetValue(HostMetrics.StartedInvocationCount, out var startedInvocationCount);
+            Assert.Equal(1, startedInvocationCount);
+        }
+
+        [Fact]
         public void GetHostMetricsOrNull_MetricsCaptured_ReturnsHostMetrics()
         {
             // Arrange
