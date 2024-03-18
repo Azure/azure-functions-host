@@ -681,7 +681,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             }
 
             var mockFunctionDispatcherLoadBalancer = new Mock<IRpcFunctionInvocationDispatcherLoadBalancer>();
-            var mockHostMetrics = new Mock<HostMetrics>();
+            var mockHostMetrics = new Mock<IHostMetrics>();
 
             _javaTestChannel = new TestRpcWorkerChannel(Guid.NewGuid().ToString(), "java", eventManager, _testLogger, false);
             var optionsMonitor = TestHelpers.CreateOptionsMonitor(workerConfigOptions);
