@@ -25,6 +25,11 @@ namespace Microsoft.Azure.WebJobs.Script.Metrics
         public string FunctionGroup { get; }
 
         /// <summary>
+        /// Initializes the provider and starts collecting metrics.
+        /// </summary>
+        public void Start();
+
+        /// <summary>
         /// Retrieves a dictionary of available metrics, or null.
         /// </summary>
         public IReadOnlyDictionary<string, long>? GetHostMetricsOrNull();

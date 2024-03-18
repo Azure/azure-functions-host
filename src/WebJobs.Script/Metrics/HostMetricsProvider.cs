@@ -17,14 +17,15 @@ namespace Microsoft.Azure.WebJobs.Script.Metrics
     {
         private readonly MeterListener _meterListener;
         private readonly IServiceProvider _serviceProvider;
+        private readonly object _lock = new object();
+
         private ConcurrentDictionary<string, long> _metricsCache = new();
+        private bool _started = false;
 
         public HostMetricsProvider(IServiceProvider serviceProvider)
         {
             _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
             _meterListener = new();
-
-            Start();
         }
 
         public string FunctionGroup { get; private set; } = string.Empty;
@@ -48,6 +49,8 @@ namespace Microsoft.Azure.WebJobs.Script.Metrics
 
             _meterListener.SetMeasurementEventCallback<long>(OnMeasurementRecordedLong);
             _meterListener.Start();
+
+            _started = true;
         }
 
         internal void OnMeasurementRecordedLong(
@@ -56,12 +59,20 @@ namespace Microsoft.Azure.WebJobs.Script.Metrics
             ReadOnlySpan<KeyValuePair<string, object?>> tags,
             object? state)
         {
+            if (!_started)
+            {
+                return;
+            }
+
             if (instrument == null)
             {
                 throw new ArgumentNullException(nameof(instrument));
             }
 
-            AddOrUpdateMetricsCache(instrument.Name, measurement);
+            lock (_lock)
+            {
+                AddOrUpdateMetricsCache(instrument.Name, measurement);
+            }
         }
 
         private void AddOrUpdateMetricsCache(string key, long value)
@@ -93,31 +104,27 @@ namespace Microsoft.Azure.WebJobs.Script.Metrics
                 return null;
             }
 
-            try
+            var functionActivityStatusProvider = _serviceProvider.GetScriptHostServiceOrNull<IFunctionActivityStatusProvider>();
+            if (functionActivityStatusProvider is not null)
             {
-                var functionActivityStatusProvider = _serviceProvider.GetScriptHostServiceOrNull<IFunctionActivityStatusProvider>();
-                if (functionActivityStatusProvider is not null)
-                {
-                    var functionActivityStatus = functionActivityStatusProvider.GetStatus();
-                    AddOrUpdateMetricsCache(HostMetrics.ActiveInvocationCount, functionActivityStatus.OutstandingInvocations);
-                }
+                var functionActivityStatus = functionActivityStatusProvider.GetStatus();
+                AddOrUpdateMetricsCache(HostMetrics.ActiveInvocationCount, functionActivityStatus.OutstandingInvocations);
+            }
 
-                return new Dictionary<string, long>(_metricsCache);
-            }
-            finally
+            IReadOnlyDictionary<string, long> metrics;
+
+            lock (_lock)
             {
-                PurgeMetricsCache();
+                metrics = new Dictionary<string, long>(_metricsCache);
+                _metricsCache.Clear();
             }
+
+            return metrics;
         }
 
         public bool HasMetrics()
         {
             return _metricsCache.Count > 0;
-        }
-
-        private void PurgeMetricsCache()
-        {
-            _metricsCache.Clear();
         }
 
         public void Dispose()
