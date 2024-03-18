@@ -316,7 +316,7 @@ function WriteHashesFile([string] $directoryPath) {
 Write-Host "Output directory: $publishDir"
 if (Test-Path $publishDir) {
     Write-Host "  Existing build output found. Deleting."
-    Remove-Item $buildOutput -Recurse -Force -ErrorAction Stop
+    Remove-Item $publishDir -Recurse -Force -ErrorAction Stop
 }
 
 Write-Host "Extensions version: $extensionVersion"
