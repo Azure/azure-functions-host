@@ -13,6 +13,7 @@ using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
+using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
@@ -680,6 +681,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             }
 
             var mockFunctionDispatcherLoadBalancer = new Mock<IRpcFunctionInvocationDispatcherLoadBalancer>();
+            var mockHostMetrics = new Mock<HostMetrics>();
 
             _javaTestChannel = new TestRpcWorkerChannel(Guid.NewGuid().ToString(), "java", eventManager, _testLogger, false);
             var optionsMonitor = TestHelpers.CreateOptionsMonitor(workerConfigOptions);
@@ -698,7 +700,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 new OptionsWrapper<ManagedDependencyOptions>(new ManagedDependencyOptions()),
                 mockFunctionDispatcherLoadBalancer.Object,
                 Options.Create(new WorkerConcurrencyOptions()),
-                Options.Create(new FunctionsHostingConfigOptions()));
+                Options.Create(new FunctionsHostingConfigOptions()),
+                mockHostMetrics.Object);
         }
 
         private async Task<int> WaitForJobhostWorkerChannelsToStartup(RpcFunctionInvocationDispatcher functionDispatcher, int expectedCount, bool allReadyForInvocations = true)

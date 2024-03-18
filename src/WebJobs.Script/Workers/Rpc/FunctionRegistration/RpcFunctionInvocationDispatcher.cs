@@ -16,6 +16,7 @@ using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
+using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -38,6 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly IEnumerable<RpcWorkerConfig> _workerConfigs;
         private readonly Lazy<Task<int>> _maxProcessCount;
         private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions;
+        private readonly IHostMetrics _hostMetrics;
 
         private IScriptEventManager _eventManager;
         private IWebHostRpcWorkerChannelManager _webHostLanguageWorkerChannelManager;
@@ -72,7 +74,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             IOptions<ManagedDependencyOptions> managedDependencyOptions,
             IRpcFunctionInvocationDispatcherLoadBalancer functionDispatcherLoadBalancer,
             IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions,
-            IOptions<FunctionsHostingConfigOptions> hostingConfigOptions)
+            IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
+            IHostMetrics hostMetrics)
         {
             _metricsLogger = metricsLogger;
             _scriptOptions = scriptHostOptions.Value;
@@ -89,6 +92,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _functionDispatcherLoadBalancer = functionDispatcherLoadBalancer;
             _workerConcurrencyOptions = workerConcurrencyOptions;
             _hostingConfigOptions = hostingConfigOptions;
+            _hostMetrics = hostMetrics ?? throw new ArgumentNullException(nameof(hostMetrics));
             State = FunctionInvocationDispatcherState.Default;
 
             _workerErrorSubscription = _eventManager.OfType<WorkerErrorEvent>().Subscribe(WorkerError);
@@ -601,6 +605,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
             else if (!_jobHostLanguageWorkerChannelManager.GetChannels().Any())
             {
+                _hostMetrics.AppFailure();
                 _logger.LogError("Exceeded language worker restart retry count for runtime:{runtime}. Shutting down and proactively recycling the Functions Host to recover", runtime);
                 _applicationLifetime.StopApplication();
             }
