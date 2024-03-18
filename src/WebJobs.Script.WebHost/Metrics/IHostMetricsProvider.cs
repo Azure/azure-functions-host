@@ -5,7 +5,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace Microsoft.Azure.WebJobs.Script.Metrics
+namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 {
     /// <summary>
     /// Defines the methods that are required for a host metrics provider.

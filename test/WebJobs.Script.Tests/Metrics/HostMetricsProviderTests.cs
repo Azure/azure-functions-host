@@ -2,11 +2,15 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Linq;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Metrics;
+using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Azure.WebJobs.Script.WebHost.Metrics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Xunit;
@@ -16,8 +20,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
     [Trait(TestTraits.Group, TestTraits.HostMetricsTests)]
     public class HostMetricsProviderTests
     {
-        private readonly IServiceProvider _serviceProvider;
-        private readonly IHostMetricsProvider _hostMetricsProvider;
+        private IServiceProvider _serviceProvider;
+        private StandbyOptions _standbyOptions;
+        private TestOptionsMonitor<StandbyOptions> _standbyOptionsMonitor;
+        private TestLogger<HostMetricsProvider> _logger;
 
         public HostMetricsProviderTests()
         {
@@ -39,7 +45,32 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             serviceCollection.AddSingleton<IScriptHostManager>(scriptHostManagerMock.Object);
 
             _serviceProvider = serviceCollection.BuildServiceProvider();
-            _hostMetricsProvider = new HostMetricsProvider(_serviceProvider);
+        }
+
+        private HostMetricsProvider CreateProvider(bool inStandbyMode = false)
+        {
+            _standbyOptions = new StandbyOptions { InStandbyMode = inStandbyMode };
+            _standbyOptionsMonitor = new TestOptionsMonitor<StandbyOptions>(_standbyOptions);
+            _logger = new TestLogger<HostMetricsProvider>();
+            return new HostMetricsProvider(_serviceProvider, _standbyOptionsMonitor, _logger);
+        }
+
+        [Fact]
+        public void ProviderStartsOnSpecialization()
+        {
+            var publisher = CreateProvider(inStandbyMode: true);
+
+            var logs = _logger.GetLogMessages();
+            var log = logs.Single();
+            Assert.Equal(LogLevel.Debug, log.Level);
+            Assert.Equal("Registering StandbyOptions change subscription.", log.FormattedMessage);
+
+            _standbyOptions.InStandbyMode = false;
+            _standbyOptionsMonitor.InvokeChanged();
+
+            logs = _logger.GetLogMessages();
+            log = logs.Single(p => p.FormattedMessage == "Starting host metrics provider.");
+            Assert.NotNull(log);
         }
 
         [Fact]
@@ -47,6 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
         {
             // Arrange
             var metrics = _serviceProvider.GetRequiredService<IHostMetrics>();
+            var hostMetricsProvider = CreateProvider();
 
             // Act
             metrics.IncrementStartedInvocationCount();
@@ -54,7 +86,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             metrics.AppFailure();
 
             // Assert
-            var result = _hostMetricsProvider.GetHostMetricsOrNull();
+            var result = hostMetricsProvider.GetHostMetricsOrNull();
             result.TryGetValue(HostMetrics.StartedInvocationCount, out var startedInvocationCount);
             result.TryGetValue(HostMetrics.AppFailureCount, out var appFailureCount);
             Assert.Equal(1, startedInvocationCount);
@@ -66,9 +98,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
         {
             // Arrange
             var metrics = _serviceProvider.GetRequiredService<IHostMetrics>();
+            var hostMetricsProvider = CreateProvider();
 
             // Assert
-            var result = _hostMetricsProvider.GetHostMetricsOrNull();
+            var result = hostMetricsProvider.GetHostMetricsOrNull();
             Assert.Null(result);
         }
 
@@ -77,14 +110,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
         {
             // Arrange
             var metrics = _serviceProvider.GetRequiredService<IHostMetrics>();
+            var hostMetricsProvider = CreateProvider();
 
             // Act
             metrics.AppFailure();
 
             // Assert
-            Assert.True(_hostMetricsProvider.HasMetrics());
-            _hostMetricsProvider.GetHostMetricsOrNull();
-            Assert.False(_hostMetricsProvider.HasMetrics());
+            Assert.True(hostMetricsProvider.HasMetrics());
+            hostMetricsProvider.GetHostMetricsOrNull();
+            Assert.False(hostMetricsProvider.HasMetrics());
         }
 
         [Theory]
@@ -94,6 +128,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
         {
             // Arrange
             var metrics = _serviceProvider.GetRequiredService<IHostMetrics>();
+            var hostMetricsProvider = CreateProvider();
 
             // Act
             if (hasMetrics)
@@ -102,7 +137,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             }
 
             // Assert
-            Assert.Equal(hasMetrics, _hostMetricsProvider.HasMetrics());
+            Assert.Equal(hasMetrics, hostMetricsProvider.HasMetrics());
+        }
+
+        [Fact]
+        public void HostMetricsProvider_StandbyMode_DoesNotStart()
+        {
+            // Arrange
+            var metrics = _serviceProvider.GetRequiredService<IHostMetrics>();
+            var hostMetricsProvider = CreateProvider(true);
+
+            // Assert
+            var result = hostMetricsProvider.GetHostMetricsOrNull();
+            Assert.Null(result);
         }
     }
 }

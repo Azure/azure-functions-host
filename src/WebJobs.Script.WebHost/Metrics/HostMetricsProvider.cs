@@ -1,6 +1,5 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
-#nullable enable
 
 using System;
 using System.Collections.Concurrent;
@@ -8,24 +7,43 @@ using System.Collections.Generic;
 using System.Diagnostics.Metrics;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Script.Metrics;
+using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
-namespace Microsoft.Azure.WebJobs.Script.Metrics
+namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 {
     public class HostMetricsProvider : IHostMetricsProvider, IDisposable
     {
         private readonly MeterListener _meterListener;
         private readonly IServiceProvider _serviceProvider;
+        private readonly IOptionsMonitor<StandbyOptions> _standbyOptions;
+        private readonly ILogger<HostMetricsProvider> _logger;
         private readonly object _lock = new object();
 
         private ConcurrentDictionary<string, long> _metricsCache = new();
         private bool _started = false;
+        private IDisposable _standbyOptionsOnChangeSubscription;
 
-        public HostMetricsProvider(IServiceProvider serviceProvider)
+        public HostMetricsProvider(IServiceProvider serviceProvider, IOptionsMonitor<StandbyOptions> standbyOptions,
+            ILogger<HostMetricsProvider> logger)
         {
             _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+            _standbyOptions = standbyOptions ?? throw new ArgumentNullException(nameof(standbyOptions));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _meterListener = new();
+
+            if (_standbyOptions.CurrentValue.InStandbyMode)
+            {
+                _logger.LogDebug("Registering StandbyOptions change subscription.");
+                _standbyOptionsOnChangeSubscription = _standbyOptions.OnChange(o => OnStandbyOptionsChange());
+            }
+            else
+            {
+                Start();
+            }
         }
 
         public string FunctionGroup { get; private set; } = string.Empty;
@@ -47,17 +65,27 @@ namespace Microsoft.Azure.WebJobs.Script.Metrics
                 }
             };
 
+            _logger.LogInformation("Starting host metrics provider.");
+
             _meterListener.SetMeasurementEventCallback<long>(OnMeasurementRecordedLong);
             _meterListener.Start();
 
             _started = true;
         }
 
+        private void OnStandbyOptionsChange()
+        {
+            if (!_standbyOptions.CurrentValue.InStandbyMode)
+            {
+                Start();
+            }
+        }
+
         internal void OnMeasurementRecordedLong(
             Instrument instrument,
             long measurement,
-            ReadOnlySpan<KeyValuePair<string, object?>> tags,
-            object? state)
+            ReadOnlySpan<KeyValuePair<string, object>> tags,
+            object state)
         {
             if (!_started)
             {
@@ -97,7 +125,7 @@ namespace Microsoft.Azure.WebJobs.Script.Metrics
                 });
         }
 
-        public IReadOnlyDictionary<string, long>? GetHostMetricsOrNull()
+        public IReadOnlyDictionary<string, long> GetHostMetricsOrNull()
         {
             if (!HasMetrics())
             {
@@ -130,6 +158,9 @@ namespace Microsoft.Azure.WebJobs.Script.Metrics
         public void Dispose()
         {
             _meterListener?.Dispose();
+
+            _standbyOptionsOnChangeSubscription?.Dispose();
+            _standbyOptionsOnChangeSubscription = null;
         }
     }
 }
