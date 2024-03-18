@@ -4,8 +4,10 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Diagnostics.Metrics;
 using System.Linq;
+using System.Threading;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,11 +22,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         private readonly IServiceProvider _serviceProvider;
         private readonly IOptionsMonitor<StandbyOptions> _standbyOptions;
         private readonly ILogger<HostMetricsProvider> _logger;
-        private readonly object _lock = new object();
 
         private ConcurrentDictionary<string, long> _metricsCache = new();
-        private bool _started = false;
         private IDisposable _standbyOptionsOnChangeSubscription;
+        private bool _started = false;
 
         public HostMetricsProvider(IServiceProvider serviceProvider, IOptionsMonitor<StandbyOptions> standbyOptions,
             ILogger<HostMetricsProvider> logger)
@@ -80,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
             }
         }
 
-        internal void OnMeasurementRecordedLong(
+        private void OnMeasurementRecordedLong(
             Instrument instrument,
             long measurement,
             ReadOnlySpan<KeyValuePair<string, object>> tags,
@@ -96,10 +97,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
                 throw new ArgumentNullException(nameof(instrument));
             }
 
-            lock (_lock)
-            {
-                AddOrUpdateMetricsCache(instrument.Name, measurement);
-            }
+            AddOrUpdateMetricsCache(instrument.Name, measurement);
         }
 
         private void AddOrUpdateMetricsCache(string key, long value)
@@ -138,21 +136,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
                 AddOrUpdateMetricsCache(HostMetrics.ActiveInvocationCount, functionActivityStatus.OutstandingInvocations);
             }
 
-            IReadOnlyDictionary<string, long> metrics;
-
-            lock (_lock)
-            {
-                metrics = new Dictionary<string, long>(_metricsCache);
-                _metricsCache.Clear();
-            }
+            var metrics = Interlocked.Exchange(ref _metricsCache, new ConcurrentDictionary<string, long>());
 
             return metrics;
         }
 
-        public bool HasMetrics()
-        {
-            return _metricsCache.Count > 0;
-        }
+        public bool HasMetrics() => !_metricsCache.IsEmpty;
 
         public void Dispose()
         {
