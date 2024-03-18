@@ -4,13 +4,11 @@
 using System;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Host.Executors;
-using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Metrics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Xunit;

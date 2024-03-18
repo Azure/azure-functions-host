@@ -8,7 +8,6 @@ using System.Diagnostics.Metrics;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Script.Metrics;
-using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
