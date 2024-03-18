@@ -1,11 +1,9 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
-#nullable enable
 
-using System;
 using System.Collections.Generic;
 
-namespace Microsoft.Azure.WebJobs.Script.Metrics
+namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 {
     /// <summary>
     /// Defines the methods that are required for a host metrics provider.
@@ -27,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Metrics
         /// <summary>
         /// Retrieves a dictionary of available metrics, or null.
         /// </summary>
-        public IReadOnlyDictionary<string, long>? GetHostMetricsOrNull();
+        public IReadOnlyDictionary<string, long> GetHostMetricsOrNull();
 
         /// <summary>
         /// Determines whether the provider has any host metrics.

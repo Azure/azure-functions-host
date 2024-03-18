@@ -1,30 +1,49 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
-#nullable enable
 
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Diagnostics.Metrics;
 using System.Linq;
+using System.Threading;
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
-namespace Microsoft.Azure.WebJobs.Script.Metrics
+namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 {
     public class HostMetricsProvider : IHostMetricsProvider, IDisposable
     {
         private readonly MeterListener _meterListener;
         private readonly IServiceProvider _serviceProvider;
-        private ConcurrentDictionary<string, long> _metricsCache = new();
+        private readonly IOptionsMonitor<StandbyOptions> _standbyOptions;
+        private readonly ILogger<HostMetricsProvider> _logger;
 
-        public HostMetricsProvider(IServiceProvider serviceProvider)
+        private ConcurrentDictionary<string, long> _metricsCache = new();
+        private IDisposable _standbyOptionsOnChangeSubscription;
+        private bool _started = false;
+
+        public HostMetricsProvider(IServiceProvider serviceProvider, IOptionsMonitor<StandbyOptions> standbyOptions,
+            ILogger<HostMetricsProvider> logger)
         {
             _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+            _standbyOptions = standbyOptions ?? throw new ArgumentNullException(nameof(standbyOptions));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _meterListener = new();
 
-            Start();
+            if (_standbyOptions.CurrentValue.InStandbyMode)
+            {
+                _logger.LogDebug("Registering StandbyOptions change subscription.");
+                _standbyOptionsOnChangeSubscription = _standbyOptions.OnChange(o => OnStandbyOptionsChange());
+            }
+            else
+            {
+                Start();
+            }
         }
 
         public string FunctionGroup { get; private set; } = string.Empty;
@@ -46,16 +65,33 @@ namespace Microsoft.Azure.WebJobs.Script.Metrics
                 }
             };
 
+            _logger.LogInformation("Starting host metrics provider.");
+
             _meterListener.SetMeasurementEventCallback<long>(OnMeasurementRecordedLong);
             _meterListener.Start();
+
+            _started = true;
         }
 
-        internal void OnMeasurementRecordedLong(
+        private void OnStandbyOptionsChange()
+        {
+            if (!_standbyOptions.CurrentValue.InStandbyMode)
+            {
+                Start();
+            }
+        }
+
+        private void OnMeasurementRecordedLong(
             Instrument instrument,
             long measurement,
-            ReadOnlySpan<KeyValuePair<string, object?>> tags,
-            object? state)
+            ReadOnlySpan<KeyValuePair<string, object>> tags,
+            object state)
         {
+            if (!_started)
+            {
+                return;
+            }
+
             if (instrument == null)
             {
                 throw new ArgumentNullException(nameof(instrument));
@@ -86,43 +122,33 @@ namespace Microsoft.Azure.WebJobs.Script.Metrics
                 });
         }
 
-        public IReadOnlyDictionary<string, long>? GetHostMetricsOrNull()
+        public IReadOnlyDictionary<string, long> GetHostMetricsOrNull()
         {
             if (!HasMetrics())
             {
                 return null;
             }
 
-            try
+            var functionActivityStatusProvider = _serviceProvider.GetScriptHostServiceOrNull<IFunctionActivityStatusProvider>();
+            if (functionActivityStatusProvider is not null)
             {
-                var functionActivityStatusProvider = _serviceProvider.GetScriptHostServiceOrNull<IFunctionActivityStatusProvider>();
-                if (functionActivityStatusProvider is not null)
-                {
-                    var functionActivityStatus = functionActivityStatusProvider.GetStatus();
-                    AddOrUpdateMetricsCache(HostMetrics.ActiveInvocationCount, functionActivityStatus.OutstandingInvocations);
-                }
-
-                return new Dictionary<string, long>(_metricsCache);
+                var functionActivityStatus = functionActivityStatusProvider.GetStatus();
+                AddOrUpdateMetricsCache(HostMetrics.ActiveInvocationCount, functionActivityStatus.OutstandingInvocations);
             }
-            finally
-            {
-                PurgeMetricsCache();
-            }
+
+            var metrics = Interlocked.Exchange(ref _metricsCache, new ConcurrentDictionary<string, long>());
+
+            return metrics;
         }
 
-        public bool HasMetrics()
-        {
-            return _metricsCache.Count > 0;
-        }
-
-        private void PurgeMetricsCache()
-        {
-            _metricsCache.Clear();
-        }
+        public bool HasMetrics() => !_metricsCache.IsEmpty;
 
         public void Dispose()
         {
             _meterListener?.Dispose();
+
+            _standbyOptionsOnChangeSubscription?.Dispose();
+            _standbyOptionsOnChangeSubscription = null;
         }
     }
 }
