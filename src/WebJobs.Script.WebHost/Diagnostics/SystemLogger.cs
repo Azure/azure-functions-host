@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Indexers;
+using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -172,7 +173,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             if (exception != null)
             {
                 // Populate details from the exception.
-                if (string.IsNullOrEmpty(functionName) && exception is FunctionInvocationException fex)
+                if (string.IsNullOrEmpty(functionName) && exception is FunctionException fex)
                 {
                     functionName = string.IsNullOrEmpty(fex.MethodName) ? string.Empty : fex.MethodName.Replace("Host.Functions.", string.Empty);
                 }
