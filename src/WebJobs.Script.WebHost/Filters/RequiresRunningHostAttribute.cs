@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Net;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.Extensions;
@@ -64,24 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
 
             public override async Task OnActionExecutionAsync(ActionExecutingContext actionContext, ActionExecutionDelegate next)
             {
-                if (_hostManager.State == ScriptHostState.Offline)
-                {
-                    await actionContext.HttpContext.SetOfflineResponseAsync(_applicationHostOptions.CurrentValue.ScriptPath);
-                }
-                else
-                {
-                    // If the host is not ready, we'll wait a bit for it to initialize.
-                    // This might happen if http requests come in while the host is starting
-                    // up for the first time, or if it is restarting.
-                    bool hostReady = await _hostManager.DelayUntilHostReady(TimeoutSeconds, PollingIntervalMilliseconds);
-
-                    if (!hostReady)
-                    {
-                        throw new HttpException(HttpStatusCode.ServiceUnavailable, "Function host is not running.");
-                    }
-
-                    await next();
-                }
+                await actionContext.HttpContext.WaitForRunningHostAsync(_hostManager, _applicationHostOptions.CurrentValue, TimeoutSeconds, PollingIntervalMilliseconds, next);
             }
         }
     }

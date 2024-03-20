@@ -14,6 +14,7 @@ using System.Threading.Tasks;
 using Azure.Storage.Blobs;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Storage;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Models;
@@ -63,10 +64,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private readonly SemaphoreSlim _syncSemaphore = new SemaphoreSlim(1, 1);
         private readonly IAzureBlobStorageProvider _azureBlobStorageProvider;
         private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions;
+        private readonly IScriptHostManager _scriptHostManager;
 
         private BlobClient _hashBlobClient;
 
-        public FunctionsSyncManager(IHostIdProvider hostIdProvider, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger<FunctionsSyncManager> logger, IHttpClientFactory httpClientFactory, ISecretManagerProvider secretManagerProvider, IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment, HostNameProvider hostNameProvider, IFunctionMetadataManager functionMetadataManager, IAzureBlobStorageProvider azureBlobStorageProvider, IOptions<FunctionsHostingConfigOptions> functionsHostingConfigOptions)
+        public FunctionsSyncManager(IHostIdProvider hostIdProvider, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger<FunctionsSyncManager> logger, IHttpClientFactory httpClientFactory, ISecretManagerProvider secretManagerProvider, IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment, HostNameProvider hostNameProvider, IFunctionMetadataManager functionMetadataManager, IAzureBlobStorageProvider azureBlobStorageProvider, IOptions<FunctionsHostingConfigOptions> functionsHostingConfigOptions, IScriptHostManager scriptHostManager)
         {
             _applicationHostOptions = applicationHostOptions;
             _logger = logger;
@@ -79,6 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             _functionMetadataManager = functionMetadataManager;
             _azureBlobStorageProvider = azureBlobStorageProvider;
             _hostingConfigOptions = functionsHostingConfigOptions;
+            _scriptHostManager = scriptHostManager;
         }
 
         internal bool ArmCacheEnabled
@@ -313,9 +316,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             var triggersArray = new JArray(triggers);
             int count = triggersArray.Count;
 
+            JObject hostConfig = null;
+            if (_environment.IsFlexConsumptionSku())
+            {
+                // TODO: Only adding host configuration for Flex. Once SyncTriggers is marked RequiresRunningHost,
+                // we'll enable across the board.
+                // https://github.com/Azure/azure-functions-host/issues/9904
+                // If an active host is running, add host configuration.
+                if (Utility.TryGetHostService<IHostOptionsProvider>(_scriptHostManager, out IHostOptionsProvider hostOptionsProvider))
+                {
+                    hostConfig = hostOptionsProvider.GetOptions();
+                }
+            }
+
             // Form the base minimal result
             string hostId = await _hostIdProvider.GetHostIdAsync(CancellationToken.None);
-            JObject result = GetMinimalPayload(hostId, triggersArray);
+            JObject result = GetMinimalPayload(hostId, triggersArray, hostConfig);
 
             if (!ArmCacheEnabled)
             {
@@ -396,7 +412,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 // If we're over limit, revert to the minimal triggers format.
                 _logger.LogWarning($"SyncTriggers payload of length '{json.Length}' exceeds max length of '{ScriptConstants.MaxTriggersStringLength}'. Reverting to minimal format.");
 
-                var minimalResult = GetMinimalPayload(hostId, triggersArray);
+                var minimalResult = GetMinimalPayload(hostId, triggersArray, hostConfig);
                 json = JsonConvert.SerializeObject(minimalResult);
             }
 
@@ -407,14 +423,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             };
         }
 
-        private JObject GetMinimalPayload(string hostId, JArray triggersArray)
+        private JObject GetMinimalPayload(string hostId, JArray triggersArray, JObject hostConfig)
         {
             // When the HostId is sent, ScaleController will use it directly rather than compute it itself.
-            return new JObject
+            var result = new JObject
             {
                 { "triggers", triggersArray },
                 { "hostId", hostId }
             };
+
+            if (hostConfig != null)
+            {
+                result.Add("hostConfig", Sanitizer.Sanitize(hostConfig));
+            }
+
+            return result;
         }
 
         internal static async Task<JObject> GetHostJsonExtensionsAsync(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger logger)
