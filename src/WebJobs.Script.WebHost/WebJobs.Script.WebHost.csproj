@@ -11,6 +11,7 @@
     <TieredCompilation>false</TieredCompilation>
     <NoWarn>NU5104</NoWarn>
     <IdentityDependencyVersion>6.35.0</IdentityDependencyVersion>
+    <RuntimeIdentifiers>win-x86;win-x64;linux-x64</RuntimeIdentifiers>
   </PropertyGroup>
   <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
     <PublishReadyToRun>true</PublishReadyToRun>

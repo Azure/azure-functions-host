@@ -1,0 +1,67 @@
+<Project Sdk="Microsoft.Build.NoTargets">
+  <Import Project="..\..\build\common.props" />
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <SiteExtensionName>Functions</SiteExtensionName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PublishRuntimeIdentifier Include="win-x86" SelfContained="false" PublishDir="32bit" />
+    <PublishRuntimeIdentifier Include="win-x64" SelfContained="false" PublishDir="64bit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <!-- We set many properties and items in targets to ensure $(Version) is finalized. -->
+  <Target Name="UpdatePaths" BeforeTargets="AddRuntimesToProjects;AssignTargetPaths">
+    <PropertyGroup>
+      <SiteExtensionRelativeDir>SiteExtension\$(Version)\</SiteExtensionRelativeDir>
+      <SiteExtensionDir>$([MSBuild]::NormalizePath('$(PublishDir)$(SiteExtensionRelativeDir)'))</SiteExtensionDir>
+    </PropertyGroup>
+    <ItemGroup>
+      <None Include="applicationHost.xdt" TargetPath="$(SiteExtensionRelativeDir)applicationHost.xdt" CopyToPublishDirectory="PreserveNewest" />
+      <None Include="extension.xml" TargetPath="SiteExtension\extension.xml" CopyToPublishDirectory="PreserveNewest" />
+    </ItemGroup>
+  </Target>
+
+  <Target Name="AddRuntimesToProjects" BeforeTargets="BeforeBuild;PrepareForPublish;BeforeClean">
+    <ItemGroup>
+      <_ProjectReferenceWithRuntimes Include="@(ProjectReference)">
+        <AdditionalProperties>
+          RuntimeIdentifier=%(PublishRuntimeIdentifier.Identity);
+          SelfContained=%(PublishRuntimeIdentifier.SelfContained);
+          PublishDir=$(SiteExtensionDir)%(PublishRuntimeIdentifier.PublishDir)/
+        </AdditionalProperties>
+        <Private>false</Private> <!-- Avoids including transitive output. -->
+      </_ProjectReferenceWithRuntimes>
+      <ProjectReference Remove="@(ProjectReference)" />
+      <ProjectReference Include="@(_ProjectReferenceWithRuntimes)" />
+    </ItemGroup>
+  </Target>
+
+  <Target Name="PublishProjectReferences" AfterTargets="PrepareForPublish" BeforeTargets="Publish">
+    <MSBuild Projects="@(ProjectReference)" Targets="Publish" BuildInParallel="$(BuildInParallel)" Properties="NoBuild=true" />
+  </Target>
+
+  <Target Name="MoveSymbols" AfterTargets="PublishProjectReferences" BeforeTargets="Publish">
+    <ItemGroup>
+      <!--
+        The below looks complex (and it is) because we are trying to take one item group and project it into multiple globbed item groups,
+        while retaining metadata from the original item group. However MSBuild does not natively support this! See the below commented out
+        _Symbol item group. Instead, we glob the parent directory. Then we combine the item metadata from PublishRuntimeIdentifier by matching
+        on the RecursiveDir that was globbed.
+      -->
+      <!-- <_Symbol Include="@(PublishRuntimeIdentifier->'$(SiteExtensionDir)%(PublishDir)/**/*.pdb')" Runtime="%(PublishRuntimeIdentifier.Identity)" /> -->
+      <_SymbolIntermediate Include="$(SiteExtensionDir)**/*.pdb" Runtime="%(PublishRuntimeIdentifier.Identity)" PublishDir="%(PublishRuntimeIdentifier.PublishDir)" />
+      <_Symbol
+        Include="@(_SymbolIntermediate)"
+        TargetPath="$(PublishDir)\Symbols\$(SiteExtensionName).Symbols.$(Version).%(Runtime)\$([System.String]::new('%(RecursiveDir)').Replace('%(PublishDir)', ''))%(Filename)%(Extension)"
+        Condition="$([System.String]::new('%(RecursiveDir)').StartsWith('%(PublishDir)'))" />
+    </ItemGroup>
+    <Move SourceFiles="@(_Symbol)" DestinationFiles="%(TargetPath)"/>
+  </Target>
+
+</Project>
