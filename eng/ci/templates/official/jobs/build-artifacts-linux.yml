@@ -6,18 +6,19 @@ jobs:
     project: src/WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj
     configuration: release
     runtime: linux-x64
-    log_dir: $(Build.ArtifactStagingDirectory)/log
+    artifacts_path: $(Build.ArtifactStagingDirectory)
+    log_dir: $(artifacts_path)/log
+    zip_artifacts_path: $(artifacts_path)/Linux
     build_args: '-v m -c $(configuration) -r $(runtime) --self-contained true -p:BuildNumber=$(buildNumber) -p:IsPackable=false'
-    publish_zip_dir: $(Build.ArtifactStagingDirectory)/Linux
 
   templateContext:
-    outputParentDirectory: $(Build.ArtifactStagingDirectory)
+    outputParentDirectory: $(artifacts_path)
     outputs:
     # TODO: onboard to Azure Artifacts Drops to allow accessing this from docker linux pipeline in msazure
     # https://eng.ms/docs/cloud-ai-platform/devdiv/one-engineering-system-1es/1es-docs/azure-artifacts/artifact-services-onboarding
     - output: pipelineArtifact
       displayName: Publish linux artifacts
-      path: $(publish_zip_dir)
+      path: $(zip_artifacts_path)
       artifact: Linux
     - output: pipelineArtifact
       displayName: Publish logs
@@ -58,4 +59,4 @@ jobs:
       publishWebProjects: false # we use our own publish logic
       zipAfterPublish: false # we use our own zip logic
       projects: $(project)
-      arguments: '$(build_args) --no-build -p:PublishZipDir=$(publish_zip_dir) -bl:$(log_dir)/publish.binlog'
+      arguments: '$(build_args) --no-build -p:ZipArtifactsPath=$(zip_artifacts_path) -bl:$(log_dir)/publish.binlog'

@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Web">
   <Import Project="..\..\build\common.props" />
-  <Import Project="..\..\build\python.props" />
+  <Import Project="..\..\build\workers.props" />
   <PropertyGroup>
     <TargetFrameworks>net8.0;net6.0</TargetFrameworks>
     <AssemblyName>Microsoft.Azure.WebJobs.Script.WebHost</AssemblyName>
@@ -12,6 +12,7 @@
     <NoWarn>NU5104</NoWarn>
     <IdentityDependencyVersion Condition="'$(TargetFramework)' == 'net6.0'">6.35.0</IdentityDependencyVersion>
     <IdentityDependencyVersion Condition="'$(TargetFramework)' == 'net8.0'">7.1.2</IdentityDependencyVersion>
+    <RuntimeIdentifiers>win-x86;win-x64;linux-x64</RuntimeIdentifiers>
   </PropertyGroup>
   <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
     <PublishReadyToRun>true</PublishReadyToRun>
@@ -56,10 +57,6 @@
     <Content Include="PreJIT\linux.coldstart.jittrace">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Routing\" />
   </ItemGroup>
 
   <ItemGroup>
@@ -147,41 +144,25 @@
   </ItemGroup>
 
   <!-- Remove all worker items from the ReadyToRun publish list -->
-  <Target Name="ExcludeWorkersFromReadyToRun" BeforeTargets="_PrepareForReadyToRunCompilation">
-    <CreateItem Include="@(ResolvedFileToPublish)" Condition="$([System.String]::new('%(ResolvedFileToPublish.TargetPath)').StartsWith('workers'))">
-      <Output TaskParameter="Include" ItemName="_ExcludeFromReadyToRun" />
-    </CreateItem>
-
+  <Target Name="ExcludeWorkers" AfterTargets="ComputeFilesToPublish" BeforeTargets="ResolveReadyToRunCompilers">
     <ItemGroup>
-      <ResolvedFileToPublish Remove="@(_ExcludeFromReadyToRun)" />
+      <_WorkerPublishFiles Include="@(ResolvedFileToPublish)" Condition="$([System.String]::new('%(ResolvedFileToPublish.TargetPath)').StartsWith('workers'))" />
+      <ResolvedFileToPublish Remove="@(_WorkerPublishFiles)" />
     </ItemGroup>
   </Target>
 
   <!-- Add all worker items back to the publish list -->
-  <Target Name="IncludeWorkersInPublish" AfterTargets="CreateReadyToRunImages">
-    <CreateItem Include="@(_ExcludeFromReadyToRun)">
-      <Output TaskParameter="Include" ItemName="ResolvedFileToPublish" />
-    </CreateItem>
+  <Target Name="ReAddWorkersToPublish" AfterTargets="CreateReadyToRunImages" BeforeTargets="CopyFilesToPublishDirectory" Condition="'$(PublishWorkers)' != 'false'">
+    <ItemGroup>
+      <ResolvedFileToPublish Include="@(_WorkerPublishFiles)" />
+    </ItemGroup>
   </Target>
 
-
-  <!--
-    Allows for zipping publish outputs:
-    Zip with a pre-determined name/location:
-    > `dotnet publish -p:PublishZip=true`
-    Zip with a pre-determined name to the provided location
-    > `dotnet publish -p:PublishZipDir={some directory}`
-    Zip with a provided name and location
-    > `dotnet publish -p:PublishZipTarget={some directory}/{some_file}.zip`
-  -->
-  <Target Name="ZipPublishContents" AfterTargets="Publish">
-    <PropertyGroup Condition="'$(PublishZipTarget)' == ''">
-      <PublishZipDir Condition="'$(PublishZipDir)' == '' AND '$(PublishZip)' == 'true'">$(PublishDir)..</PublishZipDir>
-      <PublishZipTarget Condition="'$(PublishZipDir)' != ''">$(PublishZipDir)\$(AssemblyName).$(Version).$(ArtifactsPivots).zip</PublishZipTarget>
-    </PropertyGroup>
-
-    <MakeDir Directories="$([System.IO.Path]::GetDirectoryName('$(PublishZipTarget)'))" Condition="'$(PublishZipTarget)' != ''" />
-    <ZipDirectory SourceDirectory="$(PublishDir)" DestinationFile="$(PublishZipTarget)" Condition="'$(PublishZipTarget)' != ''" />
+  <!-- PythonWorker package injects its content files through custom targets. -->
+  <Target Name="SuppressPythonWorker" AfterTargets="Initialize" BeforeTargets="CopyOnPublish" Condition="'$(PublishWorkers)' == 'false'">
+    <ItemGroup>
+      <SourceFiles Remove="@(SourceFiles)" />
+    </ItemGroup>
   </Target>
 
 </Project>

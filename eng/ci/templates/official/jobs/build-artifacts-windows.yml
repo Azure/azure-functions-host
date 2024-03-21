@@ -2,6 +2,20 @@ jobs:
 - job: BuildArtifactsWindows
   displayName: Build Windows Artifacts
 
+  pool:
+    name: 1es-pool-azfunc
+    image: 1es-windows-2022 
+    os: windows
+
+  variables:
+    ${{ if or( eq( variables['Build.Reason'], 'PullRequest' ), and( not( contains( variables['Build.SourceBranch'], 'release/inproc6/4.' ) ), not( contains( variables['Build.SourceBranch'], 'release/inproc8/4.' ) ), not( contains( variables['Build.SourceBranch'], 'release/4.' ) ), not( contains( variables['Build.SourceBranch'], 'release/ExtensionsMetadataGenerator/' ) ) ) ) }}:
+        packSuffixSwitchTemp: --version-suffix $(buildNumber)
+        emgSuffixSwitchTemp: --version-suffix ci$(buildNumber)
+    packSuffixSwitch: $[variables.packSuffixSwitchTemp]
+    emgSuffixSwitch: $[variables.emgSuffixSwitchTemp]
+    nuget_package_path: $(Build.ArtifactStagingDirectory)/NugetPackages
+    log_dir: $(Build.ArtifactStagingDirectory)/log
+
   templateContext:
     outputParentDirectory: $(Build.ArtifactStagingDirectory)
     outputs:
@@ -15,48 +29,29 @@ jobs:
       artifact: PrivateSiteExtension
     - output: pipelineArtifact
       displayName: Publish site extension symbols
-      path: $(Build.ArtifactStagingDirectory)/Symbols
+      path: $(Build.ArtifactStagingDirectory)/SiteExtensionSymbols
       artifact: Symbols
     - output: pipelineArtifact
       displayName: Publish nuget packages
       path: $(Build.ArtifactStagingDirectory)/NugetPackages
       artifact: NugetPackages
-
-  pool:
-    name: 1es-pool-azfunc
-    image: 1es-windows-2022 
-    os: windows
-
-  variables:
-    ${{ if or( eq( variables['Build.Reason'], 'PullRequest' ), and(not( contains( variables['Build.SourceBranch'], 'release/in-proc.' ) ), not( contains( variables['Build.SourceBranch'], 'release/4.' ) ), not( contains( variables['Build.SourceBranch'], 'release/ExtensionsMetadataGenerator/' ) ) ) ) }}:
-        suffixTemp: $(buildNumber)
-        packSuffixSwitchTemp: --version-suffix $(buildNumber)
-        emgSuffixSwitchTemp: --version-suffix ci$(buildNumber)
-    suffix: $[variables.suffixTemp] # this resolves to an empty string if it is missing
-    packSuffixSwitch: $[variables.packSuffixSwitchTemp]
-    emgSuffixSwitch: $[variables.emgSuffixSwitchTemp]
+    - output: pipelineArtifact
+      displayName: Publish logs
+      path: $(log_dir)
+      artifact: Windows_Log
+      sbomEnabled: false
+      condition: always()
 
   steps:
   - template: /eng/ci/templates/install-dotnet.yml@self
-
-  - task: PowerShell@2
-    displayName: Build artifacts
-    inputs:
-      filePath: build/build-extensions.ps1
-      arguments: '-buildNumber "$(buildNumber)" -suffix "$(suffix)"'
-
-  - task: CopyFiles@2
-    inputs:
-      SourceFolder: out/pub/WebJobs.Script.WebHost
-      Contents: '**/*.zip'
-      TargetFolder: $(Build.ArtifactStagingDirectory)
+  - template: /eng/ci/templates/steps/build-site-ext.yml@self
 
   - task: DotNetCoreCLI@2
     displayName: Build host packages
     inputs:
       command: custom
       custom: pack
-      arguments: -p:BuildNumber=$(buildNumber) -c release $(packSuffixSwitch)
+      arguments: -p:BuildNumber=$(buildNumber) -c release $(packSuffixSwitch) -o $(nuget_package_path)
       projects: |
         **/WebJobs.Script.csproj
         **/WebJobs.Script.WebHost.csproj
@@ -102,17 +97,12 @@ jobs:
           }
         ]
 
-  - task: DeleteFiles@1
-    displayName: Delete CodeSignSummary files
-    inputs:
-      contents: '**/CodeSignSummary-*.md'
-
   - task: DotNetCoreCLI@2
     displayName: Pack Abstractions
     inputs:
       command: custom
       custom: pack
-      arguments: '--no-build -c release'
+      arguments: '--no-build -c release -o $(nuget_package_path)'
       projects: |
         **/WebJobs.Script.Abstractions.csproj
 
@@ -120,7 +110,7 @@ jobs:
     displayName: Sign Abstractions package
     inputs:
       ConnectedServiceName: ESRP Service-internal
-      FolderPath: out/pkg/release
+      FolderPath: $(nuget_package_path)
       Pattern: Microsoft.Azure.WebJobs.Script.Abstractions*.nupkg
       signConfigType: inlineSignParams
       inlineOperation: |
@@ -186,17 +176,12 @@ jobs:
           }
         ]
 
-  - task: DeleteFiles@1
-    displayName: Delete CodeSignSummary files
-    inputs:
-      contents: '**/CodeSignSummary-*.md'
-
   - task: DotNetCoreCLI@2
     displayName: Pack ExtensionsMetadataGenerator
     inputs:
       command: custom
       custom: pack
-      arguments: '--no-build -c release $(emgSuffixSwitch)'
+      arguments: '--no-build -c release $(emgSuffixSwitch) -o $(nuget_package_path)'
       projects: |
         **/ExtensionsMetadataGenerator.csproj
 
@@ -204,7 +189,7 @@ jobs:
     displayName: Sign ExtensionsMetadataGenerator package
     inputs:
       ConnectedServiceName: ESRP Service-internal
-      FolderPath: out/pkg/release
+      FolderPath: $(nuget_package_path)
       Pattern: Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator*.nupkg
       signConfigType: inlineSignParams
       inlineOperation: |
@@ -230,8 +215,7 @@ jobs:
     inputs:
       contents: '**/CodeSignSummary-*.md'
 
-  - task: CopyFiles@2
+  - task: DeleteFiles@1
+    displayName: Delete CodeSignSummary files
     inputs:
-      SourceFolder: out/pkg/release
-      Contents: '**/*.nupkg'
-      TargetFolder: $(Build.ArtifactStagingDirectory)/NugetPackages
+      contents: '$(nuget_package_path)/**/CodeSignSummary-*.md'

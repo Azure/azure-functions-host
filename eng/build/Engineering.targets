@@ -1,5 +1,6 @@
 <Project>
 
   <Import Project="$(MSBuildThisFileDirectory)RepositoryInfo.targets" />
+  <Import Project="$(MSBuildThisFileDirectory)ZipPublish.targets" />
 
 </Project>

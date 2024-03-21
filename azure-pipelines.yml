@@ -67,20 +67,13 @@ jobs:
       - ImageOverride -equals MMS2019TLS
   steps:
   - template: build/install-dotnet.yml
-  - task: PowerShell@2
-    displayName: "Build artifacts $(minorVersionPrefix)"
-    inputs:
-      filePath: '$(Build.Repository.LocalPath)\build\build-extensions.ps1'
-      arguments: '-buildNumber "$(buildNumber)" -suffix "$(suffix)" -minorVersionPrefix "$(minorVersionPrefix)"'
+
+  - template: eng/ci/templates/steps/build-site-ext.yml
+
   - task: PowerShell@2
     displayName: "Check for security vulnerabilities"
     inputs:
       filePath: '$(Build.Repository.LocalPath)\build\check-vulnerabilities.ps1'
-  - task: CopyFiles@2
-    inputs:
-      SourceFolder: 'out/pub/WebJobs.Script.WebHost'
-      Contents: '**/*.zip'
-      TargetFolder: '$(Build.ArtifactStagingDirectory)'
 
   - task: DotNetCoreCLI@2
     displayName: 'Build host packages'
@@ -287,11 +280,11 @@ jobs:
   - task: ManifestGeneratorTask@0
     displayName: 'SBOM Generation Task - Symbols'
     inputs:
-      BuildDropPath: '$(Build.ArtifactStagingDirectory)\Symbols'
+      BuildDropPath: '$(Build.ArtifactStagingDirectory)\SiteExtensionSymbols'
       Verbosity: 'Information'
-  - publish: $(Build.ArtifactStagingDirectory)\Symbols
-    artifact: _Symbols.net$(minorVersionPrefix)
 
+  - publish: $(Build.ArtifactStagingDirectory)\SiteExtensionSymbols
+    artifact: Symbols
   - task: ManifestGeneratorTask@0
     displayName: 'SBOM Generation Task - NugetPackages'
     inputs:
