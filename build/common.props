@@ -7,12 +7,12 @@
     <PatchVersion>0</PatchVersion>
     <BuildNumber Condition="'$(BuildNumber)' == '' ">0</BuildNumber>
     <PreviewVersion></PreviewVersion>
-    
+
     <!-- During previews, always generate this suffix, even for official releases -->
     <_VersionSuffix Condition="'$(PreviewVersion)' != ''">-preview.$(PreviewVersion).$(BuildNumber)</_VersionSuffix>
     <!-- Otherwise, use the suffix directly, adding a '-' -->
     <_VersionSuffix Condition="'$(PreviewVersion)' == '' and '$(VersionSuffix)' != ''">-$(VersionSuffix)</_VersionSuffix>
-    
+
     <VersionPrefix>$(MajorVersion).$(MinorVersion).$(PatchVersion)</VersionPrefix>
     <Version>$(VersionPrefix)$(_VersionSuffix)</Version>
     <AssemblyVersion>$(MajorVersion).$(MinorVersion).0.0</AssemblyVersion>

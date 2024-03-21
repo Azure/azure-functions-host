@@ -1,0 +1,36 @@
+steps:
+  # Not aware of a way to inject variables in the middle of a job from a template. Parameters seem unnecessary here as they should never be changed.
+  - pwsh: |
+      Write-Host "##vso[task.setvariable variable=site_ext_proj]src/WebJobs.Script.SiteExtension/WebJobs.Script.SiteExtension.proj"
+
+      if (-not '$(log_dir)'){
+        Write-Host "##vso[task.setvariable variable=log_dir]$(Build.ArtifactStagingDirectory)/log"
+      }
+    displayName: Update site ext variables
+
+  # Restore must be a separate step so we can pass in 'PublishReadyToRun=true'
+  - task: DotNetCoreCLI@2
+    displayName: Restore site extension
+    inputs:
+      command: custom
+      custom: restore
+      projects: $(site_ext_proj)
+      arguments: '-v m -p:PublishReadyToRun=true -bl:$(log_dir)/site_ext.restore.binlog'
+
+  - task: DotNetCoreCLI@2
+    displayName: Build site extension
+    inputs:
+      command: custom
+      custom: build
+      projects: $(site_ext_proj)
+      arguments: '--no-restore -v m -p:BuildNumber=$(buildNumber) -p:MinorVersionPrefix=$(minorVersionPrefix) -bl:$(log_dir)/site_ext.build.binlog'
+
+  - task: DotNetCoreCLI@2
+    displayName: Publish site extension
+    inputs:
+      command: custom
+      custom: publish
+      publishWebProjects: false # we use our own publish logic
+      zipAfterPublish: false # we use our own zip logic
+      projects: $(site_ext_proj)
+      arguments: '--no-build -v m -p:BuildNumber=$(buildNumber) -p:MinorVersionPrefix=$(minorVersionPrefix) -p:ZipArtifactsPath=$(Build.ArtifactStagingDirectory) -bl:$(log_dir)/site_ext.publish.binlog'
