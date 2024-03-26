@@ -19,6 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureFunctionsHostKey = "MS_AzureFunctionsHost";
         public const string AzureFunctionsNestedProxyCount = "MS_AzureFunctionsNestedProxyCount";
         public const string AzureFunctionsProxyResult = "MS_AzureFunctionsProxyResult";
+        public const string AzureFunctionsHttpTriggerContext = "MS_AzureFunctionsHttpTriggerContext";
         public const string AzureFunctionsDuplicateHttpHeadersKey = "MS_AzureFunctionsDuplicateHttpHeaders";
         public const string JobHostMiddlewarePipelineRequestDelegate = "MS_JobHostMiddlewarePipelineRequestDelegate";
         public const string HstsMiddlewareRequestDelegate = "MS_HstsMiddlewareRequestDelegate";

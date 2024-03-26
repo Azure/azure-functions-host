@@ -4,12 +4,13 @@
 using System;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
-using Yarp.ReverseProxy.Forwarder;
 
 namespace Microsoft.Azure.WebJobs.Script.Grpc
 {
     public interface IHttpProxyService
     {
-        ValueTask<ForwarderError> ForwardAsync(ScriptInvocationContext context, Uri httpUri);
+        Task EnsureSuccessfulForwardingAsync(ScriptInvocationContext context);
+
+        Task ForwardAsync(ScriptInvocationContext context, Uri httpUri);
     }
 }

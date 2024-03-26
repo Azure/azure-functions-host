@@ -36,26 +36,20 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         /// This method is only hit on the invocation code path.
         /// enableUserCodeExceptionCapability = feature flag exposed as a capability that is set by the worker.
         /// </summary>
-        public static bool IsInvocationSuccess<T>(this StatusResult status, TaskCompletionSource<T> tcs, bool enableUserCodeExceptionCapability = false)
+        public static bool IsInvocationSuccess(this StatusResult status)
         {
-            switch (status.Status)
+            return status.Status switch
             {
-                case StatusResult.Types.Status.Failure:
-                case StatusResult.Types.Status.Cancelled:
-                    var rpcException = GetRpcException(status, enableUserCodeExceptionCapability);
-                    tcs.SetException(rpcException);
-                    return false;
-
-                default:
-                    return true;
-            }
+                StatusResult.Types.Status.Failure or StatusResult.Types.Status.Cancelled => false,
+                _ => true,
+            };
         }
 
         /// <summary>
         /// If the capability is enabled, surface additional exception properties
         /// so that they can be surfaced to app insights by the ScriptTelemetryProcessor.
         /// </summary>
-        public static Workers.Rpc.RpcException GetRpcException(StatusResult statusResult, bool enableUserCodeExceptionCapability = false)
+        public static Workers.Rpc.RpcException GetRpcException(this StatusResult statusResult, bool enableUserCodeExceptionCapability = false)
         {
             var ex = statusResult?.Exception;
             var status = statusResult?.Status.ToString();
