@@ -81,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         }
 
         public DrainTestFixture()
-            : base(Path.Combine(Environment.CurrentDirectory, "..", "..", "..", "..", "..", "sample", "CSharp"), "samples", RpcWorkerConstants.DotNetLanguageWorkerName)
+            : base(Path.Combine(Environment.CurrentDirectory, "..", "..", "..", "..", "sample", "CSharp"), "samples", RpcWorkerConstants.DotNetLanguageWorkerName)
         {
         }
 

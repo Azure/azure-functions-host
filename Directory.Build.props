@@ -1,0 +1,9 @@
+<Project>
+
+  <PropertyGroup>
+    <ArtifactsPath>$(MSBuildThisFileDirectory)out</ArtifactsPath>
+    <ArtifactsPublishOutputName>pub</ArtifactsPublishOutputName>
+    <ArtifactsPackageOutputName>pkg</ArtifactsPackageOutputName>
+  </PropertyGroup>
+
+</Project>

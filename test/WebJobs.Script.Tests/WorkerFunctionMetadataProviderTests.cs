@@ -121,7 +121,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var logger = new TestLogger<WorkerFunctionMetadataProvider>();
             logger.ClearLogMessages();
-            string scriptPath = Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "..", "sample", "node");
+            string scriptPath = Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "sample", "node");
             var environment = SystemEnvironment.Instance;
             WorkerFunctionMetadataProvider.ValidateFunctionAppFormat(scriptPath, logger, environment);
             var traces = logger.GetLogMessages();

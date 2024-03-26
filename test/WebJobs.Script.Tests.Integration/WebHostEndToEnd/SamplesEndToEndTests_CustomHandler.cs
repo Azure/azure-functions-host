@@ -74,7 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             }
 
             public TestFixture()
-                : base(Path.Combine(Environment.CurrentDirectory, "..", "..", "..", "..", "..", "sample", "CustomHandler"), "samples", RpcWorkerConstants.PowerShellLanguageWorkerName)
+                : base(Path.Combine(Environment.CurrentDirectory, "..", "..", "..", "..", "sample", "CustomHandler"), "samples", RpcWorkerConstants.PowerShellLanguageWorkerName)
             {
                 ProxyEndToEndTests.EnableProxiesOnSystemEnvironment();
             }

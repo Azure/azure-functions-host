@@ -38,7 +38,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private string _functionsWorkerRuntimeVersion;
         private bool _addTestSettings;
 
-        protected EndToEndTestFixture(string rootPath, string testId,
+        protected EndToEndTestFixture(
+            string rootPath,
+            string testId,
             string functionsWorkerRuntime,
             int workerProcessesCount = 1,
             string functionsWorkerRuntimeVersion = null,

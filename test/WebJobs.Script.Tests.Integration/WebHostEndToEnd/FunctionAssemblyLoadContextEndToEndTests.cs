@@ -16,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
     {
         private readonly ITestOutputHelper _output;
 
-        private bool success = true;
+        private bool _success = true;
         private HostProcessLauncher _launcher;
 
         public FunctionAssemblyLoadContextEndToEndTests(ITestOutputHelper output)
@@ -115,7 +115,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             }
             catch (Exception)
             {
-                success = false;
+                _success = false;
                 throw;
             }
         }
@@ -124,7 +124,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
         {
             _launcher?.Dispose();
 
-            if (!success)
+            if (!_success)
             {
                 // Dump logs to console
                 _output.WriteLine("=== Output ===");

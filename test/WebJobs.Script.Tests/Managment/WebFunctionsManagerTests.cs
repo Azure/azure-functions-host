@@ -53,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 TestDataPath = @"x:\test"
             };
 
-            string functionsPath = Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "..", "sample");
+            string functionsPath = Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "sample");
 
             var fileSystem = CreateFileSystem(_hostOptions);
             var loggerFactory = MockNullLoggerFactory.CreateLoggerFactory();

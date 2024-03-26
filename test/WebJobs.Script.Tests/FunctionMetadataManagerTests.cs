@@ -33,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public FunctionMetadataManagerTests()
         {
             _mockFunctionMetadataProvider = new Mock<IFunctionMetadataProvider>();
-            string functionsPath = Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "..", "sample", "node");
+            string functionsPath = Path.Combine(Environment.CurrentDirectory, "..", "..", "..", "..", "sample", "node");
             _defaultHttpWorkerOptions = new HttpWorkerOptions();
             _scriptJobHostOptions.RootScriptPath = functionsPath;
 

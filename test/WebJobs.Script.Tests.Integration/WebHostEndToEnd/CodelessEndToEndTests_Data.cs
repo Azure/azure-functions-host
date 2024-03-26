@@ -140,12 +140,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
 
         private static string GetFuntionSamplesPath(string runtime)
         {
-            return Path.Combine(Environment.CurrentDirectory, "..", "..", "..", "..", "..", "sample", runtime);
+            return Path.Combine(Environment.CurrentDirectory, "..", "..", "..", "..", "sample", runtime);
         }
 
         private static string GetSamplesFunctionsJson(string runtime, string functionName)
         {
-            return File.ReadAllText(Path.Combine(Environment.CurrentDirectory, "..", "..", "..", "..", "..", "sample", runtime, functionName, "function.json"));
+            return File.ReadAllText(Path.Combine(Environment.CurrentDirectory, "..", "..", "..", "..", "sample", runtime, functionName, "function.json"));
         }
     }
 }
