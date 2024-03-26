@@ -219,6 +219,14 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             // This is always set by OOP languages.
             if (request.HttpContext.Items.TryGetValue(ScriptConstants.AzureFunctionsHttpResponseKey, out object existing) && existing is IActionResult)
             {
+                if (existing is RawScriptResult rawResult)
+                {
+                    if (rawResult.Content.ToString().Contains("200"))
+                    {
+                        return;
+                    }
+                }
+
                 return;
             }
 
@@ -238,7 +246,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         }
 
         /// <summary>
-        /// This method is used when running in compatibility mode, maintained to preserve the behavior in 2.x
+        /// This method is used when running in compatibility mode, maintained to preserve the behavior in 2.x.
         /// </summary>
         internal static void LegacySetResponse(HttpRequest request, object result)
         {

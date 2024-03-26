@@ -9,13 +9,16 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
+using System.Reflection;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Google.Protobuf.Collections;
 using Google.Protobuf.WellKnownTypes;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -32,8 +35,11 @@ using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Newtonsoft.Json.Linq;
+using NuGet.Protocol;
 using Yarp.ReverseProxy.Forwarder;
 using static Microsoft.Azure.WebJobs.Script.Grpc.Messages.RpcLog.Types;
+using static NuGet.Client.ManagedCodeConventions;
 using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
 using MsgType = Microsoft.Azure.WebJobs.Script.Grpc.Messages.StreamingMessage.ContentOneofCase;
 using ParameterBindingType = Microsoft.Azure.WebJobs.Script.Grpc.Messages.ParameterBinding.RpcDataOneofCase;
@@ -1088,25 +1094,33 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     context.Properties.Remove(ScriptConstants.CancellationTokenRegistration);
                 }
 
+                if (IsHttpProxyingWorker)
+                {
+                    if (context.Properties.TryGetValue(ScriptConstants.HttpProxyTask, out Task<ForwarderError> httpProxyTask))
+                    {
+                        ForwarderError httpProxyTaskResult = await httpProxyTask;
+
+                        if (httpProxyTaskResult is not ForwarderError.None)
+                        {
+                            throw new InvalidOperationException($"Failed to proxy request with ForwarderError: {httpProxyTaskResult}");
+                        }
+                    }
+                }
+
+                if (context.TryGetHttpRequest(out HttpRequest request))
+                {
+                    if (request.HttpContext.Response.StatusCode != 400)
+                    {
+                        Console.WriteLine("Status code in worker channel is " + request.HttpContext.Response.StatusCode);
+                    }
+                }
+
                 if (invokeResponse.Result.IsInvocationSuccess(context.ResultSource, capabilityEnabled))
                 {
                     _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvokeSucceeded, Id));
 
                     try
                     {
-                        if (IsHttpProxyingWorker)
-                        {
-                            if (context.Properties.TryGetValue(ScriptConstants.HttpProxyTask, out Task<ForwarderError> httpProxyTask))
-                            {
-                                ForwarderError httpProxyTaskResult = await httpProxyTask;
-
-                                if (httpProxyTaskResult is not ForwarderError.None)
-                                {
-                                    throw new InvalidOperationException($"Failed to proxy request with ForwarderError: {httpProxyTaskResult}");
-                                }
-                            }
-                        }
-
                         StringBuilder sharedMemoryLogBuilder = null;
 
                         foreach (ParameterBinding binding in invokeResponse.OutputData)

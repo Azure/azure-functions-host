@@ -1,9 +1,11 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Net.Mime;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization.Policy;
@@ -13,6 +15,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Abstractions;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Extensions;
@@ -41,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
                 await _next(context);
             }
 
-            var functionExecution = context.Features.Get<IFunctionExecutionFeature>();
+            var functionExecution = context.Features.Get<IFunctionExecutionFeature>(); // check call async inside this feature
             if (functionExecution != null && !context.Response.HasStarted)
             {
                 // LiveLogs session id is used to show only contextual logs in the "Code + Test" experience. The id is included in the custom dimension.
@@ -56,6 +59,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
                 if (context.Items.TryGetValue(ScriptConstants.HttpProxyingEnabled, out var value))
                 {
+                    if (result is RawScriptResult rawResult)
+                    {
+                        if (rawResult.Content.ToString().Contains("200"))
+                        {
+                            return;
+                        }
+                    }
+
+                    if (context.Response.StatusCode != 400)
+                    {
+                        Console.WriteLine("test");
+                    }
+
                     if (value?.ToString() == bool.TrueString)
                     {
                         return;
@@ -145,6 +161,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
                     if (context.Items.TryGetValue(ScriptConstants.AzureFunctionsDuplicateHttpHeadersKey, out object value))
                     {
                         logger.LogDebug($"Duplicate HTTP header from function invocation removed. Duplicate key(s): {value?.ToString()}.");
+                    }
+
+                    if (context.Response.StatusCode != 400)
+                    {
+                        Console.WriteLine("InvocationMiddleware");
                     }
                 }
             }

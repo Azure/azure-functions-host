@@ -93,6 +93,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             });
 
             builder.UseMiddleware<JobHostPipelineMiddleware>();
+            builder.UseMiddleware<HttpInspectionMiddleware>();
             builder.UseMiddleware<FunctionInvocationMiddleware>();
 
             // Register /admin/vfs, and /admin/zip to the VirtualFileSystem middleware.
