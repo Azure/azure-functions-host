@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using Grpc.Net.Client.Configuration;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.WebJobs.Script.Tests;
 using Xunit;
@@ -271,6 +272,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             }
 
             Assert.Equal(expectedValue, env.IsManagedAppEnvironment());
+        }
+
+        [Theory]
+        [InlineData(false, null, null, false)]
+        [InlineData(false, "", "", false)]
+        [InlineData(false, ScriptConstants.DynamicSku, null, false)]
+        [InlineData(false, null, ScriptConstants.DynamicSku, false)]
+        [InlineData(true, null, null, false)]
+        [InlineData(true, "", "", false)]
+        [InlineData(true, ScriptConstants.FlexConsumptionSku, null, false)]
+        [InlineData(true, null, ScriptConstants.DynamicSku, true)]
+        [InlineData(true, ScriptConstants.DynamicSku, null, true)]
+        [Trait(TestTraits.Group, TestTraits.LinuxConsumptionMetricsTests)]
+        public void IsV1LinuxConsumptionOnLegion_ReturnsExpectedResult(bool isLinuxConsumptionOnLegion, string websiteSku, string websiteSkuName, bool expectedValue)
+        {
+            IEnvironment env = new TestEnvironment();
+
+            if (isLinuxConsumptionOnLegion)
+            {
+                env.SetEnvironmentVariable(WebsitePodName, "RandomPodName");
+                env.SetEnvironmentVariable(LegionServiceHost, "RandomLegionServiceHostName");
+            }
+
+            env.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, websiteSku);
+            env.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSkuName, websiteSkuName);
+
+            Assert.Equal(expectedValue, env.IsV1LinuxConsumptionOnLegion());
         }
 
         [Theory]

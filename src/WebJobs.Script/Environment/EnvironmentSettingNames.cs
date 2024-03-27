@@ -11,6 +11,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureWebsiteOwnerName = "WEBSITE_OWNER_NAME";
         public const string AzureWebsiteInstanceId = "WEBSITE_INSTANCE_ID";
         public const string AzureWebsiteSku = "WEBSITE_SKU";
+        public const string AzureWebsiteSkuName = "WEBSITE_SKU_NAME";
         public const string RemoteDebuggingPort = "REMOTEDEBUGGINGPORT";
         public const string AzureWebsitePlaceholderMode = "WEBSITE_PLACEHOLDER_MODE";
         public const string AzureWebsiteUsePlaceholderDotNetIsolated = "WEBSITE_USE_PLACEHOLDER_DOTNETISOLATED";

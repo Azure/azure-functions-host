@@ -9,10 +9,10 @@ using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.Functions.Platform.Metrics.LinuxConsumption;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Metrics;
-using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
@@ -22,6 +22,7 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
 {
+    [Trait(TestTraits.Group, TestTraits.LinuxConsumptionMetricsTests)]
     public class LinuxContainerMetricsPublisherTests
     {
         private const string _containerName = "test-container";
