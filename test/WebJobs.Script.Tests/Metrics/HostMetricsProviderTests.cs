@@ -50,7 +50,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             _standbyOptions = new StandbyOptions { InStandbyMode = inStandbyMode };
             _standbyOptionsMonitor = new TestOptionsMonitor<StandbyOptions>(_standbyOptions);
             _logger = new TestLogger<HostMetricsProvider>();
-            return new HostMetricsProvider(_serviceProvider, _standbyOptionsMonitor, _logger);
+            var environment = _serviceProvider.GetRequiredService<IEnvironment>();
+            return new HostMetricsProvider(_serviceProvider, _standbyOptionsMonitor, _logger, environment);
         }
 
         [Fact]
@@ -68,6 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
 
             logs = _logger.GetLogMessages();
             log = logs.Single(p => p.FormattedMessage == "Starting host metrics provider.");
+            Assert.Equal(LogLevel.Information, log.Level);
             Assert.NotNull(log);
         }
 
@@ -83,7 +85,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             metrics.IncrementStartedInvocationCount();
             metrics.IncrementStartedInvocationCount();
 
+            Assert.Equal(hostMetricsProvider.FunctionGroup, string.Empty);
+
             // Specialize
+            var environment = _serviceProvider.GetRequiredService<IEnvironment>();
+            environment.SetEnvironmentVariable("FUNCTIONS_TARGET_GROUP", "function:myappname");
             _standbyOptions.InStandbyMode = false;
             _standbyOptionsMonitor.InvokeChanged();
 
@@ -96,6 +102,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             result = hostMetricsProvider.GetHostMetricsOrNull();
             result.TryGetValue(HostMetrics.StartedInvocationCount, out var startedInvocationCount);
             Assert.Equal(1, startedInvocationCount);
+            Assert.Equal(hostMetricsProvider.FunctionGroup, "function:myappname");
         }
 
         [Fact]
