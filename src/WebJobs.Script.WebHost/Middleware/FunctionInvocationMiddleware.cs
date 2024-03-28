@@ -44,6 +44,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             var functionExecution = context.Features.Get<IFunctionExecutionFeature>();
             if (functionExecution != null && !context.Response.HasStarted)
             {
+                // Identify this context
+                context.Items.TryAdd(ScriptConstants.AzureFunctionsHttpTriggerContext, null);
+
                 // LiveLogs session id is used to show only contextual logs in the "Code + Test" experience. The id is included in the custom dimension.
                 string sessionId = context.Request?.Headers[ScriptConstants.LiveLogsSessionAIKey];
                 if (!string.IsNullOrWhiteSpace(sessionId))
@@ -137,10 +140,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
                 using (logger.BeginScope(scopeState))
                 {
-                    var applicationLifetime = context.RequestServices.GetService<IApplicationLifetime>();
-                    CancellationToken cancellationToken = context.RequestAborted;
-
-                    await functionExecution.ExecuteAsync(context.Request, cancellationToken);
+                    await functionExecution.ExecuteAsync(context.Request, cancellationToken: context.RequestAborted);
 
                     if (context.Items.TryGetValue(ScriptConstants.AzureFunctionsDuplicateHttpHeadersKey, out object value))
                     {
