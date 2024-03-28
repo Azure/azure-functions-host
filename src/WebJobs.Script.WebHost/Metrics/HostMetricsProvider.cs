@@ -4,13 +4,13 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Diagnostics.Metrics;
 using System.Linq;
 using System.Threading;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -22,17 +22,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         private readonly IServiceProvider _serviceProvider;
         private readonly IOptionsMonitor<StandbyOptions> _standbyOptions;
         private readonly ILogger<HostMetricsProvider> _logger;
+        private readonly IEnvironment _environment;
 
         private ConcurrentDictionary<string, long> _metricsCache = new();
         private IDisposable _standbyOptionsOnChangeSubscription;
         private bool _started = false;
 
         public HostMetricsProvider(IServiceProvider serviceProvider, IOptionsMonitor<StandbyOptions> standbyOptions,
-            ILogger<HostMetricsProvider> logger)
+            ILogger<HostMetricsProvider> logger, IEnvironment environment)
         {
             _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
             _standbyOptions = standbyOptions ?? throw new ArgumentNullException(nameof(standbyOptions));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _meterListener = new();
 
             if (_standbyOptions.CurrentValue.InStandbyMode)
@@ -58,12 +60,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
                 {
                     listener.EnableMeasurementEvents(instrument);
 
-                    var funcGroupTag = instrument.Meter.Tags.FirstOrDefault(t => t.Key == TelemetryAttributes.AzureFunctionsGroup);
                     var instanceIdTag = instrument.Meter.Tags.FirstOrDefault(t => t.Key == TelemetryAttributes.ServiceInstanceId);
-                    FunctionGroup = funcGroupTag.Value?.ToString() ?? string.Empty;
                     InstanceId = instanceIdTag.Value?.ToString() ?? string.Empty;
                 }
             };
+
+            FunctionGroup = _environment.GetEnvironmentVariableOrDefault(EnvironmentSettingNames.FunctionsTargetGroup, string.Empty);
+
+            if (string.IsNullOrEmpty(FunctionGroup))
+            {
+                _logger.LogDebug("{funcGroup} is null or empty after specialization.", EnvironmentSettingNames.FunctionsTargetGroup);
+            }
 
             _logger.LogInformation("Starting host metrics provider.");
 
@@ -103,23 +110,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         private void AddOrUpdateMetricsCache(string key, long value)
         {
             _metricsCache.AddOrUpdate(key,
-                (k) =>
-                {
-                    if (value < 0)
-                    {
-                        return 0;
-                    }
-                    return value;
-                },
-                (k, oldValue) =>
-                {
-                    long newValue = oldValue + value;
-                    if (newValue < 0)
-                    {
-                        return 0;
-                    }
-                    return newValue;
-                });
+                (k) => Math.Max(value, 0),
+                (k, oldValue) => Math.Max(oldValue + value, 0));
         }
 
         public IReadOnlyDictionary<string, long> GetHostMetricsOrNull()
