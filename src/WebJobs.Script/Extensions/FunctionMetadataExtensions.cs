@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Extensions;
@@ -92,13 +93,16 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static string GetFunctionId(this FunctionMetadata metadata)
         {
-            if (!metadata.Properties.TryGetValue(FunctionIdKey, out object idObj)
-                || !(idObj is string))
+            if (metadata.Properties.TryGetValue(FunctionIdKey, out object idObj)
+                && idObj is string id)
             {
-                metadata.Properties[FunctionIdKey] = Guid.NewGuid().ToString();
+                return id;
             }
 
-            return metadata.Properties[FunctionIdKey] as string;
+            id = Guid.NewGuid().ToString();
+            return metadata.Properties.TryAdd(FunctionIdKey, id)
+                ? id
+                : metadata.Properties[FunctionIdKey] as string;
         }
 
         internal static void SetFunctionId(this FunctionMetadata metadata, string functionId)
