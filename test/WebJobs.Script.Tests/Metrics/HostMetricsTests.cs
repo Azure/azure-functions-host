@@ -20,6 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
         {
             var serviceCollection = new ServiceCollection();
             serviceCollection.AddMetrics();
+            serviceCollection.AddFakeLogging();
             serviceCollection.AddSingleton<IEnvironment>(new TestEnvironment());
             serviceCollection.AddSingleton<IHostMetrics, HostMetrics>();
             _serviceProvider = serviceCollection.BuildServiceProvider();

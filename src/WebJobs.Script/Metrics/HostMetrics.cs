@@ -5,12 +5,14 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Metrics
 {
     public class HostMetrics : IHostMetrics
     {
         private readonly IEnvironment _environment;
+        private readonly ILogger _logger;
 
         public const string MeterName = "Microsoft.Azure.WebJobs.Script.Host.Internal";
         public const string CloudPlatformName = "azure_functions";
@@ -23,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Metrics
 
         private KeyValuePair<string, object>? _cachedFunctionGroupTag = null;
 
-        public HostMetrics(IMeterFactory meterFactory, IEnvironment environment)
+        public HostMetrics(IMeterFactory meterFactory, IEnvironment environment, ILogger<HostMetrics> logger)
         {
             if (meterFactory == null)
             {
@@ -31,6 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Metrics
             }
 
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
             var instanceId = environment.GetInstanceId();
             var cloudName = environment.GetEnvironmentVariableOrDefault(EnvironmentSettingNames.CloudName, string.Empty);
@@ -72,6 +75,10 @@ namespace Microsoft.Azure.WebJobs.Script.Metrics
                 if (!string.IsNullOrEmpty(functionGroup))
                 {
                     _cachedFunctionGroupTag = functionGroupTag;
+                }
+                else
+                {
+                    _logger.LogDebug("Unable to resolve {tagName}, {funcGroup} is null or empty.", nameof(FunctionGroupTag), EnvironmentSettingNames.FunctionsTargetGroup);
                 }
 
                 return functionGroupTag;
