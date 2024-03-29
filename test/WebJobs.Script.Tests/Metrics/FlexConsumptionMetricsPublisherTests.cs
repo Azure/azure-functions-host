@@ -82,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             _logger = new TestLogger<FlexConsumptionMetricsPublisher>();
             var serviceProvider = new Mock<IServiceProvider>();
             var hostMetricsLogger = new TestLogger<HostMetricsProvider>();
-            _metricsProvider = new HostMetricsProvider(serviceProvider.Object, _standbyOptionsMonitor, hostMetricsLogger);
+            _metricsProvider = new HostMetricsProvider(serviceProvider.Object, _standbyOptionsMonitor, hostMetricsLogger, _environment);
             var publisher = new FlexConsumptionMetricsPublisher(_environment, _standbyOptionsMonitor, optionsWrapper, _logger, new FileSystem(), _metricsProvider);
 
             return publisher;

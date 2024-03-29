@@ -20,6 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
         {
             var serviceCollection = new ServiceCollection();
             serviceCollection.AddMetrics();
+            serviceCollection.AddFakeLogging();
             serviceCollection.AddSingleton<IEnvironment>(new TestEnvironment());
             serviceCollection.AddSingleton<IHostMetrics, HostMetrics>();
             _serviceProvider = serviceCollection.BuildServiceProvider();
@@ -58,6 +59,30 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             var measurements = collector.GetMeasurementSnapshot();
             Assert.Equal(1, measurements.Count);
             Assert.Equal(1, measurements[0].Value);
+        }
+
+        [Fact]
+        public void FunctionGroupTag_Set_AfterEnvironmentVariableIsUpdated()
+        {
+            // Arrange
+            var metrics = _serviceProvider.GetRequiredService<IHostMetrics>();
+            var meterFactory = _serviceProvider.GetRequiredService<IMeterFactory>();
+            var environment = _serviceProvider.GetRequiredService<IEnvironment>();
+            var collector = new MetricCollector<long>(meterFactory, HostMetrics.MeterName, HostMetrics.StartedInvocationCount);
+
+            // Act
+            metrics.IncrementStartedInvocationCount();
+            var measurements = collector.GetMeasurementSnapshot();
+            Assert.True(measurements[0].Tags.TryGetValue(TelemetryAttributes.AzureFunctionsGroup, out var funcGroup));
+            Assert.Equal(string.Empty, funcGroup);
+
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsTargetGroup, "function:test");
+            metrics.IncrementStartedInvocationCount();
+
+            // Assert
+            measurements = collector.GetMeasurementSnapshot();
+            Assert.True(measurements[1].Tags.TryGetValue(TelemetryAttributes.AzureFunctionsGroup, out funcGroup));
+            Assert.Equal("function:test", funcGroup);
         }
     }
 }
