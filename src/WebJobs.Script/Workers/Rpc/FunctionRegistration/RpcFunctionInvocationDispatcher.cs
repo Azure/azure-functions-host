@@ -19,7 +19,6 @@ using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using NuGet.Versioning;
 using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
@@ -200,7 +199,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             // RanToCompletion indicates successful process startup
             if (State != FunctionInvocationDispatcherState.Initialized
                 && webhostLanguageWorkerChannel != null
-                && webhostLanguageWorkerChannel.Where(a => a.Value.Task.Status == TaskStatus.RanToCompletion).Any())
+                && webhostLanguageWorkerChannel.Any(a => a.Value.Task.Status == TaskStatus.RanToCompletion))
             {
                 SetFunctionDispatcherStateToInitializedAndLog();
             }
@@ -257,7 +256,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 return;
             }
 
-            _workerRuntime = _workerRuntime ?? Utility.GetWorkerRuntime(functions, _environment);
+            _workerRuntime ??= Utility.GetWorkerRuntime(functions, _environment);
 
             // In case of multi language runtime, _workerRuntime has no significance, thus skipping this check for multi language runtime environment
             if ((string.IsNullOrEmpty(_workerRuntime) || _workerRuntime.Equals(RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.InvariantCultureIgnoreCase)) && !_environment.IsMultiLanguageRuntimeEnvironment())
@@ -298,7 +297,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 return;
             }
 
-            _functions = functions ?? new List<FunctionMetadata>();
+            _functions = functions;
 
             if (_environment.IsMultiLanguageRuntimeEnvironment())
             {
@@ -355,6 +354,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     }
                 }
             }
+
             AddLogUserCategory(functions);
         }
 
@@ -409,8 +409,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             string functionId = invocationContext.FunctionMetadata.GetFunctionId();
             if (rpcWorkerChannel.FunctionInputBuffers.TryGetValue(functionId, out BufferBlock<ScriptInvocationContext> bufferBlock))
             {
-                _logger.LogTrace("Posting invocation id:{InvocationId} on workerId:{workerChannelId}", invocationContext.ExecutionContext.InvocationId, rpcWorkerChannel.Id);
-                rpcWorkerChannel.FunctionInputBuffers[functionId].Post(invocationContext);
+                if (_logger.IsEnabled(LogLevel.Trace))
+                {
+                    _logger.LogTrace("Posting invocation id:{InvocationId} on workerId:{workerChannelId}", invocationContext.ExecutionContext.InvocationId, rpcWorkerChannel.Id);
+                }
+
+                bufferBlock.Post(invocationContext);
             }
             else
             {
@@ -544,11 +548,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             if (ShouldRestartWorkerChannel(runtime, isWebHostChannelDisposed, isJobHostChannelDisposed))
             {
                 // Set state to "WorkerProcessRestarting" if there are no other workers to handle work
-                if ((await GetInitializedWorkerChannelsAsync()).Count() == 0)
+                if (!(await GetInitializedWorkerChannelsAsync()).Any())
                 {
                     State = FunctionInvocationDispatcherState.WorkerProcessRestarting;
                     _logger.LogDebug("No initialized worker channels for runtime '{runtime}'. Delaying future invocations", runtime);
                 }
+
                 // Restart worker channel
                 _logger.LogDebug("Restarting worker channel for runtime: '{runtime}'", runtime);
                 await StartWorkerChannel(runtime);
