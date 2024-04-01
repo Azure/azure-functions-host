@@ -121,7 +121,6 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
 
             byte[] bytes;
             using (var ms = new MemoryStream())
-            using (var reader = new StreamReader(ms))
             {
                 await request.Body.CopyToAsync(ms);
                 bytes = ms.ToArray();
