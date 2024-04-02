@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 
@@ -73,6 +74,20 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             options.TestDataPath = webHostOptions.TestDataPath;
             options.IsFileSystemReadOnly = webHostOptions.IsFileSystemReadOnly;
             options.IsStandbyConfiguration = webHostOptions.IsStandbyConfiguration;
+
+            options.TelemetryMode = TelemetryMode.ApplicationInsights;
+            var telemetryModeSection = jobHostSection.GetSection(ConfigurationSectionNames.TelemetryMode);
+            if (telemetryModeSection.Exists())
+            {
+                try
+                {
+                    options.TelemetryMode = telemetryModeSection.Get<TelemetryMode>();
+                }
+                catch
+                {
+                    // ignore bad/empty values and just revert to the default value
+                }
+            }
         }
 
         private void ConfigureFunctionTimeout(ScriptJobHostOptions options)

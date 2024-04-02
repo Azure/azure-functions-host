@@ -17,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Logging
 
         // List of keywords that should not be replaced with [Hidden Credential]
         private static readonly string[] AllowedTokens = new string[] { "PublicKeyToken=" };
-        internal static readonly string[] CredentialTokens = new string[] { "Token=", "DefaultEndpointsProtocol=http", "AccountKey=", "Data Source=", "Server=", "Password=", "pwd=", "&amp;sig=", "&sig=", "?sig=", "SharedAccessKey=" };
+        internal static readonly string[] CredentialTokens = new string[] { "Token=", "DefaultEndpointsProtocol=http", "AccountKey=", "Data Source=", "Server=", "Password=", "pwd=", "&amp;sig=", "&sig=", "?sig=", "SharedAccessKey=", "&amp;code=", "&code=", "?code=" };
         private static readonly string[] CredentialNameFragments = new[] { "password", "pwd", "key", "secret", "token", "sas" };
 
         /// <summary>

@@ -28,6 +28,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using OpenTelemetry.Logs;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Trace;
 using static Microsoft.Azure.WebJobs.Script.EnvironmentSettingNames;
 using IApplicationLifetime = Microsoft.AspNetCore.Hosting.IApplicationLifetime;
 
@@ -875,6 +878,29 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     instance.Dispose();
                     _logger.LogDebug("ScriptHost disposed");
                 }
+                FlushOpenTelemetry(instance);
+            }
+        }
+
+        private void FlushOpenTelemetry(IHost host)
+        {
+            var logger = GetHostLogger(host);
+            foreach (var meterProvider in host.Services.GetServices<MeterProvider>())
+            {
+                logger.LogDebug(@"Flushing {providerName} ...", meterProvider);
+                meterProvider.ForceFlush();
+            }
+
+            foreach (var tracerProvider in host.Services.GetServices<TracerProvider>())
+            {
+                logger.LogDebug(@"Flushing {providerName} ...", tracerProvider);
+                tracerProvider.ForceFlush();
+            }
+
+            foreach (var logProvider in host.Services.GetServices<ILoggerProvider>().Where(i => i is OpenTelemetryLoggerProvider))
+            {
+                logger.LogDebug(@"Disposing {providerName} ...", logProvider);
+                logProvider.Dispose();
             }
         }
 
