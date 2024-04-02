@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -42,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public string InstanceId { get; }
 
         /// <summary>
-        /// Gets or sets NugetFallBackPath
+        /// Gets or sets NugetFallBackPath.
         /// </summary>
         public string NugetFallBackPath { get; set; }
 
@@ -129,5 +130,10 @@ namespace Microsoft.Azure.WebJobs.Script
         /// invocation to the worker.
         /// </summary>
         public bool SendCanceledInvocationsToWorker { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets the telemetry mode.
+        /// </summary>
+        internal TelemetryMode TelemetryMode { get; set; }
     }
 }

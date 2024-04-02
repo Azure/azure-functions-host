@@ -26,6 +26,7 @@ using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
@@ -99,7 +100,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 loggingBuilder.AddConsoleIfEnabled(context);
 
-                ConfigureApplicationInsights(context, loggingBuilder);
+                loggingBuilder.ConfigureTelemetry(context);
             })
             .ConfigureAppConfiguration((context, configBuilder) =>
             {
@@ -158,6 +159,30 @@ namespace Microsoft.Azure.WebJobs.Script
             });
 
             return builder;
+        }
+
+        internal static void ConfigureTelemetry(this ILoggingBuilder loggingBuilder, HostBuilderContext context)
+        {
+            TelemetryMode mode = TelemetryMode.ApplicationInsights;
+
+            try
+            {
+                mode = context.Configuration.GetSection(ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, ConfigurationSectionNames.TelemetryMode)).Get<TelemetryMode>();
+            }
+            catch
+            {
+            }
+
+            // Use switch statement so any change to the enum results in a build error if we don't handle it.
+            switch (mode)
+            {
+                case TelemetryMode.ApplicationInsights:
+                    loggingBuilder.ConfigureApplicationInsights(context);
+                    break;
+                case TelemetryMode.OpenTelemetry:
+                    loggingBuilder.ConfigureOpenTelemetry();
+                    break;
+            }
         }
 
         public static IHostBuilder AddScriptHostCore(this IHostBuilder builder, ScriptApplicationHostOptions applicationHostOptions, Action<IWebJobsBuilder> configureWebJobs = null, ILoggerFactory loggerFactory = null)
@@ -311,6 +336,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 services.AddSingleton<IOptions<ScriptApplicationHostOptions>>(new OptionsWrapper<ScriptApplicationHostOptions>(applicationHostOptions));
                 services.AddSingleton<IOptionsMonitor<ScriptApplicationHostOptions>>(new ScriptApplicationHostOptionsMonitor(applicationHostOptions));
                 services.ConfigureOptions<ScriptJobHostOptionsSetup>();
+                services.ConfigureOptions<HostTelemetrySetup>();
                 services.ConfigureOptions<JobHostFunctionTimeoutOptionsSetup>();
                 // LanguageWorkerOptionsSetup should be registered in WebHostServiceCollection as well to enable starting worker processing in placeholder mode.
                 services.ConfigureOptions<LanguageWorkerOptionsSetup>();
@@ -407,7 +433,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return builder;
         }
 
-        internal static void ConfigureApplicationInsights(HostBuilderContext context, ILoggingBuilder builder)
+        internal static void ConfigureApplicationInsights(this ILoggingBuilder builder, HostBuilderContext context)
         {
             string appInsightsInstrumentationKey = GetConfigurationValue(EnvironmentSettingNames.AppInsightsInstrumentationKey, context.Configuration);
             string appInsightsConnectionString = GetConfigurationValue(EnvironmentSettingNames.AppInsightsConnectionString, context.Configuration);

@@ -565,7 +565,16 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 _isWorkerApplicationInsightsLoggingEnabled = true;
             }
 
-                ScriptHost.WorkerOpenTelemetryEnabled = true;
+            if (bool.TryParse(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.WorkerOpenTelemetryEnabled), out bool otelEnabled) &&
+                otelEnabled)
+            {
+                 ScriptHost.WorkerOpenTelemetryEnabled = true;
+            }
+            else
+            {
+                ScriptHost.WorkerOpenTelemetryEnabled = false;
+            }
+
             // If http proxying is enabled, we need to get the proxying endpoint of this worker
             var httpUri = _workerCapabilities.GetCapabilityState(RpcWorkerConstants.HttpUri);
             if (!string.IsNullOrEmpty(httpUri))

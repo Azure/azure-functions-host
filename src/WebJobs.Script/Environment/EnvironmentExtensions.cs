@@ -678,5 +678,11 @@ namespace Microsoft.Azure.WebJobs.Script
 
             return group is not null;
         }
+
+        public static bool IsValueTrue(this IEnvironment environment, string envVarName, bool valueIfNotFound = false)
+        {
+            var stringValue = environment.GetEnvironmentVariableOrDefault(envVarName.Trim(), valueIfNotFound.ToString()).Trim();
+            return bool.TryParse(stringValue, out bool value) ? value : stringValue is "1";
+        }
     }
 }
