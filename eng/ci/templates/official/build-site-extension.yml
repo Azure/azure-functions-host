@@ -1,0 +1,8 @@
+parameters:
+  - name: minorVersionPrefix
+    type: string
+    default: ""
+
+jobs:
+- job: Build Site Extension
+  displayNamme: 

@@ -1,0 +1,74 @@
+variables:
+  IntegrationProject: 'test/WebJobs.Script.Tests.Integration.csproj'
+
+jobs:
+- job: RunNonE2EIntegrationTests
+  steps:
+  - template: eng/ci/templates/install-dotnet.yml
+
+  - task: UseNode@1
+    inputs:
+      version: '14.x'
+
+  - task: JavaToolInstaller@0
+    inputs:
+      versionSpec: '11'
+      jdkArchitectureOption: 'x64'
+      jdkSourceOption: 'PreInstalled'
+
+  - task: PowerShell@2
+    displayName: 'Install Az.Storage Powershell module'
+    inputs:
+      targetType: 'inline'
+      script: 'Install-Module -Name Az.Storage -RequiredVersion 1.11.0 -Scope CurrentUser -Force -AllowClobber'
+
+  - task: AzureKeyVault@1
+    inputs:
+      # Note: This is actually a Service Connection in DevOps, not an Azure subscription name
+      azureSubscription: 'Azure-Functions-Host-CI'
+      keyVaultName: 'azure-functions-host-ci'
+      secretsFilter: '*'
+
+  - task: PowerShell@2
+    displayName: 'Checkout secrets'
+    inputs:
+      filePath: '$(Build.SourcesDirectory)/build/checkout-secrets.ps1'
+      arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'''
+
+  - task: AzureKeyVault@1
+    inputs:
+      # Note: This is actually a Service Connection in DevOps, not an Azure subscription name
+      azureSubscription: 'Azure-Functions-Host-CI'
+      keyVaultName: azure-functions-host-$(LeaseBlob)
+      secretsFilter: '*'
+
+  - task: DotNetCoreCLI@2
+    displayName: "Build Integration.csproj"
+    inputs:
+      command: 'build'
+      projects: $(IntegrationProject)
+
+  - task: DotNetCoreCLI@2
+    displayName: 'Non-E2E integration tests'
+    inputs:
+      command: 'test'
+      testRunTitle: 'Non-E2E integration tests'
+      arguments: '--filter "Category!=E2E"'
+      projects: $(IntegrationProject)
+    env:
+      AzureWebJobsStorage: $(Storage)
+      AzureWebJobsSecondaryStorage: $(SecondaryStorage)
+      ConnectionStrings__CosmosDB: $(CosmosDB)
+      AzureWebJobsEventHubSender: $(EventHub)
+      AzureWebJobsEventHubReceiver: $(EventHub)
+      AzureWebJobsSecretStorageKeyVaultUri: $(KeyVaultUri)
+      AzureWebJobsSecretStorageKeyVaultTenantId: $(AzureTenantId)
+      AzureWebJobsSecretStorageKeyVaultClientId: $(AzureClientId)
+      AzureWebJobsSecretStorageKeyVaultClientSecret: $(AzureClientSecret)
+
+  - task: PowerShell@2
+    condition: always()
+    displayName: 'Checkin secrets'
+    inputs:
+      filePath: '$(Build.SourcesDirectory)/build/checkin-secrets.ps1'
+      arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'' -leaseBlob $(LeaseBlob) -leaseToken $(LeaseToken)'

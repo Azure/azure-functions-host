@@ -1,0 +1,311 @@
+name: azfunc-host-ci-official
+
+variables:
+  buildNumber: $[ counter('constant', 13000) ] # TODO: new pipeline, 13000 no longer valid.
+  isReleaseBranch: $[contains(variables['Build.SourceBranch'], 'release/')]
+  ${{ if contains(variables['Build.SourceBranch'], 'release/inproc6/') }}:
+    minorVersionPrefix: "6"
+  ${{ elseif contains(variables['Build.SourceBranch'], 'release/inproc8/') }}:
+    minorVersionPrefix: "8"
+  ${{ else }}:
+    minorVersionPrefix: ""
+  DOTNET_NOLOGO: 1
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
+  DOTNET_CLI_TELEMETRY_OPTOUT: 1
+
+trigger:
+  batch: true
+  branches:
+    include:
+    - release/4.*
+    - release/inproc6/4.*
+    - release/inproc8/4.*
+
+# CI only, does not trigger on PRs.
+pr: none
+
+resources:
+  repositories:
+  - repository: 1esPipelines
+    type: git
+    name: 1ESPipelineTemplates/1ESPipelineTemplates
+    ref: refs/tags/release
+
+extends:
+  template: v1/1ES.Official.PipelineTemplate.yml@1esPipelines
+  parameters:
+    pool:
+      name: 1es-pool-azfunc
+      image: 1es-windows-2022  # Name of the image in your pool. If not specified, first image of the pool is used
+      os: windows  # OS of the image. This value cannot be a variable. Allowed values: windows, linux, macOS
+
+    stages:
+    - stage: Build
+      jobs:
+
+      - template: eng/ci/templates/jobs/initialize-pipeline.yml
+        parameters:
+          minorVersionPrefix: $(minorVersionPrefix)
+
+      - job: BuildArtifacts
+        templateContext:
+          outputParentDirectory: $(Build.ArtifactStagingDirectory)
+          outputs:
+          - output: pipelineArtifact
+            path: $(Build.ArtifactStagingDirectory)/SiteExtension
+            artifact: SiteExtension
+          - output: pipelineArtifact
+            path: $(Build.ArtifactStagingDirectory)/PrivateSiteExtension
+            artifact: PrivateSiteExtension
+          - output: pipelineArtifact
+            path: $(Build.ArtifactStagingDirectory)/Symbols
+            artifact: Symbols
+
+        variables:
+            ${{ if or( eq( variables['Build.Reason'], 'PullRequest' ), and( not( contains( variables['Build.SourceBranch'], 'release/inproc6/4.' ) ), not( contains( variables['Build.SourceBranch'], 'release/inproc8/4.' ) ), not( contains( variables['Build.SourceBranch'], 'release/4.' ) ), not( contains( variables['Build.SourceBranch'], 'release/ExtensionsMetadataGenerator/' ) ) ) ) }}:
+              suffixTemp: $(buildNumber)
+              packSuffixSwitchTemp: --version-suffix $(buildNumber)
+              emgSuffixSwitchTemp: --version-suffix ci$(buildNumber)
+            suffix: $[variables.suffixTemp] # this resolves to an empty string if it is missing
+            packSuffixSwitch: $[variables.packSuffixSwitchTemp]
+            emgSuffixSwitch: $[variables.emgSuffixSwitchTemp]
+
+        steps:
+        - template: /eng/ci/templates/install-dotnet.yml
+
+        - task: PowerShell@2
+          displayName: "Build artifacts"
+          inputs:
+            filePath: '$(Build.SourcesDirectory)build/build-extensions.ps1'
+            arguments: '-buildNumber "$(buildNumber)" -suffix "$(suffix)" -minorVersionPrefix "$(minorVersionPrefix)"'
+
+        - task: PowerShell@2
+          displayName: "Check for security vulnerabilities"
+          inputs:
+            filePath: '$(Build.SourcesDirectory)/build/check-vulnerabilities.ps1'
+
+        - task: CopyFiles@2
+          inputs:
+            SourceFolder: '$(Build.SourcesDirectory)/out/pub/WebJobs.Script.WebHost'
+            Contents: '**/*.zip'
+            TargetFolder: '$(Build.ArtifactStagingDirectory)'
+
+        - task: DotNetCoreCLI@2
+          displayName: 'Build host packages'
+          inputs:
+            command: 'custom'
+            custom: 'pack'
+            arguments: -p:BuildNumber=$(buildNumber) -c Release $(packSuffixSwitch)
+            projects: |
+              **/WebJobs.Script.csproj
+              **/WebJobs.Script.WebHost.csproj
+              **/WebJobs.Script.Grpc.csproj
+
+        - task: DotNetCoreCLI@2
+          displayName: 'Build Abstractions and ExtensionsMetadataGenerator'
+          inputs:
+            command: 'build'
+            arguments: '-c Release'
+            projects: |
+              **/ExtensionsMetadataGenerator.csproj
+              **/WebJobs.Script.Abstractions.csproj
+
+        - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@2
+          displayName: 'Sign Abstractions assemblies'
+          inputs:
+            ConnectedServiceName: 'ESRP Service-internal'
+            FolderPath: 'out/bin/WebJobs.Script.Abstractions/release'
+            Pattern: Microsoft.Azure.WebJobs.Script.Abstractions*.dll
+            signConfigType: inlineSignParams
+            inlineOperation: |
+              [
+                {
+                  "KeyCode": "CP-230012",
+                  "OperationCode": "SigntoolSign",
+                  "Parameters": {
+                    "OpusName": "Microsoft",
+                    "OpusInfo": "http://www.microsoft.com",
+                    "FileDigest": "/fd \"SHA256\"",
+                    "PageHash": "/NPH",
+                    "TimeStamp": "/tr \"http://rfc3161.gtm.corp.microsoft.com/TSS/HttpTspServer\" /td sha256"
+                  },
+                  "ToolName": "sign",
+                  "ToolVersion": "1.0"
+                },
+                {
+                  "KeyCode": "CP-230012",
+                  "OperationCode": "SigntoolVerify",
+                  "Parameters": {},
+                  "ToolName": "sign",
+                  "ToolVersion": "1.0"
+                }
+              ]
+
+        - task: DeleteFiles@1
+          displayName: 'Delete CodeSignSummary files'
+          inputs:
+            contents: '**/CodeSignSummary-*.md'
+
+        - task: DotNetCoreCLI@2
+          displayName: 'Pack Abstractions'
+          inputs:
+            command: 'custom'
+            custom: 'pack'
+            arguments: '--no-build -c Release'
+            projects: |
+              **/WebJobs.Script.Abstractions.csproj
+
+        - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@2
+          displayName: 'Sign Abstractions package'
+          inputs:
+            ConnectedServiceName: 'ESRP Service-internal'
+            FolderPath: 'out/pkg/release'
+            Pattern: 'Microsoft.Azure.WebJobs.Script.Abstractions*.nupkg'
+            signConfigType: inlineSignParams
+            inlineOperation: |
+              [
+                  {
+                    "KeyCode": "CP-401405",
+                    "OperationCode": "NuGetSign",
+                    "Parameters": {},
+                    "ToolName": "sign",
+                    "ToolVersion": "1.0"
+                  },
+                  {
+                    "KeyCode": "CP-401405",
+                    "OperationCode": "NuGetVerify",
+                    "Parameters": {},
+                    "ToolName": "sign",
+                    "ToolVersion": "1.0"
+                  }
+              ]
+
+        - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@2
+          displayName: 'Sign ExtensionsMetadataGenerator assemblies'
+          inputs:
+            ConnectedServiceName: 'ESRP Service-internal'
+            FolderPath: 'out/bin/ExtensionsMetadataGenerator'
+            Pattern: 'Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator*.dll'
+            signConfigType: inlineSignParams
+            inlineOperation: |
+              [
+                {
+                    "KeyCode" : "CP-233863-SN",
+                    "OperationCode" : "StrongNameSign",
+                    "Parameters" : {},
+                    "ToolName" : "sign",
+                    "ToolVersion" : "1.0"
+                },
+                {
+                    "KeyCode" : "CP-233863-SN",
+                    "OperationCode" : "StrongNameVerify",
+                    "Parameters" : {},
+                    "ToolName" : "sign",
+                    "ToolVersion" : "1.0"
+                },
+                {
+                  "KeyCode": "CP-230012",
+                  "OperationCode": "SigntoolSign",
+                  "Parameters": {
+                    "OpusName": "Microsoft",
+                    "OpusInfo": "http://www.microsoft.com",
+                    "FileDigest": "/fd \"SHA256\"",
+                    "PageHash": "/NPH",
+                    "TimeStamp": "/tr \"http://rfc3161.gtm.corp.microsoft.com/TSS/HttpTspServer\" /td sha256"
+                  },
+                  "ToolName": "sign",
+                  "ToolVersion": "1.0"
+                },
+                {
+                  "KeyCode": "CP-230012",
+                  "OperationCode": "SigntoolVerify",
+                  "Parameters": {},
+                  "ToolName": "sign",
+                  "ToolVersion": "1.0"
+                }
+              ]
+
+        - task: DeleteFiles@1
+          displayName: 'Delete CodeSignSummary files'
+          inputs:
+            contents: '**/CodeSignSummary-*.md'
+
+        - task: DotNetCoreCLI@2
+          displayName: 'Pack ExtensionsMetadataGenerator'
+          inputs:
+            command: 'custom'
+            custom: 'pack'
+            arguments: '--no-build -c Release $(emgSuffixSwitch)'
+            projects: |
+              **/ExtensionsMetadataGeneratorTests.csproj
+
+        - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@2
+          displayName: 'Sign ExtensionsMetadataGenerator package'
+          inputs:
+            ConnectedServiceName: 'ESRP Service-internal'
+            FolderPath: 'out/pkg/release'
+            Pattern: 'Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator*.nupkg'
+            signConfigType: inlineSignParams
+            inlineOperation: |
+              [
+                  {
+                    "KeyCode": "CP-401405",
+                    "OperationCode": "NuGetSign",
+                    "Parameters": {},
+                    "ToolName": "sign",
+                    "ToolVersion": "1.0"
+                  },
+                  {
+                    "KeyCode": "CP-401405",
+                    "OperationCode": "NuGetVerify",
+                    "Parameters": {},
+                    "ToolName": "sign",
+                    "ToolVersion": "1.0"
+                  }
+              ]
+
+        - task: DeleteFiles@1
+          displayName: 'Delete CodeSignSummary files'
+          inputs:
+            contents: '**/CodeSignSummary-*.md'
+
+        - task: ManifestGeneratorTask@0
+          displayName: 'SBOM Generation Task - SiteExtension'
+          inputs:
+            BuildDropPath: '$(Build.ArtifactStagingDirectory)/SiteExtension'
+            Verbosity: 'Information'
+
+        - task: ManifestGeneratorTask@0
+          displayName: 'SBOM Generation Task - PrivateSiteExtension'
+          inputs:
+            BuildDropPath: '$(Build.ArtifactStagingDirectory)/PrivateSiteExtension'
+            Verbosity: 'Information'
+
+        - task: ManifestGeneratorTask@0
+          displayName: 'SBOM Generation Task - Symbols'
+          inputs:
+            BuildDropPath: '$(Build.ArtifactStagingDirectory)/Symbols'
+            Verbosity: 'Information'
+
+        - task: ManifestGeneratorTask@0
+          displayName: 'SBOM Generation Task - NugetPackages'
+          inputs:
+            BuildDropPath: 'out/pkg/release'
+            Verbosity: 'Information'
+        - publish: out/pkg/release
+          artifact: NugetPackages
+        - task: ManifestGeneratorTask@0
+          displayName: 'SBOM Generation Task - Performance'
+          inputs:
+            BuildDropPath: 'WebJobs.Script.Performance.App'
+            Verbosity: 'Information'
+        - publish: WebJobs.Script.Performance.App
+          artifact: Performance
+
+      - template: eng/ci/templates/jobs/run-unit-tests.yml
+
+      # TODO: need to enable service connections
+      #- template: eng/ci/templates/official/jobs/run-non-e2e-tests.yml
+      #- template: eng/ci/templates/official/jobs/run-integration-tests.yml
+      #  parameters:
+      #    isReleaseBranch: $(isReleaseBranch)
