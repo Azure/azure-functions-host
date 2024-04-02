@@ -49,7 +49,7 @@ extends:
     - stage: Build
       jobs:
 
-      - template: eng/ci/templates/jobs/initialize-pipeline.yml
+      - template: /eng/ci/templates/jobs/initialize-pipeline.yml
         parameters:
           minorVersionPrefix: $(minorVersionPrefix)
 
@@ -308,7 +308,7 @@ extends:
         - publish: WebJobs.Script.Performance.App
           artifact: Performance
 
-      - template: eng/ci/templates/jobs/run-unit-tests.yml
+      - template: /eng/ci/templates/jobs/run-unit-tests.yml
 
       # TODO: need to enable service connections
       #- template: eng/ci/templates/official/jobs/run-non-e2e-tests.yml
