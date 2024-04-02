@@ -18,6 +18,7 @@ pr:
     - release/4.*
     - release/inproc6/4.*
     - release/inproc8/4.*
+    - in-proc
 
 trigger:
   branches:
@@ -26,6 +27,7 @@ trigger:
     - release/4.*
     - release/inproc6/4.*
     - release/inproc8/4.*
+    - in-proc
 
 jobs:
 - job: InitializePipeline
