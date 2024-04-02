@@ -2,7 +2,7 @@ jobs:
 - job: RunUnitTests
   
   steps:
-  - template: build/install-dotnet.yml
+  - template: /eng/ci/templates/install-dotnet.yml@self
 
   - task: DotNetCoreCLI@2
     displayName: 'Unit Tests'
