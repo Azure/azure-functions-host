@@ -29,7 +29,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 
         private Timer _metricsPublisherTimer;
         private bool _started = false;
-        private ValueStopwatch _instanceActivityStopwatch;
+        private DateTime _currentActivityIntervalStart;
+        private DateTime _activityIntervalHighWatermark = DateTime.MinValue;
         private ValueStopwatch _intervalStopwatch;
         private IDisposable _standbyOptionsOnChangeSubscription;
         private TimeSpan _metricPublishInterval;
@@ -227,6 +228,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 
         public void OnFunctionStarted(string functionName, string invocationId)
         {
+            OnFunctionStarted(functionName, invocationId, DateTime.UtcNow);
+        }
+
+        internal void OnFunctionStarted(string functionName, string invocationId, DateTime now)
+        {
             if (!_started)
             {
                 return;
@@ -237,7 +243,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
                 if (ActiveFunctionCount == 0)
                 {
                     // we're transitioning from inactive to active
-                    _instanceActivityStopwatch = ValueStopwatch.StartNew();
+                    _currentActivityIntervalStart = now;
                 }
 
                 ActiveFunctionCount++;
@@ -245,6 +251,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         }
 
         public void OnFunctionCompleted(string functionName, string invocationId)
+        {
+            OnFunctionCompleted(functionName, invocationId, DateTime.UtcNow);
+        }
+
+        internal void OnFunctionCompleted(string functionName, string invocationId, DateTime now)
         {
             if (!_started)
             {
@@ -260,11 +271,28 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 
                 if (ActiveFunctionCount == 0)
                 {
-                    // we're transitioning from active to inactive accumulate the elapsed time,
-                    // applying the minimum interval
-                    var elapsedMS = _instanceActivityStopwatch.GetElapsedTime().TotalMilliseconds;
-                    var duration = Math.Max(elapsedMS, _options.MinimumActivityIntervalMS);
-                    FunctionExecutionTimeMS += (long)duration;
+                    // We're transitioning from active to inactive, so we need to accumulate the elapsed time
+                    // for this interval.
+                    DateTime adjustedActivityIntervalStart = _currentActivityIntervalStart;
+                    if (_activityIntervalHighWatermark > _currentActivityIntervalStart)
+                    {
+                        // If we've already metered a previous interval past the current time,
+                        // we move forward (since we never want to meter the same interval twice).
+                        adjustedActivityIntervalStart = _activityIntervalHighWatermark;
+                    }
+
+                    // If the elapsed duration is negative, it means invocations are still before
+                    // the high watermark, so have already been metered.
+                    double elapsedMS = (now - adjustedActivityIntervalStart).TotalMilliseconds;
+                    if (elapsedMS > 0)
+                    {
+                        // Accumulate the duration for this interval, applying the minimum
+                        var duration = Math.Max(elapsedMS, _options.MinimumActivityIntervalMS);
+                        FunctionExecutionTimeMS += (long)duration;
+
+                        // Move the high watermark timestamp forward
+                        _activityIntervalHighWatermark = adjustedActivityIntervalStart.AddMilliseconds(duration);
+                    }
                 }
 
                 // for every completed invocation, increment our invocation count

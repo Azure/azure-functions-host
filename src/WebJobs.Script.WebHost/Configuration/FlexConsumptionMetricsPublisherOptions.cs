@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
     public class FlexConsumptionMetricsPublisherOptions
     {
         internal const int DefaultMetricsPublishIntervalMS = 5000;
-        internal const int DefaultMinimumActivityIntervalMS = 100;
+        internal const int DefaultMinimumActivityIntervalMS = 1000;
 
         public FlexConsumptionMetricsPublisherOptions()
         {

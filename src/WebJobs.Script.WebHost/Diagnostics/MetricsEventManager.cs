@@ -451,7 +451,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             }
 
             /// <summary>
-            /// Raise events for all current in progress functions
+            /// Raise events for all current in progress functions.
             /// </summary>
             private void RaiseFunctionMetricEvents()
             {
