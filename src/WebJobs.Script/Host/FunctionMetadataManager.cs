@@ -24,7 +24,6 @@ namespace Microsoft.Azure.WebJobs.Script
         private const string _functionConfigurationErrorMessage = "Unable to determine the primary function script.Make sure atleast one script file is present.Try renaming your entry point script to 'run' or alternatively you can specify the name of the entry point script explicitly by adding a 'scriptFile' property to your function metadata.";
         private const string _metadataProviderName = "Custom";
         private readonly IServiceProvider _serviceProvider;
-        private readonly ILoggerFactory _loggerFactory;
         private IFunctionMetadataProvider _functionMetadataProvider;
         private bool _isHttpWorker;
         private IEnvironment _environment;
@@ -42,12 +41,11 @@ namespace Microsoft.Azure.WebJobs.Script
             _scriptOptions = scriptOptions;
             _serviceProvider = scriptHostManager as IServiceProvider;
             _functionMetadataProvider = functionMetadataProvider;
-            _loggerFactory = loggerFactory;
             _logger = loggerFactory.CreateLogger(LogCategories.Startup);
             _isHttpWorker = httpWorkerOptions?.Value?.Description != null;
             _environment = environment;
 
-            // Every time script host is re-intializing, we also need to re-initialize
+            // Every time script host is re-initializing, we also need to re-initialize
             // services that change with the scope of the script host.
             scriptHostManager.ActiveHostChanged += (s, e) =>
             {
@@ -82,7 +80,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <param name="forceRefresh">Forces reload from all providers.</param>
         /// <param name="applyAllowList">Apply functions allow list filter.</param>
         /// <param name="includeCustomProviders">Include any metadata provided by IFunctionProvider when loading the metadata</param>
-        /// <returns> An Immmutable array of FunctionMetadata.</returns>
+        /// <returns> An Immutable array of FunctionMetadata.</returns>
         public ImmutableArray<FunctionMetadata> GetFunctionMetadata(bool forceRefresh, bool applyAllowList = true, bool includeCustomProviders = true, IList<RpcWorkerConfig> workerConfigs = null)
         {
             if (forceRefresh || _servicesReset || _functionMetadataArray.IsDefaultOrEmpty)
