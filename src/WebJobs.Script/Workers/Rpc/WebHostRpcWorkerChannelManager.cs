@@ -218,7 +218,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
                 if (!isReadOnlyAndNoCompat)
                 {
-                    _logger.LogInformation("App will not use placeholder channel - ReadOnly: {isReadOnly}. NoCompat: {noCompat}.", _applicationHostOptions.CurrentValue.IsFileSystemReadOnly, !_environment.IsV2CompatibleOnV3Extension());
+                    _logger.LogDebug("App will not use placeholder channel - ReadOnly: {isReadOnly}. NoCompat: {noCompat}.", _applicationHostOptions.CurrentValue.IsFileSystemReadOnly, !_environment.IsV2CompatibleOnV3Extension());
                 }
 
                 return isReadOnlyAndNoCompat;
