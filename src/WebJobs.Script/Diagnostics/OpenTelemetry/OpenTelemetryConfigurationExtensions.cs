@@ -79,7 +79,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
                 // NOTE: This ties to \azure-sdk-for-net\sdk\monitor\Azure.Monitor.OpenTelemetry.Exporter\src\Internals\ResourceExtensions.cs :: AiSdkPrefixKey used in CreateAzureMonitorResource()
                 r.AddAttributes([
                     new(ResourceAttributeConstants.AttributeSDKPrefix, $@"{ResourceAttributeConstants.SDKPrefix}: {version}"),
-                new(ScriptConstants.LogPropertyProcessIdKey, Process.GetCurrentProcess().Id)
+                    new(ResourceAttributeConstants.AttributeProcessId, Process.GetCurrentProcess().Id)
                 ]);
 
                 return r;

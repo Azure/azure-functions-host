@@ -23,11 +23,6 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
             DropDependencyTracesToHostStorageEndpoints(data, dataTags);
 
             DropDependencyTracesToHostLoopbackEndpoints(data, dataTags);
-            if (data.ActivityTraceFlags != ActivityTraceFlags.None)
-            {
-                Console.WriteLine(data.DisplayName);
-            }
-            Console.WriteLine();
             base.OnEnd(data);
         }
 
