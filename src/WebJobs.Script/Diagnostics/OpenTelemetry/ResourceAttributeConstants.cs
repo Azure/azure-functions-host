@@ -7,13 +7,11 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
     {
         internal const string AttributeCloudProvider = "cloud.provider";
         internal const string AttributeCloudPlatform = "cloud.platform";
-
         internal const string AttributeCloudRegion = "cloud.region";
         internal const string AttributeCloudResourceId = "cloud.resource.id";
         // http
         internal const string AttributeTrigger = "faas.trigger";
         internal const string AttributeInvocationId = "faas.invocation_id";
-        // true
         internal const string AttributeColdStart = "faas.coldstart";
 
         // Function name myazurefunctionapp/some-function-name

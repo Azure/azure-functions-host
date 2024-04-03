@@ -20,6 +20,7 @@ using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.Grpc.Eventing;
@@ -883,6 +884,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 }
 
                 var invocationRequest = await context.ToRpcInvocationRequest(_workerChannelLogger, _workerCapabilities, _isSharedMemoryDataTransferEnabled, _sharedMemoryManager);
+                AddTagsToActivity(context);
                 AddAdditionalTraceContext(invocationRequest.TraceContext.Attributes, context);
                 _executingInvocations.TryAdd(invocationRequest.InvocationId, new(context, _messageDispatcherFactory.Create(invocationRequest.InvocationId)));
                 _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvoked, Id), functionName: Sanitizer.Sanitize(context.FunctionMetadata.Name));
@@ -1696,6 +1698,16 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 {
                     attributes[ScriptConstants.OperationNameKey] = operationName;
                 }
+            }
+        }
+
+        private void AddTagsToActivity(ScriptInvocationContext context)
+        {
+            if (Activity.Current != null)
+            {
+                Activity.Current.AddTag(ResourceAttributeConstants.AttributeTrigger, context.FunctionMetadata.Trigger.Type);
+                Activity.Current.AddTag(ResourceAttributeConstants.AttributeName, context.FunctionMetadata.Name);
+                Activity.Current.AddTag(ResourceAttributeConstants.AttributeInvocationId, context.ExecutionContext.InvocationId);
             }
         }
 
