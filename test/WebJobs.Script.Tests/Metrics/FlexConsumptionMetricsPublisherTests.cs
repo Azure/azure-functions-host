@@ -246,11 +246,194 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             Assert.Equal(2, publisher.FunctionExecutionCount);
             Assert.Equal(0, publisher.FunctionExecutionTimeMS);
 
-            publisher.OnFunctionCompleted("foo", "111");
+            publisher.OnFunctionCompleted("baz", "333");
 
             Assert.Equal(0, publisher.ActiveFunctionCount);
             Assert.Equal(3, publisher.FunctionExecutionCount);
             Assert.True(publisher.FunctionExecutionTimeMS > 0);
+        }
+
+        [Fact]
+        public void FunctionsStartStop_MinimumActivityIntervals_Scenario1()
+        {
+            var publisher = CreatePublisher(metricsPublishInterval: TimeSpan.FromHours(1), inStandbyMode: false);
+
+            Assert.Equal(1000, _options.MinimumActivityIntervalMS);
+
+            Assert.Equal(0, publisher.ActiveFunctionCount);
+            Assert.Equal(0, publisher.FunctionExecutionCount);
+            Assert.Equal(0, publisher.FunctionExecutionTimeMS);
+
+            DateTime now = DateTime.UtcNow;
+
+            // function starts and completes with a duration less than the minimum
+            publisher.OnFunctionStarted("foo", "1", now);
+            now += TimeSpan.FromMilliseconds(300);
+            publisher.OnFunctionCompleted("foo", "1", now);
+
+            // we're metered for the minimum interval
+            Assert.Equal(0, publisher.ActiveFunctionCount);
+            Assert.Equal(1, publisher.FunctionExecutionCount);
+            Assert.Equal(1000, publisher.FunctionExecutionTimeMS);
+
+            // now 100ms later we start a new invocation that runs for 200ms
+            // we don't expect to be metered for this since it's still within
+            // the above 1s window
+            now += TimeSpan.FromMilliseconds(100);
+            publisher.OnFunctionStarted("foo", "2", now);
+            now += TimeSpan.FromMilliseconds(200);
+            publisher.OnFunctionCompleted("foo", "2", now);
+
+            Assert.Equal(0, publisher.ActiveFunctionCount);
+            Assert.Equal(2, publisher.FunctionExecutionCount);
+            Assert.Equal(1000, publisher.FunctionExecutionTimeMS);
+
+            // after 50ms another invocation starts and runs for 1200ms
+            // this finally takes us out of the previous 1s window
+            // 350ms of the 1200ms comes from the previous window,
+            // leaving 850ms. This is again rounded up to 1s and a
+            // new window runs out 150ms from now
+            now += TimeSpan.FromMilliseconds(50);
+            publisher.OnFunctionStarted("foo", "3", now);
+            now += TimeSpan.FromMilliseconds(1200);
+            publisher.OnFunctionCompleted("foo", "31", now);
+
+            Assert.Equal(0, publisher.ActiveFunctionCount);
+            Assert.Equal(3, publisher.FunctionExecutionCount);
+            Assert.Equal(2000, publisher.FunctionExecutionTimeMS);
+
+            // after 300ms another invocation starts and runs for 1300ms
+            // because we're out of the previous window, we're metered
+            // for this duration
+            now += TimeSpan.FromMilliseconds(300);
+            publisher.OnFunctionStarted("foo", "4", now);
+            now += TimeSpan.FromMilliseconds(1300);
+            publisher.OnFunctionCompleted("foo", "4", now);
+
+            Assert.Equal(0, publisher.ActiveFunctionCount);
+            Assert.Equal(4, publisher.FunctionExecutionCount);
+            Assert.Equal(3300, publisher.FunctionExecutionTimeMS);
+
+            // finally, after a short delay of 50ms, we have 2 invocations that
+            // start, overlap, then complete in an activity duration of 3.5s
+            now += TimeSpan.FromMilliseconds(50);
+            publisher.OnFunctionStarted("foo", "5", now);
+            now += TimeSpan.FromMilliseconds(250);
+            publisher.OnFunctionStarted("bar", "6", now);
+            now += TimeSpan.FromMilliseconds(750);
+            publisher.OnFunctionCompleted("foo", "5", now);
+            now += TimeSpan.FromMilliseconds(2500);
+            publisher.OnFunctionCompleted("bar", "6", now);
+
+            Assert.Equal(0, publisher.ActiveFunctionCount);
+            Assert.Equal(6, publisher.FunctionExecutionCount);
+            Assert.Equal(6800, publisher.FunctionExecutionTimeMS);
+        }
+
+        [Fact]
+        public void FunctionsStartStop_MinimumActivityIntervals_Scenario2()
+        {
+            var publisher = CreatePublisher(metricsPublishInterval: TimeSpan.FromHours(1), inStandbyMode: false);
+
+            Assert.Equal(1000, _options.MinimumActivityIntervalMS);
+
+            Assert.Equal(0, publisher.ActiveFunctionCount);
+            Assert.Equal(0, publisher.FunctionExecutionCount);
+            Assert.Equal(0, publisher.FunctionExecutionTimeMS);
+
+            DateTime now = DateTime.UtcNow;
+
+            // Run 10 100ms invocations. The first invocation will be metered for
+            // 1000ms, with the rest not adding anything more.
+            for (int i = 0; i < 10; i++)
+            {
+                publisher.OnFunctionStarted("foo", "1", now);
+                now += TimeSpan.FromMilliseconds(100);
+                publisher.OnFunctionCompleted("foo", "1", now);
+            }
+
+            Assert.Equal(0, publisher.ActiveFunctionCount);
+            Assert.Equal(10, publisher.FunctionExecutionCount);
+            Assert.Equal(1000, publisher.FunctionExecutionTimeMS);
+        }
+
+        [Fact]
+        public void FunctionsStartStop_MinimumActivityIntervals_Scenario3()
+        {
+            var publisher = CreatePublisher(metricsPublishInterval: TimeSpan.FromHours(1), inStandbyMode: false);
+
+            Assert.Equal(1000, _options.MinimumActivityIntervalMS);
+
+            Assert.Equal(0, publisher.ActiveFunctionCount);
+            Assert.Equal(0, publisher.FunctionExecutionCount);
+            Assert.Equal(0, publisher.FunctionExecutionTimeMS);
+
+            DateTime now = DateTime.UtcNow;
+
+            // two functions start and overlap for a while
+            // the activity interval is 1.5s
+            publisher.OnFunctionStarted("foo", "1", now);
+            publisher.OnFunctionStarted("bar", "2", now);
+            now += TimeSpan.FromMilliseconds(700);
+            publisher.OnFunctionCompleted("foo", "1", now);
+            now += TimeSpan.FromMilliseconds(800);
+            publisher.OnFunctionCompleted("bar", "2", now);
+
+            Assert.Equal(0, publisher.ActiveFunctionCount);
+            Assert.Equal(2, publisher.FunctionExecutionCount);
+            Assert.Equal(1500, publisher.FunctionExecutionTimeMS);
+
+            now += TimeSpan.FromMilliseconds(100);
+
+            // a short invocation starts and complets, and with the duration
+            // being rounded up to the minimum
+            publisher.OnFunctionStarted("foo", "3", now);
+            now += TimeSpan.FromMilliseconds(100);
+            publisher.OnFunctionCompleted("foo", "3", now);
+
+            Assert.Equal(0, publisher.ActiveFunctionCount);
+            Assert.Equal(3, publisher.FunctionExecutionCount);
+            Assert.Equal(2500, publisher.FunctionExecutionTimeMS);
+
+            // another invocation starts and completes, all within the
+            // interval we've already metered (we're 900ms ahead)
+            publisher.OnFunctionStarted("foo", "3", now);
+            now += TimeSpan.FromMilliseconds(300);
+            publisher.OnFunctionCompleted("foo", "3", now);
+
+            Assert.Equal(0, publisher.ActiveFunctionCount);
+            Assert.Equal(4, publisher.FunctionExecutionCount);
+            Assert.Equal(2500, publisher.FunctionExecutionTimeMS);
+
+            // this invocation leaves a remainder of 100ms of the
+            // previously metered interval
+            publisher.OnFunctionStarted("foo", "3", now);
+            now += TimeSpan.FromMilliseconds(500);
+            publisher.OnFunctionCompleted("foo", "3", now);
+
+            Assert.Equal(0, publisher.ActiveFunctionCount);
+            Assert.Equal(5, publisher.FunctionExecutionCount);
+            Assert.Equal(2500, publisher.FunctionExecutionTimeMS);
+
+            // this invocation completes the previous and starts a new
+            // interval
+            publisher.OnFunctionStarted("foo", "3", now);
+            now += TimeSpan.FromMilliseconds(200);
+            publisher.OnFunctionCompleted("foo", "3", now);
+
+            Assert.Equal(0, publisher.ActiveFunctionCount);
+            Assert.Equal(6, publisher.FunctionExecutionCount);
+            Assert.Equal(3500, publisher.FunctionExecutionTimeMS);
+
+            // We're 900ms ahead. This final invocation completes that
+            // then adds a final duration over the minimum
+            publisher.OnFunctionStarted("foo", "3", now);
+            now += TimeSpan.FromMilliseconds(900 + 1234);
+            publisher.OnFunctionCompleted("foo", "3", now);
+
+            Assert.Equal(0, publisher.ActiveFunctionCount);
+            Assert.Equal(7, publisher.FunctionExecutionCount);
+            Assert.Equal(4734, publisher.FunctionExecutionTimeMS);
         }
 
         public void CleanupMetricsFiles()
@@ -285,13 +468,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             return new FileInfo[0];
         }
 
-        private static void ValidateTotalTime(long value, long upperBound)
+        private void ValidateTotalTime(long value, long delay)
         {
             // Ensure the measured total time for the timer interval is within
             // the expected range (plus a small margin of error)
             // For these unit tests, the timer isn't actually running - we're
             // initiating the publish operations manually so we control the interval.
-            Assert.InRange(value, 0, upperBound + 50);
+            Assert.InRange(value, 0, delay + 50);
         }
     }
 }
