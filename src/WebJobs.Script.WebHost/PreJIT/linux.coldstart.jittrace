@@ -8560,3 +8560,5 @@ char.IsLetter(char)~System.Char,System.Private.CoreLib~1~0~IsLetter
 [System.Net.Http]System.Net.Http.HttpRuleParser.IsToken(ReadOnlySpan`1<uint8>)~System.Net.Http.HttpRuleParser,System.Net.Http~1~0~IsToken
 int64.ToString(IFormatProvider)~System.Int64,System.Private.CoreLib~1~0~ToString
 int64.TryParse(ReadOnlySpan`1<char>,NumberStyles,IFormatProvider,int64&)~System.Int64,System.Private.CoreLib~4~0~TryParse
+[Microsoft.Azure.WebJobs.Script]Microsoft.Azure.WebJobs.Script.ScriptHost.<ScheduleFileSystemCleanup>b__111_0()~Microsoft.Azure.WebJobs.Script.ScriptHost,Microsoft.Azure.WebJobs.Script~0~0~<ScheduleFileSystemCleanup>b__111_0
+[Microsoft.Azure.WebJobs.Script]Microsoft.Azure.WebJobs.Script.ScriptHost+<>c.<PurgeOldLogDirectories>b__112_0(string)~Microsoft.Azure.WebJobs.Script.ScriptHost+<>c,Microsoft.Azure.WebJobs.Script~1~0~<PurgeOldLogDirectories>b__112_0
