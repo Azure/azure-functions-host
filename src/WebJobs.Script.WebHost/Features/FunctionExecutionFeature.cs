@@ -3,11 +3,13 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry;
 using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.Host;
 using Microsoft.Extensions.Logging;
@@ -58,6 +60,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Features
                 {
                     coldStartData.Add("dispatchDuration", dispatchStopwatch.GetElapsedTime().TotalMilliseconds);
                 }
+
+                // Add tag for cold start
+                Activity.Current?.AddTag(ResourceAttributeConstants.AttributeColdStart, true);
             }
 
             var sw = ValueStopwatch.StartNew();
