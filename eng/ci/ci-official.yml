@@ -54,6 +54,7 @@ extends:
           minorVersionPrefix: $(minorVersionPrefix)
 
       - job: BuildArtifacts
+        dependsOn: InitializePipeline
         templateContext:
           outputParentDirectory: $(Build.ArtifactStagingDirectory)
           outputs:
