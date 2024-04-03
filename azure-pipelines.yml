@@ -14,7 +14,6 @@ variables:
 pr:
   branches:
     include:
-    - dev
     - release/4.*
     - release/inproc6/4.*
     - release/inproc8/4.*
@@ -23,7 +22,6 @@ pr:
 trigger:
   branches:
     include:
-    - dev
     - release/4.*
     - release/inproc6/4.*
     - release/inproc8/4.*
