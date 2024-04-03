@@ -460,6 +460,16 @@ namespace Microsoft.Azure.WebJobs.Script
                 _metricsLogger.LogEvent(MetricEventNames.ApplicationInsightsDisabled);
             }
 
+            if (!string.IsNullOrEmpty(_settingsManager.TelemetryMode) && !string.IsNullOrEmpty(_settingsManager.OtlpEndpoint))
+            {
+                _metricsLogger.LogEvent(MetricEventNames.OpenTelemetryOtlpEnabled);
+            }
+
+            if (!string.IsNullOrEmpty(_settingsManager.TelemetryMode) && !string.IsNullOrEmpty(_settingsManager.ApplicationInsightsConnectionString))
+            {
+                _metricsLogger.LogEvent(MetricEventNames.OpenTelemetryAzMonEnabled);
+            }
+
             InitializeFileSystem();
         }
 

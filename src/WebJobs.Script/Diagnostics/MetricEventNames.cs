@@ -9,6 +9,8 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         public const string ApplicationStartLatency = "host.application.start";
         public const string ApplicationInsightsEnabled = "host.applicationinsights.enabled";
         public const string ApplicationInsightsDisabled = "host.applicationinsights.disabled";
+        public const string OpenTelemetryAzMonEnabled = "host.opentelemetry.azmon.enabled";
+        public const string OpenTelemetryOtlpEnabled = "host.opentelemetry.otlp.enabled";
         public const string HostStartupLatency = "host.startup.latency";
         public const string HostStartupReadFunctionMetadataLatency = "host.startup.readfunctionmetadata.latency";
         public const string HostStartupInitializeBindingProvidersLatency = "host.startup.initializebindingproviders.latency";
