@@ -1705,9 +1705,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         {
             if (Activity.Current != null)
             {
-                Activity.Current.AddTag(ResourceAttributeConstants.AttributeTrigger, context.FunctionMetadata.Trigger.Type);
-                Activity.Current.AddTag(ResourceAttributeConstants.AttributeName, context.FunctionMetadata.Name);
-                Activity.Current.AddTag(ResourceAttributeConstants.AttributeInvocationId, context.ExecutionContext.InvocationId);
+                Activity.Current.AddTag(ResourceAttributeConstants.AttributeTrigger, context.FunctionMetadata?.Trigger?.Type);
+                Activity.Current.AddTag(ResourceAttributeConstants.AttributeName, context.FunctionMetadata?.Name);
+                Activity.Current.AddTag(ResourceAttributeConstants.AttributeInvocationId, context.ExecutionContext?.InvocationId);
             }
         }
 
