@@ -12,6 +12,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
@@ -53,6 +54,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         private string _function1;
         private bool _emptyContent;
         private bool _secretsEnabled;
+        private JObject _testHostOptions;
+        private string _sku = ScriptConstants.DynamicSku;
 
         public FunctionsSyncManagerTests()
         {
@@ -142,7 +145,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName)).Returns((string)null);
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSlotName)).Returns((string)null);
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags)).Returns((string)null);
-            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku)).Returns((string)ScriptConstants.DynamicSku);
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku)).Returns(() => _sku);
 
             _hostNameProvider = new HostNameProvider(_mockEnvironment.Object);
 
@@ -156,16 +159,95 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             _hostingConfigOptions = new FunctionsHostingConfigOptions();
             var hostingConfigOptionsWrapper = new OptionsWrapper<FunctionsHostingConfigOptions>(_hostingConfigOptions);
 
-            _functionsSyncManager = new FunctionsSyncManager(hostIdProviderMock.Object, optionsMonitor, loggerFactory.CreateLogger<FunctionsSyncManager>(), httpClientFactory, _secretManagerProviderMock.Object, _mockWebHostEnvironment.Object, _mockEnvironment.Object, _hostNameProvider, functionMetadataManager, azureBlobStorageProvider, hostingConfigOptionsWrapper);
+            var mockHostOptionsProvider = new Mock<IHostOptionsProvider>(MockBehavior.Strict);
+            mockHostOptionsProvider.Setup(p => p.GetOptions()).Returns(() => _testHostOptions);
+            var mockScriptHostManager = new Mock<IScriptHostManager>(MockBehavior.Strict);
+            var scriptHostManagerServiceProviderMock = mockScriptHostManager.As<IServiceProvider>();
+            scriptHostManagerServiceProviderMock.Setup(p => p.GetService(typeof(IHostOptionsProvider))).Returns(() => mockHostOptionsProvider.Object);
+
+            var concurrencyOptions = new ConcurrencyOptions
+            {
+                DynamicConcurrencyEnabled = true,
+                MaximumFunctionConcurrency = 100,
+                CPUThreshold = 0.85f
+            };
+            var extensions = new JObject()
+            {
+                { "testExtension1", new JObject()  { { "p1", 1 }, { "p2", 2 } } },
+                { "testExtension2", new JObject()  { { "p1", 1 }, { "p2", 2 }, { "pwd", "secret password!" } } }
+            };
+            _testHostOptions = new JObject
+            {
+                { "extensions", extensions },
+                { "concurrency", JObject.FromObject(concurrencyOptions) }
+            };
+
+            _functionsSyncManager = new FunctionsSyncManager(hostIdProviderMock.Object, optionsMonitor, loggerFactory.CreateLogger<FunctionsSyncManager>(), httpClientFactory, _secretManagerProviderMock.Object, _mockWebHostEnvironment.Object, _mockEnvironment.Object, _hostNameProvider, functionMetadataManager, azureBlobStorageProvider, hostingConfigOptionsWrapper, mockScriptHostManager.Object);
         }
 
         private string GetExpectedTriggersPayload(string postedConnection = DefaultTestConnection, string postedTaskHub = DefaultTestTaskHub, string durableVersion = "V2")
         {
-            string taskHubSegment = postedTaskHub != null ? $",\"taskHubName\":\"{postedTaskHub}\"" : "";
-            string storageProviderSegment = postedConnection != null && durableVersion == "V2" ? $",\"storageProvider\":{{\"connectionStringName\":\"DurableConnection\"}}" : "";
-            return "[{\"authLevel\":\"anonymous\",\"type\":\"httpTrigger\",\"direction\":\"in\",\"name\":\"req\",\"functionName\":\"function1\"}," +
-                $"{{\"name\":\"myQueueItem\",\"type\":\"orchestrationTrigger\",\"direction\":\"in\",\"queueName\":\"myqueue-items\",\"connection\":\"{postedConnection}\",\"functionName\":\"function2\"{taskHubSegment}{storageProviderSegment}}}," +
-                $"{{\"name\":\"myQueueItem\",\"type\":\"activityTrigger\",\"direction\":\"in\",\"queueName\":\"myqueue-items\",\"connection\":\"{postedConnection}\",\"functionName\":\"function3\"{taskHubSegment}{storageProviderSegment}}}]";
+            JArray triggers = new JArray();
+
+            void AddDurableExtendedProperties(JObject f)
+            {
+                if (postedTaskHub != null)
+                {
+                    f.Add("taskHubName", postedTaskHub);
+                }
+                if (postedConnection != null && durableVersion == "V2")
+                {
+                    f.Add("storageProvider", new JObject { { "connectionStringName", "DurableConnection" } });
+                }
+            }
+
+            JObject f1 = new JObject
+            {
+                { "authLevel", "anonymous" },
+                { "type", "httpTrigger" },
+                { "direction", "in" },
+                { "name", "req" },
+                { "functionName", "function1" }
+            };
+            if (_mockEnvironment.Object.IsFlexConsumptionSku())
+            {
+                f1.Add("functionGroup", "http");
+            }
+            triggers.Add(f1);
+
+            JObject f2 = new JObject
+            {
+                { "name", "myQueueItem" },
+                { "type", "orchestrationTrigger" },
+                { "direction", "in" },
+                { "queueName", "myqueue-items" },
+                { "connection", postedConnection ?? string.Empty },
+                { "functionName", "function2" }
+            };
+            if (_mockEnvironment.Object.IsFlexConsumptionSku())
+            {
+                f2.Add("functionGroup", "durable");
+            }
+            AddDurableExtendedProperties(f2);
+            triggers.Add(f2);
+
+            JObject f3 = new JObject
+            {
+                { "name", "myQueueItem" },
+                { "type", "activityTrigger" },
+                { "direction", "in" },
+                { "queueName", "myqueue-items" },
+                { "connection", postedConnection  ?? string.Empty },
+                { "functionName", "function3" }
+            };
+            if (_mockEnvironment.Object.IsFlexConsumptionSku())
+            {
+                f3.Add("functionGroup", "durable");
+            }
+            AddDurableExtendedProperties(f3);
+            triggers.Add(f3);
+
+            return triggers.ToString(Formatting.None);
         }
 
         private void ResetMockFileSystem(string hostJsonContent = null, string extensionsJsonContent = null)
@@ -187,9 +269,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             }
         }
 
-        [Fact]
-        public async Task TrySyncTriggers_MaxSyncTriggersPayloadSize_Succeeds()
+        [Theory]
+        [InlineData(ScriptConstants.DynamicSku)]
+        [InlineData(ScriptConstants.FlexConsumptionSku)]
+        public async Task TrySyncTriggers_MaxSyncTriggersPayloadSize_Succeeds(string sku)
         {
+            _sku = sku;
+
             // create a dummy file that pushes us over size
             string maxString = new string('x', ScriptConstants.MaxTriggersStringLength + 1);
             _function1 = $"{{ bindings: [], test: '{maxString}'}}";
@@ -205,11 +291,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 Assert.True(syncString.Length < ScriptConstants.MaxTriggersStringLength);
                 var syncContent = JObject.Parse(syncString);
 
-                Assert.Equal(2, syncContent.Count);
+                bool isFlexConsumptionSku = _mockEnvironment.Object.IsFlexConsumptionSku();
+                int expectedCount = isFlexConsumptionSku ? 3 : 2;
+                Assert.Equal(expectedCount, syncContent.Count);
                 Assert.Equal("testhostid123", syncContent["hostId"]);
                 
                 JArray triggers = (JArray)syncContent["triggers"];
                 Assert.Equal(2, triggers.Count);
+
+                if (isFlexConsumptionSku)
+                {
+                    JObject hostConfig = (JObject)syncContent["hostConfig"];
+                    Assert.Equal(2, hostConfig.Count);
+                }
             }
         }
 
@@ -234,11 +328,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         }
 
         [Theory]
-        [InlineData(true, true)]
-        [InlineData(false, true)]
-        [InlineData(true, false)]
-        public async Task TrySyncTriggers_PostsExpectedContent(bool cacheEnabled, bool swtIssuerEnabled)
+        [InlineData(true, true, ScriptConstants.DynamicSku)]
+        [InlineData(true, true, ScriptConstants.FlexConsumptionSku)]
+        [InlineData(false, true, ScriptConstants.DynamicSku)]
+        [InlineData(false, true, ScriptConstants.FlexConsumptionSku)]
+        [InlineData(true, false, ScriptConstants.DynamicSku)]
+        public async Task TrySyncTriggers_PostsExpectedContent(bool cacheEnabled, bool swtIssuerEnabled, string sku)
         {
+            _sku = sku;
+
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteArmCacheEnabled)).Returns(cacheEnabled ? "1" : "0");
             _hostingConfigOptions.SwtIssuerEnabled = swtIssuerEnabled;
 
@@ -334,6 +432,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.Equal("testhostid123", logObject["hostId"]);
             Assert.Equal(expectedTriggersPayload, logObject["triggers"].ToString(Formatting.None));
             Assert.False(triggersLog.Contains("secrets"));
+            
+            if (_mockEnvironment.Object.IsFlexConsumptionSku())
+            {
+                // verify hostConfig by spot checking a couple properties
+                var hostConfig = result["hostConfig"];
+                Assert.Equal(2, hostConfig["extensions"]["testExtension2"]["p2"]);
+                Assert.Equal("[Hidden Credential]", hostConfig["extensions"]["testExtension2"]["pwd"]);
+                Assert.Equal(0.85f, (float)hostConfig["concurrency"]["CPUThreshold"]);
+            }
 
             return result;
         }

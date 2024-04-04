@@ -1153,17 +1153,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             await CreateSharedMemoryEnabledWorkerChannel();
             await Task.Delay(500);
-            Assert.True(_workerChannel.IsSharedMemoryDataTransferEnabled(), "shared memory should be enabled");
+            Assert.True(_workerChannel.IsSharedMemoryDataTransferEnabled, "shared memory should be enabled");
         }
 
         /// <summary>
         /// Verify that shared memory data transfer is disabled if none of the required settings have been set.
         /// </summary>
         [Fact]
-        public void SharedMemoryDataTransferSetting_VerifyDisabled()
+        public async Task SharedMemoryDataTransferSetting_VerifyDisabled()
         {
-            CreateDefaultWorkerChannel();
-            Assert.False(_workerChannel.IsSharedMemoryDataTransferEnabled());
+            await CreateDefaultWorkerChannel();
+
+            Assert.False(_workerChannel.IsSharedMemoryDataTransferEnabled);
         }
 
         /// <summary>
@@ -1177,7 +1178,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerSharedMemoryDataTransferEnabledSettingName, "1");
             CreateDefaultWorkerChannel();
 
-            Assert.False(_workerChannel.IsSharedMemoryDataTransferEnabled());
+            Assert.False(_workerChannel.IsSharedMemoryDataTransferEnabled);
         }
 
         /// <summary>
@@ -1188,7 +1189,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public void SharedMemoryDataTransferSetting_VerifyDisabledIfEnvironmentVariableAbsent()
         {
             CreateSharedMemoryEnabledWorkerChannel(setEnvironmentVariable: false);
-            Assert.False(_workerChannel.IsSharedMemoryDataTransferEnabled());
+            Assert.False(_workerChannel.IsSharedMemoryDataTransferEnabled);
         }
 
         [Fact]
@@ -1569,6 +1570,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 { RpcWorkerConstants.SharedMemoryDataTransfer, "1" }
             };
+
             // Send worker init request and enable the capabilities
             return CreateDefaultWorkerChannel(capabilities: capabilities);
         }

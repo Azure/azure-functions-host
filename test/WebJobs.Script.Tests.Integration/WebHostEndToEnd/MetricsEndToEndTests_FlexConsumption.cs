@@ -54,10 +54,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 metricsPublisher.MetricsFilePath = null;
             }
 
-            int delay = 2500;
+            int activityDuration = 2500;
             int executionCount = 0;
             DateTime start = DateTime.Now;
-            while ((DateTime.Now - start).TotalMilliseconds < delay)
+            while ((DateTime.Now - start).TotalMilliseconds < activityDuration)
             {
                 await InvokeTestFunction();
                 executionCount++;
@@ -66,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             }
 
             var options = _fixture.Host.WebHostServices.GetService<IOptions<FlexConsumptionMetricsPublisherOptions>>();
-            int expectedFileCount = (delay / options.Value.MetricsPublishIntervalMS);
+            int expectedFileCount = (activityDuration / options.Value.MetricsPublishIntervalMS);
 
             // wait for final file to be written
             await Task.Delay(1000);
@@ -86,8 +86,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                     var metrics = await ReadMetricsAsync(file.FullName);
 
                     // verify the execution time
-                    Assert.Equal(metrics.ExecutionCount * FlexConsumptionMetricsPublisherOptions.DefaultMinimumActivityIntervalMS, metrics.ExecutionTimeMS);
-                    ValidateTotalTime(metrics.TotalTimeMS, options.Value.MetricsPublishIntervalMS);
+                    Assert.True(metrics.ExecutionTimeMS <= metrics.TotalTimeMS);
+                    ValidateTotalTime(metrics.TotalTimeMS, options.Value);
                     Assert.Equal(isAlwaysReadyInstance, metrics.IsAlwaysReady);
 
                     totalPublishedExecutionCount += metrics.ExecutionCount;
@@ -95,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 }
 
                 Assert.Equal(executionCount, totalPublishedExecutionCount);
-                Assert.Equal(totalPublishedExecutionCount * FlexConsumptionMetricsPublisherOptions.DefaultMinimumActivityIntervalMS, totalPublishedExecutionTime);
+                Assert.True(totalPublishedExecutionTime <= activityDuration);
             }
             else
             {
@@ -133,7 +133,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
                 Assert.Equal(0, metrics.ExecutionTimeMS);
                 Assert.Equal(0, metrics.ExecutionCount);
-                ValidateTotalTime(metrics.TotalTimeMS, options.Value.MetricsPublishIntervalMS);
+                ValidateTotalTime(metrics.TotalTimeMS, options.Value);
                 Assert.True(metrics.IsAlwaysReady);
             }
         }
@@ -220,7 +220,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 var metrics = await ReadMetricsAsync(files[0].FullName);
 
                 var options = _fixture.Host.WebHostServices.GetService<IOptions<FlexConsumptionMetricsPublisherOptions>>();
-                ValidateTotalTime(metrics.TotalTimeMS, options.Value.MetricsPublishIntervalMS);
+                ValidateTotalTime(metrics.TotalTimeMS, options.Value);
                 Assert.Equal(0, metrics.ExecutionCount);
                 Assert.Equal(0, metrics.ExecutionTimeMS);
                 Assert.True(metrics.IsAlwaysReady);
@@ -244,11 +244,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             return JsonConvert.DeserializeObject<FlexConsumptionMetricsPublisher.Metrics>(content);
         }
 
-        private static void ValidateTotalTime(long value, long metricsPublishIntervalMS)
+        private static void ValidateTotalTime(long value, FlexConsumptionMetricsPublisherOptions options)
         {
             // The publish timer is set to MetricsPublishIntervalMS, so the measured total time for the timer
             // intervals should be within a small margin of error from that
-            Assert.InRange(value, 0, metricsPublishIntervalMS + 50);
+            Assert.InRange(value, 0, options.MetricsPublishIntervalMS + 50);
         }
 
         public class TestFixture : EndToEndTestFixture
@@ -266,7 +266,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
                 services.Configure<FlexConsumptionMetricsPublisherOptions>(options =>
                 {
-                    options.MetricsPublishIntervalMS = 500;
+                    options.MetricsPublishIntervalMS = 1000;
+                    options.MinimumActivityIntervalMS = 200;
                     options.InitialPublishDelayMS = 0;
                     options.MaxFileCount = 10;
                 });

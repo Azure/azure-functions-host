@@ -94,5 +94,21 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 };
             }
         }
+
+        internal static bool TryGetHttpRequest(this ScriptInvocationContext scriptInvocationContext, out HttpRequest request)
+        {
+            request = null;
+            foreach (var input in scriptInvocationContext.Inputs)
+            {
+                if (input.Val is HttpRequest inputRequest
+                    && inputRequest.HttpContext.Items.ContainsKey(ScriptConstants.AzureFunctionsHttpTriggerContext))
+                {
+                    request = inputRequest;
+                    break;
+                }
+            }
+
+            return request != null;
+        }
     }
 }

@@ -101,6 +101,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             Assert.Equal(options.IsFileSystemReadOnly, expectedOutcome);
         }
 
+        [Fact]
+        public void IsFileSystemReadOnly_AlwaysAppliesForFlex()
+        {
+            var environment = new TestEnvironment();
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, ScriptConstants.FlexConsumptionSku);
+
+            ScriptApplicationHostOptions options = new ScriptApplicationHostOptions();
+            ConfiguredOptions(options, inStandbyMode: false, environment);
+
+            Assert.Equal(options.IsFileSystemReadOnly, true);
+        }
+
         private void ConfiguredOptions(ScriptApplicationHostOptions options, bool inStandbyMode, IEnvironment environment = null, bool blobExists = false)
         {
             var builder = new ConfigurationBuilder();

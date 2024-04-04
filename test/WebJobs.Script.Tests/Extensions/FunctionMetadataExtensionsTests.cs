@@ -155,48 +155,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             Assert.Equal(group, functionGroup.Value<string>());
         }
 
-        [Theory]
-        [InlineData("httpTrigger", "other0")]
-        [InlineData("orchestrationTrigger", "other1")]
-        [InlineData("activityTrigger", "other2")]
-        [InlineData("entityTrigger", "other3")]
-        [InlineData("otherTrigger", "other4")]
-        public async Task ToFunctionTrigger_ExplicitGrouping_ReturnsExpected(string trigger, string group)
-        {
-            var functionMetadata = new FunctionMetadata
-            {
-                Name = "TestFunction1",
-                Bindings =
-                {
-                    new BindingMetadata
-                    {
-                        Name = "input",
-                        Type = trigger,
-                        Direction = BindingDirection.In,
-                        Raw = new JObject()
-                        {
-                            ["name"] = "input",
-                            ["type"] = trigger,
-                            ["direction"] = "in",
-                        },
-                    }
-                },
-                Properties =
-                {
-                   ["FunctionGroup"] = group,
-                },
-            };
-            var options = new ScriptJobHostOptions
-            {
-                RootScriptPath = _testRootScriptPath
-            };
-
-            var result = await functionMetadata.ToFunctionTrigger(options, isFlexConsumption: true);
-            Assert.Equal("TestFunction1", result["functionName"].Value<string>());
-            Assert.Equal(group, result["functionGroup"].Value<string>());
-            Assert.Equal(trigger, result["type"].Value<string>());
-        }
-
         [Fact]
         public async Task ToFunctionMetadataResponse_WithoutFiles_ReturnsExpected()
         {

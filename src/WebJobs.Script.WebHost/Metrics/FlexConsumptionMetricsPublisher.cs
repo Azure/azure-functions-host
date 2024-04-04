@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
+using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -22,24 +23,28 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         private readonly FlexConsumptionMetricsPublisherOptions _options;
         private readonly IEnvironment _environment;
         private readonly ILogger<FlexConsumptionMetricsPublisher> _logger;
+        private readonly IHostMetricsProvider _metricsProvider;
         private readonly object _lock = new object();
         private readonly IFileSystem _fileSystem;
 
         private Timer _metricsPublisherTimer;
         private bool _started = false;
-        private ValueStopwatch _instanceActivityStopwatch;
+        private DateTime _currentActivityIntervalStart;
+        private DateTime _activityIntervalHighWatermark = DateTime.MinValue;
         private ValueStopwatch _intervalStopwatch;
         private IDisposable _standbyOptionsOnChangeSubscription;
         private TimeSpan _metricPublishInterval;
         private TimeSpan _initialPublishDelay;
 
-        public FlexConsumptionMetricsPublisher(IEnvironment environment, IOptionsMonitor<StandbyOptions> standbyOptions, IOptions<FlexConsumptionMetricsPublisherOptions> options, ILogger<FlexConsumptionMetricsPublisher> logger, IFileSystem fileSystem)
+        public FlexConsumptionMetricsPublisher(IEnvironment environment, IOptionsMonitor<StandbyOptions> standbyOptions, IOptions<FlexConsumptionMetricsPublisherOptions> options,
+            ILogger<FlexConsumptionMetricsPublisher> logger, IFileSystem fileSystem, IHostMetricsProvider metricsProvider)
         {
             _standbyOptions = standbyOptions ?? throw new ArgumentNullException(nameof(standbyOptions));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _fileSystem = fileSystem ?? new FileSystem();
+            _metricsProvider = metricsProvider ?? throw new ArgumentNullException(nameof(metricsProvider));
 
             if (_standbyOptions.CurrentValue.InStandbyMode)
             {
@@ -90,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         {
             try
             {
-                if (FunctionExecutionCount == 0 && FunctionExecutionTimeMS == 0 && !IsAlwaysReady)
+                if (FunctionExecutionCount == 0 && FunctionExecutionTimeMS == 0 && !IsAlwaysReady && !_metricsProvider.HasMetrics())
                 {
                     // no activity to report
                     return;
@@ -106,8 +111,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
                         TotalTimeMS = (long)_intervalStopwatch.GetElapsedTime().TotalMilliseconds,
                         ExecutionCount = FunctionExecutionCount,
                         ExecutionTimeMS = FunctionExecutionTimeMS,
-                        IsAlwaysReady = IsAlwaysReady
+                        IsAlwaysReady = IsAlwaysReady,
+                        InstanceId = _metricsProvider.InstanceId,
+                        FunctionGroup = _metricsProvider.FunctionGroup
                     };
+
+                    var scaleMetrics = _metricsProvider.GetHostMetricsOrNull();
+                    if (scaleMetrics is not null)
+                    {
+                        metrics.AppFailureCount = scaleMetrics.TryGetValue(HostMetrics.AppFailureCount, out long appFailureCount) ? appFailureCount : 0;
+                        metrics.StartedInvocationCount = scaleMetrics.TryGetValue(HostMetrics.StartedInvocationCount, out long startedInvocationCount) ? startedInvocationCount : 0;
+                        metrics.ActiveInvocationCount = scaleMetrics.TryGetValue(HostMetrics.ActiveInvocationCount, out long activeInvocationCount) ? activeInvocationCount : 0;
+                    }
 
                     FunctionExecutionTimeMS = FunctionExecutionCount = 0;
                 }
@@ -213,6 +228,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 
         public void OnFunctionStarted(string functionName, string invocationId)
         {
+            OnFunctionStarted(functionName, invocationId, DateTime.UtcNow);
+        }
+
+        internal void OnFunctionStarted(string functionName, string invocationId, DateTime now)
+        {
             if (!_started)
             {
                 return;
@@ -223,7 +243,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
                 if (ActiveFunctionCount == 0)
                 {
                     // we're transitioning from inactive to active
-                    _instanceActivityStopwatch = ValueStopwatch.StartNew();
+                    _currentActivityIntervalStart = now;
                 }
 
                 ActiveFunctionCount++;
@@ -231,6 +251,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         }
 
         public void OnFunctionCompleted(string functionName, string invocationId)
+        {
+            OnFunctionCompleted(functionName, invocationId, DateTime.UtcNow);
+        }
+
+        internal void OnFunctionCompleted(string functionName, string invocationId, DateTime now)
         {
             if (!_started)
             {
@@ -246,11 +271,28 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 
                 if (ActiveFunctionCount == 0)
                 {
-                    // we're transitioning from active to inactive accumulate the elapsed time,
-                    // applying the minimum interval
-                    var elapsedMS = _instanceActivityStopwatch.GetElapsedTime().TotalMilliseconds;
-                    var duration = Math.Max(elapsedMS, _options.MinimumActivityIntervalMS);
-                    FunctionExecutionTimeMS += (long)duration;
+                    // We're transitioning from active to inactive, so we need to accumulate the elapsed time
+                    // for this interval.
+                    DateTime adjustedActivityIntervalStart = _currentActivityIntervalStart;
+                    if (_activityIntervalHighWatermark > _currentActivityIntervalStart)
+                    {
+                        // If we've already metered a previous interval past the current time,
+                        // we move forward (since we never want to meter the same interval twice).
+                        adjustedActivityIntervalStart = _activityIntervalHighWatermark;
+                    }
+
+                    // If the elapsed duration is negative, it means invocations are still before
+                    // the high watermark, so have already been metered.
+                    double elapsedMS = (now - adjustedActivityIntervalStart).TotalMilliseconds;
+                    if (elapsedMS > 0)
+                    {
+                        // Accumulate the duration for this interval, applying the minimum
+                        var duration = Math.Max(elapsedMS, _options.MinimumActivityIntervalMS);
+                        FunctionExecutionTimeMS += (long)duration;
+
+                        // Move the high watermark timestamp forward
+                        _activityIntervalHighWatermark = adjustedActivityIntervalStart.AddMilliseconds(duration);
+                    }
                 }
 
                 // for every completed invocation, increment our invocation count
@@ -296,6 +338,32 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
             /// AlwaysReady.
             /// </summary>
             public bool IsAlwaysReady { get; set; }
+
+            /// <summary>
+            /// Gets or sets the instance Id.
+            /// </summary>
+            public string InstanceId { get; set; }
+
+            /// <summary>
+            /// Gets or sets the function group name. This can be either http, durable or
+            /// the name of a function.
+            /// </summary>
+            public string FunctionGroup { get; set; }
+
+            /// <summary>
+            /// Gets or sets the total number of permanent host failures.
+            /// </summary>
+            public long AppFailureCount { get; set; }
+
+            /// <summary>
+            /// Gets or sets the total number of in-progress function invocations.
+            /// </summary>
+            public long ActiveInvocationCount { get; set; }
+
+            /// <summary>
+            /// Gets or sets the total number of function invocations that have started.
+            /// </summary>
+            public long StartedInvocationCount { get; set; }
         }
     }
 }

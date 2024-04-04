@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Logging
 {
@@ -17,6 +18,7 @@ namespace Microsoft.Azure.WebJobs.Logging
         // List of keywords that should not be replaced with [Hidden Credential]
         private static readonly string[] AllowedTokens = new string[] { "PublicKeyToken=" };
         internal static readonly string[] CredentialTokens = new string[] { "Token=", "DefaultEndpointsProtocol=http", "AccountKey=", "Data Source=", "Server=", "Password=", "pwd=", "&amp;sig=", "&sig=", "?sig=", "SharedAccessKey=" };
+        private static readonly string[] CredentialNameFragments = new[] { "password", "pwd", "key", "secret", "token", "sas" };
 
         /// <summary>
         /// Removes well-known credential strings from strings.
@@ -72,6 +74,79 @@ namespace Microsoft.Azure.WebJobs.Logging
             }
 
             return t;
+        }
+
+        internal static JObject Sanitize(JObject obj, Func<string, bool> selector = null)
+        {
+            static bool IsPotentialCredential(string name)
+            {
+                foreach (string fragment in CredentialNameFragments)
+                {
+                    if (name.Contains(fragment, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
+            static JToken Sanitize(JToken token)
+            {
+                if (token is JObject obj)
+                {
+                    JObject sanitized = new JObject();
+                    foreach (var prop in obj)
+                    {
+                        if (IsPotentialCredential(prop.Key))
+                        {
+                            sanitized[prop.Key] = Sanitizer.SecretReplacement;
+                        }
+                        else
+                        {
+                            sanitized[prop.Key] = Sanitize(prop.Value);
+                        }
+                    }
+
+                    return sanitized;
+                }
+
+                if (token is JArray arr)
+                {
+                    JArray sanitized = new JArray();
+                    foreach (var value in arr)
+                    {
+                        sanitized.Add(Sanitize(value));
+                    }
+
+                    return sanitized;
+                }
+
+                if (token.Type == JTokenType.String)
+                {
+                    return Sanitizer.Sanitize(token.ToString());
+                }
+
+                return token;
+            }
+
+            JObject sanitizedObject = new JObject();
+            foreach (var prop in obj)
+            {
+                string propName = prop.Key;
+                if (selector != null && !selector(propName))
+                {
+                    continue;
+                }
+
+                var propValue = prop.Value;
+                if (propValue != null)
+                {
+                    sanitizedObject[propName] = Sanitize(propValue);
+                }
+            }
+
+            return sanitizedObject;
         }
 
         /// <summary>

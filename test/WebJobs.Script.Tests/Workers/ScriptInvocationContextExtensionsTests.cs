@@ -425,7 +425,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             {
                 ExecutionContext = new ExecutionContext()
                 {
-                    RetryContext = new Host.RetryContext()
+                    RetryContext = new WebJobs.Host.RetryContext()
                     {
                         RetryCount = 1,
                         MaxRetryCount = 2,

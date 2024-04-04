@@ -331,10 +331,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             using (_metricsLogger.LatencyEvent(GetMetricEventName(MetricEventNames.SecretManagerDeleteSecret), GetFunctionName(keyScope, secretsType)))
             {
                 bool deleted = await ModifyFunctionSecretAsync(secretsType, keyScope, secretName, (secrets, key) =>
-            {
-                secrets?.RemoveKey(key, keyScope);
-                return secrets;
-            });
+                {
+                    secrets?.RemoveKey(key, keyScope);
+                    return secrets;
+                });
 
                 if (deleted)
                 {

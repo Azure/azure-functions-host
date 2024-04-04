@@ -5,6 +5,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost;
@@ -145,6 +147,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(LogLevel.Error, _subscriptionId, _websiteName, _functionName, eventName, _category, ex.ToFormattedString(), message, ex.GetType().ToString(), ex.Message, functionInvocationId, _hostInstanceId, activityId, _runtimeSiteName, _slotName, It.IsAny<DateTime>()));
 
             _logger.LogError(ex, message);
+
+            _mockEventGenerator.VerifyAll();
+        }
+
+        [Theory]
+        [MemberData(nameof(FunctionExceptionDataProvider.TestCases), MemberType = typeof(FunctionExceptionDataProvider))]
+        public void Log_FunctionException_EmitsExpectedEvent(FunctionException functionException, string functionName)
+        {
+            string eventName = string.Empty;
+            string functionInvocationId = string.Empty;
+            string activityId = string.Empty;
+
+            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(LogLevel.Error, _subscriptionId, _websiteName, functionName, eventName, string.Empty, functionException.ToFormattedString(), functionException.Message, functionException.InnerException.GetType().ToString(), functionException.InnerException.Message, functionInvocationId, _hostInstanceId, activityId, _runtimeSiteName, _slotName, It.IsAny<DateTime>()));
+
+            ILogger localLogger = new SystemLogger(_hostInstanceId, string.Empty, _mockEventGenerator.Object, _environment, _debugStateProvider.Object, null, new LoggerExternalScopeProvider(), _appServiceOptions);
+            localLogger.LogError(functionException, functionException.Message);
 
             _mockEventGenerator.VerifyAll();
         }
@@ -290,6 +308,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("updatedsub", evt.SubscriptionId);
             Assert.Equal("updatedslot", evt.SlotName);
             Assert.Equal("updatedruntimesitename", evt.RuntimeSiteName);
+        }
+
+        public class FunctionExceptionDataProvider
+        {
+            public static IEnumerable<object[]> TestCases
+            {
+                get
+                {
+                    yield return new object[] { new FunctionListenerException("Functions.TestFunction", new Exception("Kaboom")), "Functions.TestFunction" };
+                    yield return new object[] { new FunctionInvocationException("Invocation failed", Guid.Empty, "Functions.TestFunction", new Exception("Kaboom")), "Functions.TestFunction" };
+                    yield return new object[] { new FunctionTeapotException("Host.Functions.Teapot", new Exception("Super Kaboom")), "Teapot" };
+                }
+            }
+        }
+
+        private class FunctionTeapotException : FunctionException
+        {
+            public FunctionTeapotException(string methodName, Exception innerException)
+                : base($"Error 418. The function '{methodName}' is a teapot", methodName, innerException)
+            {
+            }
         }
     }
 }

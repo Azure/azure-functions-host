@@ -113,9 +113,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                        services.Replace(new ServiceDescriptor(typeof(IOptions<ScriptApplicationHostOptions>), new OptionsWrapper<ScriptApplicationHostOptions>(HostOptions)));
                        services.Replace(new ServiceDescriptor(typeof(ISecretManagerProvider), new TestSecretManagerProvider(new TestSecretManager())));
                        services.Replace(new ServiceDescriptor(typeof(IOptionsMonitor<ScriptApplicationHostOptions>), optionsMonitor));
-                       services.Replace(new ServiceDescriptor(typeof(IFunctionMetadataProvider), provider));
 
                        services.SkipDependencyValidation();
+
+                       services.PostConfigure<ScriptApplicationHostOptions>(o =>
+                       {
+                           o.IsSelfHost = true;
+                           o.ScriptPath = Path.Combine(Environment.CurrentDirectory, "..", "..", "..", "..", "..", "sample", "csharp");
+                           o.LogPath = Path.Combine(Path.GetTempPath(), @"Functions");
+                           o.SecretsPath = Path.Combine(Path.GetTempPath(), @"FunctionsTests\Secrets");
+                           o.HasParentScope = true;
+
+                           HostOptions = o;
+                       });
                    });
 
                 // TODO: https://github.com/Azure/azure-functions-host/issues/4876

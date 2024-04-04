@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
@@ -16,6 +17,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.Storage;
 using Microsoft.Azure.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.Storage;
+using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -487,6 +489,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 .ConfigureAppConfiguration(c =>
                 {
                     c.AddConfiguration(webHostConfiguration);
+
+                    // These are used internally inside Hosting.
+                    c.AddInMemoryCollection(new Dictionary<string, string>
+                    {
+                        ["shutdownTimeoutSeconds"] = "1",
+                        ["startupTimeoutSeconds"] = "1",
+                        ["servicesStartConcurrently"] = true.ToString(),
+                        ["servicesStopConcurrently"] = true.ToString(),
+                    });
                 })
                 .Build();
 

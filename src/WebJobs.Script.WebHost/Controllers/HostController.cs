@@ -16,8 +16,10 @@ using Microsoft.AspNetCore.Mvc.WebApiCompatShim;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Scale;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Scale;
+using Microsoft.Azure.WebJobs.Script.WebHost.Extensions;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
@@ -44,6 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         private readonly IScriptHostManager _scriptHostManager;
         private readonly IFunctionsSyncManager _functionsSyncManager;
         private readonly HostPerformanceManager _performanceManager;
+        private readonly IMetricsLogger _metricsLogger;
         private static readonly SemaphoreSlim _drainSemaphore = new SemaphoreSlim(1, 1);
         private static readonly SemaphoreSlim _resumeSemaphore = new SemaphoreSlim(1, 1);
 
@@ -52,7 +55,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             IEnvironment environment,
             IScriptHostManager scriptHostManager,
             IFunctionsSyncManager functionsSyncManager,
-            HostPerformanceManager performanceManager)
+            HostPerformanceManager performanceManager,
+            IMetricsLogger metricsLogger)
         {
             _applicationHostOptions = applicationHostOptions;
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostController);
@@ -60,6 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             _scriptHostManager = scriptHostManager;
             _functionsSyncManager = functionsSyncManager;
             _performanceManager = performanceManager;
+            _metricsLogger = metricsLogger;
         }
 
         [HttpGet]
@@ -388,6 +393,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal)]
         public async Task<IActionResult> SyncTriggers()
         {
+            _metricsLogger.LogEvent(MetricEventNames.SyncTriggersInvoked);
+
+            // TEMP: Collecting temporary metrics on the host state during SyncTrigger requests
+            if (!_scriptHostManager.HostIsInitialized())
+            {
+                _metricsLogger.LogEvent(MetricEventNames.SyncTriggersHostNotInitialized);
+            }
+
+            // TODO: We plan on making SyncTriggers RequiresRunningHost across the board,
+            // but for now only for Flex.
+            // https://github.com/Azure/azure-functions-host/issues/9904
+            if (_environment.IsFlexConsumptionSku())
+            {
+                await HttpContext.WaitForRunningHostAsync(_scriptHostManager, _applicationHostOptions.Value);
+            }
+
             var result = await _functionsSyncManager.TrySyncTriggersAsync();
 
             // Return a dummy body to make it valid in ARM template action evaluation
@@ -402,7 +423,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         public IActionResult Restart([FromServices] IScriptHostManager hostManager)
         {
             Task ignore = hostManager.RestartHostAsync();
-            return Ok(_applicationHostOptions.Value);
+
+            var hostOptionsValue = _applicationHostOptions.Value;
+            var response = new HostRestartResponse()
+            {
+                IsFileSystemReadOnly = hostOptionsValue.IsFileSystemReadOnly,
+                IsScmRunFromPackage = hostOptionsValue.IsScmRunFromPackage,
+                IsSelfHost = hostOptionsValue.IsSelfHost,
+                HasParentScope = hostOptionsValue.HasParentScope,
+                LogPath = hostOptionsValue.LogPath,
+                ScriptPath = hostOptionsValue.ScriptPath,
+                SecretsPath = hostOptionsValue.SecretsPath,
+                TestDataPath = hostOptionsValue.TestDataPath
+            };
+
+            return Ok(response);
         }
 
         /// <summary>

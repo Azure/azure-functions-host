@@ -131,7 +131,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var proxy = _proxyClient as ProxyClientExecutor;
             Assert.NotNull(proxy);
 
-            var proxyFunctionDescriptor = new ProxyFunctionDescriptorProvider(_scriptHost, _scriptHost.ScriptOptions, _host.Services.GetService<ICollection<IScriptBindingProvider>>(), NullLoggerFactory.Instance);
+            var proxyFunctionDescriptor = new ProxyFunctionDescriptorProvider(_scriptHost, _scriptHost.ScriptOptions, _host.Services.GetService<IEnumerable<IScriptBindingProvider>>().ToArray(), NullLoggerFactory.Instance);
 
             var (created, functionDescriptor) = await proxyFunctionDescriptor.TryCreate(_metadataCollection[0]);
 
@@ -145,7 +145,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task ValidateProxyFunctionInvoker()
         {
-            var proxyFunctionDescriptor = new ProxyFunctionDescriptorProvider(_scriptHost, _scriptHost.ScriptOptions, _host.Services.GetService<ICollection<IScriptBindingProvider>>(), NullLoggerFactory.Instance);
+            var proxyFunctionDescriptor = new ProxyFunctionDescriptorProvider(_scriptHost, _scriptHost.ScriptOptions, _host.Services.GetService<IEnumerable<IScriptBindingProvider>>().ToArray(), NullLoggerFactory.Instance);
 
             var (created, functionDescriptor) = await proxyFunctionDescriptor.TryCreate(_metadataCollection[0]);
 

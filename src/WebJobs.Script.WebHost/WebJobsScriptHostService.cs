@@ -18,6 +18,7 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Workers;
@@ -49,6 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly SemaphoreSlim _hostStartSemaphore = new SemaphoreSlim(1, 1);
         private readonly TaskCompletionSource<bool> _hostStartedSource = new TaskCompletionSource<bool>();
         private readonly Task _hostStarted;
+        private readonly IHostMetrics _hostMetrics;
         private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions;
         private readonly bool _originalStandbyModeValue;
         private readonly string _originalFunctionsWorkerRuntime;
@@ -70,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public WebJobsScriptHostService(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IScriptHostBuilder scriptHostBuilder, ILoggerFactory loggerFactory,
             IScriptWebHostEnvironment scriptWebHostEnvironment, IEnvironment environment,
             HostPerformanceManager hostPerformanceManager, IOptions<HostHealthMonitorOptions> healthMonitorOptions,
-            IMetricsLogger metricsLogger, IApplicationLifetime applicationLifetime, IConfiguration config, IScriptEventManager eventManager,
+            IMetricsLogger metricsLogger, IApplicationLifetime applicationLifetime, IConfiguration config, IScriptEventManager eventManager, IHostMetrics hostMetrics,
             IOptions<FunctionsHostingConfigOptions> hostingConfigOptions)
         {
             ArgumentNullException.ThrowIfNull(loggerFactory);
@@ -91,6 +93,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
             _config = config ?? throw new ArgumentNullException(nameof(config));
             _eventManager = eventManager;
+            _hostMetrics = hostMetrics ?? throw new ArgumentNullException(nameof(hostMetrics));
 
             _hostStarted = _hostStartedSource.Task;
 
@@ -413,6 +416,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 }
 
                 attemptCount++;
+
+                if (attemptCount > 3)
+                {
+                    _hostMetrics.AppFailure();
+                }
 
                 if (ShutdownHostIfUnhealthy())
                 {

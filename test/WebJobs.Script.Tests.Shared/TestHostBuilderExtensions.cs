@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics.Metrics;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Host.Storage;
@@ -11,12 +12,14 @@ using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Grpc;
+using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.Tests;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -63,21 +66,25 @@ namespace Microsoft.WebJobs.Script.Tests
             AddMockedSingleton<IHttpWorkerService>(services);
             AddMockedSingleton<IApplicationLifetime>(services);
             AddMockedSingleton<IDependencyValidator>(services);
+            AddMockedSingleton<ISharedMemoryManager>(services);
+            AddMockedSingleton<IFunctionDataCache>(services);
             AddMockedSingleton<IAzureBlobStorageProvider>(services);
             services.AddSingleton<IDiagnosticEventRepository, TestDiagnosticEventRepository>();
             services.AddSingleton<IDiagnosticEventRepositoryFactory, TestDiagnosticEventRepositoryFactory>();
+            services.AddSingleton<ISecretManagerProvider, TestSecretManagerProvider>();
             services.AddSingleton<HostNameProvider>();
             services.AddSingleton<IMetricsLogger>(metricsLogger);
             services.AddWebJobsScriptHostRouting();
             services.AddLogging();
             services.AddFunctionMetadataManager();
+            services.AddHostMetrics();
 
             configureRootServices?.Invoke(services);
 
-            var rootProvider = new WebHostServiceProvider(services);
+            var rootProvider = services.BuildServiceProvider();
 
             builder
-                .AddWebScriptHost(rootProvider, rootProvider, webHostOptions, configureWebJobs)
+                .AddWebScriptHost(rootProvider, services, webHostOptions, configureWebJobs)
                 .ConfigureAppConfiguration(c =>
                 {
                     c.AddTestSettings();
@@ -100,6 +107,13 @@ namespace Microsoft.WebJobs.Script.Tests
         {
             var mock = new Mock<T>();
             return services.AddSingleton<T>(mock.Object);
+        }
+
+        private static IServiceCollection AddHostMetrics(this IServiceCollection services)
+        {
+            services.AddMetrics();
+            services.AddSingleton<IHostMetrics, HostMetrics>();
+            return services;
         }
 
         private static IServiceCollection AddFunctionMetadataManager(this IServiceCollection services)

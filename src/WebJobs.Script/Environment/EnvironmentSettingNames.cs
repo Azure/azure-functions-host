@@ -79,6 +79,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string FunctionsTimeZone = "TZ";
         public const string FunctionsWebsiteTimeZone = "WEBSITE_TIME_ZONE";
         public const string FunctionsTargetGroup = "FUNCTIONS_TARGET_GROUP";
+        public const string WebsiteArmResourceId = "WEBSITE_ARM_RESOURCE_ID";
 
         //Function in Kubernetes
         public const string PodNamespace = "POD_NAMESPACE";

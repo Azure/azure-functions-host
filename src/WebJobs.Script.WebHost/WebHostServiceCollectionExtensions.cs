@@ -11,6 +11,7 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Grpc;
+using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.Middleware;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement;
@@ -88,7 +89,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IScriptHostManager>(s => s.GetRequiredService<WebJobsScriptHostService>());
             services.AddSingleton<IScriptWebHostEnvironment, ScriptWebHostEnvironment>();
             services.TryAddSingleton<IStandbyManager, StandbyManager>();
+            services.TryAddSingleton<IServiceCollection>(services);
             services.TryAddSingleton<IScriptHostBuilder, DefaultScriptHostBuilder>();
+
+            // Metrics
+            services.AddSingleton<IHostMetricsProvider, HostMetricsProvider>();
+            services.AddSingleton<IHostMetrics, HostMetrics>();
 
             // Linux container services
             services.AddLinuxContainerServices();
@@ -278,7 +284,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     var options = s.GetService<IOptions<FlexConsumptionMetricsPublisherOptions>>();
                     var standbyOptions = s.GetService<IOptionsMonitor<StandbyOptions>>();
                     var logger = s.GetService<ILogger<FlexConsumptionMetricsPublisher>>();
-                    return new FlexConsumptionMetricsPublisher(environment, standbyOptions, options, logger, new FileSystem());
+                    var metricsProvider = s.GetService<IHostMetricsProvider>();
+                    return new FlexConsumptionMetricsPublisher(environment, standbyOptions, options, logger, new FileSystem(), metricsProvider);
                 }
                 else if (environment.IsLinuxMetricsPublishingEnabled())
                 {

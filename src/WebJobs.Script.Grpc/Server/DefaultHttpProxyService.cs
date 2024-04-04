@@ -8,7 +8,8 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers;
+using Microsoft.Extensions.Logging;
 using Yarp.ReverseProxy.Forwarder;
 
 namespace Microsoft.Azure.WebJobs.Script.Grpc
@@ -20,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private readonly HttpMessageInvoker _messageInvoker;
         private readonly ForwarderRequestConfig _forwarderRequestConfig;
 
-        public DefaultHttpProxyService(IHttpForwarder httpForwarder)
+        public DefaultHttpProxyService(IHttpForwarder httpForwarder, ILogger<DefaultHttpProxyService> logger)
         {
             _httpForwarder = httpForwarder ?? throw new ArgumentNullException(nameof(httpForwarder));
 
@@ -30,7 +31,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 UseCookies = false
             };
 
-            _messageInvoker = new HttpMessageInvoker(_handler);
+            _messageInvoker = new HttpMessageInvoker(new RetryProxyHandler(_handler, logger));
+
             _forwarderRequestConfig = new ForwarderRequestConfig
             {
                 ActivityTimeout = TimeSpan.FromSeconds(240)
@@ -43,18 +45,37 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _messageInvoker?.Dispose();
         }
 
-        public ValueTask<ForwarderError> ForwardAsync(ScriptInvocationContext context, Uri httpUri)
+        public async Task EnsureSuccessfulForwardingAsync(ScriptInvocationContext context)
+        {
+            if (!context.Properties.TryGetValue(ScriptConstants.HttpProxyTask, out Task<ForwarderError> forwardingTask))
+            {
+                throw new InvalidOperationException("The function invocation context is missing the forwarding task property.");
+            }
+
+            ForwarderError httpProxyTaskResult = await forwardingTask;
+
+            if (httpProxyTaskResult is not ForwarderError.None)
+            {
+                Exception forwarderException = null;
+                if (context.TryGetHttpRequest(out HttpRequest request))
+                {
+                    forwarderException = request.HttpContext.GetForwarderErrorFeature()?.Exception;
+                }
+
+                throw new InvalidOperationException($"Failed to proxy request with ForwarderError: {httpProxyTaskResult}", forwarderException);
+            }
+        }
+
+        public Task ForwardAsync(ScriptInvocationContext context, Uri httpUri)
         {
             ArgumentNullException.ThrowIfNull(context);
 
-            if (context.Inputs is null || context.Inputs?.Count() == 0)
+            if (context.Inputs is null || !context.Inputs.Any())
             {
                 throw new InvalidOperationException($"The function {context.FunctionMetadata.Name} can not be evaluated since it has no inputs.");
             }
 
-            HttpRequest httpRequest = context.Inputs.FirstOrDefault(i => i.Val is HttpRequest).Val as HttpRequest;
-
-            if (httpRequest is null)
+            if (!context.TryGetHttpRequest(out HttpRequest httpRequest))
             {
                 throw new InvalidOperationException($"Cannot proxy the HttpTrigger function {context.FunctionMetadata.Name} without an input of type {nameof(HttpRequest)}.");
             }
@@ -66,9 +87,10 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             // add invocation id as correlation id
             httpRequest.Headers.TryAdd(ScriptConstants.HttpProxyCorrelationHeader, context.ExecutionContext.InvocationId.ToString());
 
-            var aspNetTask = _httpForwarder.SendAsync(httpContext, httpUri.ToString(), _messageInvoker, _forwarderRequestConfig);
+            var forwardingTask = _httpForwarder.SendAsync(httpContext, httpUri.ToString(), _messageInvoker, _forwarderRequestConfig).AsTask();
+            context.Properties.Add(ScriptConstants.HttpProxyTask, forwardingTask);
 
-            return aspNetTask;
+            return forwardingTask;
         }
     }
 }
