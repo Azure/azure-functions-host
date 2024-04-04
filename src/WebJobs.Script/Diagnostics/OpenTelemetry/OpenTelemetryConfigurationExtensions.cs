@@ -74,6 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
                 string serviceName = Environment.GetEnvironmentVariable(ResourceAttributeConstants.SiteNameEnvVar) ?? "azureFunctions";
                 string version = typeof(ScriptHost).Assembly.GetName().Version.ToString();
                 r.AddService(serviceName, serviceVersion: version);
+                r.AddDetector(new FunctionsResourceDetector());
 
                 // Set the AI SDK to a key so we know all the telemetry came from the Functions Host
                 // NOTE: This ties to \azure-sdk-for-net\sdk\monitor\Azure.Monitor.OpenTelemetry.Exporter\src\Internals\ResourceExtensions.cs :: AiSdkPrefixKey used in CreateAzureMonitorResource()
