@@ -74,8 +74,8 @@
     <PackageReference Include="Mono.Posix.NETStandard" Version="1.0.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="NuGet.ProjectModel" Version="5.11.6" />
-    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.8.0-rc.1" />
-    <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.8.0-rc.1" />
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.8.0" />
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.8.0" />
     <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.7.1" />
     <PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.7.1" />
     <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" Version="1.7.0" />

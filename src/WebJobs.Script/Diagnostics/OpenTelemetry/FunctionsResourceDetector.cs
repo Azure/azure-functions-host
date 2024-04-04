@@ -3,18 +3,18 @@
 
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using OpenTelemetry.Resources;
 
 namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
 {
-    public sealed class FunctionsResourceDetector : IResourceDetector
+    internal sealed class FunctionsResourceDetector : IResourceDetector
     {
         internal static readonly IReadOnlyDictionary<string, string> ResourceAttributes = new Dictionary<string, string>(1)
         {
             { ResourceAttributeConstants.AttributeCloudRegion, ResourceAttributeConstants.RegionNameEnvVar },
         };
 
-        /// <inheritdoc/>
         public Resource Detect()
         {
             List<KeyValuePair<string, object>> attributeList = new(5);
@@ -24,9 +24,9 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
                 attributeList.Add(new KeyValuePair<string, object>(ResourceAttributeConstants.AttributeCloudProvider, ResourceAttributeConstants.AzureCloudProviderValue));
                 attributeList.Add(new KeyValuePair<string, object>(ResourceAttributeConstants.AttributeCloudPlatform, ResourceAttributeConstants.AzurePlatformValue));
 
-                var version = typeof(ScriptHost).Assembly.GetName().Version.ToString();
+                var version = Assembly.GetEntryAssembly()?.GetName().Version.ToString() ?? "0:0:0";
                 attributeList.Add(new KeyValuePair<string, object>(ResourceAttributeConstants.AttributeVersion, version));
-                if (siteName != null)
+                if (!string.IsNullOrEmpty(siteName))
                 {
                     var azureResourceUri = GetAzureResourceURI(siteName);
                     if (azureResourceUri != null)

@@ -571,10 +571,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             {
                  ScriptHost.WorkerOpenTelemetryEnabled = true;
             }
-            else
-            {
-                ScriptHost.WorkerOpenTelemetryEnabled = false;
-            }
 
             // If http proxying is enabled, we need to get the proxying endpoint of this worker
             var httpUri = _workerCapabilities.GetCapabilityState(RpcWorkerConstants.HttpUri);
@@ -890,7 +886,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 }
 
                 var invocationRequest = await context.ToRpcInvocationRequest(_workerChannelLogger, _workerCapabilities, _isSharedMemoryDataTransferEnabled, _sharedMemoryManager);
-                AddTagsToActivity(context);
                 AddAdditionalTraceContext(invocationRequest.TraceContext.Attributes, context);
                 _executingInvocations.TryAdd(invocationRequest.InvocationId, new(context, _messageDispatcherFactory.Create(invocationRequest.InvocationId)));
                 _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvoked, Id), functionName: Sanitizer.Sanitize(context.FunctionMetadata.Name));
@@ -1682,39 +1677,43 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         private void AddAdditionalTraceContext(MapField<string, string> attributes, ScriptInvocationContext context)
         {
-            // This is only applicable for AI agents running along side worker
-            if (_environment.IsApplicationInsightsAgentEnabled())
-            {
-                attributes[ScriptConstants.LogPropertyProcessIdKey] = Convert.ToString(_rpcWorkerProcess.Id);
-                if (context.FunctionMetadata.Properties.TryGetValue(ScriptConstants.LogPropertyHostInstanceIdKey, out var hostInstanceIdValue))
-                {
-                    attributes[ScriptConstants.LogPropertyHostInstanceIdKey] = Convert.ToString(hostInstanceIdValue);
-                }
-                if (context.FunctionMetadata.Properties.TryGetValue(LogConstants.CategoryNameKey, out var categoryNameValue))
-                {
-                    attributes[LogConstants.CategoryNameKey] = Convert.ToString(categoryNameValue);
-                }
-                string sessionid = Activity.Current?.GetBaggageItem(ScriptConstants.LiveLogsSessionAIKey);
-                if (!string.IsNullOrEmpty(sessionid))
-                {
-                    attributes[ScriptConstants.LiveLogsSessionAIKey] = sessionid;
-                }
-                string operationName = context.FunctionMetadata.Name;
-                if (!string.IsNullOrEmpty(operationName))
-                {
-                    attributes[ScriptConstants.OperationNameKey] = operationName;
-                }
-            }
-        }
+            attributes[ScriptConstants.LogPropertyProcessIdKey] = Convert.ToString(_rpcWorkerProcess.Id);
 
-        private void AddTagsToActivity(ScriptInvocationContext context)
-        {
-            if (Activity.Current != null)
+            if (context.FunctionMetadata.Properties.TryGetValue(ScriptConstants.LogPropertyHostInstanceIdKey, out var hostInstanceIdValue))
             {
-                Activity.Current.AddTag(ResourceAttributeConstants.AttributeTrigger, context.FunctionMetadata?.Trigger?.Type);
-                Activity.Current.AddTag(ResourceAttributeConstants.AttributeName, context.FunctionMetadata?.Name);
-                Activity.Current.AddTag(ResourceAttributeConstants.AttributeInvocationId, context.ExecutionContext?.InvocationId);
+                string id = Convert.ToString(hostInstanceIdValue);
+                Activity.Current?.AddTag(ResourceAttributeConstants.AttributeInstance, id);
+
+                if (_environment.IsApplicationInsightsAgentEnabled())
+                {
+                    attributes[ScriptConstants.LogPropertyHostInstanceIdKey] = id;
+                }
             }
+
+            if (context.FunctionMetadata.Properties.TryGetValue(LogConstants.CategoryNameKey, out var categoryNameValue) && _environment.IsApplicationInsightsAgentEnabled())
+            {
+                attributes[LogConstants.CategoryNameKey] = Convert.ToString(categoryNameValue);
+            }
+
+            string sessionId = Activity.Current?.GetBaggageItem(ScriptConstants.LiveLogsSessionAIKey);
+            if (!string.IsNullOrEmpty(sessionId))
+            {
+                Activity.Current?.AddTag(ScriptConstants.LiveLogsSessionAIKey, sessionId);
+                if (_environment.IsApplicationInsightsAgentEnabled())
+                {
+                    attributes[ScriptConstants.LiveLogsSessionAIKey] = sessionId;
+                }
+            }
+            if (!string.IsNullOrEmpty(context.FunctionMetadata?.Name))
+            {
+                Activity.Current?.AddTag(ResourceAttributeConstants.AttributeName, context.FunctionMetadata.Name);
+                if (_environment.IsApplicationInsightsAgentEnabled())
+                {
+                    attributes[ScriptConstants.OperationNameKey] = context.FunctionMetadata.Name;
+                }
+            }
+
+            Activity.Current?.AddTag(ResourceAttributeConstants.AttributeTrigger, ResourceAttributeConstants.ResolveTriggerType(context.FunctionMetadata?.Trigger?.Type));
         }
 
         private sealed class ExecutingInvocation : IDisposable

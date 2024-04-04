@@ -29,5 +29,16 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
         internal const string RegionNameEnvVar = "REGION_NAME";
         internal const string ResourceGroupEnvVar = "WEBSITE_RESOURCE_GROUP";
         internal const string OwnerNameEnvVar = "WEBSITE_OWNER_NAME";
+
+        internal static string ResolveTriggerType(string trigger)
+        {
+            switch (trigger)
+            {
+                case "httpTrigger":
+                    return "http";
+                default:
+                    return trigger;
+            }
+        }
     }
 }

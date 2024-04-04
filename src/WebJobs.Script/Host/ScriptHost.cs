@@ -25,6 +25,7 @@ using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
+using Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
@@ -460,16 +461,17 @@ namespace Microsoft.Azure.WebJobs.Script
                 _metricsLogger.LogEvent(MetricEventNames.ApplicationInsightsDisabled);
             }
 
-            if (!string.IsNullOrEmpty(_settingsManager.TelemetryMode) && !string.IsNullOrEmpty(_settingsManager.OtlpEndpoint))
+            if (!string.IsNullOrEmpty(_settingsManager.TelemetryMode) && _settingsManager.TelemetryMode.Equals(OpenTelemetryConstants.OpenTelemetry, StringComparison.OrdinalIgnoreCase))
             {
-                _metricsLogger.LogEvent(MetricEventNames.OpenTelemetryOtlpEnabled);
+                if (!string.IsNullOrEmpty(_settingsManager.OtlpEndpoint))
+                {
+                    _metricsLogger.LogEvent(MetricEventNames.OpenTelemetryOtlpEnabled);
+                }
+                if (!string.IsNullOrEmpty(_settingsManager.ApplicationInsightsConnectionString))
+                {
+                    _metricsLogger.LogEvent(MetricEventNames.OpenTelemetryAzMonEnabled);
+                }
             }
-
-            if (!string.IsNullOrEmpty(_settingsManager.TelemetryMode) && !string.IsNullOrEmpty(_settingsManager.ApplicationInsightsConnectionString))
-            {
-                _metricsLogger.LogEvent(MetricEventNames.OpenTelemetryAzMonEnabled);
-            }
-
             InitializeFileSystem();
         }
 
