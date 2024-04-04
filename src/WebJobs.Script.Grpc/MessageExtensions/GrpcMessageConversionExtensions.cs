@@ -111,7 +111,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             var http = new RpcHttp()
             {
                 Url = $"{(request.IsHttps ? "https" : "http")}://{request.Host}{request.Path}{request.QueryString}",
-                Method = request.Method.ToString(),
+                Method = request.Method,
                 RawBody = null
             };
             var typedData = new TypedData
@@ -119,10 +119,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 Http = http
             };
 
+            var shouldUseNullableValueDictionary = ShouldUseNullableValueDictionary(capabilities);
             foreach (var pair in request.Query)
             {
                 var value = pair.Value.ToString();
-                if (ShouldUseNullableValueDictionary(capabilities))
+                if (shouldUseNullableValueDictionary)
                 {
                     http.NullableQuery.Add(pair.Key, new NullableString { Value = value });
                 }
@@ -137,7 +138,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             foreach (var pair in request.Headers)
             {
-                if (ShouldUseNullableValueDictionary(capabilities))
+                if (shouldUseNullableValueDictionary)
                 {
                     http.NullableHeaders.Add(pair.Key.ToLowerInvariant(), new NullableString { Value = pair.Value.ToString() });
                 }
@@ -159,7 +160,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 {
                     if (pair.Value != null)
                     {
-                        if (ShouldUseNullableValueDictionary(capabilities))
+                        if (shouldUseNullableValueDictionary)
                         {
                             http.NullableParams.Add(pair.Key, new NullableString { Value = pair.Value.ToString() });
                         }

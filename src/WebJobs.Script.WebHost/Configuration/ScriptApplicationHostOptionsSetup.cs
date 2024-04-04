@@ -71,6 +71,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
 
         private bool IsZipDeployment(out bool isScmRunFromPackage)
         {
+            // Flex consumption does not support mutable filesystems, and therefore always counts as zip deployment. It does not use scmRunFromPackage.
+            // TODO: revisit whether this flex consumption path should return false when in placeholder mode? Thats how it appears to work for other SKUs.
+            if (_environment.IsFlexConsumptionSku())
+            {
+                isScmRunFromPackage = false;
+                return true;
+            }
+
             // Check app settings for run from package.
             bool runFromPkgConfigured = Utility.IsValidZipSetting(_environment.GetEnvironmentVariable(AzureWebsiteZipDeployment)) ||
                 Utility.IsValidZipSetting(_environment.GetEnvironmentVariable(AzureWebsiteAltZipDeployment)) ||
