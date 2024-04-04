@@ -26,24 +26,18 @@ pr: none
 
 resources:
   repositories:
-  - repository: 1ESPipelineTemplates
+  - repository: 1es
     type: git
     name: 1ESPipelineTemplates/1ESPipelineTemplates
     ref: refs/tags/release
 
 extends:
-  template: v1/1ES.Official.PipelineTemplate.yml@1ESPipelineTemplates
+  template: v1/1ES.Official.PipelineTemplate.yml@1es
   parameters:
     pool:
       name: 1es-pool-azfunc
-      image: 1es-windows-2022  # Name of the image in your pool. If not specified, first image of the pool is used
-      os: windows  # OS of the image. This value cannot be a variable. Allowed values: windows, linux, macOS
-
-    sdl:
-      sourceAnalysisPool:
-        name: 1es-pool-azfunc
-        image: 1es-windows-2022  # Name of the image in your pool. If not specified, first image of the pool is used
-        os: windows  # OS of the image. This value cannot be a variable. Allowed values: windows, linux, macOS
+      image: 1es-windows-2022 
+      os: windows
 
     stages:
     - stage: Build
