@@ -288,7 +288,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
                     {
                         // Accumulate the duration for this interval, applying the minimum
                         var duration = Math.Max(elapsedMS, _options.MinimumActivityIntervalMS);
-                        FunctionExecutionTimeMS += (long)duration;
+                        FunctionExecutionTimeMS += RoundMS((long)duration, _options.MetricsGranularityMS);
 
                         // Move the high watermark timestamp forward
                         _activityIntervalHighWatermark = adjustedActivityIntervalStart.AddMilliseconds(duration);
@@ -303,6 +303,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         public void AddFunctionExecutionActivity(string functionName, string invocationId, int concurrency, string executionStage, bool success, long executionTimeSpan, string executionId, DateTime eventTimeStamp, DateTime functionStartTime)
         {
             // nothing to do here - we only care about Started/Completed events.
+        }
+
+        // Rounds the given metric to the specified granularity in the options. This function should only be used for metrics expressed in ms.
+        private long RoundMS(long metricMS, int granularity)
+        {
+            var excess = metricMS % granularity;
+            return metricMS % granularity == 0 ? metricMS : metricMS - excess + granularity;
         }
 
         public void Dispose()
