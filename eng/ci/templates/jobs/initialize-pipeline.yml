@@ -21,4 +21,3 @@ jobs:
         arguments: -minorVersionPrefix "$(minorVersionPrefix)"
         showWarnings: true
         pwsh: true
-  

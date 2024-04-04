@@ -1,10 +1,6 @@
-parameters:
-  - name: isReleaseBranch
-    type: boolean
-    default: false
-
 variables:
   IntegrationProject: 'test/WebJobs.Script.Tests.Integration.csproj'
+  IsReleaseBranch: $[contains(variables['Build.SourceBranch'], 'release/')]
 
 jobs:
 - job: RunIntegrationTests
@@ -42,7 +38,7 @@ jobs:
   - task: AzureKeyVault@1
     inputs:
       # Note: This is actually a Service Connection in DevOps, not an Azure subscription name
-      azureSubscription: 'Azure-Functions-Host-CI'
+      azureSubscription: 'Azure-Functions-Host-CI-internal'
       keyVaultName: 'azure-functions-host-ci'
       secretsFilter: '*'
 
@@ -55,7 +51,7 @@ jobs:
   - task: AzureKeyVault@1
     inputs:
       # Note: This is actually a Service Connection in DevOps, not an Azure subscription name
-      azureSubscription: 'Azure-Functions-Host-CI'
+      azureSubscription: 'Azure-Functions-Host-CI-internal'
       keyVaultName: azure-functions-host-$(LeaseBlob)
       secretsFilter: '*'
 
@@ -191,7 +187,7 @@ jobs:
 
   - task: DotNetCoreCLI@2
     displayName: "Release verification tests"
-    condition: ${{ eq(parameters.isReleaseBranch, true) }}
+    condition: ${{ eq(variables.IsReleaseBranch, true) }}
     inputs:
       command: 'test'
       testRunTitle: "Release verification tests"

@@ -1,0 +1,32 @@
+name: AzFunc.Host - PR Integration Tests
+
+trigger:
+  branches:
+    include:
+    - dev
+    - release/4.*
+    - release/inproc6/4.*
+    - release/inproc8/4.*
+
+resources:
+  repositories:
+  - repository: 1es
+    type: git
+    name: 1ESPipelineTemplates/1ESPipelineTemplates
+    ref: refs/tags/release
+
+extends:
+  template: v1/1ES.Unofficial.PipelineTemplate.yml@1es
+  parameters:
+    pool:
+      name: 1es-pool-azfunc
+      image: 1es-windows-2022 
+      os: windows
+
+    stages:
+    - stage: Build
+      jobs:
+
+      - template: /eng/ci/templates/jobs/initialize-pipeline.yml@self
+      - template: /eng/ci/templates/official/jobs/run-non-e2e-tests.yml@self
+      - template: /eng/ci/templates/official/jobs/run-integration-tests.yml@self

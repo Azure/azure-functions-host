@@ -1,8 +1,7 @@
-name: AzFunc Host Official CI
+name: AzFunc.Host - CI Official
 
 variables:
   buildNumber: $[ counter('constant', 13000) ] # TODO: new pipeline, 13000 no longer valid.
-  isReleaseBranch: $[contains(variables['Build.SourceBranch'], 'release/')]
   ${{ if contains(variables['Build.SourceBranch'], 'release/inproc6/') }}:
     minorVersionPrefix: "6"
   ${{ elseif contains(variables['Build.SourceBranch'], 'release/inproc8/') }}:
@@ -304,9 +303,5 @@ extends:
             Verbosity: 'Information'
 
       - template: /eng/ci/templates/jobs/run-unit-tests.yml@self
-
-      # TODO: need to enable service connections
-      #- template: /eng/ci/templates/official/jobs/run-non-e2e-tests.yml@self
-      #- template: /eng/ci/templates/official/jobs/run-integration-tests.yml@self
-      #  parameters:
-      #    isReleaseBranch: $(isReleaseBranch)
+      - template: /eng/ci/templates/official/jobs/run-non-e2e-tests.yml@self
+      - template: /eng/ci/templates/official/jobs/run-integration-tests.yml@self

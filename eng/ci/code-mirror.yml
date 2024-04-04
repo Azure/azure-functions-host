@@ -1,3 +1,5 @@
+name: AzFunc.Host - Code Mirror
+
 trigger:
   branches:
     include:
