@@ -37,11 +37,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security.Authentication
 
         private AuthenticateResult HandleAuthenticate()
         {
+            Logger.LogInformation("In HandleAuthenticate");
             string token = null;
             if (!_hostingConfigOptions.Value.SwtAuthenticationEnabled || !Context.Request.Headers.TryGetValue(ScriptConstants.SiteRestrictedTokenHeaderName, out StringValues values))
             {
                 return AuthenticateResult.NoResult();
             }
+            Logger.LogInformation("Received x-ms-site-restricted-token token.");
 
             token = values.First();
 
@@ -49,6 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security.Authentication
             {
                 if (!SimpleWebTokenHelper.ValidateToken(token, Clock))
                 {
+                    Logger.LogInformation("Token validation failed.");
                     return AuthenticateResult.Fail("Token validation failed.");
                 }
 
@@ -57,6 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security.Authentication
                     new Claim(SecurityConstants.AuthLevelClaimType, AuthorizationLevel.Admin.ToString())
                 };
 
+                Logger.LogInformation("Attaching Cliams Identity");
                 var identity = new ClaimsIdentity(claims, ArmAuthenticationDefaults.AuthenticationScheme);
                 return AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(identity), Scheme.Name));
             }
