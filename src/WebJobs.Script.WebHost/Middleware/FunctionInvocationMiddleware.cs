@@ -136,6 +136,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
                 var scopeState = new Dictionary<string, object>()
                 {
                     [ScriptConstants.LoggerHttpRequest] = context.Request,
+                    [ScriptConstants.AzureFunctionsRequestIdKey] = context.Request.GetRequestId(),
                 };
 
                 using (logger.BeginScope(scopeState))
