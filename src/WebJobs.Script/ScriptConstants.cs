@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Immutable;
 using NuGet.Versioning;
 
@@ -45,6 +46,10 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string TraceSourceHttpHandler = "HttpRequestTraceHandler";
         public const string TraceSourceHttpThrottleMiddleware = "HttpThrottleMiddleware";
 
+        // We have been using this to insert the full HttpRequest into the logger scope. This is not a good practice
+        // as it will worsen any execution context leaks. If logger scope is leaked, now HTTP request will be leaked as well.
+        // We will not remove it from the logger scope just yet, but we will remove all of our own usage of it.
+        [Obsolete("Do not access the HTTP request from the logger scope, this will be removed in a future version.")]
         public const string LoggerHttpRequest = "MS_HttpRequest";
 
         public const string LogCategoryHostController = "Host.Controllers.Host";
