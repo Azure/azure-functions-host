@@ -146,10 +146,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
                 // For Http function invocations we want to stamp invocation logs with
                 // the request ID for easy correlation with incoming Http request logs.
-                if (scopeProps.TryGetValue(ScriptConstants.LoggerHttpRequest, out scopeValue))
+                if (scopeProps.TryGetValue(ScriptConstants.AzureFunctionsRequestIdKey, out scopeValue))
                 {
-                    var httpRequest = (HttpRequest)scopeValue;
-                    scopeActivityId = httpRequest.GetRequestId();
+                    scopeActivityId = scopeValue as string;
                 }
             }
 
