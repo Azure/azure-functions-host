@@ -130,7 +130,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
                 metricsFile.Delete();
             }
 
-            int executionDurationMS = 5678;
+            int executionDurationMS = 5700;
             publisher.FunctionExecutionCount = 123;
             publisher.FunctionExecutionTimeMS = executionDurationMS;
 
@@ -145,7 +145,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             metricsFile = files[0];
             metrics = await ReadMetricsAsync(metricsFile.FullName);
             Assert.Equal(123, metrics.ExecutionCount);
-            Assert.Equal(5678, metrics.ExecutionTimeMS);
+            Assert.Equal(5700, metrics.ExecutionTimeMS);
             ValidateTotalTime(metrics.TotalTimeMS, delay);
             Assert.Equal(isAlwaysReadyInstance, metrics.IsAlwaysReady);
 

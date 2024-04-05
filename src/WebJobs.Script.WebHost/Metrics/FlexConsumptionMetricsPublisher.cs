@@ -306,7 +306,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         }
 
         // Rounds up the given metric to a specified granularity. For example, RoundUp(1320.00, 100) = 1400, but RoundUp(1300.00, 100) = 1300.
-        private long RoundUp(double metric, int granularity)
+        private static long RoundUp(double metric, int granularity)
         {
             return (long)Math.Ceiling(metric / granularity) * granularity;
         }
