@@ -13,16 +13,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
     {
         internal const int DefaultMetricsPublishIntervalMS = 5000;
         internal const int DefaultMinimumActivityIntervalMS = 1000;
+        internal const int DefaultMetricsGranularityMS = 100;
 
         public FlexConsumptionMetricsPublisherOptions()
         {
             MetricsPublishIntervalMS = DefaultMetricsPublishIntervalMS;
             MinimumActivityIntervalMS = DefaultMinimumActivityIntervalMS;
+            MetricsGranularityMS = DefaultMetricsGranularityMS;
             InitialPublishDelayMS = Utility.ColdStartDelayMS;
 
             // Default this to 15 minutes worth of files
             MaxFileCount = 15 * (int)Math.Ceiling(1.0 * 60 / (MetricsPublishIntervalMS / 1000));
         }
+
+        /// <summary>
+        /// Gets or sets the granularity with which metrics rounded.
+        /// </summary>
+        public int MetricsGranularityMS { get; set; }
 
         /// <summary>
         /// Gets or sets the interval at which metrics are published.

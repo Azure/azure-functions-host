@@ -130,7 +130,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
                 metricsFile.Delete();
             }
 
-            int executionDurationMS = 5678;
+            int executionDurationMS = 5700;
             publisher.FunctionExecutionCount = 123;
             publisher.FunctionExecutionTimeMS = executionDurationMS;
 
@@ -145,7 +145,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             metricsFile = files[0];
             metrics = await ReadMetricsAsync(metricsFile.FullName);
             Assert.Equal(123, metrics.ExecutionCount);
-            Assert.Equal(5678, metrics.ExecutionTimeMS);
+            Assert.Equal(5700, metrics.ExecutionTimeMS);
             ValidateTotalTime(metrics.TotalTimeMS, delay);
             Assert.Equal(isAlwaysReadyInstance, metrics.IsAlwaysReady);
 
@@ -268,10 +268,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
 
             // function starts and completes with a duration less than the minimum
             publisher.OnFunctionStarted("foo", "1", now);
-            now += TimeSpan.FromMilliseconds(300);
+            now += TimeSpan.FromMilliseconds(350);
             publisher.OnFunctionCompleted("foo", "1", now);
 
-            // we're metered for the minimum interval
+            // we're metered for the minimum interval with no rounding
             Assert.Equal(0, publisher.ActiveFunctionCount);
             Assert.Equal(1, publisher.FunctionExecutionCount);
             Assert.Equal(1000, publisher.FunctionExecutionTimeMS);
@@ -288,12 +288,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             Assert.Equal(2, publisher.FunctionExecutionCount);
             Assert.Equal(1000, publisher.FunctionExecutionTimeMS);
 
-            // after 50ms another invocation starts and runs for 1200ms
+            // after 30ms another invocation starts and runs for 1200ms
             // this finally takes us out of the previous 1s window
-            // 350ms of the 1200ms comes from the previous window,
-            // leaving 850ms. This is again rounded up to 1s and a
-            // new window runs out 150ms from now
-            now += TimeSpan.FromMilliseconds(50);
+            // 320ms of the 1200ms comes from the previous window,
+            // leaving 880ms. This is again rounded up to 1s and a
+            // new window runs out 120ms from now
+            now += TimeSpan.FromMilliseconds(30);
             publisher.OnFunctionStarted("foo", "3", now);
             now += TimeSpan.FromMilliseconds(1200);
             publisher.OnFunctionCompleted("foo", "31", now);
@@ -302,17 +302,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             Assert.Equal(3, publisher.FunctionExecutionCount);
             Assert.Equal(2000, publisher.FunctionExecutionTimeMS);
 
-            // after 300ms another invocation starts and runs for 1300ms
+            // after 300ms another invocation starts and runs for 1320ms
             // because we're out of the previous window, we're metered
-            // for this duration
+            // for this duration and rounded up to 1400ms
             now += TimeSpan.FromMilliseconds(300);
             publisher.OnFunctionStarted("foo", "4", now);
-            now += TimeSpan.FromMilliseconds(1300);
+            now += TimeSpan.FromMilliseconds(1320);
             publisher.OnFunctionCompleted("foo", "4", now);
 
             Assert.Equal(0, publisher.ActiveFunctionCount);
             Assert.Equal(4, publisher.FunctionExecutionCount);
-            Assert.Equal(3300, publisher.FunctionExecutionTimeMS);
+            Assert.Equal(3400, publisher.FunctionExecutionTimeMS);
 
             // finally, after a short delay of 50ms, we have 2 invocations that
             // start, overlap, then complete in an activity duration of 3.5s
@@ -327,7 +327,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
 
             Assert.Equal(0, publisher.ActiveFunctionCount);
             Assert.Equal(6, publisher.FunctionExecutionCount);
-            Assert.Equal(6800, publisher.FunctionExecutionTimeMS);
+            Assert.Equal(6900, publisher.FunctionExecutionTimeMS);
         }
 
         [Fact]
@@ -385,7 +385,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
 
             now += TimeSpan.FromMilliseconds(100);
 
-            // a short invocation starts and complets, and with the duration
+            // a short invocation starts and completes, and with the duration
             // being rounded up to the minimum
             publisher.OnFunctionStarted("foo", "3", now);
             now += TimeSpan.FromMilliseconds(100);
@@ -426,14 +426,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             Assert.Equal(3500, publisher.FunctionExecutionTimeMS);
 
             // We're 900ms ahead. This final invocation completes that
-            // then adds a final duration over the minimum
+            // then adds a final duration over the minimum, which
+            // is rounded up to the next hundred ms
             publisher.OnFunctionStarted("foo", "3", now);
             now += TimeSpan.FromMilliseconds(900 + 1234);
             publisher.OnFunctionCompleted("foo", "3", now);
 
             Assert.Equal(0, publisher.ActiveFunctionCount);
             Assert.Equal(7, publisher.FunctionExecutionCount);
-            Assert.Equal(4734, publisher.FunctionExecutionTimeMS);
+            Assert.Equal(4800, publisher.FunctionExecutionTimeMS);
         }
 
         public void CleanupMetricsFiles()
