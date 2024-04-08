@@ -101,6 +101,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Http
         [Fact]
         public async Task StartProcess_LinuxConsumption_TriesToAssignExecutePermissions_NotExists()
         {
+            File.Delete(_executablePath);
             TestEnvironment testEnvironment = new TestEnvironment();
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, "TestContainer");
             var mockHttpWorkerProcess = new HttpWorkerProcess(_testWorkerId, _rootScriptPath, _httpWorkerOptions, _mockEventManager.Object, _defaultWorkerProcessFactory, _processRegistry, _testLogger, _languageWorkerConsoleLogSource.Object, testEnvironment, new TestMetricsLogger(), _serviceProviderMock.Object, new LoggerFactory());
