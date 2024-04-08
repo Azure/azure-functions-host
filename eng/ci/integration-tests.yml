@@ -1,4 +1,4 @@
-name: AzFunc.Host - PR Integration Tests
+name: AzFunc.Host - Integration Tests
 
 variables:
   DOTNET_NOLOGO: 1
