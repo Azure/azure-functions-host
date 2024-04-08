@@ -1,5 +1,11 @@
 jobs:
 - job: RunUnitTests
+  displayName: 'Run unit tests'
+
+  pool:
+    name: 1es-pool-azfunc
+    image: 1es-windows-2022 
+    os: windows
   
   steps:
   - template: /eng/ci/templates/install-dotnet.yml@self
@@ -7,9 +13,9 @@ jobs:
   - task: DotNetCoreCLI@2
     displayName: 'Unit Tests'
     inputs:
-      command: 'test'
-      testRunTitle: 'Unit Tests'
-      arguments: '-v n'
+      command: test
+      testRunTitle: Unit Tests
+      arguments: -v n
       projects: |
         **\ExtensionsMetadataGeneratorTests.csproj
         **\WebJobs.Script.Tests.csproj

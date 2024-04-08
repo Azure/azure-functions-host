@@ -55,7 +55,7 @@ else
 }
 
 Import-Module $PSScriptRoot\Get-AzureFunctionsVersion -Force
-$version = Get-AzureFunctionsVersion $buildNumber $buildNumber $minorVersionPrefix
+$version = Get-AzureFunctionsVersion $buildNumber "" $minorVersionPrefix
 
 Write-Host "Site extension version: $version"
 Write-Host "##vso[build.updatebuildnumber]$version"

@@ -5,6 +5,7 @@ parameters:
 
 jobs:
   - job: InitializePipeline
+    displayName: 'Initialize pipeline'
 
     steps:
     - task: UseDotNet@2 # The pinned SDK we use to build

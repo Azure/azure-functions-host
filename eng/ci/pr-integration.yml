@@ -1,5 +1,10 @@
 name: AzFunc.Host - PR Integration Tests
 
+variables:
+  DOTNET_NOLOGO: 1
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
+  DOTNET_CLI_TELEMETRY_OPTOUT: 1
+
 trigger:
   branches:
     include:
@@ -24,7 +29,7 @@ extends:
       os: windows
 
     stages:
-    - stage: Build
+    - stage: Test
       jobs:
 
       - template: /eng/ci/templates/jobs/initialize-pipeline.yml@self

@@ -1,9 +1,15 @@
-variables:
-  IntegrationProject: 'test/WebJobs.Script.Tests.Integration.csproj'
-  IsReleaseBranch: $[contains(variables['Build.SourceBranch'], 'release/')]
-
 jobs:
 - job: RunIntegrationTests
+  displayName: 'Run integration tests'
+
+  pool:
+    name: 1es-pool-azfunc
+    image: 1es-windows-2022 
+    os: windows
+
+  variables:
+    IntegrationProject: 'test/WebJobs.Script.Tests.Integration.csproj'
+    IsReleaseBranch: $[contains(variables['Build.SourceBranch'], 'release/')]
 
   steps:
   - template: /eng/ci/templates/install-dotnet.yml@self

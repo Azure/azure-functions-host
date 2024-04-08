@@ -1,8 +1,14 @@
-variables:
-  IntegrationProject: 'test/WebJobs.Script.Tests.Integration.csproj'
-
 jobs:
 - job: RunNonE2EIntegrationTests
+
+  pool:
+    name: 1es-pool-azfunc
+    image: 1es-windows-2022 
+    os: windows
+
+  variables:
+    IntegrationProject: 'test/WebJobs.Script.Tests.Integration.csproj'
+
   steps:
   - template: /eng/ci/templates/install-dotnet.yml@self
 
