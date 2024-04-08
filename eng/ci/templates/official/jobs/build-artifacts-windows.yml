@@ -79,7 +79,7 @@ jobs:
         **/ExtensionsMetadataGenerator.csproj
         **/WebJobs.Script.Abstractions.csproj
 
-  - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@2
+  - task: EsrpCodeSigning@2
     displayName: 'Sign Abstractions assemblies'
     inputs:
       ConnectedServiceName: 'ESRP Service-internal'
@@ -124,7 +124,7 @@ jobs:
       projects: |
         **/WebJobs.Script.Abstractions.csproj
 
-  - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@2
+  - task: EsrpCodeSigning@2
     displayName: 'Sign Abstractions package'
     inputs:
       ConnectedServiceName: 'ESRP Service-internal'
@@ -149,7 +149,7 @@ jobs:
             }
         ]
 
-  - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@2
+  - task: EsrpCodeSigning@2
     displayName: 'Sign ExtensionsMetadataGenerator assemblies'
     inputs:
       ConnectedServiceName: 'ESRP Service-internal'
@@ -208,7 +208,7 @@ jobs:
       projects: |
         **/ExtensionsMetadataGeneratorTests.csproj
 
-  - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@2
+  - task: EsrpCodeSigning@2
     displayName: 'Sign ExtensionsMetadataGenerator package'
     inputs:
       ConnectedServiceName: 'ESRP Service-internal'
