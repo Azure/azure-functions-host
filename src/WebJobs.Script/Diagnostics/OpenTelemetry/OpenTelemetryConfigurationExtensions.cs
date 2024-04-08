@@ -11,13 +11,10 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Microsoft.IdentityModel.Abstractions;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
-using static Microsoft.AspNetCore.Hosting.Internal.HostingApplication;
-using static Microsoft.Azure.AppService.Proxy.Runtime.Configuration.PolicyValidationError;
 
 namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
 {
@@ -40,6 +37,9 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
                 .AddFilter<OpenTelemetryLoggerProvider>("Function.*", _ => !ScriptHost.WorkerOpenTelemetryEnabled)
                 .AddFilter<OpenTelemetryLoggerProvider>("Azure.*", _ => !ScriptHost.WorkerOpenTelemetryEnabled)
                 .AddFilter<OpenTelemetryLoggerProvider>("Microsoft.Azure.WebJobs.*", _ => !ScriptHost.WorkerOpenTelemetryEnabled);
+
+            // Azure SDK instrumentation is experimental.
+            AppContext.SetSwitch("Azure.Experimental.EnableActivitySource", true);
 
             loggingBuilder.Services.AddOpenTelemetry()
                 .ConfigureResource(r => ConfigureResource(r))
