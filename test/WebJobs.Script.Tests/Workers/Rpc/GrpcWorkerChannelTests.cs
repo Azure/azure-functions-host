@@ -1415,8 +1415,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             await _workerChannel.SendInvocationRequest(timerInvocationContext);
 
             // Send http trigger and timer trigger invocation responses.
-            await _workerChannel.InvokeResponse(BuildISuccessfulnvocationResponse(timerInvocationId.ToString()));
-            await _workerChannel.InvokeResponse(BuildISuccessfulnvocationResponse(httpInvocationId.ToString()));
+            await _workerChannel.InvokeResponse(BuildSuccessfulInvocationResponse(timerInvocationId.ToString()));
+            await _workerChannel.InvokeResponse(BuildSuccessfulInvocationResponse(httpInvocationId.ToString()));
 
             LogMessage[] logs = _logger.GetLogMessages().ToArray();
             Assert.True(logs.Count(m => m.FormattedMessage.Contains($"InvocationResponse received for invocation: '{timerInvocationId}'")) == 1);
@@ -1605,7 +1605,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             return CreateDefaultWorkerChannel(capabilities: capabilities);
         }
 
-        private static InvocationResponse BuildISuccessfulnvocationResponse(string invocationId)
+        private static InvocationResponse BuildSuccessfulInvocationResponse(string invocationId)
         {
             return new InvocationResponse
             {
