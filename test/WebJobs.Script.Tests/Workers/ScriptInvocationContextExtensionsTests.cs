@@ -10,6 +10,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Google.Protobuf.Collections;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
@@ -332,16 +333,52 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
         public async Task ToRpc_Http_WithProxy()
         {
             // Specify that we're using proxies.
-            var rpcHttp = await CreateTestRpcHttp(new Dictionary<string, string>() { { "HttpUri", "something" } });
+            var rpcHttp = await CreateTestRpcHttp(new Dictionary<string, string>() { { RpcWorkerConstants.HttpUri, "something" } });
 
             // everything should come back empty
             Assert.Empty(rpcHttp.Url);
             Assert.Empty(rpcHttp.Headers);
             Assert.Empty(rpcHttp.Query);
             Assert.Null(rpcHttp.Body);
+            Assert.Empty(rpcHttp.Params);
+            Assert.Empty(rpcHttp.NullableParams);
         }
 
-        private async Task<RpcHttp> CreateTestRpcHttp(IDictionary<string, string> capabilities = null)
+        [Fact]
+        public async Task ToRpc_Http_WithProxy_HandleRouteParams_Capability()
+        {
+            // Specify that we're using proxies & worker can handle route params.
+            var workerCapabilities = new Dictionary<string, string>()
+            {
+                { RpcWorkerConstants.HttpUri, "http://localhost:1234" },
+                { RpcWorkerConstants.HandlesRouteParamsWhenHttpProxying, bool.TrueString }
+            };
+
+            var routeDataValues = new Dictionary<string, object>
+            {
+                { "category", "computer" },
+                { "brand",  "microsoft" }
+            };
+            var httpContextItems = new Dictionary<object, object>
+            {
+                [HttpExtensionConstants.AzureWebJobsHttpRouteDataKey] = routeDataValues
+            };
+
+            var rpcHttp = await CreateTestRpcHttp(workerCapabilities, httpContextItems);
+
+            // Ensure the response includes route params
+            Assert.Equal(2, rpcHttp.Params.Count);
+            Assert.Equal("computer", rpcHttp.Params["category"]);
+            Assert.Equal("microsoft", rpcHttp.Params["brand"]);
+
+            // everything else should come back empty
+            Assert.Empty(rpcHttp.Url);
+            Assert.Empty(rpcHttp.Headers);
+            Assert.Empty(rpcHttp.Query);
+            Assert.Null(rpcHttp.Body);
+        }
+
+        private async Task<RpcHttp> CreateTestRpcHttp(IDictionary<string, string> capabilities = null, IDictionary<object, object> httpRequestContextItems = null)
         {
             var logger = new TestLogger("test");
             GrpcCapabilities grpcCapabilities = new GrpcCapabilities(logger);
@@ -353,6 +390,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             var headers = new HeaderDictionary();
             headers.Add("test-header", "test value");
             var request = HttpTestHelpers.CreateHttpRequest("POST", "http://local/test?a=b", headers: headers, body: "test body");
+
+            if (httpRequestContextItems is not null)
+            {
+                foreach (var item in httpRequestContextItems)
+                {
+                    request.HttpContext.Items.Add(item.Key, item.Value);
+                }
+            }
 
             var bindingData = new Dictionary<string, object>
             {

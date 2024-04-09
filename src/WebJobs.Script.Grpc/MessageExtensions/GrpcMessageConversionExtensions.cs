@@ -101,8 +101,25 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         internal static async Task<TypedData> ToRpcHttp(this HttpRequest request, ILogger logger, GrpcCapabilities capabilities)
         {
+            var handlesHttpRouteParamsWhenProxying = !string.IsNullOrEmpty(capabilities.GetCapabilityState(RpcWorkerConstants.HandlesRouteParamsWhenHttpProxying));
+            var skipHttpInputs = !string.IsNullOrEmpty(capabilities.GetCapabilityState(RpcWorkerConstants.HttpUri));
+            var shouldUseNullableValueDictionary = ShouldUseNullableValueDictionary(capabilities);
+
+            //  If proxying the http request to the worker and
+            //  worker can handle route params, send an empty rpc http object with only params populated.
+            if (skipHttpInputs && handlesHttpRouteParamsWhenProxying)
+            {
+                var typedDataWithRouteParams = new TypedData
+                {
+                    Http = new RpcHttp()
+                };
+
+                PopulateHttpRouteDataAsParams(request, typedDataWithRouteParams.Http, shouldUseNullableValueDictionary);
+
+                return typedDataWithRouteParams;
+            }
+
             // If proxying the http request to the worker, keep the grpc message minimal
-            bool skipHttpInputs = !string.IsNullOrEmpty(capabilities.GetCapabilityState(RpcWorkerConstants.HttpUri));
             if (skipHttpInputs)
             {
                 return EmptyRpcHttp;
@@ -119,7 +136,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 Http = http
             };
 
-            var shouldUseNullableValueDictionary = ShouldUseNullableValueDictionary(capabilities);
             foreach (var pair in request.Query)
             {
                 var value = pair.Value.ToString();
@@ -153,24 +169,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 }
             }
 
-            if (request.HttpContext.Items.TryGetValue(HttpExtensionConstants.AzureWebJobsHttpRouteDataKey, out object routeData))
-            {
-                Dictionary<string, object> parameters = (Dictionary<string, object>)routeData;
-                foreach (var pair in parameters)
-                {
-                    if (pair.Value != null)
-                    {
-                        if (shouldUseNullableValueDictionary)
-                        {
-                            http.NullableParams.Add(pair.Key, new NullableString { Value = pair.Value.ToString() });
-                        }
-                        else
-                        {
-                            http.Params.Add(pair.Key, pair.Value.ToString());
-                        }
-                    }
-                }
-            }
+            PopulateHttpRouteDataAsParams(request, http, shouldUseNullableValueDictionary);
 
             // parse ClaimsPrincipal if exists
             if (request.HttpContext?.User?.Identities != null)
@@ -220,6 +219,35 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
 
             return typedData;
+        }
+
+        private static void PopulateHttpRouteDataAsParams(HttpRequest request, RpcHttp http, bool shouldUseNullableValueDictionary)
+        {
+            if (!request.HttpContext.Items.TryGetValue(HttpExtensionConstants.AzureWebJobsHttpRouteDataKey, out var routeData))
+            {
+                return;
+            }
+
+            if (routeData == null)
+            {
+                return;
+            }
+
+            var parameters = (Dictionary<string, object>)routeData;
+            foreach (var pair in parameters)
+            {
+                if (pair.Value != null)
+                {
+                    if (shouldUseNullableValueDictionary)
+                    {
+                        http.NullableParams.Add(pair.Key, new NullableString { Value = pair.Value.ToString() });
+                    }
+                    else
+                    {
+                        http.Params.Add(pair.Key, pair.Value.ToString());
+                    }
+                }
+            }
         }
 
         private static async Task PopulateBody(HttpRequest request, RpcHttp http, GrpcCapabilities capabilities, ILogger logger)
