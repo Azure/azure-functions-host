@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using Xunit;
@@ -314,6 +315,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var options = GetConfiguredOptions(settings);
 
             Assert.Equal(expected, options.SendCanceledInvocationsToWorker);
+        }
+
+        [Theory]
+        [InlineData("openTelemetry", "OpenTelemetry")]
+        [InlineData("openTELemetry", "OpenTelemetry")]
+        [InlineData("applicationInsights", "ApplicationInsights")]
+        [InlineData("", "ApplicationInsights")]
+        [InlineData("junk", "ApplicationInsights")]
+        public void Configure_WithConfiguration_AppliesTelemetryMode(string setting, string expectedMode)
+        {
+            var settings = new Dictionary<string, string>
+            {
+                { ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, ConfigurationSectionNames.TelemetryMode), setting }
+            };
+
+            var options = GetConfiguredOptions(settings);
+
+            Assert.Equal(expectedMode, options.TelemetryMode.ToString());
         }
 
         private ScriptJobHostOptions GetConfiguredOptions(Dictionary<string, string> settings, IEnvironment environment = null)

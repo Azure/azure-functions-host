@@ -22,12 +22,25 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
     {
         internal static void ConfigureOpenTelemetry(this ILoggingBuilder loggingBuilder, HostBuilderContext context)
         {
+            string azMonConnectionString = GetConfigurationValue(EnvironmentSettingNames.AppInsightsConnectionString, context.Configuration);
+            bool enableOtlp = false;
+            if (!string.IsNullOrEmpty(GetConfigurationValue(EnvironmentSettingNames.OtlpEndpoint, context.Configuration)))
+            {
+                enableOtlp = true;
+            }
+
             loggingBuilder
                 .AddOpenTelemetry(o =>
                 {
                     o.SetResourceBuilder(ConfigureResource(ResourceBuilder.CreateDefault()));
-                    o.AddOtlpExporter();
-                    o.AddAzureMonitorLogExporter();
+                    if (enableOtlp)
+                    {
+                        o.AddOtlpExporter();
+                    }
+                    if (!string.IsNullOrEmpty(azMonConnectionString))
+                    {
+                        o.AddAzureMonitorLogExporter(options => options.ConnectionString = azMonConnectionString);
+                    }
                     o.IncludeFormattedMessage = true;
                     o.IncludeScopes = false;
                 })
@@ -43,27 +56,30 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
 
             loggingBuilder.Services.AddOpenTelemetry()
                 .ConfigureResource(r => ConfigureResource(r))
-                .WithTracing(b => b
-                    .AddSource("Azure.*")
-                    .AddAspNetCoreInstrumentation()
-                    .AddHttpClientInstrumentation(o =>
+                .WithTracing(b =>
+                {
+                    b.AddSource("Azure.*");
+                    b.AddAspNetCoreInstrumentation();
+                    b.AddHttpClientInstrumentation(o =>
                     {
                         o.FilterHttpRequestMessage = _ =>
                         {
                             Activity activity = Activity.Current?.Parent;
                             return (activity == null || !activity.Source.Name.Equals("Azure.Core.Http")) ? true : false;
                         };
-                    })
-                    .AddLiveMetrics()
-                    .AddAzureMonitorTraceExporter()
-                    .AddProcessor(ActivitySanitizingProcessor.Instance)
-                    .AddProcessor(TraceFilterProcessor.Instance)
-                    .AddOtlpExporter())
-                .WithMetrics(b => b
-                    .AddMeter("Microsoft.AspNetCore.Hosting") // http server metrics
-                    .AddMeter("System.Net.Http") // http client metrics
-                    .AddAzureMonitorMetricExporter()
-                .AddOtlpExporter());
+                    });
+                    if (enableOtlp)
+                    {
+                        b.AddOtlpExporter();
+                    }
+                    if (!string.IsNullOrEmpty(azMonConnectionString))
+                    {
+                        b.AddAzureMonitorTraceExporter(options => options.ConnectionString = azMonConnectionString);
+                        b.AddLiveMetrics(options => options.ConnectionString = azMonConnectionString);
+                    }
+                    b.AddProcessor(ActivitySanitizingProcessor.Instance);
+                    b.AddProcessor(TraceFilterProcessor.Instance);
+                });
 
             string eventLogLevel = GetConfigurationValue(EnvironmentSettingNames.OpenTelemetryEventListenerLogLevel, context.Configuration);
             if (!string.IsNullOrEmpty(eventLogLevel))

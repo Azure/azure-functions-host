@@ -1677,43 +1677,56 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         private void AddAdditionalTraceContext(MapField<string, string> attributes, ScriptInvocationContext context)
         {
-            attributes[ScriptConstants.LogPropertyProcessIdKey] = Convert.ToString(_rpcWorkerProcess.Id);
-
-            if (context.FunctionMetadata.Properties.TryGetValue(ScriptConstants.LogPropertyHostInstanceIdKey, out var hostInstanceIdValue))
+            bool isOtelEnabled = false;
+            if (_scriptHostOptions.Value.TelemetryMode == TelemetryMode.OpenTelemetry)
             {
-                string id = Convert.ToString(hostInstanceIdValue);
-                Activity.Current?.AddTag(ResourceAttributeConstants.AttributeInstance, id);
+                isOtelEnabled = true;
+            }
 
-                if (_environment.IsApplicationInsightsAgentEnabled())
+            bool isAIEnabled = false;
+            if (_environment.IsApplicationInsightsAgentEnabled())
+            {
+                isAIEnabled = true;
+            }
+
+            if (isOtelEnabled || isAIEnabled)
+            {
+                if (context.FunctionMetadata.Properties.TryGetValue(ScriptConstants.LogPropertyHostInstanceIdKey, out var hostInstanceIdValue))
                 {
-                    attributes[ScriptConstants.LogPropertyHostInstanceIdKey] = id;
+                    string id = Convert.ToString(hostInstanceIdValue);
+
+                    if (isOtelEnabled)
+                    {
+                        Activity.Current?.AddTag(ResourceAttributeConstants.AttributeInstance, id);
+                    }
+                    if (isAIEnabled)
+                    {
+                        attributes[ScriptConstants.LogPropertyHostInstanceIdKey] = id;
+                    }
                 }
             }
 
-            if (context.FunctionMetadata.Properties.TryGetValue(LogConstants.CategoryNameKey, out var categoryNameValue) && _environment.IsApplicationInsightsAgentEnabled())
+            if (isAIEnabled)
             {
-                attributes[LogConstants.CategoryNameKey] = Convert.ToString(categoryNameValue);
-            }
-
-            string sessionId = Activity.Current?.GetBaggageItem(ScriptConstants.LiveLogsSessionAIKey);
-            if (!string.IsNullOrEmpty(sessionId))
-            {
-                Activity.Current?.AddTag(ScriptConstants.LiveLogsSessionAIKey, sessionId);
-                if (_environment.IsApplicationInsightsAgentEnabled())
+                attributes[ScriptConstants.LogPropertyProcessIdKey] = Convert.ToString(_rpcWorkerProcess.Id);
+                attributes[ScriptConstants.OperationNameKey] = context.FunctionMetadata.Name;
+                string sessionId = Activity.Current?.GetBaggageItem(ScriptConstants.LiveLogsSessionAIKey);
+                if (!string.IsNullOrEmpty(sessionId))
                 {
                     attributes[ScriptConstants.LiveLogsSessionAIKey] = sessionId;
                 }
-            }
-            if (!string.IsNullOrEmpty(context.FunctionMetadata?.Name))
-            {
-                Activity.Current?.AddTag(ResourceAttributeConstants.AttributeName, context.FunctionMetadata.Name);
-                if (_environment.IsApplicationInsightsAgentEnabled())
+
+                if (context.FunctionMetadata.Properties.TryGetValue(LogConstants.CategoryNameKey, out var categoryNameValue))
                 {
-                    attributes[ScriptConstants.OperationNameKey] = context.FunctionMetadata.Name;
+                    attributes[LogConstants.CategoryNameKey] = Convert.ToString(categoryNameValue);
                 }
             }
 
-            Activity.Current?.AddTag(ResourceAttributeConstants.AttributeTrigger, ResourceAttributeConstants.ResolveTriggerType(context.FunctionMetadata?.Trigger?.Type));
+            if (isOtelEnabled)
+            {
+                Activity.Current?.AddTag(ResourceAttributeConstants.AttributeName, context.FunctionMetadata.Name);
+                Activity.Current?.AddTag(ResourceAttributeConstants.AttributeTrigger, ResourceAttributeConstants.ResolveTriggerType(context.FunctionMetadata?.Trigger?.Type));
+            }
         }
 
         private sealed class ExecutingInvocation : IDisposable
