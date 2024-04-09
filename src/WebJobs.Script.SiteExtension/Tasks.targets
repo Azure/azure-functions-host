@@ -1,0 +1,127 @@
+<Project>
+
+  <UsingTask TaskName="MoveSymbols" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <Directories ParameterType="System.String[]" Required="true" />
+      <Destinations ParameterType="System.String[]" Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System"/>
+      <Using Namespace="System.IO"/>
+      <Code Type="Fragment" Language="cs">
+<![CDATA[
+if (Directories.Length != Destinations.Length)
+{
+  Log.LogError("Directories and Destinations must have the same length.");
+  return false;
+}
+
+for (int i = 0; i < Directories.Length; i++)
+{
+  string directory = Directories[i];
+  string destination = Destinations[i];
+
+  if (!Directory.Exists(directory))
+  {
+    Log.LogError($"directory directory {directory} does not exist.");
+    return false;
+  }
+
+  Log.LogMessage(MessageImportance.Low, $"Moving symbols from {directory} to {destination}");
+  if (!Directory.Exists(destination))
+  {
+    Directory.CreateDirectory(destination);
+  }
+
+  foreach (string file in Directory.EnumerateFiles(directory, "*.pdb", SearchOption.AllDirectories))
+  {
+    string relative = file.Substring(directory.Length + 1);
+    string target = Path.Combine(destination, relative);
+
+    if (File.Exists(target))
+    {
+      File.Delete(target);
+    }
+
+    string dir = Path.GetDirectoryName(target);
+    if (!Directory.Exists(dir))
+    {
+      Directory.CreateDirectory(dir);
+    }
+
+    File.Move(file, target);
+  }
+}
+]]>
+      </Code>
+    </Task>
+  </UsingTask>
+
+  <UsingTask TaskName="MoveDir" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <Directories ParameterType="System.String[]" Required="true" />
+      <Destinations ParameterType="System.String[]" Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System"/>
+      <Using Namespace="System.IO"/>
+      <Code Type="Fragment" Language="cs">
+<![CDATA[
+if (Directories.Length != Destinations.Length)
+{
+  Log.LogError("Directories and Destinations must have the same length.");
+  return false;
+}
+
+for (int i = 0; i < Directories.Length; i++)
+{
+  string directory = Directories[i];
+  string destination = Destinations[i];
+
+  if (!Directory.Exists(directory))
+  {
+    Log.LogError($"Directory '{directory}' does not exist.");
+    return false;
+  }
+
+  if (Directory.Exists(destination))
+  {
+    Log.LogError($"Destination directory '{destination}' already exists.");
+    return false;
+  }
+
+  Directory.Move(directory, destination);
+}
+]]>
+      </Code>
+    </Task>
+  </UsingTask>
+
+  <UsingTask TaskName="RemovePowershellRuntimes" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <WorkerDirectories ParameterType="System.String[]" Required="true" />
+      <ExcludeRuntimes ParameterType="System.String[]" Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System"/>
+      <Using Namespace="System.IO"/>
+      <Code Type="Fragment" Language="cs">
+<![CDATA[
+foreach (string worker in WorkerDirectories)
+{
+  foreach (string runtimeDir in Directory.EnumerateDirectories($"{worker}/runtimes"))
+  {
+    string runtimeName = Path.GetFileName(runtimeDir);
+    if (Array.IndexOf(ExcludeRuntimes, runtimeName) == -1)
+    {
+      Log.LogMessage($"Removing powershell runtime '{runtimeDir}'");
+      Directory.Delete(runtimeDir, true);
+    }
+  }
+}
+]]>
+      </Code>
+    </Task>
+  </UsingTask>
+
+</Project>

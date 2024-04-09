@@ -1,14 +1,21 @@
 <Project Sdk="Microsoft.Build.NoTargets">
   <Import Project="..\..\build\common.props" />
+  <Import Project="Tasks.targets" />
 
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
     <SiteExtensionName>Functions</SiteExtensionName>
+    <PublishWebHostDependsOn>
+      PublishProjectReferences;
+      RemoveUnneededRuntimes;
+      MoveSymbols;
+      WriteHardLinkHashes;
+    </PublishWebHostDependsOn>
   </PropertyGroup>
 
   <ItemGroup>
-    <PublishRuntimeIdentifier Include="win-x86" SelfContained="false" PublishDir="32bit" />
-    <PublishRuntimeIdentifier Include="win-x64" SelfContained="false" PublishDir="64bit" />
+    <PublishRuntimeIdentifier Include="win-x86" SelfContained="false" PublishDir="32bit" Workers="Remove" />
+    <PublishRuntimeIdentifier Include="win-x64" SelfContained="false" PublishDir="64bit" Workers="Move" />
   </ItemGroup>
 
   <ItemGroup>
@@ -27,7 +34,7 @@
     </ItemGroup>
   </Target>
 
-  <Target Name="AddRuntimesToProjects" BeforeTargets="BeforeBuild;PrepareForPublish;BeforeClean">
+  <Target Name="AddRuntimesToProjects" BeforeTargets="AssignProjectConfiguration">
     <ItemGroup>
       <_ProjectReferenceWithRuntimes Include="@(ProjectReference)">
         <AdditionalProperties>
@@ -42,26 +49,70 @@
     </ItemGroup>
   </Target>
 
+  <Target Name="PublishWebHost" AfterTargets="PrepareForPublish" BeforeTargets="Publish" DependsOnTargets="$(PublishWebHostDependsOn)" />
+
   <Target Name="PublishProjectReferences" AfterTargets="PrepareForPublish" BeforeTargets="Publish">
     <MSBuild Projects="@(ProjectReference)" Targets="Publish" BuildInParallel="$(BuildInParallel)" Properties="NoBuild=true" />
   </Target>
 
-  <Target Name="MoveSymbols" AfterTargets="PublishProjectReferences" BeforeTargets="Publish">
+  <Target Name="ConsolidateWorkers">
+    <!-- Clean this directory -->
+    <RemoveDir Directories="$(SiteExtensionDir)workers" />
+
+    <MoveDir
+      Directories="@(PublishRuntimeIdentifier->'$(SiteExtensionDir)%(PublishDir)/workers')"
+      Destinations="@(PublishRuntimeIdentifier->'$(SiteExtensionDir)workers')"
+      Condition="'%(Workers)' == 'Move'" />
+    <RemoveDir
+      Directories="@(PublishRuntimeIdentifier->'$(SiteExtensionDir)%(PublishDir)/workers')"
+      Condition="'%(Workers)' == 'Remove'" />
+
+    <!-- Ensure this exists at the end -->
+    <MakeDir Directories="$(SiteExtensionDir)workers" />
+
+    <!-- We don't need python -->
+    <RemoveDir Directories="$(SiteExtensionDir)workers/python" />
+  </Target>
+
+  <Target Name="CleanPowershellRuntimes">
     <ItemGroup>
-      <!--
-        The below looks complex (and it is) because we are trying to take one item group and project it into multiple globbed item groups,
-        while retaining metadata from the original item group. However MSBuild does not natively support this! See the below commented out
-        _Symbol item group. Instead, we glob the parent directory. Then we combine the item metadata from PublishRuntimeIdentifier by matching
-        on the RecursiveDir that was globbed.
-      -->
-      <!-- <_Symbol Include="@(PublishRuntimeIdentifier->'$(SiteExtensionDir)%(PublishDir)/**/*.pdb')" Runtime="%(PublishRuntimeIdentifier.Identity)" /> -->
-      <_SymbolIntermediate Include="$(SiteExtensionDir)**/*.pdb" Runtime="%(PublishRuntimeIdentifier.Identity)" PublishDir="%(PublishRuntimeIdentifier.PublishDir)" />
-      <_Symbol
-        Include="@(_SymbolIntermediate)"
-        TargetPath="$(PublishDir)\Symbols\$(SiteExtensionName).Symbols.$(Version).%(Runtime)\$([System.String]::new('%(RecursiveDir)').Replace('%(PublishDir)', ''))%(Filename)%(Extension)"
-        Condition="$([System.String]::new('%(RecursiveDir)').StartsWith('%(PublishDir)'))" />
+      <_PowershellRuntimesToKeep Include="win;win-x86;win10-x86;win-x64;win10-x64" />
+      <_PowershellRuntimesToRemove Include="$([System.IO.Directory]::GetDirectories('$(SiteExtensionDir)workers/powershell'))" />
     </ItemGroup>
-    <Move SourceFiles="@(_Symbol)" DestinationFiles="%(TargetPath)"/>
+    <RemovePowershellRuntimes WorkerDirectories="@(_PowershellRuntimesToRemove)" ExcludeRuntimes="@(_PowershellRuntimesToKeep)" />
+  </Target>
+
+  <Target Name="RemoveUnneededRuntimes">
+    <ItemGroup>
+      <_RuntimesToRemove Include="@(PublishRuntimeIdentifier->'$(SiteExtensionDir)%(PublishDir)/runtimes/linux')" />
+      <_RuntimesToRemove Include="@(PublishRuntimeIdentifier->'$(SiteExtensionDir)%(PublishDir)/runtimes/osx')" />
+    </ItemGroup>
+    <RemoveDir Directories="@(_RuntimesToRemove)" />
+  </Target>
+
+  <Target Name="MoveSymbols">
+    <MoveSymbols
+      Directories="@(PublishRuntimeIdentifier->'$(SiteExtensionDir)%(PublishDir)')"
+      Destinations="@(PublishRuntimeIdentifier->'$(PublishDir)Symbols\$(SiteExtensionName).Symbols.$(Version).%(Identity)')" />
+  </Target>
+
+  <Target Name="ComputeHardLinkHashes">
+    <ItemGroup>
+      <_FilesToHash Include="$(SiteExtensionDir)**" />
+    </ItemGroup>
+    <GetFileHash Files="@(_FilesToHash)" HashEncoding="base64">
+      <Output TaskParameter="Items" ItemName="_HashedFiles" />
+    </GetFileHash>
+  </Target>
+
+  <Target Name="WriteHardLinkHashes" DependsOnTargets="ComputeHardLinkHashes">
+    <ItemGroup>
+      <_HashedFiles RelativePath=".$([System.IO.Path]::DirectorySeparatorChar)$([MSBuild]::MakeRelative('$(SiteExtensionDir)', '%(Identity)'))" />
+    </ItemGroup>
+    <WriteLinesToFile
+      Overwrite="true"
+      File="$(SiteExtensionDir)/hashesForHardlinks.txt"
+      Lines="@(_HashedFiles->'Hash: %(FileHash) FileName: %(RelativePath)')" />
   </Target>
 
 </Project>
