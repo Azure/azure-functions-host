@@ -1397,14 +1397,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
-        public async Task EnsureSuccessfulForwardingAsync_Is_Invoked_OnlyForHttpInvocationResponses()
+        public async Task Ensure_SuccessfulForwardingAsync_Is_Invoked_OnlyFor_HttpInvocationResponses()
         {
             await CreateDefaultWorkerChannel(capabilities: new Dictionary<string, string>() { { RpcWorkerConstants.HttpUri, "http://localhost:1234" } });
 
             var httpInvocationId = Guid.NewGuid();
             ScriptInvocationContext httpInvocationContext = GetTestScriptInvocationContext(httpInvocationId, new TaskCompletionSource<ScriptInvocationResult>(), logger: _logger);
             httpInvocationContext.FunctionMetadata = BuildFunctionMetadataForHttpTrigger("httpTrigger");
-            await _workerChannel.SendInvocationRequest(httpInvocationContext);
 
             var timerInvocationId = Guid.NewGuid();
             ScriptInvocationContext timerInvocationContext = GetTestScriptInvocationContext(timerInvocationId, new TaskCompletionSource<ScriptInvocationResult>(), logger: _logger);
@@ -1418,9 +1417,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             await _workerChannel.InvokeResponse(BuildSuccessfulInvocationResponse(timerInvocationId.ToString()));
             await _workerChannel.InvokeResponse(BuildSuccessfulInvocationResponse(httpInvocationId.ToString()));
 
-            LogMessage[] logs = _logger.GetLogMessages().ToArray();
-            Assert.True(logs.Count(m => m.FormattedMessage.Contains($"InvocationResponse received for invocation: '{timerInvocationId}'")) == 1);
-            Assert.True(logs.Count(m => m.FormattedMessage.Contains($"InvocationResponse received for invocation: '{httpInvocationId}'")) == 1);
+            var logs = _logger.GetLogMessages().ToArray();
+            Assert.Single(logs.Where(m => m.FormattedMessage.Contains($"InvocationResponse received for invocation: '{timerInvocationId}'")));
+            Assert.Single(logs.Where(m => m.FormattedMessage.Contains($"InvocationResponse received for invocation: '{httpInvocationId}'")));
 
             // IHttpProxyService.EnsureSuccessfulForwardingAsync method should be invoked only for http invocation response.
             _mockHttpProxyService.Verify(m => m.EnsureSuccessfulForwardingAsync(It.IsAny<ScriptInvocationContext>()), Times.Once);
