@@ -1678,7 +1678,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private void AddAdditionalTraceContext(MapField<string, string> attributes, ScriptInvocationContext context)
         {
             bool isOtelEnabled = false;
-            if (_scriptHostOptions.Value.TelemetryMode == TelemetryMode.OpenTelemetry)
+            if (_scriptHostOptions?.Value.TelemetryMode == TelemetryMode.OpenTelemetry)
             {
                 isOtelEnabled = true;
             }

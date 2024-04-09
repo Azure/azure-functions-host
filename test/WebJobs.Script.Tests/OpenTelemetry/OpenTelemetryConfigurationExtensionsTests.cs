@@ -121,7 +121,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.OpenTelemetry
                     c.AddInMemoryCollection(new Dictionary<string, string>
                     {
                         { "APPINSIGHTS_INSTRUMENTATIONKEY", "some_key" },
-                        { "APPLICATIONINSIGHTS_CONNECTION_STRING", "InstrumentationKey=cd2a2a9f-f044-4568-a294-87a636e54fcf;IngestionEndpoint=https://westus2-2.in.applicationinsights.azure.com/;LiveEndpoint=https://westus2.livediagnostics.monitor.azure.com/" },
+                        { "APPLICATIONINSIGHTS_CONNECTION_STRING", "InstrumentationKey=key" },
                         { ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "telemetryMode"), TelemetryMode.OpenTelemetry.ToString() },
                     });
                 })

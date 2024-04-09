@@ -75,7 +75,6 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             options.IsFileSystemReadOnly = webHostOptions.IsFileSystemReadOnly;
             options.IsStandbyConfiguration = webHostOptions.IsStandbyConfiguration;
 
-            options.TelemetryMode = TelemetryMode.ApplicationInsights;
             var telemetryModeSection = jobHostSection.GetSection(ConfigurationSectionNames.TelemetryMode);
             if (telemetryModeSection.Exists())
             {

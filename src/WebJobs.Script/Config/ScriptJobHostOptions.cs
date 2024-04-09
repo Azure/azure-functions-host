@@ -134,6 +134,6 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <summary>
         /// Gets or sets the telemetry mode.
         /// </summary>
-        internal TelemetryMode TelemetryMode { get; set; }
+        internal TelemetryMode TelemetryMode { get; set; } = TelemetryMode.ApplicationInsights;
     }
 }
