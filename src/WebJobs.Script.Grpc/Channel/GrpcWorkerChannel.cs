@@ -1100,7 +1100,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
                 try
                 {
-                    if (IsHttpProxyingWorker)
+                    if (IsHttpProxyingWorker && context.FunctionMetadata.IsHttpTriggerFunction())
                     {
                         await _httpProxyService.EnsureSuccessfulForwardingAsync(context);
                     }
