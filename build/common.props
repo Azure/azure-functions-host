@@ -3,9 +3,9 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
     <LangVersion>latest</LangVersion>
-    <MajorVersion>4</MajorVersion>
+    <MajorVersion>4</MajorVersion>    
     <MinorVersion>1033</MinorVersion>
-    <PatchVersion>6</PatchVersion>
+    <PatchVersion>5</PatchVersion>
     <BuildNumber Condition="'$(BuildNumber)' == '' ">0</BuildNumber>
     <PreviewVersion></PreviewVersion>
     
