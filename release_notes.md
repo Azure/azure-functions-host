@@ -3,4 +3,4 @@
 <!-- Please add your release notes in the following format:
 - My change description (#PR)
 -->
-- Adjust Metrics Granularity for On-Demand (#9976)
+- Fixed a bug where non HTTP invocation responses were processed by `IHttpProxyService` when HTTP proxying capability is enabled (#9984)
