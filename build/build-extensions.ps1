@@ -72,7 +72,21 @@ function BuildRuntime([string] $targetRid, [bool] $isSelfContained) {
     Write-Host ""
     Write-Host "Moving symbols to $symbolsTarget"
     New-Item -Itemtype directory -path $symbolsTarget -Force > $null
-    Move-Item -Path $publishTarget\*.pdb -Destination $symbolsTarget -Force > $null
+
+    # Find .pdb files in $publishTarget
+    $pdbFilesInPublishTarget = Get-ChildItem -Path "$publishTarget\*.pdb"
+
+    # Find .pdb and .dbg files in "workers\dotnet-isolated" under $publishTarget
+    $pdbAndDbgFilesInDotNetWorker = Get-ChildItem -Path "$publishTarget\workers\dotnet-isolated\*" -Include "*.pdb", "*.dbg" -Recurse
+
+    # Combine the files from both directories
+    $filesToMove = $pdbFilesInPublishTarget + $pdbAndDbgFilesInDotNetWorker
+
+    # Move each file to $symbolsTarget
+    $filesToMove | ForEach-Object {
+        Move-Item -Path $_.FullName -Destination $symbolsTarget -Force
+    }
+
     Write-Host ""    
     CleanOutput "$publishTarget"        
     Write-Host ""
@@ -107,6 +121,13 @@ function CleanOutput([string] $rootPath) {
       ForEach-Object { Get-ChildItem "$($_.FullName)\runtimes" -Directory -Exclude $keepRuntimes } |
         Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
     
+    Write-Host "  Removing FunctionsNetHost(linux executable) and dependencies from dotnet-isolated worker"
+    $dotnetIsolatedBinPath = Join-Path $rootPath "workers\dotnet-isolated\bin"
+    if (Test-Path $dotnetIsolatedBinPath) {
+        Remove-Item -Path (Join-Path $dotnetIsolatedBinPath "FunctionsNetHost") -ErrorAction SilentlyContinue
+        Get-ChildItem -Path $dotnetIsolatedBinPath -Filter "*.so" | Remove-Item -ErrorAction SilentlyContinue
+    }
+
     Write-Host "  Current size: $(GetFolderSizeInMb $rootPath) Mb"
 }
 
