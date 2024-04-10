@@ -3,4 +3,6 @@
 <!-- Please add your release notes in the following format:
 - My change description (#PR)
 -->
-- Fixed a bug where non HTTP invocation responses were processed by `IHttpProxyService` when HTTP proxying capability is enabled (#9984)
+- DotnetIsolated worker artifact clean up (#9976)
+  - Move symbols from dotnet-isolated worker to symbols package
+  - Removed linux executables from dotnet-isolated worker.
