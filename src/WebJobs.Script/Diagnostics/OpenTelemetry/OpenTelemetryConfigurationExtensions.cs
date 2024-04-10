@@ -86,17 +86,17 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
             {
                 if (Enum.TryParse(eventLogLevel, ignoreCase: true, out EventLevel level))
                 {
-                    loggingBuilder.Services.AddSingleton<IHostedService>(serviceProvider => new OpenTelemetryEventListenerService(level));
+                    loggingBuilder.Services.AddHostedService(new OpenTelemetryEventListenerService(level));
                 }
                 else
                 {
-                    throw new InvalidEnumArgumentException($"Invalid `{EnvironmentSettingNames.OpenTelemetryEventListenerLogLevel}`.");
+                    throw new InvalidEnumArgumentException($"Invalid '{EnvironmentSettingNames.OpenTelemetryEventListenerLogLevel}' of '{eventLogLevel}'.");
                 }
             }
             else
             {
                 // Log all warnings and above by default.
-                loggingBuilder.Services.AddSingleton<IHostedService>(serviceProvider => new OpenTelemetryEventListenerService(EventLevel.Warning));
+                loggingBuilder.Services.AddHostedService(new OpenTelemetryEventListenerService(EventLevel.Warning));
             }
 
             static ResourceBuilder ConfigureResource(ResourceBuilder r)

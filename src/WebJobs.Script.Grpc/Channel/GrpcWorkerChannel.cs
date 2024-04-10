@@ -1677,13 +1677,13 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         private void AddAdditionalTraceContext(MapField<string, string> attributes, ScriptInvocationContext context)
         {
-            bool isOtelEnabled = false;
+            bool isOtelEnabled = _scriptHostOptions?.Value.TelemetryMode == TelemetryMode.OpenTelemetry;
             if (_scriptHostOptions?.Value.TelemetryMode == TelemetryMode.OpenTelemetry)
             {
                 isOtelEnabled = true;
             }
 
-            bool isAIEnabled = false;
+            bool isAIEnabled = _environment.IsApplicationInsightsAgentEnabled();
             if (_environment.IsApplicationInsightsAgentEnabled())
             {
                 isAIEnabled = true;
