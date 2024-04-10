@@ -100,6 +100,49 @@ namespace Microsoft.Azure.WebJobs.Script.Description.Tests
             Assert.NotSame(context.Listener, result);
         }
 
+        [Fact]
+        public void Decorate_BlobTrigger_EnabledForHttp()
+        {
+            // Arrange
+            IFunctionDefinition definition = CreateDefinition("test");
+            IListener original = Mock.Of<IListener>();
+
+            var metadata = new FunctionMetadata()
+            {
+                Name = "TestFunction1",
+                Bindings =
+                {
+                    new BindingMetadata
+                    {
+                        Name = "input",
+                        Type = "blobTrigger",
+                        Direction = BindingDirection.In,
+                        Raw = new JObject()
+                        {
+                            ["name"] = "input",
+                            ["type"] = "blobTrigger",
+                            ["direction"] = "in",
+                            ["source"] = "EventGrid",
+                        },
+                    }
+                }
+            };
+
+            var metadataMock = new Mock<IFunctionMetadataManager>();
+            metadataMock.Setup(p => p.TryGetFunctionMetadata("test", out metadata, false)).Returns(true);
+
+            IEnvironment environment = CreateEnvironment(FuncGroup.Http);
+
+            var context = new ListenerDecoratorContext(definition, original.GetType(), original);
+            var decorator = new FunctionGroupListenerDecorator(metadataMock.Object, environment, _logger);
+
+            // Act
+            var result = decorator.Decorate(context);
+
+            // Assert
+            Assert.Same(context.Listener, result);
+        }
+
         private static IFunctionDefinition CreateDefinition(string name)
         {
             var descriptor = new FuncDescriptor { LogName = name };

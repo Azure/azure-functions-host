@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
         /// <param name="binding">The binding metadata to check.</param>
         /// <returns><c>true</c> if a webhook trigger, <c>false</c> otherwise.</returns>
         /// <remarks>
-        /// Known webhook triggers includes SignalR, Event Grid and Event Grid sourced blob triggers.
+        /// Known webhook triggers includes SignalR, Event Grid triggers.
         /// </remarks>
         public static bool IsWebHookTrigger(this BindingMetadata binding)
         {
@@ -56,17 +56,6 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
                 || string.Equals(SignalRTriggerKey, binding.Type, StringComparison.OrdinalIgnoreCase))
             {
                 return true;
-            }
-
-            if (string.Equals(BlobTriggerKey, binding.Type, StringComparison.OrdinalIgnoreCase))
-            {
-                if (binding.Raw is { } obj)
-                {
-                    if (obj.TryGetValue("source", StringComparison.OrdinalIgnoreCase, out JToken token) && token is not null)
-                    {
-                        return string.Equals(token.ToString(), "eventGrid", StringComparison.OrdinalIgnoreCase);
-                    }
-                }
             }
 
             return false;
@@ -85,6 +74,32 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
             }
 
             return DurableTriggers.Contains(binding.Type);
+        }
+
+        /// <summary>
+        /// Checks if a <see cref="BindingMetadata"/> represents an EventGrid sourced blob trigger.
+        /// </summary>
+        /// <param name="binding">The binding metadata to check.</param>
+        /// <returns><c>true</c> if a EventGrid sourced blob trigger, <c>false</c> otherwise.</returns>
+        public static bool IsEventGridBlobTrigger(this BindingMetadata binding)
+        {
+            if (binding is null)
+            {
+                throw new ArgumentNullException(nameof(binding));
+            }
+
+            if (string.Equals(BlobTriggerKey, binding.Type, StringComparison.OrdinalIgnoreCase))
+            {
+                if (binding.Raw is { } obj)
+                {
+                    if (obj.TryGetValue("source", StringComparison.OrdinalIgnoreCase, out JToken token) && token is not null)
+                    {
+                        return string.Equals(token.ToString(), "eventGrid", StringComparison.OrdinalIgnoreCase);
+                    }
+                }
+            }
+
+            return false;
         }
 
         public static bool SupportsDeferredBinding(this BindingMetadata metadata)

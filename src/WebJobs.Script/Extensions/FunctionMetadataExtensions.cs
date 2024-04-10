@@ -85,6 +85,11 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     return "durable";
                 }
+
+                if (binding.IsEventGridBlobTrigger())
+                {
+                    return "blob";
+                }
             }
 
             // A function with no specified group will be assigned to a group of itself.
