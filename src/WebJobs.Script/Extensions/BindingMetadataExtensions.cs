@@ -10,10 +10,13 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
 {
     public static class BindingMetadataExtensions
     {
-        private const string HttpTriggerKey = "httpTrigger";
-        private const string EventGridTriggerKey = "eventGridTrigger";
-        private const string SignalRTriggerKey = "signalRTrigger";
-        private const string BlobTriggerKey = "blobTrigger";
+        private const string HttpTrigger = "httpTrigger";
+        private const string EventGridTrigger = "eventGridTrigger";
+        private const string SignalRTrigger = "signalRTrigger";
+        private const string BlobTrigger = "blobTrigger";
+
+        private const string BlobSourceKey = "source";
+        private const string EventGridSource = "eventGrid";
 
         private static readonly HashSet<string> DurableTriggers = new(StringComparer.OrdinalIgnoreCase)
         {
@@ -34,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
                 throw new ArgumentNullException(nameof(binding));
             }
 
-            return string.Equals(HttpTriggerKey, binding.Type, StringComparison.OrdinalIgnoreCase);
+            return string.Equals(HttpTrigger, binding.Type, StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>
@@ -52,8 +55,8 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
                 throw new ArgumentNullException(nameof(binding));
             }
 
-            if (string.Equals(EventGridTriggerKey, binding.Type, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(SignalRTriggerKey, binding.Type, StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(EventGridTrigger, binding.Type, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(SignalRTrigger, binding.Type, StringComparison.OrdinalIgnoreCase))
             {
                 return true;
             }
@@ -88,13 +91,13 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
                 throw new ArgumentNullException(nameof(binding));
             }
 
-            if (string.Equals(BlobTriggerKey, binding.Type, StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(BlobTrigger, binding.Type, StringComparison.OrdinalIgnoreCase))
             {
                 if (binding.Raw is { } obj)
                 {
-                    if (obj.TryGetValue("source", StringComparison.OrdinalIgnoreCase, out JToken token) && token is not null)
+                    if (obj.TryGetValue(BlobSourceKey, StringComparison.OrdinalIgnoreCase, out JToken token) && token is not null)
                     {
-                        return string.Equals(token.ToString(), "eventGrid", StringComparison.OrdinalIgnoreCase);
+                        return string.Equals(token.ToString(), EventGridSource, StringComparison.OrdinalIgnoreCase);
                     }
                 }
             }

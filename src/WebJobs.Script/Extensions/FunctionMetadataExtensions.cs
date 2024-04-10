@@ -78,22 +78,22 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 if (binding.IsHttpTrigger() || binding.IsWebHookTrigger())
                 {
-                    return "http";
+                    return FunctionGroups.Http;
                 }
 
                 if (binding.IsDurableTrigger())
                 {
-                    return "durable";
+                    return FunctionGroups.Durable;
                 }
 
                 if (binding.IsEventGridBlobTrigger())
                 {
-                    return "blob";
+                    return FunctionGroups.Blob;
                 }
             }
 
             // A function with no specified group will be assigned to a group of itself.
-            return $"function:{metadata.Name}";
+            return FunctionGroups.ForFunction(metadata.Name);
         }
 
         public static string GetFunctionId(this FunctionMetadata metadata)

@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
 
             string group = functionMetadata.GetFunctionGroup() ?? functionName;
-            if (IsFunctionTriggerMatch(targetGroup, group))
+            if (FunctionGroups.IsEnabled(targetGroup, group))
             {
                 _logger.LogDebug("Enabling function {functionName}", functionName);
                 return context.Listener;
@@ -59,26 +59,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             // By giving a no-op listener, we will prevent it from triggering without 'disabling' it.
             _logger.LogDebug("Function {functionName} is not part of group {functionGroup}. Listener will not be enabled.", functionName, targetGroup);
             return new NoOpListener(context.Listener);
-        }
-
-        private static bool IsFunctionTriggerMatch(string targetGroup, string triggerGroup)
-        {
-            if (string.Equals(targetGroup, triggerGroup, StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-
-            if (string.Equals(targetGroup, "http", StringComparison.OrdinalIgnoreCase)
-                && string.Equals(triggerGroup, "blob", StringComparison.OrdinalIgnoreCase))
-            {
-                // The blob group needs to be special cased as it is a two step process:
-                // 1. WebHook which enqueues a message to Azure Storage Queue.
-                // 2. Azure Storage Queue trigger which processes the message.
-                // So we need to run in both http and blob groups.
-                return true;
-            }
-
-            return false;
         }
 
         private class NoOpListener : IListener
