@@ -3,6 +3,7 @@
 
 using System;
 using System.Diagnostics;
+using System.IO;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -19,6 +20,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Http
         private const string _testWorkerId = "testId";
         private const string _rootScriptPath = "c:\\testDir";
         private const int _workerPort = 8090;
+
+        private readonly string _executablePath = System.IO.Path.GetTempFileName();
         private readonly ScriptSettingsManager _settingsManager;
         private readonly Mock<IScriptEventManager> _mockEventManager = new Mock<IScriptEventManager>();
         private readonly IWorkerProcessFactory _defaultWorkerProcessFactory = new DefaultWorkerProcessFactory(new TestEnvironment(), new LoggerFactory());
@@ -33,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Http
             _httpWorkerOptions = new HttpWorkerOptions()
             {
                 Port = _workerPort,
-                Arguments = new WorkerProcessArguments() { ExecutablePath = "test" },
+                Arguments = new WorkerProcessArguments() { ExecutablePath = _executablePath },
                 Description = new HttpWorkerDescription()
                 {
                     WorkingDirectory = @"c:\testDir"
@@ -67,8 +70,38 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Http
         }
 
         [Fact]
-        public async Task StartProcess_LinuxConsumption_TriesToAssignExecutePermissions()
+        public async Task StartProcess_LinuxConsumption_TriesToAssignExecutePermissions_Exists()
         {
+            try
+            {
+                File.Create(_executablePath).Dispose();
+                TestEnvironment testEnvironment = new TestEnvironment();
+                testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, "TestContainer");
+                var mockHttpWorkerProcess = new HttpWorkerProcess(_testWorkerId, _rootScriptPath, _httpWorkerOptions, _mockEventManager.Object, _defaultWorkerProcessFactory, _processRegistry, _testLogger, _languageWorkerConsoleLogSource.Object, testEnvironment, new TestMetricsLogger(), _serviceProviderMock.Object, new LoggerFactory());
+
+                try
+                {
+                    await mockHttpWorkerProcess.StartProcessAsync();
+                }
+                catch
+                {
+                    // expected to throw. Just verifying a log statement occurred before then.
+                }
+
+                // Verify method invocation
+                var testLogs = _testLogger.GetLogMessages();
+                Assert.Contains("Error while assigning execute permission", testLogs[0].FormattedMessage);
+            }
+            finally
+            {
+                File.Delete(_executablePath);
+            }
+        }
+
+        [Fact]
+        public async Task StartProcess_LinuxConsumption_TriesToAssignExecutePermissions_NotExists()
+        {
+            File.Delete(_executablePath);
             TestEnvironment testEnvironment = new TestEnvironment();
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, "TestContainer");
             var mockHttpWorkerProcess = new HttpWorkerProcess(_testWorkerId, _rootScriptPath, _httpWorkerOptions, _mockEventManager.Object, _defaultWorkerProcessFactory, _processRegistry, _testLogger, _languageWorkerConsoleLogSource.Object, testEnvironment, new TestMetricsLogger(), _serviceProviderMock.Object, new LoggerFactory());
@@ -79,12 +112,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Http
             }
             catch
             {
-                // expected to throw. Just verifying a log statement occured before then.
+                // expected to throw. Just verifying a log statement occurred before then.
             }
 
             // Verify method invocation
             var testLogs = _testLogger.GetLogMessages();
-            Assert.Contains("Error while assigning execute permission", testLogs[0].FormattedMessage);
+            Assert.Contains("File path does not exist, not assigning permissions", testLogs[0].FormattedMessage);
         }
     }
 }
