@@ -1,5 +1,3 @@
-name: AzFunc.Host - Official Build
-
 variables:
   buildNumber: $[ counter('constant', 13000) ] # TODO: new pipeline, 13000 no longer valid.
   ${{ if contains(variables['Build.SourceBranch'], 'release/inproc6/') }}:

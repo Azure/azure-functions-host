@@ -1,5 +1,3 @@
-name: AzFunc.Host - Integration Tests
-
 variables:
   DOTNET_NOLOGO: 1
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
