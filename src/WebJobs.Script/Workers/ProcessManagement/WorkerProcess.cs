@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
@@ -324,6 +325,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 }
 
                 string filePath = p.StartInfo.FileName;
+                if (!File.Exists(filePath))
+                {
+                    _workerProcessLogger.LogDebug("File path does not exist, not assigning permissions: {filePath}", filePath);
+                    return;
+                }
+
                 UnixFileInfo fileInfo = new UnixFileInfo(filePath);
                 if (!fileInfo.FileAccessPermissions.HasFlag(FileAccessPermissions.UserExecute))
                 {
