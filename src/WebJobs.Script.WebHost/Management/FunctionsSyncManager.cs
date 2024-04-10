@@ -738,6 +738,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         // of triggers. It'll verify app ownership using a SWT token valid for 5 minutes. It should be plenty.
         private async Task<(bool Success, string ErrorMessage)> SetTriggersAsync(string content)
         {
+            // sanitize the content before logging
+            string sanitizedContentString = string.Empty;
+            var sanitizedContent = JToken.Parse(content);
+            if (sanitizedContent.Type == JTokenType.Object)
+            {
+                ((JObject)sanitizedContent).Remove("secrets");
+                sanitizedContentString = Sanitizer.Sanitize(sanitizedContent.ToString());
+            }
+
             using (var request = BuildSetTriggersRequest())
             {
                 var requestId = Guid.NewGuid().ToString();
@@ -766,8 +775,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     request.Headers.Add(ScriptConstants.KubernetesManagedAppNamespace, _environment.GetEnvironmentVariable(EnvironmentSettingNames.PodNamespace));
                 }
 
-                // sanitize the content before logging
-                var sanitizedContentString = Sanitizer.Sanitize(content);
                 _logger.LogDebug($"Making SyncTriggers request (RequestId={requestId}, Uri={request.RequestUri.ToString()}, Content={sanitizedContentString}).");
 
                 var response = await _httpClient.SendAsync(request);
