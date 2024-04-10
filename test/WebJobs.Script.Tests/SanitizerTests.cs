@@ -34,9 +34,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData("SharedAccessKey=foo", "[Hidden Credential]")]
         [InlineData(@"Hey=AS1$@%#$%W-k2j"";SharedAccessKey=foo,Data Source=barzons,Server=bathouse'testing", @"Hey=AS1$@%#$%W-k2j"";[Hidden Credential]'testing")]
         [InlineData("test?sig=", "test[Hidden Credential]")]
-        [InlineData("test?code=XPAAAAAAAAAAAAA", "test[Hidden Credential]")]
-        [InlineData("test?foo=bar&code=REAAAAAAAAAAAAA", "test[Hidden Credential]")]
-        [InlineData("test&amp;code=MiAAAAAAAAAAAAAAAA", "test[Hidden Credential]")]
+        [InlineData("test?code=XPAAAAAAAAAAAAAT-ag==", "test[Hidden Credential]")]
+        [InlineData("test?foo=bar&code=REAAAAAAAAAAAAAT-ag==", "test?foo=bar[Hidden Credential]")]
+        [InlineData("test&amp;code=MiAAAAAAAAAAAAAAAAT-ag==", "test[Hidden Credential]")]
         public void SanitizeString(string input, string expectedOutput)
         {
             var sanitized = Sanitizer.Sanitize(input);

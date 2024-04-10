@@ -11,7 +11,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.OpenTelemetry
     public class TraceFilterProcessorTests
     {
         [Fact]
-        public void OnEnd_DropsDependencyTracesToAppInsightsEndpoints()
+        public void OnEnd_DropsDependencyTraces()
         {
             var activityListener = new ActivityListener();
             activityListener.ShouldListenTo = activitySource => activitySource.Name == "Azure.Core.Http" || activitySource.Name == "AnotherActivitySource";

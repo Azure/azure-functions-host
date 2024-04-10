@@ -5,14 +5,6 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
 {
     internal sealed class ResourceAttributeConstants
     {
-        //public const string CloudProvider = "cloud.provider";
-        //public const string CloudPlatform = "cloud.platform";
-        //public const string CloudRegion = "cloud.region";
-        //public const string CloudResourceId = "cloud.resource_id";
-        //public const string ServiceInstanceId = "service.instance.id";
-        //public const string ServiceName = "service.name";
-        //public const string AzureFunctionsGroup = "azure.functions.group";
-
         internal const string CloudProvider = "cloud.provider";
         internal const string CloudPlatform = "cloud.platform";
         internal const string CloudRegion = "cloud.region";
