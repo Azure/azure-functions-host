@@ -8,6 +8,7 @@ using System.Diagnostics.Metrics;
 using System.Linq;
 using System.Threading;
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry;
 using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -60,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
                 {
                     listener.EnableMeasurementEvents(instrument);
 
-                    var instanceIdTag = instrument.Meter.Tags.FirstOrDefault(t => t.Key == TelemetryAttributes.ServiceInstanceId);
+                    var instanceIdTag = instrument.Meter.Tags.FirstOrDefault(t => t.Key == ResourceAttributeConstants.ServiceInstanceId);
                     InstanceId = instanceIdTag.Value?.ToString() ?? string.Empty;
                 }
             };

@@ -20,6 +20,7 @@ using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.Grpc.Eventing;
@@ -563,6 +564,12 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 appInsightsWorkerEnabled))
             {
                 _isWorkerApplicationInsightsLoggingEnabled = true;
+            }
+
+            if (bool.TryParse(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.WorkerOpenTelemetryEnabled), out bool otelEnabled) &&
+                otelEnabled)
+            {
+                ScriptHost.WorkerOpenTelemetryEnabled = true;
             }
 
             // If http proxying is enabled, we need to get the proxying endpoint of this worker
@@ -1670,28 +1677,55 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         private void AddAdditionalTraceContext(MapField<string, string> attributes, ScriptInvocationContext context)
         {
-            // This is only applicable for AI agents running along side worker
+            bool isOtelEnabled = false;
+            if (_scriptHostOptions?.Value.TelemetryMode == TelemetryMode.OpenTelemetry)
+            {
+                isOtelEnabled = true;
+            }
+
+            bool isAIEnabled = false;
             if (_environment.IsApplicationInsightsAgentEnabled())
             {
-                attributes[ScriptConstants.LogPropertyProcessIdKey] = Convert.ToString(_rpcWorkerProcess.Id);
+                isAIEnabled = true;
+            }
+
+            if (isOtelEnabled || isAIEnabled)
+            {
                 if (context.FunctionMetadata.Properties.TryGetValue(ScriptConstants.LogPropertyHostInstanceIdKey, out var hostInstanceIdValue))
                 {
-                    attributes[ScriptConstants.LogPropertyHostInstanceIdKey] = Convert.ToString(hostInstanceIdValue);
+                    string id = Convert.ToString(hostInstanceIdValue);
+
+                    if (isOtelEnabled)
+                    {
+                        Activity.Current?.AddTag(ResourceAttributeConstants.AttributeInstance, id);
+                    }
+                    if (isAIEnabled)
+                    {
+                        attributes[ScriptConstants.LogPropertyHostInstanceIdKey] = id;
+                    }
                 }
+            }
+
+            if (isAIEnabled)
+            {
+                attributes[ScriptConstants.LogPropertyProcessIdKey] = Convert.ToString(_rpcWorkerProcess.Id);
+                attributes[ScriptConstants.OperationNameKey] = context.FunctionMetadata.Name;
+                string sessionId = Activity.Current?.GetBaggageItem(ScriptConstants.LiveLogsSessionAIKey);
+                if (!string.IsNullOrEmpty(sessionId))
+                {
+                    attributes[ScriptConstants.LiveLogsSessionAIKey] = sessionId;
+                }
+
                 if (context.FunctionMetadata.Properties.TryGetValue(LogConstants.CategoryNameKey, out var categoryNameValue))
                 {
                     attributes[LogConstants.CategoryNameKey] = Convert.ToString(categoryNameValue);
                 }
-                string sessionid = Activity.Current?.GetBaggageItem(ScriptConstants.LiveLogsSessionAIKey);
-                if (!string.IsNullOrEmpty(sessionid))
-                {
-                    attributes[ScriptConstants.LiveLogsSessionAIKey] = sessionid;
-                }
-                string operationName = context.FunctionMetadata.Name;
-                if (!string.IsNullOrEmpty(operationName))
-                {
-                    attributes[ScriptConstants.OperationNameKey] = operationName;
-                }
+            }
+
+            if (isOtelEnabled)
+            {
+                Activity.Current?.AddTag(ResourceAttributeConstants.AttributeName, context.FunctionMetadata.Name);
+                Activity.Current?.AddTag(ResourceAttributeConstants.AttributeTrigger, ResourceAttributeConstants.ResolveTriggerType(context.FunctionMetadata?.Trigger?.Type));
             }
         }
 

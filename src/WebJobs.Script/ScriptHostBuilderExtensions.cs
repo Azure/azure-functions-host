@@ -26,6 +26,7 @@ using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
@@ -99,7 +100,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 loggingBuilder.AddConsoleIfEnabled(context);
 
-                ConfigureApplicationInsights(context, loggingBuilder);
+                loggingBuilder.ConfigureTelemetry(context);
             })
             .ConfigureAppConfiguration((context, configBuilder) =>
             {
@@ -407,7 +408,33 @@ namespace Microsoft.Azure.WebJobs.Script
             return builder;
         }
 
-        internal static void ConfigureApplicationInsights(HostBuilderContext context, ILoggingBuilder builder)
+        internal static void ConfigureTelemetry(this ILoggingBuilder loggingBuilder, HostBuilderContext context)
+        {
+            TelemetryMode mode;
+            var telemetryModeSection = context.Configuration.GetSection(ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, ConfigurationSectionNames.TelemetryMode));
+            if (telemetryModeSection.Exists() && Enum.TryParse(telemetryModeSection.Value, true, out TelemetryMode telemetryMode))
+            {
+                mode = telemetryMode;
+            }
+            else
+            {
+                // Default to ApplicationInsights.
+                mode = TelemetryMode.ApplicationInsights;
+            }
+
+            // Use switch statement so any change to the enum results in a build error if we don't handle it.
+            switch (mode)
+            {
+                case TelemetryMode.ApplicationInsights:
+                    loggingBuilder.ConfigureApplicationInsights(context);
+                    break;
+                case TelemetryMode.OpenTelemetry:
+                    loggingBuilder.ConfigureOpenTelemetry(context);
+                    break;
+            }
+        }
+
+        internal static void ConfigureApplicationInsights(this ILoggingBuilder builder, HostBuilderContext context)
         {
             string appInsightsInstrumentationKey = GetConfigurationValue(EnvironmentSettingNames.AppInsightsInstrumentationKey, context.Configuration);
             string appInsightsConnectionString = GetConfigurationValue(EnvironmentSettingNames.AppInsightsConnectionString, context.Configuration);

@@ -25,6 +25,7 @@ using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
+using Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
@@ -177,6 +178,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public ScriptJobHostOptions ScriptOptions { get; private set; }
 
         public static bool IsFunctionDataCacheEnabled { get; set; }
+
+        public static bool WorkerOpenTelemetryEnabled { get; internal set; }
 
         /// <summary>
         /// Gets the collection of all valid Functions. For functions that are in error
@@ -456,6 +459,18 @@ namespace Microsoft.Azure.WebJobs.Script
             else
             {
                 _metricsLogger.LogEvent(MetricEventNames.ApplicationInsightsDisabled);
+            }
+
+            if (!string.IsNullOrEmpty(_settingsManager.TelemetryMode) && _settingsManager.TelemetryMode.Equals(OpenTelemetryConstants.OpenTelemetry, StringComparison.OrdinalIgnoreCase))
+            {
+                if (!string.IsNullOrEmpty(_settingsManager.OtlpEndpoint))
+                {
+                    _metricsLogger.LogEvent(MetricEventNames.OpenTelemetryOtlpEnabled);
+                }
+                if (!string.IsNullOrEmpty(_settingsManager.ApplicationInsightsConnectionString))
+                {
+                    _metricsLogger.LogEvent(MetricEventNames.OpenTelemetryAzMonEnabled);
+                }
             }
 
             InitializeFileSystem();
