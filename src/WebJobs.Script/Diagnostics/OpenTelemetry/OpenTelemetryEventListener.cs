@@ -14,7 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
 {
     internal class OpenTelemetryEventListener : EventListener
     {
-        private const int LogFlushIntervalMs = 10 * 1000;
+        private const int LogFlushIntervalMs = 30 * 1000;
         private const string EventSourceNamePrefix = "OpenTelemetry-";
         private const int MaxLogLinesPerFlushInterval = 35;
         private const string EventName = nameof(OpenTelemetryEventListener);
@@ -22,9 +22,11 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
         private readonly EventLevel _eventLevel;
         private Timer _flushTimer;
         private ConcurrentQueue<string> _logBuffer = new ConcurrentQueue<string>();
-        private ConcurrentQueue<EventSource> _eventSource = new ConcurrentQueue<EventSource>();
+        private ConcurrentQueue<EventSource> _eventSources = new ConcurrentQueue<EventSource>();
+        private ConcurrentQueue<EventSource> _preEventSources = new ConcurrentQueue<EventSource>();
         private static object _syncLock = new object();
         private bool _disposed = false;
+        private bool _constructorCalled = false;
 
         public OpenTelemetryEventListener(EventLevel eventLevel)
         {
@@ -36,16 +38,44 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
             };
             _flushTimer.Elapsed += (sender, e) => Flush();
             _flushTimer.Start();
+            _constructorCalled = true;
+
+            // Enable any event sources that were created before the constructor was called
+            EnablePreEvents();
         }
 
         protected override void OnEventSourceCreated(EventSource eventSource)
         {
             if (eventSource.Name.StartsWith(EventSourceNamePrefix))
             {
-                EnableEvents(eventSource, _eventLevel, EventKeywords.All);
-                _eventSource.Enqueue(eventSource);
+                if (_constructorCalled)
+                {
+                    EnableEvents(eventSource);
+                }
+                else
+                {
+                    // Any thing that is created before the constructor is called, will be stored in a different queue
+                    _preEventSources.Enqueue(eventSource);
+                }
             }
             base.OnEventSourceCreated(eventSource);
+        }
+
+        private void EnableEvents(EventSource eventSource)
+        {
+            EnableEvents(eventSource, _eventLevel, EventKeywords.All);
+            _eventSources.Enqueue(eventSource);
+        }
+
+        private void EnablePreEvents()
+        {
+            while (_preEventSources.TryDequeue(out EventSource source))
+            {
+                if (source != null && !source.IsEnabled())
+                {
+                    EnableEvents(source);
+                }
+            }
         }
 
         protected override void OnEventWritten(EventWrittenEventArgs eventData)
@@ -95,7 +125,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
             {
                 if (disposing)
                 {
-                    while (_eventSource.TryDequeue(out EventSource source))
+                    while (_eventSources.TryDequeue(out EventSource source))
                     {
                         if (source != null)
                         {
