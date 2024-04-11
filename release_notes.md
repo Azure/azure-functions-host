@@ -6,3 +6,4 @@
 - DotnetIsolated worker artifact clean up (#9976)
   - Move symbols from dotnet-isolated worker to symbols package
   - Removed linux executables from dotnet-isolated worker.
+- Update Azure.Identity to 1.11.0 (#10002)
