@@ -15,7 +15,6 @@ namespace Microsoft.Azure.WebJobs.Script
         private const string IsDisabledKey = "IsDisabled";
         private const string IsCodelessKey = "IsCodeless";
         private const string FunctionIdKey = "FunctionId";
-        private const string FunctionGroupKey = "FunctionGroup";
         private const string HttpTriggerKey = "HttpTrigger";
         private const string HttpOutputKey = "Http";
         private const string BlobTriggerType = "blobTrigger";
@@ -71,11 +70,6 @@ namespace Microsoft.Azure.WebJobs.Script
             if (metadata == null)
             {
                 throw new ArgumentNullException(nameof(metadata));
-            }
-
-            if (metadata.Properties.TryGetValue(FunctionGroupKey, out object group))
-            {
-                return group.ToString();
             }
 
             // Ensure http and durable triggers are grouped together.
