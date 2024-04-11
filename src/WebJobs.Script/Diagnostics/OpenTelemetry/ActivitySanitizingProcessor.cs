@@ -1,7 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System.Collections.Immutable;
+using System.Collections.Generic;
 using System.Diagnostics;
 using Microsoft.Azure.WebJobs.Logging;
 using OpenTelemetry;
@@ -10,7 +10,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
 {
     internal class ActivitySanitizingProcessor : BaseProcessor<Activity>
     {
-        private static readonly ImmutableArray<string> TagsToSanitize = ImmutableArray.Create(OpenTelemetryConstants.QueryUrl, OpenTelemetryConstants.FullUrl);
+        private static readonly IReadOnlyCollection<string> TagsToSanitize = new HashSet<string> { ResourceSemanticConventions.QueryUrl, ResourceSemanticConventions.FullUrl };
 
         private ActivitySanitizingProcessor() { }
 

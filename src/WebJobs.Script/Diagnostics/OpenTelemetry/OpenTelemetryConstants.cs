@@ -3,14 +3,10 @@
 
 namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
 {
-    internal class OpenTelemetryConstants
+    internal static class OpenTelemetryConstants
     {
-        internal const string QueryUrl = "url.query";
-        internal const string FullUrl = "url.full";
-
         internal const string AzureCloudProviderValue = "azure";
         internal const string AzurePlatformValue = "azure_functions";
-        internal const string AISDKPrefix = "ai.sdk.prefix";
         internal const string SDKPrefix = "azurefunctions";
         internal const string SiteNameEnvVar = "WEBSITE_SITE_NAME";
         internal const string RegionNameEnvVar = "REGION_NAME";

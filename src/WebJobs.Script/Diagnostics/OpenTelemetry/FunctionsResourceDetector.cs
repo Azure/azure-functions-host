@@ -20,8 +20,9 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
                 string version = typeof(ScriptHost).Assembly.GetName().Version.ToString();
 
                 attributeList.Add(new KeyValuePair<string, object>(ResourceSemanticConventions.ServiceVersion, version));
-                attributeList.Add(new KeyValuePair<string, object>(OpenTelemetryConstants.AISDKPrefix, $@"{OpenTelemetryConstants.SDKPrefix}:{version}"));
+                attributeList.Add(new KeyValuePair<string, object>(ResourceSemanticConventions.AISDKPrefix, $@"{OpenTelemetryConstants.SDKPrefix}:{version}"));
                 attributeList.Add(new KeyValuePair<string, object>(ResourceSemanticConventions.ProcessId, Process.GetCurrentProcess().Id));
+                attributeList.Add(new KeyValuePair<string, object>(ResourceSemanticConventions.FaaSVersion, version));
 
                 // Add these attributes only if running in Azure.
                 if (!string.IsNullOrEmpty(serviceName))
@@ -29,7 +30,6 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
                     attributeList.Add(new KeyValuePair<string, object>(ResourceSemanticConventions.ServiceName, serviceName));
                     attributeList.Add(new KeyValuePair<string, object>(ResourceSemanticConventions.CloudProvider, OpenTelemetryConstants.AzureCloudProviderValue));
                     attributeList.Add(new KeyValuePair<string, object>(ResourceSemanticConventions.CloudPlatform, OpenTelemetryConstants.AzurePlatformValue));
-                    attributeList.Add(new KeyValuePair<string, object>(ResourceSemanticConventions.FaaSVersion, version));
 
                     string region = Environment.GetEnvironmentVariable(OpenTelemetryConstants.RegionNameEnvVar);
                     if (!string.IsNullOrEmpty(region))

@@ -26,5 +26,12 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
 
         // Process
         internal const string ProcessId = "process.pid";
+
+        // Http
+        internal const string QueryUrl = "url.query";
+        internal const string FullUrl = "url.full";
+
+        // AI
+        internal const string AISDKPrefix = "ai.sdk.prefix";
     }
 }
