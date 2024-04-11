@@ -160,7 +160,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 var batch = new TableBatchOperation();
                 foreach (string errorCode in events.Keys)
                 {
-                    TableOperation insertOperation = TableOperation.Insert(events[errorCode]);
+                    var diagnosticEvent = events[errorCode];
+                    diagnosticEvent.Message = Sanitizer.Sanitize(diagnosticEvent.Message);
+                    diagnosticEvent.Details = Sanitizer.Sanitize(diagnosticEvent.Details);
+                    TableOperation insertOperation = TableOperation.Insert(diagnosticEvent);
                     batch.Add(insertOperation);
                 }
                 await table.ExecuteBatchAsync(batch);
@@ -183,9 +186,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             {
                 ErrorCode = errorCode,
                 HelpLink = helpLink,
-                Message = Sanitizer.Sanitize(message),
+                Message = message,
                 LogLevel = level,
-                Details = Sanitizer.Sanitize(exception?.ToFormattedString()),
+                Details = exception?.ToFormattedString(),
                 HitCount = 1
             };
 
