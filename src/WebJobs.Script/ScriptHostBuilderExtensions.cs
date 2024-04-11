@@ -426,6 +426,7 @@ namespace Microsoft.Azure.WebJobs.Script
             switch (mode)
             {
                 case TelemetryMode.ApplicationInsights:
+                case TelemetryMode.None:
                     loggingBuilder.ConfigureApplicationInsights(context);
                     break;
                 case TelemetryMode.OpenTelemetry:

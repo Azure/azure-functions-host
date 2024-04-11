@@ -7,6 +7,6 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
     {
         None = 0, // or Default
         ApplicationInsights = 1,
-        OpenTelemetry = 0b0001
+        OpenTelemetry = 2
     }
 }

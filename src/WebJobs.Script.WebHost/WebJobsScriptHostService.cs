@@ -875,10 +875,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 else
                 {
                     DisposeDependencyTrackingModule(instance);
+                    FlushOpenTelemetry(instance);
                     instance.Dispose();
                     _logger.LogDebug("ScriptHost disposed");
                 }
-                FlushOpenTelemetry(instance);
             }
         }
 

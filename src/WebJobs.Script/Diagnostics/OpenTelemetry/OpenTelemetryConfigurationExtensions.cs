@@ -46,10 +46,8 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
                 })
                 // These are messages piped back to the host from the worker - we don't handle these anymore if the worker has OpenTelemetry enabled.
                 // Instead, we expect the user's own code to be logging these where they want them to go.
-                .AddFilter<OpenTelemetryLoggerProvider>("Host.*", _ => !ScriptHost.WorkerOpenTelemetryEnabled)
                 .AddFilter<OpenTelemetryLoggerProvider>("Function.*", _ => !ScriptHost.WorkerOpenTelemetryEnabled)
-                .AddFilter<OpenTelemetryLoggerProvider>("Azure.*", _ => !ScriptHost.WorkerOpenTelemetryEnabled)
-                .AddFilter<OpenTelemetryLoggerProvider>("Microsoft.Azure.WebJobs.*", _ => !ScriptHost.WorkerOpenTelemetryEnabled);
+                .AddFilter<OpenTelemetryLoggerProvider>("Azure.*", _ => !ScriptHost.WorkerOpenTelemetryEnabled);
 
             // Azure SDK instrumentation is experimental.
             AppContext.SetSwitch("Azure.Experimental.EnableActivitySource", true);
@@ -86,7 +84,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
             {
                 if (Enum.TryParse(eventLogLevel, ignoreCase: true, out EventLevel level))
                 {
-                    loggingBuilder.Services.AddHostedService(new OpenTelemetryEventListenerService(level));
+                    loggingBuilder.Services.AddHostedService(service => new OpenTelemetryEventListenerService(level));
                 }
                 else
                 {
@@ -96,23 +94,15 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
             else
             {
                 // Log all warnings and above by default.
-                loggingBuilder.Services.AddHostedService(new OpenTelemetryEventListenerService(EventLevel.Warning));
+                loggingBuilder.Services.AddHostedService(service => new OpenTelemetryEventListenerService(EventLevel.Warning));
             }
 
             static ResourceBuilder ConfigureResource(ResourceBuilder r)
             {
-                string serviceName = Environment.GetEnvironmentVariable(ResourceAttributeConstants.SiteNameEnvVar) ?? "azureFunctions";
-                string version = typeof(ScriptHost).Assembly.GetName().Version.ToString();
-                r.AddService(serviceName, serviceVersion: version);
                 r.AddDetector(new FunctionsResourceDetector());
 
                 // Set the AI SDK to a key so we know all the telemetry came from the Functions Host
                 // NOTE: This ties to \azure-sdk-for-net\sdk\monitor\Azure.Monitor.OpenTelemetry.Exporter\src\Internals\ResourceExtensions.cs :: AiSdkPrefixKey used in CreateAzureMonitorResource()
-                r.AddAttributes([
-                    new(ResourceAttributeConstants.AttributeSDKPrefix, $@"{ResourceAttributeConstants.SDKPrefix}: {version}"),
-                    new(ResourceAttributeConstants.AttributeProcessId, Process.GetCurrentProcess().Id)
-                ]);
-
                 return r;
             }
         }

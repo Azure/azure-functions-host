@@ -10,7 +10,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
 {
     internal class ActivitySanitizingProcessor : BaseProcessor<Activity>
     {
-        private static readonly ImmutableArray<string> TagsToSanitize = ImmutableArray.Create("url.query", "url.full");
+        private static readonly ImmutableArray<string> TagsToSanitize = ImmutableArray.Create(OpenTelemetryConstants.QueryUrl, OpenTelemetryConstants.FullUrl);
 
         private ActivitySanitizingProcessor() { }
 

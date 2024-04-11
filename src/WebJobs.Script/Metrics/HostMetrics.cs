@@ -47,12 +47,12 @@ namespace Microsoft.Azure.WebJobs.Script.Metrics
                 Version = "1.0.0",
                 Tags = new TagList()
                 {
-                    { ResourceAttributeConstants.CloudProvider, cloudName },
-                    { ResourceAttributeConstants.CloudPlatform, CloudPlatformName },
-                    { ResourceAttributeConstants.CloudRegion, region },
-                    { ResourceAttributeConstants.CloudResourceId, armResourceId },
-                    { ResourceAttributeConstants.ServiceInstanceId, instanceId },
-                    { ResourceAttributeConstants.ServiceName, appName }
+                    { ResourceSemanticConventions.CloudProvider, cloudName },
+                    { ResourceSemanticConventions.CloudPlatform, CloudPlatformName },
+                    { ResourceSemanticConventions.CloudRegion, region },
+                    { ResourceSemanticConventions.CloudResourceId, armResourceId },
+                    { ResourceSemanticConventions.ServiceInstanceId, instanceId },
+                    { ResourceSemanticConventions.ServiceName, appName }
                 }
             };
             var meter = meterFactory.Create(hostMeterOptions);
@@ -71,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Metrics
                 }
 
                 var functionGroup = _environment.GetEnvironmentVariableOrDefault(EnvironmentSettingNames.FunctionsTargetGroup, string.Empty);
-                var functionGroupTag = new KeyValuePair<string, object>(ResourceAttributeConstants.AzureFunctionsGroup, functionGroup);
+                var functionGroupTag = new KeyValuePair<string, object>(OpenTelemetryConstants.AzureFunctionsGroup, functionGroup);
 
                 if (!string.IsNullOrEmpty(functionGroup))
                 {

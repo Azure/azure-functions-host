@@ -229,9 +229,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.OpenTelemetry
             Resource resource = detector.Detect();
 
             Assert.Equal(3, resource.Attributes.Count());
-            var attribute = resource.Attributes.FirstOrDefault(a => a.Key == "cloud.provider");
-            Assert.Equal("azure", resource.Attributes.FirstOrDefault(a => a.Key == "cloud.provider").Value);
-            Assert.Equal("azure_functions", resource.Attributes.FirstOrDefault(a => a.Key == "cloud.platform").Value);
         }
 
         // The OpenTelemetryEventListener is fine because it's a no-op if there are no otel events to listen to

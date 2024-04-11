@@ -62,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Features
                 }
 
                 // Add tag for cold start
-                Activity.Current?.AddTag(ResourceAttributeConstants.AttributeColdStart, true);
+                Activity.Current?.AddTag(ResourceSemanticConventions.FaaSColdStart, true);
             }
 
             var sw = ValueStopwatch.StartNew();

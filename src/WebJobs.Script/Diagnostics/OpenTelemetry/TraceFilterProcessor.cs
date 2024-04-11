@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Immutable;
 using System.Diagnostics;
 using OpenTelemetry;
 
@@ -14,66 +13,54 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
 
         public static TraceFilterProcessor Instance { get; } = new TraceFilterProcessor();
 
-        public override void OnEnd(Activity data)
+        public override void OnEnd(Activity activity)
         {
-            var dataTags = data.Tags.ToImmutableDictionary();
+            string url = activity.GetTagItem("http.url") as string ?? activity.GetTagItem("url.full") as string;
+            DropDependencyTracesToAppInsightsEndpoints(activity, url);
 
-            DropDependencyTracesToAppInsightsEndpoints(data, dataTags);
+            DropDependencyTracesToHostStorageEndpoints(activity, url);
 
-            DropDependencyTracesToHostStorageEndpoints(data, dataTags);
-
-            DropDependencyTracesToHostLoopbackEndpoints(data, dataTags);
-            base.OnEnd(data);
+            DropDependencyTracesToHostLoopbackEndpoints(activity, url);
+            base.OnEnd(activity);
         }
 
-        private void DropDependencyTracesToHostLoopbackEndpoints(Activity data, IImmutableDictionary<string, string> dataTags)
+        private void DropDependencyTracesToHostLoopbackEndpoints(Activity activity, string url)
         {
-            if (data.ActivityTraceFlags is ActivityTraceFlags.Recorded)
+            if (activity.ActivityTraceFlags is ActivityTraceFlags.Recorded)
             {
-                var url = GetUrlTagValue(dataTags);
-                if (url?.Contains("/AzureFunctionsRpcMessages.FunctionRpc/", System.StringComparison.OrdinalIgnoreCase) is true
-                    || url?.EndsWith("/getScriptTag", System.StringComparison.OrdinalIgnoreCase) is true)
+                if (url?.Contains("/AzureFunctionsRpcMessages.FunctionRpc/", StringComparison.OrdinalIgnoreCase) is true
+                    || url?.EndsWith("/getScriptTag", StringComparison.OrdinalIgnoreCase) is true)
                 {
-                    data.ActivityTraceFlags = ActivityTraceFlags.None;
+                    activity.ActivityTraceFlags = ActivityTraceFlags.None;
                 }
             }
         }
 
-        private string GetUrlTagValue(IImmutableDictionary<string, string> dataTags)
+        private void DropDependencyTracesToAppInsightsEndpoints(Activity activity, string url)
         {
-            string url;
-            _ = dataTags.TryGetValue("url.full", out url) || dataTags.TryGetValue("http.url", out url);
-            return url;
-        }
-
-        private void DropDependencyTracesToAppInsightsEndpoints(Activity data, IImmutableDictionary<string, string> dataTags)
-        {
-            if (data.ActivityTraceFlags is ActivityTraceFlags.Recorded
-                && data.Source.Name is "Azure.Core.Http" or "System.Net.Http")
+            if (activity.ActivityTraceFlags is ActivityTraceFlags.Recorded
+                && activity.Source.Name is "Azure.Core.Http" or "System.Net.Http")
             {
-                string url = GetUrlTagValue(dataTags);
-                if (url?.Contains("applicationinsights.azure.com", System.StringComparison.OrdinalIgnoreCase) is true
-                    || url?.Contains("rt.services.visualstudio.com/QuickPulseService.svc", System.StringComparison.OrdinalIgnoreCase) is true)
+                if (url?.Contains("applicationinsights.azure.com", StringComparison.OrdinalIgnoreCase) is true
+                    || url?.Contains("rt.services.visualstudio.com/QuickPulseService.svc", StringComparison.OrdinalIgnoreCase) is true)
                 {
                     // don't record all the HTTP calls to Live Stream aka QuickPulse
-                    data.ActivityTraceFlags = ActivityTraceFlags.None;
+                    activity.ActivityTraceFlags = ActivityTraceFlags.None;
                 }
             }
         }
 
-        private void DropDependencyTracesToHostStorageEndpoints(Activity data, IImmutableDictionary<string, string> dataTags)
+        private void DropDependencyTracesToHostStorageEndpoints(Activity activity, string url)
         {
-            if (data.ActivityTraceFlags is ActivityTraceFlags.Recorded)
+            if (activity.ActivityTraceFlags is ActivityTraceFlags.Recorded)
             {
-                if (data.Source.Name is "Azure.Core.Http" or "System.Net.Http"
-                    && dataTags.TryGetValue("az.namespace", out string azNamespace)
-                    && azNamespace is "Microsoft.Storage")
+                if (activity.Source.Name is "Azure.Core.Http" or "System.Net.Http"
+                    && (activity.GetTagItem("az.namespace") as string) is "Microsoft.Storage")
                 {
-                    string url = GetUrlTagValue(dataTags);
                     if (url?.Contains("/azure-webjobs-", System.StringComparison.OrdinalIgnoreCase) is true)
                     {
                         // don't record all the HTTP calls to backing storage used by the host
-                        data.ActivityTraceFlags = ActivityTraceFlags.None;
+                        activity.ActivityTraceFlags = ActivityTraceFlags.None;
                     }
                 }
             }

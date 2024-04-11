@@ -31,7 +31,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AppInsightsQuickPulseAuthApiKey = "APPINSIGHTS_QUICKPULSEAUTHAPIKEY";
         public const string OtlpEndpoint = "OTEL_EXPORTER_OTLP_ENDPOINT";
         public const string OpenTelemetryEventListenerLogLevel = "OTEL_EVENT_LISTENER_LOGLEVEL";
-        public const string TelemetryMode = "AzureFunctionsJobHost:telemetryMode";
         public const string AppInsightsAgent = "APPLICATIONINSIGHTS_ENABLE_AGENT";
         public const string FunctionsExtensionVersion = "FUNCTIONS_EXTENSION_VERSION";
         public const string FunctionWorkerRuntime = "FUNCTIONS_WORKER_RUNTIME";

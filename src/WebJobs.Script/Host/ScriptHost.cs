@@ -461,7 +461,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 _metricsLogger.LogEvent(MetricEventNames.ApplicationInsightsDisabled);
             }
 
-            if (!string.IsNullOrEmpty(_settingsManager.TelemetryMode) && _settingsManager.TelemetryMode.Equals(OpenTelemetryConstants.OpenTelemetry, StringComparison.OrdinalIgnoreCase))
+            if (ScriptOptions.TelemetryMode.Equals(TelemetryMode.OpenTelemetry))
             {
                 if (!string.IsNullOrEmpty(_settingsManager.OtlpEndpoint))
                 {

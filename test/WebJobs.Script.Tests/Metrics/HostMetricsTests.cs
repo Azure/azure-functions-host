@@ -74,7 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             // Act
             metrics.IncrementStartedInvocationCount();
             var measurements = collector.GetMeasurementSnapshot();
-            Assert.True(measurements[0].Tags.TryGetValue(ResourceAttributeConstants.AzureFunctionsGroup, out var funcGroup));
+            Assert.True(measurements[0].Tags.TryGetValue(OpenTelemetryConstants.AzureFunctionsGroup, out var funcGroup));
             Assert.Equal(string.Empty, funcGroup);
 
             environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsTargetGroup, "function:test");
@@ -82,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
 
             // Assert
             measurements = collector.GetMeasurementSnapshot();
-            Assert.True(measurements[1].Tags.TryGetValue(ResourceAttributeConstants.AzureFunctionsGroup, out funcGroup));
+            Assert.True(measurements[1].Tags.TryGetValue(OpenTelemetryConstants.AzureFunctionsGroup, out funcGroup));
             Assert.Equal("function:test", funcGroup);
         }
     }

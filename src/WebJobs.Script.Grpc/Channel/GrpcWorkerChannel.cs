@@ -1678,16 +1678,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private void AddAdditionalTraceContext(MapField<string, string> attributes, ScriptInvocationContext context)
         {
             bool isOtelEnabled = _scriptHostOptions?.Value.TelemetryMode == TelemetryMode.OpenTelemetry;
-            if (_scriptHostOptions?.Value.TelemetryMode == TelemetryMode.OpenTelemetry)
-            {
-                isOtelEnabled = true;
-            }
-
             bool isAIEnabled = _environment.IsApplicationInsightsAgentEnabled();
-            if (_environment.IsApplicationInsightsAgentEnabled())
-            {
-                isAIEnabled = true;
-            }
 
             if (isOtelEnabled || isAIEnabled)
             {
@@ -1697,7 +1688,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
                     if (isOtelEnabled)
                     {
-                        Activity.Current?.AddTag(ResourceAttributeConstants.AttributeInstance, id);
+                        Activity.Current?.AddTag(ResourceSemanticConventions.FaaSInstance, id);
                     }
                     if (isAIEnabled)
                     {
@@ -1724,8 +1715,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             if (isOtelEnabled)
             {
-                Activity.Current?.AddTag(ResourceAttributeConstants.AttributeName, context.FunctionMetadata.Name);
-                Activity.Current?.AddTag(ResourceAttributeConstants.AttributeTrigger, ResourceAttributeConstants.ResolveTriggerType(context.FunctionMetadata?.Trigger?.Type));
+                Activity.Current?.AddTag(ResourceSemanticConventions.FaaSName, context.FunctionMetadata.Name);
+                Activity.Current?.AddTag(ResourceSemanticConventions.FaaSTrigger, OpenTelemetryConstants.ResolveTriggerType(context.FunctionMetadata?.Trigger?.Type));
             }
         }
 

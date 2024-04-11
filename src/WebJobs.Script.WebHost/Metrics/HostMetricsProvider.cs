@@ -61,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
                 {
                     listener.EnableMeasurementEvents(instrument);
 
-                    var instanceIdTag = instrument.Meter.Tags.FirstOrDefault(t => t.Key == ResourceAttributeConstants.ServiceInstanceId);
+                    var instanceIdTag = instrument.Meter.Tags.FirstOrDefault(t => t.Key == ResourceSemanticConventions.ServiceInstanceId);
                     InstanceId = instanceIdTag.Value?.ToString() ?? string.Empty;
                 }
             };

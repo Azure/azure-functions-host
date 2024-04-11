@@ -80,6 +80,10 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             {
                 options.TelemetryMode = telemetryMode;
             }
+            else
+            {
+               options.TelemetryMode = TelemetryMode.ApplicationInsights;
+            }
         }
 
         private void ConfigureFunctionTimeout(ScriptJobHostOptions options)
