@@ -29,7 +29,6 @@ pr:
     - release/inproc6/4.*
     - release/inproc8/4.*
 
-
 stages:
 - stage: Initialize
 
