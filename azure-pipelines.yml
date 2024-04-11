@@ -70,7 +70,16 @@ jobs:
       SourceFolder: '$(Build.Repository.LocalPath)\buildoutput'
       Contents: '**\*.zip'
       TargetFolder: '$(Build.ArtifactStagingDirectory)'
-
+  - task: DotNetCoreCLI@2
+    displayName: 'Build host packages'
+    inputs:
+      command: 'custom'
+      custom: 'pack'
+      arguments: -o packages -p:BuildNumber=$(buildNumber) -c Release $(packSuffixSwitch)
+      projects: |
+        **\WebJobs.Script.csproj
+        **\WebJobs.Script.WebHost.csproj
+        **\WebJobs.Script.Grpc.csproj
   - task: DotNetCoreCLI@2
     displayName: 'Build performance package'
     inputs:
