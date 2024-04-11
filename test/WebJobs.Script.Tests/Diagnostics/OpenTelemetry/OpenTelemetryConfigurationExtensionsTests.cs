@@ -228,7 +228,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.OpenTelemetry
             FunctionsResourceDetector detector = new FunctionsResourceDetector();
             Resource resource = detector.Detect();
 
-            Assert.Equal(3, resource.Attributes.Count());
+            Assert.Equal(4, resource.Attributes.Count());
         }
 
         // The OpenTelemetryEventListener is fine because it's a no-op if there are no otel events to listen to
