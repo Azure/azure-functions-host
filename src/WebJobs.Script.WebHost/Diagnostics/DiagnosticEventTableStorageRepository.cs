@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.Cosmos.Table;
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.WebHost.Helpers;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -16,21 +17,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
     public class DiagnosticEventTableStorageRepository : IDiagnosticEventRepository, IDisposable
     {
         internal const string TableNamePrefix = "AzureFunctionsDiagnosticEvents";
-        private const int LogFlushInterval = 1000 * 60 * 10; // 10 mins
+        private const int LogFlushInterval = 1000 * 60 * 10; // 10 minutes
+        private const int TableCreationMaxRetryCount = 5;
+
         private readonly Timer _flushLogsTimer;
+        private readonly IConfiguration _configuration;
+        private readonly IHostIdProvider _hostIdProvider;
+        private readonly IEnvironment _environment;
+        private readonly ILogger<DiagnosticEventTableStorageRepository> _logger;
+        private readonly object _syncLock = new object();
 
-        private int _tableCreationRetries = 5;
         private ConcurrentDictionary<string, DiagnosticEvent> _events = new ConcurrentDictionary<string, DiagnosticEvent>();
-
-        private IConfiguration _configuration;
-        private IHostIdProvider _hostIdProvider;
-        private IEnvironment _environment;
-        private ILogger<DiagnosticEventTableStorageRepository> _logger;
-
         private CloudTableClient _tableClient;
         private CloudTable _diagnosticEventsTable;
         private string _hostId;
-        private object _syncLock = new object();
         private bool _disposed = false;
         private string _tableName;
 
@@ -81,13 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             }
         }
 
-        internal ConcurrentDictionary<string, DiagnosticEvent> Events
-        {
-            get
-            {
-                return _events;
-            }
-        }
+        internal ConcurrentDictionary<string, DiagnosticEvent> Events => _events;
 
         internal CloudTable GetDiagnosticEventsTable(DateTime? now = null)
         {
@@ -135,7 +129,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     return;
                 }
 
-                bool tableCreated = await TableStorageHelpers.CreateIfNotExistsAsync(table, _tableCreationRetries);
+                bool tableCreated = await TableStorageHelpers.CreateIfNotExistsAsync(table, TableCreationMaxRetryCount);
                 if (tableCreated)
                 {
                     TableStorageHelpers.QueueBackgroundTablePurge(table, TableClient, TableNamePrefix, _logger);
@@ -153,7 +147,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             // All existing events are logged to other logging pipelines already.
             ConcurrentDictionary<string, DiagnosticEvent> tempDictionary = _events;
             _events = new ConcurrentDictionary<string, DiagnosticEvent>();
-            if (tempDictionary.Count > 0)
+            if (!tempDictionary.IsEmpty)
             {
                 await ExecuteBatchAsync(tempDictionary, table);
             }
@@ -189,9 +183,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             {
                 ErrorCode = errorCode,
                 HelpLink = helpLink,
-                Message = message,
+                Message = Sanitizer.Sanitize(message),
                 LogLevel = level,
-                Details = exception?.ToFormattedString(),
+                Details = Sanitizer.Sanitize(exception?.ToFormattedString()),
                 HitCount = 1
             };
 
@@ -205,7 +199,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             }
         }
 
-        internal void StopTimer()
+        private void StopTimer()
         {
             _logger.LogInformation("Stopping the flush logs timer");
             _flushLogsTimer?.Change(Timeout.Infinite, Timeout.Infinite);
