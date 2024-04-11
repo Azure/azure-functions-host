@@ -739,13 +739,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private async Task<(bool Success, string ErrorMessage)> SetTriggersAsync(string content)
         {
             // sanitize the content before logging
-            string sanitizedContentString = string.Empty;
             var sanitizedContent = JToken.Parse(content);
             if (sanitizedContent.Type == JTokenType.Object)
             {
                 ((JObject)sanitizedContent).Remove("secrets");
-                sanitizedContentString = Sanitizer.Sanitize(sanitizedContent.ToString());
             }
+            var sanitizedContentString = Sanitizer.Sanitize(sanitizedContent.ToString());
 
             using (var request = BuildSetTriggersRequest())
             {
