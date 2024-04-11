@@ -14,6 +14,8 @@ trigger:
   batch: true
   branches:
     include:
+    - dev
+    - in-proc
     - release/4.*
     - release/inproc6/4.*
     - release/inproc8/4.*
@@ -33,7 +35,7 @@ extends:
   parameters:
     pool:
       name: 1es-pool-azfunc
-      image: 1es-windows-2022 
+      image: 1es-windows-2022
       os: windows
 
     stages:

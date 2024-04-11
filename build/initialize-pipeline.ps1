@@ -4,6 +4,7 @@ param (
 
 $buildReason = $env:BUILD_REASON
 $sourceBranch = $env:BUILD_SOURCEBRANCH
+$provider = $env:BUILD_REPOSITORY_PROVIDER
 
 Write-Host "BUILD_REASON: '$buildReason'"
 Write-Host "BUILD_SOURCEBRANCH: '$sourceBranch'"
@@ -15,15 +16,18 @@ if ($buildReason -eq "PullRequest") {
   # This often gets rate limited, so it isn't reliable.
 
   $pack = $false
-  try {
-    $response = Invoke-RestMethod api.github.com/repos/$env:BUILD_REPOSITORY_ID/pulls/$env:SYSTEM_PULLREQUEST_PULLREQUESTNUMBER
-    $title = $response.title.ToLowerInvariant()
-    Write-Host "Pull request '$title'"
-    $pack = $title.Contains("[pack]")
-  }
-  catch {
-    Write-Warning "Failed to get pull request title."
-    Write-Warning $_
+
+  if ($provider -eq "GitHub") {
+    try {
+      $response = Invoke-RestMethod api.github.com/repos/$env:BUILD_REPOSITORY_ID/pulls/$env:SYSTEM_PULLREQUEST_PULLREQUESTNUMBER
+      $title = $response.title.ToLowerInvariant()
+      Write-Host "Pull request '$title'"
+      $pack = $title.Contains("[pack]")
+    }
+    catch {
+      Write-Warning "Failed to get pull request title."
+      Write-Warning $_
+    }
   }
 
   # Next we check if the commit message contains '--pack'
