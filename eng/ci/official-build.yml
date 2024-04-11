@@ -44,8 +44,7 @@ extends:
         parameters:
           minorVersionPrefix: ${{ variables.minorVersionPrefix }}
 
-    - stage: BuildWindows
-      displayName: Build Windows
+    - stage: Build
       dependsOn: Initialize
 
       jobs:
@@ -54,11 +53,6 @@ extends:
           minorVersionPrefix: ${{ variables.minorVersionPrefix }}
           buildNumber: ${{ variables.buildNumber }}
 
-    - stage: BuildLinux
-      displayName: Build Linux
-      dependsOn: Initialize
-
-      jobs:
       - template: /eng/ci/templates/official/jobs/build-artifacts-linux.yml@self
         parameters:
           minorVersionPrefix: ${{ variables.minorVersionPrefix }}
