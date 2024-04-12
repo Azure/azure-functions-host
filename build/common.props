@@ -3,9 +3,9 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
     <LangVersion>latest</LangVersion>
-    <MajorVersion>4</MajorVersion>    
+    <MajorVersion>4</MajorVersion>
     <MinorVersion>1033</MinorVersion>
-    <PatchVersion>4</PatchVersion>
+    <PatchVersion>6</PatchVersion>
     <BuildNumber Condition="'$(BuildNumber)' == '' ">0</BuildNumber>
     <PreviewVersion></PreviewVersion>
     
@@ -21,6 +21,7 @@
 
     <CodeAnalysisRuleSet>$(MSBuildThisFileDirectory)..\src.ruleset</CodeAnalysisRuleSet>
     <NoWarn>$(NoWarn);NU1701</NoWarn>
+    <NugetAudit>false</NugetAudit> <!-- TODO: remove when CVE addressed -->
 
     <ContinuousIntegrationBuild Condition="'$(TF_BUILD)' == 'true'">true</ContinuousIntegrationBuild>
     <DebugType>embedded</DebugType>

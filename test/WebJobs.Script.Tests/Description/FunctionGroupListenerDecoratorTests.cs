@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description.Tests
             IFunctionDefinition definition = Mock.Of<IFunctionDefinition>();
             IListener original = Mock.Of<IListener>();
             IFunctionMetadataManager metadata = Mock.Of<IFunctionMetadataManager>();
-            IEnvironment environment = CreateEnvironment(FuncGroup.None);
+            IEnvironment environment = CreateEnvironment(null);
 
             var context = new ListenerDecoratorContext(definition, original.GetType(), original);
             var decorator = new FunctionGroupListenerDecorator(metadata, environment, _logger);
@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description.Tests
             IFunctionDefinition definition = CreateDefinition("test");
             IListener original = Mock.Of<IListener>();
             IFunctionMetadataManager metadata = Mock.Of<IFunctionMetadataManager>();
-            IEnvironment environment = CreateEnvironment(FuncGroup.Http);
+            IEnvironment environment = CreateEnvironment("http");
 
             var context = new ListenerDecoratorContext(definition, original.GetType(), original);
             var decorator = new FunctionGroupListenerDecorator(metadata, environment, _logger);
@@ -69,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description.Tests
             IFunctionDefinition definition = CreateDefinition("test");
             IListener original = Mock.Of<IListener>();
             IFunctionMetadataManager metadata = CreateMetadataManager("test", true);
-            IEnvironment environment = CreateEnvironment(FuncGroup.Http);
+            IEnvironment environment = CreateEnvironment("http");
 
             var context = new ListenerDecoratorContext(definition, original.GetType(), original);
             var decorator = new FunctionGroupListenerDecorator(metadata, environment, _logger);
@@ -88,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description.Tests
             IFunctionDefinition definition = CreateDefinition("test");
             IListener original = Mock.Of<IListener>();
             IFunctionMetadataManager metadata = CreateMetadataManager("test", true);
-            IEnvironment environment = CreateEnvironment(FuncGroup.Other);
+            IEnvironment environment = CreateEnvironment("other");
 
             var context = new ListenerDecoratorContext(definition, original.GetType(), original);
             var decorator = new FunctionGroupListenerDecorator(metadata, environment, _logger);
@@ -98,6 +98,51 @@ namespace Microsoft.Azure.WebJobs.Script.Description.Tests
 
             // Assert
             Assert.NotSame(context.Listener, result);
+        }
+
+        [Theory]
+        [InlineData("http")]
+        [InlineData("blob")]
+        public void Decorate_BlobTrigger_EnabledForGroup(string targetGroup)
+        {
+            // Arrange
+            IFunctionDefinition definition = CreateDefinition("test");
+            IListener original = Mock.Of<IListener>();
+
+            var metadata = new FunctionMetadata()
+            {
+                Name = "TestFunction1",
+                Bindings =
+                {
+                    new BindingMetadata
+                    {
+                        Name = "input",
+                        Type = "blobTrigger",
+                        Direction = BindingDirection.In,
+                        Raw = new JObject()
+                        {
+                            ["name"] = "input",
+                            ["type"] = "blobTrigger",
+                            ["direction"] = "in",
+                            ["source"] = "EventGrid",
+                        },
+                    }
+                }
+            };
+
+            var metadataMock = new Mock<IFunctionMetadataManager>();
+            metadataMock.Setup(p => p.TryGetFunctionMetadata("test", out metadata, false)).Returns(true);
+
+            IEnvironment environment = CreateEnvironment(targetGroup);
+
+            var context = new ListenerDecoratorContext(definition, original.GetType(), original);
+            var decorator = new FunctionGroupListenerDecorator(metadataMock.Object, environment, _logger);
+
+            // Act
+            var result = decorator.Decorate(context);
+
+            // Assert
+            Assert.Same(context.Listener, result);
         }
 
         private static IFunctionDefinition CreateDefinition(string name)
@@ -134,17 +179,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description.Tests
             return mock.Object;
         }
 
-        private static IEnvironment CreateEnvironment(FuncGroup group)
+        private static IEnvironment CreateEnvironment(string group)
         {
-            string groupStr = group switch
-            {
-                FuncGroup.Http => "http",
-                FuncGroup.Other => "other",
-                _ => null,
-            };
-
             var environment = new Mock<IEnvironment>(MockBehavior.Strict);
-            environment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsTargetGroup)).Returns(groupStr);
+            environment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsTargetGroup)).Returns(group);
             return environment.Object;
         }
     }
