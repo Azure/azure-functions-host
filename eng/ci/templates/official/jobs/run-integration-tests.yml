@@ -8,7 +8,7 @@ jobs:
     os: windows
 
   variables:
-    IntegrationProject: /test/WebJobs.Script.Tests.Integration.csproj
+    IntegrationProject: /test/WebJobs.Script.Tests.Integration/WebJobs.Script.Tests.Integration.csproj
     IsReleaseBranch: $[contains(variables['Build.SourceBranch'], 'release/')]
 
   steps:

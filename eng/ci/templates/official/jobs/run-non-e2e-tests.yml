@@ -8,7 +8,7 @@ jobs:
     os: windows
 
   variables:
-    IntegrationProject: /test/WebJobs.Script.Tests.Integration.csproj
+    IntegrationProject: /test/WebJobs.Script.Tests.Integration/WebJobs.Script.Tests.Integration.csproj
 
   steps:
   - task: NuGetAuthenticate@1
