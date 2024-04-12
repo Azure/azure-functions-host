@@ -50,7 +50,7 @@ jobs:
   - task: PowerShell@2
     displayName: Build artifacts
     inputs:
-      filePath: /build/build-extensions.ps1
+      filePath: build/build-extensions.ps1
       arguments: '-buildNumber "$(buildNumber)" -suffix "$(suffix)" -minorVersionPrefix "$(minorVersionPrefix)"'
 
   - task: PowerShell@2
@@ -60,7 +60,7 @@ jobs:
 
   - task: CopyFiles@2
     inputs:
-      SourceFolder: /out/pub/WebJobs.Script.WebHost
+      SourceFolder: out/pub/WebJobs.Script.WebHost
       Contents: '**/*.zip'
       TargetFolder: $(Build.ArtifactStagingDirectory)
 
@@ -88,7 +88,7 @@ jobs:
     displayName: Sign Abstractions assemblies
     inputs:
       ConnectedServiceName: ESRP Service-internal
-      FolderPath: /out/bin/WebJobs.Script.Abstractions/release
+      FolderPath: out/bin/WebJobs.Script.Abstractions/release
       Pattern: Microsoft.Azure.WebJobs.Script.Abstractions*.dll
       signConfigType: inlineSignParams
       inlineOperation: |
@@ -158,7 +158,7 @@ jobs:
     displayName: Sign ExtensionsMetadataGenerator assemblies
     inputs:
       ConnectedServiceName: ESRP Service-internal
-      FolderPath: /out/bin/ExtensionsMetadataGenerator
+      FolderPath: out/bin/ExtensionsMetadataGenerator
       Pattern: Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator*.dll
       signConfigType: inlineSignParams
       inlineOperation: |
@@ -217,7 +217,7 @@ jobs:
     displayName: Sign ExtensionsMetadataGenerator package
     inputs:
       ConnectedServiceName: ESRP Service-internal
-      FolderPath: /out/pkg/release
+      FolderPath: out/pkg/release
       Pattern: Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator*.nupkg
       signConfigType: inlineSignParams
       inlineOperation: |
@@ -245,7 +245,7 @@ jobs:
 
   - task: CopyFiles@2
     inputs:
-      SourceFolder: /out/pkg/release
+      SourceFolder: out/pkg/release
       Contents: '**/*.nupkg'
       TargetFolder: $(Build.ArtifactStagingDirectory)/NugetPackages
 
