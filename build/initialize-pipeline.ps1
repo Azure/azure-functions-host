@@ -1,5 +1,5 @@
 param (
-  [ValidateSet("6", "8", "")][string]$minorVersionPrefix = "",
+  [ValidateSet("6", "8", "")][string]$minorVersionPrefix = ""
 )
 
 $buildReason = $env:BUILD_REASON
