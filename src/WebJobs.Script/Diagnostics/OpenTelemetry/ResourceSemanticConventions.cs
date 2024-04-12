@@ -3,7 +3,7 @@
 
 namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
 {
-    internal class ResourceSemanticConventions
+    internal static class ResourceSemanticConventions
     {
         // Service
         internal const string ServiceName = "service.name";

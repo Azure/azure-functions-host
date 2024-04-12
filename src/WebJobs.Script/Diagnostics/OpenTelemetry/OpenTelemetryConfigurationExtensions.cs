@@ -47,7 +47,12 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
                 // These are messages piped back to the host from the worker - we don't handle these anymore if the worker has OpenTelemetry enabled.
                 // Instead, we expect the user's own code to be logging these where they want them to go.
                 .AddFilter<OpenTelemetryLoggerProvider>("Function.*", _ => !ScriptHost.WorkerOpenTelemetryEnabled)
-                .AddFilter<OpenTelemetryLoggerProvider>("Azure.*", _ => !ScriptHost.WorkerOpenTelemetryEnabled);
+                .AddFilter<OpenTelemetryLoggerProvider>("Azure.*", _ => !ScriptHost.WorkerOpenTelemetryEnabled)
+                // Host.Results and Host.Aggregator are used to emit metrics, ignoring these categories.
+                .AddFilter<OpenTelemetryLoggerProvider>("Host.Results", _ => !ScriptHost.WorkerOpenTelemetryEnabled)
+                .AddFilter<OpenTelemetryLoggerProvider>("Host.Aggregator", _ => !ScriptHost.WorkerOpenTelemetryEnabled)
+                // Ignoring all Microsoft.Azure.WebJobs.* logs like /getScriptTag and /lock.
+                .AddFilter<OpenTelemetryLoggerProvider>("Microsoft.Azure.WebJobs.*", _ => !ScriptHost.WorkerOpenTelemetryEnabled);
 
             // Azure SDK instrumentation is experimental.
             AppContext.SetSwitch("Azure.Experimental.EnableActivitySource", true);

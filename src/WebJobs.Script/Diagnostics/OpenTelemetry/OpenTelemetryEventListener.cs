@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.Tracing;
 using System.Globalization;
@@ -22,8 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
         private readonly EventLevel _eventLevel;
         private Timer _flushTimer;
         private ConcurrentQueue<string> _logBuffer = new ConcurrentQueue<string>();
-        private ConcurrentQueue<EventSource> _eventSources = new ConcurrentQueue<EventSource>();
-        private ConcurrentQueue<EventSource> _preEventSources = new ConcurrentQueue<EventSource>();
+        private Queue<EventSource> _preEventSources = new Queue<EventSource>();
         private static object _syncLock = new object();
         private bool _disposed = false;
         private bool _constructorCalled = false;
@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
             {
                 if (_constructorCalled)
                 {
-                    EnableEvents(eventSource);
+                    EnableEvents(eventSource, _eventLevel, EventKeywords.All);
                 }
                 else
                 {
@@ -61,19 +61,13 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
             base.OnEventSourceCreated(eventSource);
         }
 
-        private void EnableEvents(EventSource eventSource)
-        {
-            EnableEvents(eventSource, _eventLevel, EventKeywords.All);
-            _eventSources.Enqueue(eventSource);
-        }
-
         private void EnablePreEvents()
         {
             while (_preEventSources.TryDequeue(out EventSource source))
             {
                 if (source != null && !source.IsEnabled())
                 {
-                    EnableEvents(source);
+                    EnableEvents(source, _eventLevel, EventKeywords.All);
                 }
             }
         }
@@ -108,7 +102,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
                 _logBuffer = new ConcurrentQueue<string>();
             }
 
-            // batch up to 30 events in one log
+            // batch up to 35 events in one log
             StringBuilder sb = new StringBuilder();
             // start with a new line
             sb.AppendLine(string.Empty);
@@ -125,15 +119,6 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
             {
                 if (disposing)
                 {
-                    while (_eventSources.TryDequeue(out EventSource source))
-                    {
-                        if (source != null)
-                        {
-                            DisableEvents(source);
-                            source.Dispose();
-                        }
-                    }
-
                     if (_flushTimer != null)
                     {
                         _flushTimer.Dispose();
