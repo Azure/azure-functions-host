@@ -4,4 +4,4 @@
 - My change description (#PR)
 -->
 - Fixed an issue causing sporadic HTTP request failures when worker listeners were not fully initialized on first request #9954
-
+- Update Node.js Worker Version to [3.10.0](https://github.com/Azure/azure-functions-nodejs-worker/releases/tag/v3.10.0) (#9999)
