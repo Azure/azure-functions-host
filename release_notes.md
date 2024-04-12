@@ -7,3 +7,4 @@
   - Move symbols from dotnet-isolated worker to symbols package
   - Removed linux executables from dotnet-isolated worker.
 - Update Azure.Identity to 1.11.0 (#10002)
+- Update Node.js Worker Version to [3.10.0](https://github.com/Azure/azure-functions-nodejs-worker/releases/tag/v3.10.0) (#9999)

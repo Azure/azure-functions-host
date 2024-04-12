@@ -849,7 +849,7 @@
       },
       "Microsoft.Azure.Functions.DotNetIsolatedNativeHost/1.0.8": {},
       "Microsoft.Azure.Functions.JavaWorker/2.14.0": {},
-      "Microsoft.Azure.Functions.NodeJsWorker/3.9.0": {},
+      "Microsoft.Azure.Functions.NodeJsWorker/3.10.0": {},
       "Microsoft.Azure.Functions.PowerShellWorker.PS7.0/4.0.3148": {},
       "Microsoft.Azure.Functions.PowerShellWorker.PS7.2/4.0.3131": {},
       "Microsoft.Azure.Functions.PowerShellWorker.PS7.4/4.0.3147": {},
@@ -2984,7 +2984,7 @@
           "Microsoft.Azure.AppService.Proxy.Client": "2.3.20240307.67",
           "Microsoft.Azure.Functions.DotNetIsolatedNativeHost": "1.0.8",
           "Microsoft.Azure.Functions.JavaWorker": "2.14.0",
-          "Microsoft.Azure.Functions.NodeJsWorker": "3.9.0",
+          "Microsoft.Azure.Functions.NodeJsWorker": "3.10.0",
           "Microsoft.Azure.Functions.PowerShellWorker.PS7.0": "4.0.3148",
           "Microsoft.Azure.Functions.PowerShellWorker.PS7.2": "4.0.3131",
           "Microsoft.Azure.Functions.PowerShellWorker.PS7.4": "4.0.3147",
@@ -3616,12 +3616,12 @@
       "path": "microsoft.azure.functions.javaworker/2.14.0",
       "hashPath": "microsoft.azure.functions.javaworker.2.14.0.nupkg.sha512"
     },
-    "Microsoft.Azure.Functions.NodeJsWorker/3.9.0": {
+    "Microsoft.Azure.Functions.NodeJsWorker/3.10.0": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-wak5W8voGJUeUW8J9xmRDM/+bRmCKO0p7rFadt4gJtwlBqQ73BTLTM4gvhIiP0Z2uOgJExEhU9JgPeU22ZvJZA==",
-      "path": "microsoft.azure.functions.nodejsworker/3.9.0",
-      "hashPath": "microsoft.azure.functions.nodejsworker.3.9.0.nupkg.sha512"
+      "sha512": "sha512-LE9emceHD83cdNRkZqL87XhouOL1SO3W2GHqSw0qiSwlT5oU/U4D3yWzqksNz+jsPdsKnsRV7mi8OQ/nxQwgtQ==",
+      "path": "microsoft.azure.functions.nodejsworker/3.10.0",
+      "hashPath": "microsoft.azure.functions.nodejsworker.3.10.0.nupkg.sha512"
     },
     "Microsoft.Azure.Functions.PowerShellWorker.PS7.0/4.0.3148": {
       "type": "package",
