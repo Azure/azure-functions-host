@@ -8,7 +8,7 @@ jobs:
     os: windows
 
   variables:
-    IntegrationProject: test/WebJobs.Script.Tests.Integration.csproj
+    IntegrationProject: /test/WebJobs.Script.Tests.Integration.csproj
     IsReleaseBranch: $[contains(variables['Build.SourceBranch'], 'release/')]
 
   steps:
@@ -42,7 +42,7 @@ jobs:
     displayName: npm ci
     inputs:
       command: ci
-      workingDir: sample/CustomHandlerRetry
+      workingDir: /sample/CustomHandlerRetry
 
   - task: AzureKeyVault@1
     inputs:
@@ -54,7 +54,7 @@ jobs:
   - task: PowerShell@2
     displayName: Checkout secrets
     inputs:
-      filePath: build/checkout-secrets.ps1
+      filePath: /build/checkout-secrets.ps1
       arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'''
 
   - task: AzureKeyVault@1
@@ -207,5 +207,5 @@ jobs:
     condition: always()
     displayName: Checkin secrets
     inputs:
-      filePath: build/checkin-secrets.ps1
+      filePath: /build/checkin-secrets.ps1
       arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'' -leaseBlob $(LeaseBlob) -leaseToken $(LeaseToken)'
