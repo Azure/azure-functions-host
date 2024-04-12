@@ -28,7 +28,11 @@ jobs:
   variables:
     project: src/WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj
     runtime: linux-x64
-    buildArgs: '-v m -c release -r linux-x64 --self-contained true -p:BuildNumber=$(buildNumber) -p:MinorVersionPrefix=$(minorVersionPrefix) -p:IsPackable=false'
+    buildArgs: > 
+    -v m -c release -r $[variables.runtime] --self-contained true
+    -p:BuildNumber=${{ parameters.buildNumber }}
+    -p:MinorVersionPrefix=${{ parameters.minorVersionPrefix }}
+    -p:IsPackable=false
 
   steps:
   - task: NuGetAuthenticate@1
@@ -42,7 +46,7 @@ jobs:
       command: custom
       custom: restore
       projects: $(project)
-      arguments: '-v m -r $(runtime)'
+      arguments: '-v m -r $(runtime) -p:PublishReadyToRun=true' # add PublishReadyToRun=true for https://github.com/dotnet/sdk/issues/20701
 
   - task: DotNetCoreCLI@2
     displayName: Build
