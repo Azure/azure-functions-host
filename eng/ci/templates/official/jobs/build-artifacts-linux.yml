@@ -28,11 +28,10 @@ jobs:
   variables:
     project: src/WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj
     runtime: linux-x64
-    buildArgs: > 
-    -v m -c release -r $[variables.runtime] --self-contained true
-    -p:BuildNumber=${{ parameters.buildNumber }}
-    -p:MinorVersionPrefix=${{ parameters.minorVersionPrefix }}
-    -p:IsPackable=false
+    buildArgs: '-v m -c release -r $[variables.runtime] --self-contained true\
+    -p:BuildNumber=${{ parameters.buildNumber }}\
+    -p:MinorVersionPrefix=${{ parameters.minorVersionPrefix }}\
+    -p:IsPackable=false'
 
   steps:
   - task: NuGetAuthenticate@1
