@@ -3,10 +3,6 @@ parameters:
   type: string
   default: ''
 
-- name: buildNumber
-  type: string
-  default: ''
-
 jobs:
 - job: BuildArtifactsWindows
   displayName: Build Windows Artifacts
@@ -34,9 +30,9 @@ jobs:
 
   variables:
     ${{ if or( eq( variables['Build.Reason'], 'PullRequest' ), and( not( contains( variables['Build.SourceBranch'], 'release/inproc6/4.' ) ), not( contains( variables['Build.SourceBranch'], 'release/inproc8/4.' ) ), not( contains( variables['Build.SourceBranch'], 'release/4.' ) ), not( contains( variables['Build.SourceBranch'], 'release/ExtensionsMetadataGenerator/' ) ) ) ) }}:
-        suffixTemp: ${{ parameters.buildNumber }}
-        packSuffixSwitchTemp: --version-suffix ${{ parameters.buildNumber }}
-        emgSuffixSwitchTemp: --version-suffix ci${{ parameters.buildNumber }}
+        suffixTemp: $[variables.buildNumber]
+        packSuffixSwitchTemp: --version-suffix $[variables.buildNumber]
+        emgSuffixSwitchTemp: --version-suffix ci$[variables.buildNumber]
     suffix: $[variables.suffixTemp] # this resolves to an empty string if it is missing
     packSuffixSwitch: $[variables.packSuffixSwitchTemp]
     emgSuffixSwitch: $[variables.emgSuffixSwitchTemp]

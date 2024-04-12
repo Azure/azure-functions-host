@@ -54,12 +54,10 @@ extends:
       - template: /eng/ci/templates/official/jobs/build-artifacts-windows.yml@self
         parameters:
           minorVersionPrefix: ${{ variables.minorVersionPrefix }}
-          buildNumber: ${{ variables.buildNumber }}
 
       - template: /eng/ci/templates/official/jobs/build-artifacts-linux.yml@self
         parameters:
           minorVersionPrefix: ${{ variables.minorVersionPrefix }}
-          buildNumber: ${{ variables.buildNumber }}
 
     - stage: Test
       dependsOn: Initialize
