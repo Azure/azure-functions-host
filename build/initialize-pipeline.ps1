@@ -1,5 +1,5 @@
 param (
-  [ValidateSet("6", "8", "")][string]$minorVersionPrefix = ""
+  [ValidateSet("6", "8", "")][string]$minorVersionPrefix = "",
 )
 
 $buildReason = $env:BUILD_REASON
@@ -59,7 +59,7 @@ else
 }
 
 Import-Module $PSScriptRoot\Get-AzureFunctionsVersion -Force
-$version = Get-AzureFunctionsVersion $buildNumber "" $minorVersionPrefix
+$version = Get-AzureFunctionsVersion $buildNumber $buildNumber $minorVersionPrefix
 
 Write-Host "Site extension version: $version"
 Write-Host "##vso[build.updatebuildnumber]$version"
