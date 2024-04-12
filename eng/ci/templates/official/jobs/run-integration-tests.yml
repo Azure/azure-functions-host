@@ -1,6 +1,6 @@
 jobs:
 - job: RunIntegrationTests
-  displayName: 'Run integration tests'
+  displayName: Run Integration Tests
 
   pool:
     name: 1es-pool-azfunc
@@ -8,7 +8,7 @@ jobs:
     os: windows
 
   variables:
-    IntegrationProject: 'test/WebJobs.Script.Tests.Integration.csproj'
+    IntegrationProject: test/WebJobs.Script.Tests.Integration.csproj
     IsReleaseBranch: $[contains(variables['Build.SourceBranch'], 'release/')]
 
   steps:
@@ -16,55 +16,55 @@ jobs:
 
   - task: UseNode@1
     inputs:
-      version: '14.x'
+      version: 14.x
 
   - task: UsePythonVersion@0
     inputs:
-      versionSpec: '3.7.x'
+      versionSpec: 3.7.x
       addToPath: true
 
   - task: JavaToolInstaller@0
     inputs:
       versionSpec: '11'
-      jdkArchitectureOption: 'x64'
-      jdkSourceOption: 'PreInstalled'
+      jdkArchitectureOption: x64
+      jdkSourceOption: PreInstalled
 
   - task: PowerShell@2
-    displayName: 'Install Az.Storage Powershell module'
+    displayName: Install Az.Storage Powershell module
     inputs:
-      targetType: 'inline'
+      targetType: inline
       script: 'Install-Module -Name Az.Storage -RequiredVersion 1.11.0 -Scope CurrentUser -Force -AllowClobber'
 
   - task: Npm@1
-    displayName: 'npm ci'
+    displayName: npm ci
     inputs:
       command: ci
-      workingDir: $(Build.SourcesDirectory)/sample/CustomHandlerRetry
+      workingDir: sample/CustomHandlerRetry
 
   - task: AzureKeyVault@1
     inputs:
       # Note: This is actually a Service Connection in DevOps, not an Azure subscription name
-      azureSubscription: 'Azure-Functions-Host-CI-internal'
-      keyVaultName: 'azure-functions-host-ci'
+      azureSubscription: Azure-Functions-Host-CI-internal
+      keyVaultName: azure-functions-host-ci
       secretsFilter: '*'
 
   - task: PowerShell@2
-    displayName: 'Checkout secrets'
+    displayName: Checkout secrets
     inputs:
-      filePath: '$(Build.SourcesDirectory)/build/checkout-secrets.ps1'
+      filePath: build/checkout-secrets.ps1
       arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'''
 
   - task: AzureKeyVault@1
     inputs:
       # Note: This is actually a Service Connection in DevOps, not an Azure subscription name
-      azureSubscription: 'Azure-Functions-Host-CI-internal'
+      azureSubscription: Azure-Functions-Host-CI-internal
       keyVaultName: azure-functions-host-$(LeaseBlob)
       secretsFilter: '*'
 
   - task: PowerShell@2
-    displayName: 'Set environment variables'
+    displayName: Set environment variables
     inputs:
-      targetType: 'inline'
+      targetType: inline
       script: |
         Write-Host "##vso[task.setvariable variable=AzureWebJobsStorage]$env:AzureWebJobsStorageSecretMap"
         Write-Host "##vso[task.setvariable variable=AzureWebJobsSeconaryStorage]$env:AzureWebJobsSecondaryStorageSecretMap"
@@ -79,131 +79,130 @@ jobs:
       AzureWebJobsEventHubReceiverSecretMap: $(EventHub)
 
   - task: DotNetCoreCLI@2
-    displayName: "Build Integration.csproj"
+    displayName: Build Integration.csproj
     inputs:
-      command: 'build'
+      command: build
       projects: $(IntegrationProject)
 
   - task: DotNetCoreCLI@2
-    displayName: "C# end to end tests"
+    displayName: C# end to end tests
     inputs:
-      command: 'test'
-      testRunTitle: "C# end to end tests"
+      command: test
+      testRunTitle: C# end to end tests
       arguments: '--filter "Group=CSharpEndToEndTests" --no-build'
       projects: $(IntegrationProject)
 
   - task: DotNetCoreCLI@2
-    displayName: "Node end to end tests"
+    displayName: Node end to end tests
     condition: succeededOrFailed()
     inputs:
-      command: 'test'
-      testRunTitle: "Node end to end tests"
+      command: test
+      testRunTitle: Node end to end tests
       arguments: '--filter "Group=NodeEndToEndTests" --no-build'
       projects: $(IntegrationProject)
 
   - task: DotNetCoreCLI@2
-    displayName: "Direct load end to end tests"
+    displayName: Direct load end to end tests
     condition: succeededOrFailed()
     inputs:
-      command: 'test'
-      testRunTitle: "Direct load end to end tests"
+      command: test
+      testRunTitle: Direct load end to end tests
       arguments: '--filter "Group=DirectLoadEndToEndTests" --no-build'
       projects: $(IntegrationProject)
 
   - task: DotNetCoreCLI@2
-    displayName: "F# end to end tests"
+    displayName: F# end to end tests
     condition: succeededOrFailed()
     inputs:
-      command: 'test'
-      testRunTitle: "F# end to end tests"
+      command: test
+      testRunTitle: F# end to end tests
       arguments: '--filter "Group=FSharpEndToEndTests" --no-build'
       projects: $(IntegrationProject)
 
   - task: DotNetCoreCLI@2
-    displayName: "Language worker end to end tests"
+    displayName: Language worker end to end tests
     condition: succeededOrFailed()
     inputs:
-      command: 'test'
-      testRunTitle: "Language worker end to end tests"
+      command: test
+      testRunTitle: Language worker end to end tests
       arguments: '--filter "Group=LanguageWorkerSelectionEndToEndTests" --no-build'
       projects: $(IntegrationProject)
 
   - task: DotNetCoreCLI@2
-    displayName: "Node script host end to end tests"
+    displayName: Node script host end to end tests
     condition: succeededOrFailed()
     inputs:
-      command: 'test'
-      testRunTitle: "Node script host end to end tests"
+      command: test
+      testRunTitle: Node script host end to end tests
       arguments: '--filter "Group=NodeScriptHostTests" --no-build'
       projects: $(IntegrationProject)
 
   - task: DotNetCoreCLI@2
-    displayName: "Raw assembly end to end tests"
+    displayName: Raw assembly end to end tests
     condition: succeededOrFailed()
     inputs:
-      command: 'test'
-      testRunTitle: "Raw assembly end to end tests"
+      command: test
+      testRunTitle: Raw assembly end to end tests
       arguments: '--filter "Group=RawAssemblyEndToEndTests" --no-build'
       projects: $(IntegrationProject)
 
   - task: DotNetCoreCLI@2
-    displayName: "Samples end to end tests"
+    displayName: Samples end to end tests
     condition: succeededOrFailed()
     inputs:
-      command: 'test'
-      testRunTitle: "Samples end to end tests"
+      command: test
+      testRunTitle: Samples end to end tests
       arguments: '--filter "Group=SamplesEndToEndTests" --no-build'
       projects: $(IntegrationProject)
 
   - task: DotNetCoreCLI@2
-    displayName: "Drain mode end to end tests"
+    displayName: Drain mode end to end tests
     condition: succeededOrFailed()
     inputs:
-      command: 'test'
-      testRunTitle: "Drain mode end to end tests"
+      command: test
+      testRunTitle: Drain mode end to end tests
       arguments: '--filter "Group=DrainModeEndToEndTests" --no-build'
       projects: $(IntegrationProject)
   
   - task: DotNetCoreCLI@2
-    displayName: "Standby mode end to end tests Windows"
+    displayName: Standby mode end to end tests Windows
     condition: succeededOrFailed()
     inputs:
-      command: 'test'
-      testRunTitle: "Standby mode end to end tests Windows"
+      command: test
+      testRunTitle: Standby mode end to end tests Windows
       arguments: '--filter "Group=StandbyModeEndToEndTests_Windows" --no-build'
       projects: $(IntegrationProject)
   
   - task: DotNetCoreCLI@2
-    displayName: "Standby mode end to end tests Linux"
+    displayName: Standby mode end to end tests Linux
     condition: succeededOrFailed()
     inputs:
-      command: 'test'
-      testRunTitle: "Standby mode end to end tests Linux"
+      command: test
+      testRunTitle: Standby mode end to end tests Linux
       arguments: '--filter "Group=StandbyModeEndToEndTests_Linux" --no-build'
       projects: $(IntegrationProject)
 
   - task: DotNetCoreCLI@2
-    displayName: "Linux container end to end tests Windows"
+    displayName: Linux container end to end tests Windows
     condition: succeededOrFailed()
     inputs:
-      command: 'test'
-      testRunTitle: "Linux container end to end tests Windows"
+      command: test
+      testRunTitle: Linux container end to end tests Windows
       arguments: '--filter "Group=ContainerInstanceTests" --no-build'
       projects: $(IntegrationProject)
 
   - task: DotNetCoreCLI@2
-    displayName: "Release verification tests"
+    displayName: Release verification tests
     condition: ${{ eq(variables.IsReleaseBranch, true) }}
     inputs:
-      command: 'test'
-      testRunTitle: "Release verification tests"
+      command: test
+      testRunTitle: Release verification tests
       arguments: '--filter "Group=ReleaseTests" --no-build'
       projects: $(IntegrationProject)
 
   - task: PowerShell@2
     condition: always()
-    displayName: 'Checkin secrets'
+    displayName: Checkin secrets
     inputs:
-      filePath: '$(Build.SourcesDirectory)/build/checkin-secrets.ps1'
+      filePath: build/checkin-secrets.ps1
       arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'' -leaseBlob $(LeaseBlob) -leaseToken $(LeaseToken)'
-  

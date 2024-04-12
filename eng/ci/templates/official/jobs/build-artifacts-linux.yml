@@ -9,6 +9,8 @@ parameters:
 
 jobs:
 - job: BuildArtifactsLinux
+  displayName: Build Linux Artifacts
+
   templateContext:
     outputParentDirectory: $(Build.ArtifactStagingDirectory)
     outputs:
@@ -24,13 +26,13 @@ jobs:
     os: linux
 
   variables:
-    project: $(Build.SourcesDirectory)/src/WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj
+    project: src/WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj
     runtime: linux-x64
     buildArgs: '-v m -c release -r linux-x64 --self-contained true -p:BuildNumber=$(buildNumber) -p:MinorVersionPrefix=$(minorVersionPrefix) -p:IsPackable=false'
 
   steps:
   - task: UseDotNet@2
-    displayName: 'Install .NET SDK'
+    displayName: Install .NET SDK
     inputs:
       packageType: sdk
       useGlobalJson: true
@@ -60,12 +62,12 @@ jobs:
       arguments: '--no-build $(buildArgs)'
 
   - task: ArchiveFiles@2
-    displayName: 'Archive files'
+    displayName: Archive files
     inputs:
-      rootFolderOrFile: '$(Build.SourcesDirectory)/out/pub/WebJobs.Script.WebHost/release_linux-x64/'
+      rootFolderOrFile: out/pub/WebJobs.Script.WebHost/release_linux-x64/
       includeRootFolder: false
-      archiveType: 'zip'
-      archiveFile: '$(Build.ArtifactStagingDirectory)/Linux/WebJobs.Script.WebHost.$(Build.BuildId).zip'
+      archiveType: zip
+      archiveFile: $(Build.ArtifactStagingDirectory)/Linux/WebJobs.Script.WebHost.$(Build.BuildId).zip
 
   - task: ManifestGeneratorTask@0
     displayName: 'SBOM Generation Task - Linux'

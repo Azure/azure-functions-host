@@ -1,6 +1,6 @@
 jobs:
 - job: RunUnitTests
-  displayName: 'Run unit tests'
+  displayName: Run Unit Tests
 
   pool:
     name: 1es-pool-azfunc
@@ -11,7 +11,7 @@ jobs:
   - template: /eng/ci/templates/install-dotnet.yml@self
 
   - task: DotNetCoreCLI@2
-    displayName: 'Unit Tests'
+    displayName: Unit Tests
     inputs:
       command: test
       testRunTitle: Unit Tests

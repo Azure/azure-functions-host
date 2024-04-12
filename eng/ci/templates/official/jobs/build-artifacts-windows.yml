@@ -9,6 +9,8 @@ parameters:
 
 jobs:
 - job: BuildArtifactsWindows
+  displayName: Build Windows Artifacts
+
   templateContext:
     outputParentDirectory: $(Build.ArtifactStagingDirectory)
     outputs:
@@ -43,27 +45,27 @@ jobs:
   - template: /eng/ci/templates/install-dotnet.yml@self
 
   - task: PowerShell@2
-    displayName: "Build artifacts"
+    displayName: Build artifacts
     inputs:
-      filePath: '$(Build.SourcesDirectory)build/build-extensions.ps1'
+      filePath: build/build-extensions.ps1
       arguments: '-buildNumber "$(buildNumber)" -suffix "$(suffix)" -minorVersionPrefix "$(minorVersionPrefix)"'
 
   - task: PowerShell@2
-    displayName: "Check for security vulnerabilities"
+    displayName: Check for security vulnerabilities
     inputs:
-      filePath: '$(Build.SourcesDirectory)/build/check-vulnerabilities.ps1'
+      filePath: build/check-vulnerabilities.ps1
 
   - task: CopyFiles@2
     inputs:
-      SourceFolder: '$(Build.SourcesDirectory)/out/pub/WebJobs.Script.WebHost'
+      SourceFolder: out/pub/WebJobs.Script.WebHost
       Contents: '**/*.zip'
-      TargetFolder: '$(Build.ArtifactStagingDirectory)'
+      TargetFolder: $(Build.ArtifactStagingDirectory)
 
   - task: DotNetCoreCLI@2
-    displayName: 'Build host packages'
+    displayName: Build host packages
     inputs:
-      command: 'custom'
-      custom: 'pack'
+      command: custom
+      custom: pack
       arguments: -p:BuildNumber=$(buildNumber) -c Release $(packSuffixSwitch)
       projects: |
         **/WebJobs.Script.csproj
@@ -71,19 +73,19 @@ jobs:
         **/WebJobs.Script.Grpc.csproj
 
   - task: DotNetCoreCLI@2
-    displayName: 'Build Abstractions and ExtensionsMetadataGenerator'
+    displayName: Build Abstractions and ExtensionsMetadataGenerator
     inputs:
-      command: 'build'
+      command: build
       arguments: '-c Release'
       projects: |
         **/ExtensionsMetadataGenerator.csproj
         **/WebJobs.Script.Abstractions.csproj
 
   - task: EsrpCodeSigning@2
-    displayName: 'Sign Abstractions assemblies'
+    displayName: Sign Abstractions assemblies
     inputs:
-      ConnectedServiceName: 'ESRP Service-internal'
-      FolderPath: 'out/bin/WebJobs.Script.Abstractions/release'
+      ConnectedServiceName: ESRP Service-internal
+      FolderPath: out/bin/WebJobs.Script.Abstractions/release
       Pattern: Microsoft.Azure.WebJobs.Script.Abstractions*.dll
       signConfigType: inlineSignParams
       inlineOperation: |
@@ -111,25 +113,25 @@ jobs:
         ]
 
   - task: DeleteFiles@1
-    displayName: 'Delete CodeSignSummary files'
+    displayName: Delete CodeSignSummary files
     inputs:
       contents: '**/CodeSignSummary-*.md'
 
   - task: DotNetCoreCLI@2
-    displayName: 'Pack Abstractions'
+    displayName: Pack Abstractions
     inputs:
-      command: 'custom'
-      custom: 'pack'
+      command: custom
+      custom: pack
       arguments: '--no-build -c Release'
       projects: |
         **/WebJobs.Script.Abstractions.csproj
 
   - task: EsrpCodeSigning@2
-    displayName: 'Sign Abstractions package'
+    displayName: Sign Abstractions package
     inputs:
-      ConnectedServiceName: 'ESRP Service-internal'
-      FolderPath: 'out/pkg/release'
-      Pattern: 'Microsoft.Azure.WebJobs.Script.Abstractions*.nupkg'
+      ConnectedServiceName: ESRP Service-internal
+      FolderPath: out/pkg/release
+      Pattern: Microsoft.Azure.WebJobs.Script.Abstractions*.nupkg
       signConfigType: inlineSignParams
       inlineOperation: |
         [
@@ -150,11 +152,11 @@ jobs:
         ]
 
   - task: EsrpCodeSigning@2
-    displayName: 'Sign ExtensionsMetadataGenerator assemblies'
+    displayName: Sign ExtensionsMetadataGenerator assemblies
     inputs:
-      ConnectedServiceName: 'ESRP Service-internal'
-      FolderPath: 'out/bin/ExtensionsMetadataGenerator'
-      Pattern: 'Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator*.dll'
+      ConnectedServiceName: ESRP Service-internal
+      FolderPath: out/bin/ExtensionsMetadataGenerator
+      Pattern: Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator*.dll
       signConfigType: inlineSignParams
       inlineOperation: |
         [
@@ -195,25 +197,25 @@ jobs:
         ]
 
   - task: DeleteFiles@1
-    displayName: 'Delete CodeSignSummary files'
+    displayName: Delete CodeSignSummary files
     inputs:
       contents: '**/CodeSignSummary-*.md'
 
   - task: DotNetCoreCLI@2
-    displayName: 'Pack ExtensionsMetadataGenerator'
+    displayName: Pack ExtensionsMetadataGenerator
     inputs:
-      command: 'custom'
-      custom: 'pack'
+      command: custom
+      custom: pack
       arguments: '--no-build -c Release $(emgSuffixSwitch)'
       projects: |
         **/ExtensionsMetadataGeneratorTests.csproj
 
   - task: EsrpCodeSigning@2
-    displayName: 'Sign ExtensionsMetadataGenerator package'
+    displayName: Sign ExtensionsMetadataGenerator package
     inputs:
-      ConnectedServiceName: 'ESRP Service-internal'
-      FolderPath: 'out/pkg/release'
-      Pattern: 'Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator*.nupkg'
+      ConnectedServiceName: ESRP Service-internal
+      FolderPath: out/pkg/release
+      Pattern: Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator*.nupkg
       signConfigType: inlineSignParams
       inlineOperation: |
         [
@@ -234,36 +236,36 @@ jobs:
         ]
 
   - task: DeleteFiles@1
-    displayName: 'Delete CodeSignSummary files'
+    displayName: Delete CodeSignSummary files
     inputs:
       contents: '**/CodeSignSummary-*.md'
 
   - task: CopyFiles@2
     inputs:
-      SourceFolder: '$(Build.SourcesDirectory)/out/pkg/release'
+      SourceFolder: out/pkg/release
       Contents: '**/*.nupkg'
-      TargetFolder: '$(Build.ArtifactStagingDirectory)/NugetPackages'
+      TargetFolder: $(Build.ArtifactStagingDirectory)/NugetPackages
 
   - task: ManifestGeneratorTask@0
-    displayName: 'SBOM Generation Task - SiteExtension'
+    displayName: SBOM Generation Task - SiteExtension
     inputs:
-      BuildDropPath: '$(Build.ArtifactStagingDirectory)/SiteExtension'
-      Verbosity: 'Information'
+      BuildDropPath: $(Build.ArtifactStagingDirectory)/SiteExtension
+      Verbosity: Information
 
   - task: ManifestGeneratorTask@0
-    displayName: 'SBOM Generation Task - PrivateSiteExtension'
+    displayName: SBOM Generation Task - PrivateSiteExtension
     inputs:
-      BuildDropPath: '$(Build.ArtifactStagingDirectory)/PrivateSiteExtension'
-      Verbosity: 'Information'
+      BuildDropPath: $(Build.ArtifactStagingDirectory)/PrivateSiteExtension
+      Verbosity: Information
 
   - task: ManifestGeneratorTask@0
-    displayName: 'SBOM Generation Task - Symbols'
+    displayName: SBOM Generation Task - Symbols
     inputs:
-      BuildDropPath: '$(Build.ArtifactStagingDirectory)/Symbols'
-      Verbosity: 'Information'
+      BuildDropPath: $(Build.ArtifactStagingDirectory)/Symbols
+      Verbosity: Information
 
   - task: ManifestGeneratorTask@0
-    displayName: 'SBOM Generation Task - NugetPackages'
+    displayName: SBOM Generation Task - NugetPackages
     inputs:
-      BuildDropPath: '$(Build.ArtifactStagingDirectory)/NugetPackages'
-      Verbosity: 'Information'
+      BuildDropPath: $(Build.ArtifactStagingDirectory)/NugetPackages
+      Verbosity: Information

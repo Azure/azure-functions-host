@@ -5,7 +5,7 @@ parameters:
 
 jobs:
   - job: InitializePipeline
-    displayName: 'Initialize pipeline'
+    displayName: Initialize Pipeline
 
     steps:
     - task: UseDotNet@2 # The pinned SDK we use to build
@@ -18,7 +18,7 @@ jobs:
       displayName: 'Initialize'
       name: Initialize
       inputs:
-        filePath: '$(Build.SourcesDirectory)/build/initialize-pipeline.ps1'
+        filePath: build/initialize-pipeline.ps1
         arguments: -minorVersionPrefix "$(minorVersionPrefix)"
         showWarnings: true
         pwsh: true
