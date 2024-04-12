@@ -11,6 +11,9 @@ jobs:
     IntegrationProject: test/WebJobs.Script.Tests.Integration.csproj
 
   steps:
+  - task: NuGetAuthenticate@1
+    displayName: NuGet Authenticate
+
   - template: /eng/ci/templates/install-dotnet.yml@self
 
   - task: UseNode@1

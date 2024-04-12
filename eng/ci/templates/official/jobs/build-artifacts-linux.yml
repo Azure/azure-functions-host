@@ -31,6 +31,9 @@ jobs:
     buildArgs: '-v m -c release -r linux-x64 --self-contained true -p:BuildNumber=$(buildNumber) -p:MinorVersionPrefix=$(minorVersionPrefix) -p:IsPackable=false'
 
   steps:
+  - task: NuGetAuthenticate@1
+    displayName: NuGet Authenticate
+
   - task: UseDotNet@2
     displayName: Install .NET SDK
     inputs:
