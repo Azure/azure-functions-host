@@ -34,6 +34,7 @@
           "Microsoft.SourceLink.GitHub": "1.0.0",
           "Newtonsoft.Json": "13.0.3",
           "StyleCop.Analyzers": "1.2.0-beta.435",
+          "System.IO.FileSystem.AccessControl": "5.0.0",
           "System.IdentityModel.Tokens.Jwt": "6.35.0",
           "System.Net.NameResolution": "4.3.0",
           "System.Private.Uri": "4.3.2",
@@ -288,7 +289,7 @@
         "dependencies": {
           "Microsoft.ApplicationInsights": "2.22.0",
           "Microsoft.Extensions.Options": "8.0.0",
-          "System.IO.FileSystem.AccessControl": "4.7.0"
+          "System.IO.FileSystem.AccessControl": "5.0.0"
         },
         "runtime": {
           "lib/netstandard2.0/Microsoft.ApplicationInsights.SnapshotCollector.dll": {
@@ -315,7 +316,7 @@
       "Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel/2.22.0": {
         "dependencies": {
           "Microsoft.ApplicationInsights": "2.22.0",
-          "System.IO.FileSystem.AccessControl": "4.7.0"
+          "System.IO.FileSystem.AccessControl": "5.0.0"
         },
         "runtime": {
           "lib/netstandard2.0/Microsoft.AI.ServerTelemetryChannel.dll": {
@@ -402,7 +403,7 @@
           "Microsoft.Extensions.Options": "8.0.0",
           "Microsoft.Win32.Registry": "4.5.0",
           "System.Security.Cryptography.Xml": "4.7.1",
-          "System.Security.Principal.Windows": "4.7.0"
+          "System.Security.Principal.Windows": "5.0.0"
         }
       },
       "Microsoft.AspNetCore.DataProtection.Abstractions/2.2.0": {},
@@ -1687,7 +1688,7 @@
       "Microsoft.Win32.Registry/4.5.0": {
         "dependencies": {
           "System.Security.AccessControl": "6.0.0",
-          "System.Security.Principal.Windows": "4.7.0"
+          "System.Security.Principal.Windows": "5.0.0"
         }
       },
       "Microsoft.Win32.SystemEvents/8.0.0": {
@@ -2216,7 +2217,7 @@
       },
       "System.IO.Abstractions/2.1.0.227": {
         "dependencies": {
-          "System.IO.FileSystem.AccessControl": "4.7.0"
+          "System.IO.FileSystem.AccessControl": "5.0.0"
         },
         "runtime": {
           "lib/netstandard2.0/System.IO.Abstractions.dll": {
@@ -2237,10 +2238,10 @@
           "System.Threading.Tasks": "4.3.0"
         }
       },
-      "System.IO.FileSystem.AccessControl/4.7.0": {
+      "System.IO.FileSystem.AccessControl/5.0.0": {
         "dependencies": {
           "System.Security.AccessControl": "6.0.0",
-          "System.Security.Principal.Windows": "4.7.0"
+          "System.Security.Principal.Windows": "5.0.0"
         }
       },
       "System.IO.FileSystem.Primitives/4.3.0": {
@@ -2353,7 +2354,7 @@
           "System.Runtime.Extensions": "4.3.0",
           "System.Runtime.Handles": "4.3.0",
           "System.Runtime.InteropServices": "4.3.0",
-          "System.Security.Principal.Windows": "4.7.0",
+          "System.Security.Principal.Windows": "5.0.0",
           "System.Threading": "4.3.0",
           "System.Threading.Tasks": "4.3.0",
           "runtime.native.System": "4.3.0"
@@ -2377,7 +2378,7 @@
           "System.Runtime.Extensions": "4.3.0",
           "System.Runtime.Handles": "4.3.0",
           "System.Runtime.InteropServices": "4.3.0",
-          "System.Security.Principal.Windows": "4.7.0",
+          "System.Security.Principal.Windows": "5.0.0",
           "System.Threading": "4.3.0",
           "System.Threading.Overlapped": "4.0.1",
           "System.Threading.Tasks": "4.3.0",
@@ -2806,7 +2807,7 @@
           "System.Runtime": "4.3.1"
         }
       },
-      "System.Security.Principal.Windows/4.7.0": {},
+      "System.Security.Principal.Windows/5.0.0": {},
       "System.Security.SecureString/4.0.0": {
         "dependencies": {
           "Microsoft.NETCore.Platforms": "2.1.2",
@@ -4596,12 +4597,12 @@
       "path": "system.io.filesystem/4.3.0",
       "hashPath": "system.io.filesystem.4.3.0.nupkg.sha512"
     },
-    "System.IO.FileSystem.AccessControl/4.7.0": {
+    "System.IO.FileSystem.AccessControl/5.0.0": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-vMToiarpU81LR1/KZtnT7VDPvqAZfw9oOS5nY6pPP78nGYz3COLsQH3OfzbR+SjTgltd31R6KmKklz/zDpTmzw==",
-      "path": "system.io.filesystem.accesscontrol/4.7.0",
-      "hashPath": "system.io.filesystem.accesscontrol.4.7.0.nupkg.sha512"
+      "sha512": "sha512-SxHB3nuNrpptVk+vZ/F+7OHEpoHUIKKMl02bUmYHQr1r+glbZQxs7pRtsf4ENO29TVm2TH3AEeep2fJcy92oYw==",
+      "path": "system.io.filesystem.accesscontrol/5.0.0",
+      "hashPath": "system.io.filesystem.accesscontrol.5.0.0.nupkg.sha512"
     },
     "System.IO.FileSystem.Primitives/4.3.0": {
       "type": "package",
@@ -4974,12 +4975,12 @@
       "path": "system.security.principal/4.3.0",
       "hashPath": "system.security.principal.4.3.0.nupkg.sha512"
     },
-    "System.Security.Principal.Windows/4.7.0": {
+    "System.Security.Principal.Windows/5.0.0": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-ojD0PX0XhneCsUbAZVKdb7h/70vyYMDYs85lwEI+LngEONe/17A0cFaRFqZU+sOEidcVswYWikYOQ9PPfjlbtQ==",
-      "path": "system.security.principal.windows/4.7.0",
-      "hashPath": "system.security.principal.windows.4.7.0.nupkg.sha512"
+      "sha512": "sha512-t0MGLukB5WAVU9bO3MGzvlGnyJPgUlcwerXn1kzBRjwLKixT96XV0Uza41W49gVd8zEMFu9vQEFlv0IOrytICA==",
+      "path": "system.security.principal.windows/5.0.0",
+      "hashPath": "system.security.principal.windows.5.0.0.nupkg.sha512"
     },
     "System.Security.SecureString/4.0.0": {
       "type": "package",
