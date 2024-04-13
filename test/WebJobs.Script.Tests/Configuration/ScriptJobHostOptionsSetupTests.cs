@@ -316,6 +316,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             Assert.Equal(expected, options.SendCanceledInvocationsToWorker);
         }
 
+        [Theory]
+        [InlineData("openTelemetry", "OpenTelemetry")]
+        [InlineData("openTELemetry", "OpenTelemetry")]
+        [InlineData("applicationInsights", "ApplicationInsights")]
+        [InlineData("", "ApplicationInsights")]
+        [InlineData("junk", "ApplicationInsights")]
+        public void Configure_WithConfiguration_AppliesTelemetryMode(string setting, string expectedMode)
+        {
+            var settings = new Dictionary<string, string>
+            {
+                { ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, ConfigurationSectionNames.TelemetryMode), setting }
+            };
+
+            var options = GetConfiguredOptions(settings);
+
+            Assert.Equal(expectedMode, options.TelemetryMode.ToString());
+        }
+
         private ScriptJobHostOptions GetConfiguredOptions(Dictionary<string, string> settings, IEnvironment environment = null)
         {
             ScriptJobHostOptionsSetup setup = CreateSetupWithConfiguration(settings, environment);
