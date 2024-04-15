@@ -15,6 +15,9 @@ jobs:
     - output: pipelineArtifact
       path: $(Build.ArtifactStagingDirectory)/Linux
       artifact: Linux
+    - output: pipelineArtifact
+      path: $(Build.ArtifactStagingDirectory)/log
+      artifact: Log
 
   pool:
     name: 1es-pool-azfunc
@@ -54,7 +57,7 @@ jobs:
       command: custom
       custom: publish
       projects: $(project)
-      arguments: '--no-build $(buildArgs)'
+      arguments: '--no-build $(buildArgs) -bl:$(Build.ArtifactStagingDirectory)/log/publish.linux-x64.binlog'
 
   - task: ArchiveFiles@2
     displayName: Archive files

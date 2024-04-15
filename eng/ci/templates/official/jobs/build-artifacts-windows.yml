@@ -129,7 +129,7 @@ jobs:
     displayName: Sign Abstractions package
     inputs:
       ConnectedServiceName: ESRP Service-internal
-      FolderPath: /out/pkg/release
+      FolderPath: out/pkg/release
       Pattern: Microsoft.Azure.WebJobs.Script.Abstractions*.nupkg
       signConfigType: inlineSignParams
       inlineOperation: |
