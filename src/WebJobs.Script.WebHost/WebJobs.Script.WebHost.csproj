@@ -86,6 +86,11 @@
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.435" PrivateAssets="all" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="$(IdentityDependencyVersion)" />
+
+    <!--
+      System.IO.FileSystem.AccessControl/5.0.0 pinned to avoid an unintented downgrade to 4.7.0.
+      See https://github.com/Azure/azure-functions-host/pull/10002
+    -->
     <PackageReference Include="System.IO.FileSystem.AccessControl" Version="5.0.0" />
     <PackageReference Include="System.Net.NameResolution" Version="4.3.0" />
     <PackageReference Include="System.Private.Uri" Version="4.3.2" />
