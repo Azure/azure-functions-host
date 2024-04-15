@@ -8,7 +8,7 @@
     ".NETCoreApp,Version=v8.0": {
       "Microsoft.Azure.WebJobs.Script.WebHost/4.1033.6": {
         "dependencies": {
-          "Azure.Identity": "1.10.2",
+          "Azure.Identity": "1.11.0",
           "Azure.Security.KeyVault.Secrets": "4.2.0",
           "Microsoft.ApplicationInsights": "2.22.0",
           "Microsoft.ApplicationInsights.AspNetCore": "2.22.0",
@@ -21,7 +21,7 @@
           "Microsoft.Azure.AppService.Middleware.Functions": "1.5.4",
           "Microsoft.Azure.AppService.Proxy.Client": "2.3.20240307.67",
           "Microsoft.Azure.Cosmos.Table": "1.0.8",
-          "Microsoft.Azure.Functions.PythonWorker": "4.27.0",
+          "Microsoft.Azure.Functions.PythonWorker": "4.28.0",
           "Microsoft.Azure.Storage.File": "11.1.7",
           "Microsoft.Azure.WebJobs": "3.0.41-11331",
           "Microsoft.Azure.WebJobs.Host.Storage": "5.0.0-beta.2-11957",
@@ -34,6 +34,7 @@
           "Microsoft.SourceLink.GitHub": "1.0.0",
           "Newtonsoft.Json": "13.0.3",
           "StyleCop.Analyzers": "1.2.0-beta.435",
+          "System.IO.FileSystem.AccessControl": "5.0.0",
           "System.IdentityModel.Tokens.Jwt": "6.35.0",
           "System.Net.NameResolution": "4.3.0",
           "System.Private.Uri": "4.3.2",
@@ -76,11 +77,11 @@
           }
         }
       },
-      "Azure.Identity/1.10.2": {
+      "Azure.Identity/1.11.0": {
         "dependencies": {
           "Azure.Core": "1.38.0",
-          "Microsoft.Identity.Client": "4.54.1",
-          "Microsoft.Identity.Client.Extensions.Msal": "2.31.0",
+          "Microsoft.Identity.Client": "4.60.1",
+          "Microsoft.Identity.Client.Extensions.Msal": "4.60.1",
           "System.Memory": "4.5.4",
           "System.Security.Cryptography.ProtectedData": "6.0.0",
           "System.Text.Json": "8.0.1",
@@ -88,8 +89,8 @@
         },
         "runtime": {
           "lib/netstandard2.0/Azure.Identity.dll": {
-            "assemblyVersion": "1.10.2.0",
-            "fileVersion": "1.1000.223.50903"
+            "assemblyVersion": "1.11.0.0",
+            "fileVersion": "1.1100.24.20901"
           }
         }
       },
@@ -894,7 +895,7 @@
       "Microsoft.Azure.Functions.PowerShellWorker.PS7.0/4.0.3148": {},
       "Microsoft.Azure.Functions.PowerShellWorker.PS7.2/4.0.3131": {},
       "Microsoft.Azure.Functions.PowerShellWorker.PS7.4/4.0.3147": {},
-      "Microsoft.Azure.Functions.PythonWorker/4.27.0": {},
+      "Microsoft.Azure.Functions.PythonWorker/4.28.0": {},
       "Microsoft.Azure.KeyVault.Core/2.0.4": {
         "dependencies": {
           "System.Runtime": "4.3.1",
@@ -1023,7 +1024,7 @@
       },
       "Microsoft.Azure.WebJobs.Logging.ApplicationInsights/3.0.41-11331": {
         "dependencies": {
-          "Azure.Identity": "1.10.2",
+          "Azure.Identity": "1.11.0",
           "Microsoft.ApplicationInsights": "2.22.0",
           "Microsoft.ApplicationInsights.AspNetCore": "2.22.0",
           "Microsoft.ApplicationInsights.DependencyCollector": "2.22.0",
@@ -1349,7 +1350,7 @@
       "Microsoft.Extensions.Azure/1.7.0": {
         "dependencies": {
           "Azure.Core": "1.38.0",
-          "Azure.Identity": "1.10.2",
+          "Azure.Identity": "1.11.0",
           "Microsoft.Extensions.Configuration.Abstractions": "8.0.0",
           "Microsoft.Extensions.Configuration.Binder": "8.0.0",
           "Microsoft.Extensions.DependencyInjection.Abstractions": "8.0.0",
@@ -1559,27 +1560,27 @@
           "System.Text.Encodings.Web": "8.0.0"
         }
       },
-      "Microsoft.Identity.Client/4.54.1": {
+      "Microsoft.Identity.Client/4.60.1": {
         "dependencies": {
-          "Microsoft.IdentityModel.Abstractions": "6.35.0"
+          "Microsoft.IdentityModel.Abstractions": "6.35.0",
+          "System.Diagnostics.DiagnosticSource": "8.0.0"
         },
         "runtime": {
           "lib/net6.0/Microsoft.Identity.Client.dll": {
-            "assemblyVersion": "4.54.1.0",
-            "fileVersion": "4.54.1.0"
+            "assemblyVersion": "4.60.1.0",
+            "fileVersion": "4.60.1.0"
           }
         }
       },
-      "Microsoft.Identity.Client.Extensions.Msal/2.31.0": {
+      "Microsoft.Identity.Client.Extensions.Msal/4.60.1": {
         "dependencies": {
-          "Microsoft.Identity.Client": "4.54.1",
-          "System.IO.FileSystem.AccessControl": "5.0.0",
+          "Microsoft.Identity.Client": "4.60.1",
           "System.Security.Cryptography.ProtectedData": "6.0.0"
         },
         "runtime": {
-          "lib/netcoreapp3.1/Microsoft.Identity.Client.Extensions.Msal.dll": {
-            "assemblyVersion": "2.31.0.0",
-            "fileVersion": "2.31.0.0"
+          "lib/net6.0/Microsoft.Identity.Client.Extensions.Msal.dll": {
+            "assemblyVersion": "4.60.1.0",
+            "fileVersion": "4.60.1.0"
           }
         }
       },
@@ -3130,7 +3131,7 @@
       "Microsoft.Azure.WebJobs.Script/4.1033.6": {
         "dependencies": {
           "Azure.Core": "1.38.0",
-          "Azure.Identity": "1.10.2",
+          "Azure.Identity": "1.11.0",
           "Azure.Monitor.OpenTelemetry.AspNetCore": "1.2.0-beta.2",
           "Azure.Storage.Blobs": "12.13.0",
           "Microsoft.ApplicationInsights": "2.22.0",
@@ -3230,12 +3231,12 @@
       "path": "azure.core/1.38.0",
       "hashPath": "azure.core.1.38.0.nupkg.sha512"
     },
-    "Azure.Identity/1.10.2": {
+    "Azure.Identity/1.11.0": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-jfq07QnxB7Rx15DWHxIfZbdbgICL1IARncBPIYmnmF+1Xqn6KqiF6ijlKv2hj82WFr9kUi+jzU8zVqrBocJZ8A==",
-      "path": "azure.identity/1.10.2",
-      "hashPath": "azure.identity.1.10.2.nupkg.sha512"
+      "sha512": "sha512-JcpkMpW8Wx/XfQfMiSc9ecdIy0GhdpsMCT3Lh8EJZQ/NN6OxPeY7OAcfmucsvdfrldbFJd04m+Kfd+1QILBAgg==",
+      "path": "azure.identity/1.11.0",
+      "hashPath": "azure.identity.1.11.0.nupkg.sha512"
     },
     "Azure.Monitor.OpenTelemetry.AspNetCore/1.2.0-beta.2": {
       "type": "package",
@@ -3825,12 +3826,12 @@
       "path": "microsoft.azure.functions.powershellworker.ps7.4/4.0.3147",
       "hashPath": "microsoft.azure.functions.powershellworker.ps7.4.4.0.3147.nupkg.sha512"
     },
-    "Microsoft.Azure.Functions.PythonWorker/4.27.0": {
+    "Microsoft.Azure.Functions.PythonWorker/4.28.0": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-1h7A5HgYzXk1w108cBAfChn6hltw6pPJytX9s6i+QVBIc5Yl8f9Ee3nGbFAHsiCVmu2p6FwSkULUlZgeqaMRWw==",
-      "path": "microsoft.azure.functions.pythonworker/4.27.0",
-      "hashPath": "microsoft.azure.functions.pythonworker.4.27.0.nupkg.sha512"
+      "sha512": "sha512-Ni839yi+gYWER1HHm8PpEMlAyM5u4efT5Eu1AmVELtuVVxta5UtNPJSh3/y7Wu4CCqa5hzkBOhFrXg4CU4yfiQ==",
+      "path": "microsoft.azure.functions.pythonworker/4.28.0",
+      "hashPath": "microsoft.azure.functions.pythonworker.4.28.0.nupkg.sha512"
     },
     "Microsoft.Azure.KeyVault.Core/2.0.4": {
       "type": "package",
@@ -4217,19 +4218,19 @@
       "path": "microsoft.extensions.webencoders/2.2.0",
       "hashPath": "microsoft.extensions.webencoders.2.2.0.nupkg.sha512"
     },
-    "Microsoft.Identity.Client/4.54.1": {
+    "Microsoft.Identity.Client/4.60.1": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-YkQkV3IRaA1W36HD4NRD1cq+QFr+4QPKK3SgTSpx+RiobXnLZ6E9anOjDi2TS7okOEofBbjR6GyTPp4IR0MnEQ==",
-      "path": "microsoft.identity.client/4.54.1",
-      "hashPath": "microsoft.identity.client.4.54.1.nupkg.sha512"
+      "sha512": "sha512-rC+qiskr8RKq2a43hH55vuDRz4Wto+bxwxMrKzCIOann1NL0OFFTjEk4ZVnTTBdijVWC6mhOaSmdV1H6J6bXmA==",
+      "path": "microsoft.identity.client/4.60.1",
+      "hashPath": "microsoft.identity.client.4.60.1.nupkg.sha512"
     },
-    "Microsoft.Identity.Client.Extensions.Msal/2.31.0": {
+    "Microsoft.Identity.Client.Extensions.Msal/4.60.1": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-IhGSqN0szneKC5Qk3/okJQJbDpQfLW/+mvslhzJPox4t2UuIkA2ZHe4w/z62ASye46G9sQWF9qqLXTgNacE2xQ==",
-      "path": "microsoft.identity.client.extensions.msal/2.31.0",
-      "hashPath": "microsoft.identity.client.extensions.msal.2.31.0.nupkg.sha512"
+      "sha512": "sha512-EdPcGqvruFzNBcW+/3DSP4vNmLNYXSSnngj+QecAxmy6VRnvA7kt5KE2bU8qQmt4KkOitNHBVYVwze2XkqOLxw==",
+      "path": "microsoft.identity.client.extensions.msal/4.60.1",
+      "hashPath": "microsoft.identity.client.extensions.msal.4.60.1.nupkg.sha512"
     },
     "Microsoft.IdentityModel.Abstractions/6.35.0": {
       "type": "package",
