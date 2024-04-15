@@ -21,7 +21,7 @@
           "Microsoft.Azure.AppService.Middleware.Functions": "1.5.4",
           "Microsoft.Azure.AppService.Proxy.Client": "2.3.20240307.67",
           "Microsoft.Azure.Cosmos.Table": "1.0.8",
-          "Microsoft.Azure.Functions.PythonWorker": "4.27.0",
+          "Microsoft.Azure.Functions.PythonWorker": "4.28.0",
           "Microsoft.Azure.Storage.File": "11.1.7",
           "Microsoft.Azure.WebJobs": "3.0.41-11331",
           "Microsoft.Azure.WebJobs.Host.Storage": "5.0.0-beta.2-11957",
@@ -80,8 +80,8 @@
       "Azure.Identity/1.11.0": {
         "dependencies": {
           "Azure.Core": "1.38.0",
-          "Microsoft.Identity.Client": "4.54.1",
-          "Microsoft.Identity.Client.Extensions.Msal": "2.31.0",
+          "Microsoft.Identity.Client": "4.60.1",
+          "Microsoft.Identity.Client.Extensions.Msal": "4.60.1",
           "System.Memory": "4.5.4",
           "System.Security.Cryptography.ProtectedData": "6.0.0",
           "System.Text.Json": "8.0.1",
@@ -895,7 +895,7 @@
       "Microsoft.Azure.Functions.PowerShellWorker.PS7.0/4.0.3148": {},
       "Microsoft.Azure.Functions.PowerShellWorker.PS7.2/4.0.3131": {},
       "Microsoft.Azure.Functions.PowerShellWorker.PS7.4/4.0.3147": {},
-      "Microsoft.Azure.Functions.PythonWorker/4.27.0": {},
+      "Microsoft.Azure.Functions.PythonWorker/4.28.0": {},
       "Microsoft.Azure.KeyVault.Core/2.0.4": {
         "dependencies": {
           "System.Runtime": "4.3.1",
@@ -1350,7 +1350,7 @@
       "Microsoft.Extensions.Azure/1.7.0": {
         "dependencies": {
           "Azure.Core": "1.38.0",
-          "Azure.Identity": "1.10.2",
+          "Azure.Identity": "1.11.0",
           "Microsoft.Extensions.Configuration.Abstractions": "8.0.0",
           "Microsoft.Extensions.Configuration.Binder": "8.0.0",
           "Microsoft.Extensions.DependencyInjection.Abstractions": "8.0.0",
@@ -3131,7 +3131,7 @@
       "Microsoft.Azure.WebJobs.Script/4.1033.6": {
         "dependencies": {
           "Azure.Core": "1.38.0",
-          "Azure.Identity": "1.10.2",
+          "Azure.Identity": "1.11.0",
           "Azure.Monitor.OpenTelemetry.AspNetCore": "1.2.0-beta.2",
           "Azure.Storage.Blobs": "12.13.0",
           "Microsoft.ApplicationInsights": "2.22.0",
@@ -3826,12 +3826,12 @@
       "path": "microsoft.azure.functions.powershellworker.ps7.4/4.0.3147",
       "hashPath": "microsoft.azure.functions.powershellworker.ps7.4.4.0.3147.nupkg.sha512"
     },
-    "Microsoft.Azure.Functions.PythonWorker/4.27.0": {
+    "Microsoft.Azure.Functions.PythonWorker/4.28.0": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-1h7A5HgYzXk1w108cBAfChn6hltw6pPJytX9s6i+QVBIc5Yl8f9Ee3nGbFAHsiCVmu2p6FwSkULUlZgeqaMRWw==",
-      "path": "microsoft.azure.functions.pythonworker/4.27.0",
-      "hashPath": "microsoft.azure.functions.pythonworker.4.27.0.nupkg.sha512"
+      "sha512": "sha512-Ni839yi+gYWER1HHm8PpEMlAyM5u4efT5Eu1AmVELtuVVxta5UtNPJSh3/y7Wu4CCqa5hzkBOhFrXg4CU4yfiQ==",
+      "path": "microsoft.azure.functions.pythonworker/4.28.0",
+      "hashPath": "microsoft.azure.functions.pythonworker.4.28.0.nupkg.sha512"
     },
     "Microsoft.Azure.KeyVault.Core/2.0.4": {
       "type": "package",
