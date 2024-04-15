@@ -11,15 +11,19 @@ jobs:
     outputParentDirectory: $(Build.ArtifactStagingDirectory)
     outputs:
     - output: pipelineArtifact
+      displayName: Publish site extension
       path: $(Build.ArtifactStagingDirectory)/SiteExtension
       artifact: SiteExtension
     - output: pipelineArtifact
+      displayName: Publish private site extension
       path: $(Build.ArtifactStagingDirectory)/PrivateSiteExtension
       artifact: PrivateSiteExtension
     - output: pipelineArtifact
+      displayName: Publish site extension symbols
       path: $(Build.ArtifactStagingDirectory)/Symbols
       artifact: Symbols
     - output: pipelineArtifact
+      displayName: Publish nuget packages
       path: $(Build.ArtifactStagingDirectory)/NugetPackages
       artifact: NugetPackages
 
@@ -65,7 +69,7 @@ jobs:
     inputs:
       command: custom
       custom: pack
-      arguments: -p:BuildNumber=$(buildNumber) -c Release $(packSuffixSwitch)
+      arguments: -p:BuildNumber=$(buildNumber) -c release $(packSuffixSwitch)
       projects: |
         **/WebJobs.Script.csproj
         **/WebJobs.Script.WebHost.csproj
@@ -75,7 +79,7 @@ jobs:
     displayName: Build Abstractions and ExtensionsMetadataGenerator
     inputs:
       command: build
-      arguments: '-c Release'
+      arguments: '-c release'
       projects: |
         **/ExtensionsMetadataGenerator.csproj
         **/WebJobs.Script.Abstractions.csproj
@@ -121,7 +125,7 @@ jobs:
     inputs:
       command: custom
       custom: pack
-      arguments: '--no-build -c Release'
+      arguments: '--no-build -c release'
       projects: |
         **/WebJobs.Script.Abstractions.csproj
 
@@ -205,9 +209,9 @@ jobs:
     inputs:
       command: custom
       custom: pack
-      arguments: '--no-build -c Release $(emgSuffixSwitch)'
+      arguments: '--no-build -c release $(emgSuffixSwitch)'
       projects: |
-        **/ExtensionsMetadataGeneratorTests.csproj
+        **/ExtensionsMetadataGenerator.csproj
 
   - task: EsrpCodeSigning@2
     displayName: Sign ExtensionsMetadataGenerator package
@@ -246,25 +250,25 @@ jobs:
       TargetFolder: $(Build.ArtifactStagingDirectory)/NugetPackages
 
   - task: ManifestGeneratorTask@0
-    displayName: SBOM Generation Task - SiteExtension
+    displayName: SBOM generation task - SiteExtension
     inputs:
       BuildDropPath: $(Build.ArtifactStagingDirectory)/SiteExtension
       Verbosity: Information
 
   - task: ManifestGeneratorTask@0
-    displayName: SBOM Generation Task - PrivateSiteExtension
+    displayName: SBOM generation task - PrivateSiteExtension
     inputs:
       BuildDropPath: $(Build.ArtifactStagingDirectory)/PrivateSiteExtension
       Verbosity: Information
 
   - task: ManifestGeneratorTask@0
-    displayName: SBOM Generation Task - Symbols
+    displayName: SBOM generation task - Symbols
     inputs:
       BuildDropPath: $(Build.ArtifactStagingDirectory)/Symbols
       Verbosity: Information
 
   - task: ManifestGeneratorTask@0
-    displayName: SBOM Generation Task - NugetPackages
+    displayName: SBOM generation task - NugetPackages
     inputs:
       BuildDropPath: $(Build.ArtifactStagingDirectory)/NugetPackages
       Verbosity: Information

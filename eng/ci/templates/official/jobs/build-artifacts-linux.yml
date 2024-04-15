@@ -13,11 +13,14 @@ jobs:
     # TODO: onboard to Azure Artifacts Drops to allow accessing this from mseng
     # https://eng.ms/docs/cloud-ai-platform/devdiv/one-engineering-system-1es/1es-docs/azure-artifacts/artifact-services-onboarding
     - output: pipelineArtifact
+      displayName: Publish linux artifacts
       path: $(Build.ArtifactStagingDirectory)/Linux
       artifact: Linux
     - output: pipelineArtifact
+      displayName: Publish logs
       path: $(Build.ArtifactStagingDirectory)/log
       artifact: Log
+      condition: always()
 
   pool:
     name: 1es-pool-azfunc
@@ -31,7 +34,7 @@ jobs:
 
   steps:
   - task: NuGetAuthenticate@1
-    displayName: NuGet Authenticate
+    displayName: NuGet authenticate
 
   - template: /eng/ci/templates/install-dotnet.yml@self
 
@@ -56,6 +59,8 @@ jobs:
     inputs:
       command: custom
       custom: publish
+      publishWebProjects: false
+      zipAfterPublish: false
       projects: $(project)
       arguments: '--no-build $(buildArgs) -bl:$(Build.ArtifactStagingDirectory)/log/publish.linux-x64.binlog'
 
@@ -68,7 +73,7 @@ jobs:
       archiveFile: $(Build.ArtifactStagingDirectory)/Linux/WebJobs.Script.WebHost.$(Build.BuildId).zip
 
   - task: ManifestGeneratorTask@0
-    displayName: 'SBOM Generation Task - Linux'
+    displayName: SBOM generation task - Linux
     inputs:
       BuildDropPath: '$(Build.ArtifactStagingDirectory)/Linux'
       Verbosity: 'Information'
