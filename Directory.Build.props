@@ -10,7 +10,7 @@
   <!-- paths -->
   <PropertyGroup>
     <RepoRoot>$(MSBuildThisFileDirectory)</RepoRoot>
-    <EngRoot>$(RepoRoot)eng</EngRoot>
+    <EngRoot>$(RepoRoot)eng/</EngRoot>
   </PropertyGroup>
 
 </Project>
