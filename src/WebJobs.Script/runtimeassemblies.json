@@ -908,6 +908,10 @@
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
+      "name": "System.ClientModel",
+      "resolutionPolicy": "runtimeVersion"
+    },
+    {
       "name": "System.Collections",
       "resolutionPolicy": "runtimeVersion"
     },
