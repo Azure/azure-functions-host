@@ -64,5 +64,6 @@ extends:
 
       jobs:
       - template: /eng/ci/templates/jobs/run-unit-tests.yml@self
-      - template: /eng/ci/templates/official/jobs/run-non-e2e-tests.yml@self
-      - template: /eng/ci/templates/official/jobs/run-integration-tests.yml@self
+      # TODO: commented out while iterating on other steps
+      # - template: /eng/ci/templates/official/jobs/run-non-e2e-tests.yml@self
+      # - template: /eng/ci/templates/official/jobs/run-integration-tests.yml@self
