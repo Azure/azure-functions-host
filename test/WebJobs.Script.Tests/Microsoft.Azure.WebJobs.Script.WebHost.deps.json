@@ -97,8 +97,8 @@
           "Azure.Monitor.OpenTelemetry.Exporter": "1.3.0-beta.1",
           "Azure.Monitor.OpenTelemetry.LiveMetrics": "1.0.0-beta.3",
           "OpenTelemetry.Extensions.Hosting": "1.8.0",
-          "OpenTelemetry.Instrumentation.AspNetCore": "1.7.0",
-          "OpenTelemetry.Instrumentation.Http": "1.7.0"
+          "OpenTelemetry.Instrumentation.AspNetCore": "1.8.1",
+          "OpenTelemetry.Instrumentation.Http": "1.8.1"
         },
         "runtime": {
           "lib/net6.0/Azure.Monitor.OpenTelemetry.AspNetCore.dll": {
@@ -2051,26 +2051,27 @@
           }
         }
       },
-      "OpenTelemetry.Instrumentation.AspNetCore/1.7.0": {
+      "OpenTelemetry.Instrumentation.AspNetCore/1.8.1": {
         "dependencies": {
           "OpenTelemetry.Api.ProviderBuilderExtensions": "1.8.0"
         },
         "runtime": {
           "lib/net8.0/OpenTelemetry.Instrumentation.AspNetCore.dll": {
             "assemblyVersion": "1.0.0.0",
-            "fileVersion": "1.7.0.1114"
+            "fileVersion": "1.8.1.1245"
           }
         }
       },
-      "OpenTelemetry.Instrumentation.Http/1.7.0": {
+      "OpenTelemetry.Instrumentation.Http/1.8.1": {
         "dependencies": {
+          "Microsoft.Extensions.Configuration": "8.0.0",
           "Microsoft.Extensions.Options": "8.0.0",
           "OpenTelemetry.Api.ProviderBuilderExtensions": "1.8.0"
         },
         "runtime": {
           "lib/net8.0/OpenTelemetry.Instrumentation.Http.dll": {
             "assemblyVersion": "1.0.0.0",
-            "fileVersion": "1.7.0.1114"
+            "fileVersion": "1.8.1.1245"
           }
         }
       },
@@ -3202,6 +3203,8 @@
           "NuGet.ProjectModel": "5.11.6",
           "OpenTelemetry.Exporter.OpenTelemetryProtocol": "1.8.0",
           "OpenTelemetry.Extensions.Hosting": "1.8.0",
+          "OpenTelemetry.Instrumentation.AspNetCore": "1.8.1",
+          "OpenTelemetry.Instrumentation.Http": "1.8.1",
           "System.Diagnostics.DiagnosticSource": "8.0.0",
           "System.Drawing.Common": "4.7.3",
           "System.IO.Abstractions": "2.1.0.227",
@@ -4530,19 +4533,19 @@
       "path": "opentelemetry.extensions.hosting/1.8.0",
       "hashPath": "opentelemetry.extensions.hosting.1.8.0.nupkg.sha512"
     },
-    "OpenTelemetry.Instrumentation.AspNetCore/1.7.0": {
+    "OpenTelemetry.Instrumentation.AspNetCore/1.8.1": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-K/mjCmuR9zgrL6fMC6sbnX/y6BOJJFI3hp42O+tz8nT/w6sxbfjrLcU+fVwfct3lsnohSKdPfrq6fSrxAF5ezw==",
-      "path": "opentelemetry.instrumentation.aspnetcore/1.7.0",
-      "hashPath": "opentelemetry.instrumentation.aspnetcore.1.7.0.nupkg.sha512"
+      "sha512": "sha512-dRb1LEXSH95LGEubk96kYyBmGuny9/qycH9KqL8FXcOv446Xi53EW56TVE4wTMv4HPfn+rL3B9pPQ5RX7zD4Yw==",
+      "path": "opentelemetry.instrumentation.aspnetcore/1.8.1",
+      "hashPath": "opentelemetry.instrumentation.aspnetcore.1.8.1.nupkg.sha512"
     },
-    "OpenTelemetry.Instrumentation.Http/1.7.0": {
+    "OpenTelemetry.Instrumentation.Http/1.8.1": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-0pM1EHx/85DsUmtffysYNVZBNkenuYd++ZMgNB0oGLdhIK5EJEmz8+Yi+sjHajU5XvAUtOXPL6Ocd3dZWRQIAw==",
-      "path": "opentelemetry.instrumentation.http/1.7.0",
-      "hashPath": "opentelemetry.instrumentation.http.1.7.0.nupkg.sha512"
+      "sha512": "sha512-l1KaO1U+v11X/kfZ8tcONc5l1qoP6nPk6yPrXBJNH0Wb6NEBTdEgI1dtJBbqOnjOrI2XS09le0ZGooh9ZVkZ3Q==",
+      "path": "opentelemetry.instrumentation.http/1.8.1",
+      "hashPath": "opentelemetry.instrumentation.http.1.8.1.nupkg.sha512"
     },
     "OpenTelemetry.PersistentStorage.Abstractions/1.0.0": {
       "type": "package",
