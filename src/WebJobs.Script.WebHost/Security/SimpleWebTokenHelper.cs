@@ -59,9 +59,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security
         public static string Decrypt(byte[] encryptionKey, string value)
         {
             var parts = value.Split(new[] { '.' }, StringSplitOptions.RemoveEmptyEntries);
-            if (parts.Length != 2 && parts.Length != 3 && parts.Length != 4)
+            if (parts.Length != 4)
             {
-                throw new InvalidOperationException("Malformed token.");
+                throw new InvalidOperationException($"[TEST] Malformed token. Parts Length was {parts.Length} but expected 4.");
             }
 
             var iv = Convert.FromBase64String(parts[0]);
