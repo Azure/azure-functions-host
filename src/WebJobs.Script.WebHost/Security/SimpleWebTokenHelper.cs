@@ -61,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security
             var parts = value.Split(new[] { '.' }, StringSplitOptions.RemoveEmptyEntries);
             if (parts.Length != 4)
             {
-                throw new InvalidOperationException($"[TEST] Malformed token. Parts Length was {parts.Length} but expected 4.");
+                throw new InvalidOperationException($"[TEST] Malformed token. Parts Length was {parts.Length} but expected 4. token {value}");
             }
 
             var iv = Convert.FromBase64String(parts[0]);
