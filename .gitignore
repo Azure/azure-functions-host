@@ -31,4 +31,5 @@ TestResults/
 local.settings.json
 pp.xml
 *.binlog
+pp.xml
 BenchmarkDotNet.Artifacts/

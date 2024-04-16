@@ -1,0 +1,12 @@
+<Project>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Azure.Functions.JavaWorker" Version="2.14.0" />
+    <PackageReference Include="Microsoft.Azure.Functions.NodeJsWorker" Version="3.10.0" />
+    <PackageReference Include="Microsoft.Azure.Functions.PowerShellWorker.PS7.0" Version="4.0.3148" />
+    <PackageReference Include="Microsoft.Azure.Functions.PowerShellWorker.PS7.2" Version="4.0.3220" />
+    <PackageReference Include="Microsoft.Azure.Functions.PowerShellWorker.PS7.4" Version="4.0.3219" />
+    <PackageReference Include="Microsoft.Azure.Functions.PythonWorker" Version="4.28.1" />
+  </ItemGroup>
+
+</Project>
