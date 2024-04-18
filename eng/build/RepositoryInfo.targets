@@ -13,10 +13,11 @@
     -->
     <!-- Set DisableSourceLinkUrlTranslation to true when building a tool for internal use where sources only come from internal URIs -->
     <DisableSourceLinkUrlTranslation Condition="'$(DisableSourceLinkUrlTranslation)' == ''">false</DisableSourceLinkUrlTranslation>
-    <_TranslateUrlPattern>(https://azfunc%40dev\.azure\.com/azfunc/internal/_git|https://dev\.azure\.com/azfunc/internal/_git|https://azfunc\.visualstudio\.com/internal/_git|azfunc%40vs-ssh\.visualstudio\.com:v3/azfunc/internal|git%40ssh\.dev\.azure\.com:v3/azfunc/internal|https://devdiv\.visualstudio\.com/devdiv/_git)/([^/-]+)-(.+)</_TranslateUrlPattern>
+    <_TranslateUrlPattern>(https://azfunc%40dev\.azure\.com/azfunc/internal/_git|https://dev\.azure\.com/azfunc/internal/_git|https://azfunc\.visualstudio\.com/internal/_git|azfunc%40vs-ssh\.visualstudio\.com:v3/azfunc/internal|git%40ssh\.dev\.azure\.com:v3/azfunc/internal)/([^/-]+)-(.+)</_TranslateUrlPattern>
     <_TranslateUrlReplacement>https://github.com/$2/$3</_TranslateUrlReplacement>
   </PropertyGroup>
 
+  <!-- When building from Azure Devops we update SourceLink to point back to the GitHub repo. -->
   <Target Name="_TranslateAzureDevOpsUrlToGitHubUrl"
     Condition="'$(DisableSourceLinkUrlTranslation)' == 'false'"
     DependsOnTargets="$(SourceControlManagerUrlTranslationTargets)"
