@@ -127,6 +127,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         {
             _logger.LogDebug("Purging diagnostic events with versions older than '{currentEventVersion}'.", DiagnosticEvent.CurrentEventVersion);
 
+            bool tableDeleted = false;
+
             await Utility.InvokeWithRetriesAsync(async () =>
             {
                 try
@@ -149,6 +151,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                         {
                             _logger.LogDebug("Deleting table '{tableName}' as it contains records without an EventVersion.", table.Name);
                             await table.DeleteIfExistsAsync();
+                            tableDeleted = true;
                             continue;
                         }
 
@@ -158,6 +161,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                         {
                             _logger.LogDebug("Deleting table '{tableName}' as it contains records with an outdated EventVersion.", table.Name);
                             await table.DeleteIfExistsAsync();
+                            tableDeleted = true;
                         }
                     }
 
@@ -168,6 +172,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     _logger.LogError(ex, "Error occurred when attempting to purge previous diagnostic event versions.");
                 }
             }, maxRetries: 5, retryInterval: TimeSpan.FromSeconds(5));
+
+            if (tableDeleted)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(30));
+            }
         }
 
         internal virtual async Task FlushLogs(CloudTable table = null)
@@ -179,7 +188,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
             if (HostStateProvider is not null && HostStateProvider.IsPrimary && !_purged)
             {
-                _ = PurgePreviousEventVersions();
+                await PurgePreviousEventVersions();
             }
 
             try
