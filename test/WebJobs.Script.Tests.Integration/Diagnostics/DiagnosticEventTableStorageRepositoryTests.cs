@@ -29,14 +29,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
         private readonly TestLoggerProvider _loggerProvider;
         private IConfiguration _configuration;
         private ILogger<DiagnosticEventTableStorageRepository> _logger;
-        private Mock<IPrimaryHostStateProvider> _mockPrimaryHostStateProvider;
+        private Mock<IScriptHostManager> _scriptHostMock;
 
         public DiagnosticEventTableStorageRepositoryTests()
         {
             _configuration = new ConfigurationBuilder().AddEnvironmentVariables().Build();
             _hostIdProvider = new FixedHostIdProvider(TestHostId);
-            _mockPrimaryHostStateProvider = new Mock<IPrimaryHostStateProvider>(MockBehavior.Strict);
-            _mockPrimaryHostStateProvider.Setup(p => p.IsPrimary).Returns(false);
+
+            var mockPrimaryHostStateProvider = new Mock<IPrimaryHostStateProvider>(MockBehavior.Strict);
+            mockPrimaryHostStateProvider.Setup(p => p.IsPrimary).Returns(false);
+
+            _scriptHostMock = new Mock<IScriptHostManager>(MockBehavior.Strict);
+            _scriptHostMock.As<IServiceProvider>().Setup(m => m.GetService(typeof(IPrimaryHostStateProvider))).Returns(mockPrimaryHostStateProvider.Object);
 
             _loggerProvider = new TestLoggerProvider();
             ILoggerFactory loggerFactory = new LoggerFactory();
@@ -50,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             IEnvironment testEnvironment = new TestEnvironment();
             int flushInterval = 10;
             Mock<DiagnosticEventTableStorageRepository> mockDiagnosticEventTableStorageRepository = new Mock<DiagnosticEventTableStorageRepository>
-                (_configuration, _hostIdProvider, testEnvironment, _mockPrimaryHostStateProvider.Object, NullLogger<DiagnosticEventTableStorageRepository>.Instance, flushInterval);
+                (_configuration, _hostIdProvider, testEnvironment, _scriptHostMock.Object, NullLogger<DiagnosticEventTableStorageRepository>.Instance, flushInterval);
 
             DiagnosticEventTableStorageRepository repository = mockDiagnosticEventTableStorageRepository.Object;
 
@@ -72,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             IEnvironment testEnvironment = new TestEnvironment();
 
             DiagnosticEventTableStorageRepository repository =
-                new DiagnosticEventTableStorageRepository(_configuration, null, testEnvironment, _mockPrimaryHostStateProvider.Object,  _logger);
+                new DiagnosticEventTableStorageRepository(_configuration, null, testEnvironment, _scriptHostMock.Object,  _logger);
 
             repository.WriteDiagnosticEvent(DateTime.UtcNow, "eh1", LogLevel.Information, "This is the message", "https://fwlink/", new Exception("exception message"));
 
@@ -87,7 +91,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
 
             DiagnosticEventTableStorageRepository repository =
-                new DiagnosticEventTableStorageRepository(_configuration, _hostIdProvider, testEnvironment, _mockPrimaryHostStateProvider.Object, _logger);
+                new DiagnosticEventTableStorageRepository(_configuration, _hostIdProvider, testEnvironment, _scriptHostMock.Object, _logger);
 
             var eventTask1 = Task.Run(() =>
             {
@@ -132,7 +136,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
 
             DiagnosticEventTableStorageRepository repository =
-                new DiagnosticEventTableStorageRepository(_configuration, _hostIdProvider, testEnvironment, _mockPrimaryHostStateProvider.Object, _logger);
+                new DiagnosticEventTableStorageRepository(_configuration, _hostIdProvider, testEnvironment, _scriptHostMock.Object, _logger);
             DateTime dateTime = new DateTime(2021, 1, 1);
             var cloudTable = repository.GetDiagnosticEventsTable(dateTime);
             Assert.NotNull(cloudTable);
@@ -148,7 +152,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
 
             var configuration = new ConfigurationBuilder().Build();
             DiagnosticEventTableStorageRepository repository =
-                new DiagnosticEventTableStorageRepository(configuration, _hostIdProvider, testEnvironment, _mockPrimaryHostStateProvider.Object, _logger);
+                new DiagnosticEventTableStorageRepository(configuration, _hostIdProvider, testEnvironment, _scriptHostMock.Object, _logger);
             DateTime dateTime = new DateTime(2021, 1, 1);
             var cloudTable = repository.GetDiagnosticEventsTable(dateTime);
             Assert.Null(cloudTable);
@@ -163,7 +167,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
 
             DiagnosticEventTableStorageRepository repository =
-                new DiagnosticEventTableStorageRepository(_configuration, _hostIdProvider, testEnvironment, _mockPrimaryHostStateProvider.Object, _logger);
+                new DiagnosticEventTableStorageRepository(_configuration, _hostIdProvider, testEnvironment, _scriptHostMock.Object, _logger);
 
             // delete any existing non-current diagnostics events tables
             string tablePrefix = DiagnosticEventTableStorageRepository.TableNamePrefix;
@@ -177,7 +181,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             // create 3 old tables
             for (int i = 0; i < 3; i++)
             {
-                var table = repository.TableClient.GetTableReference($"{tablePrefix}Test{i}");
+                var tableId = Guid.NewGuid().ToString("N").Substring(0, 5);
+                var table = repository.TableClient.GetTableReference($"{tablePrefix}Test{tableId}");
                 await TableStorageHelpers.CreateIfNotExistsAsync(table, 2);
             }
 
@@ -214,19 +219,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
                 .Build();
 
             DiagnosticEventTableStorageRepository repository =
-                new DiagnosticEventTableStorageRepository(configuration, _hostIdProvider, testEnvironment, _mockPrimaryHostStateProvider.Object, _logger);
+                new DiagnosticEventTableStorageRepository(configuration, _hostIdProvider, testEnvironment, _scriptHostMock.Object, _logger);
 
             // Act
             repository.WriteDiagnosticEvent(DateTime.UtcNow, "eh1", LogLevel.Information, "This is the message", "https://fwlink/", new Exception("exception message"));
             await repository.FlushLogs();
 
-            // Assert 
+            // Assert
             var logMessage = _loggerProvider.GetAllLogMessages().SingleOrDefault(m => m.FormattedMessage.Contains("Unable to get table reference"));
             Assert.NotNull(logMessage);
 
             var messagePresent = _loggerProvider.GetAllLogMessages().Any(m => m.FormattedMessage.Contains("Azure Storage connection string is empty or invalid. Unable to write diagnostic events."));
             Assert.True(messagePresent);
-            
+
             Assert.Equal(0, repository.Events.Values.Count());
         }
 
@@ -244,8 +249,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             var mockPrimaryHostStateProvider = new Mock<IPrimaryHostStateProvider>(MockBehavior.Strict);
             mockPrimaryHostStateProvider.Setup(p => p.IsPrimary).Returns(true);
 
+            var scriptHostMock = new Mock<IScriptHostManager>(MockBehavior.Strict);
+            scriptHostMock.As<IServiceProvider>().Setup(m => m.GetService(typeof(IPrimaryHostStateProvider))).Returns(mockPrimaryHostStateProvider.Object);
+
             DiagnosticEventTableStorageRepository repository =
-                new DiagnosticEventTableStorageRepository(_configuration, _hostIdProvider, testEnvironment, mockPrimaryHostStateProvider.Object, _logger);
+                new DiagnosticEventTableStorageRepository(_configuration, _hostIdProvider, testEnvironment, scriptHostMock.Object, _logger);
 
             // delete existing tables
             string tablePrefix = DiagnosticEventTableStorageRepository.TableNamePrefix;
@@ -256,7 +264,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
                 await table.DeleteIfExistsAsync();
             }
 
-            var testTable = repository.TableClient.GetTableReference($"{tablePrefix}Test1");
+            var tableId = Guid.NewGuid().ToString("N").Substring(0, 5);
+            var testTable = repository.TableClient.GetTableReference($"{tablePrefix}Test{tableId}");
             await TableStorageHelpers.CreateIfNotExistsAsync(testTable, 2);
 
             // verify table were created
@@ -295,7 +304,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
 
             DiagnosticEventTableStorageRepository repository =
-                new DiagnosticEventTableStorageRepository(_configuration, _hostIdProvider, testEnvironment, _mockPrimaryHostStateProvider.Object, _logger);
+                new DiagnosticEventTableStorageRepository(_configuration, _hostIdProvider, testEnvironment, _scriptHostMock.Object, _logger);
 
             var table = repository.GetDiagnosticEventsTable();
             await TableStorageHelpers.CreateIfNotExistsAsync(table, 2);
@@ -318,7 +327,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
 
             DiagnosticEventTableStorageRepository repository =
-                new DiagnosticEventTableStorageRepository(_configuration, _hostIdProvider, testEnvironment, _mockPrimaryHostStateProvider.Object, _logger);
+                new DiagnosticEventTableStorageRepository(_configuration, _hostIdProvider, testEnvironment, _scriptHostMock.Object, _logger);
 
             var table = repository.GetDiagnosticEventsTable();
             await TableStorageHelpers.CreateIfNotExistsAsync(table, 2);
@@ -340,7 +349,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
 
             DiagnosticEventTableStorageRepository repository =
-                new DiagnosticEventTableStorageRepository(_configuration, _hostIdProvider, testEnvironment, _mockPrimaryHostStateProvider.Object, _logger);
+                new DiagnosticEventTableStorageRepository(_configuration, _hostIdProvider, testEnvironment, _scriptHostMock.Object, _logger);
 
             var tableClient = repository.TableClient;
             var table = tableClient.GetTableReference("aa");

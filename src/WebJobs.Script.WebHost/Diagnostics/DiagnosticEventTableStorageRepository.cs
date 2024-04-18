@@ -13,6 +13,7 @@ using Microsoft.Azure.WebJobs.Hosting;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.WebHost.Helpers;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
@@ -28,31 +29,32 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly IHostIdProvider _hostIdProvider;
         private readonly IEnvironment _environment;
         private readonly ILogger<DiagnosticEventTableStorageRepository> _logger;
-        private readonly IPrimaryHostStateProvider _primaryHostStateProvider;
+        private readonly IServiceProvider _serviceProvider;
         private readonly object _syncLock = new object();
 
         private ConcurrentDictionary<string, DiagnosticEvent> _events = new ConcurrentDictionary<string, DiagnosticEvent>();
         private CloudTableClient _tableClient;
         private CloudTable _diagnosticEventsTable;
+        private IPrimaryHostStateProvider _primaryHostStateProvider;
         private string _hostId;
         private bool _disposed = false;
         private bool _purged = false;
         private string _tableName;
 
-        internal DiagnosticEventTableStorageRepository(IConfiguration configuration, IHostIdProvider hostIdProvider, IEnvironment environment, IPrimaryHostStateProvider primaryHostStateProvider,
+        internal DiagnosticEventTableStorageRepository(IConfiguration configuration, IHostIdProvider hostIdProvider, IEnvironment environment, IScriptHostManager scriptHostManager,
             ILogger<DiagnosticEventTableStorageRepository> logger, int logFlushInterval)
         {
             _configuration = configuration;
             _hostIdProvider = hostIdProvider;
             _environment = environment;
-            _primaryHostStateProvider = primaryHostStateProvider;
+            _serviceProvider = scriptHostManager as IServiceProvider;
             _logger = logger;
             _flushLogsTimer = new Timer(OnFlushLogs, null, logFlushInterval, logFlushInterval);
         }
 
-        public DiagnosticEventTableStorageRepository(IConfiguration configuration, IHostIdProvider hostIdProvider, IEnvironment environment, IPrimaryHostStateProvider primaryHostStateProvider,
+        public DiagnosticEventTableStorageRepository(IConfiguration configuration, IHostIdProvider hostIdProvider, IEnvironment environment, IScriptHostManager scriptHost,
             ILogger<DiagnosticEventTableStorageRepository> logger)
-            : this(configuration, hostIdProvider, environment, primaryHostStateProvider, logger, LogFlushInterval) { }
+            : this(configuration, hostIdProvider, environment, scriptHost, logger, LogFlushInterval) { }
 
         internal CloudTableClient TableClient
         {
@@ -91,6 +93,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         internal ConcurrentDictionary<string, DiagnosticEvent> Events => _events;
 
+        internal IPrimaryHostStateProvider HostStateProvider => _primaryHostStateProvider ??= _serviceProvider?.GetService<IPrimaryHostStateProvider>();
+
         internal CloudTable GetDiagnosticEventsTable(DateTime? now = null)
         {
             if (TableClient != null)
@@ -121,7 +125,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         private async Task PurgePreviousEventVersions()
         {
-            _logger.LogTrace("Purging diagnostic events with versions older than '{currentEventVersion}'.", DiagnosticEvent.CurrentEventVersion);
+            _logger.LogDebug("Purging diagnostic events with versions older than '{currentEventVersion}'.", DiagnosticEvent.CurrentEventVersion);
 
             await Utility.InvokeWithRetriesAsync(async () =>
             {
@@ -143,7 +147,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                         var eventVersionDoesNotExists = tableRecords.Results.Any(record => string.IsNullOrEmpty(record.EventVersion) == true);
                         if (eventVersionDoesNotExists)
                         {
-                            _logger.LogTrace("Deleting table '{tableName}' as it contains records without an EventVersion.", table.Name);
+                            _logger.LogDebug("Deleting table '{tableName}' as it contains records without an EventVersion.", table.Name);
                             await table.DeleteIfExistsAsync();
                             continue;
                         }
@@ -152,7 +156,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                         var eventVersionOutdated = tableRecords.Results.Any(record => string.Compare(DiagnosticEvent.CurrentEventVersion, record.EventVersion, StringComparison.Ordinal) > 0);
                         if (eventVersionOutdated)
                         {
-                            _logger.LogTrace("Deleting table '{tableName}' as it contains records with an outdated EventVersion.", table.Name);
+                            _logger.LogDebug("Deleting table '{tableName}' as it contains records with an outdated EventVersion.", table.Name);
                             await table.DeleteIfExistsAsync();
                         }
                     }
@@ -173,7 +177,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 return;
             }
 
-            if (_primaryHostStateProvider.IsPrimary && !_purged)
+            if (HostStateProvider is not null && HostStateProvider.IsPrimary && !_purged)
             {
                 _ = PurgePreviousEventVersions();
             }
@@ -192,7 +196,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 bool tableCreated = await TableStorageHelpers.CreateIfNotExistsAsync(table, TableCreationMaxRetryCount);
                 if (tableCreated)
                 {
-                    _logger.LogTrace("Queueing background table purge.");
+                    _logger.LogDebug("Queueing background table purge.");
                     TableStorageHelpers.QueueBackgroundTablePurge(table, TableClient, TableNamePrefix, _logger);
                 }
             }
