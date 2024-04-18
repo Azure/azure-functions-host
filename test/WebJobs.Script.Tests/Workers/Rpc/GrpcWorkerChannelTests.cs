@@ -1397,6 +1397,35 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
+        public async Task Ensure_SuccessfulForwardingAsync_Is_Invoked_OnlyFor_HttpInvocationResponses()
+        {
+            await CreateDefaultWorkerChannel(capabilities: new Dictionary<string, string>() { { RpcWorkerConstants.HttpUri, "http://localhost:1234" } });
+
+            var httpInvocationId = Guid.NewGuid();
+            ScriptInvocationContext httpInvocationContext = GetTestScriptInvocationContext(httpInvocationId, new TaskCompletionSource<ScriptInvocationResult>(), logger: _logger);
+            httpInvocationContext.FunctionMetadata = BuildFunctionMetadataForHttpTrigger("httpTrigger");
+
+            var timerInvocationId = Guid.NewGuid();
+            ScriptInvocationContext timerInvocationContext = GetTestScriptInvocationContext(timerInvocationId, new TaskCompletionSource<ScriptInvocationResult>(), logger: _logger);
+            timerInvocationContext.FunctionMetadata = BuildFunctionMetadataForTimerTrigger("timerTrigger");
+
+            // Send http trigger and timer trigger invocation invocation requests.
+            await _workerChannel.SendInvocationRequest(httpInvocationContext);
+            await _workerChannel.SendInvocationRequest(timerInvocationContext);
+
+            // Send http trigger and timer trigger invocation responses.
+            await _workerChannel.InvokeResponse(BuildSuccessfulInvocationResponse(timerInvocationId.ToString()));
+            await _workerChannel.InvokeResponse(BuildSuccessfulInvocationResponse(httpInvocationId.ToString()));
+
+            var logs = _logger.GetLogMessages().ToArray();
+            Assert.Single(logs.Where(m => m.FormattedMessage.Contains($"InvocationResponse received for invocation: '{timerInvocationId}'")));
+            Assert.Single(logs.Where(m => m.FormattedMessage.Contains($"InvocationResponse received for invocation: '{httpInvocationId}'")));
+
+            // IHttpProxyService.EnsureSuccessfulForwardingAsync method should be invoked only for http invocation response.
+            _mockHttpProxyService.Verify(m => m.EnsureSuccessfulForwardingAsync(It.IsAny<ScriptInvocationContext>()), Times.Once);
+        }
+
+        [Fact]
         public async Task Log_And_InvocationResult_OrderedCorrectly()
         {
             // Without this feature flag, this test fails every time on multi-core machines as the logs will
@@ -1573,6 +1602,50 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             // Send worker init request and enable the capabilities
             return CreateDefaultWorkerChannel(capabilities: capabilities);
+        }
+
+        private static InvocationResponse BuildSuccessfulInvocationResponse(string invocationId)
+        {
+            return new InvocationResponse
+            {
+                InvocationId = invocationId,
+                Result = new StatusResult
+                {
+                    Status = StatusResult.Types.Status.Success
+                },
+            };
+        }
+
+        private static FunctionMetadata BuildFunctionMetadataForHttpTrigger(string name, string language = null)
+        {
+            var functionMetadata = new FunctionMetadata() { Name = name, Language = language };
+            functionMetadata.Bindings.Add(new BindingMetadata()
+            {
+                Type = "httpTrigger",
+                Direction = BindingDirection.In,
+                Name = "req"
+            });
+            functionMetadata.Bindings.Add(new BindingMetadata()
+            {
+                Type = "http",
+                Direction = BindingDirection.Out,
+                Name = "$return"
+            });
+
+            return functionMetadata;
+        }
+
+        private static FunctionMetadata BuildFunctionMetadataForTimerTrigger(string name, string language = null)
+        {
+            var functionMetadata = new FunctionMetadata() { Name = name, Language = language };
+            functionMetadata.Bindings.Add(new BindingMetadata()
+            {
+                Type = "timerTrigger",
+                Direction = BindingDirection.In,
+                Name = "myTimer"
+            });
+
+            return functionMetadata;
         }
     }
 }

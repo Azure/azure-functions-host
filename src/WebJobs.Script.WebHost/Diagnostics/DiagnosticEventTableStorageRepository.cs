@@ -3,12 +3,17 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.Cosmos.Table;
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Hosting;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.WebHost.Helpers;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
@@ -16,35 +21,39 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
     public class DiagnosticEventTableStorageRepository : IDiagnosticEventRepository, IDisposable
     {
         internal const string TableNamePrefix = "AzureFunctionsDiagnosticEvents";
-        private const int LogFlushInterval = 1000 * 60 * 10; // 10 mins
+        private const int LogFlushInterval = 1000 * 60 * 10; // 10 minutes
+        private const int TableCreationMaxRetryCount = 5;
+
         private readonly Timer _flushLogsTimer;
+        private readonly IConfiguration _configuration;
+        private readonly IHostIdProvider _hostIdProvider;
+        private readonly IEnvironment _environment;
+        private readonly ILogger<DiagnosticEventTableStorageRepository> _logger;
+        private readonly IServiceProvider _serviceProvider;
+        private readonly object _syncLock = new object();
 
-        private int _tableCreationRetries = 5;
         private ConcurrentDictionary<string, DiagnosticEvent> _events = new ConcurrentDictionary<string, DiagnosticEvent>();
-
-        private IConfiguration _configuration;
-        private IHostIdProvider _hostIdProvider;
-        private IEnvironment _environment;
-        private ILogger<DiagnosticEventTableStorageRepository> _logger;
-
         private CloudTableClient _tableClient;
         private CloudTable _diagnosticEventsTable;
         private string _hostId;
-        private object _syncLock = new object();
         private bool _disposed = false;
+        private bool _purged = false;
         private string _tableName;
 
-        internal DiagnosticEventTableStorageRepository(IConfiguration configuration, IHostIdProvider hostIdProvider, IEnvironment environment, ILogger<DiagnosticEventTableStorageRepository> logger, int logFlushInterval)
+        internal DiagnosticEventTableStorageRepository(IConfiguration configuration, IHostIdProvider hostIdProvider, IEnvironment environment, IScriptHostManager scriptHostManager,
+            ILogger<DiagnosticEventTableStorageRepository> logger, int logFlushInterval)
         {
             _configuration = configuration;
             _hostIdProvider = hostIdProvider;
             _environment = environment;
+            _serviceProvider = scriptHostManager as IServiceProvider;
             _logger = logger;
             _flushLogsTimer = new Timer(OnFlushLogs, null, logFlushInterval, logFlushInterval);
         }
 
-        public DiagnosticEventTableStorageRepository(IConfiguration configuration, IHostIdProvider hostIdProvider, IEnvironment environment, ILogger<DiagnosticEventTableStorageRepository> logger)
-            : this(configuration, hostIdProvider, environment, logger, LogFlushInterval) { }
+        public DiagnosticEventTableStorageRepository(IConfiguration configuration, IHostIdProvider hostIdProvider, IEnvironment environment, IScriptHostManager scriptHost,
+            ILogger<DiagnosticEventTableStorageRepository> logger)
+            : this(configuration, hostIdProvider, environment, scriptHost, logger, LogFlushInterval) { }
 
         internal CloudTableClient TableClient
         {
@@ -81,20 +90,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             }
         }
 
-        internal ConcurrentDictionary<string, DiagnosticEvent> Events
-        {
-            get
-            {
-                return _events;
-            }
-        }
+        internal ConcurrentDictionary<string, DiagnosticEvent> Events => _events;
 
         internal CloudTable GetDiagnosticEventsTable(DateTime? now = null)
         {
             if (TableClient != null)
             {
                 now = now ?? DateTime.UtcNow;
-                string currentTableName = GetCurrentTableName(now.Value);
+                string currentTableName = GetTableName(now.Value);
 
                 // update the table reference when date rolls over to a new month
                 if (_diagnosticEventsTable == null || currentTableName != _tableName)
@@ -107,14 +110,71 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             return _diagnosticEventsTable;
         }
 
-        private static string GetCurrentTableName(DateTime now)
+        private static string GetTableName(DateTime date)
         {
-            return $"{TableNamePrefix}{now:yyyyMM}";
+            return $"{TableNamePrefix}{date:yyyyMM}";
         }
 
         protected internal virtual async void OnFlushLogs(object state)
         {
             await FlushLogs();
+        }
+
+        private async Task PurgePreviousEventVersions()
+        {
+            _logger.LogDebug("Purging diagnostic events with versions older than '{currentEventVersion}'.", DiagnosticEvent.CurrentEventVersion);
+
+            bool tableDeleted = false;
+
+            await Utility.InvokeWithRetriesAsync(async () =>
+            {
+                try
+                {
+                    var tables = (await TableStorageHelpers.ListTablesAsync(TableClient, TableNamePrefix)).ToList();
+
+                    foreach (var table in tables)
+                    {
+                        var tableRecords = await table.ExecuteQuerySegmentedAsync(new TableQuery<DiagnosticEvent>(), null);
+
+                        // Skip tables that have 0 records
+                        if (tableRecords.Results.Count == 0)
+                        {
+                            continue;
+                        }
+
+                        // Delete table if it doesn't have records with EventVersion
+                        var eventVersionDoesNotExists = tableRecords.Results.Any(record => string.IsNullOrEmpty(record.EventVersion) == true);
+                        if (eventVersionDoesNotExists)
+                        {
+                            _logger.LogDebug("Deleting table '{tableName}' as it contains records without an EventVersion.", table.Name);
+                            await table.DeleteIfExistsAsync();
+                            tableDeleted = true;
+                            continue;
+                        }
+
+                        // If the table does have EventVersion, query if it is an outdated version
+                        var eventVersionOutdated = tableRecords.Results.Any(record => string.Compare(DiagnosticEvent.CurrentEventVersion, record.EventVersion, StringComparison.Ordinal) > 0);
+                        if (eventVersionOutdated)
+                        {
+                            _logger.LogDebug("Deleting table '{tableName}' as it contains records with an outdated EventVersion.", table.Name);
+                            await table.DeleteIfExistsAsync();
+                            tableDeleted = true;
+                        }
+                    }
+
+                    _purged = true;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error occurred when attempting to purge previous diagnostic event versions.");
+                }
+            }, maxRetries: 5, retryInterval: TimeSpan.FromSeconds(5));
+
+            if (tableDeleted)
+            {
+                // Wait for 30 seconds to allow the table to be deleted before proceeding to avoid a potential race.
+                await Task.Delay(TimeSpan.FromSeconds(30));
+            }
         }
 
         internal virtual async Task FlushLogs(CloudTable table = null)
@@ -124,26 +184,32 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 return;
             }
 
+            if (IsPrimaryHost() && !_purged)
+            {
+                await PurgePreviousEventVersions();
+            }
+
             try
             {
                 table = table ?? GetDiagnosticEventsTable();
 
                 if (table == null)
                 {
-                    _logger.LogError("Unable to get table reference. Aborting write operation");
+                    _logger.LogError("Unable to get table reference. Aborting write operation.");
                     StopTimer();
                     return;
                 }
 
-                bool tableCreated = await TableStorageHelpers.CreateIfNotExistsAsync(table, _tableCreationRetries);
+                bool tableCreated = await TableStorageHelpers.CreateIfNotExistsAsync(table, TableCreationMaxRetryCount);
                 if (tableCreated)
                 {
+                    _logger.LogDebug("Queueing background table purge.");
                     TableStorageHelpers.QueueBackgroundTablePurge(table, TableClient, TableNamePrefix, _logger);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Unable to get table reference or create table. Aborting write operation.");
+                _logger.LogError(ex, "Unable to get table reference or create table. Aborting write operation.");
                 // Clearing the memory cache to avoid memory build up.
                 _events.Clear();
                 return;
@@ -153,7 +219,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             // All existing events are logged to other logging pipelines already.
             ConcurrentDictionary<string, DiagnosticEvent> tempDictionary = _events;
             _events = new ConcurrentDictionary<string, DiagnosticEvent>();
-            if (tempDictionary.Count > 0)
+            if (!tempDictionary.IsEmpty)
             {
                 await ExecuteBatchAsync(tempDictionary, table);
             }
@@ -166,15 +232,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 var batch = new TableBatchOperation();
                 foreach (string errorCode in events.Keys)
                 {
-                    TableOperation insertOperation = TableOperation.Insert(events[errorCode]);
+                    var diagnosticEvent = events[errorCode];
+                    diagnosticEvent.Message = Sanitizer.Sanitize(diagnosticEvent.Message);
+                    diagnosticEvent.Details = Sanitizer.Sanitize(diagnosticEvent.Details);
+                    TableOperation insertOperation = TableOperation.Insert(diagnosticEvent);
                     batch.Add(insertOperation);
                 }
                 await table.ExecuteBatchAsync(batch);
                 events.Clear();
             }
-            catch (Exception e)
+            catch (Exception ex)
             {
-                _logger.LogError(e, $"Unable to write diagnostic events to table storage:{e}");
+                _logger.LogError(ex, "Unable to write diagnostic events to table storage.");
             }
         }
 
@@ -205,9 +274,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             }
         }
 
-        internal void StopTimer()
+        private bool IsPrimaryHost()
         {
-            _logger.LogInformation("Stopping the flush logs timer");
+            var primaryHostStateProvider = _serviceProvider?.GetService<IPrimaryHostStateProvider>();
+            if (primaryHostStateProvider is null)
+            {
+                _logger.LogDebug("PrimaryHostStateProvider is not available. Skipping the check for primary host.");
+                return false;
+            }
+
+            return primaryHostStateProvider.IsPrimary;
+        }
+
+        private void StopTimer()
+        {
+            _logger.LogInformation("Stopping the flush logs timer.");
             _flushLogsTimer?.Change(Timeout.Infinite, Timeout.Infinite);
         }
 

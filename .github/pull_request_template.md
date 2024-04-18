@@ -6,6 +6,10 @@ resolves #issue_for_this_pr
 
 ### Pull request checklist
 
+**IMPORTANT**: Currently, changes must be backported to the `in-proc` branch to be included in Core Tools and non-Flex deployments.
+
+* [ ] Backporting to the `in-proc` branch is not required
+    * Otherwise: Link to backporting PR
 * [ ] My changes **do not** require documentation changes
     * [ ] Otherwise: Documentation issue linked to PR
 * [ ] My changes **should not** be added to the release notes for the next release

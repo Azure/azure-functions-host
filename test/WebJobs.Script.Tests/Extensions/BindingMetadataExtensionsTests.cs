@@ -73,7 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         [Theory]
         [InlineData("eventGridTrigger", true)]
         [InlineData("signalRTrigger", true)]
-        [InlineData("blobTrigger", true, "eventGrid")]
+        [InlineData("blobTrigger", false, "eventGrid")]
         [InlineData("blobTrigger", false, "other")]
         [InlineData("httpTrigger", false)]
         [InlineData("inputBinding", false)]
@@ -109,6 +109,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             };
 
             Assert.Equal(expected, bindingMetadata.IsDurableTrigger());
+        }
+
+        [Theory]
+        [InlineData("blobTrigger", true, "eventGrid")]
+        [InlineData("blobTrigger", false, "other")]
+        [InlineData("blobTrigger", false, null)]
+        [InlineData("otherTrigger", false, "eventGrid")]
+        [InlineData("otherTrigger", false, "other")]
+        [InlineData("otherTrigger", false, null)]
+        public void IsEventGridBlobTrigger_ReturnsExpectedValue(string type, bool expected, string source)
+        {
+            var bindingMetadata = new BindingMetadata
+            {
+                Type = type,
+            };
+
+            if (source is not null)
+            {
+                bindingMetadata.Raw = new JObject
+                {
+                    ["source"] = source,
+                };
+            }
+
+            Assert.Equal(expected, bindingMetadata.IsEventGridBlobTrigger());
         }
     }
 }

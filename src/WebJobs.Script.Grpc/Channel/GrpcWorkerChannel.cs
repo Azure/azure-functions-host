@@ -20,6 +20,7 @@ using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.Grpc.Eventing;
@@ -565,6 +566,12 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 _isWorkerApplicationInsightsLoggingEnabled = true;
             }
 
+            if (bool.TryParse(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.WorkerOpenTelemetryEnabled), out bool otelEnabled) &&
+                otelEnabled)
+            {
+                ScriptHost.WorkerOpenTelemetryEnabled = true;
+            }
+
             // If http proxying is enabled, we need to get the proxying endpoint of this worker
             var httpUri = _workerCapabilities.GetCapabilityState(RpcWorkerConstants.HttpUri);
             if (!string.IsNullOrEmpty(httpUri))
@@ -1100,7 +1107,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
                 try
                 {
-                    if (IsHttpProxyingWorker)
+                    if (IsHttpProxyingWorker && context.FunctionMetadata.IsHttpTriggerFunction())
                     {
                         await _httpProxyService.EnsureSuccessfulForwardingAsync(context);
                     }
@@ -1670,28 +1677,46 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         private void AddAdditionalTraceContext(MapField<string, string> attributes, ScriptInvocationContext context)
         {
-            // This is only applicable for AI agents running along side worker
-            if (_environment.IsApplicationInsightsAgentEnabled())
+            bool isOtelEnabled = _scriptHostOptions?.Value.TelemetryMode == TelemetryMode.OpenTelemetry;
+            bool isAIEnabled = _environment.IsApplicationInsightsAgentEnabled();
+
+            if (isOtelEnabled || isAIEnabled)
             {
-                attributes[ScriptConstants.LogPropertyProcessIdKey] = Convert.ToString(_rpcWorkerProcess.Id);
                 if (context.FunctionMetadata.Properties.TryGetValue(ScriptConstants.LogPropertyHostInstanceIdKey, out var hostInstanceIdValue))
                 {
-                    attributes[ScriptConstants.LogPropertyHostInstanceIdKey] = Convert.ToString(hostInstanceIdValue);
+                    string id = Convert.ToString(hostInstanceIdValue);
+
+                    if (isOtelEnabled)
+                    {
+                        Activity.Current?.AddTag(ResourceSemanticConventions.FaaSInstance, id);
+                    }
+                    if (isAIEnabled)
+                    {
+                        attributes[ScriptConstants.LogPropertyHostInstanceIdKey] = id;
+                    }
                 }
+            }
+
+            if (isAIEnabled)
+            {
+                attributes[ScriptConstants.LogPropertyProcessIdKey] = Convert.ToString(_rpcWorkerProcess.Id);
+                attributes[ScriptConstants.OperationNameKey] = context.FunctionMetadata.Name;
+                string sessionId = Activity.Current?.GetBaggageItem(ScriptConstants.LiveLogsSessionAIKey);
+                if (!string.IsNullOrEmpty(sessionId))
+                {
+                    attributes[ScriptConstants.LiveLogsSessionAIKey] = sessionId;
+                }
+
                 if (context.FunctionMetadata.Properties.TryGetValue(LogConstants.CategoryNameKey, out var categoryNameValue))
                 {
                     attributes[LogConstants.CategoryNameKey] = Convert.ToString(categoryNameValue);
                 }
-                string sessionid = Activity.Current?.GetBaggageItem(ScriptConstants.LiveLogsSessionAIKey);
-                if (!string.IsNullOrEmpty(sessionid))
-                {
-                    attributes[ScriptConstants.LiveLogsSessionAIKey] = sessionid;
-                }
-                string operationName = context.FunctionMetadata.Name;
-                if (!string.IsNullOrEmpty(operationName))
-                {
-                    attributes[ScriptConstants.OperationNameKey] = operationName;
-                }
+            }
+
+            if (isOtelEnabled)
+            {
+                Activity.Current?.AddTag(ResourceSemanticConventions.FaaSName, context.FunctionMetadata.Name);
+                Activity.Current?.AddTag(ResourceSemanticConventions.FaaSTrigger, OpenTelemetryConstants.ResolveTriggerType(context.FunctionMetadata?.Trigger?.Type));
             }
         }
 
