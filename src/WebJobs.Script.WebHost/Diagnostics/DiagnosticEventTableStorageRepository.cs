@@ -35,7 +35,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private ConcurrentDictionary<string, DiagnosticEvent> _events = new ConcurrentDictionary<string, DiagnosticEvent>();
         private CloudTableClient _tableClient;
         private CloudTable _diagnosticEventsTable;
-        private IPrimaryHostStateProvider _primaryHostStateProvider;
         private string _hostId;
         private bool _disposed = false;
         private bool _purged = false;
@@ -92,8 +91,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         }
 
         internal ConcurrentDictionary<string, DiagnosticEvent> Events => _events;
-
-        internal IPrimaryHostStateProvider HostStateProvider => _primaryHostStateProvider ??= _serviceProvider?.GetService<IPrimaryHostStateProvider>();
 
         internal CloudTable GetDiagnosticEventsTable(DateTime? now = null)
         {
@@ -175,6 +172,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
             if (tableDeleted)
             {
+                // Wait for 30 seconds to allow the table to be deleted before proceeding to avoid a potential race.
                 await Task.Delay(TimeSpan.FromSeconds(30));
             }
         }
@@ -186,7 +184,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 return;
             }
 
-            if (HostStateProvider is not null && HostStateProvider.IsPrimary && !_purged)
+            if (IsPrimaryHost() && !_purged)
             {
                 await PurgePreviousEventVersions();
             }
@@ -274,6 +272,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     _events[errorCode].HitCount++;
                 }
             }
+        }
+
+        private bool IsPrimaryHost()
+        {
+            var primaryHostStateProvider = _serviceProvider?.GetService<IPrimaryHostStateProvider>();
+            if (primaryHostStateProvider is null)
+            {
+                _logger.LogDebug("PrimaryHostStateProvider is not available. Skipping the check for primary host.");
+                return false;
+            }
+
+            return primaryHostStateProvider.IsPrimary;
         }
 
         private void StopTimer()
