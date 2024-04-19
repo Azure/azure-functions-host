@@ -1,15 +1,19 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using System.Security.Cryptography;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public static partial class TestHelpers
     {
-        [SuppressMessage("Microsoft.Security", "CS002:SecretInNextLine", Justification = "Used for validating encryption behavior.")]
-        public const string FakeEncryptionKey = "/a/vXvWJ3Hzgx4PFxlDUJJhQm5QVyGiu0NNLFm/ZMMg=";
+        public static readonly string FakeEncryptionKey = CreateKey();
+
+        [SuppressMessage("Microsoft.Security", "CS002:SecretInNextLine", Justification = "Well known account key for emulator. Used for testing.")]
+        public static readonly string EmulatorAccountKey = "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==";
 
         /// <summary>
         /// Gets the common root directory that functions tests create temporary directories under.
@@ -21,6 +25,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 return Path.Combine(Path.GetTempPath(), "FunctionsTest");
             }
+        }
+
+        private static string CreateKey()
+        {
+            using Aes aes = Aes.Create();
+            aes.GenerateKey();
+            return Convert.ToBase64String(aes.Key);
         }
     }
 }
