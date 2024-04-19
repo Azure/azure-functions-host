@@ -81,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             });
 
             var connectionString =
-                "DefaultEndpointsProtocol=https;AccountName=storageaccount;AccountKey=whXtW6WP8QTh84TT5wdjgzeFTj7Vc1aOiCVjTXohpE+jALoKOQ9nlQpj5C5zpgseVJxEVbaAhptP5j5DpaLgtA==";
+                "DefaultEndpointsProtocol=https;AccountName=storageaccount;AccountKey=PLACEHOLDER";
 
             await _meshServiceClient.MountCifs(connectionString, "sharename", "/data");
 

@@ -19,8 +19,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class StartupContextProviderTests
     {
-        private const string TestEncryptionKey = "/a/vXvWJ3Hzgx4PFxlDUJJhQm5QVyGiu0NNLFm/ZMMg=";
-
         private readonly FunctionAppSecrets _secrets;
         private readonly StartupContextProvider _startupContextProvider;
         private readonly TestEnvironment _environment;
@@ -70,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _loggerProvider = new TestLoggerProvider();
             loggerFactory.AddProvider(_loggerProvider);
 
-            _environment.SetEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey, TestEncryptionKey);
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey, TestHelpers.FakeEncryptionKey);
 
             _startupContextProvider = new StartupContextProvider(_environment, loggerFactory.CreateLogger<StartupContextProvider>());
         }
