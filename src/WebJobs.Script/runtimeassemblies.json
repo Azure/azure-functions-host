@@ -961,7 +961,7 @@
     },
     {
       "name": "System.ClientModel",
-      "resolutionPolicy": "runtimeVersion"
+      "resolutionPolicy": "private"
     },
     {
       "name": "System.Collections",
