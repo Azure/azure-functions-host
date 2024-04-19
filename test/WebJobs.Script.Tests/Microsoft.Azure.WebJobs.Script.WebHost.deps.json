@@ -21,13 +21,14 @@
           "Microsoft.Azure.AppService.Middleware.Functions": "1.5.4",
           "Microsoft.Azure.AppService.Proxy.Client": "2.3.20240307.67",
           "Microsoft.Azure.Cosmos.Table": "1.0.8",
-          "Microsoft.Azure.Functions.PythonWorker": "4.28.0",
+          "Microsoft.Azure.Functions.PythonWorker": "4.28.1",
           "Microsoft.Azure.Storage.File": "11.1.7",
           "Microsoft.Azure.WebJobs": "3.0.41-11331",
           "Microsoft.Azure.WebJobs.Host.Storage": "5.0.0-beta.2-11957",
           "Microsoft.Azure.WebJobs.Script": "4.1033.6",
           "Microsoft.Azure.WebJobs.Script.Grpc": "4.1033.6",
           "Microsoft.Azure.WebSites.DataProtection": "2.1.91-alpha",
+          "Microsoft.Identity.Client": "4.60.3",
           "Microsoft.IdentityModel.Protocols.OpenIdConnect": "6.35.0",
           "Microsoft.IdentityModel.Tokens": "6.35.0",
           "Microsoft.Security.Utilities": "1.3.0",
@@ -80,7 +81,7 @@
       "Azure.Identity/1.11.0": {
         "dependencies": {
           "Azure.Core": "1.38.0",
-          "Microsoft.Identity.Client": "4.60.1",
+          "Microsoft.Identity.Client": "4.60.3",
           "Microsoft.Identity.Client.Extensions.Msal": "4.60.1",
           "System.Memory": "4.5.4",
           "System.Security.Cryptography.ProtectedData": "6.0.0",
@@ -893,9 +894,9 @@
       "Microsoft.Azure.Functions.JavaWorker/2.14.0": {},
       "Microsoft.Azure.Functions.NodeJsWorker/3.10.0": {},
       "Microsoft.Azure.Functions.PowerShellWorker.PS7.0/4.0.3148": {},
-      "Microsoft.Azure.Functions.PowerShellWorker.PS7.2/4.0.3131": {},
-      "Microsoft.Azure.Functions.PowerShellWorker.PS7.4/4.0.3147": {},
-      "Microsoft.Azure.Functions.PythonWorker/4.28.0": {},
+      "Microsoft.Azure.Functions.PowerShellWorker.PS7.2/4.0.3220": {},
+      "Microsoft.Azure.Functions.PowerShellWorker.PS7.4/4.0.3219": {},
+      "Microsoft.Azure.Functions.PythonWorker/4.28.1": {},
       "Microsoft.Azure.KeyVault.Core/2.0.4": {
         "dependencies": {
           "System.Runtime": "4.3.1",
@@ -1560,21 +1561,21 @@
           "System.Text.Encodings.Web": "8.0.0"
         }
       },
-      "Microsoft.Identity.Client/4.60.1": {
+      "Microsoft.Identity.Client/4.60.3": {
         "dependencies": {
           "Microsoft.IdentityModel.Abstractions": "6.35.0",
           "System.Diagnostics.DiagnosticSource": "8.0.0"
         },
         "runtime": {
           "lib/net6.0/Microsoft.Identity.Client.dll": {
-            "assemblyVersion": "4.60.1.0",
-            "fileVersion": "4.60.1.0"
+            "assemblyVersion": "4.60.3.0",
+            "fileVersion": "4.60.3.0"
           }
         }
       },
       "Microsoft.Identity.Client.Extensions.Msal/4.60.1": {
         "dependencies": {
-          "Microsoft.Identity.Client": "4.60.1",
+          "Microsoft.Identity.Client": "4.60.3",
           "System.Security.Cryptography.ProtectedData": "6.0.0"
         },
         "runtime": {
@@ -3146,8 +3147,8 @@
           "Microsoft.Azure.Functions.JavaWorker": "2.14.0",
           "Microsoft.Azure.Functions.NodeJsWorker": "3.10.0",
           "Microsoft.Azure.Functions.PowerShellWorker.PS7.0": "4.0.3148",
-          "Microsoft.Azure.Functions.PowerShellWorker.PS7.2": "4.0.3131",
-          "Microsoft.Azure.Functions.PowerShellWorker.PS7.4": "4.0.3147",
+          "Microsoft.Azure.Functions.PowerShellWorker.PS7.2": "4.0.3220",
+          "Microsoft.Azure.Functions.PowerShellWorker.PS7.4": "4.0.3219",
           "Microsoft.Azure.WebJobs": "3.0.41-11331",
           "Microsoft.Azure.WebJobs.Extensions": "5.0.0-beta.2-10879",
           "Microsoft.Azure.WebJobs.Extensions.Http": "3.2.0",
@@ -3159,6 +3160,7 @@
           "Microsoft.Extensions.Azure": "1.7.0",
           "Microsoft.Extensions.Hosting.Abstractions": "8.0.0",
           "Microsoft.Extensions.Logging.Console": "8.0.0",
+          "Microsoft.Identity.Client": "4.60.3",
           "Mono.Posix.NETStandard": "1.0.0",
           "Newtonsoft.Json": "13.0.3",
           "NuGet.ProjectModel": "5.11.6",
@@ -3815,26 +3817,26 @@
       "path": "microsoft.azure.functions.powershellworker.ps7.0/4.0.3148",
       "hashPath": "microsoft.azure.functions.powershellworker.ps7.0.4.0.3148.nupkg.sha512"
     },
-    "Microsoft.Azure.Functions.PowerShellWorker.PS7.2/4.0.3131": {
+    "Microsoft.Azure.Functions.PowerShellWorker.PS7.2/4.0.3220": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-6jxVoWHIZIKwq2R9xEUhTK4M1nXNWqY7SkVeBkBUicODDxHfW6NtM5+uKnDHMdd2/Wdfp2hclI6Wuw/o5jg+Zw==",
-      "path": "microsoft.azure.functions.powershellworker.ps7.2/4.0.3131",
-      "hashPath": "microsoft.azure.functions.powershellworker.ps7.2.4.0.3131.nupkg.sha512"
+      "sha512": "sha512-XuFUe5X1rnakLOC0v7jBXYzrVknh0eXTi1rkyWxcrR8VDZNvGuZIxHTnDzgL/Q0NBg+1ne8ghgDS7uBocgksZA==",
+      "path": "microsoft.azure.functions.powershellworker.ps7.2/4.0.3220",
+      "hashPath": "microsoft.azure.functions.powershellworker.ps7.2.4.0.3220.nupkg.sha512"
     },
-    "Microsoft.Azure.Functions.PowerShellWorker.PS7.4/4.0.3147": {
+    "Microsoft.Azure.Functions.PowerShellWorker.PS7.4/4.0.3219": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-/ZjifrW58261VLEPj6T7oizdMB1Djmd9Ghz62Z7cHLKm36LDwGouRG37kveeLfJULbk7o6xO6hl6LYBy8VB/UQ==",
-      "path": "microsoft.azure.functions.powershellworker.ps7.4/4.0.3147",
-      "hashPath": "microsoft.azure.functions.powershellworker.ps7.4.4.0.3147.nupkg.sha512"
+      "sha512": "sha512-qUAJcn/6lBsLPC8CM/3fvExkKVPVQZHtbwFkdM13zbU4ubuK+2mbdLNsYOYo+cCHu/qgUlBnavP2dPuYStuc5Q==",
+      "path": "microsoft.azure.functions.powershellworker.ps7.4/4.0.3219",
+      "hashPath": "microsoft.azure.functions.powershellworker.ps7.4.4.0.3219.nupkg.sha512"
     },
-    "Microsoft.Azure.Functions.PythonWorker/4.28.0": {
+    "Microsoft.Azure.Functions.PythonWorker/4.28.1": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-Ni839yi+gYWER1HHm8PpEMlAyM5u4efT5Eu1AmVELtuVVxta5UtNPJSh3/y7Wu4CCqa5hzkBOhFrXg4CU4yfiQ==",
-      "path": "microsoft.azure.functions.pythonworker/4.28.0",
-      "hashPath": "microsoft.azure.functions.pythonworker.4.28.0.nupkg.sha512"
+      "sha512": "sha512-59F7OULiqJOlAj07KpV/dbDr9oYZX9EHuEYbm4ysbVilKC4xZafrVpmCW9FLpzdQJVnIa73CRp6L4vQgKxy4Kw==",
+      "path": "microsoft.azure.functions.pythonworker/4.28.1",
+      "hashPath": "microsoft.azure.functions.pythonworker.4.28.1.nupkg.sha512"
     },
     "Microsoft.Azure.KeyVault.Core/2.0.4": {
       "type": "package",
@@ -4221,12 +4223,12 @@
       "path": "microsoft.extensions.webencoders/2.2.0",
       "hashPath": "microsoft.extensions.webencoders.2.2.0.nupkg.sha512"
     },
-    "Microsoft.Identity.Client/4.60.1": {
+    "Microsoft.Identity.Client/4.60.3": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-rC+qiskr8RKq2a43hH55vuDRz4Wto+bxwxMrKzCIOann1NL0OFFTjEk4ZVnTTBdijVWC6mhOaSmdV1H6J6bXmA==",
-      "path": "microsoft.identity.client/4.60.1",
-      "hashPath": "microsoft.identity.client.4.60.1.nupkg.sha512"
+      "sha512": "sha512-jve1RzmSpBhGlqMzPva6VfRbLMLZZc1Q8WRVZf8+iEruQkBgDTJPq8OeTehcY4GGYG1j6UB1xVofVE+n4BLDdw==",
+      "path": "microsoft.identity.client/4.60.3",
+      "hashPath": "microsoft.identity.client.4.60.3.nupkg.sha512"
     },
     "Microsoft.Identity.Client.Extensions.Msal/4.60.1": {
       "type": "package",
