@@ -11,7 +11,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     public static partial class TestHelpers
     {
         [SuppressMessage("Microsoft.Security", "CS002:SecretInNextLine", Justification = "Well known account key for emulator. Used for testing.")]
-        public static readonly string EmulatorAccountKey = "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==";
+        public static readonly string StorageEmulatorAccountKey = "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==";
+        public static readonly string StorageEmulatorConnectionString = $"DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey={StorageEmulatorAccountKey}";
 
         public static readonly string EncryptionKey = _encryptionKey.Value;
 

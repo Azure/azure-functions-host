@@ -80,9 +80,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                 StatusCode = HttpStatusCode.OK
             });
 
-            string connectionString = $"DefaultEndpointsProtocol=https;AccountName=storageaccount;AccountKey={TestHelpers.EmulatorAccountKey}";
-
-            await _meshServiceClient.MountCifs(connectionString, "sharename", "/data");
+            await _meshServiceClient.MountCifs(TestHelpers.StorageEmulatorConnectionString, "sharename", "/data");
 
             await Task.Delay(500);
 
