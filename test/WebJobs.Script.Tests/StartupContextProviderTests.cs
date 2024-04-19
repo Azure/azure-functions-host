@@ -68,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _loggerProvider = new TestLoggerProvider();
             loggerFactory.AddProvider(_loggerProvider);
 
-            _environment.SetEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey, TestHelpers.FakeEncryptionKey);
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey, TestHelpers.EncryptionKey);
 
             _startupContextProvider = new StartupContextProvider(_environment, loggerFactory.CreateLogger<StartupContextProvider>());
         }

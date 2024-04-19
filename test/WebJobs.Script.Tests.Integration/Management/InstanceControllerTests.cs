@@ -78,14 +78,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             hostAssignmentContext.Environment[EnvironmentSettingNames.MsiEndpoint] = "http://localhost:8081";
             hostAssignmentContext.Environment[EnvironmentSettingNames.MsiSecret] = "secret";
 
-            var encryptedHostAssignmentValue = SimpleWebTokenHelper.Encrypt(JsonConvert.SerializeObject(hostAssignmentContext), TestHelpers.FakeEncryptionKey.ToKeyBytes());
+            var encryptedHostAssignmentValue = SimpleWebTokenHelper.Encrypt(JsonConvert.SerializeObject(hostAssignmentContext), TestHelpers.EncryptionKey.ToKeyBytes());
 
             var encryptedHostAssignmentContext = new EncryptedHostAssignmentContext()
             {
                 EncryptedContext = encryptedHostAssignmentValue
             };
 
-            environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerEncryptionKey, TestHelpers.FakeEncryptionKey);
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerEncryptionKey, TestHelpers.EncryptionKey);
 
             IActionResult result = await instanceController.Assign(encryptedHostAssignmentContext);
 
@@ -154,14 +154,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             hostAssignmentContext.Secrets = new FunctionAppSecrets();
             hostAssignmentContext.IsWarmupRequest = false; // non-warmup Request
 
-            var encryptedHostAssignmentValue = SimpleWebTokenHelper.Encrypt(JsonConvert.SerializeObject(hostAssignmentContext), TestHelpers.FakeEncryptionKey.ToKeyBytes());
+            var encryptedHostAssignmentValue = SimpleWebTokenHelper.Encrypt(JsonConvert.SerializeObject(hostAssignmentContext), TestHelpers.EncryptionKey.ToKeyBytes());
 
             var encryptedHostAssignmentContext = new EncryptedHostAssignmentContext()
             {
                 EncryptedContext = encryptedHostAssignmentValue
             };
 
-            environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerEncryptionKey, TestHelpers.FakeEncryptionKey);
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerEncryptionKey, TestHelpers.EncryptionKey);
 
             await instanceController.Assign(encryptedHostAssignmentContext);
             Assert.NotNull(startupContextProvider.Context);
@@ -207,14 +207,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             hostAssignmentContext.Secrets = new FunctionAppSecrets();
             hostAssignmentContext.IsWarmupRequest = true; // Warmup Request
 
-            var encryptedHostAssignmentValue = SimpleWebTokenHelper.Encrypt(JsonConvert.SerializeObject(hostAssignmentContext), TestHelpers.FakeEncryptionKey.ToKeyBytes());
+            var encryptedHostAssignmentValue = SimpleWebTokenHelper.Encrypt(JsonConvert.SerializeObject(hostAssignmentContext), TestHelpers.EncryptionKey.ToKeyBytes());
 
             var encryptedHostAssignmentContext = new EncryptedHostAssignmentContext()
             {
                 EncryptedContext = encryptedHostAssignmentValue
             };
 
-            environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerEncryptionKey, TestHelpers.FakeEncryptionKey);
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerEncryptionKey, TestHelpers.EncryptionKey);
 
             await instanceController.Assign(encryptedHostAssignmentContext);
             Assert.Null(startupContextProvider.Context);
@@ -248,14 +248,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var encryptedHostAssignmentValue =
                 SimpleWebTokenHelper.Encrypt(JsonConvert.SerializeObject(hostAssignmentContext),
-                    TestHelpers.FakeEncryptionKey.ToKeyBytes());
+                    TestHelpers.EncryptionKey.ToKeyBytes());
 
             var encryptedHostAssignmentContext = new EncryptedHostAssignmentContext()
             {
                 EncryptedContext = encryptedHostAssignmentValue
             };
 
-            environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerEncryptionKey, TestHelpers.FakeEncryptionKey);
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerEncryptionKey, TestHelpers.EncryptionKey);
             
             await instanceController.Assign(encryptedHostAssignmentContext);
 

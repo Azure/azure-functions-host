@@ -10,10 +10,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public static partial class TestHelpers
     {
-        public static readonly string FakeEncryptionKey = CreateKey();
-
         [SuppressMessage("Microsoft.Security", "CS002:SecretInNextLine", Justification = "Well known account key for emulator. Used for testing.")]
         public static readonly string EmulatorAccountKey = "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==";
+
+        public static readonly string EncryptionKey = _encryptionKey.Value;
+
+        private static readonly Lazy<string> _encryptionKey = new Lazy<string>(
+            () =>
+            {
+                using Aes aes = Aes.Create();
+                aes.GenerateKey();
+                return Convert.ToBase64String(aes.Key);
+            });
 
         /// <summary>
         /// Gets the common root directory that functions tests create temporary directories under.
@@ -25,13 +33,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 return Path.Combine(Path.GetTempPath(), "FunctionsTest");
             }
-        }
-
-        private static string CreateKey()
-        {
-            using Aes aes = Aes.Create();
-            aes.GenerateKey();
-            return Convert.ToBase64String(aes.Key);
         }
     }
 }

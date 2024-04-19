@@ -71,14 +71,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             hostAssignmentContext.IsWarmupRequest = false;
 
             var encryptedHostAssignmentValue = SimpleWebTokenHelper.Encrypt(
-                JsonConvert.SerializeObject(hostAssignmentContext), TestHelpers.FakeEncryptionKey.ToKeyBytes());
+                JsonConvert.SerializeObject(hostAssignmentContext), TestHelpers.EncryptionKey.ToKeyBytes());
 
             var encryptedHostAssignmentContext = new EncryptedHostAssignmentContext()
             {
                 EncryptedContext = encryptedHostAssignmentValue
             };
 
-            environment.SetEnvironmentVariable(EnvironmentSettingNames.PodEncryptionKey, TestHelpers.FakeEncryptionKey);
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.PodEncryptionKey, TestHelpers.EncryptionKey);
             environment.SetEnvironmentVariable(EnvironmentSettingNames.KubernetesServiceHost, "http://localhost:80");
             environment.SetEnvironmentVariable(EnvironmentSettingNames.PodNamespace, "k8se-apps");
 
@@ -129,7 +129,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             hostAssignmentContext.IsWarmupRequest = false;
 
             var encryptedHostAssignmentValue = SimpleWebTokenHelper.Encrypt(
-                JsonConvert.SerializeObject(hostAssignmentContext), TestHelpers.FakeEncryptionKey.ToKeyBytes());
+                JsonConvert.SerializeObject(hostAssignmentContext), TestHelpers.EncryptionKey.ToKeyBytes());
 
             var encryptedHostAssignmentContext = new EncryptedHostAssignmentContext()
             {
