@@ -1,5 +1,11 @@
 <Project Sdk="Microsoft.Build.NoTargets">
   <Import Project="..\..\build\common.props" />
+
+  <PropertyGroup>
+    <IncludePythonWorker>false</IncludePythonWorker>
+  </PropertyGroup>
+
+  <Import Project="..\..\build\workers.props" />
   <Import Project="Tasks.targets" />
 
   <PropertyGroup>
@@ -14,8 +20,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PublishRuntimeIdentifier Include="win-x86" SelfContained="false" PublishDir="32bit" Workers="Remove" />
-    <PublishRuntimeIdentifier Include="win-x64" SelfContained="false" PublishDir="64bit" Workers="Move" />
+    <PublishRuntimeIdentifier Include="win-x86" SelfContained="false" PublishDir="32bit" />
+    <PublishRuntimeIdentifier Include="win-x64" SelfContained="false" PublishDir="64bit" />
   </ItemGroup>
 
   <ItemGroup>
@@ -34,13 +40,32 @@
     </ItemGroup>
   </Target>
 
+  <Target Name="UpdateWorkerPaths" DependsOnTargets="UpdatePaths" BeforeTargets="AssignTargetPaths">
+    <PropertyGroup>
+      <!-- Match files that start with "workers/powershell/{version}/runtimes" but also not one of the win runtimes we want to keep. -->
+      <_PowershellRuntimesToRemoveRegex>^workers(/|\\)powershell(/|\\).*(/|\\)runtimes(/|\\)(?!win(/|\\)|win-x86(/|\\)|win10-x86(/|\\)|win-x64(/|\\)|win10-x64(/|\\))</_PowershellRuntimesToRemoveRegex>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <_PowershellRuntimeToRemove Include="@(None)" Condition="'%(TargetPath)' != '' AND $([System.Text.RegularExpressions.Regex]::IsMatch('%(TargetPath)', $(_PowershellRuntimesToRemoveRegex)))" />
+      <None Remove="@(_PowershellRuntimeToRemove)" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Condition="'%(TargetPath)' != '' AND $([System.String]::new('%(TargetPath)').StartsWith('workers'))">
+        <TargetPath>$(SiteExtensionRelativeDir)%(TargetPath)</TargetPath>
+      </None>
+    </ItemGroup>
+  </Target>
+
   <Target Name="AddRuntimesToProjects" BeforeTargets="AssignProjectConfiguration">
     <ItemGroup>
       <_ProjectReferenceWithRuntimes Include="@(ProjectReference)">
         <AdditionalProperties>
           RuntimeIdentifier=%(PublishRuntimeIdentifier.Identity);
           SelfContained=%(PublishRuntimeIdentifier.SelfContained);
-          PublishDir=$(SiteExtensionDir)%(PublishRuntimeIdentifier.PublishDir)/
+          PublishDir=$(SiteExtensionDir)%(PublishRuntimeIdentifier.PublishDir)/;
+          PublishWorkers=false
         </AdditionalProperties>
         <Private>false</Private> <!-- Avoids including transitive output. -->
       </_ProjectReferenceWithRuntimes>
@@ -55,33 +80,6 @@
     <MSBuild Projects="@(ProjectReference)" Targets="Publish" BuildInParallel="$(BuildInParallel)" Properties="NoBuild=true" />
   </Target>
 
-  <Target Name="ConsolidateWorkers">
-    <!-- Clean this directory -->
-    <RemoveDir Directories="$(SiteExtensionDir)workers" />
-
-    <MoveDir
-      Directories="@(PublishRuntimeIdentifier->'$(SiteExtensionDir)%(PublishDir)/workers')"
-      Destinations="@(PublishRuntimeIdentifier->'$(SiteExtensionDir)workers')"
-      Condition="'%(Workers)' == 'Move'" />
-    <RemoveDir
-      Directories="@(PublishRuntimeIdentifier->'$(SiteExtensionDir)%(PublishDir)/workers')"
-      Condition="'%(Workers)' == 'Remove'" />
-
-    <!-- Ensure this exists at the end -->
-    <MakeDir Directories="$(SiteExtensionDir)workers" />
-
-    <!-- We don't need python -->
-    <RemoveDir Directories="$(SiteExtensionDir)workers/python" />
-  </Target>
-
-  <Target Name="CleanPowershellRuntimes">
-    <ItemGroup>
-      <_PowershellRuntimesToKeep Include="win;win-x86;win10-x86;win-x64;win10-x64" />
-      <_PowershellRuntimesToRemove Include="$([System.IO.Directory]::GetDirectories('$(SiteExtensionDir)workers/powershell'))" />
-    </ItemGroup>
-    <RemovePowershellRuntimes WorkerDirectories="@(_PowershellRuntimesToRemove)" ExcludeRuntimes="@(_PowershellRuntimesToKeep)" />
-  </Target>
-
   <Target Name="RemoveUnneededRuntimes">
     <ItemGroup>
       <_RuntimesToRemove Include="@(PublishRuntimeIdentifier->'$(SiteExtensionDir)%(PublishDir)/runtimes/linux')" />
@@ -91,9 +89,15 @@
   </Target>
 
   <Target Name="MoveSymbols">
-    <MoveSymbols
-      Directories="@(PublishRuntimeIdentifier->'$(SiteExtensionDir)%(PublishDir)')"
-      Destinations="@(PublishRuntimeIdentifier->'$(PublishDir)Symbols\$(SiteExtensionName).Symbols.$(Version).%(Identity)')" />
+    <ItemGroup>
+      <_SymbolDirs Include="@(PublishRuntimeIdentifier->'$(SiteExtensionDir)%(PublishDir)')">
+        <Destination>$(PublishDir)Symbols\$(SiteExtensionName).Symbols.$(Version).%(Identity)</Destination>
+      </_SymbolDirs>
+      <_WorkerSymbols Include="$(SiteExtensionDir)workers/**/*.pdb" Destination="$(PublishDir)Symbols\$(SiteExtensionName).Symbols.$(Version).%(PublishRuntimeIdentifier.Identity)/workers" />
+    </ItemGroup>
+    <MoveSymbols Directories="@(_SymbolsDirs)" Destinations="%(Destination)" />
+    <Copy SourceFiles="@(_WorkerSymbols)" DestinationFiles="%(Destination)/%(RecursiveDir)%(Filename)%(Extension)" SkipUnchangedFiles="true" />
+    <Delete Files="@(_WorkerSymbols)" />
   </Target>
 
   <Target Name="ComputeHardLinkHashes">

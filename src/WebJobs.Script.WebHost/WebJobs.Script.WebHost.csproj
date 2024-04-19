@@ -147,7 +147,7 @@
   </Target>
 
   <!-- PythonWorker package injects its content files through custom targets. -->
-  <Target Name="SuppresPythonWorker" AfterTargets="Initialize" BeforeTargets="CopyOnPublish" Condition="'$(PublishWorkers)' == 'false'">
+  <Target Name="SuppressPythonWorker" AfterTargets="Initialize" BeforeTargets="CopyOnPublish" Condition="'$(PublishWorkers)' == 'false'">
     <ItemGroup>
       <SourceFiles Remove="@(SourceFiles)" />
     </ItemGroup>

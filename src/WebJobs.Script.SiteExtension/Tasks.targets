@@ -97,31 +97,4 @@ for (int i = 0; i < Directories.Length; i++)
     </Task>
   </UsingTask>
 
-  <UsingTask TaskName="RemovePowershellRuntimes" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
-    <ParameterGroup>
-      <WorkerDirectories ParameterType="System.String[]" Required="true" />
-      <ExcludeRuntimes ParameterType="System.String[]" Required="true" />
-    </ParameterGroup>
-    <Task>
-      <Using Namespace="System"/>
-      <Using Namespace="System.IO"/>
-      <Code Type="Fragment" Language="cs">
-<![CDATA[
-foreach (string worker in WorkerDirectories)
-{
-  foreach (string runtimeDir in Directory.EnumerateDirectories($"{worker}/runtimes"))
-  {
-    string runtimeName = Path.GetFileName(runtimeDir);
-    if (Array.IndexOf(ExcludeRuntimes, runtimeName) == -1)
-    {
-      Log.LogMessage($"Removing powershell runtime '{runtimeDir}'");
-      Directory.Delete(runtimeDir, true);
-    }
-  }
-}
-]]>
-      </Code>
-    </Task>
-  </UsingTask>
-
 </Project>
