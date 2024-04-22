@@ -1,3 +1,5 @@
+# This build is used for public PR and CI builds.
+
 variables:
   buildNumber: $[ counter('constant', 13000) ] # TODO: new pipeline, 13000 no longer valid.
   ${{ if contains(variables['Build.SourceBranch'], 'release/inproc6/') }}:
@@ -29,16 +31,31 @@ pr:
     - release/inproc6/4.*
     - release/inproc8/4.*
 
-stages:
-- stage: Initialize
+resources:
+  repositories:
+  - repository: 1es
+    type: git
+    name: 1ESPipelineTemplates/1ESPipelineTemplates
+    ref: refs/tags/release
 
-  jobs:
-  - template: /eng/ci/templates/jobs/initialize-pipeline.yml@self
-    parameters:
-      minorVersionPrefix: ${{ variables.minorVersionPrefix }}
+extends:
+  template: v1/1ES.Unofficial.PipelineTemplate.yml@1es
+  parameters:
+    pool:
+      name: 1es-pool-azfunc-public
+      image: 1es-windows-2022
+      os: windows
 
-- stage: Test
-  dependsOn: Initialize
+    stages:
+    - stage: Initialize
 
-  jobs:
-  - template: /eng/ci/templates/jobs/run-unit-tests.yml@self
+      jobs:
+      - template: /eng/ci/templates/jobs/initialize-pipeline.yml@self
+        parameters:
+          minorVersionPrefix: ${{ variables.minorVersionPrefix }}
+
+    - stage: Test
+      dependsOn: Initialize
+
+      jobs:
+      - template: /eng/ci/templates/jobs/run-unit-tests.yml@self
