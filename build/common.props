@@ -19,16 +19,21 @@
     <AssemblyVersion>$(MajorVersion).$(MinorVersion).0.0</AssemblyVersion>
     <FileVersion>$(VersionPrefix).$(BuildNumber)</FileVersion>
 
-    <CodeAnalysisRuleSet>$(MSBuildThisFileDirectory)..\src.ruleset</CodeAnalysisRuleSet>
-    <NoWarn>$(NoWarn);NU1701</NoWarn>
-    <NuGetAuditMode>all</NuGetAuditMode>
-    <NuGetAuditLevel>moderate</NuGetAuditLevel>
-
     <ContinuousIntegrationBuild Condition="'$(TF_BUILD)' == 'true'">true</ContinuousIntegrationBuild>
     <DebugType>embedded</DebugType>
     <GenerateRuntimeConfigDevFile>true</GenerateRuntimeConfigDevFile><!-- https://github.com/dotnet/runtime/issues/54684 -->
     <DisableImplicitNamespaceImports>true</DisableImplicitNamespaceImports>
     <Configurations>$(Configurations);DebugPlaceholder;ReleasePlaceholder</Configurations>
+  </PropertyGroup>
+
+  <!-- Source Analysis -->
+  <PropertyGroup>
+    <StyleCopTreatErrorsAsWarnings>false</StyleCopTreatErrorsAsWarnings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <CodeAnalysisRuleSet>$(MSBuildThisFileDirectory)..\src.ruleset</CodeAnalysisRuleSet>
+    <NoWarn>$(NoWarn);NU1701;NU5104</NoWarn>
+    <NuGetAuditMode>all</NuGetAuditMode>
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);NU1901;NU1902;NU1903;NU1904</WarningsNotAsErrors>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DebugPlaceholder|AnyCPU'">

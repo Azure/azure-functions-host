@@ -8,18 +8,6 @@
     <RootNamespace>Microsoft.Azure.WebJobs.Script.Tests</RootNamespace>
     <LangVersion>preview</LangVersion>
     <Configurations>$(Configurations);DebugPlaceholder;ReleasePlaceholder</Configurations>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU' Or '$(Configuration)|$(Platform)'=='DebugPlaceholder|AnyCPU'">
-    <DefineConstants>TRACE;DEBUG;NETCOREAPP2_0;SCRIPT_TEST</DefineConstants>
-    <StyleCopTreatErrorsAsWarnings>false</StyleCopTreatErrorsAsWarnings>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <WarningsAsErrors />
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU' Or '$(Configuration)|$(Platform)'=='ReleasePlaceholder|AnyCPU'">
-    <StyleCopTreatErrorsAsWarnings>false</StyleCopTreatErrorsAsWarnings>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <WarningsAsErrors />
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 

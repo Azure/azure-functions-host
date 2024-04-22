@@ -11,14 +11,6 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <DefineConstants>TRACE;DEBUG;SCRIPT_TEST;NETCOREAPP2_0</DefineConstants>
-    <StyleCopTreatErrorsAsWarnings>false</StyleCopTreatErrorsAsWarnings>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <WarningsAsErrors />
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-    <StyleCopTreatErrorsAsWarnings>false</StyleCopTreatErrorsAsWarnings>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <WarningsAsErrors />
   </PropertyGroup>
   <ItemGroup>
     <Compile Remove="ScriptHostEndToEnd\ListenerFailureTests.cs" />
@@ -36,9 +28,7 @@
     <PackageReference Include="Microsoft.ApplicationInsights.WindowsServer" Version="2.22.0" />
     <PackageReference Include="Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel" Version="2.22.0" />
     <PackageReference Include="Microsoft.AspNet.WebApi.Client" Version="5.2.8" />
-    <PackageReference Include="Microsoft.AspNet.WebApi.Core" Version="5.2.6">
-      <NoWarn>NU1701</NoWarn>
-    </PackageReference>
+    <PackageReference Include="Microsoft.AspNet.WebApi.Core" Version="5.2.6" NoWarn="NU1701" />
     <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="8.0.1" />
     <PackageReference Include="Microsoft.Azure.DocumentDB.Core" Version="2.11.2" />
     <PackageReference Include="Microsoft.Azure.EventHubs" Version="2.1.0" />

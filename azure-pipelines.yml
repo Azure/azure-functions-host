@@ -35,6 +35,12 @@ jobs:
     name: '1ES-Hosted-AzFunc'
     demands:
       - ImageOverride -equals MMS2019TLS
+  variables:
+    ${{ if eq( variables['Build.Reason'], 'PullRequest' ) }}:
+      componentGovernanceFailOnAlert: false
+    ${{ else }}:
+      componentGovernanceFailOnAlert: true
+
   steps:
   - task: UseDotNet@2 # The pinned SDK we use to build
     displayName: 'Install .NET SDK from global.json'
@@ -48,6 +54,13 @@ jobs:
       filePath: '$(Build.Repository.LocalPath)\build\initialize-pipeline.ps1'
       arguments: -minorVersionPrefix "$(minorVersionPrefix)"
       showWarnings: true
+  - task: ComponentGovernanceComponentDetection@0
+    inputs:
+      scanType: LogOnly
+      verbosity: Normal
+      sourceScanPath: $(Build.Repository.LocalPath)
+      alertWarningLevel: Medium
+      failOnAlert: $(componentGovernanceFailOnAlert)
 
 - job: BuildArtifacts
   dependsOn: InitializePipeline
