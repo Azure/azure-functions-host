@@ -14,8 +14,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public static readonly string StorageEmulatorAccountKey = "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==";
         public static readonly string StorageEmulatorConnectionString = $"DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey={StorageEmulatorAccountKey}";
 
-        public static readonly string EncryptionKey = _encryptionKey.Value;
-
         private static readonly Lazy<string> _encryptionKey = new Lazy<string>(
             () =>
             {
@@ -23,6 +21,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 aes.GenerateKey();
                 return Convert.ToBase64String(aes.Key);
             });
+
+        public static string EncryptionKey => _encryptionKey.Value;
 
         /// <summary>
         /// Gets the common root directory that functions tests create temporary directories under.
