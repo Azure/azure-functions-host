@@ -1,0 +1,48 @@
+<Project Sdk="Microsoft.Build.NoTargets">
+  <Import Project="..\..\build\common.props" />
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <SiteExtensionName>Functions.Private</SiteExtensionName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PublishRuntimeIdentifier Include="win-x86" SelfContained="false" PublishDir="32bit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <!-- We set many properties and items in targets to ensure $(Version) is finalized. -->
+  <Target Name="UpdatePaths" BeforeTargets="AddRuntimesToProjects;AssignTargetPaths">
+    <PropertyGroup>
+      <SiteExtensionRelativeDir>SiteExtension\$(Version)\</SiteExtensionRelativeDir>
+      <SiteExtensionDir>$([MSBuild]::NormalizePath('$(PublishDir)$(SiteExtensionRelativeDir)'))</SiteExtensionDir>
+    </PropertyGroup>
+    <ItemGroup>
+      <None Include="applicationHost.xdt" TargetPath="$(SiteExtensionRelativeDir)applicationHost.xdt" CopyToPublishDirectory="PreserveNewest" />
+      <None Include="extension.xml" TargetPath="SiteExtension\extension.xml" CopyToPublishDirectory="PreserveNewest" />
+    </ItemGroup>
+  </Target>
+
+  <Target Name="AddRuntimesToProjects" BeforeTargets="BeforeBuild;PrepareForPublish;BeforeClean">
+    <ItemGroup>
+      <_ProjectReferenceWithRuntimes Include="@(ProjectReference)">
+        <AdditionalProperties>
+          RuntimeIdentifier=%(PublishRuntimeIdentifier.Identity);
+          SelfContained=%(PublishRuntimeIdentifier.SelfContained);
+          PublishDir=$(SiteExtensionDir)%(PublishRuntimeIdentifier.PublishDir)/
+        </AdditionalProperties>
+        <Private>false</Private> <!-- Avoids including transitive output. -->
+      </_ProjectReferenceWithRuntimes>
+      <ProjectReference Remove="@(ProjectReference)" />
+      <ProjectReference Include="@(_ProjectReferenceWithRuntimes)" />
+    </ItemGroup>
+  </Target>
+
+  <Target Name="PublishProjectReferences" AfterTargets="PrepareForPublish" BeforeTargets="Publish">
+    <MSBuild Projects="@(ProjectReference)" Targets="Publish" BuildInParallel="$(BuildInParallel)" Properties="NoBuild=true" />
+  </Target>
+
+</Project>

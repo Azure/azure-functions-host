@@ -1,12 +1,6 @@
 <Project Sdk="Microsoft.Build.NoTargets">
   <Import Project="..\..\build\common.props" />
-
-  <PropertyGroup>
-    <IncludePythonWorker>false</IncludePythonWorker>
-  </PropertyGroup>
-
   <Import Project="..\..\build\workers.props" />
-  <Import Project="Tasks.targets" />
 
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
@@ -20,6 +14,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- We don't ship python with the site extension. -->
+    <PackageReference Remove="Microsoft.Azure.Functions.PythonWorker" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PublishRuntimeIdentifier Include="win-x86" SelfContained="false" PublishDir="32bit" />
     <PublishRuntimeIdentifier Include="win-x64" SelfContained="false" PublishDir="64bit" />
   </ItemGroup>
@@ -27,6 +26,8 @@
   <ItemGroup>
     <ProjectReference Include="../WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
+
+  <Import Project="Tasks.targets" />
 
   <!-- We set many properties and items in targets to ensure $(Version) is finalized. -->
   <Target Name="UpdatePaths" BeforeTargets="AddRuntimesToProjects;AssignTargetPaths">
