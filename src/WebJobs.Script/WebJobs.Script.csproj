@@ -86,9 +86,12 @@
     <PackageReference Include="System.IO.Abstractions" Version="2.1.0.227">
       <NoWarn>NU1701</NoWarn>
     </PackageReference>
+    <PackageReference Include="System.Net.Http" Version="4.3.4" />
     <PackageReference Include="System.Reactive.Linq" Version="5.0.0" />
     <PackageReference Include="System.Reactive.Core" Version="5.0.0" />
     <PackageReference Include="System.Runtime.Loader" Version="4.3.0" />
+    <PackageReference Include="System.Text.RegularExpressions" Version="4.3.1" />
+
 <!--
     Explicitly referencing version 6.0.9 of System.Text.Json to get two bug fixes for the Source Generator. Without this, the 6.0.0 version 
     of the Source Generator is used, which causes issues. This reference can be removed in future framework versions.
