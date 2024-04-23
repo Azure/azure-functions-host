@@ -25,8 +25,8 @@ resources:
     ref: refs/tags/release
 
 variables:
-  - template: /ci/variables/build.yml@eng
-  - template: /ci/variables/cfs.yml@eng
+  - template: ci/variables/build.yml@eng
+  - template: ci/variables/cfs.yml@eng
   - name: buildNumber
     value: $[ counter('constant', 13000) ] # TODO: new pipeline, 13000 no longer valid.
   - name: minorVersionPrefix
