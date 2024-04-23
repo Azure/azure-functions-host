@@ -15,5 +15,5 @@
 - Updating Otel nuget packages. (#10014)
 - Clean up system logger (#10001)
 - Introduce versioning for DiagnosticEvent (#10011)
-- Update Python Worker Version to 4.28.1 (#10028) 
+- Update Python Worker Version to [4.28.1](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.28.1)
 - Make System.ClientModel private (#10036) 
