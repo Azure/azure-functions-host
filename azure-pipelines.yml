@@ -10,6 +10,7 @@ variables:
   DOTNET_NOLOGO: 1
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
   DOTNET_CLI_TELEMETRY_OPTOUT: 1
+  skipComponentGovernanceDetection: true
 
 pr:
   branches:
@@ -56,11 +57,12 @@ jobs:
       showWarnings: true
   - task: ComponentGovernanceComponentDetection@0
     inputs:
-      scanType: LogOnly
       verbosity: Normal
       sourceScanPath: $(Build.Repository.LocalPath)
       alertWarningLevel: Medium
       failOnAlert: $(componentGovernanceFailOnAlert)
+      ignoreDirectories: $(Build.Repository.LocalPath)\test
+
 
 - job: BuildArtifacts
   dependsOn: InitializePipeline
