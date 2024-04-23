@@ -49,7 +49,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // We save the lock file as something other than 'project.assets.json' so it is not flagged by component governance.
             // Only renaming to project.assets.json for the duration of the test.
             string lockFile = Path.Combine(projectPath, DotNetConstants.ProjectLockFileName);
-            File.Copy(Path.Combine(projectPath, "test.assets.json"), lockFile, true);
+            string sourceFile = Path.Combine(projectPath, "test.assets.json");
+
+            if (File.Exists(sourceFile))
+            {
+                File.Copy(sourceFile, lockFile, true);
+            }
         }
 
         private static void DeleteLockFile(string projectPath)
