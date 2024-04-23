@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -31,7 +32,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Route("admin/pod/assign")]
         public async Task<IActionResult> Assign([FromBody] EncryptedHostAssignmentContext encryptedAssignmentContext)
         {
-            _logger.LogDebug($"Starting container assignment for host : {Request?.Host}");
+            var requestHost = Request?.Host.ToString().Replace(Environment.NewLine, string.Empty);
+            _logger.LogDebug("Starting container assignment for host: {requestHost}.", requestHost);
             var assignmentContext = _startupContextProvider.SetContext(encryptedAssignmentContext);
 
             string error = await _instanceManager.ValidateContext(assignmentContext);
@@ -44,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
             return succeeded
                 ? Accepted()
-                : StatusCode(StatusCodes.Status409Conflict, "Instance already assigned");
+                : StatusCode(StatusCodes.Status409Conflict, "Instance already assigned.");
         }
     }
 }

@@ -155,7 +155,8 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
                 httpRequest.Headers.TryAddWithoutValidation(header.Key, header.Value.AsEnumerable());
             }
 
-            httpRequest.Method = new HttpMethod(request.Method);
+            var requestMethod = request.Method?.ToString().Replace(Environment.NewLine, string.Empty);
+            httpRequest.Method = new HttpMethod(requestMethod);
 
             // Copy body
             if (request.ContentLength != null && request.ContentLength > 0)

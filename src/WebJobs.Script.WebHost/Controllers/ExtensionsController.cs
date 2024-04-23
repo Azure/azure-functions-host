@@ -211,7 +211,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             string home = _settingsManager.GetSetting(EnvironmentSettingNames.AzureWebsiteHomePath);
             string basePath = null;
 
-            if (!string.IsNullOrEmpty(home))
+            if (!string.IsNullOrEmpty(home) &&
+                (!home.Contains("..") || !home.Contains("/") || !home.Contains("\\")))
             {
                 basePath = Path.Combine(home, "data", "Functions", "extensions");
             }

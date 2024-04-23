@@ -115,6 +115,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 return null;
             }
 
+            functionName.Replace(Environment.NewLine, string.Empty);
+
             return await _secretManagerProvider.Current.GetFunctionSecretsAsync(functionName);
         }
 
@@ -183,6 +185,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             {
                 return NotFound();
             }
+
+            keyScope.Replace(Environment.NewLine, string.Empty);
 
             KeyOperationResult operationResult;
             if (secretsType == ScriptSecretsType.Host && string.Equals(keyName, ScriptConstants.MasterKeyName, StringComparison.OrdinalIgnoreCase))
@@ -259,6 +263,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 // System keys cannot be deleted.
                 return BadRequest("Cannot delete System Key.");
             }
+
+            keyScope.Replace(Environment.NewLine, string.Empty);
 
             if ((secretsType == ScriptSecretsType.Function && keyScope != null && !IsFunction(keyScope)) ||
                 !await _secretManagerProvider.Current.DeleteSecretAsync(keyName, keyScope, secretsType))

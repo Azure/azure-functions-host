@@ -32,7 +32,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
             var sw = ValueStopwatch.StartNew();
             string userAgent = context.Request.GetHeaderValueOrDefault("User-Agent");
-            _logger.ExecutingHttpRequest(requestId, context.Request.Method, userAgent, context.Request.Path);
+            var requestMethod = context.Request?.Method?.ToString().Replace(Environment.NewLine, string.Empty);
+            var requestPath = context.Request?.Path.ToString().Replace(Environment.NewLine, string.Empty);
+            _logger.ExecutingHttpRequest(requestId, requestMethod, userAgent, requestPath);
 
             await _next.Invoke(context);
 

@@ -711,7 +711,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                 if (secretBackups.Length >= ScriptConstants.MaximumSecretBackupCount)
                 {
-                    string message = string.Format(Resources.ErrorTooManySecretBackups, ScriptConstants.MaximumSecretBackupCount, string.IsNullOrEmpty(keyScope) ? "host" : keyScope, await AnalyzeSnapshots(secretBackups));
+                    string scope = string.IsNullOrEmpty(keyScope) ? "host" : keyScope.Replace(Environment.NewLine, string.Empty);
+                    string message = string.Format(Resources.ErrorTooManySecretBackups, ScriptConstants.MaximumSecretBackupCount, scope, await AnalyzeSnapshots(secretBackups));
                     _logger?.LogDebug(message);
 
                     var exception = new InvalidOperationException(message);

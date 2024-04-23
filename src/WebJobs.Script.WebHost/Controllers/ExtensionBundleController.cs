@@ -81,6 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Route("admin/host/extensionBundle/v1/resources.{locale}")]
         public async Task<IActionResult> GetResourcesLocale(string locale)
         {
+            locale.Replace(Environment.NewLine, string.Empty);
             string resourceFileName = $"Resources.{locale}.json";
             var resources = await _extensionBundleContent.GetResources(resourceFileName);
 

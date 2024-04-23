@@ -53,6 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public virtual void Synchronize(HttpRequest request, ILogger logger)
         {
             string hostNameHeaderValue = request.Headers[ScriptConstants.AntaresDefaultHostNameHeader];
+            hostNameHeaderValue.Replace(Environment.NewLine, string.Empty);
             if (!string.IsNullOrEmpty(hostNameHeaderValue) &&
                 string.Compare(Value, hostNameHeaderValue) != 0)
             {
