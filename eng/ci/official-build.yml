@@ -1,16 +1,4 @@
-variables:
-  buildNumber: $[ counter('constant', 13000) ] # TODO: new pipeline, 13000 no longer valid.
-  ${{ if contains(variables['Build.SourceBranch'], 'release/inproc6/') }}:
-    minorVersionPrefix: "6"
-  ${{ elseif contains(variables['Build.SourceBranch'], 'release/inproc8/') }}:
-    minorVersionPrefix: "8"
-  ${{ else }}:
-    minorVersionPrefix: ""
-  DOTNET_NOLOGO: 1
-  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
-  DOTNET_CLI_TELEMETRY_OPTOUT: 1
-  DisableCFSDetector: true # TODO: Remove when exemption is applied.
-  nugetMultiFeedWarnLevel: none
+
 
 trigger:
   batch: true
@@ -31,6 +19,23 @@ resources:
     type: git
     name: 1ESPipelineTemplates/1ESPipelineTemplates
     ref: refs/tags/release
+  - repository: eng
+    type: git
+    name: engineering
+    ref: refs/tags/release
+
+variables:
+  - template: /ci/variables/build.yml@eng
+  - template: /ci/variables/cfs.yml@eng
+  - name: buildNumber
+    value: $[ counter('constant', 13000) ] # TODO: new pipeline, 13000 no longer valid.
+  - name: minorVersionPrefix
+    ${{ if contains(variables['Build.SourceBranch'], 'release/inproc6/') }}:
+      value: "6"
+    ${{ elseif contains(variables['Build.SourceBranch'], 'release/inproc8/') }}:
+      value: "8"
+    ${{ else }}:
+      value: ""
 
 extends:
   template: v1/1ES.Official.PipelineTemplate.yml@1es
