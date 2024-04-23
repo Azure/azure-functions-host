@@ -67,6 +67,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Route("admin/host/extensions/{id}")]
         public async Task<IActionResult> Delete(string id)
         {
+            if (!FileUtility.IsValidFileName(id))
+            {
+                 return BadRequest();
+            }
+
             if (_extensionBundleManager.IsExtensionBundleConfigured())
             {
                 return BadRequest(Resources.ExtensionBundleBadRequestDelete);
@@ -92,6 +97,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Route("admin/host/extensions/jobs/{id}")]
         public async Task<IActionResult> GetJobs(string id)
         {
+            if (!FileUtility.IsValidFileName(id))
+            {
+                return BadRequest();
+            }
+
             ExtensionsRestoreJob job = await GetJob(id);
 
             if (job == null)
