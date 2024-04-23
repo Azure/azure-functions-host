@@ -59,6 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private static void DeleteLockFile(string projectPath)
         {
+            // Clean up the 'project.assets.json' file so component governance does not flag it.
             string lockFile = Path.Combine(projectPath, DotNetConstants.ProjectLockFileName);
             if (File.Exists(lockFile))
             {
