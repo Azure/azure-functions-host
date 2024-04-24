@@ -14,7 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public static class FileUtility
     {
-        private static readonly char[] InvalidFilenameChars = Path.GetInvalidFileNameChars();
+        private static readonly char[] InvalidFileNameChars = Path.GetInvalidFileNameChars();
         private static IFileSystem _default = new FileSystem();
         private static IFileSystem _instance;
 
@@ -292,7 +292,22 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <returns>Boolean value determining if file name is valid or not.</returns>
         public static bool IsValidFileName(string fileName)
         {
-            return fileName.IndexOfAny(InvalidFilenameChars) >= 0 ? false : true;
+            if (string.IsNullOrEmpty(fileName))
+            {
+                return false;
+            }
+
+            if (fileName.Contains("..") || Path.IsPathRooted(fileName))
+            {
+                return false;
+            }
+
+            if (fileName.Contains(Path.DirectorySeparatorChar) || fileName.Contains(Path.AltDirectorySeparatorChar))
+            {
+                return false;
+            }
+
+            return fileName.IndexOfAny(InvalidFileNameChars) >= 0 ? false : true;
         }
     }
 }

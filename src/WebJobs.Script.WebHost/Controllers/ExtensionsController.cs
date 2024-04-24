@@ -69,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         {
             if (!FileUtility.IsValidFileName(id))
             {
-                 return BadRequest();
+                return BadRequest();
             }
 
             if (_extensionBundleManager.IsExtensionBundleConfigured())
@@ -97,7 +97,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Route("admin/host/extensions/jobs/{id}")]
         public async Task<IActionResult> GetJobs(string id)
         {
-            if (!FileUtility.IsValidFileName(id))
+            if (!IsValidGuid(id))
             {
                 return BadRequest();
             }
@@ -267,6 +267,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             }
 
             return jobs;
+        }
+
+        private bool IsValidGuid(string value)
+        {
+            return Guid.TryParse(value, out _);
         }
     }
 }
