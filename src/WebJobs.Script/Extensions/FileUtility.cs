@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Abstractions;
+using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
@@ -13,6 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public static class FileUtility
     {
+        private static readonly char[] InvalidFileNameChars = Path.GetInvalidFileNameChars();
         private static IFileSystem _default = new FileSystem();
         private static IFileSystem _instance;
 
@@ -281,6 +283,31 @@ namespace Microsoft.Azure.WebJobs.Script
             catch when (ignoreErrors)
             {
             }
+        }
+
+        /// <summary>
+        /// Checks if a file name is valid.
+        /// </summary>
+        /// <param name="input">The string to sanitize.</param>
+        /// <returns>Boolean value determining if file name is valid or not.</returns>
+        public static bool IsValidFileName(string fileName)
+        {
+            if (string.IsNullOrEmpty(fileName))
+            {
+                return false;
+            }
+
+            if (fileName.Contains("..") || Path.IsPathRooted(fileName))
+            {
+                return false;
+            }
+
+            if (fileName.Contains(Path.DirectorySeparatorChar) || fileName.Contains(Path.AltDirectorySeparatorChar))
+            {
+                return false;
+            }
+
+            return fileName.IndexOfAny(InvalidFileNameChars) >= 0 ? false : true;
         }
     }
 }
