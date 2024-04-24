@@ -1076,7 +1076,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var expectedProcessName = scriptRootPath == _dotnetIsolated60Path ? "DotNetIsolated60" : "DotNetIsolatedUnsupported";
                 // Placeholder miss; new channel should be started using the deployed worker directly
                 var specializedChannel = await webChannelManager.GetChannels("dotnet-isolated").Single().Value.Task;
-                Assert.Contains("dotnet.exe", specializedChannel.WorkerProcess.Process.StartInfo.FileName);
+                Assert.Contains("FunctionsNetHost.exe", specializedChannel.WorkerProcess.Process.StartInfo.FileName);
                 Assert.Contains(expectedProcessName, specializedChannel.WorkerProcess.Process.StartInfo.Arguments);
                 runningProcess = Process.GetProcessById(specializedChannel.WorkerProcess.Id);
                 Assert.Contains(runningProcess.ProcessName, "dotnet");
