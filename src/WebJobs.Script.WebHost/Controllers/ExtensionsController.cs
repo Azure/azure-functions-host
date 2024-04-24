@@ -67,6 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Route("admin/host/extensions/{id}")]
         public async Task<IActionResult> Delete(string id)
         {
+            // We are using a file name check, but the API expects a NuGet package name/ID
             if (!FileUtility.IsValidFileName(id))
             {
                 return BadRequest();

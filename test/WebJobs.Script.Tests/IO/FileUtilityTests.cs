@@ -28,6 +28,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.IO
         [InlineData("../../filename", false)]
         [InlineData("..filename", false)]
         [InlineData("filename", true)]
+        [InlineData("file-name", true)]
+        [InlineData("file_name", true)]
+        [InlineData("filename123", true)]
         public void IsValidFileName_ReturnsBool(string input, bool expectedOutput)
         {
             var result = FileUtility.IsValidFileName(input);
