@@ -34,6 +34,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
+using NuGet.Protocol;
 using Xunit;
 using Xunit.Abstractions;
 using IApplicationLifetime = Microsoft.AspNetCore.Hosting.IApplicationLifetime;
@@ -43,9 +44,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class SpecializationE2ETests
     {
-        private static SemaphoreSlim _pauseBeforeHostBuild;
-        private static SemaphoreSlim _pauseAfterStandbyHostBuild;
-        private static SemaphoreSlim _buildCount;
+        private static readonly Lazy<int> _buildDotnetIsolated60Path = new(BuildDotnetIsolated60, LazyThreadSafetyMode.ExecutionAndPublication);
+        private static readonly SemaphoreSlim _pauseBeforeHostBuild = new(1, 1);
+        private static readonly SemaphoreSlim _pauseAfterStandbyHostBuild = new(1, 1);
+        private static readonly SemaphoreSlim _buildCount = new(2, 2);
 
         private static readonly string _standbyPath = Path.Combine(Path.GetTempPath(), "functions", "standby", "wwwroot");
         private static readonly string _scriptRootConfigPath = ConfigurationPath.Combine(ConfigurationSectionNames.WebHost, nameof(ScriptApplicationHostOptions.ScriptPath));
@@ -73,10 +75,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             _environment = new TestEnvironment(settings);
             _loggerProvider = new TestLoggerProvider();
-
-            _pauseBeforeHostBuild = new SemaphoreSlim(1, 1);
-            _pauseAfterStandbyHostBuild = new SemaphoreSlim(1, 1);
-            _buildCount = new SemaphoreSlim(2, 2);
 
             _testOutputHelper = testOutputHelper;
         }
@@ -1076,7 +1074,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var expectedProcessName = scriptRootPath == _dotnetIsolated60Path ? "DotNetIsolated60" : "DotNetIsolatedUnsupported";
                 // Placeholder miss; new channel should be started using the deployed worker directly
                 var specializedChannel = await webChannelManager.GetChannels("dotnet-isolated").Single().Value.Task;
-                Assert.Contains("FunctionsNetHost.exe", specializedChannel.WorkerProcess.Process.StartInfo.FileName);
+                Assert.Contains("dotnet.exe", specializedChannel.WorkerProcess.Process.StartInfo.FileName);
                 Assert.Contains(expectedProcessName, specializedChannel.WorkerProcess.Process.StartInfo.Arguments);
                 runningProcess = Process.GetProcessById(specializedChannel.WorkerProcess.Id);
                 Assert.Contains(runningProcess.ProcessName, "dotnet");
@@ -1087,16 +1085,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        private static void BuildDotnetIsolated60()
+        private static int BuildDotnetIsolated60()
         {
             var p = Process.Start("dotnet", $"build {_dotnetIsolated60Path}/../../..");
             p.WaitForExit();
+            return p.ExitCode;
         }
 
         private IWebHostBuilder InitializeDotNetIsolatedPlaceholderBuilder(string scriptRootPath, params string[] functions)
         {
-            BuildDotnetIsolated60();
-
+            Assert.Equal(0, _buildDotnetIsolated60Path.Value);
             _environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "dotnet-isolated");
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteUsePlaceholderDotNetIsolated, "1");
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing);
