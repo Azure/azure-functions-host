@@ -87,7 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security
                     var input = ms.ToArray();
                     if (signature != null && !signature.SequenceEqual(ComputeHMACSHA256(encryptionKey, input)))
                     {
-                        throw new InvalidOperationException($"Signature mismatches! Token: {value} Signature Received: {signature} Expected: {ComputeHMACSHA256(encryptionKey, input)}");
+                        throw new InvalidOperationException($"Signature mismatches! Token: {value} Signature Received: {Convert.ToBase64String(signature)} Expected: {Convert.ToBase64String(ComputeHMACSHA256(encryptionKey, input))}");
                     }
 
                     return Encoding.UTF8.GetString(input);
