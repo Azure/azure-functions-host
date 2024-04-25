@@ -28,24 +28,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="..\WebJobs.Script.Tests.Integration\TestScripts\**\*.*">
+    <None Include="..\WebJobs.Script.Tests.Integration\TestScripts\**">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-      <Link>TestScripts\%(RecursiveDir)%(Filename)%(Extension)</Link>
-    </None>
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Include="Description\DotNet\TestFiles\PackageReferences\ProjectWithLockMatch\function.proj">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="Description\DotNet\TestFiles\PackageReferences\ProjectWithMismatchedLock\MismatchedPackageVersions\function.proj">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="Description\DotNet\TestFiles\PackageReferences\ProjectWithMismatchedLock\MismatchedProjectDependencies\function.proj">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="Description\DotNet\TestFiles\PackageReferences\ProjectWithoutLock\function.proj">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <LinkBase>TestScripts</LinkBase>
     </None>
   </ItemGroup>
 
@@ -86,84 +71,18 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="Description\DotNet\TestFiles\DepsFiles\function.deps.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Description\DotNet\TestFiles\DepsFiles\function2.deps.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Description\DotNet\TestFiles\DepsFiles\RidNativeDeps\function.deps.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Description\DotNet\TestFiles\PackageReferences\FunctionWithNoProject\function.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Description\DotNet\TestFiles\PackageReferences\ProjectWithLockMatch\project.assets.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Description\DotNet\TestFiles\PackageReferences\ProjectWithMismatchedLock\MismatchedPackageVersions\project.lock.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Description\DotNet\TestFiles\PackageReferences\ProjectWithMismatchedLock\MismatchedProjectDependencies\project.assets.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Managment\Payloads\ExpectedConcurrencyPayload.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Managment\Payloads\ExpectedHostJsonPayload.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Managment\Payloads\ExpectedHttpExtensionsPayload.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Microsoft.Azure.WebJobs.Script.WebHost.deps.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="TestFixture\HostOptionsProviderTests\TestBasicBindings.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="TestFixture\HostOptionsProviderTests\TestBasicConcurrency.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="TestFixture\HostOptionsProviderTests\TestDefaultConcurrency.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="TestFixture\HostOptionsProviderTests\TestIrregularNamingBindings.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="TestFixture\HostOptionsProviderTests\TestMultipleBindings.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="TestFixture\HostOptionsProviderTests\TestWihtoutExtensionsAttributeBindings.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="TestFixture\HostOptionsProviderTests\TestWihtoutIOptionsFormatter.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Workers\Rpc\Resources\functions.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="xunit.runner.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
+    <None Include="Description\DotNet\TestFiles\**\*.proj" />
+    <None Update="Description\DotNet\TestFiles\**" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="Microsoft.Azure.WebJobs.Script.WebHost.deps.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="TestFixture\HostOptionsProviderTests\*.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="Workers\Rpc\Resources\**" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Remove="Resources\FileProvisioning\PowerShell\*" />
   </ItemGroup>
 
   <ItemGroup>
-    <None Remove="Resources\FileProvisioning\PowerShell\PSGalleryEmptyFeed.xml" />
-    <None Remove="Resources\FileProvisioning\PowerShell\PSGallerySampleFeed.xml" />
-    <None Remove="Resources\FileProvisioning\PowerShell\requirements_PSGalleryOffline.psd1" />
-    <None Remove="Resources\FileProvisioning\PowerShell\requirements_PSGalleryOnline.psd1" />
-    <None Remove="Resources\FileProvisioning\PowerShell\profile.ps1" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <EmbeddedResource Include="Resources\FileProvisioning\PowerShell\PSGallerySampleFeed.xml" />
-    <EmbeddedResource Include="Resources\FileProvisioning\PowerShell\PSGalleryEmptyFeed.xml" />
-    <EmbeddedResource Include="Resources\FileProvisioning\PowerShell\requirements_PSGalleryOffline.psd1" />
-    <EmbeddedResource Include="Resources\FileProvisioning\PowerShell\requirements_PSGalleryOnline.psd1" />
-    <EmbeddedResource Include="Resources\FileProvisioning\PowerShell\profile.ps1">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </EmbeddedResource>
+    <EmbeddedResource Include="Resources\FileProvisioning\PowerShell\*" />
+    <EmbeddedResource Update="Resources\FileProvisioning\PowerShell\profile.ps1" CopyToOutputDirectory="Never" />
   </ItemGroup>
 
   <Import Project="..\..\build\GrpcTestFix.targets" />
