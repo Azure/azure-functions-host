@@ -101,9 +101,26 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         internal static async Task<TypedData> ToRpcHttp(this HttpRequest request, ILogger logger, GrpcCapabilities capabilities)
         {
+            bool requiresRouteParams = !string.IsNullOrEmpty(capabilities.GetCapabilityState(RpcWorkerConstants.RequiresRouteParameters));
+            bool isHttpProxying = !string.IsNullOrEmpty(capabilities.GetCapabilityState(RpcWorkerConstants.HttpUri));
+            bool shouldUseNullableValueDictionary = ShouldUseNullableValueDictionary(capabilities);
+
+            //  If proxying the http request to the worker and
+            //  worker requesting route params, send an empty rpc http object with only params populated.
+            if (isHttpProxying && requiresRouteParams)
+            {
+                var typedDataWithRouteParams = new TypedData
+                {
+                    Http = new RpcHttp()
+                };
+
+                PopulateHttpRouteDataAsParams(request, typedDataWithRouteParams.Http, shouldUseNullableValueDictionary);
+
+                return typedDataWithRouteParams;
+            }
+
             // If proxying the http request to the worker, keep the grpc message minimal
-            bool skipHttpInputs = !string.IsNullOrEmpty(capabilities.GetCapabilityState(RpcWorkerConstants.HttpUri));
-            if (skipHttpInputs)
+            if (isHttpProxying)
             {
                 return EmptyRpcHttp;
             }
@@ -119,7 +136,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 Http = http
             };
 
-            var shouldUseNullableValueDictionary = ShouldUseNullableValueDictionary(capabilities);
             foreach (var pair in request.Query)
             {
                 var value = pair.Value.ToString();
@@ -153,24 +169,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 }
             }
 
-            if (request.HttpContext.Items.TryGetValue(HttpExtensionConstants.AzureWebJobsHttpRouteDataKey, out object routeData))
-            {
-                Dictionary<string, object> parameters = (Dictionary<string, object>)routeData;
-                foreach (var pair in parameters)
-                {
-                    if (pair.Value != null)
-                    {
-                        if (shouldUseNullableValueDictionary)
-                        {
-                            http.NullableParams.Add(pair.Key, new NullableString { Value = pair.Value.ToString() });
-                        }
-                        else
-                        {
-                            http.Params.Add(pair.Key, pair.Value.ToString());
-                        }
-                    }
-                }
-            }
+            PopulateHttpRouteDataAsParams(request, http, shouldUseNullableValueDictionary);
 
             // parse ClaimsPrincipal if exists
             if (request.HttpContext?.User?.Identities != null)
@@ -220,6 +219,30 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
 
             return typedData;
+        }
+
+        private static void PopulateHttpRouteDataAsParams(HttpRequest request, RpcHttp http, bool shouldUseNullableValueDictionary)
+        {
+            if (!request.HttpContext.Items.TryGetValue(HttpExtensionConstants.AzureWebJobsHttpRouteDataKey, out var routeData)
+                || routeData is not Dictionary<string, object> parameters)
+            {
+                return;
+            }
+
+            foreach (var pair in parameters)
+            {
+                if (pair.Value != null)
+                {
+                    if (shouldUseNullableValueDictionary)
+                    {
+                        http.NullableParams.Add(pair.Key, new NullableString { Value = pair.Value.ToString() });
+                    }
+                    else
+                    {
+                        http.Params.Add(pair.Key, pair.Value.ToString());
+                    }
+                }
+            }
         }
 
         private static async Task PopulateBody(HttpRequest request, RpcHttp http, GrpcCapabilities capabilities, ILogger logger)
