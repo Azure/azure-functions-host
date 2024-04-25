@@ -101,13 +101,13 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         internal static async Task<TypedData> ToRpcHttp(this HttpRequest request, ILogger logger, GrpcCapabilities capabilities)
         {
-            var handlesHttpRouteParamsWhenProxying = !string.IsNullOrEmpty(capabilities.GetCapabilityState(RpcWorkerConstants.HandlesRouteParamsWhenHttpProxying));
-            var skipHttpInputs = !string.IsNullOrEmpty(capabilities.GetCapabilityState(RpcWorkerConstants.HttpUri));
-            var shouldUseNullableValueDictionary = ShouldUseNullableValueDictionary(capabilities);
+            bool requiresRouteParams = !string.IsNullOrEmpty(capabilities.GetCapabilityState(RpcWorkerConstants.RequiresRouteParameters));
+            bool isHttpProxying = !string.IsNullOrEmpty(capabilities.GetCapabilityState(RpcWorkerConstants.HttpUri));
+            bool shouldUseNullableValueDictionary = ShouldUseNullableValueDictionary(capabilities);
 
             //  If proxying the http request to the worker and
-            //  worker can handle route params, send an empty rpc http object with only params populated.
-            if (skipHttpInputs && handlesHttpRouteParamsWhenProxying)
+            //  worker requesting route params, send an empty rpc http object with only params populated.
+            if (isHttpProxying && requiresRouteParams)
             {
                 var typedDataWithRouteParams = new TypedData
                 {
@@ -120,7 +120,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
 
             // If proxying the http request to the worker, keep the grpc message minimal
-            if (skipHttpInputs)
+            if (isHttpProxying)
             {
                 return EmptyRpcHttp;
             }
@@ -223,17 +223,12 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         private static void PopulateHttpRouteDataAsParams(HttpRequest request, RpcHttp http, bool shouldUseNullableValueDictionary)
         {
-            if (!request.HttpContext.Items.TryGetValue(HttpExtensionConstants.AzureWebJobsHttpRouteDataKey, out var routeData))
+            if (!request.HttpContext.Items.TryGetValue(HttpExtensionConstants.AzureWebJobsHttpRouteDataKey, out var routeData)
+                || routeData is not Dictionary<string, object> parameters)
             {
                 return;
             }
 
-            if (routeData == null)
-            {
-                return;
-            }
-
-            var parameters = (Dictionary<string, object>)routeData;
             foreach (var pair in parameters)
             {
                 if (pair.Value != null)

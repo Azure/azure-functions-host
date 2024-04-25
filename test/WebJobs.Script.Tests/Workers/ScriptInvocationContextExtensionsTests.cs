@@ -351,7 +351,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             var workerCapabilities = new Dictionary<string, string>()
             {
                 { RpcWorkerConstants.HttpUri, "http://localhost:1234" },
-                { RpcWorkerConstants.HandlesRouteParamsWhenHttpProxying, bool.TrueString }
+                { RpcWorkerConstants.RequiresRouteParameters, bool.TrueString }
             };
 
             var routeDataValues = new Dictionary<string, object>
