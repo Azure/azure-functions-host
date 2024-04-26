@@ -45,7 +45,7 @@ jobs:
   - task: NuGetAuthenticate@1
     displayName: NuGet Authenticate
 
-  - template: /eng/ci/templates/install-dotnet.yml
+  - template: /eng/ci/templates/install-dotnet.yml@self
 
   - task: PowerShell@2
     displayName: Build artifacts

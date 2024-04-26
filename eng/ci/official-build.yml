@@ -49,7 +49,7 @@ extends:
     - stage: Initialize
 
       jobs:
-      - template: /eng/ci/templates/jobs/initialize-pipeline.yml
+      - template: /eng/ci/templates/jobs/initialize-pipeline.yml@self
         parameters:
           minorVersionPrefix: ${{ variables.minorVersionPrefix }}
 
@@ -57,11 +57,11 @@ extends:
       dependsOn: Initialize
 
       jobs:
-      - template: /eng/ci/templates/official/jobs/build-artifacts-windows.yml
+      - template: /eng/ci/templates/official/jobs/build-artifacts-windows.yml@self
         parameters:
           minorVersionPrefix: ${{ variables.minorVersionPrefix }}
 
-      - template: /eng/ci/templates/official/jobs/build-artifacts-linux.yml
+      - template: /eng/ci/templates/official/jobs/build-artifacts-linux.yml@self
         parameters:
           minorVersionPrefix: ${{ variables.minorVersionPrefix }}
 
@@ -69,7 +69,7 @@ extends:
       dependsOn: Initialize
 
       jobs:
-      - template: /eng/ci/templates/jobs/run-unit-tests.yml
+      - template: /eng/ci/templates/jobs/run-unit-tests.yml@self
       # TODO: commented out while iterating on other steps
-      # - template: /eng/ci/templates/official/jobs/run-non-e2e-tests.yml
-      # - template: /eng/ci/templates/official/jobs/run-integration-tests.yml
+      # - template: /eng/ci/templates/official/jobs/run-non-e2e-tests.yml@self
+      # - template: /eng/ci/templates/official/jobs/run-integration-tests.yml@self

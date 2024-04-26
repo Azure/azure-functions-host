@@ -15,7 +15,7 @@ jobs:
   - task: NuGetAuthenticate@1
     displayName: NuGet Authenticate
 
-  - template: /eng/ci/templates/install-dotnet.yml
+  - template: /eng/ci/templates/install-dotnet.yml@self
 
   - task: UseNode@1
     inputs:
