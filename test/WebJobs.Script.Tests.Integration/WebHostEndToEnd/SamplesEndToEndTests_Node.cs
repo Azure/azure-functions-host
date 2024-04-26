@@ -364,7 +364,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             // Microsoft.Azure.WebJobs.Extensions.EventHubs
             public TestFixture()
-                : base(Path.Combine(Environment.CurrentDirectory, "..", "..", "..", "..", "..", "sample", "node"), "samples", RpcWorkerConstants.NodeLanguageWorkerName)
+                : base(Path.Combine(Environment.CurrentDirectory, "..", "..", "..", "..", "sample", "node"), "samples", RpcWorkerConstants.NodeLanguageWorkerName)
             {
                 ProxyEndToEndTests.EnableProxiesOnSystemEnvironment();
             }
