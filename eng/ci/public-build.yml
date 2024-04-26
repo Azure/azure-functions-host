@@ -50,7 +50,7 @@ extends:
     - stage: Initialize
 
       jobs:
-      - template: /eng/ci/templates/jobs/initialize-pipeline.yml@self
+      - template: /eng/ci/templates/jobs/initialize-pipeline.yml
         parameters:
           minorVersionPrefix: ${{ variables.minorVersionPrefix }}
 
@@ -58,4 +58,4 @@ extends:
       dependsOn: Initialize
 
       jobs:
-      - template: /eng/ci/templates/jobs/run-unit-tests.yml@self
+      - template: /eng/ci/templates/jobs/run-unit-tests.yml

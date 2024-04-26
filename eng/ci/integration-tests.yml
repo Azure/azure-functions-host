@@ -30,6 +30,6 @@ extends:
     - stage: Test
       jobs:
 
-      - template: /eng/ci/templates/jobs/initialize-pipeline.yml@self
-      - template: /eng/ci/templates/official/jobs/run-non-e2e-tests.yml@self
-      - template: /eng/ci/templates/official/jobs/run-integration-tests.yml@self
+      - template: /eng/ci/templates/jobs/initialize-pipeline.yml
+      - template: /eng/ci/templates/official/jobs/run-non-e2e-tests.yml
+      - template: /eng/ci/templates/official/jobs/run-integration-tests.yml
