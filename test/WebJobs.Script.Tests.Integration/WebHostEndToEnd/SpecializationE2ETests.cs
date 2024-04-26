@@ -51,8 +51,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private static readonly string _standbyPath = Path.Combine(Path.GetTempPath(), "functions", "standby", "wwwroot");
         private static readonly string _scriptRootConfigPath = ConfigurationPath.Combine(ConfigurationSectionNames.WebHost, nameof(ScriptApplicationHostOptions.ScriptPath));
 
-        private static readonly string _dotnetIsolated60Path = Path.GetFullPath(@"..\..\..\..\DotNetIsolated60\bin\Debug\net6.0");
-        private static readonly string _dotnetIsolatedUnsuppportedPath = Path.GetFullPath(@"..\..\..\..\DotNetIsolatedUnsupportedWorker\bin\Debug\net6.0");
+        private static readonly string _dotnetIsolated60Path = Path.GetFullPath(@"..\..\DotNetIsolated60\debug");
+        private static readonly string _dotnetIsolatedUnsuppportedPath = Path.GetFullPath(@"..\..\DotNetIsolatedUnsupportedWorker\debug");
         private static readonly string _dotnetIsolatedEmptyScriptRoot = Path.GetFullPath(@"..\..\..\..\EmptyScriptRoot");
 
         private const string _specializedScriptRoot = @"TestScripts\CSharp";
@@ -1086,7 +1086,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private static int BuildDotnetIsolated60()
         {
-            var p = Process.Start("dotnet", $"build {_dotnetIsolated60Path}/../../..");
+            var p = Process.Start("dotnet", $"build ../../../../test/DotNetIsolated60/DotNetIsolated60.sln");
             p.WaitForExit();
             return p.ExitCode;
         }

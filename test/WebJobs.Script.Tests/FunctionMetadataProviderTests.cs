@@ -44,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var workerConfigs = TestHelpers.GetTestWorkerConfigs().ToImmutableArray();
             workerConfigs.ToList().ForEach(config => config.Description.WorkerIndexing = "true");
             var scriptjobhostoptions = new ScriptJobHostOptions();
-            scriptjobhostoptions.RootScriptPath = Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "..", "sample", "node");
+            scriptjobhostoptions.RootScriptPath = Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "sample", "node");
 
             var environment = SystemEnvironment.Instance;
             environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "node");
@@ -80,7 +80,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var workerConfigs = TestHelpers.GetTestWorkerConfigs().ToImmutableArray();
             workerConfigs.ToList().ForEach(config => config.Description.WorkerIndexing = "true");
             var scriptjobhostoptions = new ScriptJobHostOptions();
-            scriptjobhostoptions.RootScriptPath = Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "..", "sample", "node");
+            scriptjobhostoptions.RootScriptPath = Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "sample", "node");
 
             var environment = SystemEnvironment.Instance;
             environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "node");

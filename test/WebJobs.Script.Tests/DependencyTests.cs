@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
@@ -52,12 +53,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void Verify_DepsJsonChanges()
         {
-            // ".NET 8.0" -> "net8.0"
-            string tfm = typeof(Program).Assembly.GetCustomAttribute<TargetFrameworkAttribute>()
-                .FrameworkDisplayName.Trim('.').Replace(" ", string.Empty).ToLowerInvariant();
             string depsJsonFileName = "Microsoft.Azure.WebJobs.Script.WebHost.deps.json";
             string oldDepsJson = Path.GetFullPath(depsJsonFileName);
-            string webhostBinPath = Path.Combine("..", "..", "..", "..", "..", "src", "WebJobs.Script.WebHost", "bin", Config, tfm);
+            string webhostBinPath = Path.Combine("..", "..", "WebJobs.Script.WebHost", Config);
             string newDepsJson = Directory.GetFiles(Path.GetFullPath(webhostBinPath), depsJsonFileName, SearchOption.AllDirectories).FirstOrDefault();
 
             Assert.True(File.Exists(oldDepsJson), $"{oldDepsJson} not found.");
