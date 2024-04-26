@@ -20,7 +20,7 @@
   </ItemGroup>
 
   <Target Name="BuildGeneratorConsole" Condition="'$(TargetFramework)' == 'netstandard2.0'" AfterTargets="Build">
-    <MSBuild Projects="@(ConsoleProject)" Targets="Restore;Build" Properties="Configuration=$(Configuration);Platform=$(Platform);TargetFramework=netcoreapp2.0;OutputPath=$(MSBuildProjectDirectory)\$(OutputPath)\generator" />
+    <MSBuild Projects="@(ConsoleProject)" Targets="Restore;Build" Properties="Configuration=$(Configuration);Platform=$(Platform);TargetFramework=netcoreapp2.0;OutputPath=$(OutputPath)\generator" />
   </Target>
 
   <ItemGroup>
@@ -32,7 +32,7 @@
 
   <Target Name="UpdateRuntimeAssemblies" BeforeTargets="Build">
     <Exec Command="pwsh ./updateruntimeassemblies.ps1" Condition=" '$(OS)' == 'Unix' "/>
-    <Exec Command="powershell.exe –command .\updateruntimeassemblies.ps1" Condition=" '$(OS)' == 'Windows_NT' "/>
+    <Exec Command="powershell.exe -command .\updateruntimeassemblies.ps1" Condition=" '$(OS)' == 'Windows_NT' "/>
   </Target>
 
   <Target Name="PackReferenceAssemblies">
