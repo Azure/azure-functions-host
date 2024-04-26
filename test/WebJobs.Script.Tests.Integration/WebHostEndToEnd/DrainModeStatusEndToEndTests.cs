@@ -71,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         }
 
         public DrainStatusTestFixture()
-            : base(Path.Combine(Environment.CurrentDirectory, "..", "..", "..", "..", "..", "sample", "NodeDrain"), "samples", RpcWorkerConstants.NodeLanguageWorkerName)
+            : base(Path.Combine(Environment.CurrentDirectory, "..", "..", "..", "..", "sample", "NodeDrain"), "samples", RpcWorkerConstants.NodeLanguageWorkerName)
         {
         }
 
