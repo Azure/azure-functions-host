@@ -57,6 +57,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public const string HttpUri = "HttpUri";
 
         /// <summary>
+        /// Indicates whether the RpcHttp request should include the route parameters when the request is being proxied to an HTTP worker.
+        /// </summary>
+        public const string RequiresRouteParameters = "RequiresRouteParameters";
+
+        /// <summary>
         /// Indicates whether empty entries in the trigger message should be included when sending RpcInvocation data to OOP workers.
         /// </summary>
         public const string IncludeEmptyEntriesInMessagePayload = "IncludeEmptyEntriesInMessagePayload";
