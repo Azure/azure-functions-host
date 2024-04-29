@@ -64,6 +64,12 @@ namespace Microsoft.Azure.WebJobs.Script.Config
             set => SetSetting(EnvironmentSettingNames.AppInsightsConnectionString, value);
         }
 
+        public virtual string OtlpEndpoint
+        {
+            get => GetSetting(EnvironmentSettingNames.OtlpEndpoint);
+            set => SetSetting(EnvironmentSettingNames.OtlpEndpoint, value);
+        }
+
         public virtual string GetSetting(string settingKey)
         {
             if (string.IsNullOrEmpty(settingKey))

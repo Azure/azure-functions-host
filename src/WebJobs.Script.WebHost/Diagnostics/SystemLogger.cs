@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Host.Executors.Internal;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Logging;
@@ -18,20 +19,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
     public class SystemLogger : ILogger
     {
-        private readonly IEventGenerator _eventGenerator;
         private readonly string _categoryName;
         private readonly string _functionName;
-        private readonly bool _isUserFunction;
         private readonly string _hostInstanceId;
-        private readonly IEnvironment _environment;
+        private readonly bool _isUserFunction;
         private readonly LogLevel _logLevel;
+        private readonly IEnvironment _environment;
+        private readonly IEventGenerator _eventGenerator;
         private readonly IDebugStateProvider _debugStateProvider;
         private readonly IScriptEventManager _eventManager;
         private readonly IExternalScopeProvider _scopeProvider;
         private AppServiceOptions _appServiceOptions;
 
-        public SystemLogger(string hostInstanceId, string categoryName, IEventGenerator eventGenerator, IEnvironment environment,
-            IDebugStateProvider debugStateProvider, IScriptEventManager eventManager, IExternalScopeProvider scopeProvider, IOptionsMonitor<AppServiceOptions> appServiceOptionsMonitor)
+        public SystemLogger(string hostInstanceId, string categoryName, IEventGenerator eventGenerator, IEnvironment environment,  IDebugStateProvider debugStateProvider,
+           IScriptEventManager eventManager, IExternalScopeProvider scopeProvider, IOptionsMonitor<AppServiceOptions> appServiceOptionsMonitor)
         {
             _environment = environment;
             _eventGenerator = eventGenerator;
@@ -59,13 +60,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
         {
-            if (!IsEnabled(logLevel) || _isUserFunction)
+            if (!IsEnabled(logLevel) || _isUserFunction || FunctionInvoker.CurrentScope == FunctionInvocationScope.User)
             {
                 return;
             }
 
-            // enumerate all the state values once, capturing the values we'll use below
-            // last one wins
+            // Enumerate all the state values once, capturing the values we'll use below - last one wins.
             string stateSourceValue = null;
             string stateFunctionName = null;
             string stateEventName = null;
@@ -110,7 +110,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 }
             }
 
-            // propagate special exceptions through the EventManager
+            // Propagate special exceptions through the EventManager.
             string source = _categoryName ?? stateSourceValue;
             if (exception is FunctionIndexingException && _eventManager != null)
             {
@@ -152,9 +152,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 }
             }
 
-            // Apply standard event properties
+            // Apply standard event properties.
             // Note: we must be sure to default any null values to empty string
-            // otherwise the ETW event will fail to be persisted (silently)
+            // otherwise the ETW event will fail to be persisted (silently).
             string summary = formattedMessage ?? string.Empty;
             string eventName = !string.IsNullOrEmpty(eventId.Name) ? eventId.Name : stateEventName ?? string.Empty;
             eventName = isDiagnosticEvent ? $"DiagnosticEvent-{diagnosticEventErrorCode}" : eventName;

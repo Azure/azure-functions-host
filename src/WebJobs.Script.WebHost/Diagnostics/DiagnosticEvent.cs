@@ -11,6 +11,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
     public class DiagnosticEvent : TableEntity
     {
+        internal const string CurrentEventVersion = "2024-05-01";
+
         public DiagnosticEvent() { }
 
         public DiagnosticEvent(string hostId, DateTime timestamp)
@@ -18,7 +20,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             RowKey = TableStorageHelpers.GetRowKey(timestamp);
             PartitionKey = $"{hostId}-{timestamp:yyyyMMdd}";
             Timestamp = timestamp;
+            EventVersion = CurrentEventVersion;
         }
+
+        public string EventVersion { get; set; }
 
         public int HitCount { get; set; }
 

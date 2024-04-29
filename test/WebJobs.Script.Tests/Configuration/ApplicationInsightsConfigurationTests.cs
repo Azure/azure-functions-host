@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 host = new HostBuilder()
                     .ConfigureLogging((context, builder) =>
                     {
-                        ScriptHostBuilderExtensions.ConfigureApplicationInsights(context, builder);
+                        builder.ConfigureApplicationInsights(context);
                     })
                     .ConfigureServices(s =>
                     {

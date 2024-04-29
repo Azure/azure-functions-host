@@ -227,7 +227,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             return true;
         }
 
-        internal async Task<string> CheckHashAsync(BlobClient hashBlobClient, string content)
+        private async Task<string> CheckHashAsync(BlobClient hashBlobClient, string content)
         {
             try
             {
@@ -306,7 +306,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             return _hashBlobClient;
         }
 
-        public async Task<SyncTriggersPayload> GetSyncTriggersPayload()
+        private async Task<SyncTriggersPayload> GetSyncTriggersPayload()
         {
             var hostOptions = _applicationHostOptions.CurrentValue.ToHostOptions();
             var functionsMetadata = _functionMetadataManager.GetFunctionMetadata().Where(m => !m.IsProxy());
@@ -344,7 +344,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
 
             // Add all listable functions details to the payload
-            JObject functions = new JObject();
             var listableFunctions = _functionMetadataManager.GetFunctionMetadata().Where(m => !m.IsCodeless());
             var functionDetails = await WebFunctionsManager.GetFunctionMetadataResponse(listableFunctions, hostOptions, _hostNameProvider);
             result.Add("functions", new JArray(functionDetails.Select(p => JObject.FromObject(p))));
@@ -468,7 +467,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             return null;
         }
 
-        internal async Task<IEnumerable<JObject>> GetFunctionTriggers(IEnumerable<FunctionMetadata> functionsMetadata, ScriptJobHostOptions hostOptions)
+        private async Task<IEnumerable<JObject>> GetFunctionTriggers(IEnumerable<FunctionMetadata> functionsMetadata, ScriptJobHostOptions hostOptions)
         {
             var triggers = (await functionsMetadata
                 .Where(f => !f.IsProxy())
@@ -739,17 +738,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         // of triggers. It'll verify app ownership using a SWT token valid for 5 minutes. It should be plenty.
         private async Task<(bool Success, string ErrorMessage)> SetTriggersAsync(string content)
         {
-            string sanitizedContentString = content;
-            if (ArmCacheEnabled)
+            // sanitize the content before logging
+            var sanitizedContent = JToken.Parse(content);
+            if (sanitizedContent.Type == JTokenType.Object)
             {
-                // sanitize the content before logging
-                var sanitizedContent = JToken.Parse(content);
-                if (sanitizedContent.Type == JTokenType.Object)
-                {
-                    ((JObject)sanitizedContent).Remove("secrets");
-                    sanitizedContentString = sanitizedContent.ToString();
-                }
+                ((JObject)sanitizedContent).Remove("secrets");
             }
+            var sanitizedContentString = Sanitizer.Sanitize(sanitizedContent.ToString());
 
             using (var request = BuildSetTriggersRequest())
             {

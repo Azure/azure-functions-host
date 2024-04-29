@@ -43,15 +43,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class SpecializationE2ETests
     {
-        private static SemaphoreSlim _pauseBeforeHostBuild;
-        private static SemaphoreSlim _pauseAfterStandbyHostBuild;
-        private static SemaphoreSlim _buildCount;
+        private static readonly Lazy<int> _buildDotnetIsolated60Path = new(BuildDotnetIsolated60, LazyThreadSafetyMode.ExecutionAndPublication);
+        private static readonly SemaphoreSlim _pauseBeforeHostBuild = new(1, 1);
+        private static readonly SemaphoreSlim _pauseAfterStandbyHostBuild = new(1, 1);
+        private static readonly SemaphoreSlim _buildCount = new(2, 2);
 
         private static readonly string _standbyPath = Path.Combine(Path.GetTempPath(), "functions", "standby", "wwwroot");
         private static readonly string _scriptRootConfigPath = ConfigurationPath.Combine(ConfigurationSectionNames.WebHost, nameof(ScriptApplicationHostOptions.ScriptPath));
 
-        private static readonly string _dotnetIsolated60Path = Path.GetFullPath(@"..\..\..\..\DotNetIsolated60\bin\Debug\net6.0");
-        private static readonly string _dotnetIsolatedUnsuppportedPath = Path.GetFullPath(@"..\..\..\..\DotNetIsolatedUnsupportedWorker\bin\Debug\net6.0");
+        private static readonly string _dotnetIsolated60Path = Path.GetFullPath(@"..\..\DotNetIsolated60\debug");
+        private static readonly string _dotnetIsolatedUnsuppportedPath = Path.GetFullPath(@"..\..\DotNetIsolatedUnsupportedWorker\debug");
         private static readonly string _dotnetIsolatedEmptyScriptRoot = Path.GetFullPath(@"..\..\..\..\EmptyScriptRoot");
 
         private const string _specializedScriptRoot = @"TestScripts\CSharp";
@@ -73,10 +74,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             _environment = new TestEnvironment(settings);
             _loggerProvider = new TestLoggerProvider();
-
-            _pauseBeforeHostBuild = new SemaphoreSlim(1, 1);
-            _pauseAfterStandbyHostBuild = new SemaphoreSlim(1, 1);
-            _buildCount = new SemaphoreSlim(2, 2);
 
             _testOutputHelper = testOutputHelper;
         }
@@ -1087,16 +1084,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        private static void BuildDotnetIsolated60()
+        private static int BuildDotnetIsolated60()
         {
-            var p = Process.Start("dotnet", $"build {_dotnetIsolated60Path}/../../..");
+            var p = Process.Start("dotnet", $"build ../../../../test/DotNetIsolated60/DotNetIsolated60.sln");
             p.WaitForExit();
+            return p.ExitCode;
         }
 
         private IWebHostBuilder InitializeDotNetIsolatedPlaceholderBuilder(string scriptRootPath, params string[] functions)
         {
-            BuildDotnetIsolated60();
-
+            Assert.Equal(0, _buildDotnetIsolated60Path.Value);
             _environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "dotnet-isolated");
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteUsePlaceholderDotNetIsolated, "1");
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing);
