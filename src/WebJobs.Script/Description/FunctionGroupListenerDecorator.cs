@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
 
             string group = functionMetadata.GetFunctionGroup() ?? functionName;
-            if (string.Equals(targetGroup, group, StringComparison.OrdinalIgnoreCase))
+            if (FunctionGroups.IsEnabled(targetGroup, group))
             {
                 _logger.LogDebug("Enabling function {functionName}", functionName);
                 return context.Listener;

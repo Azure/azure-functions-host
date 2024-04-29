@@ -14,3 +14,7 @@ build/python.props @vrdmr @gavin-aguiar @YunchuWang @pdthummar @hallvictoria
 test/WebJobs.Script.Tests/Microsoft.Azure.WebJobs.Script.WebHost.deps.json @fabiocav @brettsam @mathewc
 
 src/WebJobs.Script.WebHost/PreJIT/* @vrdmr @pragnagopa @eliaslopezgt @VpOfEngineering @azure/azure-functions-core
+
+# CI owners
+
+eng/ci/* @fabiocav @jviau @brettsam

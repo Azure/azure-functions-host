@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
+using Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Metrics
@@ -46,12 +47,12 @@ namespace Microsoft.Azure.WebJobs.Script.Metrics
                 Version = "1.0.0",
                 Tags = new TagList()
                 {
-                    { TelemetryAttributes.CloudProvider, cloudName },
-                    { TelemetryAttributes.CloudPlatform, CloudPlatformName },
-                    { TelemetryAttributes.CloudRegion, region },
-                    { TelemetryAttributes.CloudResourceId, armResourceId },
-                    { TelemetryAttributes.ServiceInstanceId, instanceId },
-                    { TelemetryAttributes.ServiceName, appName }
+                    { ResourceSemanticConventions.CloudProvider, cloudName },
+                    { ResourceSemanticConventions.CloudPlatform, CloudPlatformName },
+                    { ResourceSemanticConventions.CloudRegion, region },
+                    { ResourceSemanticConventions.CloudResourceId, armResourceId },
+                    { ResourceSemanticConventions.ServiceInstanceId, instanceId },
+                    { ResourceSemanticConventions.ServiceName, appName }
                 }
             };
             var meter = meterFactory.Create(hostMeterOptions);
@@ -70,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Metrics
                 }
 
                 var functionGroup = _environment.GetEnvironmentVariableOrDefault(EnvironmentSettingNames.FunctionsTargetGroup, string.Empty);
-                var functionGroupTag = new KeyValuePair<string, object>(TelemetryAttributes.AzureFunctionsGroup, functionGroup);
+                var functionGroupTag = new KeyValuePair<string, object>(OpenTelemetryConstants.AzureFunctionsGroup, functionGroup);
 
                 if (!string.IsNullOrEmpty(functionGroup))
                 {

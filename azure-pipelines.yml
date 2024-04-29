@@ -1,6 +1,12 @@
 variables:
   buildNumber: $[ counter('constant', 13000) ]
   isReleaseBranch: $[contains(variables['Build.SourceBranch'], 'release/')]
+  ${{ if contains(variables['Build.SourceBranch'], 'release/inproc6/') }}:
+    minorVersionPrefix: "6"
+  ${{ elseif contains(variables['Build.SourceBranch'], 'release/inproc8/') }}:
+    minorVersionPrefix: "8"
+  ${{ else }}:
+    minorVersionPrefix: ""
   DOTNET_NOLOGO: 1
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
   DOTNET_CLI_TELEMETRY_OPTOUT: 1
@@ -9,15 +15,19 @@ pr:
   branches:
     include:
     - dev
+    - in-proc
     - release/4.*
-    - feature/oop-host   
+    - release/inproc6/4.*
+    - release/inproc8/4.*
 
 trigger:
   branches:
     include:
     - dev
+    - in-proc
     - release/4.*
-    - feature/oop-host 
+    - release/inproc6/4.*
+    - release/inproc8/4.*
 
 jobs:
 - job: InitializePipeline
@@ -38,6 +48,7 @@ jobs:
       filePath: '$(Build.Repository.LocalPath)\build\initialize-pipeline.ps1'
       arguments: -minorVersionPrefix "$(minorVersionPrefix)"
       showWarnings: true
+      pwsh: true
 
 - job: BuildArtifacts
   dependsOn: InitializePipeline
@@ -72,15 +83,15 @@ jobs:
       filePath: '$(Build.Repository.LocalPath)\build\update-hostreferences.ps1'
   - task: CopyFiles@2
     inputs:
-      SourceFolder: '$(Build.Repository.LocalPath)\buildoutput'
-      Contents: '**\*.zip'
+      SourceFolder: 'out/pub/WebJobs.Script.WebHost'
+      Contents: '**/*.zip'
       TargetFolder: '$(Build.ArtifactStagingDirectory)'
   - task: DotNetCoreCLI@2
     displayName: 'Build host packages'
     inputs:
       command: 'custom'
       custom: 'pack'
-      arguments: -o packages -p:BuildNumber=$(buildNumber) -c Release $(packSuffixSwitch)
+      arguments: -p:BuildNumber=$(buildNumber) -c Release $(packSuffixSwitch)
       projects: |
         **\WebJobs.Script.csproj
         **\WebJobs.Script.WebHost.csproj
@@ -90,7 +101,7 @@ jobs:
       foreach ($baseName in @("WebJobs.Script", "WebJobs.Script.WebHost", "WebJobs.Script.Grpc"))
       {
         $packageName = "Microsoft.Azure." + $baseName + "*.nupkg"
-        $sourcePath = "$(Build.Repository.LocalPath)/packages/$packageName"
+        $sourcePath = "$(Build.Repository.LocalPath)/out/pkg/release/$packageName"
         if (-not (test-path $sourcePath))
         {
           throw "Unable to find '$packageName' at './package'"
@@ -120,7 +131,7 @@ jobs:
     displayName: 'ESRP CodeSigning: Strong Name and Authenticode'
     inputs:
       ConnectedServiceName: 'ESRP Service'
-      FolderPath: 'src\WebJobs.Script.Abstractions\bin\Release'
+      FolderPath: 'out/bin/WebJobs.Script.Abstractions/release'
       Pattern: Microsoft.Azure.WebJobs.Script.Abstractions*.dll
       signConfigType: inlineSignParams
       inlineOperation: |
@@ -155,14 +166,14 @@ jobs:
     inputs:
       command: 'custom'
       custom: 'pack'
-      arguments: '--no-build -c Release -o packages'
+      arguments: '--no-build -c Release'
       projects: |
         **\WebJobs.Script.Abstractions.csproj
   - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@2
     displayName: 'ESRP CodeSigning: Nupkg'
     inputs:
       ConnectedServiceName: 'ESRP Service'
-      FolderPath: 'packages'
+      FolderPath: 'out/pkg/release'
       Pattern: 'Microsoft.Azure.WebJobs.Script.Abstractions*.nupkg'
       signConfigType: inlineSignParams
       inlineOperation: |
@@ -186,8 +197,8 @@ jobs:
     displayName: 'ESRP CodeSigning: Strong Name and Authenticode'
     inputs:
       ConnectedServiceName: 'ESRP Service'
-      FolderPath: 'tools\ExtensionsMetadataGenerator\src\ExtensionsMetadataGenerator\bin\Release'
-      Pattern: Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator*.dll
+      FolderPath: 'out/bin/ExtensionsMetadataGenerator'
+      Pattern: 'Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator*.dll'
       signConfigType: inlineSignParams
       inlineOperation: |
         [
@@ -236,7 +247,7 @@ jobs:
     inputs:
       command: 'custom'
       custom: 'pack'
-      arguments: '--no-build -c Release -o packages $(emgSuffixSwitch)'
+      arguments: '--no-build -c Release $(emgSuffixSwitch)'
       projects: |
         **\ExtensionsMetadataGenerator.csproj
         steps:
@@ -244,7 +255,7 @@ jobs:
     displayName: 'ESRP CodeSigning: Nupkg'
     inputs:
       ConnectedServiceName: 'ESRP Service'
-      FolderPath: 'packages'
+      FolderPath: 'out/pkg/release'
       Pattern: 'Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator*.nupkg'
       signConfigType: inlineSignParams
       inlineOperation: |
@@ -309,9 +320,9 @@ jobs:
   - task: ManifestGeneratorTask@0
     displayName: 'SBOM Generation Task - NugetPackages'
     inputs:
-      BuildDropPath: '$(Build.Repository.LocalPath)\packages'
+      BuildDropPath: 'out/pkg/release'
       Verbosity: 'Information'
-  - publish: $(Build.Repository.LocalPath)\packages
+  - publish: out/pkg/release
     artifact: NugetPackages
 
 - job: RunUnitTests

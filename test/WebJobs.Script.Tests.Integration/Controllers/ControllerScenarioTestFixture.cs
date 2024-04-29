@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
                     services.PostConfigure<ScriptApplicationHostOptions>(o=>
                     {
                         o.IsSelfHost = true;
-                        o.ScriptPath = Path.Combine(Environment.CurrentDirectory, "..", "..", "..", "..", "..", "sample", "csharp");
+                        o.ScriptPath = Path.Combine(Environment.CurrentDirectory, "..", "..", "..", "..", "sample", "csharp");
                         o.LogPath = Path.Combine(Path.GetTempPath(), @"Functions");
                         o.SecretsPath = Path.Combine(Path.GetTempPath(), @"FunctionsTests\Secrets");
                         o.HasParentScope = true;

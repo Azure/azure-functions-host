@@ -3,11 +3,15 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
+using System.Reflection;
+using System.Runtime.Versioning;
 using System.Text;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Extensions.DependencyModel;
 using Xunit;
 
@@ -15,6 +19,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class DependencyTests
     {
+#if RELEASE
+        private const string Config = "release";
+#else
+        private const string Config = "debug";
+#endif
+
         // These are changed often and controlled by us, so we don't need to fail if they are updated.
         private static readonly string[] _excludedList = new[]
         {
@@ -40,12 +50,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly DependencyContextJsonReader _reader = new DependencyContextJsonReader();
         private readonly IEnumerable<string> _rids = DependencyHelper.GetRuntimeFallbacks();
 
-        [Fact(Skip = "Will fix Deps JSON test later. https://github.com/Azure/azure-functions-host/issues/9803#issuecomment-1915241015")]
+        [Fact]
         public void Verify_DepsJsonChanges()
         {
             string depsJsonFileName = "Microsoft.Azure.WebJobs.Script.WebHost.deps.json";
             string oldDepsJson = Path.GetFullPath(depsJsonFileName);
-            string webhostBinPath = Path.Combine("..", "..", "..", "..", "..", "src", "WebJobs.Script.WebHost", "bin");
+            string webhostBinPath = Path.Combine("..", "..", "WebJobs.Script.WebHost", Config);
             string newDepsJson = Directory.GetFiles(Path.GetFullPath(webhostBinPath), depsJsonFileName, SearchOption.AllDirectories).FirstOrDefault();
 
             Assert.True(File.Exists(oldDepsJson), $"{oldDepsJson} not found.");

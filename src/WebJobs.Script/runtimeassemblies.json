@@ -16,6 +16,18 @@
       "resolutionPolicy": "private"
     },
     {
+      "name": "Azure.Monitor.OpenTelemetry.AspNetCore",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Azure.Monitor.OpenTelemetry.Exporter",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Azure.Monitor.OpenTelemetry.LiveMetrics",
+      "resolutionPolicy": "private"
+    },
+    {
       "name": "Azure.Security.KeyVault.Secrets",
       "resolutionPolicy": "private"
     },
@@ -896,6 +908,46 @@
       "resolutionPolicy": "private"
     },
     {
+      "name": "OpenTelemetry",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "OpenTelemetry.Api",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "OpenTelemetry.Api.ProviderBuilderExtensions",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "OpenTelemetry.Exporter.Console",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "OpenTelemetry.Exporter.OpenTelemetryProtocol",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "OpenTelemetry.Extensions.Hosting",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "OpenTelemetry.Instrumentation.AspNetCore",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "OpenTelemetry.Instrumentation.Http",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "OpenTelemetry.PersistentStorage.Abstractions",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "OpenTelemetry.PersistentStorage.FileSystem",
+      "resolutionPolicy": "private"
+    },
+    {
       "name": "System",
       "resolutionPolicy": "minorMatchOrLower"
     },
@@ -906,6 +958,10 @@
     {
       "name": "System.Buffers",
       "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.ClientModel",
+      "resolutionPolicy": "private"
     },
     {
       "name": "System.Collections",
