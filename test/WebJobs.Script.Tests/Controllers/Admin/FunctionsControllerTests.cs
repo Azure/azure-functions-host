@@ -141,7 +141,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var mockRouter = new Mock<IWebJobsRouter>();
             var testController = new FunctionsController(functionsManagerMock.Object, mockRouter.Object, new LoggerFactory(), optionsWrapper);
             var httpContext = new DefaultHttpContext();
-            httpContext.Request.Headers.Add(ScriptConstants.LiveLogsSessionAIKey, sessionId);
+            httpContext.Request.Headers.Append(ScriptConstants.LiveLogsSessionAIKey, sessionId);
             testController.ControllerContext.HttpContext = httpContext;
 
             //Test Code

@@ -158,15 +158,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             IHeaderDictionary headers = new HeaderDictionary();
 
-            headers.Add("accept", contentType);
-            headers.Add("type", contentType);
+            headers.Append("accept", contentType);
+            headers.Append("type", contentType);
 
             if (contentNegotiation)
             {
-                headers.Add("negotiation", "true");
+                headers.Append("negotiation", "true");
             }
 
-            headers.Add("scenario", "content");
+            headers.Append("scenario", "content");
 
             HttpRequest request = HttpTestHelpers.CreateHttpRequest("POST", "http://localhost/api/httptrigger", headers, content);
 
