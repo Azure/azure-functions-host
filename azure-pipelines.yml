@@ -120,14 +120,6 @@ jobs:
       allowPackageConflicts: true
 
   - task: DotNetCoreCLI@2
-    displayName: 'Build performance package'
-    inputs:
-      command: 'custom'
-      custom: 'pack'
-      arguments: '-o WebJobs.Script.Performance.App'
-      projects: |
-        **\WebJobs.Script.Performance.App.csproj
-  - task: DotNetCoreCLI@2
     displayName: 'Build Abstractions and ExtensionsMetadataGenerator'
     inputs:
       command: 'build'
@@ -332,13 +324,6 @@ jobs:
       Verbosity: 'Information'
   - publish: out/pkg/release
     artifact: NugetPackages
-  - task: ManifestGeneratorTask@0
-    displayName: 'SBOM Generation Task - Performance'
-    inputs:
-      BuildDropPath: 'WebJobs.Script.Performance.App'
-      Verbosity: 'Information'
-  - publish: WebJobs.Script.Performance.App
-    artifact: Performance
 
 - job: RunUnitTests
   pool:
