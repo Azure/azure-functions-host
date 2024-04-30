@@ -66,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security.Authentication
                 DefaultHttpContext context = GetContext();
 
                 string token = SimpleWebTokenHelper.CreateToken(DateTime.UtcNow.AddMinutes(2), websiteAuthEncryptionKeyBytes);
-                context.Request.Headers.Add(ScriptConstants.SiteRestrictedTokenHeaderName, token);
+                context.Request.Headers.Append(ScriptConstants.SiteRestrictedTokenHeaderName, token);
 
                 // Act
                 AuthenticateResult result = await context.AuthenticateAsync();
@@ -95,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security.Authentication
                 DefaultHttpContext context = GetContext();
 
                 string token = SimpleWebTokenHelper.CreateToken(DateTime.UtcNow.AddMinutes(2), containerEncryptionKeyBytes);
-                context.Request.Headers.Add(ScriptConstants.SiteRestrictedTokenHeaderName, token);
+                context.Request.Headers.Append(ScriptConstants.SiteRestrictedTokenHeaderName, token);
 
                 // Act
                 AuthenticateResult result = await context.AuthenticateAsync();
@@ -116,7 +116,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security.Authentication
                 DefaultHttpContext context = GetContext();
 
                 string token = SimpleWebTokenHelper.CreateToken(DateTime.UtcNow.AddMinutes(2));
-                context.Request.Headers.Add(ScriptConstants.SiteRestrictedTokenHeaderName, token);
+                context.Request.Headers.Append(ScriptConstants.SiteRestrictedTokenHeaderName, token);
 
                 // Act
                 AuthenticateResult result = await context.AuthenticateAsync();
@@ -138,7 +138,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security.Authentication
 
                 string token = SimpleWebTokenHelper.CreateToken(DateTime.UtcNow.AddMinutes(2));
                 token = token.Substring(0, token.Length - 5);
-                context.Request.Headers.Add(ScriptConstants.SiteRestrictedTokenHeaderName, token);
+                context.Request.Headers.Append(ScriptConstants.SiteRestrictedTokenHeaderName, token);
 
                 // Act
                 AuthenticateResult result = await context.AuthenticateAsync();
@@ -158,7 +158,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security.Authentication
                 DefaultHttpContext context = GetContext();
 
                 string token = SimpleWebTokenHelper.CreateToken(DateTime.UtcNow.AddMinutes(-20));
-                context.Request.Headers.Add(ScriptConstants.SiteRestrictedTokenHeaderName, token);
+                context.Request.Headers.Append(ScriptConstants.SiteRestrictedTokenHeaderName, token);
 
                 // Act
                 AuthenticateResult result = await context.AuthenticateAsync();

@@ -95,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Binding.ActionResults
             var contentHeader = "application/json";
             var result = new RawScriptResult(null, obj) { Headers = new Dictionary<string, object>() };
             var context = new ActionContext() { HttpContext = new DefaultHttpContext() };
-            context.HttpContext.Response.Headers.Add("Content-Type", contentHeader);
+            context.HttpContext.Response.Headers.Append("Content-Type", contentHeader);
             context.HttpContext.Response.Body = new MemoryStream();
             await result.ExecuteResultAsync(context);
             var body = await TestHelpers.ReadStreamToEnd(context.HttpContext.Response.Body);

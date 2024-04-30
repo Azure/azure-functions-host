@@ -222,7 +222,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var controller = CreateVirtualFileSystem();
             var request = CreateRequest(path);
-            request.Headers.Add("If-Match", etag.Tag);
+            request.Headers.Append("If-Match", etag.Tag);
 
             // Act
             var response = await controller.DeleteItem(request);
