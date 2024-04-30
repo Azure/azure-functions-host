@@ -41,6 +41,7 @@ namespace Microsoft.Extensions.DependencyInjection
                                     {
                                         // the token we set here will be the one used - Authorization header won't be checked.
                                         c.Token = values.FirstOrDefault();
+                                        Console.WriteLine("[TEST] Token received: {0}", c.Token);
                                     }
 
                                     Console.WriteLine("[TEST] OnMessageReceived 2");
@@ -104,7 +105,7 @@ namespace Microsoft.Extensions.DependencyInjection
             if (SystemEnvironment.Instance.IsPlaceholderModeEnabled()
                 && SystemEnvironment.Instance.IsLinuxConsumptionOnAtlas())
             {
-                Console.WriteLine("[TEST] GetValidAudiences 1");
+                Console.WriteLine("[TEST] GetValidAudiences 1, returning true for cv1 migration");
                 return new string[]
                 {
                     ScriptSettingsManager.Instance.GetSetting(ContainerName)
@@ -156,11 +157,14 @@ namespace Microsoft.Extensions.DependencyInjection
         {
             if (!validationParameters.ValidIssuers.Any(p => string.Equals(issuer, p, StringComparison.OrdinalIgnoreCase)))
             {
+                Console.WriteLine($"[TEST] IssuerValidator failed: {issuer}");
                 throw new SecurityTokenInvalidIssuerException("IDX10205: Issuer validation failed.")
                 {
                     InvalidIssuer = issuer,
                 };
             }
+
+            Console.WriteLine($"[TEST] IssuerValidator: {issuer} is valid");
 
             return issuer;
         }
@@ -169,8 +173,10 @@ namespace Microsoft.Extensions.DependencyInjection
         {
             foreach (string audience in audiences)
             {
+                Console.WriteLine($"[TEST] AudienceValidator: {audience}");
                 if (validationParameters.ValidAudiences.Any(p => string.Equals(audience, p, StringComparison.OrdinalIgnoreCase)))
                 {
+                    Console.WriteLine($"[TEST] AudienceValidator: {audience} is valid");
                     return true;
                 }
             }
