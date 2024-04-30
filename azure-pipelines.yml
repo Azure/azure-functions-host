@@ -76,11 +76,6 @@ jobs:
     displayName: "Check for security vulnerabilities"
     inputs:
       filePath: '$(Build.Repository.LocalPath)\build\check-vulnerabilities.ps1'
-  - task: PowerShell@2
-    condition: eq(variables['RUNBUILDFORINTEGRATIONTESTS'], 'True')
-    displayName: "Update host references"
-    inputs:
-      filePath: '$(Build.Repository.LocalPath)\build\update-hostreferences.ps1'
   - task: CopyFiles@2
     inputs:
       SourceFolder: 'out/pub/WebJobs.Script.WebHost'
@@ -96,29 +91,6 @@ jobs:
         **\WebJobs.Script.csproj
         **\WebJobs.Script.WebHost.csproj
         **\WebJobs.Script.Grpc.csproj
-
-  - pwsh: |
-      foreach ($baseName in @("WebJobs.Script", "WebJobs.Script.WebHost", "WebJobs.Script.Grpc"))
-      {
-        $packageName = "Microsoft.Azure." + $baseName + "*.nupkg"
-        $sourcePath = "$(Build.Repository.LocalPath)/out/pkg/release/$packageName"
-        if (-not (test-path $sourcePath))
-        {
-          throw "Unable to find '$packageName' at './package'"
-        }
-        Copy-Item -Path $sourcePath -Destination $(Build.ArtifactStagingDirectory) -ErrorAction Stop -Verbose -Force}
-    condition: eq(variables['RUNBUILDFORINTEGRATIONTESTS'], 'True')
-    displayName: 'Copy package to ArtifactStagingDirectory'
-
-  - task: NuGetCommand@2
-    condition: eq(variables['RUNBUILDFORINTEGRATIONTESTS'], 'True')
-    inputs:
-      command: 'push'
-      packagesToPush: '$(Build.ArtifactStagingDirectory)/**/*.nupkg;!$(Build.ArtifactStagingDirectory)/**/*.symbols.nupkg'
-      nuGetFeedType: 'internal'
-      publishVstsFeed: 'e6a70c92-4128-439f-8012-382fe78d6396/f37f760c-aebd-443e-9714-ce725cd427df'
-      allowPackageConflicts: true
-
   - task: DotNetCoreCLI@2
     displayName: 'Build Abstractions and ExtensionsMetadataGenerator'
     inputs:
