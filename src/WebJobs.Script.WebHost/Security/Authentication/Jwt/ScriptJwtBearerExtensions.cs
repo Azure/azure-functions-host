@@ -148,7 +148,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 Console.WriteLine($"[TEST] Valid Issuers: {string.Join(", ", result.ValidIssuers)}");
             }
 
-            Console.WriteLine("[TEST] CreateTokenValidationParameters 5");
+            Console.WriteLine("[TEST] CreateTokenValidationParameters 5");            
 
             return result;
         }
