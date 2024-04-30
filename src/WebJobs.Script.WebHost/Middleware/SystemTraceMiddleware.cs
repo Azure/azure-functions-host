@@ -37,6 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
             sw.Stop();
             string identities = GetIdentities(context);
+            Console.WriteLine($"[TEST] Response body: {context.Response.Body}");
             _logger.ExecutedHttpRequest(requestId, identities, context.Response.StatusCode, sw.ElapsedMilliseconds);
         }
 

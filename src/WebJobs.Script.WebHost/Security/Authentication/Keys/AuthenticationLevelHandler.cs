@@ -41,22 +41,30 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Authentication
 
         protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
         {
+            Console.WriteLine("[TEST] HandleAuthenticateAsync 1");
             // Get the authorization level for the current request
             (string name, AuthorizationLevel requestAuthorizationLevel) = await GetAuthorizationKeyInfoAsync(Context.Request, _secretManagerProvider);
 
+            Console.WriteLine("[TEST] HandleAuthenticateAsync 2");
+
             List<ClaimsIdentity> claimsIdentities = new List<ClaimsIdentity>();
+
+            Console.WriteLine("[TEST] HandleAuthenticateAsync 3");
 
             if (_isEasyAuthEnabled)
             {
+                Console.WriteLine("[TEST] HandleAuthenticateAsync _isEasyAuthEnabled");
                 ClaimsIdentity easyAuthIdentity = Context.Request.GetAppServiceIdentity();
                 if (easyAuthIdentity != null)
                 {
                     claimsIdentities.Add(easyAuthIdentity);
                 }
             }
+            Console.WriteLine("[TEST] HandleAuthenticateAsync 4");
 
             if (requestAuthorizationLevel != AuthorizationLevel.Anonymous)
             {
+                Console.WriteLine("[TEST] HandleAuthenticateAsync requestAuthorizationLevel != AuthorizationLevel.Anonymous");
                 var claims = new List<Claim>
                 {
                     new Claim(SecurityConstants.AuthLevelClaimType, requestAuthorizationLevel.ToString()),
@@ -65,6 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Authentication
 
                 if (!string.IsNullOrEmpty(name))
                 {
+                    Console.WriteLine("[TEST] HandleAuthenticateAsync !string.IsNullOrEmpty(name)");
                     claims.Add(new Claim(SecurityConstants.AuthLevelKeyNameClaimType, name));
                 }
 
@@ -72,12 +81,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Authentication
                 claimsIdentities.Add(keyIdentity);
             }
 
+            Console.WriteLine("[TEST] HandleAuthenticateAsync 5");
+
             if (claimsIdentities.Count > 0)
             {
+                Console.WriteLine("[TEST] HandleAuthenticateAsync claimsIdentities.Count > 0");
                 return AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(claimsIdentities), Scheme.Name));
             }
             else
             {
+                Console.WriteLine("[TEST] HandleAuthenticateAsync AuthenticateResult.NoResult()");
                 return AuthenticateResult.NoResult();
             }
         }
