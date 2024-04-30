@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
         public async Task AppServiceFixupMiddleware_Handles_Multivalue_Header(string[] headerValues, string expectedScheme)
         {
             var ctx = new DefaultHttpContext();
-            ctx.Request.Headers.Add(AppServiceHeaderFixupMiddleware.ForwardedProtocolHeader, new StringValues(headerValues));
+            ctx.Request.Headers.Append(AppServiceHeaderFixupMiddleware.ForwardedProtocolHeader, new StringValues(headerValues));
 
             var middleware = new AppServiceHeaderFixupMiddleware(nextCtx =>
             {

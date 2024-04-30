@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 { "req", request }
             };
-            request.Headers.Add("Accept", new StringValues("text/plain"));
+            request.Headers.Append("Accept", new StringValues("text/plain"));
 
             await Fixture.JobHost.CallAsync("Function1", arguments);
 

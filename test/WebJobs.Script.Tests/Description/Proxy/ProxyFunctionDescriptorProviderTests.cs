@@ -91,7 +91,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     object requestObj = arguments != null && arguments.Length > 0 ? arguments[0] : null;
                     var request = requestObj as HttpRequest;
                     var response = new StatusCodeResult(StatusCodes.Status200OK);
-                    request.HttpContext.Response.Headers.Add("myversion", "123");
+                    request.HttpContext.Response.Headers.Append("myversion", "123");
                     request.HttpContext.Items[ScriptConstants.AzureFunctionsHttpResponseKey] = response;
                     return Task.CompletedTask;
                 });

@@ -95,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             TestHelpers.ClearFunctionLogs("HttpTriggerByteArray");
 
             IHeaderDictionary headers = new HeaderDictionary();
-            headers.Add("Content-Type", contentType);
+            headers.Append("Content-Type", contentType);
 
             byte[] inputBytes = new byte[] { 1, 2, 3, 4, 5 };
             var content = inputBytes;
