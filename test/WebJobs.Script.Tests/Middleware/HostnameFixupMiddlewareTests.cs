@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
 
             var context = CreateHttpContext();
             var requestFeature = context.Request.HttpContext.Features.Get<IHttpRequestFeature>();
-            requestFeature.Headers.Add(ScriptConstants.AntaresDefaultHostNameHeader, "test2.azurewebsites.net");
+            requestFeature.Headers.Append(ScriptConstants.AntaresDefaultHostNameHeader, "test2.azurewebsites.net");
 
             await _middleware.Invoke(context);
 

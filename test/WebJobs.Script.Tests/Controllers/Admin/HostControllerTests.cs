@@ -218,7 +218,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             httpContext.Request.Host = new HostString("local");
             httpContext.Request.Method = "Post";
             httpContext.Request.Path = "/admin/host/ping";
-            httpContext.Request.Headers.Add("User-Agent", userAgent);
+            httpContext.Request.Headers.Append("User-Agent", userAgent);
             if (healthCheckQueryParam != null)
             {
                 httpContext.Request.QueryString = new QueryString($"?{ScriptConstants.HealthCheckQueryParam}={healthCheckQueryParam}");

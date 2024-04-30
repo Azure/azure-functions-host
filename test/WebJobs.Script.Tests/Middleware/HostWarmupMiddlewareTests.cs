@@ -3,6 +3,7 @@
 
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc;
@@ -105,7 +106,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
             Assert.True(HostWarmupMiddleware.IsWarmUpRequest(request, hostEnvironment.InStandbyMode, environment));
 
             request = HttpTestHelpers.CreateHttpRequest("POST", "http://azure.com/api/warmup");
-            request.Headers.Add(ScriptConstants.AntaresLogIdHeaderName, "xyz123");
+            request.Headers.Append(ScriptConstants.AntaresLogIdHeaderName, "xyz123");
             Assert.False(HostWarmupMiddleware.IsWarmUpRequest(request, hostEnvironment.InStandbyMode, environment));
 
             request = HttpTestHelpers.CreateHttpRequest("POST", "http://azure.com/api/foo");
