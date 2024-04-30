@@ -40,6 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security.Authentication
             string token = null;
             if (!_hostingConfigOptions.Value.SwtAuthenticationEnabled || !Context.Request.Headers.TryGetValue(ScriptConstants.SiteRestrictedTokenHeaderName, out StringValues values))
             {
+                _logger.LogInformation("[TEST] Not using swt");
                 return AuthenticateResult.NoResult();
             }
 
@@ -47,17 +48,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security.Authentication
 
             try
             {
+                _logger.LogInformation("[TEST] Using swt");
                 if (!SimpleWebTokenHelper.ValidateToken(token, Clock))
                 {
                     return AuthenticateResult.Fail("Token validation failed.");
                 }
 
+                _logger.LogInformation("[TEST] Validated swt");
+
                 var claims = new List<Claim>
                 {
                     new Claim(SecurityConstants.AuthLevelClaimType, AuthorizationLevel.Admin.ToString())
                 };
+                _logger.LogInformation("[TEST] claims");
 
                 var identity = new ClaimsIdentity(claims, ArmAuthenticationDefaults.AuthenticationScheme);
+                _logger.LogInformation("[TEST] identity");
                 return AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(identity), Scheme.Name));
             }
             catch (Exception exc)
