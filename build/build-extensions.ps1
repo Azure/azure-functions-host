@@ -38,7 +38,7 @@ function ZipContent([string] $sourceDirectory, [string] $target) {
     Write-Host ""
 }
 
-function BuildRuntime([string] $targetRid, [bool] $isSelfContained) {
+function BuildRuntime([string] $targetRid, [string] $publishTargetFramework, [bool] $isSelfContained) {
     $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 
     $publishTarget = "$publishDir\release_$targetRid"
@@ -48,7 +48,7 @@ function BuildRuntime([string] $targetRid, [bool] $isSelfContained) {
         throw "Project path '$projectPath' does not exist."
     }
 
-    $cmd = "publish", $projectPath , "-r", "$targetRid", "--self-contained", "$isSelfContained", "-v", "m", "-c", "Release", "-p:IsPackable=false", "-p:BuildNumber=$buildNumber", "-p:MinorVersionPrefix=$minorVersionPrefix"
+    $cmd = "publish", $projectPath , "-r", "$targetRid", "-f","$publishTargetFramework", "--self-contained", "$isSelfContained", "-v", "m", "-c", "Release", "-p:IsPackable=false", "-p:BuildNumber=$buildNumber", "-p:MinorVersionPrefix=$minorVersionPrefix"
 
     Write-Host "======================================"
     Write-Host "Building $targetRid"
@@ -80,7 +80,7 @@ function BuildRuntime([string] $targetRid, [bool] $isSelfContained) {
     Write-Host ""
     CleanOutput $publishTarget
     Write-Host ""
-    Write-Host "Done building $targetRid. Elapsed: $($stopwatch.Elapsed)"
+    Write-Host "Done building $targetRid using target framework $publishTargetFramework. Elapsed: $($stopwatch.Elapsed)"
     Write-Host "======================================"
     Write-Host ""
 }
@@ -322,7 +322,9 @@ if (Test-Path $publishDir) {
 Write-Host "Extensions version: $extensionVersion"
 Write-Host ""
 
-BuildRuntime "win-x86"
-BuildRuntime "win-x64"
+BuildRuntime "win-x86", "net6.0"
+BuildRuntime "win-x86", "net8.0"
+BuildRuntime "win-x64", "net6.0"
+BuildRuntime "win-x64", "net8.0"
 
 CreateSiteExtensions
