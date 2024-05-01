@@ -33,9 +33,6 @@ jobs:
     buildArgs: '-v m -c release -r $(runtime) --self-contained true -p:BuildNumber=$(buildNumber) -p:MinorVersionPrefix=${{ parameters.minorVersionPrefix }} -p:IsPackable=false'
 
   steps:
-  - task: NuGetAuthenticate@1
-    displayName: NuGet authenticate
-
   - template: /eng/ci/templates/install-dotnet.yml@self
 
   - task: DotNetCoreCLI@2
@@ -62,7 +59,7 @@ jobs:
       publishWebProjects: false
       zipAfterPublish: false
       projects: $(project)
-      arguments: '--no-build $(buildArgs) -bl:$(Build.ArtifactStagingDirectory)/log/publish.linux-x64.binlog'
+      arguments: '--no-build $(buildArgs)'
 
   - task: ArchiveFiles@2
     displayName: Archive files

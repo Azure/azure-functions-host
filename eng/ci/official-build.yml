@@ -28,7 +28,7 @@ variables:
   - template: ci/variables/build.yml@eng
   - template: ci/variables/cfs.yml@eng
   - name: buildNumber
-    value: $[ counter('constant', 13000) ] # TODO: new pipeline, 13000 no longer valid.
+    value: $[ counter('constant', 23000) ] # 23000 selected to be ahead of current host build
   - name: minorVersionPrefix
     ${{ if contains(variables['Build.SourceBranch'], 'release/inproc6/') }}:
       value: "6"
@@ -70,6 +70,5 @@ extends:
 
       jobs:
       - template: /eng/ci/templates/jobs/run-unit-tests.yml@self
-      # TODO: commented out while iterating on other steps
-      # - template: /eng/ci/templates/official/jobs/run-non-e2e-tests.yml@self
-      # - template: /eng/ci/templates/official/jobs/run-integration-tests.yml@self
+      - template: /eng/ci/templates/official/jobs/run-non-e2e-tests.yml@self
+      - template: /eng/ci/templates/official/jobs/run-integration-tests.yml@self
