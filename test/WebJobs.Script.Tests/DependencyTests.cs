@@ -47,12 +47,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly DependencyContextJsonReader _reader = new DependencyContextJsonReader();
         private readonly IEnumerable<string> _rids = DependencyHelper.GetRuntimeFallbacks();
 
-        [Fact]
-        public void Verify_DepsJsonChanges()
+        [Theory]
+        [InlineData("debug_net6.0")]
+        [InlineData("debug_net8.0")]
+        public void Verify_DepsJsonChanges(string debugPath)
         {
             string depsJsonFileName = "Microsoft.Azure.WebJobs.Script.WebHost.deps.json";
             string oldDepsJson = Path.GetFullPath(depsJsonFileName);
-            string webhostBinPath = Path.Combine("..", "..", "WebJobs.Script.WebHost", Config);
+            string webhostBinPath = Path.Combine("..", "..", "WebJobs.Script.WebHost", debugPath);
             string newDepsJson = Directory.GetFiles(Path.GetFullPath(webhostBinPath), depsJsonFileName, SearchOption.AllDirectories).FirstOrDefault();
 
             Assert.True(File.Exists(oldDepsJson), $"{oldDepsJson} not found.");
