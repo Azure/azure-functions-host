@@ -23,7 +23,7 @@ jobs:
 
   - task: UsePythonVersion@0
     inputs:
-      versionSpec: 3.7.x
+      versionSpec: '3.7'
       addToPath: true
 
   - task: JavaToolInstaller@0
