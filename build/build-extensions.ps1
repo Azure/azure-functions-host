@@ -41,7 +41,7 @@ function ZipContent([string] $sourceDirectory, [string] $target) {
 function BuildRuntime([string] $targetRid, [string] $targetFramework, [bool] $isSelfContained) {
     $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 
-    $publishTarget = "$publishDir\release_$targetRid"
+    $publishTarget = "$publishDir\release_$targetFramework_$targetRid"
     $projectPath = "$rootDir\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj"
     if (-not (Test-Path $projectPath))
     {
@@ -219,13 +219,13 @@ function CreateSiteExtensions() {
     
     Write-Host "======================================"
     Write-Host "Copying build to temp directory to prepare for zipping official site extension."
-    Copy-Item -Path $publishDir\release_win-x86\ -Destination $officialSiteExtensionPath\32bit -Force -Recurse > $null
-    Copy-Item -Path $publishDir\release_win-x64 -Destination $officialSiteExtensionPath\64bit -Force -Recurse > $null
+    Copy-Item -Path $publishDir\release_net6.0_win-x86\ -Destination $officialSiteExtensionPath\net6.0\32bit -Force -Recurse > $null
+    Copy-Item -Path $publishDir\release_net6.0_win-x64 -Destination $officialSiteExtensionPath\net6.0\64bit -Force -Recurse > $null
     Copy-Item -Path $officialSiteExtensionPath\32bit\applicationHost.xdt -Destination $officialSiteExtensionPath -Force > $null
     Write-Host "  Deleting workers directory: $officialSiteExtensionPath\32bit\workers" 
-    Remove-Item -Recurse -Force "$officialSiteExtensionPath\32bit\workers" -ErrorAction SilentlyContinue
-    Write-Host "  Moving workers directory: $officialSiteExtensionPath\64bit\workers to $officialSiteExtensionPath\workers"
-    Move-Item -Path "$officialSiteExtensionPath\64bit\workers" -Destination "$officialSiteExtensionPath\workers" 
+    Remove-Item -Recurse -Force "$officialSiteExtensionPath\net6.0\32bit\workers" -ErrorAction SilentlyContinue
+    Write-Host "  Moving workers directory: $officialSiteExtensionPath\net6.0\64bit\workers to $officialSiteExtensionPath\workers"
+    Move-Item -Path "$officialSiteExtensionPath\net6.0\64bit\workers" -Destination "$officialSiteExtensionPath\workers" 
      
     # This goes in the root dir
     Copy-Item $rootDir\src\WebJobs.Script.WebHost\extension.xml $siteExtensionPath > $null
