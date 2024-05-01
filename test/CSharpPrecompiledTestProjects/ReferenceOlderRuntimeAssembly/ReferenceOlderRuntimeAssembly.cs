@@ -8,9 +8,9 @@ namespace ReferenceOlderRuntimeAssembly
 {
     public class ReferenceOlderRuntimeAssembly
     {
-        private readonly IHostingEnvironment _env;
+        private readonly IHostEnvironment _env;
 
-        public ReferenceOlderRuntimeAssembly(IHostingEnvironment env)
+        public ReferenceOlderRuntimeAssembly(IHostEnvironment env)
         {
             _env = env;
         }
@@ -21,7 +21,7 @@ namespace ReferenceOlderRuntimeAssembly
         {
             if (_env == null)
             {
-                return new ObjectResult("IHostingEnvironment was not injected into the function class.")
+                return new ObjectResult("IHostEnvironment was not injected into the function class.")
                 {
                     StatusCode = 500
                 };

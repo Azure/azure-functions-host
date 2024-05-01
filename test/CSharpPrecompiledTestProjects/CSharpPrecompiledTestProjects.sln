@@ -13,7 +13,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MultipleDependencyVersions"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Dependencies", "Dependencies", "{297CEDAC-BB8E-4875-A3FF-7BA7A4916E73}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dependency55", "DependencyA\Dependency55.csproj", "{BC456A9E-D140-4B1A-84D9-AB82556F5881}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dependency55", "Dependency55\Dependency55.csproj", "{BC456A9E-D140-4B1A-84D9-AB82556F5881}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dependency56", "Dependency56\Dependency56.csproj", "{B3B098F6-B2B8-4219-AA52-29F55427496A}"
 EndProject

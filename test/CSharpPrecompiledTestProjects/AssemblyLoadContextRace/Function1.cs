@@ -24,7 +24,7 @@ namespace AssemblyLoadContextRace
 
                 void LoadType()
                 {
-                    var assembly = context.LoadFromAssemblyName(new AssemblyName("Newtonsoft.Json, Version=12.0.3.0"));
+                    var assembly = context.LoadFromAssemblyName(new AssemblyName("Newtonsoft.Json, Version=13.0.1.0"));
                 }
 
                 List<Thread> threads = new List<Thread>();
@@ -43,8 +43,8 @@ namespace AssemblyLoadContextRace
 
                 // Now, make sure the assemblies match, signifying that the race was fixed and we 
                 // always load the host's version.
-                var functionAssembly = context.LoadFromAssemblyName(new AssemblyName("Newtonsoft.Json, Version=12.0.3.0"));
-                var defaultAssembly = AssemblyLoadContext.Default.LoadFromAssemblyName(new AssemblyName("Newtonsoft.Json, Version=12.0.3.0"));
+                var functionAssembly = context.LoadFromAssemblyName(new AssemblyName("Newtonsoft.Json, Version=13.0.1.0"));
+                var defaultAssembly = AssemblyLoadContext.Default.LoadFromAssemblyName(new AssemblyName("Newtonsoft.Json, Version=13.0.1.0"));
 
                 if (!Equals(functionAssembly, defaultAssembly))
                 {
