@@ -18,5 +18,9 @@ configuration:
       actions:
       - addLabel:
           label: 'Needs: Author Feedback'
+      - addReply:
+          reply: >-
+            This issue has been automatically marked as stale because it has not seen any activity for **3 years**. It will be closed if no further activity occurs **within 5 days of this comment**.
+            If you believe this issue is still relevant, please leave a comment with details.
 onFailure:
 onSuccess:
