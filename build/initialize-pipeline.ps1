@@ -4,6 +4,7 @@ param (
 
 $buildReason = $env:BUILD_REASON
 $sourceBranch = $env:BUILD_SOURCEBRANCH
+$provider = $env:BUILD_REPOSITORY_PROVIDER
 
 Write-Host "BUILD_REASON: '$buildReason'"
 Write-Host "BUILD_SOURCEBRANCH: '$sourceBranch'"
