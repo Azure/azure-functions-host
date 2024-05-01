@@ -38,7 +38,7 @@ function ZipContent([string] $sourceDirectory, [string] $target) {
     Write-Host ""
 }
 
-function BuildRuntime([string] $targetRid, [string] $publishTargetFramework, [bool] $isSelfContained) {
+function BuildRuntime([string] $targetRid, [string] $targetFramework, [bool] $isSelfContained) {
     $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 
     $publishTarget = "$publishDir\release_$targetRid"
@@ -48,10 +48,10 @@ function BuildRuntime([string] $targetRid, [string] $publishTargetFramework, [bo
         throw "Project path '$projectPath' does not exist."
     }
 
-    $cmd = "publish", $projectPath , "-r", "$targetRid", "-f","$publishTargetFramework", "--self-contained", "$isSelfContained", "-v", "m", "-c", "Release", "-p:IsPackable=false", "-p:BuildNumber=$buildNumber", "-p:MinorVersionPrefix=$minorVersionPrefix"
+    $cmd = "publish", $projectPath , "-r", "$targetRid", "-f", "$targetFramework", "--self-contained", "$isSelfContained", "-v", "m", "-c", "Release", "-p:IsPackable=false", "-p:BuildNumber=$buildNumber", "-p:MinorVersionPrefix=$minorVersionPrefix"
 
     Write-Host "======================================"
-    Write-Host "Building $targetRid"
+    Write-Host "Building $targetRid using target framework $targetFramework"
     Write-Host "  Self-Contained:    $isSelfContained"
     Write-Host "  Publish Directory:  $publishTarget"
     Write-Host ""
@@ -80,7 +80,7 @@ function BuildRuntime([string] $targetRid, [string] $publishTargetFramework, [bo
     Write-Host ""
     CleanOutput $publishTarget
     Write-Host ""
-    Write-Host "Done building $targetRid using target framework $publishTargetFramework. Elapsed: $($stopwatch.Elapsed)"
+    Write-Host "Done building $targetRid using target framework $targetFramework. Elapsed: $($stopwatch.Elapsed)"
     Write-Host "======================================"
     Write-Host ""
 }
@@ -322,9 +322,9 @@ if (Test-Path $publishDir) {
 Write-Host "Extensions version: $extensionVersion"
 Write-Host ""
 
-BuildRuntime "win-x86", "net6.0"
-BuildRuntime "win-x86", "net8.0"
-BuildRuntime "win-x64", "net6.0"
-BuildRuntime "win-x64", "net8.0"
+BuildRuntime "win-x86" "net6.0"
+BuildRuntime "win-x64" "net6.0"
+BuildRuntime "win-x86" "net8.0"
+BuildRuntime "win-x64" "net8.0"
 
 CreateSiteExtensions
