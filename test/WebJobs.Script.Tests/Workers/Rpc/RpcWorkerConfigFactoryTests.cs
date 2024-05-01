@@ -204,6 +204,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerProcessCountSettingName, "7");
             }
 
+            var expectedMaxProcessCount = (setProcessCountToNumberOfCpuCores && Environment.ProcessorCount > maxProcessCount)
+                                        ? Environment.ProcessorCount : maxProcessCount;
+
             var config = new ConfigurationBuilder().Build();
             var testLogger = new TestLogger("test");
 
@@ -237,7 +240,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             }
 
             Assert.Equal(TimeSpan.Parse(processStartupInterval), result.ProcessStartupInterval);
-            Assert.Equal(maxProcessCount, result.MaxProcessCount);
+            Assert.Equal(expectedMaxProcessCount, result.MaxProcessCount);
         }
 
         [Fact]
