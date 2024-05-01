@@ -11,7 +11,7 @@ $outDir = "$rootDir\out"
 $publishDir = "$outDir\pub\WebJobs.Script.WebHost"
 
 $extensionVersion = Get-AzureFunctionsVersion $buildNumber $suffix $minorVersionPrefix
-Write-Host "Extension version: $extensionVersion"
+Write-Host "Site extension version: $extensionVersion"
 
 function ZipContent([string] $sourceDirectory, [string] $target) {
     $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
