@@ -41,7 +41,7 @@ function ZipContent([string] $sourceDirectory, [string] $target) {
 function BuildRuntime([string] $targetRid, [string] $targetFramework, [bool] $isSelfContained) {
     $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 
-    $publishTarget = "$publishDir\release_$targetFramework_$targetRid"
+    $publishTarget = "$publishDir\release_$targetFramework" + "_$targetRid"
     $projectPath = "$rootDir\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj"
     if (-not (Test-Path $projectPath))
     {
@@ -74,7 +74,7 @@ function BuildRuntime([string] $targetRid, [string] $targetFramework, [bool] $is
         New-Item -ItemType Directory -Path $symbolsPath | Out-Null
     }
 
-    $symbols | Compress-Archive -DestinationPath "$symbolsPath\Functions.Symbols.$extensionVersion.$targetRid.zip" | Out-Null
+    $symbols | Compress-Archive -DestinationPath "$symbolsPath\Functions.Symbols.$extensionVersion.$targetFramework.$targetRid.zip" | Out-Null
     $symbols | Remove-Item | Out-Null
 
     Write-Host ""
@@ -218,15 +218,22 @@ function CreateSiteExtensions() {
     $officialSiteExtensionPath = "$siteExtensionPath\$extensionVersion"
     
     Write-Host "======================================"
+    Write-Host "PublishDir: $publishDir"
     Write-Host "Copying build to temp directory to prepare for zipping official site extension."
     Copy-Item -Path $publishDir\release_net6.0_win-x86\ -Destination $officialSiteExtensionPath\net6.0\32bit -Force -Recurse > $null
     Copy-Item -Path $publishDir\release_net6.0_win-x64 -Destination $officialSiteExtensionPath\net6.0\64bit -Force -Recurse > $null
-    Copy-Item -Path $officialSiteExtensionPath\32bit\applicationHost.xdt -Destination $officialSiteExtensionPath -Force > $null
-    Write-Host "  Deleting workers directory: $officialSiteExtensionPath\32bit\workers" 
+    Copy-Item -Path $publishDir\release_net8.0_win-x86\ -Destination $officialSiteExtensionPath\net8.0\32bit -Force -Recurse > $null
+    Copy-Item -Path $publishDir\release_net8.0_win-x64 -Destination $officialSiteExtensionPath\net8.0\64bit -Force -Recurse > $null
+    Copy-Item -Path $officialSiteExtensionPath\net6.0\32bit\applicationHost.xdt -Destination $officialSiteExtensionPath\net6.0 -Force > $null
+    Copy-Item -Path $officialSiteExtensionPath\net8.0\32bit\applicationHost.xdt -Destination $officialSiteExtensionPath\net8.0 -Force > $null
+
+    Write-Host "  Deleting workers directory: $officialSiteExtensionPath\net6.0\32bit\workers" 
     Remove-Item -Recurse -Force "$officialSiteExtensionPath\net6.0\32bit\workers" -ErrorAction SilentlyContinue
+    Remove-Item -Recurse -Force "$officialSiteExtensionPath\net8.0\32bit\workers" -ErrorAction SilentlyContinue
     Write-Host "  Moving workers directory: $officialSiteExtensionPath\net6.0\64bit\workers to $officialSiteExtensionPath\workers"
     Move-Item -Path "$officialSiteExtensionPath\net6.0\64bit\workers" -Destination "$officialSiteExtensionPath\workers" 
-     
+    Move-Item -Path "$officialSiteExtensionPath\net8.0\64bit\workers" -Destination "$officialSiteExtensionPath\workers" 
+
     # This goes in the root dir
     Copy-Item $rootDir\src\WebJobs.Script.WebHost\extension.xml $siteExtensionPath > $null
     
@@ -290,8 +297,8 @@ function CreateSiteExtensions() {
     Write-Host "======================================"
     $stopwatch.Reset()
     Write-Host "Copying build to temp directory to prepare for zipping private site extension."
-    Copy-Item -Path $publishDir\release_win-x86\ -Destination $siteExtensionPath\SiteExtensions\Functions\32bit -Force -Recurse > $null
-    Copy-Item -Path $siteExtensionPath\SiteExtensions\Functions\32bit\applicationHost.xdt -Destination $siteExtensionPath\SiteExtensions\Functions -Force > $null
+    Copy-Item -Path $publishDir\release_net6.0_win-x86\ -Destination $siteExtensionPath\SiteExtensions\Functions\net6.0\32bit -Force -Recurse > $null
+    Copy-Item -Path $siteExtensionPath\SiteExtensions\Functions\net6.0\32bit\applicationHost.xdt -Destination $siteExtensionPath\SiteExtensions\Functions -Force > $null
     Write-Host "Done copying. Elapsed: $($stopwatch.Elapsed)"
     Write-Host "======================================"
     Write-Host ""
