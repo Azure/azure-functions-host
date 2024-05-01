@@ -1,4 +1,4 @@
-name: Flag stale issues due to no activity
+name: Flag stale issues
 description: Flag issues that have seen no activity in over three years.
 resource: repository
 configuration:
@@ -14,15 +14,9 @@ configuration:
       - noActivitySince:
           days: 1095 # 3 years
       - isNotLabeledWith:
-          label: no-recent-activity
+          label: 'Needs: Author Feedback'
       actions:
       - addLabel:
-          label: no-recent-activity
-      - addReply:
-          reply: >-
-            This issue has been automatically marked as stale because it has not seen any activity for **3 years**. It will be closed if no further activity occurs **within 3 days of this comment**.
-
-
-            If you are not the original author (${issueAuthor}) and believe this issue is not stale, please comment with `/bot not-stale` and I will not close it.
+          label: 'Needs: Author Feedback'
 onFailure:
 onSuccess:
