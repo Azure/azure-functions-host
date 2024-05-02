@@ -2,7 +2,6 @@ param (
   [ValidateSet("6", "8", "")][string]$minorVersionPrefix = ""
 )
 
-Write-Host "MinorVersionPrefix: '$minorVersionPrefix'"
 $buildReason = $env:BUILD_REASON
 $sourceBranch = $env:BUILD_SOURCEBRANCH
 $provider = $env:BUILD_REPOSITORY_PROVIDER

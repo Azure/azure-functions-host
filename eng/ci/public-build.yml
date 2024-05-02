@@ -51,8 +51,6 @@ extends:
 
       jobs:
       - template: /eng/ci/templates/jobs/initialize-pipeline.yml@self
-        parameters:
-          minorVersionPrefix: ${{ variables.minorVersionPrefix }}
 
     - stage: Test
       dependsOn: Initialize

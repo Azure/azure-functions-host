@@ -1,8 +1,3 @@
-parameters:
-  - name: minorVersionPrefix
-    type: string
-    default: ''
-
 jobs:
   - job: InitializePipeline
     displayName: Initialize Pipeline
@@ -19,6 +14,6 @@ jobs:
       name: Initialize
       inputs:
         filePath: build/initialize-pipeline.ps1
-        arguments: -minorVersionPrefix "${{ parameters.minorVersionPrefix }}"
+        arguments: -minorVersionPrefix "$(minorVersionPrefix)"
         showWarnings: true
         pwsh: true

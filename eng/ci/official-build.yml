@@ -50,20 +50,13 @@ extends:
 
       jobs:
       - template: /eng/ci/templates/jobs/initialize-pipeline.yml@self
-        parameters:
-          minorVersionPrefix: ${{ variables.minorVersionPrefix }}
 
     - stage: Build
       dependsOn: Initialize
 
       jobs:
       - template: /eng/ci/templates/official/jobs/build-artifacts-windows.yml@self
-        parameters:
-          minorVersionPrefix: ${{ variables.minorVersionPrefix }}
-
       - template: /eng/ci/templates/official/jobs/build-artifacts-linux.yml@self
-        parameters:
-          minorVersionPrefix: ${{ variables.minorVersionPrefix }}
 
     - stage: Test
       dependsOn: Initialize

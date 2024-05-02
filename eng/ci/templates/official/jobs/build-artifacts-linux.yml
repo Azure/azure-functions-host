@@ -1,8 +1,3 @@
-parameters:
-- name: minorVersionPrefix
-  type: string
-  default: ''
-
 jobs:
 - job: BuildArtifactsLinux
   displayName: Build Linux Artifacts
@@ -12,9 +7,8 @@ jobs:
     configuration: release
     runtime: linux-x64
     log_dir: $(Build.ArtifactStagingDirectory)/log
-    build_args: '-v m -c $(configuration) -r $(runtime) --self-contained true -p:BuildNumber=$(buildNumber) -p:MinorVersionPrefix=${{ parameters.minorVersionPrefix }} -p:IsPackable=false'
-    publish_dir: $(Build.ArtifactStagingDirectory)/pub
-    publish_zip_dir: $(Build.ArtifactStagingDirectory)/zip
+    build_args: '-v m -c $(configuration) -r $(runtime) --self-contained true -p:BuildNumber=$(buildNumber) -p:MinorVersionPrefix=$(minorVersionPrefix) -p:IsPackable=false'
+    publish_zip_dir: $(Build.ArtifactStagingDirectory)/Linux
 
   templateContext:
     outputParentDirectory: $(Build.ArtifactStagingDirectory)
@@ -25,7 +19,6 @@ jobs:
       displayName: Publish linux artifacts
       path: $(publish_zip_dir)
       artifact: Linux
-      sbomBuildDropPath: $(publish_dir) # generate SBOM for the contents of the zip, not the zip itself
     - output: pipelineArtifact
       displayName: Publish logs
       path: $(log_dir)
@@ -65,4 +58,4 @@ jobs:
       publishWebProjects: false # we use our own publish logic
       zipAfterPublish: false # we use our own zip logic
       projects: $(project)
-      arguments: '$(build_args) --no-build -o $(publish_dir) -p:PublishZipDir=$(publish_zip_dir) -bl:$(log_dir)/publish.binlog'
+      arguments: '$(build_args) --no-build -p:PublishZipDir=$(publish_zip_dir) -bl:$(log_dir)/publish.binlog'
