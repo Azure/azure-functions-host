@@ -69,9 +69,3 @@ jobs:
       includeRootFolder: false
       archiveType: zip
       archiveFile: $(Build.ArtifactStagingDirectory)/Linux/WebJobs.Script.WebHost.$(Build.BuildId).zip
-
-  - task: ManifestGeneratorTask@0
-    displayName: SBOM generation task - Linux
-    inputs:
-      BuildDropPath: '$(Build.ArtifactStagingDirectory)/Linux'
-      Verbosity: 'Information'

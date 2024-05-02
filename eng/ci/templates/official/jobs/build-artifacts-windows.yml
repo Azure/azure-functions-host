@@ -240,27 +240,3 @@ jobs:
       SourceFolder: out/pkg/release
       Contents: '**/*.nupkg'
       TargetFolder: $(Build.ArtifactStagingDirectory)/NugetPackages
-
-  - task: ManifestGeneratorTask@0
-    displayName: SBOM generation task - SiteExtension
-    inputs:
-      BuildDropPath: $(Build.ArtifactStagingDirectory)/SiteExtension
-      Verbosity: Information
-
-  - task: ManifestGeneratorTask@0
-    displayName: SBOM generation task - PrivateSiteExtension
-    inputs:
-      BuildDropPath: $(Build.ArtifactStagingDirectory)/PrivateSiteExtension
-      Verbosity: Information
-
-  - task: ManifestGeneratorTask@0
-    displayName: SBOM generation task - Symbols
-    inputs:
-      BuildDropPath: $(Build.ArtifactStagingDirectory)/Symbols
-      Verbosity: Information
-
-  - task: ManifestGeneratorTask@0
-    displayName: SBOM generation task - NugetPackages
-    inputs:
-      BuildDropPath: $(Build.ArtifactStagingDirectory)/NugetPackages
-      Verbosity: Information
