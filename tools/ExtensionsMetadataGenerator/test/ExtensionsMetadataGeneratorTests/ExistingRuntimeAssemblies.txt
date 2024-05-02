@@ -159,6 +159,7 @@ Newtonsoft.Json.Bson.dll
 System.dll
 System.AppContext.dll
 System.Buffers.dll
+System.ClientModel.dll
 System.Collections.dll
 System.Collections.Concurrent.dll
 System.Collections.Immutable.dll
