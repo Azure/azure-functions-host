@@ -1,7 +1,7 @@
 # This build is used for public PR and CI builds.
 
 variables:
-  buildNumber: $[ counter('constant', 23000) ] # 23000 selected to be ahead of current host build
+  buildNumber: $[ counter('build', 23000) ] # 23000 selected to be ahead of current host build
   ${{ if contains(variables['Build.SourceBranch'], 'release/inproc6/') }}:
     minorVersionPrefix: "6"
   ${{ elseif contains(variables['Build.SourceBranch'], 'release/inproc8/') }}:

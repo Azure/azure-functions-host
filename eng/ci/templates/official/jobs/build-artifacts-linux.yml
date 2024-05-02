@@ -11,10 +11,9 @@ jobs:
     project: src/WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj
     configuration: release
     runtime: linux-x64
-    logDir: $(Build.ArtifactStagingDirectory)/log
-    buildArgs: '-v m -c $(configuration) -r $(runtime) --self-contained true -p:BuildNumber=$(buildNumber) -p:MinorVersionPrefix=${{ parameters.minorVersionPrefix }} -p:IsPackable=false'
-    publishDir: out/pub/WebJobs.Script.WebHost/$(configuration)_$(runtime)
-    publishZip: $(Build.ArtifactStagingDirectory)/Linux/WebJobs.Script.WebHost.$(Build.BuildNumber).zip
+    log_dir: $(Build.ArtifactStagingDirectory)/log
+    build_args: '-v m -c $(configuration) -r $(runtime) --self-contained true -p:BuildNumber=$(buildNumber) -p:MinorVersionPrefix=${{ parameters.minorVersionPrefix }} -p:IsPackable=false'
+    publish_zip_dir: $(Build.ArtifactStagingDirectory)/Linux
 
   templateContext:
     outputParentDirectory: $(Build.ArtifactStagingDirectory)
@@ -28,7 +27,7 @@ jobs:
       sbomBuildDropPath: $(publishDir)
     - output: pipelineArtifact
       displayName: Publish logs
-      path: $(logDir)
+      path: $(log_dir)
       artifact: Linux_Log
       sbomEnabled: false
       condition: always()
@@ -47,7 +46,7 @@ jobs:
       command: custom
       custom: restore
       projects: $(project)
-      arguments: '-v m -r $(runtime) -p:PublishReadyToRun=true -bl:$(logDir)/restore.binlog' # add PublishReadyToRun=true for https://github.com/dotnet/sdk/issues/20701
+      arguments: '-v m -r $(runtime) -p:PublishReadyToRun=true -bl:$(log_dir)/restore.binlog' # add PublishReadyToRun=true for https://github.com/dotnet/sdk/issues/20701
 
   - task: DotNetCoreCLI@2
     displayName: Build
@@ -55,7 +54,7 @@ jobs:
       command: custom
       custom: build
       projects: $(project)
-      arguments: '--no-restore $(buildArgs) -bl:$(logDir)/build.binlog'
+      arguments: '--no-restore $(build_args) -bl:$(log_dir)/build.binlog'
 
   - task: DotNetCoreCLI@2
     displayName: Publish
@@ -65,12 +64,4 @@ jobs:
       publishWebProjects: false
       zipAfterPublish: false
       projects: $(project)
-      arguments: '--no-build $(buildArgs) -bl:$(logDir)/publish.binlog'
-
-  - task: ArchiveFiles@2
-    displayName: Archive files
-    inputs:
-      rootFolderOrFile: out/pub/WebJobs.Script.WebHost/release_linux-x64/
-      includeRootFolder: false
-      archiveType: zip
-      archiveFile: $(publishZip)
+      arguments: '--no-build $(build_args) -p:PublishZipDir=$(publish_zip_dir) -bl:$(log_dir)/publish.binlog'
