@@ -7132,6 +7132,7 @@ namespace DryIoc
                         implType, implType.GetGenericDefinitionOrNull());
 
                 else if (implType != serviceType && serviceType != typeof(object)
+                      && !implType.IsAssignableTo(serviceType)
                       && implType.GetImplementedTypes().IndexOf(t =>
                         t == serviceType || t.GetGenericDefinitionOrNull() == serviceType) == -1)
                     Throw.It(Error.RegisteringImplementationNotAssignableToServiceType, implType, serviceType);
