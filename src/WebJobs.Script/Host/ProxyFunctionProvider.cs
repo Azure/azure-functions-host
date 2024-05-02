@@ -41,6 +41,12 @@ namespace Microsoft.Azure.WebJobs.Script
             _logger = loggerFactory.CreateLogger(LogCategories.Startup);
             if (_environment.IsProxiesEnabled())
             {
+                if (_environment.IsFlexConsumptionSku())
+                {
+                    _logger.LogWarning("Proxies are not supported in Flex Consumption. Proxy definitions will be ignored.");
+                    return;
+                }
+
                 // note these are both null-checked; if they're left null (disabled) - that's fine
                 _metadata = new Lazy<ImmutableArray<FunctionMetadata>>(LoadFunctionMetadata);
 
