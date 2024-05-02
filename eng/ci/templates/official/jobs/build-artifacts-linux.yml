@@ -13,7 +13,6 @@ jobs:
     runtime: linux-x64
     log_dir: $(Build.ArtifactStagingDirectory)/log
     build_args: '-v m -c $(configuration) -r $(runtime) --self-contained true -p:BuildNumber=$(buildNumber) -p:MinorVersionPrefix=${{ parameters.minorVersionPrefix }} -p:IsPackable=false'
-    publish_zip_dir: $(Build.ArtifactStagingDirectory)/Linux
 
   templateContext:
     outputParentDirectory: $(Build.ArtifactStagingDirectory)
@@ -22,9 +21,9 @@ jobs:
     # https://eng.ms/docs/cloud-ai-platform/devdiv/one-engineering-system-1es/1es-docs/azure-artifacts/artifact-services-onboarding
     - output: pipelineArtifact
       displayName: Publish linux artifacts
-      targetPath: $(publishZip)
+      targetPath: $(Build.ArtifactStagingDirectory)/Microsoft.Azure.WebJobs.Script.WebHost.$(Build.BuildNumber).$(configuration)_$(runtime).zip
       artifact: Linux
-      sbomBuildDropPath: $(publishDir)
+      sbomBuildDropPath: out/pub/WebJobs.Script.WebHost/$(configuration)_$(runtime) # TODO: set this from msbuild?
     - output: pipelineArtifact
       displayName: Publish logs
       path: $(log_dir)
@@ -64,4 +63,4 @@ jobs:
       publishWebProjects: false
       zipAfterPublish: false
       projects: $(project)
-      arguments: '--no-build $(build_args) -p:PublishZipDir=$(publish_zip_dir) -bl:$(log_dir)/publish.binlog'
+      arguments: '--no-build $(build_args) -p:PublishZipDir=$(Build.ArtifactStagingDirectory) -bl:$(log_dir)/publish.binlog'
