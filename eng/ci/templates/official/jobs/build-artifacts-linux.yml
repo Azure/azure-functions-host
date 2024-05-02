@@ -7,31 +7,36 @@ jobs:
 - job: BuildArtifactsLinux
   displayName: Build Linux Artifacts
 
+  variables:
+    project: src/WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj
+    configuration: release
+    runtime: linux-x64
+    logDir: $(Build.ArtifactStagingDirectory)/log
+    buildArgs: '-v m -c $(configuration) -r $(runtime) --self-contained true -p:BuildNumber=$(buildNumber) -p:MinorVersionPrefix=${{ parameters.minorVersionPrefix }} -p:IsPackable=false'
+    publishDir: out/pub/WebJobs.Script.WebHost/$(configuration)_$(runtime)
+    publishZip: $(Build.ArtifactStagingDirectory)/Linux/WebJobs.Script.WebHost.$(Build.BuildNumber).zip
+
   templateContext:
     outputParentDirectory: $(Build.ArtifactStagingDirectory)
     outputs:
-    # TODO: onboard to Azure Artifacts Drops to allow accessing this from mseng
+    # TODO: onboard to Azure Artifacts Drops to allow accessing this from docker linux pipeline in msazure
     # https://eng.ms/docs/cloud-ai-platform/devdiv/one-engineering-system-1es/1es-docs/azure-artifacts/artifact-services-onboarding
     - output: pipelineArtifact
       displayName: Publish linux artifacts
-      path: $(Build.ArtifactStagingDirectory)/Linux
+      targetPath: $(publishZip)
       artifact: Linux
+      sbomBuildDropPath: $(publishDir)
     - output: pipelineArtifact
       displayName: Publish logs
-      path: $(Build.ArtifactStagingDirectory)/log
+      path: $(logDir)
       artifact: Linux_Log
+      sbomEnabled: false
       condition: always()
 
   pool:
     name: 1es-pool-azfunc
     image: 1es-ubuntu-22.04
     os: linux
-
-  variables:
-    project: src/WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj
-    runtime: linux-x64
-    logDir: $(Build.ArtifactStagingDirectory)/log
-    buildArgs: '-v m -c release -r $(runtime) --self-contained true -p:BuildNumber=$(buildNumber) -p:MinorVersionPrefix=${{ parameters.minorVersionPrefix }} -p:IsPackable=false'
 
   steps:
   - template: /eng/ci/templates/install-dotnet.yml@self
@@ -68,4 +73,4 @@ jobs:
       rootFolderOrFile: out/pub/WebJobs.Script.WebHost/release_linux-x64/
       includeRootFolder: false
       archiveType: zip
-      archiveFile: $(Build.ArtifactStagingDirectory)/Linux/WebJobs.Script.WebHost.$(Build.BuildId).zip
+      archiveFile: $(publishZip)
