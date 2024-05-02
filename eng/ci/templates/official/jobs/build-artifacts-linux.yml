@@ -13,6 +13,8 @@ jobs:
     runtime: linux-x64
     log_dir: $(Build.ArtifactStagingDirectory)/log
     build_args: '-v m -c $(configuration) -r $(runtime) --self-contained true -p:BuildNumber=$(buildNumber) -p:MinorVersionPrefix=${{ parameters.minorVersionPrefix }} -p:IsPackable=false'
+    publish_dir: $(Build.ArtifactStagingDirectory)/pub
+    publish_zip_dir: $(Build.ArtifactStagingDirectory)/zip
 
   templateContext:
     outputParentDirectory: $(Build.ArtifactStagingDirectory)
@@ -21,9 +23,9 @@ jobs:
     # https://eng.ms/docs/cloud-ai-platform/devdiv/one-engineering-system-1es/1es-docs/azure-artifacts/artifact-services-onboarding
     - output: pipelineArtifact
       displayName: Publish linux artifacts
-      targetPath: $(publish_zip_target)
+      path: $(publish_zip_dir)
       artifact: Linux
-      sbomBuildDropPath: $(publish_dir)
+      sbomBuildDropPath: $(publish_dir) # generate SBOM for the contents of the zip, not the zip itself
     - output: pipelineArtifact
       displayName: Publish logs
       path: $(log_dir)
@@ -60,7 +62,7 @@ jobs:
     inputs:
       command: custom
       custom: publish
-      publishWebProjects: false
-      zipAfterPublish: false
+      publishWebProjects: false # we use our own publish logic
+      zipAfterPublish: false # we use our own zip logic
       projects: $(project)
-      arguments: '$(build_args) --no-build -p:PublishZipDir=$(Build.ArtifactStagingDirectory) -bl:$(log_dir)/publish.binlog -p:PublishDirCIVar=publish_dir -p:PublishZipTargetCIVar=publish_zip_target'
+      arguments: '$(build_args) --no-build -o $(publish_dir) -p:PublishZipDir=$(publish_zip_dir) -bl:$(log_dir)/publish.binlog'

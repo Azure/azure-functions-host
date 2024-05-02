@@ -168,19 +168,8 @@
       <PublishZipTarget Condition="'$(PublishZipDir)' != ''">$(PublishZipDir)\$(AssemblyName).$(Version).$(ArtifactsPivots).zip</PublishZipTarget>
     </PropertyGroup>
 
-    <ZipDirectory SourceDirectory="$(PublishDir)" DestinationFile="$(PublishZipTarget)" Condition="'$(PublishZipTarget)' != ''"/>
-  </Target>
-
-  <!--
-    Instead of Azure pipelines needing to know where we publish to before hand, we will export the publish variables to them at runtime.
-  -->
-  <Target Name="ExportPublishVarsForCI" AfterTargets="ZipPublishContents;Publish" Condition="'$(TF_BUILD)' == 'true'">
-    <PropertyGroup>
-      <PublishDirCIVar Condition="'$(PublishDirCIVar)' == ''">PublishDir</PublishDirCIVar>
-      <PublishZipTargetCIVar Condition="'$(PublishZipTargetCIVar)' == ''">PublishZipTarget</PublishZipTargetCIVar>
-    </PropertyGroup>
-    <Message Importance="high" Text="##vso[task.setvariable variable=$(PublishDirCIVar);]$(PublishDir)" />
-    <Message Importance="high" Text="##vso[task.setvariable variable=$(PublishZipTargetCIVar);]$(PublishZipTarget)" />
+    <MakeDir Directories="$([System.IO.Path]::GetDirectoryName('$(PublishZipTarget)'))" Condition="'$(PublishZipTarget)' != ''" />
+    <ZipDirectory SourceDirectory="$(PublishDir)" DestinationFile="$(PublishZipTarget)" Condition="'$(PublishZipTarget)' != ''" />
   </Target>
 
 </Project>
