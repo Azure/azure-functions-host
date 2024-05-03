@@ -13,7 +13,7 @@ function Get-AzureFunctionsVersion {
   }
 
   # use the same logic as the projects to generate the site extension version
-  $cmd = "build", "$PSScriptRoot\common.props", "/t:EchoVersion", "-restore:False", "/p:BuildNumber=$buildNumber", "/p:MinorVersionPrefix=$minorVersionPrefix", $suffixCmd, "--nologo", "-clp:NoSummary"  
+  $cmd = "build", "$PSScriptRoot\version.proj", "/t:EchoVersion", "-restore:False", "/p:BuildNumber=$buildNumber", "/p:MinorVersionPrefix=$minorVersionPrefix", $suffixCmd, "--nologo", "-clp:NoSummary"  
   $version = (& dotnet $cmd).Trim()
 
   return $version

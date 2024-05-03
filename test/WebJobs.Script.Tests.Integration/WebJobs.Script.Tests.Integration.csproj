@@ -2,7 +2,7 @@
   <Import Project="..\..\build\common.props" />
   <Import Project="..\..\build\python.props" />
   <PropertyGroup>
-    <TargetFrameworks>net8.0</TargetFrameworks>
+    <TargetFramework>net8.0</TargetFramework>
     <IsPackable>false</IsPackable>
     <AssemblyName>Microsoft.Azure.WebJobs.Script.Tests.Integration</AssemblyName>
     <RootNamespace>Microsoft.Azure.WebJobs.Script.Tests.Integration</RootNamespace>
