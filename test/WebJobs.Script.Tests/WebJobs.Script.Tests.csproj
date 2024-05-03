@@ -116,7 +116,7 @@
     <None Update="Managment\Payloads\ExpectedHttpExtensionsPayload.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Update="DepsFiles\*\Microsoft.Azure.WebJobs.Script.WebHost.deps.json" CopyToOutputDirectory="Always" />
+    <None Update="DepsFiles\*\Microsoft.Azure.WebJobs.Script.WebHost.deps.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Update="TestFixture\HostOptionsProviderTests\TestBasicBindings.json">
