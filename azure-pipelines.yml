@@ -637,13 +637,6 @@ jobs:
       path: '$(Build.ArtifactStagingDirectory)/PrivateSiteExtension'
 
   - task: DownloadPipelineArtifact@2
-    displayName: 'Download _Packages.net6 Artifact'
-    inputs:
-      buildType: 'current'
-      artifact: '_Packages.net6'
-      path: '$(Build.ArtifactStagingDirectory)/packages'
-
-  - task: DownloadPipelineArtifact@2
     displayName: 'Download _Packages.net8 Artifact'
     inputs:
       buildType: 'current'
