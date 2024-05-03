@@ -109,7 +109,7 @@ jobs:
         Copy-Item -Path $sourcePath -Destination $(Build.ArtifactStagingDirectory) -ErrorAction Stop -Verbose -Force}
     displayName: 'Copy host packages to artifact directory'
   - task: NuGetCommand@2
-    condition: eq(variables['RUNBUILDFORINTEGRATIONTESTS'], 'True')
+    condition: and(eq(variables['RUNBUILDFORINTEGRATIONTESTS'], 'True'), eq(variables['minorVersionPrefix'], '8'))
     inputs:
       command: 'push'
       packagesToPush: '$(Build.ArtifactStagingDirectory)/**/*.nupkg;!$(Build.ArtifactStagingDirectory)/**/*.symbols.nupkg'
