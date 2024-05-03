@@ -20,6 +20,13 @@ $patchVersion = [int]$versionParts[2]
 $isPatch = $patchVersion -gt 0
 Write-Host "MajorMinorVersion is '$majorMinorVersion'. Patch version is '$patchVersion'. IsPatch: '$isPatch'"
 
+#  Based on the minorVersionPrefix value, set target framework to be used for building/publishing
+if ($minorVersionPrefix -eq "8") {
+    $targetFramework = "net8.0"
+} else {
+    $targetFramework = "net6.0"
+}
+
 function ZipContent([string] $sourceDirectory, [string] $target) {
     $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 
@@ -41,17 +48,18 @@ function ZipContent([string] $sourceDirectory, [string] $target) {
 function BuildRuntime([string] $targetRid, [bool] $isSelfContained) {
     $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 
-    $publishTarget = "$publishDir\release_$targetRid"
+    $publishTarget = "$publishDir\release_$targetFramework" + "_$targetRid"
+
     $projectPath = "$rootDir\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj"
     if (-not (Test-Path $projectPath))
     {
         throw "Project path '$projectPath' does not exist."
     }
 
-    $cmd = "publish", $projectPath , "-r", "$targetRid", "--self-contained", "$isSelfContained", "-v", "m", "-c", "Release", "-p:IsPackable=false", "-p:BuildNumber=$buildNumber", "-p:MinorVersionPrefix=$minorVersionPrefix"
+    $cmd = "publish", $projectPath , "-r", "$targetRid", "-f", "$targetFramework", "--self-contained", "$isSelfContained", "-v", "m", "-c", "Release", "-p:IsPackable=false", "-p:BuildNumber=$buildNumber", "-p:MinorVersionPrefix=$minorVersionPrefix"
 
     Write-Host "======================================"
-    Write-Host "Building $targetRid"
+    Write-Host "Building $targetRid for target framework $targetFramework"
     Write-Host "  Self-Contained:    $isSelfContained"
     Write-Host "  Publish Directory:  $publishTarget"
     Write-Host ""
@@ -80,7 +88,7 @@ function BuildRuntime([string] $targetRid, [bool] $isSelfContained) {
     Write-Host ""
     CleanOutput $publishTarget
     Write-Host ""
-    Write-Host "Done building $targetRid. Elapsed: $($stopwatch.Elapsed)"
+    Write-Host "Done building $targetRid for target framework $targetFramework. Elapsed: $($stopwatch.Elapsed)"
     Write-Host "======================================"
     Write-Host ""
 }
@@ -219,8 +227,8 @@ function CreateSiteExtensions() {
     
     Write-Host "======================================"
     Write-Host "Copying build to temp directory to prepare for zipping official site extension."
-    Copy-Item -Path $publishDir\release_win-x86\ -Destination $officialSiteExtensionPath\32bit -Force -Recurse > $null
-    Copy-Item -Path $publishDir\release_win-x64 -Destination $officialSiteExtensionPath\64bit -Force -Recurse > $null
+    Copy-Item -Path "$publishDir\release_$targetFramework`_win-x86\" -Destination "$officialSiteExtensionPath\32bit" -Force -Recurse > $null
+    Copy-Item -Path "$publishDir\release_$targetFramework`_win-x64\" -Destination "$officialSiteExtensionPath\64bit" -Force -Recurse > $null
     Copy-Item -Path $officialSiteExtensionPath\32bit\applicationHost.xdt -Destination $officialSiteExtensionPath -Force > $null
     Write-Host "  Deleting workers directory: $officialSiteExtensionPath\32bit\workers" 
     Remove-Item -Recurse -Force "$officialSiteExtensionPath\32bit\workers" -ErrorAction SilentlyContinue
@@ -290,7 +298,7 @@ function CreateSiteExtensions() {
     Write-Host "======================================"
     $stopwatch.Reset()
     Write-Host "Copying build to temp directory to prepare for zipping private site extension."
-    Copy-Item -Path $publishDir\release_win-x86\ -Destination $siteExtensionPath\SiteExtensions\Functions\32bit -Force -Recurse > $null
+    Copy-Item -Path $publishDir\release_$targetFramework`_win-x86\ -Destination $siteExtensionPath\SiteExtensions\Functions\32bit -Force -Recurse > $null
     Copy-Item -Path $siteExtensionPath\SiteExtensions\Functions\32bit\applicationHost.xdt -Destination $siteExtensionPath\SiteExtensions\Functions -Force > $null
     Write-Host "Done copying. Elapsed: $($stopwatch.Elapsed)"
     Write-Host "======================================"
