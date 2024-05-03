@@ -609,42 +609,42 @@ jobs:
   steps:
 
   - task: DownloadPipelineArtifact@2
-    displayName: 'Download SiteExtension6 Artifact'
+    displayName: 'Download _SiteExtension.net6 Artifact'
     inputs:
       buildType: 'current'
       artifact: '_SiteExtension.net6'
       path: '$(Build.ArtifactStagingDirectory)/SiteExtension'
 
   - task: DownloadPipelineArtifact@2
-    displayName: 'Download SiteExtension8 Artifact'
+    displayName: 'Download _SiteExtension.net8 Artifact'
     inputs:
       buildType: 'current'
       artifact: '_SiteExtension.net8'
       path: '$(Build.ArtifactStagingDirectory)/SiteExtension'
 
   - task: DownloadPipelineArtifact@2
-    displayName: 'Download PrivateSiteExtension6 Artifact'
+    displayName: 'Download _PrivateSiteExtension.net6 Artifact'
     inputs:
       buildType: 'current'
       artifact: '_PrivateSiteExtension.net6'
       path: '$(Build.ArtifactStagingDirectory)/PrivateSiteExtension'
 
   - task: DownloadPipelineArtifact@2
-    displayName: 'Download PrivateSiteExtension8 Artifact'
+    displayName: 'Download _PrivateSiteExtension.net8 Artifact'
     inputs:
       buildType: 'current'
       artifact: '_PrivateSiteExtension.net8'
       path: '$(Build.ArtifactStagingDirectory)/PrivateSiteExtension'
 
   - task: DownloadPipelineArtifact@2
-    displayName: 'Download Nuget packages(net6.0) Artifact'
+    displayName: 'Download _Packages.net6 Artifact'
     inputs:
       buildType: 'current'
       artifact: '_Packages.net6'
       path: '$(Build.ArtifactStagingDirectory)/packages'
 
   - task: DownloadPipelineArtifact@2
-    displayName: 'Download Nuget packages(net8.0) Artifact'
+    displayName: 'Download _Packages.net8 Artifact'
     inputs:
       buildType: 'current'
       artifact: '_Packages.net8'
