@@ -1,12 +1,6 @@
 variables:
   buildNumber: $[ counter('constant', 13000) ]
   isReleaseBranch: $[contains(variables['Build.SourceBranch'], 'release/')]
-  ${{ if contains(variables['Build.SourceBranch'], 'release/inproc6/') }}:
-    minorVersionPrefix: "6"
-  ${{ elseif contains(variables['Build.SourceBranch'], 'release/inproc8/') }}:
-    minorVersionPrefix: "8"
-  ${{ else }}:
-    minorVersionPrefix: ""
   DOTNET_NOLOGO: 1
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
   DOTNET_CLI_TELEMETRY_OPTOUT: 1
@@ -46,11 +40,16 @@ jobs:
     name: Initialize
     inputs:
       filePath: '$(Build.Repository.LocalPath)\build\initialize-pipeline.ps1'
-      arguments: -minorVersionPrefix "$(minorVersionPrefix)"
       showWarnings: true
       pwsh: true
 
 - job: BuildArtifacts
+  strategy: 
+    matrix:
+      net6:
+        minorVersionPrefix: "6"
+      net8:
+        minorVersionPrefix: "8"
   dependsOn: InitializePipeline
   condition: and(succeeded(), or(ne(variables['Build.Reason'], 'PullRequest'), eq(dependencies.InitializePipeline.outputs['Initialize.BuildArtifacts'], true)))
   variables:
@@ -68,7 +67,7 @@ jobs:
   steps:
   - template: build/install-dotnet.yml
   - task: PowerShell@2
-    displayName: "Build artifacts"
+    displayName: "Build artifacts $(minorVersionPrefix)"
     inputs:
       filePath: '$(Build.Repository.LocalPath)\build\build-extensions.ps1'
       arguments: '-buildNumber "$(buildNumber)" -suffix "$(suffix)" -minorVersionPrefix "$(minorVersionPrefix)"'
@@ -86,12 +85,13 @@ jobs:
       SourceFolder: 'out/pub/WebJobs.Script.WebHost'
       Contents: '**/*.zip'
       TargetFolder: '$(Build.ArtifactStagingDirectory)'
+
   - task: DotNetCoreCLI@2
     displayName: 'Build host packages'
     inputs:
       command: 'custom'
       custom: 'pack'
-      arguments: -p:BuildNumber=$(buildNumber) -c Release $(packSuffixSwitch)
+      arguments: '-p:BuildNumber=$(buildNumber) -c Release $(packSuffixSwitch) -p:MinorVersionPrefix="$(minorVersionPrefix)"'
       projects: |
         **\WebJobs.Script.csproj
         **\WebJobs.Script.WebHost.csproj
@@ -107,11 +107,9 @@ jobs:
           throw "Unable to find '$packageName' at './package'"
         }
         Copy-Item -Path $sourcePath -Destination $(Build.ArtifactStagingDirectory) -ErrorAction Stop -Verbose -Force}
-    condition: eq(variables['RUNBUILDFORINTEGRATIONTESTS'], 'True')
-    displayName: 'Copy package to ArtifactStagingDirectory'
-
+    displayName: 'Copy host packages to artifact directory'
   - task: NuGetCommand@2
-    condition: eq(variables['RUNBUILDFORINTEGRATIONTESTS'], 'True')
+    condition: and(eq(variables['RUNBUILDFORINTEGRATIONTESTS'], 'True'), eq(variables['minorVersionPrefix'], '8'))
     inputs:
       command: 'push'
       packagesToPush: '$(Build.ArtifactStagingDirectory)/**/*.nupkg;!$(Build.ArtifactStagingDirectory)/**/*.symbols.nupkg'
@@ -139,7 +137,7 @@ jobs:
     displayName: 'ESRP CodeSigning: Strong Name and Authenticode'
     inputs:
       ConnectedServiceName: 'ESRP Service'
-      FolderPath: 'out/bin/WebJobs.Script.Abstractions/release'
+      FolderPath: 'out/bin/WebJobs.Script.Abstractions'
       Pattern: Microsoft.Azure.WebJobs.Script.Abstractions*.dll
       signConfigType: inlineSignParams
       inlineOperation: |
@@ -293,8 +291,10 @@ jobs:
     inputs:
       BuildDropPath: '$(Build.ArtifactStagingDirectory)\SiteExtension'
       Verbosity: 'Information'
+
   - publish: $(Build.ArtifactStagingDirectory)\SiteExtension
-    artifact: SiteExtension
+    artifact: _SiteExtension.net$(minorVersionPrefix)
+
   - pwsh: |
       if ((test-path $(Build.ArtifactStagingDirectory)\ZippedPatchSiteExtension))
       {
@@ -308,37 +308,37 @@ jobs:
       BuildDropPath: '$(Build.ArtifactStagingDirectory)\ZippedPatchSiteExtension'
       Verbosity: 'Information'
     condition: and(succeeded(), eq(variables['isPatchVersion'], 'true'))
-  - publish: $(Build.ArtifactStagingDirectory)\ZippedPatchSiteExtension
-    artifact: PatchedSiteExtension
-    condition: and(succeeded(), eq(variables['isPatchVersion'], 'true'))
   - task: ManifestGeneratorTask@0
     displayName: 'SBOM Generation Task - PrivateSiteExtension'
     inputs:
       BuildDropPath: '$(Build.ArtifactStagingDirectory)\PrivateSiteExtension'
       Verbosity: 'Information'
+
   - publish: $(Build.ArtifactStagingDirectory)\PrivateSiteExtension
-    artifact: PrivateSiteExtension
+    artifact: _PrivateSiteExtension.net$(minorVersionPrefix)
+
   - task: ManifestGeneratorTask@0
     displayName: 'SBOM Generation Task - Symbols'
     inputs:
       BuildDropPath: '$(Build.ArtifactStagingDirectory)\Symbols'
       Verbosity: 'Information'
   - publish: $(Build.ArtifactStagingDirectory)\Symbols
-    artifact: Symbols
+    artifact: _Symbols.net$(minorVersionPrefix)
+
   - task: ManifestGeneratorTask@0
     displayName: 'SBOM Generation Task - NugetPackages'
     inputs:
       BuildDropPath: 'out/pkg/release'
       Verbosity: 'Information'
-  - publish: out/pkg/release
-    artifact: NugetPackages
+
+  - publish: 'out/pkg/release'
+    artifact: _Packages.net$(minorVersionPrefix)
+
   - task: ManifestGeneratorTask@0
     displayName: 'SBOM Generation Task - Performance'
     inputs:
       BuildDropPath: 'WebJobs.Script.Performance.App'
       Verbosity: 'Information'
-  - publish: WebJobs.Script.Performance.App
-    artifact: Performance
 
 - job: RunUnitTests
   pool:
@@ -601,3 +601,88 @@ jobs:
     inputs:
       filePath: '$(Build.Repository.LocalPath)\build\checkin-secrets.ps1'
       arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'' -leaseBlob $(LeaseBlob) -leaseToken $(LeaseToken)'
+
+- job: PublishArtifacts
+  dependsOn: BuildArtifacts
+  condition: succeeded()
+
+  steps:
+
+  - task: DownloadPipelineArtifact@2
+    displayName: 'Download _SiteExtension.net6 Artifact'
+    inputs:
+      buildType: 'current'
+      artifact: '_SiteExtension.net6'
+      path: '$(Build.ArtifactStagingDirectory)/SiteExtension'
+
+  - task: DownloadPipelineArtifact@2
+    displayName: 'Download _SiteExtension.net8 Artifact'
+    inputs:
+      buildType: 'current'
+      artifact: '_SiteExtension.net8'
+      path: '$(Build.ArtifactStagingDirectory)/SiteExtension'
+
+  - task: DownloadPipelineArtifact@2
+    displayName: 'Download _PrivateSiteExtension.net6 Artifact'
+    inputs:
+      buildType: 'current'
+      artifact: '_PrivateSiteExtension.net6'
+      path: '$(Build.ArtifactStagingDirectory)/PrivateSiteExtension'
+
+  - task: DownloadPipelineArtifact@2
+    displayName: 'Download _PrivateSiteExtension.net8 Artifact'
+    inputs:
+      buildType: 'current'
+      artifact: '_PrivateSiteExtension.net8'
+      path: '$(Build.ArtifactStagingDirectory)/PrivateSiteExtension'
+
+  - task: DownloadPipelineArtifact@2
+    displayName: 'Download _Packages.net8 Artifact'
+    inputs:
+      buildType: 'current'
+      artifact: '_Packages.net8'
+      path: '$(Build.ArtifactStagingDirectory)/packages'
+
+  - task: DownloadPipelineArtifact@2
+    displayName: 'Download Symbols6 Artifact'
+    inputs:
+      buildType: 'current'
+      artifact: '_Symbols.net6'
+      path: '$(Build.ArtifactStagingDirectory)/Symbols'
+
+  - task: DownloadPipelineArtifact@2
+    displayName: 'Download Symbols8 Artifact'
+    inputs:
+      buildType: 'current'
+      artifact: '_Symbols.net8'
+      path: '$(Build.ArtifactStagingDirectory)/Symbols'
+
+# Publish artifacts.
+
+  - task: PublishPipelineArtifact@1
+    displayName: 'Publish SiteExtension Artifact'
+    inputs:
+      targetPath: '$(Build.ArtifactStagingDirectory)/SiteExtension'
+      artifact: 'SiteExtension'
+      publishLocation: 'pipeline'
+
+  - task: PublishPipelineArtifact@1
+    displayName: 'Publish PrivateSiteExtension Artifact'
+    inputs:
+      targetPath: '$(Build.ArtifactStagingDirectory)/PrivateSiteExtension'
+      artifact: 'PrivateSiteExtension'
+      publishLocation: 'pipeline'
+
+  - task: PublishPipelineArtifact@1
+    displayName: 'Publish Nuget packages Artifact'
+    inputs:
+      targetPath: '$(Build.ArtifactStagingDirectory)/packages'
+      artifact: 'NugetPackages'
+      publishLocation: 'pipeline'
+
+  - task: PublishPipelineArtifact@1
+    displayName: 'Publish Symbols Artifact'
+    inputs:
+      targetPath: '$(Build.ArtifactStagingDirectory)/Symbols'
+      artifact: 'Symbols'
+      publishLocation: 'pipeline'
