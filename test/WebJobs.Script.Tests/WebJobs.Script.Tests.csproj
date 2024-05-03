@@ -119,9 +119,6 @@
     <None Update="DepsFiles\*\Microsoft.Azure.WebJobs.Script.WebHost.deps.json" CopyToOutputDirectory="Always" />
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Update="DepsFiles\net6.0\Microsoft.Azure.WebJobs.Script.WebHost.deps.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
     <None Update="TestFixture\HostOptionsProviderTests\TestBasicBindings.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
