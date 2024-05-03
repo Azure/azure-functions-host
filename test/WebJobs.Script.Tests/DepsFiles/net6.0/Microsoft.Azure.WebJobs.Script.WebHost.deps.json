@@ -39,9 +39,7 @@
           "System.Net.NameResolution": "4.3.0",
           "System.Private.Uri": "4.3.2",
           "System.Security.Cryptography.Xml": "4.7.1",
-          "System.Text.RegularExpressions": "4.3.1",
-          "Microsoft.Azure.WebJobs.Script.Reference": "4.34.0.0",
-          "Microsoft.Azure.WebJobs.Script.Grpc.Reference": "4.34.0.0"
+          "System.Text.RegularExpressions": "4.3.1"
         },
         "runtime": {
           "Microsoft.Azure.WebJobs.Script.WebHost.dll": {}
@@ -1030,7 +1028,7 @@
         "runtime": {
           "lib/netstandard2.0/Microsoft.Azure.WebJobs.Script.Abstractions.dll": {
             "assemblyVersion": "1.0.0.0",
-            "fileVersion": "1.0.21962.0"
+            "fileVersion": "1.0.19706.0"
           }
         }
       },
@@ -3072,22 +3070,6 @@
         "runtime": {
           "Microsoft.Azure.WebJobs.Script.Grpc.dll": {}
         }
-      },
-      "Microsoft.Azure.WebJobs.Script.Reference/4.34.0.0": {
-        "runtime": {
-          "Microsoft.Azure.WebJobs.Script.dll": {
-            "assemblyVersion": "4.34.0.0",
-            "fileVersion": "4.34.0.0"
-          }
-        }
-      },
-      "Microsoft.Azure.WebJobs.Script.Grpc.Reference/4.34.0.0": {
-        "runtime": {
-          "Microsoft.Azure.WebJobs.Script.Grpc.dll": {
-            "assemblyVersion": "4.34.0.0",
-            "fileVersion": "4.34.0.0"
-          }
-        }
       }
     }
   },
@@ -3765,7 +3747,7 @@
     "Microsoft.Azure.WebJobs.Script.Abstractions/1.0.4-preview": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-6yQIbQWV+Js168FJFPu0aIdwaVl6IkaIqZOuq9RT/8QgNFjIiHYE6w/bJjTDWzf4FccVgbYAz9nXWXd5u45OEg==",
+      "sha512": "sha512-mvgXnFKwh4/Gw8BXc99ZJd2iQ8DQJTCotvY9PZ9Y2UHa4KiOsYaEW4kuZ5RFBD9KqGO2vXG56w3wMFVyxmaA2g==",
       "path": "microsoft.azure.webjobs.script.abstractions/1.0.4-preview",
       "hashPath": "microsoft.azure.webjobs.script.abstractions.1.0.4-preview.nupkg.sha512"
     },
@@ -5155,16 +5137,6 @@
     },
     "Microsoft.Azure.WebJobs.Script.Grpc/4.34.0": {
       "type": "project",
-      "serviceable": false,
-      "sha512": ""
-    },
-    "Microsoft.Azure.WebJobs.Script.Reference/4.34.0.0": {
-      "type": "reference",
-      "serviceable": false,
-      "sha512": ""
-    },
-    "Microsoft.Azure.WebJobs.Script.Grpc.Reference/4.34.0.0": {
-      "type": "reference",
       "serviceable": false,
       "sha512": ""
     }
