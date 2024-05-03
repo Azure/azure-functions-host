@@ -10,7 +10,7 @@
       "request": "launch",
       "preLaunchTask": "build",
       // If you have changed target frameworks, make sure to update the program path.
-      "program": "${workspaceFolder}/out/bin/WebJobs.Script.WebHost/debug_net8/Microsoft.Azure.WebJobs.Script.WebHost.dll",
+      "program": "${workspaceFolder}/out/bin/WebJobs.Script.WebHost/debug_net8.0/Microsoft.Azure.WebJobs.Script.WebHost.dll",
       "args": [],
       "cwd": "${workspaceFolder}/sample/Node",
       "stopAtEntry": false,
