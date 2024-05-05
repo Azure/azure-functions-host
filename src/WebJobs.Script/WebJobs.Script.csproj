@@ -20,8 +20,9 @@
   <ItemGroup>
     <None Remove="FileProvisioning\PowerShell\profile.ps1" />
     <None Remove="FileProvisioning\PowerShell\requirements.psd1" />
+    <None Remove="runtimeassemblies-net6.json" />
+    <None Remove="runtimeassemblies-net8.json" />
     <None Remove="runtimeassemblies-relaxed.json" />
-    <None Remove="runtimeassemblies.json" />
     <None Remove="runtimes.json" />
   </ItemGroup>
   <ItemGroup>
@@ -33,7 +34,10 @@
     <EmbeddedResource Include="runtimeassemblies-relaxed.json">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </EmbeddedResource>
-    <EmbeddedResource Include="runtimeassemblies.json">
+    <EmbeddedResource Include="runtimeassemblies-net6.json">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="runtimeassemblies-net8.json">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </EmbeddedResource>
     <EmbeddedResource Include="runtimes.json" />
