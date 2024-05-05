@@ -46,14 +46,12 @@ namespace WorkerHarness.Core.Profiling
             _traceDataFilePath = $@"{_profilesPath}\PerfviewData_{timestamp}.etl";
 
             var circularBufferMb = _config.CircularMb ?? 50;
-            var osBufferSizeMb = _config.BufferSizeMb ?? 64;
+            var osBufferSizeMb = _config.BufferSizeMb ?? 1024;
 
             _logger.LogInformation($"Starting Perfview profiling...");
 
             string startArgs =
-                $"start /AcceptEula /LogFile={_logFilePath} /BufferSizeMB={osBufferSizeMb} /ThreadTime /CircularMB={circularBufferMb}"
-                + " /NoV2Rundown /NoNGENRundown"
-                + $" /Providers={_config.Providers} {_traceDataFilePath}";
+                $"start /AcceptEula /LogFile={_logFilePath} /BufferSizeMB={osBufferSizeMb} /ThreadTime /NoV2Rundown /NoNGENRundown /Providers={_config.Providers} {_traceDataFilePath}";
 
             var timeout = _config.StartTimeoutInSeconds ?? 5;
             using (var startProcess = new ProcessRunner(TimeSpan.FromSeconds(timeout)))
@@ -70,10 +68,10 @@ namespace WorkerHarness.Core.Profiling
                 return;
             }
 
-            _logger.LogInformation($"Stopping Perfview profiling...");
+            _logger.LogInformation($"Stopping Perfview profiling. This process may take a few seconds to a few minutes.");
 
-            string stopArgs = $"stop /AcceptEula /LogFile={_logFilePath} /Providers={_config.Providers}"
-                              + " /NoV2Rundown /NoNGENRundown /NoNGenPdbs /Merge=true /Zip=false";
+            string stopArgs =
+                $"stop /AcceptEula /LogFile={_logFilePath} /Providers={_config.Providers} /NoV2Rundown /NoNGENRundown /NoNGenPdbs /Merge=true /Zip=false";
 
             var timeout = 120;
             using (var stopProcess = new ProcessRunner(TimeSpan.FromSeconds(timeout)))

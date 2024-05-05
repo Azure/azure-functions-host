@@ -5,7 +5,7 @@
       "actionType": "rpc",
       "actionName": "Sending cold start http request to language worker. Step 1 - env reload request",
       "waitForUserInput": false,
-      "StartProfiling":true,
+      "StartProfiling": true,
       "messages": [
         {
           "direction": "outgoing",

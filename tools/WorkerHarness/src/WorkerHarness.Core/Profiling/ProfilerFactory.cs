@@ -8,11 +8,11 @@ namespace WorkerHarness.Core.Profiling
 {
     public sealed class ProfilerFactory : IProfilerFactory
     {
-        private readonly PerfviewConfig perfviewConfig;
+        private readonly PerfviewConfig _perfviewConfig;
         private readonly ILoggerFactory _loggerFactory;
         public ProfilerFactory(PerfviewConfig perfviewConfig, ILoggerFactory loggerFactory)
         {
-            this.perfviewConfig = perfviewConfig;
+            this._perfviewConfig = perfviewConfig;
             _loggerFactory = loggerFactory;
         }
 
@@ -20,7 +20,7 @@ namespace WorkerHarness.Core.Profiling
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
-                var profiler = new PerfviewProfiler(perfviewConfig, _loggerFactory.CreateLogger<PerfviewProfiler>());
+                var profiler = new PerfviewProfiler(_perfviewConfig, _loggerFactory.CreateLogger<PerfviewProfiler>());
                 return profiler;
             }
 

@@ -12,10 +12,7 @@ namespace WorkerHarness.Core.Diagnostics
         [Event(9001)]
         public void AppStarted()
         {
-            if (IsEnabled())
-            {
-                WriteEvent(9001);
-            }
+            WriteEvent(9001);
         }
 
         [Event(9002)]

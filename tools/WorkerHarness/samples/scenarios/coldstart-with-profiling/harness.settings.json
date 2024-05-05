@@ -1,6 +1,7 @@
 {
   "scenarioFile": "scenario.json",
-  "workerPath": "FunctionsNetHost\\FunctionsNetHost.exe",
-  "functionAppDirectory": "FunctionApp44",
-  "DisplayVerboseError": true
+  "workerPath": "FunctionsNetHostBase\\FunctionsNetHost.exe",
+  "functionAppDirectory": "FunctionApp44Base",
+  "DisplayVerboseError": true,
+  "WaitBeforeExitingInSeconds": 15
 }
