@@ -30,13 +30,13 @@ namespace WorkerHarness.Core.GrpcService
 
         public async Task Shutdown()
         {
-            _logger.LogInformation("Shutting down gRPC server");
+            _logger.LogDebug("Shutting down gRPC server");
             await _grpcServer.ShutdownAsync();
         }
 
         public void Start()
         {
-            _logger.LogInformation($"Starting gRPC server at {Uri}");
+            _logger.LogDebug($"Starting gRPC server at {Uri}");
             _grpcServer.Start();
         }
     }

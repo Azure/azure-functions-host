@@ -63,7 +63,6 @@ namespace WorkerHarness
                 int waitTime = harnessOptions.Value.WaitBeforeExitingInSeconds;
                 Console.WriteLine($"Will wait for {waitTime} seconds before exiting.");
                 await Task.Delay(TimeSpan.FromSeconds(waitTime));
-                Console.WriteLine("Exiting...");
             }
             catch (Exception ex)
             {
