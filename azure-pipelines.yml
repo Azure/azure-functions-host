@@ -348,6 +348,12 @@ jobs:
   steps:
   - template: build/install-dotnet.yml
   - task: DotNetCoreCLI@2
+    displayName: 'Build sln'
+    inputs:
+      command: 'build'
+      projects: |
+        **\WebJobs.Script.sln
+  - task: DotNetCoreCLI@2
     displayName: 'Unit Tests'
     inputs:
       command: 'test'

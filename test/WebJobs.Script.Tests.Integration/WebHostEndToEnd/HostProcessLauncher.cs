@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             bool usePublishPath = false)
         {
             string template = usePublishPath ? PublishPathTemplate : BuildPathTemplate;
-            _testPath = Path.GetFullPath(string.Format(template, testProjectName, "debug"));
+            _testPath = Path.GetFullPath(string.Format(template, testProjectName, "debug_net8.0"));
             _envVars = envVars ?? new Dictionary<string, string>();
         }
 
@@ -56,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             var dirPath = Path.GetDirectoryName(typeof(HostProcessLauncher).Assembly.Location);
             var dirName = new DirectoryInfo(dirPath).Name;
 
-            string workingDir = Path.Combine("..", "..", "WebJobs.Script.WebHost", dirName);
+            string workingDir = Path.Combine("..", "..", "WebJobs.Script.WebHost", $"{dirName}_net8.0");
             workingDir = Path.GetFullPath(workingDir);
             string filePath = Path.Combine(workingDir, "Microsoft.Azure.WebJobs.Script.WebHost.exe");
 
