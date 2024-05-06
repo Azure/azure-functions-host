@@ -7,6 +7,7 @@ namespace WorkerHarness.Core.Profiling
 {
     internal sealed class PerfviewProfiler : IProfiler
     {
+        private const string FunctionsColdStartProfileAnalyzerExeName = "FunctionsColdStartProfileAnalyzer.exe";
         private const string PerfViewExeName = "Perfview.exe";
         private readonly PerfviewConfig _config;
         private readonly string _profilesPath;
@@ -81,8 +82,43 @@ namespace WorkerHarness.Core.Profiling
             }
 
             await UploadProfileToStorageContainer();
+            await RunProfileAnalyzer();
 
             Status = ProfilingStatus.Stopped;
+        }
+
+        private async ValueTask RunProfileAnalyzer()
+        {
+            string profileAnalyzerPath = string.Empty;
+            try
+            {
+                profileAnalyzerPath = Path.Combine(_config.ExecutableDirectory, FunctionsColdStartProfileAnalyzerExeName);
+                if (File.Exists(profileAnalyzerPath) == false)
+                {
+                    _logger.LogWarning($"Profile analyzer executable not found at {profileAnalyzerPath}.Skipping profile analysis.");
+                    return;
+                }
+
+                if (File.Exists(_traceDataFilePath) == false)
+                {
+                    _logger.LogWarning($"Profile file not found at {_traceDataFilePath}.Skipping profile analysis.");
+                    return;
+                }
+
+                var profileAnalyzerArgs = _traceDataFilePath;
+                _logger.LogInformation($"Found '{FunctionsColdStartProfileAnalyzerExeName}' present in 'executableDirectory'(${_config.ExecutableDirectory}). Will proceed with analyzing the perfview profile to generate coldstart data.");
+                _logger.LogInformation($"Executing {profileAnalyzerPath} {profileAnalyzerArgs}");
+
+                using (var profileAnalyzerProcess = new ProcessRunner(TimeSpan.FromSeconds(60)))
+                {
+                    await profileAnalyzerProcess.Run(profileAnalyzerPath, profileAnalyzerArgs);
+                    _logger.LogInformation($"Profile analysis completed. Elapsed: {profileAnalyzerProcess.ElapsedTime.Seconds} seconds. . Profile file:{_traceDataFilePath}");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error occurred while running profile analyzer. Profile file:{_traceDataFilePath}, Profile analyzer path:{profileAnalyzerPath}");
+            }
         }
 
         private async ValueTask UploadProfileToStorageContainer()
