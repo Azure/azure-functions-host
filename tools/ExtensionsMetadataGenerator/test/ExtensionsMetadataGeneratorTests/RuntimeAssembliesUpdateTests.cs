@@ -10,14 +10,19 @@ namespace ExtensionsMetadataGeneratorTests
 {
     public class RuntimeAssembliesUpdateTests
     {
-        public const string ExistingRuntimeAssembliesFileName = "ExistingRuntimeAssemblies.txt";
-        public const string GeneratedRuntimeAssembliesFileName = "runtimeassemblies.txt";
+        public const string ExistingRuntimeAssembliesFilePrefix = "ExistingRuntimeAssemblies";
+        public const string GeneratedRuntimeAssembliesFilePrefix = "runtimeassemblies";
 
-        [Fact]
-        public void VerifyGeneratedRuntimeAssemblies()
+        [Theory]
+        [InlineData("net8")]
+        [InlineData("net6")]
+        public void VerifyGeneratedRuntimeAssemblies(string targetFramework)
         {
-            string[] existingRuntimeAssemblies = File.ReadAllLines(ExistingRuntimeAssembliesFileName);
-            string[] generatedRuntimeAssemblies = File.ReadAllLines(GeneratedRuntimeAssembliesFileName);
+            string existingRuntimeAssembliesFileName = $"{ExistingRuntimeAssembliesFilePrefix}-{targetFramework}.txt";
+            string generatedRuntimeAssembliesFileName = $"{GeneratedRuntimeAssembliesFilePrefix}-{targetFramework}.txt";
+
+            string[] existingRuntimeAssemblies = File.ReadAllLines(existingRuntimeAssembliesFileName);
+            string[] generatedRuntimeAssemblies = File.ReadAllLines(generatedRuntimeAssembliesFileName);
 
             IEnumerable<string> diffAdded = generatedRuntimeAssemblies.Except(existingRuntimeAssemblies);
             var result = diffAdded.Select(s => $"Added: {s}");
@@ -27,7 +32,7 @@ namespace ExtensionsMetadataGeneratorTests
 
             string diffString = string.Join(";", result);
 
-            Assert.False(result.Any(), $"Generated runtimeassemblies.txt file:{GeneratedRuntimeAssembliesFileName} does not match existing list:{ExistingRuntimeAssembliesFileName}.\n Review Diff list:\n{diffString}\n Verify changes and update contents in {ExistingRuntimeAssembliesFileName}");
+            Assert.False(result.Any(), $"Generated file:{generatedRuntimeAssembliesFileName} does not match existing list:{existingRuntimeAssembliesFileName}.\n Review Diff list:\n{diffString}\n Verify changes and update contents in {existingRuntimeAssembliesFileName}");
         }
     }
 }

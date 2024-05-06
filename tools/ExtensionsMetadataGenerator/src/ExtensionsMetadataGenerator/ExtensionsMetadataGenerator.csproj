@@ -49,11 +49,11 @@
   </Target>
 
   <ItemGroup>
-    <None Remove="runtimeassemblies.txt" />
+    <None Remove="runtimeassemblies*.txt" />
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="runtimeassemblies.txt">
+    <EmbeddedResource Include="runtimeassemblies-*.txt">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </EmbeddedResource>
   </ItemGroup>
