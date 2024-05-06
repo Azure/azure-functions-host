@@ -1030,7 +1030,7 @@
         "runtime": {
           "lib/netstandard2.0/Microsoft.Azure.WebJobs.Script.Abstractions.dll": {
             "assemblyVersion": "1.0.0.0",
-            "fileVersion": "1.0.22000.0"
+            "fileVersion": "1.0.21962.0"
           }
         }
       },
@@ -3755,7 +3755,7 @@
     "Microsoft.Azure.WebJobs.Script.Abstractions/1.0.4-preview": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-U/aVn/i0P9MdPsca9TrLmTlKuGOJ8okTdifrBeNviwd80Xbv/+dIM/GGReQXaVVtUM5/SlbUHRAhvA9w0yuEyA==",
+      "sha512": "sha512-6yQIbQWV+Js168FJFPu0aIdwaVl6IkaIqZOuq9RT/8QgNFjIiHYE6w/bJjTDWzf4FccVgbYAz9nXWXd5u45OEg==",
       "path": "microsoft.azure.webjobs.script.abstractions/1.0.4-preview",
       "hashPath": "microsoft.azure.webjobs.script.abstractions.1.0.4-preview.nupkg.sha512"
     },
