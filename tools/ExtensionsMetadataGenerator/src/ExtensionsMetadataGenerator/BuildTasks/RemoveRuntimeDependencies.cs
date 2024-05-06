@@ -33,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator.BuildTasks
             }
 
             Assembly assembly = typeof(RemoveRuntimeDependencies).Assembly;
-            using (Stream resource = assembly.GetManifestResourceStream(assembly.GetName().Name + ".runtimeassemblies.txt"))
+            using (Stream resource = assembly.GetManifestResourceStream(assembly.GetName().Name + ".runtimeassemblies-net6.txt"))
             using (var reader = new StreamReader(resource))
             {
                 string assemblyName = reader.ReadLine();

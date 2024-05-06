@@ -7,7 +7,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="ExistingRuntimeAssemblies.txt" />
+    <None Remove="ExistingRuntimeAssemblies-net6.txt" />
+    <None Remove="ExistingRuntimeAssemblies-net8.txt" />
+    <RuntimeAssemblyFiles Include="runtimeassemblies*.txt" />
   </ItemGroup>
 
   <ItemGroup>
@@ -19,10 +21,9 @@
   </ItemGroup>
 
   <Target Name="UpdateRuntimeAssemblies" BeforeTargets="Build">
-    <Exec Command="pwsh ./../../src/ExtensionsMetadataGenerator/updateruntimeassemblies.ps1" Condition=" '$(OS)' == 'Unix' "/>
-    <Exec Command="powershell.exe –command .\..\..\src\ExtensionsMetadataGenerator\updateruntimeassemblies.ps1" Condition=" '$(OS)' == 'Windows_NT' "/>
-
-    <Copy SourceFiles="runtimeassemblies.txt" DestinationFolder="$(OutputPath)" />
+    <Exec Command="pwsh ./../../src/ExtensionsMetadataGenerator/updateruntimeassemblies.ps1" Condition=" '$(OS)' == 'Unix' " />
+    <Exec Command="powershell.exe –command .\..\..\src\ExtensionsMetadataGenerator\updateruntimeassemblies.ps1" Condition=" '$(OS)' == 'Windows_NT' " />
+    <Copy SourceFiles="@(RuntimeAssemblyFiles)" DestinationFolder="$(OutputPath)" />
   </Target>
   
   <ItemGroup>
@@ -37,7 +38,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="ExistingRuntimeAssemblies.txt">
+    <EmbeddedResource Include="ExistingRuntimeAssemblies-net8.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ExistingRuntimeAssemblies-net6.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </EmbeddedResource>
   </ItemGroup>
