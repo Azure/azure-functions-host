@@ -73,6 +73,12 @@
   <ItemGroup>
     <None Include="Description\DotNet\TestFiles\**\*.proj" />
     <None Update="Description\DotNet\TestFiles\**" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="DepsFiles\net6.0\Microsoft.Azure.WebJobs.Script.WebHost.deps.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="DepsFiles\net8.0\Microsoft.Azure.WebJobs.Script.WebHost.deps.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Microsoft.Azure.WebJobs.Script.WebHost.deps.json" CopyToOutputDirectory="PreserveNewest" />
     <None Update="TestFixture\HostOptionsProviderTests\*.json" CopyToOutputDirectory="PreserveNewest" />
     <None Update="Workers\Rpc\Resources\**" CopyToOutputDirectory="PreserveNewest" />

@@ -7,8 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="ExistingRuntimeAssemblies-net6.txt" />
-    <None Remove="ExistingRuntimeAssemblies-net8.txt" />
+    <None Remove="ExistingRuntimeAssemblies-*.txt" />
     <RuntimeAssemblyFiles Include="runtimeassemblies*.txt" />
   </ItemGroup>
 
@@ -38,10 +37,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="ExistingRuntimeAssemblies-net8.txt">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="ExistingRuntimeAssemblies-net6.txt">
+    <EmbeddedResource Include="ExistingRuntimeAssemblies-*.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </EmbeddedResource>
   </ItemGroup>
