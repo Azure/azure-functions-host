@@ -30,4 +30,5 @@ TestResults/
 
 local.settings.json
 msbuild.binlog
+pp.xml
 BenchmarkDotNet.Artifacts/
