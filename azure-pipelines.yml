@@ -259,22 +259,6 @@ jobs:
       Verbosity: 'Information'
   - publish: $(Build.ArtifactStagingDirectory)\SiteExtension
     artifact: SiteExtension
-  - pwsh: |
-      if ((test-path $(Build.ArtifactStagingDirectory)\ZippedPatchSiteExtension))
-      {
-        Write-Host "Patched site extension detected."
-        Write-Host "##vso[task.setvariable variable=isPatchVersion]true"
-      }
-    displayName: 'Set isPatchVersion'
-  - task: ManifestGeneratorTask@0
-    displayName: 'SBOM Generation Task - ZippedPatchSiteExtension'
-    inputs:
-      BuildDropPath: '$(Build.ArtifactStagingDirectory)\ZippedPatchSiteExtension'
-      Verbosity: 'Information'
-    condition: and(succeeded(), eq(variables['isPatchVersion'], 'true'))
-  - publish: $(Build.ArtifactStagingDirectory)\ZippedPatchSiteExtension
-    artifact: PatchedSiteExtension
-    condition: and(succeeded(), eq(variables['isPatchVersion'], 'true'))
   - task: ManifestGeneratorTask@0
     displayName: 'SBOM Generation Task - PrivateSiteExtension'
     inputs:
