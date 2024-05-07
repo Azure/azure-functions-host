@@ -53,7 +53,7 @@ jobs:
   dependsOn: InitializePipeline
   condition: and(succeeded(), or(ne(variables['Build.Reason'], 'PullRequest'), eq(dependencies.InitializePipeline.outputs['Initialize.BuildArtifacts'], true)))
   variables:
-    ${{ if or( eq( variables['Build.Reason'], 'PullRequest' ), and( not( contains( variables['Build.SourceBranch'], 'release/inproc6/4.' ) ), not( contains( variables['Build.SourceBranch'], 'release/inproc8/4.' ) ), not( contains( variables['Build.SourceBranch'], 'release/4.' ) ), not( contains( variables['Build.SourceBranch'], 'release/ExtensionsMetadataGenerator/' ) ), not( contains( variables['Build.SourceBranch'], 'release/in-proc8' ) ) ) ) }}:
+    ${{ if or( eq( variables['Build.Reason'], 'PullRequest' ), and( not( contains( variables['Build.SourceBranch'], 'release/inproc' ) ), not( contains( variables['Build.SourceBranch'], 'release/4.' ) ), not( contains( variables['Build.SourceBranch'], 'release/ExtensionsMetadataGenerator/' ) ) ) ) }}:
       suffixTemp: $(buildNumber)
       packSuffixSwitchTemp: --version-suffix $(buildNumber)
       emgSuffixSwitchTemp: --version-suffix ci$(buildNumber)
