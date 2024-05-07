@@ -1,0 +1,67 @@
+
+
+trigger:
+  batch: true
+  branches:
+    include:
+    - dev
+    - in-proc
+    - release/4.*
+    - release/inproc6/4.*
+    - release/inproc8/4.*
+
+# CI only, does not trigger on PRs.
+pr: none
+
+resources:
+  repositories:
+  - repository: 1es
+    type: git
+    name: 1ESPipelineTemplates/1ESPipelineTemplates
+    ref: refs/tags/release
+  - repository: eng
+    type: git
+    name: engineering
+    ref: refs/tags/release
+
+variables:
+  - template: ci/variables/build.yml@eng
+  - template: ci/variables/cfs.yml@eng
+  - name: buildNumber
+    value: $[ counter('build', 23000) ] # 23000 selected to be ahead of current host build
+  - name: minorVersionPrefix
+    ${{ if contains(variables['Build.SourceBranch'], 'release/inproc6/') }}:
+      value: "6"
+    ${{ elseif contains(variables['Build.SourceBranch'], 'release/inproc8/') }}:
+      value: "8"
+    ${{ else }}:
+      value: ""
+
+extends:
+  template: v1/1ES.Official.PipelineTemplate.yml@1es
+  parameters:
+    pool:
+      name: 1es-pool-azfunc
+      image: 1es-windows-2022
+      os: windows
+
+    stages:
+    - stage: Initialize
+
+      jobs:
+      - template: /eng/ci/templates/jobs/initialize-pipeline.yml@self
+
+    - stage: Build
+      dependsOn: Initialize
+
+      jobs:
+      - template: /eng/ci/templates/official/jobs/build-artifacts-windows.yml@self
+      - template: /eng/ci/templates/official/jobs/build-artifacts-linux.yml@self
+
+    - stage: Test
+      dependsOn: Initialize
+
+      jobs:
+      - template: /eng/ci/templates/jobs/run-unit-tests.yml@self
+      - template: /eng/ci/templates/official/jobs/run-non-e2e-tests.yml@self
+      - template: /eng/ci/templates/official/jobs/run-integration-tests.yml@self

@@ -1,0 +1,24 @@
+jobs:
+- job: RunUnitTests
+  displayName: Run Unit Tests
+
+  pool:
+    name: 1es-pool-azfunc
+    image: 1es-windows-2022 
+    os: windows
+  
+  steps:
+  - task: NuGetAuthenticate@1
+    displayName: NuGet Authenticate
+
+  - template: /eng/ci/templates/install-dotnet.yml@self
+
+  - task: DotNetCoreCLI@2
+    displayName: Unit Tests
+    inputs:
+      command: test
+      testRunTitle: Unit Tests
+      arguments: -v n
+      projects: |
+        **\ExtensionsMetadataGeneratorTests.csproj
+        **\WebJobs.Script.Tests.csproj
