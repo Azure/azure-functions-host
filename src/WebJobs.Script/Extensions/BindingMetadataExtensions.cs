@@ -13,10 +13,18 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
         private const string HttpTrigger = "httpTrigger";
         private const string EventGridTrigger = "eventGridTrigger";
         private const string SignalRTrigger = "signalRTrigger";
+        public const string AssistantSkillTrigger = "assistantSkillTrigger";
         private const string BlobTrigger = "blobTrigger";
 
         private const string BlobSourceKey = "source";
         private const string EventGridSource = "eventGrid";
+
+        private static readonly HashSet<string> WebHookTriggers = new(StringComparer.OrdinalIgnoreCase)
+        {
+            EventGridTrigger,
+            SignalRTrigger,
+            AssistantSkillTrigger,
+        };
 
         private static readonly HashSet<string> DurableTriggers = new(StringComparer.OrdinalIgnoreCase)
         {
@@ -46,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
         /// <param name="binding">The binding metadata to check.</param>
         /// <returns><c>true</c> if a webhook trigger, <c>false</c> otherwise.</returns>
         /// <remarks>
-        /// Known webhook triggers includes SignalR, Event Grid triggers.
+        /// Known webhook triggers includes SignalR, Event Grid, and Assistant Skill triggers.
         /// </remarks>
         public static bool IsWebHookTrigger(this BindingMetadata binding)
         {
@@ -55,13 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
                 throw new ArgumentNullException(nameof(binding));
             }
 
-            if (string.Equals(EventGridTrigger, binding.Type, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(SignalRTrigger, binding.Type, StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-
-            return false;
+            return WebHookTriggers.Contains(binding.Type);
         }
 
         /// <summary>
