@@ -2,7 +2,7 @@
   <Import Project="..\..\build\common.props" />
   <Import Project="..\..\build\python.props" />
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFrameworks>net8.0;net6.0</TargetFrameworks>
     <IsPackable>false</IsPackable>
     <AssemblyName>Microsoft.Azure.WebJobs.Script.Tests.Integration</AssemblyName>
     <RootNamespace>Microsoft.Azure.WebJobs.Script.Tests.Integration</RootNamespace>
@@ -113,7 +113,16 @@
   <!-- Ensure this is built for tests; we cannot have a project reference due to conflicting nuget references -->
   <Target Name="BuildTestProjects" AfterTargets="Build">
     <MSBuild Projects="..\CSharpPrecompiledTestProjects\CSharpPrecompiledTestProjects.sln" Targets="Restore" />
-    <MSBuild Projects="..\CSharpPrecompiledTestProjects\CSharpPrecompiledTestProjects.sln" Targets="Publish" Properties="Configuration=Debug" />
+
+    <MSBuild Projects="..\CSharpPrecompiledTestProjects\CSharpPrecompiledTestProjects.sln"
+             Targets="Publish"
+             Properties="Configuration=Debug;TargetFramework=net6.0"
+             Condition="'$(TargetFramework)' == 'net6.0'" />
+
+    <MSBuild Projects="..\CSharpPrecompiledTestProjects\CSharpPrecompiledTestProjects.sln"
+             Targets="Publish"
+             Properties="Configuration=Debug;TargetFramework=net8.0"
+             Condition="'$(TargetFramework)' == 'net8.0'" />
   </Target>
 
 </Project>
