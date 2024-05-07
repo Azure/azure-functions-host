@@ -300,6 +300,12 @@ jobs:
     artifact: NugetPackages
 
 - job: RunUnitTests
+  strategy: 
+    matrix:
+      net6:
+        targetFramework: "net6.0"
+      net8:
+        targetFramework: "net8.0"
   pool:
     name: '1ES-Hosted-AzFunc'
     demands:
@@ -307,23 +313,23 @@ jobs:
   steps:
   - template: build/install-dotnet.yml
   - task: DotNetCoreCLI@2
-    displayName: 'Build sln'
-    inputs:
-      command: 'build'
-      projects: |
-        **\WebJobs.Script.sln
-  - task: DotNetCoreCLI@2
     displayName: 'Unit Tests'
     inputs:
       command: 'test'
       testRunTitle: 'Unit Tests'
-      arguments: '-v n'
+      arguments: '-v n -f $(targetFramework)'
       projects: |
         **\ExtensionsMetadataGeneratorTests.csproj
         **\WebJobs.Script.Scaling.Tests.csproj
         **\WebJobs.Script.Tests.csproj
 
 - job: RunNonE2EIntegrationTests
+  strategy: 
+    matrix:
+      net6:
+        targetFramework: "net6.0"
+      net8:
+        targetFramework: "net8.0"
   pool:
     name: '1ES-Hosted-AzFunc'
     demands:
@@ -361,7 +367,7 @@ jobs:
     inputs:
       command: 'test'
       testRunTitle: 'Non-E2E integration tests'
-      arguments: '--filter "Category!=E2E"'
+      arguments: '--filter "Category!=E2E" -f $(targetFramework)'
       projects: |
         **\WebJobs.Script.Tests.Integration.csproj
     env:
@@ -382,6 +388,12 @@ jobs:
       arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'' -leaseBlob $(LeaseBlob) -leaseToken $(LeaseToken)'
 
 - job: RunIntegrationTests
+  strategy: 
+    matrix:
+      net6:
+        targetFramework: "net6.0"
+      net8:
+        targetFramework: "net8.0"
   pool:
     name: '1ES-Hosted-AzFunc'
     demands:
@@ -449,7 +461,7 @@ jobs:
     inputs:
       command: 'test'
       testRunTitle: "C# end to end tests"
-      arguments: '--filter "Group=CSharpEndToEndTests"'
+      arguments: '--filter "Group=CSharpEndToEndTests" -f $(targetFramework)'
       projects: |
         **\WebJobs.Script.Tests.Integration.csproj
   - task: DotNetCoreCLI@2
@@ -458,7 +470,7 @@ jobs:
     inputs:
       command: 'test'
       testRunTitle: "Node end to end tests"
-      arguments: '--filter "Group=NodeEndToEndTests" --no-build'
+      arguments: '--filter "Group=NodeEndToEndTests" --no-build -f $(targetFramework)'
       projects: |
         **\WebJobs.Script.Tests.Integration.csproj
   - task: DotNetCoreCLI@2
@@ -467,7 +479,7 @@ jobs:
     inputs:
       command: 'test'
       testRunTitle: "Direct load end to end tests"
-      arguments: '--filter "Group=DirectLoadEndToEndTests" --no-build'
+      arguments: '--filter "Group=DirectLoadEndToEndTests" --no-build -f $(targetFramework)'
       projects: |
         **\WebJobs.Script.Tests.Integration.csproj
   - task: DotNetCoreCLI@2
@@ -476,7 +488,7 @@ jobs:
     inputs:
       command: 'test'
       testRunTitle: "F# end to end tests"
-      arguments: '--filter "Group=FSharpEndToEndTests" --no-build'
+      arguments: '--filter "Group=FSharpEndToEndTests" --no-build -f $(targetFramework)'
       projects: |
         **\WebJobs.Script.Tests.Integration.csproj
   - task: DotNetCoreCLI@2
@@ -485,7 +497,7 @@ jobs:
     inputs:
       command: 'test'
       testRunTitle: "Language worker end to end tests"
-      arguments: '--filter "Group=LanguageWorkerSelectionEndToEndTests" --no-build'
+      arguments: '--filter "Group=LanguageWorkerSelectionEndToEndTests" --no-build -f $(targetFramework)'
       projects: |
         **\WebJobs.Script.Tests.Integration.csproj
   - task: DotNetCoreCLI@2
@@ -494,7 +506,7 @@ jobs:
     inputs:
       command: 'test'
       testRunTitle: "Node script host end to end tests"
-      arguments: '--filter "Group=NodeScriptHostTests" --no-build'
+      arguments: '--filter "Group=NodeScriptHostTests" --no-build -f $(targetFramework)'
       projects: |
         **\WebJobs.Script.Tests.Integration.csproj
   - task: DotNetCoreCLI@2
@@ -503,7 +515,7 @@ jobs:
     inputs:
       command: 'test'
       testRunTitle: "Raw assembly end to end tests"
-      arguments: '--filter "Group=RawAssemblyEndToEndTests" --no-build'
+      arguments: '--filter "Group=RawAssemblyEndToEndTests" --no-build -f $(targetFramework)'
       projects: |
         **\WebJobs.Script.Tests.Integration.csproj
   - task: DotNetCoreCLI@2
@@ -512,7 +524,7 @@ jobs:
     inputs:
       command: 'test'
       testRunTitle: "Samples end to end tests"
-      arguments: '--filter "Group=SamplesEndToEndTests" --no-build'
+      arguments: '--filter "Group=SamplesEndToEndTests" --no-build -f $(targetFramework)'
       projects: |
         **\WebJobs.Script.Tests.Integration.csproj
   - task: DotNetCoreCLI@2
@@ -521,7 +533,7 @@ jobs:
     inputs:
       command: 'test'
       testRunTitle: "Drain mode end to end tests"
-      arguments: '--filter "Group=DrainModeEndToEndTests" --no-build'
+      arguments: '--filter "Group=DrainModeEndToEndTests" --no-build -f $(targetFramework)'
       projects: |
         **\WebJobs.Script.Tests.Integration.csproj
   - task: DotNetCoreCLI@2
@@ -530,7 +542,7 @@ jobs:
     inputs:
       command: 'test'
       testRunTitle: "Standby mode end to end tests Windows"
-      arguments: '--filter "Group=StandbyModeEndToEndTests_Windows" --no-build'
+      arguments: '--filter "Group=StandbyModeEndToEndTests_Windows" --no-build -f $(targetFramework)'
       projects: |
         **\WebJobs.Script.Tests.Integration.csproj
   - task: DotNetCoreCLI@2
@@ -539,7 +551,7 @@ jobs:
     inputs:
       command: 'test'
       testRunTitle: "Standby mode end to end tests Linux"
-      arguments: '--filter "Group=StandbyModeEndToEndTests_Linux" --no-build'
+      arguments: '--filter "Group=StandbyModeEndToEndTests_Linux" --no-build -f $(targetFramework)'
       projects: |
         **\WebJobs.Script.Tests.Integration.csproj
   - task: DotNetCoreCLI@2
@@ -548,7 +560,7 @@ jobs:
     inputs:
       command: 'test'
       testRunTitle: "Linux container end to end tests Windows"
-      arguments: '--filter "Group=ContainerInstanceTests" --no-build'
+      arguments: '--filter "Group=ContainerInstanceTests" --no-build -f $(targetFramework)'
       projects: |
         **\WebJobs.Script.Tests.Integration.csproj
   - task: DotNetCoreCLI@2
@@ -557,7 +569,7 @@ jobs:
     inputs:
       command: 'test'
       testRunTitle: "Release verification tests"
-      arguments: '--filter "Group=ReleaseTests" --no-build'
+      arguments: '--filter "Group=ReleaseTests" --no-build -f $(targetFramework)'
       projects: |
         **\WebJobs.Script.Tests.Integration.csproj
   - task: PowerShell@2
