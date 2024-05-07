@@ -1,0 +1,61 @@
+jobs:
+- job: BuildArtifactsLinux
+  displayName: Build Linux Artifacts
+
+  variables:
+    project: src/WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj
+    configuration: release
+    runtime: linux-x64
+    log_dir: $(Build.ArtifactStagingDirectory)/log
+    build_args: '-v m -c $(configuration) -r $(runtime) --self-contained true -p:BuildNumber=$(buildNumber) -p:MinorVersionPrefix=$(minorVersionPrefix) -p:IsPackable=false'
+    publish_zip_dir: $(Build.ArtifactStagingDirectory)/Linux
+
+  templateContext:
+    outputParentDirectory: $(Build.ArtifactStagingDirectory)
+    outputs:
+    # TODO: onboard to Azure Artifacts Drops to allow accessing this from docker linux pipeline in msazure
+    # https://eng.ms/docs/cloud-ai-platform/devdiv/one-engineering-system-1es/1es-docs/azure-artifacts/artifact-services-onboarding
+    - output: pipelineArtifact
+      displayName: Publish linux artifacts
+      path: $(publish_zip_dir)
+      artifact: Linux
+    - output: pipelineArtifact
+      displayName: Publish logs
+      path: $(log_dir)
+      artifact: Linux_Log
+      sbomEnabled: false
+      condition: always()
+
+  pool:
+    name: 1es-pool-azfunc
+    image: 1es-ubuntu-22.04
+    os: linux
+
+  steps:
+  - template: /eng/ci/templates/install-dotnet.yml@self
+
+  - task: DotNetCoreCLI@2
+    displayName: Restore
+    inputs:
+      command: custom
+      custom: restore
+      projects: $(project)
+      arguments: '-v m -r $(runtime) -p:PublishReadyToRun=true -bl:$(log_dir)/restore.binlog' # add PublishReadyToRun=true for https://github.com/dotnet/sdk/issues/20701
+
+  - task: DotNetCoreCLI@2
+    displayName: Build
+    inputs:
+      command: custom
+      custom: build
+      projects: $(project)
+      arguments: '$(build_args) --no-restore  -bl:$(log_dir)/build.binlog'
+
+  - task: DotNetCoreCLI@2
+    displayName: Publish
+    inputs:
+      command: custom
+      custom: publish
+      publishWebProjects: false # we use our own publish logic
+      zipAfterPublish: false # we use our own zip logic
+      projects: $(project)
+      arguments: '$(build_args) --no-build -p:PublishZipDir=$(publish_zip_dir) -bl:$(log_dir)/publish.binlog'
