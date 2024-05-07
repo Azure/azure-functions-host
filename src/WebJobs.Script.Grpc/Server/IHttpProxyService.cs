@@ -11,6 +11,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
     {
         Task EnsureSuccessfulForwardingAsync(ScriptInvocationContext context);
 
-        Task ForwardAsync(ScriptInvocationContext context, Uri httpUri);
+        /// <summary>
+        /// Initiates a request forward and updates the current context to track forwarding operation.
+        /// </summary>
+        /// <param name="context">The <see cref="ScriptInvocationContext"/> for the HTTP invocation.</param>
+        /// <param name="httpUri">The target URI used for forwarding.</param>
+        void StartForwarding(ScriptInvocationContext context, Uri httpUri);
     }
 }
