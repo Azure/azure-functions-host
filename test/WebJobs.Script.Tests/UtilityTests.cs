@@ -423,7 +423,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Theory]
         [InlineData("", null, false)]
         [InlineData(null, null, false)]
-        [InlineData("http://storage.blob.core.windows.net/functions/func.zip?sr=c&si=policy&sig=f%2BGLvBih%2BoFuQvckBSHWKMXwqGJHlPkESmZh9pjnHuc%3D",
+        [InlineData("http://storage.blob.core.windows.net/functions/func.zip?sr=c&si=policy&sig=PLACEHOLDER",
             "http://storage.blob.core.windows.net/functions/func.zip...", true)]
         [InlineData("http://storage.blob.core.windows.net/functions/func.zip",
             "http://storage.blob.core.windows.net/functions/func.zip", true)]
@@ -441,7 +441,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Theory]
         [InlineData("", null, false)]
         [InlineData(null, null, false)]
-        [InlineData("http://storage.blob.core.windows.net/functions/func.zip?sr=c&si=policy&sig=f%2BGLvBih%2BoFuQvckBSHWKMXwqGJHlPkESmZh9pjnHuc%3D",
+        [InlineData("http://storage.blob.core.windows.net/functions/func.zip?sr=c&si=policy&sig=PLACEHOLDER",
             "http://storage.blob.core.windows.net", true)]
         [InlineData("http://storage.blob.core.windows.net/functions/func.zip",
             "http://storage.blob.core.windows.net", true)]
@@ -457,8 +457,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
-        [InlineData("http://storage.blob.core.windows.net/functions/func.zip?sr=c&si=policy&sig=f%2BGLvBih%2BoFuQvckBSHWKMXwqGJHlPkESmZh9pjnHuc%3D", true)]
-        [InlineData("http://storage.blob.core.windows.net/functions/func.zip?sr=c&si=policy&sv=abcd&sig=f%2BGLvBih%2BoFuQvckBSHWKMXwqGJHlPkESmZh9pjnHuc%3D", false)]
+        [InlineData("http://storage.blob.core.windows.net/functions/func.zip?sr=c&si=policy&sig=PLACEHOLDER", true)]
+        [InlineData("http://storage.blob.core.windows.net/functions/func.zip?sr=c&si=policy&sv=abcd&sig=PLACEHOLDER", false)]
         [InlineData("http://storage.blob.core.windows.net/functions/func.zip", true)]
         public void GetAccountNameFromDomain(string url, bool isUrlWithNoSas)
         {
@@ -466,12 +466,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
-        [InlineData("BlobEndpoint=https://storage.blob.core.windows.net;SharedAccessSignature=sv=2015-07-08&sig=f%2BGLvBih%2BoFuQvckBSHWKMXwqGJHlPkESmZh9pjnHuc%3D&spr=https&st=2016-04-12T03%3A24%3A31Z&se=2023-07-20T05:27:05Z&srt=s&ss=bf&sp=rwl", "2023-07-20T05:27:05Z", true)]
-        [InlineData("BlobEndpoint=https://storage.blob.core.windows.net;SharedAccessSignature=sv=2015-07-08&sig=f%2BGLvBih%2BoFuQvckBSHWKMXwqGJHlPkESmZh9pjnHuc%3D&spr=https&st=2016-04-12T03%3A24%3A31Z&srt=s&ss=bf&sp=rwl", null, true)]
-        [InlineData("BlobEndpoint=https://storage.blob.core.windows.net;TableEndpoint=https://table.core.windows.net;SharedAccessSignature=sv=2015-07-08&sig=f%2BGLvBih%2BoFuQvckBSHWKMXwqGJHlPkESmZh9pjnHuc%3D&spr=https&st=2016-04-12T03%3A24%3A31Z&srt=s&ss=bf&sp=rwl", null, true)]
-        [InlineData("BlobEndpoint=https://storage.blob.core.windows.net;TableEndpoint=https://table.core.windows.net;SharedAccessSignature=sv=2015-07-08&sig=f%2BGLvBih%2BoFuQvckBSHWKMXwqGJHlPkESmZh9pjnHuc%3D&spr=https&st=2016-04-12T03%3A24%3A31Z&se=2023-07-20T05:27:05Z&srt=s&ss=bf&sp=rwl", "2023-07-20T05:27:05Z", true)]
+        [InlineData("BlobEndpoint=https://storage.blob.core.windows.net;SharedAccessSignature=sv=2015-07-08&sig=PLACEHOLDER&spr=https&st=2016-04-12T03%3A24%3A31Z&se=2023-07-20T05:27:05Z&srt=s&ss=bf&sp=rwl", "2023-07-20T05:27:05Z", true)]
+        [InlineData("BlobEndpoint=https://storage.blob.core.windows.net;SharedAccessSignature=sv=2015-07-08&sig=PLACEHOLDER&spr=https&st=2016-04-12T03%3A24%3A31Z&srt=s&ss=bf&sp=rwl", null, true)]
+        [InlineData("BlobEndpoint=https://storage.blob.core.windows.net;TableEndpoint=https://table.core.windows.net;SharedAccessSignature=sv=2015-07-08&sig=PLACEHOLDER&spr=https&st=2016-04-12T03%3A24%3A31Z&srt=s&ss=bf&sp=rwl", null, true)]
+        [InlineData("BlobEndpoint=https://storage.blob.core.windows.net;TableEndpoint=https://table.core.windows.net;SharedAccessSignature=sv=2015-07-08&sig=PLACEHOLDER&spr=https&st=2016-04-12T03%3A24%3A31Z&se=2023-07-20T05:27:05Z&srt=s&ss=bf&sp=rwl", "2023-07-20T05:27:05Z", true)]
         [InlineData("UseDevelopmentStorage=true", null, true)]
-        [InlineData("https://storage.blob.core.windows.net/func/func.zip?sp=r&st=2023-07-12T21:27:05Z&se=2023-07-20T05:27:05Z&spr=https&sv=2022-11-02&sr=b&sig=f%2BGLvBih%2BoFuQvckBSHWKMXwqGJHlPkESmZh9pjnHuc%3D", "2023-07-20T05:27:05Z", false)]
+        [InlineData("https://storage.blob.core.windows.net/func/func.zip?sp=r&st=2023-07-12T21:27:05Z&se=2023-07-20T05:27:05Z&spr=https&sv=2022-11-02&sr=b&sig=PLACEHOLDER", "2023-07-20T05:27:05Z", false)]
         [InlineData("https://storage.blob.core.windows.net/functions/func.zip", null, false)]
         public void GetSasTokenExpirationDateFromSasSignature(string input, string expirationDate, bool isAzureWebJobsStorage)
         {
