@@ -16,10 +16,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class DependencyTests
     {
-#if RELEASE
-        private const string Config = "release";
+#if NET8_0
+        private const string Target = "net8.0";
 #else
-        private const string Config = "debug";
+        private const string Target = "net6.0";
+#endif
+
+#if RELEASE
+        private const string Config = $"release_{Target}";
+#else
+        private const string Config = $"debug_{Target}";
 #endif
 
         // These are changed often and controlled by us, so we don't need to fail if they are updated.
@@ -47,16 +53,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly DependencyContextJsonReader _reader = new DependencyContextJsonReader();
         private readonly IEnumerable<string> _rids = DependencyHelper.GetRuntimeFallbacks();
 
-        [Theory]
-        [InlineData("net6.0")]
-        [InlineData("net8.0")]
-        public void Verify_DepsJsonChanges(string target)
+        [Fact]
+        public void Verify_DepsJsonChanges()
         {
-            string config = $"{Config}_{target}";
             string depsJsonFileName = "Microsoft.Azure.WebJobs.Script.WebHost.deps.json";
-            string oldDepsJsonPath = Path.Combine("DepsFiles", target, depsJsonFileName);
-            string webhostBinPath = Path.Combine("..", "..", "WebJobs.Script.WebHost", config);
-            string oldDepsJson = Path.GetFullPath(oldDepsJsonPath);
+            string webhostBinPath = Path.Combine("..", "..", "WebJobs.Script.WebHost", Config);
+            string oldDepsJson = Path.GetFullPath(depsJsonFileName);
             string newDepsJson = Directory.GetFiles(Path.GetFullPath(webhostBinPath), depsJsonFileName, SearchOption.AllDirectories).FirstOrDefault();
 
             Assert.True(File.Exists(oldDepsJson), $"{oldDepsJson} not found.");
