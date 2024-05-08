@@ -76,18 +76,11 @@
     <None Update="TestFixture\HostOptionsProviderTests\*.json" CopyToOutputDirectory="PreserveNewest" />
     <None Update="Workers\Rpc\Resources\**" CopyToOutputDirectory="PreserveNewest" />
     <None Update="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="DepsFiles\$(TargetFramework)\Microsoft.Azure.WebJobs.Script.WebHost.deps.json"
+          CopyToOutputDirectory="Always"
+          Link="Microsoft.Azure.WebJobs.Script.WebHost.deps.json"
+          Condition="'$(TargetFramework)' != ''" />
     <None Remove="Resources\FileProvisioning\PowerShell\*" />
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(TargetFramework)' == 'net8.0'">
-    <None Update="DepsFiles\net8.0\Microsoft.Azure.WebJobs.Script.WebHost.deps.json" CopyToOutputDirectory="Always">
-      <Link>Microsoft.Azure.WebJobs.Script.WebHost.deps.json</Link>
-    </None>
-  </ItemGroup>
-  <ItemGroup Condition="'$(TargetFramework)' == 'net6.0'">
-    <None Update="DepsFiles\net6.0\Microsoft.Azure.WebJobs.Script.WebHost.deps.json" CopyToOutputDirectory="Always">
-      <Link>Microsoft.Azure.WebJobs.Script.WebHost.deps.json</Link>
-    </None>
   </ItemGroup>
 
   <ItemGroup>
