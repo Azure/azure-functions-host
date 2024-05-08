@@ -12,3 +12,4 @@
 - Update PowerShell worker 7.4 to [4.0.3219](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.3219)
 - Update Node.js Worker Version to [3.10.0](https://github.com/Azure/azure-functions-nodejs-worker/releases/tag/v3.10.0) (#9999)
 - Ensuring proxies are disabled, with a warning, when running in Flex Consumption. 
+- Fixed an issue leading to a race when invocation responses returned prior to HTTP requests being sent in proxied scenarios.
