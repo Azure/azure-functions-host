@@ -61,13 +61,7 @@
     <ProjectReference Include="..\..\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj" />
     <ProjectReference Include="..\..\src\WebJobs.Script.Grpc\WebJobs.Script.Grpc.csproj" />
     <ProjectReference Include="..\TestFunctions\TestFunctions.csproj" Private="true" />
-    <ProjectReference Include="..\CSharpPrecompiledTestProjects\AssemblyLoadContextRace\AssemblyLoadContextRace.csproj" ReferenceOutputAssembly="false" />
-    <ProjectReference Include="..\CSharpPrecompiledTestProjects\Dependency55\Dependency55.csproj" ReferenceOutputAssembly="false" />
-    <ProjectReference Include="..\CSharpPrecompiledTestProjects\Dependency56\Dependency56.csproj" ReferenceOutputAssembly="false" />
-    <ProjectReference Include="..\CSharpPrecompiledTestProjects\MultipleDependencyVersions\MultipleDependencyVersions.csproj" ReferenceOutputAssembly="false" />
-    <ProjectReference Include="..\CSharpPrecompiledTestProjects\NativeDependencyNoRuntimes\NativeDependencyNoRuntimes.csproj" ReferenceOutputAssembly="false" />
-    <ProjectReference Include="..\CSharpPrecompiledTestProjects\ReferenceOlderRuntimeAssembly\ReferenceOlderRuntimeAssembly.csproj" ReferenceOutputAssembly="false" />
-    <ProjectReference Include="..\CSharpPrecompiledTestProjects\WebJobsStartupTests\WebJobsStartupTests.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\CSharpPrecompiledTestProjects\**\*.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <ItemGroup>
