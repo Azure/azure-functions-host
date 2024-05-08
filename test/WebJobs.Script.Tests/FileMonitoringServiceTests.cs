@@ -303,11 +303,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 TaskCompletionSource stop = new TaskCompletionSource();
                 var mockApplicationLifetime = new Mock<IApplicationLifetime>();
-                mockApplicationLifetime.Setup(m => m.StopApplication()).Callback(stop.TrySetResult);
+                mockApplicationLifetime.Setup(m => m.StopApplication()).Callback(() => stop.TrySetResult());
 
                 TaskCompletionSource restart = new TaskCompletionSource();
                 var mockScriptHostManager = new Mock<IScriptHostManager>();
-                mockScriptHostManager.Setup(m => m.RestartHostAsync(default)).Callback(restart.TrySetResult);
+                mockScriptHostManager.Setup(m => m.RestartHostAsync(default)).Callback(() => restart.TrySetResult());
 
                 var mockEventManager = new ScriptEventManager();
                 var environment = new TestEnvironment();
