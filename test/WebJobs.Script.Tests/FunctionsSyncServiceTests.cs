@@ -38,7 +38,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             _mockPrimaryHostStateProviderMock.Setup(p => p.IsPrimary).Returns(true);
             _mockScriptHostManager.Setup(p => p.State).Returns(ScriptHostState.Running);
-            _mockSyncManager.Setup(p => p.TrySyncTriggersAsync(true)).ReturnsAsync(new SyncTriggersResult { Success = true });
 
             _mockWebHostEnvironment = new Mock<IScriptWebHostEnvironment>(MockBehavior.Strict);
             _mockWebHostEnvironment.SetupGet(p => p.InStandbyMode).Returns(false);
@@ -67,9 +66,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task StartAsync_PrimaryHost_Running_SyncsTriggers_AfterTimeout()
         {
-            await _syncService.StartAsync(CancellationToken.None);
-            await Task.Delay(2 * _testDueTime);
+            TaskCompletionSource syncTriggers = new TaskCompletionSource();
+            _mockSyncManager.Setup(p => p.TrySyncTriggersAsync(true)).ReturnsAsync(new SyncTriggersResult { Success = true }).Callback(() => syncTriggers.TrySetResult());
 
+            await _syncService.StartAsync(CancellationToken.None);
+
+            await syncTriggers.Task.WaitAsync(TimeSpan.FromMilliseconds(2 * _testDueTime));
             _mockSyncManager.Verify(p => p.TrySyncTriggersAsync(true), Times.Once);
 
             var logMessage = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).Single();
@@ -100,11 +102,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task UnhandledExceptions_HandledInCallback()
         {
-            _mockSyncManager.Setup(p => p.TrySyncTriggersAsync(true)).ThrowsAsync(new Exception("Kaboom!"));
+            TaskCompletionSource syncTriggers = new TaskCompletionSource();
+            _mockSyncManager.Setup(p => p.TrySyncTriggersAsync(true)).ThrowsAsync(new Exception("Kaboom!")).Callback(() => syncTriggers.TrySetResult());
 
             await _syncService.StartAsync(CancellationToken.None);
-            await Task.Delay(2 * _testDueTime);
 
+            await syncTriggers.Task.WaitAsync(TimeSpan.FromMilliseconds(2 * _testDueTime));
             _mockSyncManager.Verify(p => p.TrySyncTriggersAsync(true), Times.Once);
         }
 
