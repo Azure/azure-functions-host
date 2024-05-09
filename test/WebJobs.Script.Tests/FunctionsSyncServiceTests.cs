@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly Mock<IFunctionsSyncManager> _mockSyncManager;
         private readonly Mock<IScriptWebHostEnvironment> _mockWebHostEnvironment;
         private readonly Mock<IEnvironment> _mockEnvironment;
-        private readonly int _testDueTime = 250;
+        private readonly int _testDueTime = 1000;
 
         public FunctionsSyncServiceTests()
         {
