@@ -2,7 +2,7 @@
   <Import Project="..\..\build\common.props" />
   <Import Project="..\..\build\python.props" />
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFrameworks>net8.0;net6.0</TargetFrameworks>
     <IsPackable>false</IsPackable>
     <AssemblyName>Microsoft.Azure.WebJobs.Script.Tests.Integration</AssemblyName>
     <RootNamespace>Microsoft.Azure.WebJobs.Script.Tests.Integration</RootNamespace>
@@ -61,6 +61,7 @@
     <ProjectReference Include="..\..\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj" />
     <ProjectReference Include="..\..\src\WebJobs.Script.Grpc\WebJobs.Script.Grpc.csproj" />
     <ProjectReference Include="..\TestFunctions\TestFunctions.csproj" Private="true" />
+    <ProjectReference Include="..\CSharpPrecompiledTestProjects\**\*.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <ItemGroup>
@@ -109,11 +110,5 @@
 
   <Import Project="..\..\build\GrpcTestFix.targets" />
   <Import Project="..\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems" Label="Shared" />
-
-  <!-- Ensure this is built for tests; we cannot have a project reference due to conflicting nuget references -->
-  <Target Name="BuildTestProjects" AfterTargets="Build">
-    <MSBuild Projects="..\CSharpPrecompiledTestProjects\CSharpPrecompiledTestProjects.sln" Targets="Restore" />
-    <MSBuild Projects="..\CSharpPrecompiledTestProjects\CSharpPrecompiledTestProjects.sln" Targets="Publish" Properties="Configuration=Debug" />
-  </Target>
 
 </Project>

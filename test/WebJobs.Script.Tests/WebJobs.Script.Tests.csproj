@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <Import Project="..\..\build\common.props" />
   <PropertyGroup>
-    <TargetFrameworks>net8.0</TargetFrameworks>
+    <TargetFrameworks>net8.0;net6.0</TargetFrameworks>
     <IsTestProject>true</IsTestProject>
     <IsPackable>false</IsPackable>
     <AssemblyName>Microsoft.Azure.WebJobs.Script.Tests</AssemblyName>
@@ -73,16 +73,13 @@
   <ItemGroup>
     <None Include="Description\DotNet\TestFiles\**\*.proj" />
     <None Update="Description\DotNet\TestFiles\**" CopyToOutputDirectory="PreserveNewest" />
-    <None Update="DepsFiles\net6.0\Microsoft.Azure.WebJobs.Script.WebHost.deps.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="DepsFiles\net8.0\Microsoft.Azure.WebJobs.Script.WebHost.deps.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Microsoft.Azure.WebJobs.Script.WebHost.deps.json" CopyToOutputDirectory="PreserveNewest" />
     <None Update="TestFixture\HostOptionsProviderTests\*.json" CopyToOutputDirectory="PreserveNewest" />
     <None Update="Workers\Rpc\Resources\**" CopyToOutputDirectory="PreserveNewest" />
     <None Update="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="DepsFiles\$(TargetFramework)\Microsoft.Azure.WebJobs.Script.WebHost.deps.json"
+          CopyToOutputDirectory="Always"
+          Link="Microsoft.Azure.WebJobs.Script.WebHost.deps.json"
+          Condition="'$(TargetFramework)' != ''" />
     <None Remove="Resources\FileProvisioning\PowerShell\*" />
   </ItemGroup>
 
