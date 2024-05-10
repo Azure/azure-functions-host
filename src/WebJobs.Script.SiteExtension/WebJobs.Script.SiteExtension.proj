@@ -38,7 +38,7 @@
     <PropertyGroup>
       <SiteExtensionRelativeDir>SiteExtension/$(Version)/</SiteExtensionRelativeDir>
       <SiteExtensionDir>$([MSBuild]::NormalizePath('$(PublishDir)$(SiteExtensionRelativeDir)'))</SiteExtensionDir>
-      <PrivateSiteExtensionRelativeDir>Private$(SiteExtensionRelativeDir)</PrivateSiteExtensionRelativeDir>
+      <PrivateSiteExtensionRelativeDir>PrivateSiteExtension/SiteExtensions/Functions/</PrivateSiteExtensionRelativeDir>
       <PrivateSiteExtensionDir>$([MSBuild]::NormalizePath('$(PublishDir)$(PrivateSiteExtensionRelativeDir)'))</PrivateSiteExtensionDir>
     </PropertyGroup>
     <ItemGroup>
@@ -64,18 +64,8 @@
           RuntimeIdentifier=%(PublishRuntimeIdentifier.Identity);
           SelfContained=%(PublishRuntimeIdentifier.SelfContained)
         </AdditionalProperties>
-        <PublishAdditionalProperties>
-          <!-- These properties will be passed transitively, so only add them right before publish. -->
-          PublishDir=$(SiteExtensionDir)%(PublishRuntimeIdentifier.PublishDir)/;
-          PublishWorkers=false;
-          _IsPublishing=true
-        </PublishAdditionalProperties>
-        <PublishPrivateAdditionalProperties>
-          <!-- These properties will be passed transitively, so only add them right before publish. -->
-          PublishDir=$(PrivateSiteExtensionDir)%(PublishRuntimeIdentifier.PublishDir)/;
-          PublishWorkers=true;
-          _IsPublishing=true
-        </PublishPrivateAdditionalProperties>
+        <PublishDir>$(SiteExtensionDir)%(PublishRuntimeIdentifier.PublishDir)/</PublishDir>
+        <PublishPrivateDir>$(PrivateSiteExtensionDir)%(PublishRuntimeIdentifier.PublishDir)/</PublishPrivateDir>
         <PublishPrivate>%(PublishRuntimeIdentifier.PrivateExtension)</PublishPrivate>
         <Private>false</Private> <!-- Avoids including transitive output. -->
       </_ProjectReferenceWithRuntimes>
@@ -89,7 +79,7 @@
   <Target Name="PublishProjectReferences" AfterTargets="PrepareForPublish" BeforeTargets="Publish">
     <ItemGroup>
       <_PublishProjectReferenceExistent Include="@(_MSBuildProjectReferenceExistent)">
-        <AdditionalProperties>%(AdditionalProperties);%(PublishAdditionalProperties)</AdditionalProperties>
+        <AdditionalProperties>%(AdditionalProperties);PublishDir=%(PublishDir);_IsPublishing=true;PublishWorkers=false</AdditionalProperties>
       </_PublishProjectReferenceExistent>
     </ItemGroup>
     <MSBuild Projects="@(_PublishProjectReferenceExistent)" Targets="Publish" BuildInParallel="$(BuildInParallel)" Properties="NoBuild=true" />
@@ -98,10 +88,11 @@
   <Target Name="PublishPrivateProjectReferences" AfterTargets="PublishProjectReferences" BeforeTargets="Publish">
     <ItemGroup>
       <_PublishPrivateProjectReferenceExistent Include="@(_MSBuildProjectReferenceExistent)" Condition="%(PublishPrivate)">
-        <AdditionalProperties>%(AdditionalProperties);%(PublishPrivateAdditionalProperties)</AdditionalProperties>
+        <AdditionalProperties>%(AdditionalProperties);PublishDir=%(PublishPrivateDir);_IsPublishing=true</AdditionalProperties>
       </_PublishPrivateProjectReferenceExistent>
     </ItemGroup>
     <MSBuild Projects="@(_PublishPrivateProjectReferenceExistent)" Targets="Publish" BuildInParallel="$(BuildInParallel)" Properties="NoBuild=true" />
+    <RemoveDir Directories="@(_PublishPrivateProjectReferenceExistent->'%(PublishPrivateDir)/workers/python')" />
   </Target>
 
   <Target Name="RemoveUnneededRuntimes">
