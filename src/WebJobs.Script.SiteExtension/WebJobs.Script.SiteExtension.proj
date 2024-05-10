@@ -42,9 +42,18 @@
   </Target>
 
   <Target Name="UpdateWorkerPaths" DependsOnTargets="UpdatePaths" BeforeTargets="AssignTargetPaths">
+    <ItemGroup>
+      <_KeepPowerShellRuntime Include="win;win-x86;win10-x86;win-x64;win10-x64" />
+    </ItemGroup>
+
     <PropertyGroup>
-      <!-- Match files that start with "workers/powershell/{version}/runtimes" but also not one of the win runtimes we want to keep. -->
-      <_PowershellRuntimesToRemoveRegex>^workers(/|\\)powershell(/|\\).*(/|\\)runtimes(/|\\)(?!win(/|\\)|win-x86(/|\\)|win10-x86(/|\\)|win-x64(/|\\)|win10-x64(/|\\))</_PowershellRuntimesToRemoveRegex>
+      <!--
+        Match files that start with "workers/powershell/{version}/runtimes" but also not one of the win runtimes we want to keep.
+        1. Transform @(_KeepPowerShellRuntime) into a regex that matches runtime folders to keep, all or'd together.
+        2. Build a regex that matches all runtimes except the runtimes folders from the first step.
+      -->
+      <_PowershellRuntimesToKeepRegex>@(_KeepPowerShellRuntime->'%(Identity)(/|\\)', '|')</_PowershellRuntimesToKeepRegex>
+      <_PowershellRuntimesToRemoveRegex>^workers(/|\\)powershell(/|\\).*(/|\\)runtimes(/|\\)(?!$(_PowershellRuntimesToKeepRegex))</_PowershellRuntimesToRemoveRegex>
     </PropertyGroup>
 
     <ItemGroup>
