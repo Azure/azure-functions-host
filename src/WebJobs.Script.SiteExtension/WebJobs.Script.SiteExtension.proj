@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.Build.NoTargets">
-  <Import Project="..\..\build\common.props" />
-  <Import Project="..\..\build\workers.props" />
+  <Import Project="../../build/common.props" />
+  <Import Project="../../build/workers.props" />
 
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
@@ -32,16 +32,16 @@
   <!-- We set many properties and items in targets to ensure $(Version) is finalized. -->
   <Target Name="UpdatePaths" BeforeTargets="AddRuntimesToProjects;AssignTargetPaths">
     <PropertyGroup>
-      <SiteExtensionRelativeDir>SiteExtension\$(Version)\</SiteExtensionRelativeDir>
+      <SiteExtensionRelativeDir>SiteExtension/$(Version)/</SiteExtensionRelativeDir>
       <SiteExtensionDir>$([MSBuild]::NormalizePath('$(PublishDir)$(SiteExtensionRelativeDir)'))</SiteExtensionDir>
     </PropertyGroup>
     <ItemGroup>
       <None Include="applicationHost.xdt" TargetPath="$(SiteExtensionRelativeDir)applicationHost.xdt" CopyToPublishDirectory="PreserveNewest" />
-      <None Include="extension.xml" TargetPath="SiteExtension\extension.xml" CopyToPublishDirectory="PreserveNewest" />
+      <None Include="extension.xml" TargetPath="SiteExtension/extension.xml" CopyToPublishDirectory="PreserveNewest" />
     </ItemGroup>
   </Target>
 
-  <Target Name="UpdateWorkerPaths" DependsOnTargets="UpdatePaths" BeforeTargets="AssignTargetPaths">
+  <Target Name="RemovePowershellWorkerRuntimes" BeforeTargets="UpdateWorkerPaths">
     <ItemGroup>
       <_KeepPowerShellRuntime Include="win;win-x86;win10-x86;win-x64;win10-x64" />
     </ItemGroup>
@@ -60,7 +60,9 @@
       <_PowershellRuntimeToRemove Include="@(None)" Condition="'%(TargetPath)' != '' AND $([System.Text.RegularExpressions.Regex]::IsMatch('%(TargetPath)', $(_PowershellRuntimesToRemoveRegex)))" />
       <None Remove="@(_PowershellRuntimeToRemove)" />
     </ItemGroup>
+  </Target>
 
+  <Target Name="UpdateWorkerPaths" DependsOnTargets="UpdatePaths" BeforeTargets="AssignTargetPaths">
     <ItemGroup>
       <None Condition="'%(TargetPath)' != '' AND $([System.String]::new('%(TargetPath)').StartsWith('workers'))">
         <TargetPath>$(SiteExtensionRelativeDir)%(TargetPath)</TargetPath>
@@ -72,11 +74,12 @@
     <ItemGroup>
       <_ProjectReferenceWithRuntimes Include="@(ProjectReference)">
         <AdditionalProperties>
+          <!-- These properties will not be pass transitively and are safe for build. -->
           RuntimeIdentifier=%(PublishRuntimeIdentifier.Identity);
           SelfContained=%(PublishRuntimeIdentifier.SelfContained)
         </AdditionalProperties>
         <PublishAdditionalProperties>
-          <!-- These need to be added only during the publish call, otherwise we will double build. -->
+          <!-- These properties will be passed transitively, so only add them right before publish. -->
           PublishDir=$(SiteExtensionDir)%(PublishRuntimeIdentifier.PublishDir)/;
           PublishWorkers=false;
           _IsPublishing=true
@@ -110,11 +113,11 @@
   <Target Name="MoveSymbols">
     <ItemGroup>
       <_SymbolDirs Include="@(PublishRuntimeIdentifier->'$(SiteExtensionDir)%(PublishDir)')">
-        <Destination>$(PublishDir)Symbols\$(SiteExtensionName).Symbols.$(Version).%(Identity)</Destination>
+        <Destination>$(PublishDir)Symbols/$(SiteExtensionName).Symbols.$(Version).%(Identity)</Destination>
       </_SymbolDirs>
-      <_WorkerSymbols Include="$(SiteExtensionDir)workers/**/*.pdb" Destination="$(PublishDir)Symbols\$(SiteExtensionName).Symbols.$(Version).%(PublishRuntimeIdentifier.Identity)/workers" />
+      <_WorkerSymbols Include="$(SiteExtensionDir)workers/**/*.pdb" Destination="$(PublishDir)Symbols/$(SiteExtensionName).Symbols.$(Version).%(PublishRuntimeIdentifier.Identity)/workers" />
     </ItemGroup>
-    <MoveSymbols Directories="@(_SymbolsDirs)" Destinations="%(Destination)" />
+    <MoveSymbols Directories="@(_SymbolDirs)" Destinations="%(Destination)" />
     <Copy SourceFiles="@(_WorkerSymbols)" DestinationFiles="%(Destination)/%(RecursiveDir)%(Filename)%(Extension)" SkipUnchangedFiles="true" />
     <Delete Files="@(_WorkerSymbols)" />
   </Target>
