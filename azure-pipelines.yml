@@ -8,17 +8,13 @@ variables:
 pr:
   branches:
     include:
-    - dev
     - in-proc
-    - release/4.*
     - release/in-proc
 
 trigger:
   branches:
     include:
-    - dev
     - in-proc
-    - release/4.*
     - release/in-proc
 
 jobs:
