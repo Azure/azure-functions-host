@@ -877,6 +877,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 _executingInvocations.TryAdd(invocationRequest.InvocationId, new(context, _messageDispatcherFactory.Create(invocationRequest.InvocationId)));
                 _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvoked, Id), functionName: Sanitizer.Sanitize(context.FunctionMetadata.Name));
 
+                // If the worker supports HTTP proxying, ensure this request is forwarded prior
+                // to sending the invocation request to the worker, as this will ensure the context
+                // is properly set up.
+                if (IsHttpProxyingWorker && context.FunctionMetadata.IsHttpTriggerFunction())
+                {
+                    _httpProxyService.StartForwarding(context, _httpProxyEndpoint);
+                }
+
                 await SendStreamingMessageAsync(new StreamingMessage
                 {
                     InvocationRequest = invocationRequest
@@ -886,11 +894,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 {
                     var cancellationCtr = context.CancellationToken.Register(() => SendInvocationCancel(invocationRequest.InvocationId));
                     context.Properties.Add(ScriptConstants.CancellationTokenRegistration, cancellationCtr);
-                }
-
-                if (IsHttpProxyingWorker && context.FunctionMetadata.IsHttpTriggerFunction())
-                {
-                    _ = _httpProxyService.ForwardAsync(context, _httpProxyEndpoint);
                 }
             }
             catch (Exception invokeEx)

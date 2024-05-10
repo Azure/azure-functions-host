@@ -3,4 +3,4 @@
 <!-- Please add your release notes in the following format:
 - My change description (#PR)
 -->
-- Ensuring non http invocation responses are not processed by IHttpProxyService (#10085)
+- Fixed an issue leading to a race when invocation responses returned prior to HTTP requests being sent in proxied scenarios.

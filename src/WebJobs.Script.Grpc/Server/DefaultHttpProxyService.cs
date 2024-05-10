@@ -66,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
         }
 
-        public Task ForwardAsync(ScriptInvocationContext context, Uri httpUri)
+        public void StartForwarding(ScriptInvocationContext context, Uri httpUri)
         {
             ArgumentNullException.ThrowIfNull(context);
 
@@ -89,8 +89,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             var forwardingTask = _httpForwarder.SendAsync(httpContext, httpUri.ToString(), _messageInvoker, _forwarderRequestConfig).AsTask();
             context.Properties.Add(ScriptConstants.HttpProxyTask, forwardingTask);
-
-            return forwardingTask;
         }
     }
 }
