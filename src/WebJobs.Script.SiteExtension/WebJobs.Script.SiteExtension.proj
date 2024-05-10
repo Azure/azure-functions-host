@@ -64,10 +64,14 @@
       <_ProjectReferenceWithRuntimes Include="@(ProjectReference)">
         <AdditionalProperties>
           RuntimeIdentifier=%(PublishRuntimeIdentifier.Identity);
-          SelfContained=%(PublishRuntimeIdentifier.SelfContained);
-          PublishDir=$(SiteExtensionDir)%(PublishRuntimeIdentifier.PublishDir)/;
-          PublishWorkers=false
+          SelfContained=%(PublishRuntimeIdentifier.SelfContained)
         </AdditionalProperties>
+        <PublishAdditionalProperties>
+          <!-- These need to be added only during the publish call, otherwise we will double build. -->
+          PublishDir=$(SiteExtensionDir)%(PublishRuntimeIdentifier.PublishDir)/;
+          PublishWorkers=false;
+          _IsPublishing=true
+        </PublishAdditionalProperties>
         <Private>false</Private> <!-- Avoids including transitive output. -->
       </_ProjectReferenceWithRuntimes>
       <ProjectReference Remove="@(ProjectReference)" />
@@ -78,7 +82,12 @@
   <Target Name="PublishWebHost" AfterTargets="PrepareForPublish" BeforeTargets="Publish" DependsOnTargets="$(PublishWebHostDependsOn)" />
 
   <Target Name="PublishProjectReferences" AfterTargets="PrepareForPublish" BeforeTargets="Publish">
-    <MSBuild Projects="@(ProjectReference)" Targets="Publish" BuildInParallel="$(BuildInParallel)" Properties="NoBuild=true" />
+    <ItemGroup>
+      <_PublishProjectReferenceExistent Include="@(_MSBuildProjectReferenceExistent)">
+        <AdditionalProperties>%(AdditionalProperties);%(PublishAdditionalProperties)</AdditionalProperties>
+      </_PublishProjectReferenceExistent>
+    </ItemGroup>
+    <MSBuild Projects="@(_PublishProjectReferenceExistent)" Targets="Publish" BuildInParallel="$(BuildInParallel)" Properties="NoBuild=true" />
   </Target>
 
   <Target Name="RemoveUnneededRuntimes">
