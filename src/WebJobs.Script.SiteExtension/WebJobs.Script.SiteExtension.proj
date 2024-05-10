@@ -3,12 +3,16 @@
   <Import Project="../../build/workers.props" />
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.1</TargetFramework>
+    <!-- TFM and RId are actually used. -->
+    <TargetFramework>net6.0</TargetFramework>
+    <RuntimeIdentifier>win</RuntimeIdentifier>
     <SiteExtensionName>Functions</SiteExtensionName>
     <PublishWebHostDependsOn>
       PublishProjectReferences;
+      PublishPrivateProjectReferences;
       RemoveUnneededRuntimes;
       MoveSymbols;
+      DeletePrivateSymbols;
       WriteHardLinkHashes;
     </PublishWebHostDependsOn>
   </PropertyGroup>
@@ -19,8 +23,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PublishRuntimeIdentifier Include="win-x86" SelfContained="false" PublishDir="32bit" />
-    <PublishRuntimeIdentifier Include="win-x64" SelfContained="false" PublishDir="64bit" />
+    <PublishRuntimeIdentifier Include="win-x86" SelfContained="false" PublishDir="32bit" PrivateExtension="true" />
+    <PublishRuntimeIdentifier Include="win-x64" SelfContained="false" PublishDir="64bit" PrivateExtension="false" />
   </ItemGroup>
 
   <ItemGroup>
@@ -34,31 +38,13 @@
     <PropertyGroup>
       <SiteExtensionRelativeDir>SiteExtension/$(Version)/</SiteExtensionRelativeDir>
       <SiteExtensionDir>$([MSBuild]::NormalizePath('$(PublishDir)$(SiteExtensionRelativeDir)'))</SiteExtensionDir>
+      <PrivateSiteExtensionRelativeDir>Private$(SiteExtensionRelativeDir)</PrivateSiteExtensionRelativeDir>
+      <PrivateSiteExtensionDir>$([MSBuild]::NormalizePath('$(PublishDir)$(PrivateSiteExtensionRelativeDir)'))</PrivateSiteExtensionDir>
     </PropertyGroup>
     <ItemGroup>
       <None Include="applicationHost.xdt" TargetPath="$(SiteExtensionRelativeDir)applicationHost.xdt" CopyToPublishDirectory="PreserveNewest" />
+      <None Include="applicationHost.xdt" TargetPath="$(PrivateSiteExtensionRelativeDir)applicationHost.xdt" CopyToPublishDirectory="PreserveNewest" />
       <None Include="extension.xml" TargetPath="SiteExtension/extension.xml" CopyToPublishDirectory="PreserveNewest" />
-    </ItemGroup>
-  </Target>
-
-  <Target Name="RemovePowershellWorkerRuntimes" BeforeTargets="UpdateWorkerPaths">
-    <ItemGroup>
-      <_KeepPowerShellRuntime Include="win;win-x86;win10-x86;win-x64;win10-x64" />
-    </ItemGroup>
-
-    <PropertyGroup>
-      <!--
-        Match files that start with "workers/powershell/{version}/runtimes" but also not one of the win runtimes we want to keep.
-        1. Transform @(_KeepPowerShellRuntime) into a regex that matches runtime folders to keep, all or'd together.
-        2. Build a regex that matches all runtimes except the runtimes folders from the first step.
-      -->
-      <_PowershellRuntimesToKeepRegex>@(_KeepPowerShellRuntime->'%(Identity)(/|\\)', '|')</_PowershellRuntimesToKeepRegex>
-      <_PowershellRuntimesToRemoveRegex>^workers(/|\\)powershell(/|\\).*(/|\\)runtimes(/|\\)(?!$(_PowershellRuntimesToKeepRegex))</_PowershellRuntimesToRemoveRegex>
-    </PropertyGroup>
-
-    <ItemGroup>
-      <_PowershellRuntimeToRemove Include="@(None)" Condition="'%(TargetPath)' != '' AND $([System.Text.RegularExpressions.Regex]::IsMatch('%(TargetPath)', $(_PowershellRuntimesToRemoveRegex)))" />
-      <None Remove="@(_PowershellRuntimeToRemove)" />
     </ItemGroup>
   </Target>
 
@@ -84,6 +70,13 @@
           PublishWorkers=false;
           _IsPublishing=true
         </PublishAdditionalProperties>
+        <PublishPrivateAdditionalProperties>
+          <!-- These properties will be passed transitively, so only add them right before publish. -->
+          PublishDir=$(PrivateSiteExtensionDir)%(PublishRuntimeIdentifier.PublishDir)/;
+          PublishWorkers=true;
+          _IsPublishing=true
+        </PublishPrivateAdditionalProperties>
+        <PublishPrivate>%(PublishRuntimeIdentifier.PrivateExtension)</PublishPrivate>
         <Private>false</Private> <!-- Avoids including transitive output. -->
       </_ProjectReferenceWithRuntimes>
       <ProjectReference Remove="@(ProjectReference)" />
@@ -102,10 +95,22 @@
     <MSBuild Projects="@(_PublishProjectReferenceExistent)" Targets="Publish" BuildInParallel="$(BuildInParallel)" Properties="NoBuild=true" />
   </Target>
 
+  <Target Name="PublishPrivateProjectReferences" AfterTargets="PublishProjectReferences" BeforeTargets="Publish">
+    <ItemGroup>
+      <_PublishPrivateProjectReferenceExistent Include="@(_MSBuildProjectReferenceExistent)" Condition="%(PublishPrivate)">
+        <AdditionalProperties>%(AdditionalProperties);%(PublishPrivateAdditionalProperties)</AdditionalProperties>
+      </_PublishPrivateProjectReferenceExistent>
+    </ItemGroup>
+    <MSBuild Projects="@(_PublishPrivateProjectReferenceExistent)" Targets="Publish" BuildInParallel="$(BuildInParallel)" Properties="NoBuild=true" />
+  </Target>
+
   <Target Name="RemoveUnneededRuntimes">
+    <!-- These shouldn't exist since we build/publish with a windows runtime, but just in case. -->
     <ItemGroup>
       <_RuntimesToRemove Include="@(PublishRuntimeIdentifier->'$(SiteExtensionDir)%(PublishDir)/runtimes/linux')" />
       <_RuntimesToRemove Include="@(PublishRuntimeIdentifier->'$(SiteExtensionDir)%(PublishDir)/runtimes/osx')" />
+      <_RuntimesToRemove Include="@(PublishRuntimeIdentifier->'$(PrivateSiteExtensionDir)%(PublishDir)/runtimes/linux')" Condition="%(PrivateExtension)" />
+      <_RuntimesToRemove Include="@(PublishRuntimeIdentifier->'$(PrivateSiteExtensionDir)%(PublishDir)/runtimes/osx')" Condition="%(PrivateExtension)" />
     </ItemGroup>
     <RemoveDir Directories="@(_RuntimesToRemove)" />
   </Target>
@@ -120,6 +125,13 @@
     <MoveSymbols Directories="@(_SymbolDirs)" Destinations="%(Destination)" />
     <Copy SourceFiles="@(_WorkerSymbols)" DestinationFiles="%(Destination)/%(RecursiveDir)%(Filename)%(Extension)" SkipUnchangedFiles="true" />
     <Delete Files="@(_WorkerSymbols)" />
+  </Target>
+
+  <Target Name="DeletePrivateSymbols">
+    <ItemGroup>
+      <_PrivateSymbolsToRemove Include="$(PrivateSiteExtensionDir)/**/*.pdb" />
+    </ItemGroup>
+    <Delete Files="@(_PrivateSymbolsToRemove)" />
   </Target>
 
   <Target Name="ComputeHardLinkHashes">
