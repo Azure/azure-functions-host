@@ -295,7 +295,7 @@ jobs:
       BuildDropPath: 'out/pkg/release'
       Verbosity: 'Information'
   - publish: out/pkg/release
-    artifact: NugetPackages
+    artifact: _NugetPackages.net$(minorVersionPrefix)
 
 - job: RunUnitTests
   strategy: 
@@ -619,10 +619,10 @@ jobs:
       path: '$(Build.ArtifactStagingDirectory)/PrivateSiteExtension'
 
   - task: DownloadPipelineArtifact@2
-    displayName: 'Download _Packages.net8 Artifact'
+    displayName: 'Download _NugetPackages.net8 Artifact'
     inputs:
       buildType: 'current'
-      artifact: '_Packages.net8'
+      artifact: '_NugetPackages.net8'
       path: '$(Build.ArtifactStagingDirectory)/packages'
 
   - task: DownloadPipelineArtifact@2
