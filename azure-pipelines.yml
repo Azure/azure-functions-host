@@ -42,7 +42,7 @@ jobs:
       pwsh: true
 
 - job: BuildArtifacts
-  strategy: 
+  strategy:
     matrix:
       net6:
         minorVersionPrefix: "6"
@@ -585,7 +585,11 @@ jobs:
       arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'' -leaseBlob $(LeaseBlob) -leaseToken $(LeaseToken)'
 
 - job: PublishArtifacts
-  dependsOn: BuildArtifacts
+  dependsOn:
+    - BuildArtifacts
+    - RunUnitTests
+    - RunNonE2EIntegrationTests
+    - RunIntegrationTests
   condition: succeeded()
 
   steps:
