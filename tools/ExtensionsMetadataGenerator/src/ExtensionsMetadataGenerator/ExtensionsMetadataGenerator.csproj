@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk" InitialTargets="UpdateRuntimeAssemblies">
   <Import Project="..\..\build\metadatagenerator.props" />
   <PropertyGroup>
-    <Version>4.0.2</Version>
+    <Version>4.0.3</Version>
     <OutputType>Library</OutputType>
     <TargetFrameworks>netstandard2.0;net46</TargetFrameworks>
     <AssemblyName>Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator</AssemblyName>
@@ -37,11 +37,11 @@
 
   <Target Name="PackReferenceAssemblies">
     <ItemGroup>
-      <Content Include="$(OutputPath)\netstandard2.0\generator\*">
-        <Pack>true</Pack>
+      <Content Include="$(ArtifactsPath)\bin\ExtensionsMetadataGenerator\release_netstandard2.0\generator\*">
+        <Pack>true</Pack>        
         <PackagePath>tools\netstandard2.0\generator</PackagePath>
       </Content>
-      <Content Include="$(OutputPath)\netstandard2.0\*.dll" Exclude="**\Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator.dll">
+      <Content Include="$(ArtifactsPath)\bin\ExtensionsMetadataGenerator\release_netstandard2.0\*.dll" Exclude="**\Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator.dll">
         <Pack>true</Pack>
         <PackagePath>tools\netstandard2.0\</PackagePath>
       </Content>
