@@ -1,0 +1,42 @@
+<Project>
+
+  <ItemDefinitionGroup>
+    <!-- Makes these properties referencable for all items in this group -->
+    <PublishZipDirectory>
+      <TargetPath></TargetPath>
+      <TargetName></TargetName>
+    </PublishZipDirectory>
+  </ItemDefinitionGroup>
+
+  <Target Name="PrepareZipPublishDirectories" AfterTargets="Publish">
+    <PropertyGroup>
+      <PublishZipDir Condition="'$(PublishZipDir)' == '' AND '$(PublishZip)' == 'true'">$([MSBuild]::NormalizePath($([MSBuild]::EnsureTrailingSlash('$(PublishDir)'))..))/</PublishZipDir>
+      <PublishZipDir Condition="'$(PublishZipDir)' != ''">$([MSBuild]::EnsureTrailingSlash('$(PublishZipDir)'))</PublishZipDir>
+    </PropertyGroup>
+
+    <!-- If no publish artifact is available, we will add one. -->
+    <ItemGroup Condition="'$(PublishZipDir)' != '' AND '@(PublishZipDirectory)' == ''">
+      <PublishZipDirectory Include="$(PublishDir)" TargetPath="$(PublishZipDir)$(AssemblyName).$(Version).$(ArtifactsPivots).zip" />
+    </ItemGroup>
+  </Target>
+
+  <!--
+    Allows for zipping publish outputs:
+    Zip with a pre-determined name/location:
+    > `dotnet publish -p:PublishZip=true`
+    Zip with a pre-determined name to the provided location
+    > `dotnet publish -p:PublishZipDir={some_directory}`
+  -->
+  <Target Name="ZipPublishContents" AfterTargets="Publish" DependsOnTargets="PrepareZipPublishDirectories" Condition="'@(PublishZipDirectory)' != ''">
+    <ItemGroup Condition="'$(PublishZipDir)' != ''">
+      <PublishZipDirectory Condition="'%(TargetPath)' == '' AND '%(TargetName)' != ''">
+        <TargetPath>$([MSBuild]::EnsureTrailingSlash('$(PublishZipDir)'))%(TargetName)</TargetPath>
+      </PublishZipDirectory>
+    </ItemGroup>
+
+    <MakeDir Directories="@(PublishZipDirectory->'$([System.IO.Path]::GetDirectoryName(%(TargetPath)))')" />
+    <Delete Files="@(PublishZipDirectory->'%(TargetPath)')" />
+    <ZipDirectory SourceDirectory="@(PublishZipDirectory)" DestinationFile="%(TargetPath)" />
+  </Target>
+
+</Project>

@@ -15,6 +15,7 @@
       DeletePrivateSymbols;
       WriteHardLinkHashes;
     </PublishWebHostDependsOn>
+    <PublishPropertiesToRemove>PublishZip;PublishZipDir</PublishPropertiesToRemove>
   </PropertyGroup>
 
   <ItemGroup>
@@ -23,12 +24,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PublishRuntimeIdentifier Include="win-x86" SelfContained="false" PublishDir="32bit" PrivateExtension="true" />
-    <PublishRuntimeIdentifier Include="win-x64" SelfContained="false" PublishDir="64bit" PrivateExtension="false" />
+    <ProjectReference Include="../WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj" ReferenceOutputAssembly="false" />
+    <PublishRuntimeIdentifier Include="win-x86" SelfContained="false" PublishDir="32bit" PrivateExtension="true" />
+    <PublishRuntimeIdentifier Include="win-x64" SelfContained="false" PublishDir="64bit" PrivateExtension="false" />
   </ItemGroup>
 
   <Import Project="Tasks.targets" />
@@ -40,6 +41,7 @@
       <SiteExtensionDir>$([MSBuild]::NormalizePath('$(PublishDir)$(SiteExtensionRelativeDir)'))</SiteExtensionDir>
       <PrivateSiteExtensionRelativeDir>PrivateSiteExtension/SiteExtensions/Functions/</PrivateSiteExtensionRelativeDir>
       <PrivateSiteExtensionDir>$([MSBuild]::NormalizePath('$(PublishDir)$(PrivateSiteExtensionRelativeDir)'))</PrivateSiteExtensionDir>
+      <PublishZipDir Condition="'$(PublishZipDir)' == '' AND '$(PublishZip)' == 'true'">$(PublishDir)</PublishZipDir>
     </PropertyGroup>
     <ItemGroup>
       <None Include="applicationHost.xdt" TargetPath="$(SiteExtensionRelativeDir)applicationHost.xdt" CopyToPublishDirectory="PreserveNewest" />
@@ -49,6 +51,12 @@
   </Target>
 
   <Target Name="UpdateWorkerPaths" DependsOnTargets="UpdatePaths" BeforeTargets="AssignTargetPaths">
+    <!-- Remove unnecessary dotnet isolated files -->
+    <ItemGroup>
+      <_DotnetWorkerFiles Include="@(None)" Condition="'%(None.DetinationSubDirectory)' == 'workers\dotnet-isolated\bin\'" />
+      <None Remove="@(_DotnetWorkerFiles)" Condition="'%(Extension)' != '.dll' AND '%(Extension)' != '.exe'" />
+    </ItemGroup>
+
     <ItemGroup>
       <None Condition="'%(TargetPath)' != '' AND $([System.String]::new('%(TargetPath)').StartsWith('workers'))">
         <TargetPath>$(SiteExtensionRelativeDir)%(TargetPath)</TargetPath>
@@ -64,6 +72,7 @@
           RuntimeIdentifier=%(PublishRuntimeIdentifier.Identity);
           SelfContained=%(PublishRuntimeIdentifier.SelfContained)
         </AdditionalProperties>
+        <PublishRuntime>%(PublishRuntimeIdentifier.Identity)</PublishRuntime>
         <PublishDir>$(SiteExtensionDir)%(PublishRuntimeIdentifier.PublishDir)/</PublishDir>
         <PublishPrivateDir>$(PrivateSiteExtensionDir)%(PublishRuntimeIdentifier.PublishDir)/</PublishPrivateDir>
         <PublishPrivate>%(PublishRuntimeIdentifier.PrivateExtension)</PublishPrivate>
@@ -81,8 +90,13 @@
       <_PublishProjectReferenceExistent Include="@(_MSBuildProjectReferenceExistent)">
         <AdditionalProperties>%(AdditionalProperties);PublishDir=%(PublishDir);_IsPublishing=true;PublishWorkers=false</AdditionalProperties>
       </_PublishProjectReferenceExistent>
+      <PublishZipDirectory Include="$(PublishDir)SiteExtension" TargetName="$(SiteExtensionName).$(Version).zip" />
     </ItemGroup>
-    <MSBuild Projects="@(_PublishProjectReferenceExistent)" Targets="Publish" BuildInParallel="$(BuildInParallel)" Properties="NoBuild=true" />
+    <MSBuild Projects="@(_PublishProjectReferenceExistent)"
+      Targets="Publish"
+      BuildInParallel="$(BuildInParallel)"
+      Properties="NoBuild=true"
+      RemoveProperties="$(PublishPropertiesToRemove)"/>
   </Target>
 
   <Target Name="PublishPrivateProjectReferences" AfterTargets="PublishProjectReferences" BeforeTargets="Publish">
@@ -90,8 +104,15 @@
       <_PublishPrivateProjectReferenceExistent Include="@(_MSBuildProjectReferenceExistent)" Condition="%(PublishPrivate)">
         <AdditionalProperties>%(AdditionalProperties);PublishDir=%(PublishPrivateDir);_IsPublishing=true</AdditionalProperties>
       </_PublishPrivateProjectReferenceExistent>
+      <PublishZipDirectory
+        Include="$(PublishDir)PrivateSiteExtension"
+        TargetName="@(_PublishPrivateProjectReferenceExistent->'$(SiteExtensionName).Private.$(Version).%(PublishRuntime).zip')" />
     </ItemGroup>
-    <MSBuild Projects="@(_PublishPrivateProjectReferenceExistent)" Targets="Publish" BuildInParallel="$(BuildInParallel)" Properties="NoBuild=true" />
+    <MSBuild Projects="@(_PublishPrivateProjectReferenceExistent)"
+      Targets="Publish"
+      BuildInParallel="$(BuildInParallel)"
+      Properties="NoBuild=true"
+      RemoveProperties="$(PublishPropertiesToRemove)"/>
     <RemoveDir Directories="@(_PublishPrivateProjectReferenceExistent->'%(PublishPrivateDir)/workers/python')" />
   </Target>
 
@@ -110,8 +131,10 @@
     <ItemGroup>
       <_SymbolDirs Include="@(PublishRuntimeIdentifier->'$(SiteExtensionDir)%(PublishDir)')">
         <Destination>$(PublishDir)Symbols/$(SiteExtensionName).Symbols.$(Version).%(Identity)</Destination>
+        <ZipArtifact>$(SiteExtensionName).Symbols.$(Version).%(Identity).zip</ZipArtifact>
       </_SymbolDirs>
       <_WorkerSymbols Include="$(SiteExtensionDir)workers/**/*.pdb" Destination="$(PublishDir)Symbols/$(SiteExtensionName).Symbols.$(Version).%(PublishRuntimeIdentifier.Identity)/workers" />
+      <PublishZipDirectory Include="@(_SymbolDirs->'%(Destination)')" TargetName="%(_SymbolDirs.ZipArtifact)" />
     </ItemGroup>
     <MoveSymbols Directories="@(_SymbolDirs)" Destinations="%(Destination)" />
     <Copy SourceFiles="@(_WorkerSymbols)" DestinationFiles="%(Destination)/%(RecursiveDir)%(Filename)%(Extension)" SkipUnchangedFiles="true" />

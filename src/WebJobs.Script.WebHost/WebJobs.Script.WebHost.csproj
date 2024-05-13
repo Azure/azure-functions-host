@@ -153,23 +153,4 @@
     </ItemGroup>
   </Target>
 
-  <!--
-    Allows for zipping publish outputs:
-    Zip with a pre-determined name/location:
-    > `dotnet publish -p:PublishZip=true`
-    Zip with a pre-determined name to the provided location
-    > `dotnet publish -p:PublishZipDir={some directory}`
-    Zip with a provided name and location
-    > `dotnet publish -p:PublishZipTarget={some directory}/{some_file}.zip`
-  -->
-  <Target Name="ZipPublishContents" AfterTargets="Publish">
-    <PropertyGroup Condition="'$(PublishZipTarget)' == ''">
-      <PublishZipDir Condition="'$(PublishZipDir)' == '' AND '$(PublishZip)' == 'true'">$(PublishDir)..</PublishZipDir>
-      <PublishZipTarget Condition="'$(PublishZipDir)' != ''">$(PublishZipDir)\$(AssemblyName).$(Version).$(ArtifactsPivots).zip</PublishZipTarget>
-    </PropertyGroup>
-
-    <MakeDir Directories="$([System.IO.Path]::GetDirectoryName('$(PublishZipTarget)'))" Condition="'$(PublishZipTarget)' != ''" />
-    <ZipDirectory SourceDirectory="$(PublishDir)" DestinationFile="$(PublishZipTarget)" Condition="'$(PublishZipTarget)' != ''" />
-  </Target>
-
 </Project>
