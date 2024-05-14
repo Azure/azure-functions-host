@@ -472,5 +472,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             }
             Assert.Equal(expected, environment.IsInProc());
         }
+
+        [Theory]
+        [InlineData(null, true)]
+        [InlineData("", true)]
+        [InlineData("dotnet", true)]
+        [InlineData("dotnet-isolated", false)]
+        [InlineData("java", false)]
+        [InlineData("python", false)]
+        [InlineData("node", false)]
+        public void IsInProc_WithRuntimeParameter_ReturnsExpectedResult(string value, bool expected)
+        {
+            var environment = new TestEnvironment();
+            Assert.Equal(expected, environment.IsInProc(value));
+        }
     }
 }

@@ -109,11 +109,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal Task InitializeChannelsAsync()
         {
-            if (_environment.IsInProc())
-            {
-                return Task.CompletedTask;
-            }
-
             if (_placeholderLanguageWorkersList == null)
             {
                 throw new ArgumentNullException(nameof(_placeholderLanguageWorkersList));
@@ -129,7 +124,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     _webHostRpcWorkerChannelManager.InitializeChannelAsync(_languageWorkerOptions.CurrentValue.WorkerConfigs, runtime)));
                 }
             }
-
             return Task.CompletedTask;
         }
     }

@@ -614,16 +614,22 @@ namespace Microsoft.Azure.WebJobs.Script
             string placeholderList = environment.GetEnvironmentVariableOrDefault(RpcWorkerConstants.FunctionWorkerPlaceholderModeListSettingName, string.Empty);
             var placeholderRuntimeSet = new HashSet<string>(placeholderList.Trim().Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries).Select(p => p.Trim()));
             string workerRuntime = environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
-            if (!string.IsNullOrEmpty(workerRuntime))
+
+            if (!environment.IsInProc(workerRuntime))
             {
                 placeholderRuntimeSet.Add(workerRuntime);
             }
+
             return placeholderRuntimeSet;
         }
 
-        public static bool IsInProc(this IEnvironment environment)
+        public static bool IsInProc(this IEnvironment environment, string workerRuntime = null)
         {
-            string workerRuntime = environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
+            if (workerRuntime is null)
+            {
+                workerRuntime = environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
+            }
+
             return string.IsNullOrEmpty(workerRuntime) || string.Equals(workerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase);
         }
 
