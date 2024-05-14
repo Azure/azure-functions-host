@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Data.Tables;
 using Microsoft.Azure.Cosmos.Table;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Hosting;
@@ -33,8 +34,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly object _syncLock = new object();
 
         private ConcurrentDictionary<string, DiagnosticEvent> _events = new ConcurrentDictionary<string, DiagnosticEvent>();
-        private CloudTableClient _tableClient;
-        private CloudTable _diagnosticEventsTable;
+        private TableServiceClient _tableClient;
+        private TableClient _diagnosticEventsTable;
         private string _hostId;
         private bool _disposed = false;
         private bool _purged = false;
@@ -55,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             ILogger<DiagnosticEventTableStorageRepository> logger)
             : this(configuration, hostIdProvider, environment, scriptHost, logger, LogFlushInterval) { }
 
-        internal CloudTableClient TableClient
+        internal TableServiceClient TableClient
         {
             get
             {
@@ -63,10 +64,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 {
                     string storageConnectionString = _configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
                     if (!string.IsNullOrEmpty(storageConnectionString)
-                        && CloudStorageAccount.TryParse(storageConnectionString, out CloudStorageAccount account))
+                        && Microsoft.Azure.Storage.CloudStorageAccount.TryParse(storageConnectionString, out _))
                     {
-                        var tableClientConfig = new TableClientConfiguration();
-                        _tableClient = new CloudTableClient(account.TableStorageUri, account.Credentials, tableClientConfig);
+                        _tableClient = new TableServiceClient(storageConnectionString);
                     }
                     else
                     {
@@ -92,7 +92,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         internal ConcurrentDictionary<string, DiagnosticEvent> Events => _events;
 
-        internal CloudTable GetDiagnosticEventsTable(DateTime? now = null)
+        internal TableClient GetDiagnosticEventsTable(DateTime? now = null)
         {
             if (TableClient != null)
             {
@@ -103,7 +103,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 if (_diagnosticEventsTable == null || currentTableName != _tableName)
                 {
                     _tableName = currentTableName;
-                    _diagnosticEventsTable = TableClient.GetTableReference(_tableName);
+                    _diagnosticEventsTable = TableClient.GetTableClient(_tableName);
                 }
             }
 
@@ -134,30 +134,36 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
                     foreach (var table in tables)
                     {
-                        var tableRecords = await table.ExecuteQuerySegmentedAsync(new TableQuery<DiagnosticEvent>(), null);
+                        var tableQuery = table.QueryAsync<DiagnosticEvent>(cancellationToken: default);
+                        var tableRecords = new List<DiagnosticEvent>();
+
+                        await foreach (var entity in tableQuery)
+                        {
+                            tableRecords.Add(entity);
+                        }
 
                         // Skip tables that have 0 records
-                        if (tableRecords.Results.Count == 0)
+                        if (tableRecords.Count == 0)
                         {
                             continue;
                         }
 
                         // Delete table if it doesn't have records with EventVersion
-                        var eventVersionDoesNotExists = tableRecords.Results.Any(record => string.IsNullOrEmpty(record.EventVersion) == true);
+                        var eventVersionDoesNotExists = tableRecords.Any(record => string.IsNullOrEmpty(record.EventVersion) == true);
                         if (eventVersionDoesNotExists)
                         {
                             _logger.LogDebug("Deleting table '{tableName}' as it contains records without an EventVersion.", table.Name);
-                            await table.DeleteIfExistsAsync();
+                            await table.DeleteAsync();
                             tableDeleted = true;
                             continue;
                         }
 
                         // If the table does have EventVersion, query if it is an outdated version
-                        var eventVersionOutdated = tableRecords.Results.Any(record => string.Compare(DiagnosticEvent.CurrentEventVersion, record.EventVersion, StringComparison.Ordinal) > 0);
+                        var eventVersionOutdated = tableRecords.Any(record => string.Compare(DiagnosticEvent.CurrentEventVersion, record.EventVersion, StringComparison.Ordinal) > 0);
                         if (eventVersionOutdated)
                         {
                             _logger.LogDebug("Deleting table '{tableName}' as it contains records with an outdated EventVersion.", table.Name);
-                            await table.DeleteIfExistsAsync();
+                            await table.DeleteAsync();
                             tableDeleted = true;
                         }
                     }
@@ -177,7 +183,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             }
         }
 
-        internal virtual async Task FlushLogs(CloudTable table = null)
+        internal virtual async Task FlushLogs(TableClient table = null)
         {
             if (_environment.IsPlaceholderModeEnabled())
             {
@@ -225,20 +231,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             }
         }
 
-        internal async Task ExecuteBatchAsync(ConcurrentDictionary<string, DiagnosticEvent> events, CloudTable table)
+        internal async Task ExecuteBatchAsync(ConcurrentDictionary<string, DiagnosticEvent> events, TableClient table)
         {
             try
             {
-                var batch = new TableBatchOperation();
+                var batch = new List<TableTransactionAction>();
                 foreach (string errorCode in events.Keys)
                 {
                     var diagnosticEvent = events[errorCode];
                     diagnosticEvent.Message = Sanitizer.Sanitize(diagnosticEvent.Message);
                     diagnosticEvent.Details = Sanitizer.Sanitize(diagnosticEvent.Details);
-                    TableOperation insertOperation = TableOperation.Insert(diagnosticEvent);
-                    batch.Add(insertOperation);
+                    TableTransactionAction insertAction = new TableTransactionAction(TableTransactionActionType.Add, diagnosticEvent);
+                    batch.Add(insertAction);
                 }
-                await table.ExecuteBatchAsync(batch);
+                await table.SubmitTransactionAsync(batch);
                 events.Clear();
             }
             catch (Exception ex)
