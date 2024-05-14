@@ -38,7 +38,7 @@
   <Target Name="PackReferenceAssemblies">
     <ItemGroup>
       <Content Include="$(ArtifactsPath)\bin\ExtensionsMetadataGenerator\release_netstandard2.0\generator\*">
-        <Pack>true</Pack>        
+        <Pack>true</Pack>
         <PackagePath>tools\netstandard2.0\generator</PackagePath>
       </Content>
       <Content Include="$(ArtifactsPath)\bin\ExtensionsMetadataGenerator\release_netstandard2.0\*.dll" Exclude="**\Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator.dll">

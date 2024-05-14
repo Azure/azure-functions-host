@@ -25,14 +25,13 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator.BuildTasks
         {
             { "netstandard2.0", Net6File },
             { "netstandard2.1", Net6File },
+            { "netcoreapp2.0", Net6File },
             { "netcoreapp2.1", Net6File },
             { "netcoreapp2.2", Net6File },
             { "netcoreapp3.0", Net6File },
-            { "netcoreapp2.0", Net6File },
             { "netcoreapp3.1", Net6File },
             { "net5.0", Net6File },
             { "net6.0", Net6File },
-
             { "net8.0", Net8File }
         };
 
