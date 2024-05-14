@@ -32,4 +32,12 @@
     </ItemGroup>
   </Target>
 
+  <Target Name="CleanDotnetWorkerFiles" BeforeTargets="AssignTargetPaths" Condition="'$(RuntimeIdentifier)' != '' AND $(RuntimeIdentifier.StartsWith(win))">
+    <!-- Remove unnecessary dotnet isolated files -->
+    <ItemGroup>
+      <_DotnetWorkerFiles Include="@(None)" Condition="'%(None.DestinationSubDirectory)' == 'workers\dotnet-isolated\bin\'" />
+      <None Remove="@(_DotnetWorkerFiles)" Condition="'%(Extension)' != '.dll' AND '%(Extension)' != '.exe'" />
+    </ItemGroup>
+  </Target>
+
 </Project>

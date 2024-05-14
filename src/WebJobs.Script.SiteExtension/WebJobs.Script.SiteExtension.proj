@@ -51,12 +51,6 @@
   </Target>
 
   <Target Name="UpdateWorkerPaths" DependsOnTargets="UpdatePaths" BeforeTargets="AssignTargetPaths">
-    <!-- Remove unnecessary dotnet isolated files -->
-    <ItemGroup>
-      <_DotnetWorkerFiles Include="@(None)" Condition="'%(None.DetinationSubDirectory)' == 'workers\dotnet-isolated\bin\'" />
-      <None Remove="@(_DotnetWorkerFiles)" Condition="'%(Extension)' != '.dll' AND '%(Extension)' != '.exe'" />
-    </ItemGroup>
-
     <ItemGroup>
       <None Condition="'%(TargetPath)' != '' AND $([System.String]::new('%(TargetPath)').StartsWith('workers'))">
         <TargetPath>$(SiteExtensionRelativeDir)%(TargetPath)</TargetPath>
