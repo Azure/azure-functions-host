@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
   <Import Project="..\..\build\common.props" />
   <Import Project="..\..\build\python.props" />
   <PropertyGroup>
@@ -20,13 +20,6 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <WarningsAsErrors />
   </PropertyGroup>
-  <ItemGroup>
-    <Compile Remove="ScriptHostEndToEnd\ListenerFailureTests.cs" />
-    <Compile Remove="ServiceBus\ServiceBusEndToEndTestBase.cs" />
-    <Compile Remove="ServiceBus\ServiceBusTriggerCSharpEndToEndTests.cs" />
-    <Compile Remove="ServiceBus\ServiceBusTriggerNodeEndToEndTests.cs" />
-    <Compile Remove="Twilio\TwilioEndToEndTestsBase.cs" />
-  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="appinsights.testlogger" Version="1.0.0" />
@@ -46,7 +39,6 @@
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Storage" Version="4.0.5-11874" />
     <PackageReference Include="Microsoft.Azure.Functions.JavaWorker" Version="2.14.0" />
     <PackageReference Include="Microsoft.Azure.Mobile.Client" Version="4.0.2" />
-    <PackageReference Include="Microsoft.Azure.ServiceBus" Version="4.2.1" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="8.0.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.9.4" />
     <PackageReference Include="Moq" Version="4.20.69" />
@@ -91,14 +83,6 @@
     <None Update="xunit.runner.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Include="ScriptHostEndToEnd\ListenerFailureTests.cs" />
-    <None Include="ServiceBus\ServiceBusEndToEndTestBase.cs" />
-    <None Include="ServiceBus\ServiceBusTriggerCSharpEndToEndTests.cs" />
-    <None Include="ServiceBus\ServiceBusTriggerNodeEndToEndTests.cs" />
-    <None Include="Twilio\TwilioEndToEndTestsBase.cs" />
   </ItemGroup>
 
   <ItemGroup>
