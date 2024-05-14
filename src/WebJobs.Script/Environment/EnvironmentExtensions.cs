@@ -621,6 +621,12 @@ namespace Microsoft.Azure.WebJobs.Script
             return placeholderRuntimeSet;
         }
 
+        public static bool IsInProc(this IEnvironment environment)
+        {
+            string workerRuntime = environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
+            return string.IsNullOrEmpty(workerRuntime) || string.Equals(workerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase);
+        }
+
         public static bool IsApplicationInsightsAgentEnabled(this IEnvironment environment)
         {
             // cache the value of the environment variable

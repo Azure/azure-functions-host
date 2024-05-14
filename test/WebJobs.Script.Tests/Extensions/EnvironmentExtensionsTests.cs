@@ -454,5 +454,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             environment.SetEnvironmentVariable(AzureFilesContentShare, contentShare);
             Assert.Equal(expected, environment.AzureFilesAppSettingsExist());
         }
+
+        [Theory]
+        [InlineData(null, true)]
+        [InlineData("", true)]
+        [InlineData("dotnet", true)]
+        [InlineData("dotnet-isolated", false)]
+        [InlineData("java", false)]
+        [InlineData("python", false)]
+        [InlineData("node", false)]
+        public void IsInProc_ReturnsExpectedResult(string value, bool expected)
+        {
+            var environment = new TestEnvironment();
+            if (value != null)
+            {
+                environment.SetEnvironmentVariable(FunctionWorkerRuntime, value);
+            }
+            Assert.Equal(expected, environment.IsInProc());
+        }
     }
 }
