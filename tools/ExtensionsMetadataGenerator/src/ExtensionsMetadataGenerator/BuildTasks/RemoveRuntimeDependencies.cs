@@ -15,10 +15,13 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator.BuildTasks
     public class RemoveRuntimeDependencies : Task
 #endif
     {
+        private const string Net6File = ".runtimeAssemblies-net6.txt";
+        private const string Net8File = ".runtimeAssemblies-net8.txt";
+
         private static readonly IDictionary<string, string> _runtimeToAssemblyFileMap = new Dictionary<string, string>()
         {
-            { "net6.0", ".runtimeAssemblies-net6.txt" },
-            { "net8.0", ".runtimeAssemblies-net8.txt" }
+            { "net6.0", Net6File },
+            { "net8.0", Net8File }
         };
 
         [Required]
@@ -40,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator.BuildTasks
 
             if (!_runtimeToAssemblyFileMap.TryGetValue(TargetFramework, out var assemblyListFileName))
             {
-                Log.LogError($"The TargetFramework '{TargetFramework}' is not supported in this project.");
+                Log.LogError($"The TargetFramework '{TargetFramework}' is not supported in this project. Supported frameworks are: {string.Join(", ", _runtimeToAssemblyFileMap.Keys)}.");
                 return false;
             }
 
