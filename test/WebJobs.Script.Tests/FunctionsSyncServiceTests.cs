@@ -112,20 +112,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
-        [InlineData(true, true, false, false, true, true, false, false)] // in standby
-        [InlineData(true, true, false, false, true, false, false, false)] // in standby
-        [InlineData(true, true, false, true, true, false, true, false)] // in standby
-        [InlineData(true, true, false, false, false, true, false, true)]
-        [InlineData(false, true, true, false, false, false, false, false)] // container not ready
-        [InlineData(false, true, true, false, false, true, false, true)]
-        [InlineData(false, false, true, false, false, true, false, false)] // no encryption key
+        [InlineData(true, true, false, false, true, true, false, false, false)] // in standby
+        [InlineData(true, true, false, false, true, false, false, false, false)] // in standby
+        [InlineData(true, true, false, true, true, false, true, false, false)] // in standby
+        [InlineData(true, true, false, true, true, false, false, true, false)] // in standby
+        [InlineData(true, true, false, false, false, true, false, false, true)]
+        [InlineData(false, true, true, false, false, false, false, false, false)] // container not ready
+        [InlineData(false, true, true, false, false, true, false, false, true)]
+        [InlineData(false, false, true, false, false, true, false, false, false)] // no encryption key
         // note: normally linux dedicated would have AzureWebsiteInstanceId set.
         // However the test will always catch it as Windows because it checks the OS of the running process.
         // Setting AzureWebsiteInstanceId to null will make it fail the IsAppServiceWindows, and it shouldn't affect the check for dedicated linux
-        [InlineData(false, true, false, true, false, false, false, false)] // dedicated linux
-        [InlineData(false, true, false, false, false, false, false, true)] // dedicated linux
-        [InlineData(false, true, false, false, false, false, true, true)] // managed app environment
-        public void IsSyncTriggersEnvironment_StandbyMode_ReturnsExpectedResult(bool isAppService, bool hasEncryptionKey, bool isConsumptionLinuxOnAtlas, bool isConsumptionLinuxOnLegion, bool standbyMode, bool containerReady, bool isManagedAppEnvironment, bool expected)
+        [InlineData(false, true, false, true, false, false, false, false, false)] // dedicated linux
+        [InlineData(false, true, false, false, false, false, false, false, true)] // dedicated linux
+        [InlineData(false, true, false, false, false, false, true, false, true)] // managed app environment
+        [InlineData(false, true, false, false, false, false, false, true, true)] // connected app environment
+        public void IsSyncTriggersEnvironment_StandbyMode_ReturnsExpectedResult(bool isAppService, bool hasEncryptionKey, bool isConsumptionLinuxOnAtlas, bool isConsumptionLinuxOnLegion, bool standbyMode, bool containerReady, bool isManagedAppEnvironment, bool isConnectedAppEnvironment, bool expected)
         {
             _mockWebHostEnvironment.SetupGet(p => p.InStandbyMode).Returns(standbyMode);
 
@@ -136,6 +138,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.LegionServiceHost)).Returns(isConsumptionLinuxOnLegion ? "1" : null);
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady)).Returns(containerReady ? "1" : null);
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.ManagedEnvironment)).Returns(isManagedAppEnvironment ? "1" : null);
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.ConnectedEnvironment)).Returns(isConnectedAppEnvironment ? "1" : null);
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.WebsitePodName)).Returns(isConsumptionLinuxOnLegion ? "RandomPodName" : null);
 
             var result = FunctionsSyncManager.IsSyncTriggersEnvironment(_mockWebHostEnvironment.Object, _mockEnvironment.Object);

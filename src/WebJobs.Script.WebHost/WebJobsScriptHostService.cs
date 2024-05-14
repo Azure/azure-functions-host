@@ -246,7 +246,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             if (string.IsNullOrEmpty(websiteRunFromPackageValue) &&
                 string.IsNullOrEmpty(scmRunFromPackageValue) &&
                 _environment.IsLinuxConsumptionOnAtlas() &&
-                !_environment.IsManagedAppEnvironment())
+                !_environment.IsManagedAppEnvironment() &&
+                !_environment.IsConnectedAppEnvironment())
             {
                 logger?.LogError($"Unable to load the functions payload since the app was not provisioned with valid {AzureWebJobsSecretStorage} connection string.");
             }
