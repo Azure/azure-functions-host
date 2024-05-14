@@ -319,9 +319,16 @@ jobs:
       testRunTitle: 'Unit Tests'
       arguments: '-v n -f $(targetFramework)'
       projects: |
-        **\ExtensionsMetadataGeneratorTests.csproj
         **\WebJobs.Script.Scaling.Tests.csproj
-        **\WebJobs.Script.Tests.csproj  
+        **\WebJobs.Script.Tests.csproj
+  - task: DotNetCoreCLI@2
+    displayName: 'ExtensionsMetadataGenerator Unit Tests'
+    inputs:
+      command: 'test'
+      testRunTitle: 'EGM Unit Tests'
+      arguments: '-v n'
+      projects: |
+        **\ExtensionsMetadataGeneratorTests.csproj
 
 - job: RunNonE2EIntegrationTests
   strategy: 
