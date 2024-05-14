@@ -18,9 +18,21 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator.BuildTasks
         private const string Net6File = ".runtimeAssemblies-net6.txt";
         private const string Net8File = ".runtimeAssemblies-net8.txt";
 
+        // everything up until net6 maps to the net6 assembly list
+        // net8 only maps to the net8 assembly list
+        // anything else (such as future versions) are unsupported
         private static readonly IDictionary<string, string> _runtimeToAssemblyFileMap = new Dictionary<string, string>()
         {
+            { "netstandard2.0", Net6File },
+            { "netstandard2.1", Net6File },
+            { "netcoreapp2.1", Net6File },
+            { "netcoreapp2.2", Net6File },
+            { "netcoreapp3.0", Net6File },
+            { "netcoreapp2.0", Net6File },
+            { "netcoreapp3.1", Net6File },
+            { "net5.0", Net6File },
             { "net6.0", Net6File },
+
             { "net8.0", Net8File }
         };
 
