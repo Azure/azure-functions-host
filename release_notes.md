@@ -11,3 +11,4 @@
 - Update PowerShell worker 7.4 to [4.0.3219](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.3219)
 - Update Azure.Identity to 1.11.0 (#10002)
 - Fixed an issue leading to a race when invocation responses returned prior to HTTP requests being sent in proxied scenarios.
+- Language worker channels will not be started during placeholder mode if we are in-process (#10162)
