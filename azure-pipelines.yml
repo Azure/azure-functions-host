@@ -44,6 +44,9 @@ jobs:
 - job: BuildArtifacts
   strategy:
     matrix:
+      # net6-legacy is a temporary artifact that will eventually be removed
+      net6-legacy:
+        minorVersionPrefix: ""
       net6:
         minorVersionPrefix: "6"
       net8:
