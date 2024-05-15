@@ -15,7 +15,7 @@
       DeletePrivateSymbols;
       WriteHardLinkHashes;
     </PublishWebHostDependsOn>
-    <PublishPropertiesToRemove>PublishZip;PublishZipDir</PublishPropertiesToRemove>
+    <PublishPropertiesToRemove>ZipAfterPublish;ZipArtifactsPath</PublishPropertiesToRemove>
   </PropertyGroup>
 
   <ItemGroup>
@@ -41,7 +41,6 @@
       <SiteExtensionDir>$([MSBuild]::NormalizePath('$(PublishDir)$(SiteExtensionRelativeDir)'))</SiteExtensionDir>
       <PrivateSiteExtensionRelativeDir>PrivateSiteExtension/SiteExtensions/Functions/</PrivateSiteExtensionRelativeDir>
       <PrivateSiteExtensionDir>$([MSBuild]::NormalizePath('$(PublishDir)$(PrivateSiteExtensionRelativeDir)'))</PrivateSiteExtensionDir>
-      <PublishZipDir Condition="'$(PublishZipDir)' == '' AND '$(PublishZip)' == 'true'">$(PublishDir)</PublishZipDir>
     </PropertyGroup>
     <ItemGroup>
       <None Include="applicationHost.xdt" TargetPath="$(SiteExtensionRelativeDir)applicationHost.xdt" CopyToPublishDirectory="PreserveNewest" />
@@ -84,7 +83,7 @@
       <_PublishProjectReferenceExistent Include="@(_MSBuildProjectReferenceExistent)">
         <AdditionalProperties>%(AdditionalProperties);PublishDir=%(PublishDir);_IsPublishing=true;PublishWorkers=false</AdditionalProperties>
       </_PublishProjectReferenceExistent>
-      <PublishZipDirectory Include="$(PublishDir)SiteExtension" TargetName="$(SiteExtensionName).$(Version).zip" />
+      <ZipArtifact Include="$(PublishDir)SiteExtension" TargetName="SiteExtension/$(SiteExtensionName).$(Version).zip" />
     </ItemGroup>
     <MSBuild Projects="@(_PublishProjectReferenceExistent)"
       Targets="Publish"
@@ -98,9 +97,9 @@
       <_PublishPrivateProjectReferenceExistent Include="@(_MSBuildProjectReferenceExistent)" Condition="%(PublishPrivate)">
         <AdditionalProperties>%(AdditionalProperties);PublishDir=%(PublishPrivateDir);_IsPublishing=true</AdditionalProperties>
       </_PublishPrivateProjectReferenceExistent>
-      <PublishZipDirectory
+      <ZipArtifact
         Include="$(PublishDir)PrivateSiteExtension"
-        TargetName="@(_PublishPrivateProjectReferenceExistent->'$(SiteExtensionName).Private.$(Version).%(PublishRuntime).zip')" />
+        TargetName="@(_PublishPrivateProjectReferenceExistent->'PrivateSiteExtension/$(SiteExtensionName).Private.$(Version).%(PublishRuntime).zip')" />
     </ItemGroup>
     <MSBuild Projects="@(_PublishPrivateProjectReferenceExistent)"
       Targets="Publish"
@@ -128,7 +127,7 @@
         <ZipArtifact>$(SiteExtensionName).Symbols.$(Version).%(Identity).zip</ZipArtifact>
       </_SymbolDirs>
       <_WorkerSymbols Include="$(SiteExtensionDir)workers/**/*.pdb" Destination="$(PublishDir)Symbols/$(SiteExtensionName).Symbols.$(Version).%(PublishRuntimeIdentifier.Identity)/workers" />
-      <PublishZipDirectory Include="@(_SymbolDirs->'%(Destination)')" TargetName="%(_SymbolDirs.ZipArtifact)" />
+      <ZipArtifact Include="@(_SymbolDirs->'%(Destination)')" TargetName="SiteExtensionSymbols/%(_SymbolDirs.ZipArtifact)" />
     </ItemGroup>
     <MoveSymbols Directories="@(_SymbolDirs)" Destinations="%(Destination)" />
     <Copy SourceFiles="@(_WorkerSymbols)" DestinationFiles="%(Destination)/%(RecursiveDir)%(Filename)%(Extension)" SkipUnchangedFiles="true" />

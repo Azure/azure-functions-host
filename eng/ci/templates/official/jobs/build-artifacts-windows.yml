@@ -2,26 +2,6 @@ jobs:
 - job: BuildArtifactsWindows
   displayName: Build Windows Artifacts
 
-  templateContext:
-    outputParentDirectory: $(Build.ArtifactStagingDirectory)
-    outputs:
-    - output: pipelineArtifact
-      displayName: Publish site extension
-      path: $(Build.ArtifactStagingDirectory)/SiteExtension
-      artifact: SiteExtension
-    - output: pipelineArtifact
-      displayName: Publish private site extension
-      path: $(Build.ArtifactStagingDirectory)/PrivateSiteExtension
-      artifact: PrivateSiteExtension
-    - output: pipelineArtifact
-      displayName: Publish site extension symbols
-      path: $(Build.ArtifactStagingDirectory)/Symbols
-      artifact: Symbols
-    - output: pipelineArtifact
-      displayName: Publish nuget packages
-      path: $(Build.ArtifactStagingDirectory)/NugetPackages
-      artifact: NugetPackages
-
   pool:
     name: 1es-pool-azfunc
     image: 1es-windows-2022 
@@ -29,34 +9,59 @@ jobs:
 
   variables:
     ${{ if or( eq( variables['Build.Reason'], 'PullRequest' ), and( not( contains( variables['Build.SourceBranch'], 'release/inproc6/4.' ) ), not( contains( variables['Build.SourceBranch'], 'release/inproc8/4.' ) ), not( contains( variables['Build.SourceBranch'], 'release/4.' ) ), not( contains( variables['Build.SourceBranch'], 'release/ExtensionsMetadataGenerator/' ) ) ) ) }}:
-        suffixTemp: $(buildNumber)
         packSuffixSwitchTemp: --version-suffix $(buildNumber)
         emgSuffixSwitchTemp: --version-suffix ci$(buildNumber)
-    suffix: $[variables.suffixTemp] # this resolves to an empty string if it is missing
     packSuffixSwitch: $[variables.packSuffixSwitchTemp]
     emgSuffixSwitch: $[variables.emgSuffixSwitchTemp]
+    artifacts_path: $(Build.ArtifactStagingDirectory)
+    log_dir: $(artifacts_path)/log
+    nuget_package_path: $(artifacts_path)/NugetPackages
+
+  templateContext:
+    outputParentDirectory: $(artifacts_path)
+    outputs:
+    - output: pipelineArtifact
+      displayName: Publish site extension
+      path: $(artifacts_path)/SiteExtension
+      artifact: SiteExtension
+    - output: pipelineArtifact
+      displayName: Publish private site extension
+      path: $(artifacts_path)/PrivateSiteExtension
+      artifact: PrivateSiteExtension
+    - output: pipelineArtifact
+      displayName: Publish site extension symbols
+      path: $(artifacts_path)/Symbols
+      artifact: Symbols
+    - output: pipelineArtifact
+      displayName: Publish nuget packages
+      path: $(artifacts_path)/NugetPackages
+      artifact: NugetPackages
+    - output: pipelineArtifact
+      displayName: Publish logs
+      path: $(log_dir)
+      artifact: Windows_Log
+      sbomEnabled: false
+      condition: always()
 
   steps:
   - template: /eng/ci/templates/install-dotnet.yml@self
 
-  - task: PowerShell@2
-    displayName: Build artifacts
+  - task: DotNetCoreCLI@2
+    displayName: Publish Site Extension
     inputs:
-      filePath: build/build-extensions.ps1
-      arguments: '-buildNumber "$(buildNumber)" -suffix "$(suffix)" -minorVersionPrefix "$(minorVersionPrefix)"'
-
-  - task: CopyFiles@2
-    inputs:
-      SourceFolder: out/pub/WebJobs.Script.WebHost
-      Contents: '**/*.zip'
-      TargetFolder: $(Build.ArtifactStagingDirectory)
+      command: custom
+      custom: publish
+      publishWebProjects: false # we use our own publish logic
+      zipAfterPublish: false # we use our own zip logic
+      projects: src/WebJobs.Script.SiteExtension/WebJobs.Script.SiteExtension.proj
+      arguments: '-v m -c release -p:BuildNumber=$(buildNumber) -p:MinorVersionPrefix=$(minorVersionPrefix) -p:ZipArtifactsPath=$(artifacts_path) -bl:$(log_dir)/publish.binlog'
 
   - task: DotNetCoreCLI@2
     displayName: Build host packages
     inputs:
       command: custom
       custom: pack
-      arguments: -p:BuildNumber=$(buildNumber) -c release $(packSuffixSwitch)
+      arguments: -p:BuildNumber=$(buildNumber) -c release $(packSuffixSwitch) -o $(nuget_package_path)
       projects: |
         **/WebJobs.Script.csproj
         **/WebJobs.Script.WebHost.csproj
@@ -112,7 +117,7 @@ jobs:
     inputs:
       command: custom
       custom: pack
-      arguments: '--no-build -c release'
+      arguments: '--no-build -c release -o $(nuget_package_path)'
       projects: |
         **/WebJobs.Script.Abstractions.csproj
 
@@ -120,7 +125,7 @@ jobs:
     displayName: Sign Abstractions package
     inputs:
       ConnectedServiceName: ESRP Service-internal
-      FolderPath: out/pkg/release
+      FolderPath: $(nuget_package_path)
       Pattern: Microsoft.Azure.WebJobs.Script.Abstractions*.nupkg
       signConfigType: inlineSignParams
       inlineOperation: |
@@ -196,7 +201,7 @@ jobs:
     inputs:
       command: custom
       custom: pack
-      arguments: '--no-build -c release $(emgSuffixSwitch)'
+      arguments: '--no-build -c release $(emgSuffixSwitch) -o $(nuget_package_path)'
       projects: |
         **/ExtensionsMetadataGenerator.csproj
 
@@ -204,7 +209,7 @@ jobs:
     displayName: Sign ExtensionsMetadataGenerator package
     inputs:
       ConnectedServiceName: ESRP Service-internal
-      FolderPath: out/pkg/release
+      FolderPath: $(nuget_package_path)
       Pattern: Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator*.nupkg
       signConfigType: inlineSignParams
       inlineOperation: |
@@ -229,9 +234,3 @@ jobs:
     displayName: Delete CodeSignSummary files
     inputs:
       contents: '**/CodeSignSummary-*.md'
-
-  - task: CopyFiles@2
-    inputs:
-      SourceFolder: out/pkg/release
-      Contents: '**/*.nupkg'
-      TargetFolder: $(Build.ArtifactStagingDirectory)/NugetPackages
