@@ -323,7 +323,7 @@ jobs:
         **\WebJobs.Script.Scaling.Tests.csproj
         **\WebJobs.Script.Tests.csproj
   - task: DotNetCoreCLI@2
-    displayName: 'EGM Unit Tests'
+    displayName: 'ExtensionsMetadataGenerator Unit Tests'
     inputs:
       command: 'test'
       testRunTitle: 'EGM Unit Tests'
