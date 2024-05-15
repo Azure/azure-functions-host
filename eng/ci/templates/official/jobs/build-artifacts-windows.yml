@@ -50,11 +50,19 @@ jobs:
     displayName: Publish Site Extension
     inputs:
       command: custom
+      custom: restore
+      projects: src/WebJobs.Script.SiteExtension/WebJobs.Script.SiteExtension.proj
+      arguments: '-v m -p:PublishReadyToRun=true -bl:$(log_dir)/restore.binlog'
+
+  - task: DotNetCoreCLI@2
+    displayName: Publish Site Extension
+    inputs:
+      command: custom
       custom: publish
       publishWebProjects: false # we use our own publish logic
       zipAfterPublish: false # we use our own zip logic
       projects: src/WebJobs.Script.SiteExtension/WebJobs.Script.SiteExtension.proj
-      arguments: '-v m -c release -p:BuildNumber=$(buildNumber) -p:MinorVersionPrefix=$(minorVersionPrefix) -p:ZipArtifactsPath=$(artifacts_path) -bl:$(log_dir)/publish.binlog'
+      arguments: '-v m -c release --no-restore -p:BuildNumber=$(buildNumber) -p:MinorVersionPrefix=$(minorVersionPrefix) -p:ZipArtifactsPath=$(artifacts_path) -bl:$(log_dir)/publish.binlog'
 
   - task: DotNetCoreCLI@2
     displayName: Build host packages
