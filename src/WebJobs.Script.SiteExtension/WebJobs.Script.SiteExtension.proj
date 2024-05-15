@@ -28,6 +28,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- This item group controls what runtimes we will publish for public & private site extension -->
     <PublishRuntimeIdentifier Include="win-x86" SelfContained="false" PublishDir="32bit" PrivateExtension="true" />
     <PublishRuntimeIdentifier Include="win-x64" SelfContained="false" PublishDir="64bit" PrivateExtension="false" />
   </ItemGroup>
@@ -49,6 +50,7 @@
     </ItemGroup>
   </Target>
 
+  <!-- Update files from worker pagaes to be copied into public SiteExtension. -->
   <Target Name="UpdateWorkerPaths" DependsOnTargets="UpdatePaths" BeforeTargets="AssignTargetPaths">
     <ItemGroup>
       <None Condition="'%(TargetPath)' != '' AND $([System.String]::new('%(TargetPath)').StartsWith('workers'))">
@@ -78,6 +80,7 @@
 
   <Target Name="PublishWebHost" AfterTargets="PrepareForPublish" BeforeTargets="Publish" DependsOnTargets="$(PublishWebHostDependsOn)" />
 
+  <!-- Publishes projects for the public site extension. -->
   <Target Name="PublishProjectReferences" AfterTargets="PrepareForPublish" BeforeTargets="Publish">
     <ItemGroup>
       <_PublishProjectReferenceExistent Include="@(_MSBuildProjectReferenceExistent)">
@@ -92,6 +95,7 @@
       RemoveProperties="$(PublishPropertiesToRemove)"/>
   </Target>
 
+  <!-- Publishes projects for the private site extension. -->
   <Target Name="PublishPrivateProjectReferences" AfterTargets="PublishProjectReferences" BeforeTargets="Publish">
     <ItemGroup>
       <_PublishPrivateProjectReferenceExistent Include="@(_MSBuildProjectReferenceExistent)" Condition="%(PublishPrivate)">
@@ -120,6 +124,7 @@
     <RemoveDir Directories="@(_RuntimesToRemove)" />
   </Target>
 
+  <!-- Copies symbols from SiteExtension out so they can be distributed independently. -->
   <Target Name="MoveSymbols">
     <ItemGroup>
       <_SymbolDirs Include="@(PublishRuntimeIdentifier->'$(SiteExtensionDir)%(PublishDir)')">
@@ -134,6 +139,7 @@
     <Delete Files="@(_WorkerSymbols)" />
   </Target>
 
+  <!-- Remove all symbols (.pdb) from PrivateSiteExtension -->
   <Target Name="DeletePrivateSymbols">
     <ItemGroup>
       <_PrivateSymbolsToRemove Include="$(PrivateSiteExtensionDir)/**/*.pdb" />
@@ -141,6 +147,7 @@
     <Delete Files="@(_PrivateSymbolsToRemove)" />
   </Target>
 
+  <!-- Calculate all the file hashes for the SiteExtension -->
   <Target Name="ComputeHardLinkHashes">
     <ItemGroup>
       <_FilesToHash Include="$(SiteExtensionDir)**" />
@@ -150,6 +157,7 @@
     </GetFileHash>
   </Target>
 
+  <!-- Write calculated hashes and filepaths to hashesForHardlinks.txt -->
   <Target Name="WriteHardLinkHashes" DependsOnTargets="ComputeHardLinkHashes">
     <ItemGroup>
       <_HashedFiles RelativePath=".$([System.IO.Path]::DirectorySeparatorChar)$([MSBuild]::MakeRelative('$(SiteExtensionDir)', '%(Identity)'))" />

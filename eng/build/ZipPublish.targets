@@ -36,15 +36,17 @@
       </ZipArtifact>
     </ItemGroup>
 
+    <!-- Get all parent directories we will be zipping artifacts to. So we can ensure they exist. -->
     <ItemGroup>
       <_ZipArtifactTargetPath Include="@(ZipArtifact->'%(TargetPath)')" />
       <_ZipArtifactTargetDirectories Include="@(_ZipArtifactTargetPath->'%(RootDir)%(Directory)'->Distinct())" />
     </ItemGroup>
 
-    <Error Condition="'%(ZipArtifact.TargetPath)' == ''" Text="TargetPath or TargetName is required for ZipArtifact" />
-    <MakeDir Directories="@(_ZipArtifactTargetDirectories)" />
-    <Delete Files="@(ZipArtifact->'%(TargetPath)')" />
-    <ZipDirectory SourceDirectory="@(ZipArtifact)" DestinationFile="%(TargetPath)" />
+    <Error Condition="'%(ZipArtifact.TargetPath)' == ''" Text="ZipArtifact %(Identity) has no TargetPath or TargetName (required)." />
+
+    <MakeDir Directories="@(_ZipArtifactTargetDirectories)" /> <!-- Ensure parent directories exist. -->
+    <Delete Files="@(ZipArtifact->'%(TargetPath)')" /> <!-- Delete any existing zip artifacts. -->
+    <ZipDirectory SourceDirectory="@(ZipArtifact)" DestinationFile="%(TargetPath)" /> <!-- Generate zip artifacts. -->
   </Target>
 
 </Project>
