@@ -383,7 +383,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
 
         private async Task EmptyTableAsync(TableClient table)
         {
-            //var results = ExecuteQuery(table, new TableQuery());
             var results = table.QueryAsync<TableEntity>();
 
             await foreach (var entity in results)
