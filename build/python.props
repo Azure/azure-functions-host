@@ -1,8 +1,5 @@
 <Project>
-
-  <!-- Looking to update python worker package? It is now located in workers.props. -->
-  <Target Name="PythonBadImport" BeforeTargets="Build">
-    <Error Message="Do not import python.props. Import workers.props instead." />
-  </Target>
-
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Azure.Functions.PythonWorker" Version="4.28.1" />
+  </ItemGroup>
 </Project>
