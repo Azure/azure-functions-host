@@ -32,7 +32,7 @@ jobs:
       artifact: PrivateSiteExtension
     - output: pipelineArtifact
       displayName: Publish site extension symbols
-      path: $(artifacts_path)/Symbols
+      path: $(artifacts_path)/SiteExtensionSymbols
       artifact: Symbols
     - output: pipelineArtifact
       displayName: Publish nuget packages
