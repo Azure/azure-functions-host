@@ -68,12 +68,12 @@ jobs:
   steps:
   - template: build/install-dotnet.yml
 
+  - template: eng/ci/templates/steps/build-site-ext.yml
+
   - task: PowerShell@2
     displayName: "Check for security vulnerabilities"
     inputs:
       filePath: '$(Build.Repository.LocalPath)\build\check-vulnerabilities.ps1'
-
-  - template: eng/ci/templates/steps/build-site-ext.yml
 
   - task: DotNetCoreCLI@2
     displayName: 'Build host packages'
