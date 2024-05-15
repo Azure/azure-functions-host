@@ -13,30 +13,27 @@ jobs:
         emgSuffixSwitchTemp: --version-suffix ci$(buildNumber)
     packSuffixSwitch: $[variables.packSuffixSwitchTemp]
     emgSuffixSwitch: $[variables.emgSuffixSwitchTemp]
-    artifacts_path: $(Build.ArtifactStagingDirectory)
-    log_dir: $(artifacts_path)/log
-    nuget_package_path: $(artifacts_path)/NugetPackages
-    site_ext_proj: src/WebJobs.Script.SiteExtension/WebJobs.Script.SiteExtension.proj
-    build_args: '-v m -c release --no-restore -p:BuildNumber=$(buildNumber) -p:MinorVersionPrefix=$(minorVersionPrefix)'
+    nuget_package_path: $(Build.ArtifactStagingDirectory)/NugetPackages
+    log_dir: $(Build.ArtifactStagingDirectory)/log
 
   templateContext:
-    outputParentDirectory: $(artifacts_path)
+    outputParentDirectory: $(Build.ArtifactStagingDirectory)
     outputs:
     - output: pipelineArtifact
       displayName: Publish site extension
-      path: $(artifacts_path)/SiteExtension
+      path: $(Build.ArtifactStagingDirectory)/SiteExtension
       artifact: SiteExtension
     - output: pipelineArtifact
       displayName: Publish private site extension
-      path: $(artifacts_path)/PrivateSiteExtension
+      path: $(Build.ArtifactStagingDirectory)/PrivateSiteExtension
       artifact: PrivateSiteExtension
     - output: pipelineArtifact
       displayName: Publish site extension symbols
-      path: $(artifacts_path)/SiteExtensionSymbols
+      path: $(Build.ArtifactStagingDirectory)/SiteExtensionSymbols
       artifact: Symbols
     - output: pipelineArtifact
       displayName: Publish nuget packages
-      path: $(artifacts_path)/NugetPackages
+      path: $(Build.ArtifactStagingDirectory)/NugetPackages
       artifact: NugetPackages
     - output: pipelineArtifact
       displayName: Publish logs

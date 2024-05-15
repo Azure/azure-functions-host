@@ -2,7 +2,10 @@ steps:
   # Not aware of a way to inject variables in the middle of a job from a template. Parameters seem unnecessary here as they should never be changed.
   - pwsh: |
       Write-Host "##vso[task.setvariable variable=site_ext_proj]src/WebJobs.Script.SiteExtension/WebJobs.Script.SiteExtension.proj"
-      Write-Host "##vso[task.setvariable variable=log_dir]$(Build.ArtifactStagingDirectory)/log"
+
+      if (-not '$(log_dir)'){
+        Write-Host "##vso[task.setvariable variable=log_dir]$(Build.ArtifactStagingDirectory)/log"
+      }
     displayName: Update site ext variables
 
   # Restore must be a separate step so we can pass in 'PublishReadyToRun=true'
