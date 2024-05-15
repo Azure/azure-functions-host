@@ -48,6 +48,7 @@ jobs:
   steps:
   - template: /eng/ci/templates/install-dotnet.yml@self
 
+  # Restore must be a separate step so we can pass in 'PublishReadyToRun=true'
   - task: DotNetCoreCLI@2
     displayName: Restore Site Extension
     inputs:
@@ -56,7 +57,6 @@ jobs:
       projects: $(site_ext_proj)
       arguments: '-v m -p:PublishReadyToRun=true -bl:$(log_dir)/restore.binlog'
 
-  
   - task: DotNetCoreCLI@2
     displayName: Build Site Extension
     inputs:
