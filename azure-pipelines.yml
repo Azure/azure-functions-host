@@ -67,20 +67,14 @@ jobs:
       - ImageOverride -equals MMS2019TLS
   steps:
   - template: build/install-dotnet.yml
-  - task: PowerShell@2
-    displayName: "Build artifacts"
-    inputs:
-      filePath: '$(Build.Repository.LocalPath)\build\build-extensions.ps1'
-      arguments: '-buildNumber "$(buildNumber)" -suffix "$(suffix)"'
+
   - task: PowerShell@2
     displayName: "Check for security vulnerabilities"
     inputs:
       filePath: '$(Build.Repository.LocalPath)\build\check-vulnerabilities.ps1'
-  - task: CopyFiles@2
-    inputs:
-      SourceFolder: 'out/pub/WebJobs.Script.WebHost'
-      Contents: '**/*.zip'
-      TargetFolder: '$(Build.ArtifactStagingDirectory)'
+
+  - template: eng/ci/templates/steps/build-site-ext.yml
+
   - task: DotNetCoreCLI@2
     displayName: 'Build host packages'
     inputs:

@@ -47,33 +47,7 @@ jobs:
 
   steps:
   - template: /eng/ci/templates/install-dotnet.yml@self
-
-  # Restore must be a separate step so we can pass in 'PublishReadyToRun=true'
-  - task: DotNetCoreCLI@2
-    displayName: Restore Site Extension
-    inputs:
-      command: custom
-      custom: restore
-      projects: $(site_ext_proj)
-      arguments: '-v m -p:PublishReadyToRun=true -bl:$(log_dir)/restore.binlog'
-
-  - task: DotNetCoreCLI@2
-    displayName: Build Site Extension
-    inputs:
-      command: custom
-      custom: build
-      projects: $(site_ext_proj)
-      arguments: '--no-restore $(build_args) -bl:$(log_dir)/build.binlog'
-
-  - task: DotNetCoreCLI@2
-    displayName: Publish Site Extension
-    inputs:
-      command: custom
-      custom: publish
-      publishWebProjects: false # we use our own publish logic
-      zipAfterPublish: false # we use our own zip logic
-      projects: $(site_ext_proj)
-      arguments: '--no-build $(build_args) -p:ZipArtifactsPath=$(artifacts_path) -bl:$(log_dir)/publish.binlog'
+  - template: /eng/ci/templates/steps/build-site-ext.yml@self
 
   - task: DotNetCoreCLI@2
     displayName: Build host packages
