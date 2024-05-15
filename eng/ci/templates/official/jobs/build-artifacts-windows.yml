@@ -16,6 +16,8 @@ jobs:
     artifacts_path: $(Build.ArtifactStagingDirectory)
     log_dir: $(artifacts_path)/log
     nuget_package_path: $(artifacts_path)/NugetPackages
+    site_ext_proj: src/WebJobs.Script.SiteExtension/WebJobs.Script.SiteExtension.proj
+    build_args: '-v m -c release --no-restore -p:BuildNumber=$(buildNumber) -p:MinorVersionPrefix=$(minorVersionPrefix)'
 
   templateContext:
     outputParentDirectory: $(artifacts_path)
@@ -47,12 +49,21 @@ jobs:
   - template: /eng/ci/templates/install-dotnet.yml@self
 
   - task: DotNetCoreCLI@2
-    displayName: Publish Site Extension
+    displayName: Restore Site Extension
     inputs:
       command: custom
       custom: restore
-      projects: src/WebJobs.Script.SiteExtension/WebJobs.Script.SiteExtension.proj
+      projects: $(site_ext_proj)
       arguments: '-v m -p:PublishReadyToRun=true -bl:$(log_dir)/restore.binlog'
+
+  
+  - task: DotNetCoreCLI@2
+    displayName: Build Site Extension
+    inputs:
+      command: custom
+      custom: build
+      projects: $(site_ext_proj)
+      arguments: '--no-restore $(build_args) -bl:$(log_dir)/build.binlog'
 
   - task: DotNetCoreCLI@2
     displayName: Publish Site Extension
@@ -61,8 +72,8 @@ jobs:
       custom: publish
       publishWebProjects: false # we use our own publish logic
       zipAfterPublish: false # we use our own zip logic
-      projects: src/WebJobs.Script.SiteExtension/WebJobs.Script.SiteExtension.proj
-      arguments: '-v m -c release --no-restore -p:BuildNumber=$(buildNumber) -p:MinorVersionPrefix=$(minorVersionPrefix) -p:ZipArtifactsPath=$(artifacts_path) -bl:$(log_dir)/publish.binlog'
+      projects: $(site_ext_proj)
+      arguments: '--no-build $(build_args) -p:ZipArtifactsPath=$(artifacts_path) -bl:$(log_dir)/publish.binlog'
 
   - task: DotNetCoreCLI@2
     displayName: Build host packages
