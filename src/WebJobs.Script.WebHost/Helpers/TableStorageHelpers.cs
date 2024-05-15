@@ -9,7 +9,6 @@ using System.Threading.Tasks;
 using Azure;
 using Azure.Data.Tables;
 using Azure.Data.Tables.Models;
-using Microsoft.Azure.Cosmos.Table;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Helpers
@@ -94,10 +93,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Helpers
 
         internal static async Task<IEnumerable<TableClient>> ListTablesAsync(TableServiceClient tableClient, string tableNamePrefix)
         {
-            List<TableClient> tables = new List<TableClient>();
-            AsyncPageable<TableItem> allTables = tableClient.QueryAsync(p => p.Name.StartsWith(tableNamePrefix), cancellationToken: default);
+            // Azure.Data.Tables doesn't have a direct way to list tables with a prefix
+            AsyncPageable<TableItem> tablesQuery = tableClient.QueryAsync(p => p.Name.CompareTo(tableNamePrefix) >= 0);
+            var tables = new List<TableClient>();
 
-            await foreach (var page in allTables.AsPages())
+            await foreach (var page in tablesQuery.AsPages())
             {
                 foreach (var table in page.Values)
                 {
@@ -110,7 +110,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Helpers
 
         internal static async Task<bool> CheckIfTableExistsAsync(TableServiceClient tableClient, string tableName)
         {
-            await foreach (var table in tableClient.QueryAsync(p => p.Name == tableName, cancellationToken: default))
+            await foreach (var table in tableClient.QueryAsync(p => p.Name == tableName))
             {
                 return true;
             }
