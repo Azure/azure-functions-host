@@ -1,12 +1,6 @@
 variables:
   buildNumber: $[ counter('constant', 13000) ]
   isReleaseBranch: $[contains(variables['Build.SourceBranch'], 'release/')]
-  ${{ if contains(variables['Build.SourceBranch'], 'release/inproc6/') }}:
-    minorVersionPrefix: "6"
-  ${{ elseif contains(variables['Build.SourceBranch'], 'release/inproc8/') }}:
-    minorVersionPrefix: "8"
-  ${{ else }}:
-    minorVersionPrefix: ""
   DOTNET_NOLOGO: 1
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
   DOTNET_CLI_TELEMETRY_OPTOUT: 1
@@ -17,8 +11,7 @@ pr:
     - dev
     - in-proc
     - release/4.*
-    - release/inproc6/4.*
-    - release/inproc8/4.*
+    - release/in-proc
 
 trigger:
   branches:
@@ -26,8 +19,7 @@ trigger:
     - dev
     - in-proc
     - release/4.*
-    - release/inproc6/4.*
-    - release/inproc8/4.*
+    - release/in-proc
 
 jobs:
 - job: InitializePipeline
@@ -295,9 +287,16 @@ jobs:
       testRunTitle: 'Unit Tests'
       arguments: '-v n'
       projects: |
-        **\ExtensionsMetadataGeneratorTests.csproj
         **\WebJobs.Script.Scaling.Tests.csproj
         **\WebJobs.Script.Tests.csproj
+  - task: DotNetCoreCLI@2
+    displayName: 'ExtensionsMetadataGenerator Unit Tests'
+    inputs:
+      command: 'test'
+      testRunTitle: 'EGM Unit Tests'
+      arguments: '-v n'
+      projects: |
+        **\ExtensionsMetadataGeneratorTests.csproj
 
 - job: RunNonE2EIntegrationTests
   pool:
