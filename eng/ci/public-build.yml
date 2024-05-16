@@ -38,7 +38,7 @@ extends:
       os: windows
 
     stages:
-    - stage: Run Tests
+    - stage: Test
       jobs:
       - template: /eng/ci/templates/jobs/initialize-pipeline.yml@self
       - template: /eng/ci/templates/jobs/run-unit-tests.yml@self
