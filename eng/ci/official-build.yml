@@ -1,4 +1,5 @@
-
+variables:
+  - template: /eng/ci/templates/variables/build.yml@self
 
 trigger:
   batch: true

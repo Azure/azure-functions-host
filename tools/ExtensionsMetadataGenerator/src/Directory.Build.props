@@ -1,5 +1,5 @@
 <Project>
-  <Import Project="..\..\..\build\package.props" />
+
   <PropertyGroup>
     <Description>Azure Functions extensions metadata generator</Description>
     <CodeAnalysisRuleSet>$(MSBuildThisFileDirectory)..\..\..\src.ruleset</CodeAnalysisRuleSet>
@@ -13,4 +13,5 @@
   <ItemGroup>
     <AdditionalFiles Include="$(MSBuildThisFileDirectory)..\..\..\stylecop.json" Link="stylecop.json" />
   </ItemGroup>
+
 </Project>

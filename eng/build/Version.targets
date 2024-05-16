@@ -1,0 +1,22 @@
+<Project>
+
+  <!-- Local build versioning. By default we keep it simple. -->
+  <PropertyGroup Condition="!$(CI)">
+    <VersionSuffix Condition="'$(VersionSuffix)' != ''">$(VersionSuffix).$(BuildReason)</VersionSuffix>
+    <VersionSuffix Condition="'$(VersionSuffix)' == ''">$(BuildReason)</VersionSuffix>
+    <Version>$(VersionPrefix)-$(VersionSuffix)</Version>
+  </PropertyGroup>
+
+  <!-- CI versioning steps -->
+  <PropertyGroup Condition="$(CI) AND !$(IsRelease)">
+    <VersionSuffix Condition="'$(VersionSuffix)' != ''">$(VersionSuffix).$(BuildReason).$(BuildNumber).$(BuildCounter)</VersionSuffix>
+    <VersionSuffix Condition="'$(VersionSuffix)' == ''">$(BuildReason).$(BuildNumber).$(BuildCounter)</VersionSuffix>
+    <Version>$(VersionPrefix)-$(VersionSuffix)</Version>
+  </PropertyGroup>
+
+  <!-- When building in Azure DevOps, update the build number. -->
+  <Target Name="UpdateBuildNumber" Condition="'$(TF_BUILD)' == 'true'" BeforeTargets="BeforeBuild">
+    <Message Importance="high" Text="##vso[build.updatebuildnumber]$(Version)" />
+  </Target>
+
+</Project>

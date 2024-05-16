@@ -1,0 +1,18 @@
+variables:
+  - name: Build.AltReason
+    ${{ if eq(variables['Build.Reason'], 'PullRequest') }}:
+      value: 'pr'
+    ${{ if startsWith(variables['Build.SourceBranch'], 'refs/heads/release/')}}: # TODO: evaluate tags
+      value: 'release'
+    ${{ else }}:
+      value: 'ci'
+  - name: Build.Counter
+    value: $[ counter(format('{0}-{1:yyyyMMdd}', variables['Build.AltReason'], pipeline.startTime), 0) ]
+  - name: Build.IsRelease
+    value: $[ eq(variables['Build.AltReason'], 'release') ]
+  - name: DOTNET_NOLOGO
+    value: 1
+  - name: DOTNET_SKIP_FIRST_TIME_EXPERIENCE
+    value: 1
+  - name: DOTNET_CLI_TELEMETRY_OPTOUT
+    value: 1

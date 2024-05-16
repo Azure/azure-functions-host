@@ -13,4 +13,6 @@
     <EngRoot>$(RepoRoot)eng/</EngRoot>
   </PropertyGroup>
 
+  <Import Project="$(EngRoot)build/Engineering.props" />
+
 </Project>
