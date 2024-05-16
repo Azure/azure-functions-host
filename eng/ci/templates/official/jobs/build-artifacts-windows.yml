@@ -97,11 +97,6 @@ jobs:
           }
         ]
 
-  - task: DeleteFiles@1
-    displayName: Delete CodeSignSummary files
-    inputs:
-      contents: '**/CodeSignSummary-*.md'
-
   - task: DotNetCoreCLI@2
     displayName: Pack Abstractions
     inputs:
@@ -181,11 +176,6 @@ jobs:
           }
         ]
 
-  - task: DeleteFiles@1
-    displayName: Delete CodeSignSummary files
-    inputs:
-      contents: '**/CodeSignSummary-*.md'
-
   - task: DotNetCoreCLI@2
     displayName: Pack ExtensionsMetadataGenerator
     inputs:
@@ -224,3 +214,8 @@ jobs:
     displayName: Delete CodeSignSummary files
     inputs:
       contents: '**/CodeSignSummary-*.md'
+
+  - task: DeleteFiles@1
+    displayName: Delete CodeSignSummary files
+    inputs:
+      contents: '$(nuget_package_path)/**/CodeSignSummary-*.md'
