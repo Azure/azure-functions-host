@@ -263,9 +263,9 @@ jobs:
   - task: ManifestGeneratorTask@0
     displayName: 'SBOM Generation Task - Symbols'
     inputs:
-      BuildDropPath: '$(Build.ArtifactStagingDirectory)\Symbols'
+      BuildDropPath: '$(Build.ArtifactStagingDirectory)\SiteExtensionSymbols'
       Verbosity: 'Information'
-  - publish: $(Build.ArtifactStagingDirectory)\Symbols
+  - publish: $(Build.ArtifactStagingDirectory)\SiteExtensionSymbols
     artifact: Symbols
   - task: ManifestGeneratorTask@0
     displayName: 'SBOM Generation Task - NugetPackages'
