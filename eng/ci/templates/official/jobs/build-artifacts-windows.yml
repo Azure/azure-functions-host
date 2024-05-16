@@ -8,11 +8,6 @@ jobs:
     os: windows
 
   variables:
-    ${{ if or( eq( variables['Build.Reason'], 'PullRequest' ), and( not( contains( variables['Build.SourceBranch'], 'release/inproc6/4.' ) ), not( contains( variables['Build.SourceBranch'], 'release/inproc8/4.' ) ), not( contains( variables['Build.SourceBranch'], 'release/4.' ) ), not( contains( variables['Build.SourceBranch'], 'release/ExtensionsMetadataGenerator/' ) ) ) ) }}:
-        packSuffixSwitchTemp: --version-suffix $(buildNumber)
-        emgSuffixSwitchTemp: --version-suffix ci$(buildNumber)
-    packSuffixSwitch: $[variables.packSuffixSwitchTemp]
-    emgSuffixSwitch: $[variables.emgSuffixSwitchTemp]
     nuget_package_path: $(Build.ArtifactStagingDirectory)/NugetPackages
     log_dir: $(Build.ArtifactStagingDirectory)/log
 
@@ -51,7 +46,7 @@ jobs:
     inputs:
       command: custom
       custom: pack
-      arguments: -p:BuildNumber=$(buildNumber) -c release $(packSuffixSwitch) -o $(nuget_package_path)
+      arguments: -c release -o $(nuget_package_path)
       projects: |
         **/WebJobs.Script.csproj
         **/WebJobs.Script.WebHost.csproj
@@ -191,7 +186,7 @@ jobs:
     inputs:
       command: custom
       custom: pack
-      arguments: '--no-build -c release $(emgSuffixSwitch) -o $(nuget_package_path)'
+      arguments: '--no-build -c release -o $(nuget_package_path)'
       projects: |
         **/ExtensionsMetadataGenerator.csproj
 

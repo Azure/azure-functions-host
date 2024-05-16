@@ -1,0 +1,13 @@
+<Project>
+
+  <PropertyGroup>
+    <!-- Set version before importing rest of props. -->
+    <VersionPrefix>4.1033.6</VersionPrefix>
+    <VersionSuffix></VersionSuffix>
+    <UpdateBuildNumber>true</UpdateBuildNumber>
+  </PropertyGroup>
+
+  <Import Project="$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildThisFileDirectory)../, $(_DirectoryBuildPropsFile)))/$(_DirectoryBuildPropsFile)"
+    Condition=" '$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildThisFileDirectory)../, $(_DirectoryBuildPropsFile)))' != '' " />
+
+</Project>

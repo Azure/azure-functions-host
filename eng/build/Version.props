@@ -1,10 +1,6 @@
 <Project>
 
   <PropertyGroup>
-    <VersionPrefix>4.1033.6</VersionPrefix>
-    <VersionSuffix></VersionSuffix>
-
-
     <_BuildNumber>$([System.DateTime]::Now.ToString(yyyyMMdd))</_BuildNumber>
     <_BuildNumberYY>$(_BuildNumber.Substring(2, 2))</_BuildNumberYY>
     <_BuildNumberMM>$(_BuildNumber.Substring(4, 2))</_BuildNumberMM>

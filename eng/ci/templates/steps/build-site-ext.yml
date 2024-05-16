@@ -23,7 +23,7 @@ steps:
       command: custom
       custom: build
       projects: $(site_ext_proj)
-      arguments: '--no-restore -v m -p:BuildNumber=$(buildNumber) -p:MinorVersionPrefix=$(minorVersionPrefix) -bl:$(log_dir)/site_ext.build.binlog'
+      arguments: '--no-restore -v m -bl:$(log_dir)/site_ext.build.binlog'
 
   - task: DotNetCoreCLI@2
     displayName: Publish site extension
@@ -33,4 +33,4 @@ steps:
       publishWebProjects: false # we use our own publish logic
       zipAfterPublish: false # we use our own zip logic
       projects: $(site_ext_proj)
-      arguments: '--no-build -v m -p:BuildNumber=$(buildNumber) -p:MinorVersionPrefix=$(minorVersionPrefix) -p:ZipArtifactsPath=$(Build.ArtifactStagingDirectory) -bl:$(log_dir)/site_ext.publish.binlog'
+      arguments: '--no-build -v m -p:ZipArtifactsPath=$(Build.ArtifactStagingDirectory) -bl:$(log_dir)/site_ext.publish.binlog'

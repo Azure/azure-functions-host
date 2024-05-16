@@ -46,9 +46,10 @@
     <!-- Only set release tag if this is a tag or a release branch -->
     <!-- tag must be either 'v{Version}' or {name}-v{Version} for a match -->
     <!-- release branch must be refs/heads/release/* -->
-    <IsRelease>false</IsRelease>
-    <IsRelease Condition="'$(BUILD_SOURCEBRANCH)' != '' AND $(BUILD_SOURCEBRANCH.StartsWith('/refs/heads/release/'))">true</IsRelease>
     <ReleaseTag Condition="$([System.Text.RegularExpressions.Regex]::IsMatch($(BUILD_SOURCEBRANCH), `refs/tags/(?:.*-)?v.*`))">$(BUILD_SOURCEBRANCHNAME)</ReleaseTag>
+    <IsRelease>false</IsRelease>
+    <IsRelease Condition="'$(ReleaseTag)' != ''">true</IsRelease>
+    <IsRelease Condition="'$(BUILD_SOURCEBRANCH)' != '' AND $(BUILD_SOURCEBRANCH.StartsWith('/refs/heads/release/'))">true</IsRelease>
   </PropertyGroup>
 
   <Import Project="$(MSBuildThisFileDirectory)Version.props" />
