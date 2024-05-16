@@ -14,6 +14,5 @@ jobs:
       name: Initialize
       inputs:
         filePath: build/initialize-pipeline.ps1
-        arguments: -minorVersionPrefix "$(minorVersionPrefix)"
         showWarnings: true
         pwsh: true
