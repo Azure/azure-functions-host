@@ -4,8 +4,7 @@ trigger:
     - dev
     - in-proc
     - release/4.*
-    - release/inproc6/4.*
-    - release/inproc8/4.*
+    - release/in-proc
 
 resources:
   repositories:
