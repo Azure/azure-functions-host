@@ -9,8 +9,7 @@ pr:
     - dev
     - in-proc
     - release/4.*
-    - release/inproc6/4.*
-    - release/inproc8/4.*
+    - release/in-proc
 
 resources:
   repositories:
@@ -30,7 +29,6 @@ extends:
     stages:
     - stage: Test
       jobs:
-
       - template: /eng/ci/templates/jobs/initialize-pipeline.yml@self
       - template: /eng/ci/templates/official/jobs/run-non-e2e-tests.yml@self
       - template: /eng/ci/templates/official/jobs/run-integration-tests.yml@self
