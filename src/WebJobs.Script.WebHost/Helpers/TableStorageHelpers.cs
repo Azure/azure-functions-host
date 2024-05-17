@@ -97,7 +97,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Helpers
             AsyncPageable<TableItem> tablesQuery = tableClient.QueryAsync(p => p.Name.CompareTo(tableNamePrefix) >= 0);
             var tables = new List<TableClient>();
 
-            await foreach (var page in tablesQuery.AsPages())
+            await foreach (var table in tablesQuery)
             {
                 foreach (var table in page.Values)
                 {
