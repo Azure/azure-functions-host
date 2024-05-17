@@ -12,7 +12,7 @@ jobs:
     IsReleaseBranch: $[contains(variables['Build.SourceBranch'], 'release/')]
 
   steps:
-  - template: /eng/ci/templates/install-dotnet.yml@self
+  - template: eng/ci/templates/install-dotnet.yml@self
 
   - task: UseNode@1
     inputs:

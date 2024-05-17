@@ -1,10 +1,5 @@
 # This build is used for public PR and CI builds.
 
-variables:
-  DOTNET_NOLOGO: 1
-  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
-  DOTNET_CLI_TELEMETRY_OPTOUT: 1
-
 trigger:
   batch: true
   branches:
@@ -29,6 +24,9 @@ resources:
     name: 1ESPipelineTemplates/1ESPipelineTemplates
     ref: refs/tags/release
 
+variables:
+  - template: eng/ci/templates/variables/build.yml@self
+
 extends:
   template: v1/1ES.Unofficial.PipelineTemplate.yml@1es
   parameters:
@@ -40,5 +38,5 @@ extends:
     stages:
     - stage: Test
       jobs:
-      - template: /eng/ci/templates/jobs/initialize-pipeline.yml@self
-      - template: /eng/ci/templates/jobs/run-unit-tests.yml@self
+      - template: eng/ci/templates/jobs/initialize-pipeline.yml@self
+      - template: eng/ci/templates/jobs/run-unit-tests.yml@self

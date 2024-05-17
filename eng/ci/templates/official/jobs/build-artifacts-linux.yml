@@ -32,7 +32,7 @@ jobs:
     os: linux
 
   steps:
-  - template: /eng/ci/templates/install-dotnet.yml@self
+  - template: eng/ci/templates/install-dotnet.yml@self
 
   - task: DotNetCoreCLI@2
     displayName: Restore
