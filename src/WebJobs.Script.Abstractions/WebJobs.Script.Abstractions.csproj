@@ -1,34 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <Import Project="..\..\build\common.props" />
+
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <Version>1.0.4-preview</Version>
-    <BuildNumber Condition=" '$(BuildNumber)' == '' ">1</BuildNumber>
-    <MajorMinorProductVersion>1.0</MajorMinorProductVersion>
-    <AssemblyVersion>$(MajorMinorProductVersion).0.0</AssemblyVersion>
-    <FileVersion>$(MajorMinorProductVersion).$(BuildNumber).0</FileVersion>
-    <CommitHash Condition="$(CommitHash) == ''">N/A</CommitHash>
-    <InformationalVersion>$(FileVersion)$(RuntimeReleaseSuffix) Commit hash: $(CommitHash)</InformationalVersion> 
-    <PackageId>Microsoft.Azure.WebJobs.Script.Abstractions</PackageId>
-    <Icon>webjobs.png</Icon>
     <AssemblyName>Microsoft.Azure.WebJobs.Script.Abstractions</AssemblyName>
-    <RootNamespace>Microsoft.Azure.WebJobs.Script.Abstractions</RootNamespace>
-    <AssemblyOriginatorKeyFile>$(MSBuildThisFileDirectory)key.snk</AssemblyOriginatorKeyFile>
     <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>key.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-    <StyleCopTreatErrorsAsWarnings>false</StyleCopTreatErrorsAsWarnings>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <WarningsAsErrors />
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-    <StyleCopTreatErrorsAsWarnings>false</StyleCopTreatErrorsAsWarnings>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <WarningsAsErrors />
-  </PropertyGroup>
-  <ItemGroup>
-    <None Include="..\..\.editorconfig" Link=".editorconfig" />
-  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.ApplicationInsights" Version="2.22.0" />
@@ -38,8 +16,7 @@
     <PackageReference Include="Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel" Version="2.21.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.2" />
     <PackageReference Include="System.Collections.Immutable" Version="1.5.0" />
-    <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.435">
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
+    <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.435" PrivateAssets="all" />
   </ItemGroup>
+
 </Project>
