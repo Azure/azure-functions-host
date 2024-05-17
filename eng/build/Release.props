@@ -41,15 +41,15 @@
     <CI>false</CI>
     <CI Condition="'$(TF_BUILD)' == 'true'">true</CI>
     <ContinuousIntegrationBuild>$(CI)</ContinuousIntegrationBuild>
-    <TreatWarningsAsErrors Condition="$(CI)">true</TreatWarningsAsErrors>
+    <TreatWarningsAsErrors Condition="'$(CI)' == 'true'">true</TreatWarningsAsErrors>
 
     <!-- Only set release tag if this is a tag or a release branch -->
     <!-- tag must be either 'v{Version}' or {name}-v{Version} for a match -->
     <!-- release branch must be refs/heads/release/* -->
     <ReleaseTag Condition="$([System.Text.RegularExpressions.Regex]::IsMatch($(BUILD_SOURCEBRANCH), `refs/tags/(?:.*-)?v.*`))">$(BUILD_SOURCEBRANCHNAME)</ReleaseTag>
-    <IsRelease>false</IsRelease>
-    <IsRelease Condition="'$(ReleaseTag)' != ''">true</IsRelease>
-    <IsRelease Condition="'$(BUILD_SOURCEBRANCH)' != '' AND $(BUILD_SOURCEBRANCH.StartsWith('/refs/heads/release/'))">true</IsRelease>
+    <Release>false</Release>
+    <Release Condition="'$(ReleaseTag)' != ''">true</Release>
+    <Release Condition="'$(BUILD_SOURCEBRANCH)' != '' AND $(BUILD_SOURCEBRANCH.StartsWith('/refs/heads/release/'))">true</Release>
   </PropertyGroup>
 
   <Import Project="$(MSBuildThisFileDirectory)Version.props" />

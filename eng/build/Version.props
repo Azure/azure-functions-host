@@ -1,6 +1,7 @@
 <Project>
 
   <PropertyGroup>
+    <VersionPrefix Condition="'$(VersionPrefix)' == ''">1.0.0</VersionPrefix>
     <_BuildNumber>$([System.DateTime]::Now.ToString(yyyyMMdd))</_BuildNumber>
     <_BuildNumberYY>$(_BuildNumber.Substring(2, 2))</_BuildNumberYY>
     <_BuildNumberMM>$(_BuildNumber.Substring(4, 2))</_BuildNumberMM>
@@ -16,12 +17,12 @@
     <AssemblyVersion>$(VersionPrefix.Substring(0, $(VersionPrefix.LastIndexOf('.')))).0.0</AssemblyVersion>
   </PropertyGroup>
 
-  <PropertyGroup Condition="!$(CI)">
+  <PropertyGroup Condition="'$(CI)' != 'true'">
     <!-- Constant file version for local dev. -->
     <FileVersion>42.42.42.4242</FileVersion>
   </PropertyGroup>
 
-  <PropertyGroup Condition="$(CI)">
+  <PropertyGroup Condition="'$(CI)' == 'true'">
     <FileVersion>$(VersionPrefix).$(BuildNumber)</FileVersion>
   </PropertyGroup>
 
