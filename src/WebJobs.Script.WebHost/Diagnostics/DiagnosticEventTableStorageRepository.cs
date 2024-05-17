@@ -134,36 +134,26 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     foreach (var table in tables)
                     {
                         var tableQuery = table.QueryAsync<DiagnosticEvent>(cancellationToken: default);
-                        var tableRecords = new List<DiagnosticEvent>();
 
-                        await foreach (var entity in tableQuery)
+                        await foreach (var record in tableQuery)
                         {
-                            tableRecords.Add(entity);
-                        }
+                            // Delete table if it doesn't have records with EventVersion
+                            if (string.IsNullOrEmpty(record.EventVersion) == true)
+                            {
+                                _logger.LogDebug("Deleting table '{tableName}' as it contains records without an EventVersion.", table.Name);
+                                await table.DeleteAsync();
+                                tableDeleted = true;
+                                break;
+                            }
 
-                        // Skip tables that have 0 records
-                        if (tableRecords.Count == 0)
-                        {
-                            continue;
-                        }
-
-                        // Delete table if it doesn't have records with EventVersion
-                        var eventVersionDoesNotExists = tableRecords.Any(record => string.IsNullOrEmpty(record.EventVersion) == true);
-                        if (eventVersionDoesNotExists)
-                        {
-                            _logger.LogDebug("Deleting table '{tableName}' as it contains records without an EventVersion.", table.Name);
-                            await table.DeleteAsync();
-                            tableDeleted = true;
-                            continue;
-                        }
-
-                        // If the table does have EventVersion, query if it is an outdated version
-                        var eventVersionOutdated = tableRecords.Any(record => string.Compare(DiagnosticEvent.CurrentEventVersion, record.EventVersion, StringComparison.Ordinal) > 0);
-                        if (eventVersionOutdated)
-                        {
-                            _logger.LogDebug("Deleting table '{tableName}' as it contains records with an outdated EventVersion.", table.Name);
-                            await table.DeleteAsync();
-                            tableDeleted = true;
+                            // If the table does have EventVersion, query if it is an outdated version
+                            if (string.Compare(DiagnosticEvent.CurrentEventVersion, record.EventVersion, StringComparison.Ordinal) > 0)
+                            {
+                                _logger.LogDebug("Deleting table '{tableName}' as it contains records with an outdated EventVersion.", table.Name);
+                                await table.DeleteAsync();
+                                tableDeleted = true;
+                                break;
+                            }
                         }
                     }
 
