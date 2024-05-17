@@ -99,10 +99,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Helpers
 
             await foreach (var table in tablesQuery)
             {
-                foreach (var table in page.Values)
-                {
-                    tables.Add(tableClient.GetTableClient(table.Name));
-                }
+                tables.Add(tableClient.GetTableClient(table.Name));
             }
 
             return tables;
