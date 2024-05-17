@@ -11,7 +11,7 @@ jobs:
     IntegrationProject: test/WebJobs.Script.Tests.Integration/WebJobs.Script.Tests.Integration.csproj
 
   steps:
-  - template: eng/ci/templates/install-dotnet.yml@self
+  - template: /eng/ci/templates/install-dotnet.yml@self
 
   - task: UseNode@1
     inputs:

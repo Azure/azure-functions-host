@@ -14,7 +14,7 @@ resources:
     ref: refs/tags/release
 
 variables:
-  - template: eng/ci/templates/variables/build.yml@self
+  - template: /eng/ci/templates/variables/build.yml@self
 
 extends:
   template: v1/1ES.Unofficial.PipelineTemplate.yml@1es
@@ -27,6 +27,6 @@ extends:
     stages:
     - stage: Test
       jobs:
-      - template: eng/ci/templates/jobs/initialize-pipeline.yml@self
-      - template: eng/ci/templates/official/jobs/run-non-e2e-tests.yml@self
-      - template: eng/ci/templates/official/jobs/run-integration-tests.yml@self
+      - template: /eng/ci/templates/jobs/initialize-pipeline.yml@self
+      - template: /eng/ci/templates/official/jobs/run-non-e2e-tests.yml@self
+      - template: /eng/ci/templates/official/jobs/run-integration-tests.yml@self

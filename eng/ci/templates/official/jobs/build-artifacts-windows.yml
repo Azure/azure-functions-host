@@ -37,7 +37,7 @@ jobs:
     emgSuffixSwitch: $[variables.emgSuffixSwitchTemp]
 
   steps:
-  - template: eng/ci/templates/install-dotnet.yml@self
+  - template: /eng/ci/templates/install-dotnet.yml@self
 
   - task: PowerShell@2
     displayName: Build artifacts
