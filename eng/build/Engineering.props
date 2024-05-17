@@ -2,4 +2,8 @@
 
   <Import Project="$(MSBuildThisFileDirectory)Release.props" />
 
+  <PropertyGroup>
+    <AssemblyOriginatorKeyFile>$(EngRoot)resources/key.snk</AssemblyOriginatorKeyFile>
+  </PropertyGroup>
+
 </Project>

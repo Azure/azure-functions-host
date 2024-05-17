@@ -24,7 +24,7 @@
       This is why there are seemingly redundant properties below, they represent a different stage in
       the contents of this property during the packaging process.
       -->
-    <IconFile Condition="'$(IconFile)' == ''">$(MSBuildThisFileDirectory)../resources/icon.png</IconFile>
+    <IconFile Condition="'$(IconFile)' == ''">$(EngRoot)resources/icon.png</IconFile>
     <PackageIcon Condition="'$(PackageIcon)' == ''">icon.png</PackageIcon>
     <ReadmeFile Condition="'$(ReadmeFile)' == ''">README.md</ReadmeFile>
     <PackageReadmeFile Condition="'$(PackageReadmeFile)' == ''">README.md</PackageReadmeFile>

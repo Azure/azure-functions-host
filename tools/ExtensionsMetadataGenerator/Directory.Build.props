@@ -12,7 +12,6 @@
   <PropertyGroup>
     <Description>Azure Functions extensions metadata generator</Description>
     <CodeAnalysisRuleSet>$(RepoRoot)src.ruleset</CodeAnalysisRuleSet>
-    <AssemblyOriginatorKeyFile>$(MSBuildThisFileDirectory)PublicKey.snk</AssemblyOriginatorKeyFile>
     <SignAssembly>true</SignAssembly>
     <DelaySign>true</DelaySign>
     <NugetAudit>false</NugetAudit>
