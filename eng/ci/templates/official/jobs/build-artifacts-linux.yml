@@ -7,7 +7,7 @@ jobs:
     configuration: release
     runtime: linux-x64
     log_dir: $(Build.ArtifactStagingDirectory)/log
-    build_args: '-v m -c $(configuration) -r $(runtime) --self-contained true -p:BuildNumber=$(buildNumber) -p:MinorVersionPrefix=$(minorVersionPrefix) -p:IsPackable=false'
+    build_args: '-v m -c $(configuration) -r $(runtime) --self-contained true -p:BuildNumber=$(buildNumber) -p:IsPackable=false'
     publish_zip_dir: $(Build.ArtifactStagingDirectory)/Linux
 
   templateContext:

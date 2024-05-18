@@ -43,7 +43,7 @@ jobs:
     displayName: Build artifacts
     inputs:
       filePath: build/build-extensions.ps1
-      arguments: '-buildNumber "$(buildNumber)" -suffix "$(suffix)" -minorVersionPrefix "$(minorVersionPrefix)"'
+      arguments: '-buildNumber "$(buildNumber)" -suffix "$(suffix)"'
 
   - task: CopyFiles@2
     inputs:
