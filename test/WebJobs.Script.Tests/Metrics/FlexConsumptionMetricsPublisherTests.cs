@@ -437,6 +437,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             Assert.Equal(4800, publisher.FunctionExecutionTimeMS);
         }
 
+        [Fact]
+        public void OnFunctionCompleted_NoOutstandingInvocations_IgnoresEvent()
+        {
+            var publisher = CreatePublisher(metricsPublishInterval: TimeSpan.FromHours(1), inStandbyMode: false);
+
+            Assert.Equal(1000, _options.MinimumActivityIntervalMS);
+            Assert.Equal(0, publisher.ActiveFunctionCount);
+            Assert.Equal(0, publisher.FunctionExecutionCount);
+            Assert.Equal(0, publisher.FunctionExecutionTimeMS);
+
+            DateTime now = DateTime.UtcNow;
+
+            // send a function completion without a corresponding start event
+            now += TimeSpan.FromMilliseconds(300);
+            publisher.OnFunctionCompleted("foo", "1", now);
+
+            Assert.Equal(0, publisher.ActiveFunctionCount);
+            Assert.Equal(0, publisher.FunctionExecutionCount);
+            Assert.Equal(0, publisher.FunctionExecutionTimeMS);
+        }
+
         public void CleanupMetricsFiles()
         {
             var directory = new DirectoryInfo(_metricsFilePath);
