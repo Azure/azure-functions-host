@@ -22,8 +22,8 @@ resources:
     ref: refs/tags/release
 
 variables:
-  - template: ci/variables/build.yml@eng
-  - template: ci/variables/cfs.yml@eng
+  - template: /eng/ci/templates/variables/build.yml@self
+  - template: /ci/variables/cfs.yml@eng
   - name: buildNumber
     value: $[ counter('build', 23000) ] # 23000 selected to be ahead of current host build
 
