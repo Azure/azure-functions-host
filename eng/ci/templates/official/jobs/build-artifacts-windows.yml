@@ -73,6 +73,7 @@ jobs:
 
   - template: ci/sign-files.yml@eng
     parameters:
+      displayName: Sign WebJobs.Script.Abstractions dll
       folderPath: out/bin/WebJobs.Script.Abstractions/release
       pattern: Microsoft.Azure.WebJobs.Script.Abstractions*.dll
       signType: dll
@@ -90,12 +91,6 @@ jobs:
       arguments: '--no-build -c release'
       projects: |
         **/WebJobs.Script.Abstractions.csproj
-
-  - template: ci/sign-files.yml@eng
-    parameters:
-      folderPath: out/pkg/release
-      pattern: Microsoft.Azure.WebJobs.Script.Abstractions*.nupkg
-      signType: nuget
 
   - task: EsrpCodeSigning@2
     displayName: Sign ExtensionsMetadataGenerator assemblies
@@ -158,8 +153,9 @@ jobs:
 
   - template: ci/sign-files.yml@eng
     parameters:
+      displayName: Sign NugetPackages
       folderPath: out/pkg/release
-      pattern: Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator*.nupkg
+      pattern: '*.nupkg'
       signType: nuget
 
   - task: DeleteFiles@1
