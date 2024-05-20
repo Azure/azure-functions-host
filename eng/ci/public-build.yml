@@ -47,13 +47,6 @@ extends:
       os: windows
 
     stages:
-    - stage: Initialize
-
-      jobs:
-      - template: /eng/ci/templates/jobs/initialize-pipeline.yml@self
-
     - stage: Test
-      dependsOn: Initialize
-
       jobs:
       - template: /eng/ci/templates/jobs/run-unit-tests.yml@self
