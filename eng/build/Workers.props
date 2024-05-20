@@ -1,6 +1,6 @@
 <Project>
 
-  <Import Project="$(MSBuildThisFileDirectory)python.props" />
+  <Import Project="$(MSBuildThisFileDirectory)Python.props" />
 
   <!-- Workers which are bundled into the product. -->
   <ItemGroup>

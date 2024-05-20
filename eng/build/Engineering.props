@@ -1,9 +1,34 @@
 <Project>
 
-  <Import Project="$(MSBuildThisFileDirectory)Release.props" />
+  <!-- Additional paths -->
+  <PropertyGroup>
+    <EngBuildRoot>$(EngRoot)build/</EngBuildRoot>
+    <EngResourceRoot>$(EngRoot)resources/</EngResourceRoot>
+    <WorkersProps>$(EngBuildRoot)Workers.props</WorkersProps>
+  </PropertyGroup>
 
   <PropertyGroup>
-    <AssemblyOriginatorKeyFile>$(EngRoot)resources/key.snk</AssemblyOriginatorKeyFile>
+    <LangVersion>latest</LangVersion>
+    <AssemblyOriginatorKeyFile>$(EngResourceRoot)key.snk</AssemblyOriginatorKeyFile>
+    <CodeAnalysisRuleSet>$(RepoRoot)src.ruleset</CodeAnalysisRuleSet>
+    <NoWarn>$(NoWarn);NU1701</NoWarn>
+    <DebugType>embedded</DebugType>
+    <GenerateRuntimeConfigDevFile>true</GenerateRuntimeConfigDevFile><!-- https://github.com/dotnet/runtime/issues/54684 -->
+    <DisableImplicitNamespaceImports>true</DisableImplicitNamespaceImports>
+    <Configurations>$(Configurations);DebugPlaceholder;ReleasePlaceholder</Configurations>
   </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DebugPlaceholder|AnyCPU'">
+    <DefineConstants>$(DefineConstants);PLACEHOLDERSIMULATION</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleasePlaceholder|AnyCPU'">
+    <DefineConstants>$(DefineConstants);PLACEHOLDERSIMULATION</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AdditionalFiles Include="$(RepoRoot)stylecop.json" Link="stylecop.json" />
+  </ItemGroup>
+
+  <Import Project="$(MSBuildThisFileDirectory)Release.props" />
 
 </Project>

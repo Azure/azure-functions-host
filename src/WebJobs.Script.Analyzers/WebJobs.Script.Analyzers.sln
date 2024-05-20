@@ -9,9 +9,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebJobs.Script.Tests.Analyz
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "build", "build", "{FDABF05F-E6E5-4CEF-A3AE-6E48164D4289}"
 	ProjectSection(SolutionItems) = preProject
-		..\..\build\common.props = ..\..\build\common.props
 		..\..\build\functions.png = ..\..\build\functions.png
-		..\..\build\package.props = ..\..\build\package.props
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{DE23BC0B-FEBD-4EE8-BB44-94E3D0C6F681}"

@@ -11,6 +11,8 @@
   <PropertyGroup>
     <RepoRoot>$(MSBuildThisFileDirectory)</RepoRoot>
     <EngRoot>$(RepoRoot)eng/</EngRoot>
+    <SourceRoot>$(RepoRoot)src/</SourceRoot>
+    <TestRoot>$(RepoRoot)test/</TestRoot>
   </PropertyGroup>
 
   <Import Project="$(EngRoot)build/Engineering.props" />

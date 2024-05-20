@@ -1,0 +1,14 @@
+<Project>
+
+  <Import Project="$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildThisFileDirectory)../, $(_DirectoryBuildTargetsFile)))/$(_DirectoryBuildTargetsFile)"
+    Condition=" '$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildThisFileDirectory)../, $(_DirectoryBuildTargetsFile)))' != '' " />
+
+  <!--see https://github.com/grpc/grpc/issues/12154#issuecomment-327006312 -->
+  <Target Name="RemoveGrpcFromTestDir" AfterTargets="_CopyFilesMarkedCopyLocal">
+    <ItemGroup>
+      <_GrpcCoreLibs Include="$(OutputPath)Grpc.Core.*" />
+    </ItemGroup>
+    <Delete Files="@(_GrpcCoreLibs)" ContinueOnError="true" />
+  </Target>
+
+</Project>

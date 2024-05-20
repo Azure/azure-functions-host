@@ -24,7 +24,7 @@
       This is why there are seemingly redundant properties below, they represent a different stage in
       the contents of this property during the packaging process.
       -->
-    <IconFile Condition="'$(IconFile)' == ''">$(EngRoot)resources/icon.png</IconFile>
+    <IconFile Condition="'$(IconFile)' == ''">$(EngResourceRoot)icon.png</IconFile>
     <PackageIcon Condition="'$(PackageIcon)' == ''">icon.png</PackageIcon>
     <ReadmeFile Condition="'$(ReadmeFile)' == ''">README.md</ReadmeFile>
     <PackageReadmeFile Condition="'$(PackageReadmeFile)' == ''">README.md</PackageReadmeFile>
@@ -34,14 +34,14 @@
 
   <!-- Continuous Integration -->
   <PropertyGroup>
-    <BuildReason>dev</BuildReason>
-    <BuildReason Condition="'$(BUILD_REASON)' != ''">ci</BuildReason>
-    <BuildReason Condition="'$(BUILD_REASON)' == 'PullRequest'">pr</BuildReason>
-
     <CI>false</CI>
     <CI Condition="'$(TF_BUILD)' == 'true'">true</CI>
     <ContinuousIntegrationBuild>$(CI)</ContinuousIntegrationBuild>
     <TreatWarningsAsErrors Condition="'$(CI)' == 'true'">true</TreatWarningsAsErrors>
+
+    <BuildReason>dev</BuildReason>
+    <BuildReason Condition="'$(BUILD_REASON)' != ''">ci</BuildReason>
+    <BuildReason Condition="'$(BUILD_REASON)' == 'PullRequest'">pr</BuildReason>
 
     <!-- Only set release tag if this is a tag or a release branch -->
     <!-- tag must be either 'v{Version}' or {name}-v{Version} for a match -->
@@ -52,11 +52,11 @@
     <Release Condition="'$(BUILD_SOURCEBRANCH)' != '' AND $(BUILD_SOURCEBRANCH.StartsWith('/refs/heads/release/'))">true</Release>
   </PropertyGroup>
 
-  <Import Project="$(MSBuildThisFileDirectory)Version.props" />
-
   <ItemGroup>
     <Content Include="$(IconFile)" Pack="true" PackagePath="/" />
     <Content Include="$(ReadmeFile)" Pack="true" PackagePath="/" Condition="Exists('$(ReadmeFile)')" />
   </ItemGroup>
+
+  <Import Project="$(MSBuildThisFileDirectory)Version.props" />
 
 </Project>

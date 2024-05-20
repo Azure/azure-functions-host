@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-  <Import Project="..\..\build\common.props" />
   <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
     <PackageId>Microsoft.Azure.WebJobs.Script</PackageId>
     <AssemblyName>Microsoft.Azure.WebJobs.Script</AssemblyName>
     <RootNamespace>Microsoft.Azure.WebJobs.Script</RootNamespace>

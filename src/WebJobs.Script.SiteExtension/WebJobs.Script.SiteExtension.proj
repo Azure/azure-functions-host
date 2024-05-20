@@ -1,6 +1,5 @@
 <Project Sdk="Microsoft.Build.NoTargets">
-  <Import Project="../../build/common.props" />
-  <Import Project="../../build/workers.props" />
+  <Import Project="$(WorkersProps)" />
 
   <PropertyGroup>
     <!-- TFM and RId are actually used. -->

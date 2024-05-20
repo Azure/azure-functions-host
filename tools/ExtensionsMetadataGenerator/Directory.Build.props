@@ -5,14 +5,8 @@
 
   <PropertyGroup>
     <Description>Azure Functions extensions metadata generator</Description>
-    <CodeAnalysisRuleSet>$(RepoRoot)src.ruleset</CodeAnalysisRuleSet>
     <SignAssembly>true</SignAssembly>
-    <DelaySign>true</DelaySign>
     <NugetAudit>false</NugetAudit>
   </PropertyGroup>
-
-  <ItemGroup>
-    <AdditionalFiles Include="$(RepoRoot)stylecop.json" Link="stylecop.json" />
-  </ItemGroup>
 
 </Project>
