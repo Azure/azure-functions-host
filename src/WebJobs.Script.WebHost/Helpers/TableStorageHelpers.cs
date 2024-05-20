@@ -104,15 +104,5 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Helpers
 
             return tables;
         }
-
-        internal static async Task<bool> CheckIfTableExistsAsync(TableServiceClient tableClient, string tableName)
-        {
-            await foreach (var table in tableClient.QueryAsync(p => p.Name == tableName))
-            {
-                return true;
-            }
-
-            return false;
-        }
     }
 }
