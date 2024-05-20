@@ -20,6 +20,7 @@ using WorkerHarness.Core.Actions;
 using WorkerHarness.Core.Diagnostics;
 using Newtonsoft.Json;
 using WorkerHarness.Core.Profiling;
+using WorkerHarness.Core.Logging;
 
 namespace WorkerHarness
 {
@@ -30,16 +31,18 @@ namespace WorkerHarness
             HarnessEventSource.Log.AppStarted();
             ServiceProvider? serviceProvider = null;
             IGrpcServer? grpcServer = null;
+            ILogger<Program>? logger = null;
             try
             {
-                Console.WriteLine($"Starting worker harness version {GetHarnessVersion()} at {DateTime.Now}");
-
                 if (!TryGetHarnessSetting(out string harnessSettingsPath))
                 {
                     return;
                 }
-
                 serviceProvider = SetupDependencyInjection(harnessSettingsPath);
+
+                logger = serviceProvider.GetRequiredService<ILogger<Program>>()!;
+
+                logger.Log(LogLevel.Information,ConsoleColor.Yellow, $"Starting worker harness version {GetHarnessVersion()}");
 
                 // validate user input
                 IOptions<HarnessOptions> harnessOptions = serviceProvider.GetRequiredService<IOptions<HarnessOptions>>()!;
@@ -61,16 +64,15 @@ namespace WorkerHarness
                 await harnessExecutor.StartAsync();
 
                 int waitTime = harnessOptions.Value.WaitBeforeExitingInSeconds;
-                Console.WriteLine($"Will wait for {waitTime} seconds before exiting.");
+                logger?.LogInformation($"Will wait for {waitTime} seconds before exiting.");
                 await Task.Delay(TimeSpan.FromSeconds(waitTime));
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"An exception occurred: {ex.Message}");
+                logger?.LogError($"An exception occurred: {ex.Message}");
             }
             finally
             {
-                Console.WriteLine($"Exiting at {DateTime.Now}");
                 if (grpcServer is not null)
                 {
                     await grpcServer.Shutdown();
@@ -115,7 +117,11 @@ namespace WorkerHarness
                 .AddSingleton<IHarnessOptionsValidate, HarnessOptionsValidate>()
                 .AddSingleton<IGrpcServer, GrpcServer>()
                 .Configure<HarnessOptions>(config)
-                .AddLogging(builder => builder.AddConsole());
+                .AddLogging(builder =>
+                {
+                    builder.ClearProviders();
+                    builder.AddProvider(new HarnessMinimalLoggerProvider());
+                });
 
             if (OperatingSystem.IsWindows())
             {

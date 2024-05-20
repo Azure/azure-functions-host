@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using System.Threading.Channels;
 using WorkerHarness.Core.Commons;
 using WorkerHarness.Core.Diagnostics;
+using WorkerHarness.Core.Logging;
 using WorkerHarness.Core.Matching;
 using WorkerHarness.Core.Profiling;
 using WorkerHarness.Core.StreamingMessageService;
@@ -146,7 +147,8 @@ namespace WorkerHarness.Core.Actions
                         {
                             HarnessEventSource.Log.ColdStartRequestStop(response.StatusCode);
                             string responseBodyString = response.Body == null ? string.Empty : System.Text.Encoding.UTF8.GetString(response.Body);
-                            _logger.LogInformation($"HTTP trigger invocation response: {response.StatusCode} {Environment.NewLine}{responseBodyString}");
+                            _logger.LogInfo(response.StatusCode == "200" ? ConsoleColor.Green : ConsoleColor.Red, $"Response status code:{response.StatusCode}");
+                            _logger.LogInfo(ConsoleColor.Cyan, $"{responseBodyString}");
                         }
                     }
 

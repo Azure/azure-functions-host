@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using Microsoft.Extensions.Logging;
+using WorkerHarness.Core.Logging;
 
 namespace WorkerHarness.Core.Profiling
 {
@@ -49,7 +50,7 @@ namespace WorkerHarness.Core.Profiling
             var circularBufferMb = _config.CircularMb ?? 50;
             var osBufferSizeMb = _config.BufferSizeMb ?? 1024;
 
-            _logger.LogInformation($"Starting Perfview profiling...");
+            _logger.LogInfo(ConsoleColor.Gray, $"Starting Perfview profiling...");
 
             string startArgs =
                 $"start /AcceptEula /LogFile={_logFilePath} /BufferSizeMB={osBufferSizeMb} /ThreadTime /NoV2Rundown /NoNGENRundown /Providers={_config.Providers} {_traceDataFilePath}";
@@ -58,7 +59,7 @@ namespace WorkerHarness.Core.Profiling
             using (var startProcess = new ProcessRunner(TimeSpan.FromSeconds(timeout)))
             {
                 await startProcess.Run(_executablePath, startArgs);
-                _logger.LogInformation($"Perfview started. Elapsed: {startProcess.ElapsedTime.Seconds} seconds");
+                _logger.LogInfo(ConsoleColor.Gray, $"Perfview started. Elapsed: {startProcess.ElapsedTime.Seconds} seconds");
             }
         }
 
@@ -69,7 +70,7 @@ namespace WorkerHarness.Core.Profiling
                 return;
             }
 
-            _logger.LogInformation($"Stopping Perfview profiling. This process may take a few seconds to a few minutes.");
+            _logger.LogInfo(ConsoleColor.Gray, $"Stopping Perfview profiling. This process may take a few seconds to a few minutes.");
 
             string stopArgs =
                 $"stop /AcceptEula /LogFile={_logFilePath} /Providers={_config.Providers} /NoV2Rundown /NoNGENRundown /NoNGenPdbs /Merge=true /Zip=false";
@@ -78,10 +79,10 @@ namespace WorkerHarness.Core.Profiling
             using (var stopProcess = new ProcessRunner(TimeSpan.FromSeconds(timeout)))
             {
                 await stopProcess.Run(_executablePath, stopArgs);
-                _logger.LogInformation($"Perfview stopped. Elapsed time: {stopProcess.ElapsedTime.Seconds} seconds. . Profile file:{_traceDataFilePath}");
+                _logger.LogInfo(ConsoleColor.White, $"Perfview stopped. Elapsed time: {stopProcess.ElapsedTime.Seconds} seconds. . Profile file:{_traceDataFilePath}");
             }
 
-            await UploadProfileToStorageContainer();
+            //await UploadProfileToStorageContainer();
             await RunProfileAnalyzer();
 
             Status = ProfilingStatus.Stopped;
@@ -106,14 +107,14 @@ namespace WorkerHarness.Core.Profiling
                     return;
                 }
 
-                var profileAnalyzerArgs = _traceDataFilePath;
-                _logger.LogInformation($"Found '{FunctionsColdStartProfileAnalyzerExeName}' present in 'executableDirectory'({_config.ExecutableDirectory}). Will proceed with analyzing the perfview profile to generate coldstart data.");
-                _logger.LogInformation($"Executing {profileAnalyzerPath} {profileAnalyzerArgs}");
+                var profileAnalyzerArgs = $"{_traceDataFilePath} {_config.ProfileAnalyzerArguments}";
+                _logger.LogInfo(ConsoleColor.Gray, $"Found '{FunctionsColdStartProfileAnalyzerExeName}' present in 'executableDirectory'({_config.ExecutableDirectory}). Will proceed with analyzing the perfview profile to generate coldstart data.");
+                _logger.LogInfo(ConsoleColor.Gray, $"Executing {profileAnalyzerPath} {profileAnalyzerArgs}");
 
                 using (var profileAnalyzerProcess = new ProcessRunner(TimeSpan.FromSeconds(60)))
                 {
                     await profileAnalyzerProcess.Run(profileAnalyzerPath, profileAnalyzerArgs);
-                    _logger.LogInformation($"Profile analysis completed. Elapsed: {profileAnalyzerProcess.ElapsedTime.Seconds} seconds. . Profile file:{_traceDataFilePath}");
+                    _logger.LogInfo(ConsoleColor.White, $"Profile analysis completed. Elapsed: {profileAnalyzerProcess.ElapsedTime.Seconds} seconds. . Profile file:{_traceDataFilePath}");
                 }
             }
             catch (Exception ex)
