@@ -19,7 +19,7 @@ resources:
   - repository: eng
     type: git
     name: engineering
-    ref: refs/tags/release
+    ref: refs/heads/jviau/sign-template
 
 variables:
   - template: /eng/ci/templates/variables/build.yml@self
