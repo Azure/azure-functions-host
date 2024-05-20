@@ -3,9 +3,7 @@ using System.Data.Common;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Azure.Documents;
-using Microsoft.Azure.Documents.Client;
-using Microsoft.Azure.Documents.Linq;
+using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Extensions.Configuration;
@@ -37,17 +35,11 @@ namespace NativeDependencyWithTargetFramework
                 builder.TryGetValue("AccountEndpoint", out object dbUri);
                 builder.TryGetValue("AccountKey", out object dbKey);
 
-                var client = new DocumentClient(new Uri(dbUri.ToString()), dbKey.ToString());
-                Uri collUri = UriFactory.CreateDocumentCollectionUri("ItemDb", "ItemCollection");
+                var client = new CosmosClient(dbUri.ToString(), dbKey.ToString());
 
-                var options = new FeedOptions
-                {
-                    EnableCrossPartitionQuery = true
-                };
-
-                IDocumentQuery<Document> documentQuery = client.CreateDocumentQuery<Document>(collUri, "SELECT * FROM c WHERE STARTSWITH(c.id, @PartitionLeasePrefix)", options).AsDocumentQuery<Document>();
-
-                await documentQuery.ExecuteNextAsync();
+                Container container = client.GetDatabase("ItemDb").GetContainer("ItemCollection");
+                FeedIterator iterator = container.GetItemQueryStreamIterator("SELECT * FROM c");
+                await iterator.ReadNextAsync();
             }
             catch (Exception ex)
             {
