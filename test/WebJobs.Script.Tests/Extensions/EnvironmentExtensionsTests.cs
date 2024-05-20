@@ -272,9 +272,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         }
 
         [Theory]
-        [InlineData(true, true)]
-        [InlineData(false, false)]
-        public void IsManagedAppEnvironment_ReturnsExpectedResult(bool isManagedAppEnvironment, bool expectedValue)
+        [InlineData(true, false, true)]
+        [InlineData(false, true, true)]
+        [InlineData(false, false, false)]
+        public void IsManagedAppEnvironment_ReturnsExpectedResult(bool isManagedAppEnvironment, bool isConnectedAppEnvironment, bool expectedValue)
         {
             IEnvironment env = new TestEnvironment();
             if (isManagedAppEnvironment)
@@ -282,21 +283,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
                 env.SetEnvironmentVariable(EnvironmentSettingNames.ManagedEnvironment, "true");
             }
 
-            Assert.Equal(expectedValue, env.IsManagedAppEnvironment());
-        }
-
-        [Theory]
-        [InlineData(true, true)]
-        [InlineData(false, false)]
-        public void IsConnectedAppEnvironment_ReturnsExpectedResult(bool isConnectedAppEnvironment, bool expectedValue)
-        {
-            IEnvironment env = new TestEnvironment();
             if (isConnectedAppEnvironment)
             {
                 env.SetEnvironmentVariable(EnvironmentSettingNames.ConnectedEnvironment, "true");
             }
 
-            Assert.Equal(expectedValue, env.IsConnectedAppEnvironment());
+            Assert.Equal(expectedValue, env.IsContainerAppEnvironment());
         }
 
         [Theory]
