@@ -756,7 +756,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 string jwtToken = JwtTokenHelper.CreateToken(DateTime.UtcNow.AddMinutes(5));
                 request.Headers.Add(ScriptConstants.SiteTokenHeaderName, jwtToken);
 
-                if (_environment.IsManagedAppEnvironment() || _environment.IsConnectedAppEnvironment())
+                if (_environment.IsContainerAppEnvironment())
                 {
                     request.Headers.Add("K8SE-APP-NAME", _environment.GetEnvironmentVariable("CONTAINER_APP_NAME"));
                     request.Headers.Add("K8SE-APP-NAMESPACE", _environment.GetEnvironmentVariable("CONTAINER_APP_NAMESPACE"));
