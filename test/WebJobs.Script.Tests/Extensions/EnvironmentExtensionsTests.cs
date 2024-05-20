@@ -275,7 +275,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         [InlineData(true, false, true)]
         [InlineData(false, true, true)]
         [InlineData(false, false, false)]
-        public void IsManagedAppEnvironment_ReturnsExpectedResult(bool isManagedAppEnvironment, bool isConnectedAppEnvironment, bool expectedValue)
+        public void IsContainerAppEnvironment_ReturnsExpectedResult(bool isManagedAppEnvironment, bool isConnectedAppEnvironment, bool expectedValue)
         {
             IEnvironment env = new TestEnvironment();
             if (isManagedAppEnvironment)
