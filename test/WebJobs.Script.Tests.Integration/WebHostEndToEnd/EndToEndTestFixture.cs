@@ -4,6 +4,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
@@ -230,7 +231,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await TestHelpers.ClearContainerAsync(TestOutputContainer);
 
             TestTable = TableClient.GetTableReference("test");
-            await TestTable.CreateIfNotExistsAsync();
+            await CreateIfNotExistsAsync(TestTable, 5);
 
             await DeleteEntities(TestTable, "AAA");
             await DeleteEntities(TestTable, "BBB");
@@ -274,6 +275,42 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 }
                 await table.ExecuteBatchAsync(batch);
             }
+        }
+
+        //Copied from old TableStorageHelpers to check if this fixes the conflict on Integration Tests
+        internal static async Task<bool> CreateIfNotExistsAsync(CloudTable table, int tableCreationRetries, int retryDelayMS = 1000)
+        {
+            int attempt = 0;
+            do
+            {
+                try
+                {
+                    if (!table.Exists())
+                    {
+                        return await table.CreateIfNotExistsAsync();
+                    }
+                }
+                catch (StorageException e)
+                {
+                    // Can get conflicts with multiple instances attempting to create
+                    // the same table.
+                    // Also, if a table queued up for deletion, we can get a conflict on create,
+                    // though these should only happen in tests not production, because we only ever
+                    // delete OLD tables and we'll never be attempting to recreate a table we just
+                    // deleted outside of tests.
+                    if (e.RequestInformation.HttpStatusCode == (int)HttpStatusCode.Conflict &&
+                        attempt < tableCreationRetries)
+                    {
+                        // wait a bit and try again
+                        await Task.Delay(retryDelayMS);
+                        continue;
+                    }
+                    throw;
+                }
+            }
+            while (attempt++ < tableCreationRetries);
+
+            return false;
         }
 
         public virtual Task DisposeAsync()
