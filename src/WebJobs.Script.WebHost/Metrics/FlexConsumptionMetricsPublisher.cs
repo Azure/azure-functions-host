@@ -268,6 +268,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
                 {
                     ActiveFunctionCount--;
                 }
+                else
+                {
+                    // We got a completion event without a corresponding start.
+                    // This might happen during specialization for example.
+                    // Ignore the event.
+                    return;
+                }
 
                 if (ActiveFunctionCount == 0)
                 {

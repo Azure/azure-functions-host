@@ -1,17 +1,5 @@
 # This build is used for public PR and CI builds.
 
-variables:
-  buildNumber: $[ counter('build', 23000) ] # 23000 selected to be ahead of current host build
-  ${{ if contains(variables['Build.SourceBranch'], 'release/inproc6/') }}:
-    minorVersionPrefix: "6"
-  ${{ elseif contains(variables['Build.SourceBranch'], 'release/inproc8/') }}:
-    minorVersionPrefix: "8"
-  ${{ else }}:
-    minorVersionPrefix: ""
-  DOTNET_NOLOGO: 1
-  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
-  DOTNET_CLI_TELEMETRY_OPTOUT: 1
-
 trigger:
   batch: true
   branches:
@@ -19,8 +7,7 @@ trigger:
     - dev
     - in-proc
     - release/4.*
-    - release/inproc6/4.*
-    - release/inproc8/4.*
+    - release/in-proc
 
 pr:
   branches:
@@ -28,8 +15,7 @@ pr:
     - dev
     - in-proc
     - release/4.*
-    - release/inproc6/4.*
-    - release/inproc8/4.*
+    - release/in-proc
 
 resources:
   repositories:
@@ -37,6 +23,9 @@ resources:
     type: git
     name: 1ESPipelineTemplates/1ESPipelineTemplates
     ref: refs/tags/release
+
+variables:
+  - template: /eng/ci/templates/variables/build.yml@self
 
 extends:
   template: v1/1ES.Unofficial.PipelineTemplate.yml@1es
@@ -47,13 +36,7 @@ extends:
       os: windows
 
     stages:
-    - stage: Initialize
-
+    - stage: Test
       jobs:
       - template: /eng/ci/templates/jobs/initialize-pipeline.yml@self
-
-    - stage: Test
-      dependsOn: Initialize
-
-      jobs:
       - template: /eng/ci/templates/jobs/run-unit-tests.yml@self

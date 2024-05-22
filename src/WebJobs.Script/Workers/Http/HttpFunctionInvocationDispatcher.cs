@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -68,16 +69,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         public int ErrorEventsThreshold { get; private set; }
 
-        internal Task InitializeHttpWorkerChannelAsync(int attemptCount, CancellationToken cancellationToken = default)
+        internal async Task InitializeHttpWorkerChannelAsync(int attemptCount, CancellationToken cancellationToken = default)
         {
             _httpWorkerChannel = _httpWorkerChannelFactory.Create(_scriptOptions.RootScriptPath, _metricsLogger, attemptCount);
-            _httpWorkerChannel.StartWorkerProcessAsync(cancellationToken).ContinueWith(workerInitTask =>
-            {
-                _logger.LogDebug("Adding http worker channel. workerId:{id}", _httpWorkerChannel.Id);
-                SetFunctionDispatcherStateToInitializedAndLog();
-            }, TaskContinuationOptions.OnlyOnRanToCompletion);
-
-            return Task.CompletedTask;
+            await _httpWorkerChannel.StartWorkerProcessAsync(cancellationToken);
+            _logger.LogDebug("Adding http worker channel. workerId:{id}", _httpWorkerChannel.Id);
+            SetFunctionDispatcherStateToInitializedAndLog();
         }
 
         private void SetFunctionDispatcherStateToInitializedAndLog()
@@ -86,18 +83,19 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             _logger.LogInformation("Worker process started and initialized.");
         }
 
-        public async Task InitializeAsync(IEnumerable<FunctionMetadata> functions, CancellationToken cancellationToken = default)
+        public Task InitializeAsync(IEnumerable<FunctionMetadata> functions, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
             if (functions == null || !functions.Any())
             {
                 // do not initialize function dispachter if there are no functions
-                return;
+                return Task.CompletedTask;
             }
 
             State = FunctionInvocationDispatcherState.Initializing;
-            await InitializeHttpWorkerChannelAsync(0, cancellationToken);
+            InitializeHttpWorkerChannelAsync(0, cancellationToken).Forget();
+            return Task.CompletedTask;
         }
 
         public Task InvokeAsync(ScriptInvocationContext invocationContext)
@@ -105,22 +103,22 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             return _httpWorkerChannel.InvokeAsync(invocationContext);
         }
 
-        public async void WorkerError(HttpWorkerErrorEvent workerError)
+        public void WorkerError(HttpWorkerErrorEvent workerError)
         {
             if (!_disposing)
             {
                 _logger.LogDebug("Handling WorkerErrorEvent for workerId:{workerId}. Failed with: {exception}", workerError.WorkerId, workerError.Exception);
                 AddOrUpdateErrorBucket(workerError);
-                await DisposeAndRestartWorkerChannel(workerError.WorkerId);
+                DisposeAndRestartWorkerChannel(workerError.WorkerId);
             }
         }
 
-        public async void WorkerRestart(HttpWorkerRestartEvent workerRestart)
+        public void WorkerRestart(HttpWorkerRestartEvent workerRestart)
         {
             if (!_disposing)
             {
                 _logger.LogDebug("Handling WorkerRestartEvent for workerId:{workerId}", workerRestart.WorkerId);
-                await DisposeAndRestartWorkerChannel(workerRestart.WorkerId);
+                DisposeAndRestartWorkerChannel(workerRestart.WorkerId);
             }
         }
 
@@ -130,7 +128,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             return Task.CompletedTask;
         }
 
-        private async Task DisposeAndRestartWorkerChannel(string workerId)
+        private void DisposeAndRestartWorkerChannel(string workerId)
         {
             // Since we only have one HTTP worker process, as soon as we dispose it, InvokeAsync will fail. Set state to
             // indicate we are not ready to receive new requests.
@@ -140,15 +138,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             {
                 (_httpWorkerChannel as IDisposable)?.Dispose();
             }
-            await RestartWorkerChannel(workerId);
+
+            RestartWorkerChannel(workerId);
         }
 
-        private async Task RestartWorkerChannel(string workerId)
+        private void RestartWorkerChannel(string workerId)
         {
             if (_invokerErrors.Count < ErrorEventsThreshold)
             {
                 _logger.LogDebug("Restarting http invoker channel");
-                await InitializeHttpWorkerChannelAsync(_invokerErrors.Count);
+                InitializeHttpWorkerChannelAsync(_invokerErrors.Count).Forget();
             }
             else
             {
@@ -207,10 +206,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             return Task.CompletedTask;
         }
 
-        public async Task<bool> RestartWorkerWithInvocationIdAsync(string invocationId)
+        public Task<bool> RestartWorkerWithInvocationIdAsync(string invocationId)
         {
-            await DisposeAndRestartWorkerChannel(_httpWorkerChannel.Id);    // Since there's only one channel for httpworker
-            return true;
+            // Since there's only one channel for httpworker
+            DisposeAndRestartWorkerChannel(_httpWorkerChannel.Id);
+            return Task.FromResult(true);
         }
 
         public void PreShutdown()
