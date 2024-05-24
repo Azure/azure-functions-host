@@ -21,13 +21,14 @@ resources:
 
 variables:
   - template: /eng/ci/templates/variables/build.yml@self
+  - template: /ci/variables/cfs.yml@eng
 
 extends:
   template: v1/1ES.Unofficial.PipelineTemplate.yml@1es
   parameters:
     pool:
       name: 1es-pool-azfunc
-      image: 1es-windows-2022 
+      image: 1es-windows-2022
       os: windows
 
     stages:
