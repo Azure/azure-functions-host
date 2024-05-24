@@ -12,6 +12,10 @@ resources:
     type: git
     name: 1ESPipelineTemplates/1ESPipelineTemplates
     ref: refs/tags/release
+  - repository: eng
+    type: git
+    name: engineering
+    ref: refs/tags/release
 
 variables:
   - template: /eng/ci/templates/variables/build.yml@self
