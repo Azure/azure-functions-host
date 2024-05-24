@@ -1,12 +1,10 @@
-# pr:
-#   branches:
-#     include:
-#     - dev
-#     - in-proc
-#     - release/4.*
-#     - release/in-proc
-
-pr: none # for now
+pr:
+  branches:
+    include:
+    - dev
+    - in-proc
+    - release/4.*
+    - release/in-proc
 
 resources:
   repositories:
