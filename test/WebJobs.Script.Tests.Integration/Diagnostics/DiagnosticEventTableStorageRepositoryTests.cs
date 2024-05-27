@@ -202,6 +202,51 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
         }
 
         [Fact]
+        public async Task QueueBackgroundDiagnosticsEventsTablePurge_PurgesOnlyDiagnosticTables()
+        {
+            IEnvironment testEnvironment = new TestEnvironment();
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+
+            DiagnosticEventTableStorageRepository repository =
+                new DiagnosticEventTableStorageRepository(_configuration, _hostIdProvider, testEnvironment, _scriptHostMock.Object, _logger);
+
+            // delete any existing non-current diagnostics events tables
+            string tablePrefix = DiagnosticEventTableStorageRepository.TableNamePrefix;
+            var currentTable = repository.GetDiagnosticEventsTable();
+            var tables = await TableStorageHelpers.ListOldTablesAsync(currentTable, repository.TableClient, tablePrefix);
+            foreach (var table in tables)
+            {
+                await table.DeleteAsync();
+            }
+
+            // create 1 old table
+            var tableId = Guid.NewGuid().ToString("N").Substring(0, 5);
+            var oldTable = repository.TableClient.GetTableClient($"{tablePrefix}Test{tableId}");
+            await TableStorageHelpers.CreateIfNotExistsAsync(oldTable, 2);
+
+            // create a non-diagnostic table
+            var nonDiagnosticTable = repository.TableClient.GetTableClient("NonDiagnosticTable");
+            await TableStorageHelpers.CreateIfNotExistsAsync(nonDiagnosticTable, 2);
+
+            // verify tables were created
+            Assert.True(await TableExistAsync(repository.TableClient, oldTable));
+            Assert.True(await TableExistAsync(repository.TableClient, nonDiagnosticTable));
+
+            // queue the background purge
+            TableStorageHelpers.QueueBackgroundTablePurge(currentTable, repository.TableClient, tablePrefix, NullLogger.Instance, 0);
+
+            // wait for the purge to complete
+            await TestHelpers.Await(async () =>
+            {
+                // verify that only the diagnostic table was deleted
+                var diagnosticTableExist = await TableExistAsync(repository.TableClient, oldTable);
+                var nonDiagnosticTableExists = await TableExistAsync(repository.TableClient, nonDiagnosticTable);
+
+                return !diagnosticTableExist && nonDiagnosticTableExists;
+            }, timeout: 5000);
+        }
+
+        [Fact]
         public async Task FlushLogs_LogsErrorAndClearsEvents_WhenTableCreatingFails()
         {
             // Arrange
@@ -399,6 +444,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             }
 
             return table.Query<TableEntity>();
+        }
+
+        private async Task<bool> TableExistAsync(TableServiceClient tableClient, TableClient table)
+        {
+            var query = tableClient.QueryAsync(p => p.Name == table.Name);
+
+            await foreach (var item in query)
+            {
+                return true;
+            }
+
+            return false;
         }
 
         private class FixedHostIdProvider : IHostIdProvider
