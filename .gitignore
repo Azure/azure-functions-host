@@ -1,7 +1,10 @@
 bin
 obj
+out
 csx
 .vs
+.vscode
+.DS_Store
 edge
 Publish
 
@@ -11,16 +14,21 @@ Publish
 *.Cache
 msbuild.log
 package-lock.json
-.DS_Store
+**/Properties/launchSettings.json
+**/project.assets.json
 
 /packages
-/TestResults
+tools/ExtensionsMetadataGenerator/packages
+TestResults/
 
 /tools/NuGet.exe
 /node_modules
 /.output
+/buildoutput
+/tools/ExtensionsMetadataGenerator/src/ExtensionsMetadataGenerator/runtimeassemblies.txt
+/tools/ExtensionsMetadataGenerator/test/ExtensionsMetadataGeneratorTests/runtimeAssemblies.txt
 
-src/WebJobs.Script.WebHost/Properties/launchSettings.json
-
-# ignore generated grpc code from core branch
-src/WebJobs.Script.Grpc/Messages
+local.settings.json
+*.binlog
+pp.xml
+BenchmarkDotNet.Artifacts/
