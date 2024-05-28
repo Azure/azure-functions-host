@@ -21,6 +21,7 @@ using WorkerHarness.Core.Diagnostics;
 using Newtonsoft.Json;
 using WorkerHarness.Core.Profiling;
 using WorkerHarness.Core.Logging;
+using System.Reflection;
 
 namespace WorkerHarness
 {
@@ -42,7 +43,7 @@ namespace WorkerHarness
 
                 logger = serviceProvider.GetRequiredService<ILogger<Program>>()!;
 
-                logger.Log(LogLevel.Information,ConsoleColor.Yellow, $"Starting worker harness version {GetHarnessVersion()}");
+                logger.Log(LogLevel.Information, ConsoleColor.Yellow, $"Starting worker harness version {GetHarnessVersion()}");
 
                 // validate user input
                 IOptions<HarnessOptions> harnessOptions = serviceProvider.GetRequiredService<IOptions<HarnessOptions>>()!;
@@ -163,12 +164,9 @@ namespace WorkerHarness
 
         private static string? GetHarnessVersion()
         {
-            const string version = Constants.WorkerHarnessVersion;
-            if (!string.IsNullOrWhiteSpace(version))
-            {
-                return version;
-            }
-            return null;
+            return Assembly.GetExecutingAssembly()
+                            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+                            ?.InformationalVersion;
         }
 
         private static PerfviewConfig? GetPerfviewConfig()

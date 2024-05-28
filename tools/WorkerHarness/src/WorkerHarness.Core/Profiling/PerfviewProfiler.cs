@@ -91,6 +91,7 @@ namespace WorkerHarness.Core.Profiling
         private async ValueTask RunProfileAnalyzer()
         {
             string absoluteProfileAnalyzerPath = string.Empty;
+            string traceDataFileAbsolutePath = string.Empty;
             try
             {
                 var profileAnalyzerPath = Path.Combine(_config.ExecutableDirectory, FunctionsColdStartProfileAnalyzerExeName);
@@ -107,19 +108,21 @@ namespace WorkerHarness.Core.Profiling
                     return;
                 }
 
-                var profileAnalyzerArgs = $"{_traceDataFilePath} {_config.ProfileAnalyzerArguments}";
+                traceDataFileAbsolutePath = Path.GetFullPath(_traceDataFilePath);
+
+                var profileAnalyzerArgs = $"{traceDataFileAbsolutePath} {_config.ProfileAnalyzerArguments}";
                 _logger.LogInfo(ConsoleColor.Gray, $"Found '{FunctionsColdStartProfileAnalyzerExeName}' present in 'executableDirectory'({_config.ExecutableDirectory}). Will proceed with analyzing the perfview profile to generate coldstart data.");
-                _logger.LogInfo(ConsoleColor.Gray, $"Executing {profileAnalyzerPath} {profileAnalyzerArgs}");
+                _logger.LogInfo(ConsoleColor.Gray, $"Executing {absoluteProfileAnalyzerPath} {profileAnalyzerArgs}");
 
                 using (var profileAnalyzerProcess = new ProcessRunner(TimeSpan.FromSeconds(60)))
                 {
-                    await profileAnalyzerProcess.Run(profileAnalyzerPath, profileAnalyzerArgs);
-                    _logger.LogInfo(ConsoleColor.White, $"Profile analysis completed. Elapsed: {profileAnalyzerProcess.ElapsedTime.Seconds} seconds. . Profile file:{_traceDataFilePath}");
+                    await profileAnalyzerProcess.Run(absoluteProfileAnalyzerPath, profileAnalyzerArgs);
+                    _logger.LogInfo(ConsoleColor.White, $"Profile analysis completed. Elapsed: {profileAnalyzerProcess.ElapsedTime.Seconds} seconds. . Profile file:{traceDataFileAbsolutePath}");
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error occurred while running profile analyzer. Profile file:{_traceDataFilePath}, Profile analyzer path:{absoluteProfileAnalyzerPath}");
+                _logger.LogError(ex, $"Error occurred while running profile analyzer. Profile file:{traceDataFileAbsolutePath}, Profile analyzer path:{absoluteProfileAnalyzerPath}");
             }
         }
 

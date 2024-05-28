@@ -14,7 +14,7 @@
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
 		<Description>This package installs the Worker Harness as a dotnet CLI tool, which validates a language worker implementation.</Description>
 		<PackageProjectUrl>https://github.com/Azure/azure-functions-host/tree/features/harness/tools/WorkerHarness</PackageProjectUrl>
-		<Version>1.0.9-preview1</Version>
+		<Version>1.0.9-preview2</Version>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -25,7 +25,6 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\WorkerHarness.Core\WorkerHarness.Core.csproj" />
-		<ProjectReference Include="..\WorkerHarness.Generators\WorkerHarness.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
 	</ItemGroup>
 
 	<ItemGroup>
