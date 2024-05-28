@@ -1,3 +1,5 @@
+trigger: none # ensure this is not ran as a CI build
+
 pr:
   branches:
     include:
