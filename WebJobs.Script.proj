@@ -105,8 +105,9 @@
   </Target>
 
   <Target Name="DownloadRuntimeNugetClient">
+    <!-- v3.5.0 is the current nuget.exe version deployed with functions v1. Keeping it at that version to minimize churn. -->
     <Message Text="Downloading runtime NuGet client..." Importance="Normal" />
-    <DownloadNuGet OutputFileName="$(FunctionsSiteExtensionPath)\bin\tools\nuget.exe" MinimumVersion="3.3.0" DownloadUrl="https://azfunc.blob.core.windows.net/public/nuget.exe"  />
+    <DownloadNuGet OutputFileName="$(FunctionsSiteExtensionPath)\bin\tools\nuget.exe" MinimumVersion="3.3.0" DownloadUrl="https://dist.nuget.org/win-x86-commandline/v3.5.0/nuget.exe" />
   </Target>
 
   <Target Name="PackageScriptHost" DependsOnTargets="Build;DownloadRuntimeNugetClient">
