@@ -43,9 +43,10 @@ namespace WorkerHarness.Core.Profiling
 
             Status = ProfilingStatus.Started;
 
+            var prefix= _config.ProfileFileNamePrefix ?? "PerfviewData_";            
             var timestamp = DateTime.UtcNow.ToString("yyyy_MM_dd_HH_mm_ss");
             _logFilePath = $@"{_profilesPath}\PerfViewLog_{timestamp}.txt";
-            _traceDataFilePath = $@"{_profilesPath}\PerfviewData_{timestamp}.etl";
+            _traceDataFilePath = $@"{_profilesPath}\{prefix}{timestamp}.etl";
 
             var circularBufferMb = _config.CircularMb ?? 50;
             var osBufferSizeMb = _config.BufferSizeMb ?? 1024;
@@ -94,7 +95,8 @@ namespace WorkerHarness.Core.Profiling
             string traceDataFileAbsolutePath = string.Empty;
             try
             {
-                var profileAnalyzerPath = Path.Combine(_config.ExecutableDirectory, FunctionsColdStartProfileAnalyzerExeName);
+                var analyzerExePath= _config.FunctionsColdStartProfileAnalyzerExePath ?? _config.ExecutableDirectory;
+                var profileAnalyzerPath = Path.Combine(analyzerExePath, FunctionsColdStartProfileAnalyzerExeName);
                 absoluteProfileAnalyzerPath = Path.GetFullPath(profileAnalyzerPath);
                 if (File.Exists(absoluteProfileAnalyzerPath) == false)
                 {

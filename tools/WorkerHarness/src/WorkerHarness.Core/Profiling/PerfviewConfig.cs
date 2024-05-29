@@ -23,6 +23,8 @@ namespace WorkerHarness.Core.Profiling
         /// </summary>
         public string Providers { get; set; } = string.Empty;
 
+        public string? ProfileFileNamePrefix { get; set; }
+
         public int? CircularMb { get; set; }
 
         public int? BufferSizeMb { get; set; }
@@ -34,5 +36,7 @@ namespace WorkerHarness.Core.Profiling
         public string? UploadContainerUrl { get; set; }
 
         public string? ProfileAnalyzerArguments { get; set; }
+
+        public string? FunctionsColdStartProfileAnalyzerExePath { get; set; }
     }
 }
