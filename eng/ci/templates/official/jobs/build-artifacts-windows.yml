@@ -73,7 +73,7 @@ jobs:
 
   - template: ci/sign-files.yml@eng
     parameters:
-      displayName: Sign WebJobs.Script.Abstractions dll
+      displayName: Sign Abstractions assemblies
       folderPath: out/bin/WebJobs.Script.Abstractions/release
       pattern: Microsoft.Azure.WebJobs.Script.Abstractions*.dll
       signType: dll
