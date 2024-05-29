@@ -46,24 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
                 var signingKeys = SecretsUtility.GetTokenIssuerSigningKeys();
                 if (signingKeys.Length > 0)
                 {
-                    var validationParameters = new TokenValidationParameters()
-                    {
-                        IssuerSigningKeys = signingKeys,
-                        AudienceValidator = AudienceValidator,
-                        IssuerValidator = IssuerValidator,
-                        ValidAudiences = new string[]
-                        {
-                            string.Format(SiteAzureFunctionsUriFormat, ScriptSettingsManager.Instance.GetSetting(AzureWebsiteName)),
-                            string.Format(SiteUriFormat, ScriptSettingsManager.Instance.GetSetting(AzureWebsiteName))
-                        },
-                        ValidIssuers = new string[]
-                        {
-                            AppServiceCoreUri,
-                            string.Format(ScmSiteUriFormat, ScriptSettingsManager.Instance.GetSetting(AzureWebsiteName)),
-                            string.Format(SiteUriFormat, ScriptSettingsManager.Instance.GetSetting(AzureWebsiteName))
-                        }
-                    };
-
+                    var validationParameters = CreateTokenValidationParameters(signingKeys);
                     if (JwtGenerator.IsTokenValid(token, validationParameters))
                     {
                         context.Request.SetAuthorizationLevel(AuthorizationLevel.Admin);
@@ -75,6 +58,40 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
         }
 
         public Task ChallengeAsync(HttpAuthenticationChallengeContext context, CancellationToken cancellationToken) => Task.CompletedTask;
+
+        internal static TokenValidationParameters CreateTokenValidationParameters(SymmetricSecurityKey[] signingKeys)
+        {
+            string siteName = ScriptSettingsManager.Instance.GetSetting(AzureWebsiteName);
+            string runtimeSiteName = ScriptSettingsManager.Instance.GetSetting(AzureWebsiteRuntimeSiteName);
+            var audiences = new List<string>
+            {
+                string.Format(SiteAzureFunctionsUriFormat, siteName),
+                string.Format(SiteUriFormat, siteName)
+            };
+
+            if (!string.IsNullOrEmpty(runtimeSiteName) && !string.Equals(siteName, runtimeSiteName, StringComparison.OrdinalIgnoreCase))
+            {
+                // on a non-production slot, the runtime site name will differ from the site name
+                // we allow both for audience
+                audiences.Add(string.Format(SiteUriFormat, runtimeSiteName));
+            }
+
+            var validationParameters = new TokenValidationParameters()
+            {
+                IssuerSigningKeys = signingKeys,
+                AudienceValidator = AudienceValidator,
+                IssuerValidator = IssuerValidator,
+                ValidAudiences = audiences,
+                ValidIssuers = new string[]
+                {
+                    AppServiceCoreUri,
+                    string.Format(ScmSiteUriFormat, siteName),
+                    string.Format(SiteUriFormat, siteName)
+                }
+            };
+
+            return validationParameters;
+        }
 
         private static string IssuerValidator(string issuer, SecurityToken securityToken, TokenValidationParameters validationParameters)
         {

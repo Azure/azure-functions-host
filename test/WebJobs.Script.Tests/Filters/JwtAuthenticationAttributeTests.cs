@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -14,6 +15,7 @@ using System.Web.Http.Controllers;
 using System.Web.Http.Filters;
 using Microsoft.Azure.Web.DataProtection;
 using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security;
@@ -107,6 +109,44 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Filters
             string token = new JwtSecurityTokenHandler().CreateJwtSecurityToken(issuer: issuer, audience: audience, signingCredentials: signingCredentials, expires: DateTime.UtcNow.AddMinutes(10)).RawData;
 
             await AuthenticateAsync(token, ScriptConstants.SiteTokenHeaderName, AuthorizationLevel.Admin);
+        }
+
+        [Theory]
+        [InlineData("testsite", "testsite")]
+        [InlineData("testsite", "testsite__5bb5")]
+        [InlineData("testsite", null)]
+        [InlineData("testsite", "")]
+        public void CreateTokenValidationParameters_NonProductionSlot_HasExpectedAudiences(string siteName, string runtimeSiteName)
+        {
+            string azFuncAudience = string.Format(ScriptConstants.SiteAzureFunctionsUriFormat, siteName);
+            string siteAudience = string.Format(ScriptConstants.SiteUriFormat, siteName);
+            string runtimeSiteAudience = string.Format(ScriptConstants.SiteUriFormat, runtimeSiteName);
+
+            var testEnv = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                { EnvironmentSettingNames.AzureWebsiteName, siteName },
+                { EnvironmentSettingNames.AzureWebsiteRuntimeSiteName, runtimeSiteName }
+            };
+
+            using (new TestScopedSettings(ScriptSettingsManager.Instance, testEnv))
+            {
+                var signingKeys = SecretsUtility.GetTokenIssuerSigningKeys();
+                var tokenValidationParameters = JwtAuthenticationAttribute.CreateTokenValidationParameters(signingKeys);
+                var audiences = tokenValidationParameters.ValidAudiences.ToArray();
+
+                Assert.Equal(audiences[0], azFuncAudience);
+                Assert.Equal(audiences[1], siteAudience);
+
+                if (string.Compare(siteName, runtimeSiteName, StringComparison.OrdinalIgnoreCase) == 0)
+                {
+                    Assert.Equal(2, audiences.Length);
+                }
+                else if (!string.IsNullOrEmpty(runtimeSiteName))
+                {
+                    Assert.Equal(3, audiences.Length);
+                    Assert.Equal(audiences[2], runtimeSiteAudience);
+                }
+            }
         }
 
         public async Task AuthenticateAsync(string token, string headerName, AuthorizationLevel expectedLevel)
