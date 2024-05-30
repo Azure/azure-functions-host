@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Tests.Helpers;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authentication;
@@ -20,6 +21,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security.Authentication
         private static DefaultHttpContext GetContext()
         {
             var services = new ServiceCollection().AddLogging();
+
+            // SWT auth is disabled by default so we must enable to test
+            services.AddOptions<FunctionsHostingConfigOptions>()
+                .Configure(o => o.SwtAuthenticationEnabled = true);
+
             services.AddAuthentication(o =>
             {
                 o.DefaultScheme = ArmAuthenticationDefaults.AuthenticationScheme;
