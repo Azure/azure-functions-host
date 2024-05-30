@@ -94,6 +94,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             _logger.LogInformation(Resources.HostSpecializationTrace);
 
+            // memory limits might have changed - for example, specializing a 512mb app out of a 2048mb placeholder pool in the context of flex consumption
+            using (_metricsLogger.LatencyEvent("specialization.refreshgc"))
+            {
+                _logger.LogInformation("Refreshing GC to get new memory limits.");
+                GC.RefreshMemoryLimit();
+            }
+
             // After specialization, we need to ensure that custom timezone
             // settings configured by the user (WEBSITE_TIME_ZONE) are honored.
             // DateTime caches timezone information, so we need to clear the cache.
