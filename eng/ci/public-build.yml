@@ -9,6 +9,15 @@ trigger:
     - release/4.*
     - release/in-proc
 
+schedules:
+# Ensure we build at least once a week for SDL reporting purposes.
+- cron: "0 0 * * 0"
+  displayName: SDL Weekly Build
+  branches:
+    include:
+    - dev
+  always: true
+
 pr:
   branches:
     include:
@@ -34,6 +43,14 @@ extends:
       name: 1es-pool-azfunc-public
       image: 1es-windows-2022
       os: windows
+
+    # Enable CodeQL for the dev branch
+    ${{ if eq(variables['Build.SourceBranch'], 'refs/heads/dev') }}:
+      sdl:
+        codeql:
+          compiled:
+            enabled: true
+          runSourceLanguagesInSourceAnalysis: true
 
     stages:
     - stage: Test

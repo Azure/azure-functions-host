@@ -31,6 +31,13 @@ extends:
       image: 1es-windows-2022
       os: windows
 
+    sdl:
+      codeql:
+        runSourceLanguagesInSourceAnalysis: true
+        compiled:
+          enabled: false
+          justificationForDisabling: Covered by a separate pipeline.
+
     stages:
     - stage: Test
       jobs:
