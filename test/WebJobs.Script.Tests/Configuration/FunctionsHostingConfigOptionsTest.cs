@@ -126,8 +126,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 (nameof(FunctionsHostingConfigOptions.SwtAuthenticationEnabled), "SwtAuthenticationEnabled=False", false),
                 (nameof(FunctionsHostingConfigOptions.SwtAuthenticationEnabled), "SwtAuthenticationEnabled=True", true),
                 (nameof(FunctionsHostingConfigOptions.SwtAuthenticationEnabled), "SwtAuthenticationEnabled=0", false),
-                (nameof(FunctionsHostingConfigOptions.SwtAuthenticationEnabled), "SwtAuthenticationEnabled=unparseable", true), // default
-                (nameof(FunctionsHostingConfigOptions.SwtAuthenticationEnabled), string.Empty, true), // default
+                (nameof(FunctionsHostingConfigOptions.SwtAuthenticationEnabled), "SwtAuthenticationEnabled=unparseable", false), // default
+                (nameof(FunctionsHostingConfigOptions.SwtAuthenticationEnabled), string.Empty, false), // default
 
                 // Supports True/False/1/0
                 (nameof(FunctionsHostingConfigOptions.SwtIssuerEnabled), "SwtIssuerEnabled=False", false),
@@ -251,8 +251,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         {
             FunctionsHostingConfigOptions options = new FunctionsHostingConfigOptions();
 
-            // defaults to true
-            Assert.True(options.SwtAuthenticationEnabled);
+            // defaults to false
+            Assert.False(options.SwtAuthenticationEnabled);
 
             // returns true when explicitly enabled
             options.Features[ScriptConstants.HostingConfigSwtAuthenticationEnabled] = "1";
