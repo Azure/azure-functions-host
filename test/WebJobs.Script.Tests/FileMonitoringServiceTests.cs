@@ -300,8 +300,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     WatchFiles = { "host.json" }
                 };
                 var loggerFactory = new LoggerFactory();
+
+                TaskCompletionSource stop = new TaskCompletionSource();
                 var mockApplicationLifetime = new Mock<IApplicationLifetime>();
+                mockApplicationLifetime.Setup(m => m.StopApplication()).Callback(() => stop.TrySetResult());
+
+                TaskCompletionSource restart = new TaskCompletionSource();
                 var mockScriptHostManager = new Mock<IScriptHostManager>();
+                mockScriptHostManager.Setup(m => m.RestartHostAsync(default)).Callback(() => restart.TrySetResult());
+
                 var mockEventManager = new ScriptEventManager();
                 var environment = new TestEnvironment();
 
@@ -311,18 +318,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 await fileMonitoringService.StartAsync(new CancellationToken(canceled: false));
 
                 var offlineEventArgs = new FileSystemEventArgs(WatcherChangeTypes.Created, tempDir, fileName);
-                FileEvent offlinefileEvent = new FileEvent("ScriptFiles", offlineEventArgs);
+                FileEvent offlineFileEvent = new FileEvent("ScriptFiles", offlineEventArgs);
 
                 var randomFileEventArgs = new FileSystemEventArgs(WatcherChangeTypes.Created, tempDir, "random.txt");
                 FileEvent randomFileEvent = new FileEvent("ScriptFiles", randomFileEventArgs);
 
-                mockEventManager.Publish(offlinefileEvent);
+                mockEventManager.Publish(offlineFileEvent);
                 await Task.Delay(delayInMs);
                 mockEventManager.Publish(randomFileEvent);
 
                 // Test
                 if (expectShutdown)
                 {
+                    await stop.Task.WaitAsync(TimeSpan.FromSeconds(5));
                     mockApplicationLifetime.Verify(m => m.StopApplication());
                 }
                 else
@@ -332,6 +340,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 if (expectRestart)
                 {
+                    await restart.Task.WaitAsync(TimeSpan.FromSeconds(5));
                     mockScriptHostManager.Verify(m => m.RestartHostAsync(default));
                 }
                 else
