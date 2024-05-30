@@ -20,14 +20,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Helpers
             return string.Format("{0:D19}-{1}", DateTime.MaxValue.Ticks - now.Ticks, Guid.NewGuid());
         }
 
-        internal static async Task<bool> CreateIfNotExistsAsync(TableClient table, int tableCreationRetries, int retryDelayMS = 1000)
+        internal static async Task<bool> CreateIfNotExistsAsync(TableClient table, TableServiceClient tableClient, int tableCreationRetries, int retryDelayMS = 1000)
         {
             int attempt = 0;
             do
             {
                 try
                 {
-                    return (await table.CreateIfNotExistsAsync()).Value is not null;
+                    if (!await TableExistAsync(table, tableClient))
+                    {
+                        return (await table.CreateIfNotExistsAsync())?.Value is not null;
+                    }
                 }
                 catch (RequestFailedException rfe)
                 {
@@ -104,6 +107,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Helpers
             }
 
             return tables;
+        }
+
+        internal static async Task<bool> TableExistAsync(TableClient table, TableServiceClient tableClient)
+        {
+            var query = tableClient.QueryAsync(p => p.Name == table.Name);
+
+            await foreach (var item in query)
+            {
+                return true;
+            }
+
+            return false;
         }
     }
 }

@@ -195,7 +195,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     return;
                 }
 
-                bool tableCreated = await TableStorageHelpers.CreateIfNotExistsAsync(table, TableCreationMaxRetryCount);
+                bool tableCreated = await TableStorageHelpers.CreateIfNotExistsAsync(table, TableClient, TableCreationMaxRetryCount);
                 if (tableCreated)
                 {
                     _logger.LogDebug("Queueing background table purge.");

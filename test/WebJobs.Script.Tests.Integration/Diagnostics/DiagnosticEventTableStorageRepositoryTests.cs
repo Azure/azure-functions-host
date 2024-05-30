@@ -183,7 +183,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             {
                 var tableId = Guid.NewGuid().ToString("N").Substring(0, 5);
                 var table = repository.TableClient.GetTableClient($"{tablePrefix}Test{tableId}");
-                await TableStorageHelpers.CreateIfNotExistsAsync(table, 2);
+                await TableStorageHelpers.CreateIfNotExistsAsync(table, repository.TableClient, 2);
             }
 
             // verify tables were created
@@ -222,15 +222,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             // create 1 old table
             var tableId = Guid.NewGuid().ToString("N").Substring(0, 5);
             var oldTable = repository.TableClient.GetTableClient($"{tablePrefix}Test{tableId}");
-            await TableStorageHelpers.CreateIfNotExistsAsync(oldTable, 2);
+            await TableStorageHelpers.CreateIfNotExistsAsync(oldTable, repository.TableClient, 2);
 
             // create a non-diagnostic table
             var nonDiagnosticTable = repository.TableClient.GetTableClient("NonDiagnosticTable");
-            await TableStorageHelpers.CreateIfNotExistsAsync(nonDiagnosticTable, 2);
+            await TableStorageHelpers.CreateIfNotExistsAsync(nonDiagnosticTable, repository.TableClient, 2);
 
             // verify tables were created
-            Assert.True(await TableExistAsync(repository.TableClient, oldTable));
-            Assert.True(await TableExistAsync(repository.TableClient, nonDiagnosticTable));
+            Assert.True(await TableStorageHelpers.TableExistAsync(oldTable, repository.TableClient));
+            Assert.True(await TableStorageHelpers.TableExistAsync(nonDiagnosticTable, repository.TableClient));
 
             // queue the background purge
             TableStorageHelpers.QueueBackgroundTablePurge(currentTable, repository.TableClient, tablePrefix, NullLogger.Instance, 0);
@@ -239,8 +239,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             await TestHelpers.Await(async () =>
             {
                 // verify that only the diagnostic table was deleted
-                var diagnosticTableExist = await TableExistAsync(repository.TableClient, oldTable);
-                var nonDiagnosticTableExists = await TableExistAsync(repository.TableClient, nonDiagnosticTable);
+                var diagnosticTableExist = await TableStorageHelpers.TableExistAsync(oldTable, repository.TableClient);
+                var nonDiagnosticTableExists = await TableStorageHelpers.TableExistAsync(nonDiagnosticTable, repository.TableClient);
 
                 return !diagnosticTableExist && nonDiagnosticTableExists;
             }, timeout: 5000);
@@ -311,7 +311,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
 
             var tableId = Guid.NewGuid().ToString("N").Substring(0, 5);
             var testTable = repository.TableClient.GetTableClient($"{tablePrefix}Test{tableId}");
-            await TableStorageHelpers.CreateIfNotExistsAsync(testTable, 2);
+            await TableStorageHelpers.CreateIfNotExistsAsync(testTable, repository.TableClient, 2);
 
             // verify table were created
             tables = await TableStorageHelpers.ListOldTablesAsync(currentTable, repository.TableClient, tablePrefix);
@@ -351,7 +351,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
                 new DiagnosticEventTableStorageRepository(_configuration, _hostIdProvider, testEnvironment, _scriptHostMock.Object, _logger);
 
             var table = repository.GetDiagnosticEventsTable();
-            await TableStorageHelpers.CreateIfNotExistsAsync(table, 2);
+            await TableStorageHelpers.CreateIfNotExistsAsync(table, repository.TableClient, 2);
             await EmptyTableAsync(table);
 
             var dateTime = DateTime.UtcNow;
@@ -374,7 +374,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
                 new DiagnosticEventTableStorageRepository(_configuration, _hostIdProvider, testEnvironment, _scriptHostMock.Object, _logger);
 
             var table = repository.GetDiagnosticEventsTable();
-            await TableStorageHelpers.CreateIfNotExistsAsync(table, 2);
+            await TableStorageHelpers.CreateIfNotExistsAsync(table, repository.TableClient, 2);
             await EmptyTableAsync(table);
 
             var dateTime = DateTime.UtcNow;
@@ -444,18 +444,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             }
 
             return table.Query<TableEntity>();
-        }
-
-        private async Task<bool> TableExistAsync(TableServiceClient tableClient, TableClient table)
-        {
-            var query = tableClient.QueryAsync(p => p.Name == table.Name);
-
-            await foreach (var item in query)
-            {
-                return true;
-            }
-
-            return false;
         }
 
         private class FixedHostIdProvider : IHostIdProvider
