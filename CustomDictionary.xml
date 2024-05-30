@@ -77,7 +77,8 @@
       <Word>EventHub</Word>
       <Word>Non</Word>
       <Word>Decryptable</Word>
-	</Recognized>
+      <Word>Swt</Word>
+    </Recognized>
     <Deprecated/>
     <Compound>
       <Term CompoundAlternate="CancellationToken">cancellationToken</Term>

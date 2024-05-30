@@ -83,6 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public const string FeatureFlagDisableShadowCopy = "DisableShadowCopy";
         public const string FeatureFlagsEnableDynamicExtensionLoading = "EnableDynamicExtensionLoading";
+        public const string FeatureFlagSwtAuthenticationEnabled = "SwtAuthenticationEnabled";
 
         public const string SiteAzureFunctionsUriFormat = "https://{0}.azurewebsites.net/azurefunctions";
         public const string ScmSiteUriFormat = "https://{0}.scm.azurewebsites.net";

@@ -396,9 +396,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Null(actionContext.Response);
         }
 
-        [Fact]
-        public async Task OnAuthorization_Arm_Success_SetsAdminAuthLevel()
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async Task OnAuthorization_Arm_SetsAdminAuthLevel_WhenSwtAuthenticationEnabled(bool swtAuthenticationEnabled)
         {
+            string featureFlags = swtAuthenticationEnabled ? "Foo,SwtAuthenticationEnabled,Bar" : "Foo,Bar";
+
             byte[] key = GenerateKeyBytes();
             string keyString = GenerateKeyHexString(key);
             string token = CreateSimpleWebToken(DateTime.UtcNow.AddMinutes(5), key);
@@ -411,12 +415,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             actionContext.ControllerContext.Request = request;
 
             using (new TestScopedEnvironmentVariable(EnvironmentSettingNames.WebsiteAuthEncryptionKey, keyString))
+            using (new TestScopedEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, featureFlags))
             {
                 await attribute.OnAuthorizationAsync(actionContext, CancellationToken.None);
             }
 
-            Assert.Null(actionContext.Response);
-            Assert.Equal(AuthorizationLevel.Admin, actionContext.Request.GetAuthorizationLevel());
+            AuthorizationLevel authorizationLevel = actionContext.Request.GetAuthorizationLevel();
+            if (swtAuthenticationEnabled)
+            {
+                Assert.Null(actionContext.Response);
+                Assert.Equal(AuthorizationLevel.Admin, authorizationLevel);
+            }
+            else
+            {
+                Assert.Equal(HttpStatusCode.Unauthorized, actionContext.Response.StatusCode);
+                Assert.Equal(AuthorizationLevel.Anonymous, authorizationLevel);
+            }
         }
 
         [Fact]
