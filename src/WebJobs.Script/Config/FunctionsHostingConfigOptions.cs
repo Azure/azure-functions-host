@@ -60,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         {
             get
             {
-                return GetFeatureOrDefault(ScriptConstants.HostingConfigSwtAuthenticationEnabled, "1") == "1";
+                return GetFeatureOrDefault(ScriptConstants.HostingConfigSwtAuthenticationEnabled, "0") == "1";
             }
 
             set

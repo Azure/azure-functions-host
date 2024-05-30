@@ -106,8 +106,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         {
             FunctionsHostingConfigOptions options = new FunctionsHostingConfigOptions();
 
-            // defaults to true
-            Assert.True(options.SwtAuthenticationEnabled);
+            // defaults to false
+            Assert.False(options.SwtAuthenticationEnabled);
 
             // returns true when explicitly enabled
             options.Features[ScriptConstants.HostingConfigSwtAuthenticationEnabled] = "1";
