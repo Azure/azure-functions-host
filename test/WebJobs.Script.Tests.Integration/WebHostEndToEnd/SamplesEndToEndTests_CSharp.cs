@@ -1391,6 +1391,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             {
                 base.ConfigureWebHost(services);
 
+                // SWT auth is disabled by default so we must enable to test
+                services.AddOptions<FunctionsHostingConfigOptions>()
+                    .Configure(o => o.SwtAuthenticationEnabled = true);
+
                 // The legacy http tests use sync IO so explicitly allow this
                 var environment = new TestEnvironment();
                 string testSiteName = "somewebsite";
