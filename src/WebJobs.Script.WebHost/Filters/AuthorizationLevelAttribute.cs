@@ -12,6 +12,7 @@ using System.Web.Http;
 using System.Web.Http.Controllers;
 using System.Web.Http.Filters;
 using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
@@ -55,7 +56,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
             // If the request has not yet been authenticated, authenticate it
             if (requestAuthorizationLevel == AuthorizationLevel.Anonymous)
             {
-                string armToken = GetArmTokenHeader(actionContext);
+                string armToken = null;
+                if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagSwtAuthenticationEnabled))
+                {
+                    armToken = GetArmTokenHeader(actionContext);
+                }
 
                 if (armToken != null)
                 {

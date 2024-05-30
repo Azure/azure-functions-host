@@ -32,6 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureWebsiteArmCacheEnabled = "WEBSITE_FUNCTIONS_ARMCACHE_ENABLED";
         public const string TestDataCapEnabled = "WEBSITE_FUNCTIONS_TESTDATA_CAP_ENABLED";
         public const string AzureWebsiteRuntimeSiteName = "WEBSITE_DEPLOYMENT_ID";
+        public const string AzureWebJobsFeatureFlags = "AzureWebJobsFeatureFlags";
 
         /// <summary>
         /// Environment variable dynamically set by the platform when it is safe to
