@@ -44,13 +44,11 @@ extends:
       image: 1es-windows-2022
       os: windows
 
-    # Enable CodeQL for the dev branch
-    ${{ if eq(variables['Build.SourceBranch'], 'refs/heads/dev') }}:
-      sdl:
-        codeql:
-          compiled:
-            enabled: true
-          runSourceLanguagesInSourceAnalysis: true
+    sdl:
+      codeql:
+        compiled:
+          enabled: true
+        runSourceLanguagesInSourceAnalysis: true
 
     stages:
     - stage: Test
