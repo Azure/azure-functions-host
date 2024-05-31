@@ -10,14 +10,14 @@ trigger:
     - release/in-proc
 
 schedules:
-# Ensure we build at least once a week for SDL reporting purposes.
-- cron: "0 0 * * 0"
-  displayName: SDL Weekly Build
-  branches:
-    include:
-    - dev
-  always: true
-
+  # Ensure we build nightly to catch any new CVEs and report SDL often.
+  - cron: "0 0 * * *"
+    displayName: Nightly Build
+    branches:
+      include:
+      - dev
+      - in-proc
+    always: true
 pr:
   branches:
     include:
