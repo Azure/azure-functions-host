@@ -1,0 +1,23 @@
+<Project>
+
+  <!--
+    Publish.MultiTFM.targets: Kicks off an inner-publish per TFM
+  -->
+
+  <Target Name="Publish" DependsOnTargets="_PublishBuild;_PublishNoBuild" />
+  <Target Name="_PublishBuild" DependsOnTargets="Build;_PublishCore" Condition="'$(NoBuild)' != 'true'" />
+  <Target Name="_PublishNoBuild" DependsOnTargets="_PublishCore" Condition="'$(NoBuild)' == 'true'" />
+
+  <Target Name="_PublishCore">
+    <ItemGroup>
+      <_TargetFramework Include="$(TargetFrameworks)" />
+      <!-- Make normalization explicit: Trim; Deduplicate by keeping first occurrence, case insensitive -->
+      <_TargetFrameworkNormalized Include="@(_TargetFramework-&gt;Trim()-&gt;Distinct())" />
+      <_InnerBuildProjects Include="$(MSBuildProjectFile)">
+        <AdditionalProperties>TargetFramework=%(_TargetFrameworkNormalized.Identity)</AdditionalProperties>
+      </_InnerBuildProjects>
+    </ItemGroup>
+    <MSBuild Projects="@(_InnerBuildProjects)" Condition="'@(_InnerBuildProjects)' != '' " Targets="Publish" BuildInParallel="$(BuildInParallel)" />
+  </Target>
+
+</Project>
