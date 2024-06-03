@@ -53,6 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             await HttpTrigger_Java_Get_Succeeds();
 
             // Verify after restart we have only 1 java channel still, and the process ID has changed.
+            manager = _fixture.Host.JobHostServices.GetService<IJobHostRpcWorkerChannelManager>();
             channels = manager.GetChannels("java").ToList();
             Assert.Equal(1, channels.Count);
             Assert.NotEqual(processId, channels[0].WorkerProcess.Id);
