@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "WebJobs.Script.WebHost": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:62513;http://localhost:62514"
+    }
+  }
+}
