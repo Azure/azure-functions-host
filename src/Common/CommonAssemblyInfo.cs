@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -15,4 +15,4 @@ using System.Runtime.InteropServices;
 
 // The official build will replace the third place with the build number.
 // For example, 1.0.0.0 becomes 1.0.1234.0
-[assembly: AssemblyFileVersion("1.0.0.0")]
+[assembly: AssemblyFileVersion("1.0.4242.0")]

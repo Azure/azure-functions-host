@@ -1,0 +1,127 @@
+trigger:
+  branches:
+    include:
+    - v1.x
+    - release/1.*
+
+pr:
+  branches:
+    include:
+    - v1.x
+    - release/1.*
+
+resources:
+  repositories:
+  - repository: 1es
+    type: git
+    name: 1ESPipelineTemplates/1ESPipelineTemplates
+    ref: refs/tags/release
+  - repository: eng
+    type: git
+    name: engineering
+    ref: refs/tags/release
+
+variables:
+  - template: /ci/variables/cfs.yml@eng
+  - name: build_number
+    value: $[ counter('constant', 131400) ]
+  - name: includeBuildNumberInVersion
+    value: 1
+  - name: configuration
+    value: Release
+  - name: publish_path
+    value: bin
+  - name: DOTNET_SKIP_FIRST_TIME_EXPERIENCE
+    value: 1
+  - name: test_results_path
+    value: '$(System.DefaultWorkingDirectory)\test-results'
+  - name: xunit_results_path
+    value: '$(test_results_path)\xunit'
+  - name: junit_results_path
+    value: '$(test_results_path)\junit'
+
+extends:
+  template: v1/1ES.Official.PipelineTemplate.yml@1es
+  parameters:
+    pool:
+      name: 1es-pool-azfunc
+      image: 1es-windows-2022
+      os: windows
+
+    stages:
+    - stage: BuildAndTest
+
+      jobs:
+      - job: BuildAndTest
+        templateContext:
+          outputParentDirectory: $(publish_path)
+          outputs:
+          - output: pipelineArtifact
+            displayName: Publish drop
+            path: $(publish_path)/Packages
+            artifact: drop
+
+        steps:
+          - task: NodeTool@0
+            displayName: "Install Node 6.11.2"
+            inputs:
+              versionSpec: '6.11.2'
+
+          - task: MSBuild@1
+            inputs:
+              solution: 'WebJobs.Script.proj'
+              msbuildArguments: '/target:EnableSkipStrongNames;PackageScriptHost;PackageWebHost;TestBuild /property:BuildNumber=$(build_number);Configuration=$(configuration);PublishPath=$(publish_path)'
+              logFileVerbosity: minimal
+
+          - task: AzureKeyVault@1
+            inputs:
+              # Note: This is actually a Service Connection in DevOps, not an Azure subscription name
+              azureSubscription: Azure-Functions-Host-CI-internal
+              keyVaultName: azurefunctionshostciv1
+              secretsFilter: '*'
+
+          - pwsh: .\runtests.ps1 -ResultsPath $(xunit_results_path) -Configuration $(configuration)
+            displayName: "Run tests"
+            env:
+              AzureWebJobsStorage: $(Storage)
+              AzureWebJobsDashboard: $(Storage)
+              AzureWebJobsServiceBus: $(ServiceBus)
+              AzureWebJobsDocumentDBConnectionString: $(CosmosDB)
+              AzureWebJobsMobileAppUri: $(MobileUri)
+              AzureWebJobs_TestMobileUri: $(MobileUri)
+              AzureWebJobsDropBox: 'UseLocalFileSystem=true;Path=%TEMP%\DropBox'
+              AzureWebJobsEventHubSender: $(EventHub)
+              AzureWebJobsEventHubReceiver: $(EventHub)
+              AzureWebJobsEventHubPath: 'testhub'
+              AzureWebJobsNotificationHubsConnectionString: $(NotificationHub)
+              AzureWebJobsNotificationHubName: 'testhub'
+              AzureWebJobsEnv: 'Development'
+              FILES_ACCOUNT_NAME: $(FilesAccountName)
+              FILES_ACCOUNT_KEY: $(FilesAccountKey)
+              AzureWebJobsScriptRoot: '$(System.DefaultWorkingDirectory)\test\WebJobs.Script.Tests.Integration\TestScripts\Empty'
+              AzureWebJobsCosmosDBConnectionString: $(CosmosDB)
+              ConnectionStrings__CosmosDB: $(CosmosDB2)
+              AzureWebJobsSecretStorageKeyVaultName: $(KeyVaultName)
+              AzureWebJobsSecretStorageKeyVaultConnectionString: $(KeyVaultConnectionString)
+              TMP: $(Agent.TempDirectory)
+              MOCHA_FILE: '$(junit_results_path)\junit-test-results.xml'
+
+          - task: PublishTestResults@2
+            displayName: "Publish XUnit test results"
+            inputs:
+              testResultsFormat: 'XUnit'
+              testResultsFiles: '$(xunit_results_path)\xunit-*.xml'
+              mergeTestResults: true
+              buildConfiguration: $(configuration)
+              testRunTitle: 'XUnit Tests'
+            condition: always()
+        
+          - task: PublishTestResults@2
+            displayName: "Publish JUnit test results"
+            inputs:
+              testResultsFormat: 'JUnit'
+              testResultsFiles: '$(junit_results_path)\junit-*.xml'
+              mergeTestResults: true
+              buildConfiguration: $(configuration)
+              testRunTitle: 'JUnit Tests'
+            condition: always()
