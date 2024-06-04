@@ -198,7 +198,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         {
             // Ordered invocations is the default, but allow explicit disabling
             if (!_hostingConfigOptions.Value.EnableOrderedInvocationMessages ||
-                FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagDisableOrderedInvocationmessages, _environment))
+                FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagDisableOrderedInvocationMessages, _environment))
             {
                 _workerChannelLogger.LogDebug($"Using {nameof(ThreadPoolInvocationProcessorFactory)}.");
                 return new ThreadPoolInvocationProcessorFactory(_processInbound);

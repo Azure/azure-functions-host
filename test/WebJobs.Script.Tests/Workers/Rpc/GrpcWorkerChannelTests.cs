@@ -1436,7 +1436,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public async Task DispatcherFactory_CanBeOverridden_WithAppSetting()
         {
-            _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagDisableOrderedInvocationmessages);
+            _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagDisableOrderedInvocationMessages);
             await CreateDefaultWorkerChannel();
             var invocationFactoryMessage = _logger.GetLogMessages().Select(m => m.FormattedMessage).Single(m => m.Contains("Factory"));
             Assert.Contains("ThreadPoolInvocationProcessorFactory", invocationFactoryMessage);
