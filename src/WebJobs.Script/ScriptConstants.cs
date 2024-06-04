@@ -137,6 +137,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string FeatureFlagStrictHISModeEnabled = "StrictHISModeEnabled";
         public const string FeatureFlagStrictHISModeWarn = "StrictHISModeWarn";
         public const string FeatureFlagEnableOrderedInvocationmessages = "EnableOrderedInvocationMessages";
+        public const string FeatureFlagDisableOrderedInvocationMessages = "DisableOrderedInvocationMessages";
         public const string HostingConfigDisableLinuxAppServiceDetailedExecutionEvents = "DisableLinuxExecutionDetails";
         public const string HostingConfigDisableLinuxAppServiceExecutionEventLogBackoff = "DisableLinuxLogBackoff";
         public const string FeatureFlagEnableLegacyDurableVersionCheck = "EnableLegacyDurableVersionCheck";

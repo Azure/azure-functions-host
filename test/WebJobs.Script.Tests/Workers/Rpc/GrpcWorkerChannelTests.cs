@@ -1426,12 +1426,34 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
+        public async Task DispatcherFactory_DefaultsToOrdered()
+        {
+            await CreateDefaultWorkerChannel();
+            var invocationFactoryMessage = _logger.GetLogMessages().Select(m => m.FormattedMessage).Single(m => m.Contains("Factory"));
+            Assert.Contains("OrderedInvocationMessageDispatcherFactory", invocationFactoryMessage);
+        }
+
+        [Fact]
+        public async Task DispatcherFactory_CanBeOverridden_WithAppSetting()
+        {
+            _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagDisableOrderedInvocationMessages);
+            await CreateDefaultWorkerChannel();
+            var invocationFactoryMessage = _logger.GetLogMessages().Select(m => m.FormattedMessage).Single(m => m.Contains("Factory"));
+            Assert.Contains("ThreadPoolInvocationProcessorFactory", invocationFactoryMessage);
+        }
+
+        [Fact]
+        public async Task DispatcherFactory_CanBeOverridden_WithHostingConfig()
+        {
+            _hostingConfigOptions.Value.EnableOrderedInvocationMessages = false;
+            await CreateDefaultWorkerChannel();
+            var invocationFactoryMessage = _logger.GetLogMessages().Select(m => m.FormattedMessage).Single(m => m.Contains("Factory"));
+            Assert.Contains("ThreadPoolInvocationProcessorFactory", invocationFactoryMessage);
+        }
+
+        [Fact]
         public async Task Log_And_InvocationResult_OrderedCorrectly()
         {
-            // Without this feature flag, this test fails every time on multi-core machines as the logs will
-            // be processed out-of-order
-            _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableOrderedInvocationmessages);
-
             await CreateDefaultWorkerChannel();
             _metricsLogger.ClearCollections();
 

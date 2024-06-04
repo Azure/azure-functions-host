@@ -107,8 +107,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 // Supports True/False/1/0
                 (nameof(FunctionsHostingConfigOptions.EnableOrderedInvocationMessages), "EnableOrderedInvocationMessages=True", true),
                 (nameof(FunctionsHostingConfigOptions.EnableOrderedInvocationMessages), "EnableOrderedInvocationMessages=1", true),
-                (nameof(FunctionsHostingConfigOptions.EnableOrderedInvocationMessages), "EnableOrderedInvocationMessages=unparseable", false), // default
-                (nameof(FunctionsHostingConfigOptions.EnableOrderedInvocationMessages), string.Empty, false), // default
+                (nameof(FunctionsHostingConfigOptions.EnableOrderedInvocationMessages), "EnableOrderedInvocationMessages=unparseable", true), // default
+                (nameof(FunctionsHostingConfigOptions.EnableOrderedInvocationMessages), string.Empty, true), // default
 
                 (nameof(FunctionsHostingConfigOptions.FunctionsWorkerDynamicConcurrencyEnabled), "FUNCTIONS_WORKER_DYNAMIC_CONCURRENCY_ENABLED=1", true),
                 (nameof(FunctionsHostingConfigOptions.MaximumBundleV3Version), "FunctionRuntimeV4MaxBundleV3Version=teststring", "teststring"),
