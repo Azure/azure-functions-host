@@ -24,7 +24,7 @@ resources:
 variables:
   - template: /ci/variables/cfs.yml@eng
   - name: build_number
-    value: $[ counter('constant', 131400) ]
+    value: $[ counter('constant-v1x', 23000) ]
   - name: includeBuildNumberInVersion
     value: 1
   - name: configuration
