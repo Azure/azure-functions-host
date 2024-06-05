@@ -27,7 +27,7 @@ steps:
       version: '6.11.2'
 
   - pwsh: .\runtests.ps1 -ResultsPath ${{ parameters.results_path }} -Configuration ${{ parameters.configuration }}
-    displayName: Run tests (${{ parameters.filter }})
+    displayName: Run tests
     env:
       # many of these will be empty if running unit tests, which is fine.
       AzureWebJobsStorage: $(Storage)
