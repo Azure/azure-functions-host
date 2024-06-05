@@ -14,6 +14,12 @@ parameters:
       - Integration
 
 steps:
+- ${{ if and(in(parameters.filter, 'All', 'Integration'), ne(variables['System.TeamProject'], 'internal')) }}:
+  - pwsh: |
+      Write-Host "##vso[task.LogIssue type=error;]Integration tests cannot be ran in this Azure Devops project."
+      exit 1
+    displayName: Fail invalid project
+
 - ${{ if in(parameters.filter, 'All', 'Integration') }}:
   - task: AzureKeyVault@1
     inputs:
@@ -31,29 +37,29 @@ steps:
 - pwsh: .\runtests.ps1 -ResultsPath ${{ parameters.results_path }}  -Configuration ${{ parameters.configuration }}
   displayName: Run tests (${{ parameters.filter }})
   env:
+    # many of these will be empty if running unit tests, which is fine.
+    AzureWebJobsStorage: $(Storage)
+    AzureWebJobsDashboard: $(Storage)
+    AzureWebJobsServiceBus: $(ServiceBus)
+    AzureWebJobsDocumentDBConnectionString: $(CosmosDB)
+    AzureWebJobsMobileAppUri: $(MobileUri)
+    AzureWebJobs_TestMobileUri: $(MobileUri)
+    AzureWebJobsDropBox: UseLocalFileSystem=true;Path=%TEMP%\DropBox
+    AzureWebJobsEventHubSender: $(EventHub)
+    AzureWebJobsEventHubReceiver: $(EventHub)
+    AzureWebJobsEventHubPath: testhub
+    AzureWebJobsNotificationHubsConnectionString: $(NotificationHub)
+    AzureWebJobsNotificationHubName: testhub
+    AzureWebJobsEnv: Development
+    AzureWebJobsScriptRoot: $(System.DefaultWorkingDirectory)\test\WebJobs.Script.Tests.Integration\TestScripts\Empty
+    AzureWebJobsCosmosDBConnectionString: $(CosmosDB)
+    AzureWebJobsSecretStorageKeyVaultName: $(KeyVaultName)
+    AzureWebJobsSecretStorageKeyVaultConnectionString: $(KeyVaultConnectionString)
+    ConnectionStrings__CosmosDB: $(CosmosDB2)
+    FILES_ACCOUNT_NAME: $(FilesAccountName)
+    FILES_ACCOUNT_KEY: $(FilesAccountKey)
+    MOCHA_FILE: ${{ parameters.results_path }}/junit-test-results.xml
     TMP: $(Agent.TempDirectory)
-    MOCHA_FILE: ${[ parameters.results_path }}/junit-test-results.xml
-    ${{ if in(parameters.filter, 'All', 'Integration') }}:
-      AzureWebJobsStorage: $(Storage)
-      AzureWebJobsDashboard: $(Storage)
-      AzureWebJobsServiceBus: $(ServiceBus)
-      AzureWebJobsDocumentDBConnectionString: $(CosmosDB)
-      AzureWebJobsMobileAppUri: $(MobileUri)
-      AzureWebJobs_TestMobileUri: $(MobileUri)
-      AzureWebJobsDropBox: UseLocalFileSystem=true;Path=%TEMP%\DropBox
-      AzureWebJobsEventHubSender: $(EventHub)
-      AzureWebJobsEventHubReceiver: $(EventHub)
-      AzureWebJobsEventHubPath: testhub
-      AzureWebJobsNotificationHubsConnectionString: $(NotificationHub)
-      AzureWebJobsNotificationHubName: testhub
-      AzureWebJobsEnv: Development
-      FILES_ACCOUNT_NAME: $(FilesAccountName)
-      FILES_ACCOUNT_KEY: $(FilesAccountKey)
-      AzureWebJobsScriptRoot: $(System.DefaultWorkingDirectory)\test\WebJobs.Script.Tests.Integration\TestScripts\Empty
-      AzureWebJobsCosmosDBConnectionString: $(CosmosDB)
-      ConnectionStrings__CosmosDB: $(CosmosDB2)
-      AzureWebJobsSecretStorageKeyVaultName: $(KeyVaultName)
-      AzureWebJobsSecretStorageKeyVaultConnectionString: $(KeyVaultConnectionString)
 
 - task: PublishTestResults@2
   displayName: Publish XUnit test results
