@@ -37,7 +37,7 @@ extends:
           - template: /eng/ci/templates/steps/build.yml@self
             parameters:
               configuration: $(configuration)
-              targets: TestBuild
+              targets: EnableSkipStrongNames;TestBuild
 
           - template: /eng/ci/templates/steps/test.yml@self
             parameters:
