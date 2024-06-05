@@ -562,7 +562,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
         [Fact]
         public async Task SetMasterKey_WithProvidedKey_UsesProvidedKeyAndPersistsFile()
         {
-            string testSecret = "abcde0123456789abcde0123456789abcde0123456789";
+            string testSecret = "PLACEHOLDER";
             using (var directory = new TempDirectory())
             {
                 string expectedTraceMessage = "Master key Updated";
