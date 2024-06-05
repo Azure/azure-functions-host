@@ -1,0 +1,20 @@
+parameters:
+  - name: configuration
+    type: string
+    default: Release
+  - name: publish_path
+    type: string
+    default: bin
+  - name: build_number
+    type: string
+    default: '4242'
+  - name: targets
+    type: string
+    default: EnableSkipStrongNames;PackageScriptHost;PackageWebHost;TestBuild
+
+steps:
+  - task: MSBuild@1
+    inputs:
+      solution: WebJobs.Script.proj
+      msbuildArguments: '/target:${{ parameters.targets }} /property:BuildNumber=${{ parameters.build_number }};Configuration=${{ parameters.configuration }};PublishPath=${{ parameters.publish_path }}'
+      logFileVerbosity: minimal

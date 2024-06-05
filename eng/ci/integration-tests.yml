@@ -1,4 +1,6 @@
-trigger:
+trigger: none
+
+pr:
   branches:
     include:
     - v1.x
@@ -10,55 +12,36 @@ resources:
     type: git
     name: 1ESPipelineTemplates/1ESPipelineTemplates
     ref: refs/tags/release
-  - repository: eng
-    type: git
-    name: engineering
-    ref: refs/tags/release
 
 variables:
   - template: /ci/variables/cfs.yml@eng
   - template: /eng/ci/templates/variables/build.yml@self
-  - name: build_number
-    value: $[ counter('constant-v1x', 23000) ]
   - name: includeBuildNumberInVersion
     value: 1
   - name: configuration
     value: Release
-  - name: publish_path
-    value: bin
   - name: test_results_path
     value: '$(System.DefaultWorkingDirectory)\test-results'
 
 extends:
-  template: v1/1ES.Official.PipelineTemplate.yml@1es
+  template: v1/1ES.Unofficial.PipelineTemplate.yml@1es
   parameters:
     pool:
       name: 1es-pool-azfunc
-      image: 1es-windows-2022
+      image: 1es-windows-2022 
       os: windows
 
     stages:
-    - stage: BuildAndTest
-
+    - stage: Test
       jobs:
-      - job: BuildAndTest
-        templateContext:
-          outputParentDirectory: $(publish_path)
-          outputs:
-          - output: pipelineArtifact
-            displayName: Publish drop
-            path: $(publish_path)/Packages
-            artifact: drop
-
         steps:
           - template: /eng/ci/templates/steps/build.yml@self
             parameters:
               configuration: $(configuration)
-              publish_path: $(publish_path)
-              build_number: $(build_number)
+              targets: TestBuild
 
           - template: /eng/ci/templates/steps/test.yml@self
             parameters:
               configuration: $(configuration)
               results_path: $(test_results_path)
-              filter: 'All'
+              filter: 'Integration'

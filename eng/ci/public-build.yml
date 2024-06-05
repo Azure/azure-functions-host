@@ -4,6 +4,12 @@ trigger:
     - v1.x
     - release/1.*
 
+pr:
+  branches:
+    include:
+    - v1.x
+    - release/1.*
+
 resources:
   repositories:
   - repository: 1es
@@ -30,7 +36,7 @@ variables:
     value: '$(System.DefaultWorkingDirectory)\test-results'
 
 extends:
-  template: v1/1ES.Official.PipelineTemplate.yml@1es
+  template: v1/1ES.Unofficial.PipelineTemplate.yml@1es
   parameters:
     pool:
       name: 1es-pool-azfunc
@@ -61,4 +67,4 @@ extends:
             parameters:
               configuration: $(configuration)
               results_path: $(test_results_path)
-              filter: 'All'
+              filter: 'Unit'
