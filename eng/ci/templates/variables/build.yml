@@ -5,3 +5,13 @@ variables:
     value: 1
   - name: DOTNET_CLI_TELEMETRY_OPTOUT
     value: 1
+  - name: build_number
+    value: $[ counter('constant-v1x', 23000) ]
+  - name: includeBuildNumberInVersion
+    value: 1
+  - name: configuration
+    value: Release
+  - name: publish_path
+    value: bin
+  - name: test_results_path
+    value: $(System.DefaultWorkingDirectory)\test-results

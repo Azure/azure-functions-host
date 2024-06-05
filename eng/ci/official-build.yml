@@ -18,16 +18,6 @@ resources:
 variables:
   - template: /ci/variables/cfs.yml@eng
   - template: /eng/ci/templates/variables/build.yml@self
-  - name: build_number
-    value: $[ counter('constant-v1x', 23000) ]
-  - name: includeBuildNumberInVersion
-    value: 1
-  - name: configuration
-    value: Release
-  - name: publish_path
-    value: bin
-  - name: test_results_path
-    value: '$(System.DefaultWorkingDirectory)\test-results'
 
 extends:
   template: v1/1ES.Official.PipelineTemplate.yml@1es
@@ -61,4 +51,4 @@ extends:
             parameters:
               configuration: $(configuration)
               results_path: $(test_results_path)
-              filter: 'All'
+              filter: All

@@ -16,19 +16,13 @@ resources:
 variables:
   - template: /ci/variables/cfs.yml@eng
   - template: /eng/ci/templates/variables/build.yml@self
-  - name: includeBuildNumberInVersion
-    value: 1
-  - name: configuration
-    value: Release
-  - name: test_results_path
-    value: '$(System.DefaultWorkingDirectory)\test-results'
 
 extends:
   template: v1/1ES.Unofficial.PipelineTemplate.yml@1es
   parameters:
     pool:
       name: 1es-pool-azfunc
-      image: 1es-windows-2022 
+      image: 1es-windows-2022
       os: windows
 
     stages:
@@ -44,4 +38,4 @@ extends:
             parameters:
               configuration: $(configuration)
               results_path: $(test_results_path)
-              filter: 'Integration'
+              filter: Integration
