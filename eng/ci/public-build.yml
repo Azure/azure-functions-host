@@ -29,10 +29,10 @@ extends:
       os: windows
 
     stages:
-    - stage: BuildAndTest
+    - stage: Build
 
       jobs:
-      - job: BuildAndTest
+      - job: Build
         templateContext:
           outputParentDirectory: $(publish_path)
           outputs:
@@ -47,9 +47,3 @@ extends:
               configuration: $(configuration)
               publish_path: $(publish_path)
               build_number: $(build_number)
-
-          - template: /eng/ci/templates/steps/test.yml@self
-            parameters:
-              configuration: $(configuration)
-              results_path: $(test_results_path)
-              filter: Unit

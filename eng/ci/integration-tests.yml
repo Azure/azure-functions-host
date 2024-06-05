@@ -38,4 +38,3 @@ extends:
             parameters:
               configuration: $(configuration)
               results_path: $(test_results_path)
-              filter: Integration

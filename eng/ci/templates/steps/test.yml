@@ -5,22 +5,15 @@ parameters:
   - name: results_path
     type: string
     default: $(System.DefaultWorkingDirectory)/test-results
-  - name: filter
-    type: string
-    default: All
-    values:
-      - All
-      - Unit
-      - Integration
 
 steps:
-- ${{ if and(in(parameters.filter, 'All', 'Integration'), ne(variables['System.TeamProject'], 'internal')) }}:
+- ${{ if ne(variables['System.TeamProject'], 'internal') }}:
   - pwsh: |
-      Write-Host "##vso[task.LogIssue type=error;]Integration tests cannot be ran in this Azure Devops project."
+      Write-Host "##vso[task.LogIssue type=error;]Tests cannot be ran in this Azure Devops project."
       exit 1
     displayName: Fail invalid project
 
-- ${{ if in(parameters.filter, 'All', 'Integration') }}:
+- ${{ else }}:
   - task: AzureKeyVault@1
     inputs:
       # Note: This is actually a Service Connection in DevOps, not an Azure subscription name
@@ -28,51 +21,49 @@ steps:
       keyVaultName: azurefunctionshostciv1
       secretsFilter: '*'
 
-- ${{ if in(parameters.filter, 'All', 'Unit') }}:
   - task: UseNode@1
     displayName: Install Node 6.11.2
     inputs:
       version: '6.11.2'
 
-- pwsh: .\runtests.ps1 -ResultsPath ${{ parameters.results_path }}  -Configuration ${{ parameters.configuration }}
-  displayName: Run tests (${{ parameters.filter }})
-  env:
-    # many of these will be empty if running unit tests, which is fine.
-    AzureWebJobsStorage: $(Storage)
-    AzureWebJobsDashboard: $(Storage)
-    AzureWebJobsServiceBus: $(ServiceBus)
-    AzureWebJobsDocumentDBConnectionString: $(CosmosDB)
-    AzureWebJobsMobileAppUri: $(MobileUri)
-    AzureWebJobs_TestMobileUri: $(MobileUri)
-    AzureWebJobsDropBox: UseLocalFileSystem=true;Path=%TEMP%\DropBox
-    AzureWebJobsEventHubSender: $(EventHub)
-    AzureWebJobsEventHubReceiver: $(EventHub)
-    AzureWebJobsEventHubPath: testhub
-    AzureWebJobsNotificationHubsConnectionString: $(NotificationHub)
-    AzureWebJobsNotificationHubName: testhub
-    AzureWebJobsEnv: Development
-    AzureWebJobsScriptRoot: $(System.DefaultWorkingDirectory)\test\WebJobs.Script.Tests.Integration\TestScripts\Empty
-    AzureWebJobsCosmosDBConnectionString: $(CosmosDB)
-    AzureWebJobsSecretStorageKeyVaultName: $(KeyVaultName)
-    AzureWebJobsSecretStorageKeyVaultConnectionString: $(KeyVaultConnectionString)
-    ConnectionStrings__CosmosDB: $(CosmosDB2)
-    FILES_ACCOUNT_NAME: $(FilesAccountName)
-    FILES_ACCOUNT_KEY: $(FilesAccountKey)
-    MOCHA_FILE: ${{ parameters.results_path }}/junit-test-results.xml
-    TMP: $(Agent.TempDirectory)
+  - pwsh: .\runtests.ps1 -ResultsPath ${{ parameters.results_path }} -Configuration ${{ parameters.configuration }}
+    displayName: Run tests (${{ parameters.filter }})
+    env:
+      # many of these will be empty if running unit tests, which is fine.
+      AzureWebJobsStorage: $(Storage)
+      AzureWebJobsDashboard: $(Storage)
+      AzureWebJobsServiceBus: $(ServiceBus)
+      AzureWebJobsDocumentDBConnectionString: $(CosmosDB)
+      AzureWebJobsMobileAppUri: $(MobileUri)
+      AzureWebJobs_TestMobileUri: $(MobileUri)
+      AzureWebJobsDropBox: UseLocalFileSystem=true;Path=%TEMP%\DropBox
+      AzureWebJobsEventHubSender: $(EventHub)
+      AzureWebJobsEventHubReceiver: $(EventHub)
+      AzureWebJobsEventHubPath: testhub
+      AzureWebJobsNotificationHubsConnectionString: $(NotificationHub)
+      AzureWebJobsNotificationHubName: testhub
+      AzureWebJobsEnv: Development
+      AzureWebJobsScriptRoot: $(System.DefaultWorkingDirectory)\test\WebJobs.Script.Tests.Integration\TestScripts\Empty
+      AzureWebJobsCosmosDBConnectionString: $(CosmosDB)
+      AzureWebJobsSecretStorageKeyVaultName: $(KeyVaultName)
+      AzureWebJobsSecretStorageKeyVaultConnectionString: $(KeyVaultConnectionString)
+      ConnectionStrings__CosmosDB: $(CosmosDB2)
+      FILES_ACCOUNT_NAME: $(FilesAccountName)
+      FILES_ACCOUNT_KEY: $(FilesAccountKey)
+      MOCHA_FILE: ${{ parameters.results_path }}/junit-test-results.xml
+      TMP: $(Agent.TempDirectory)
 
-- task: PublishTestResults@2
-  displayName: Publish XUnit test results
-  inputs:
-    testResultsFormat: XUnit
-    testResultsFiles: ${{ parameters.results_path }}/xunit-*.xml
-    mergeTestResults: true
-    buildConfiguration: $(configuration)
-    testRunTitle: XUnit Tests
-  condition: always()
+  - task: PublishTestResults@2
+    displayName: Publish XUnit test results
+    inputs:
+      testResultsFormat: XUnit
+      testResultsFiles: ${{ parameters.results_path }}/xunit-*.xml
+      mergeTestResults: true
+      buildConfiguration: $(configuration)
+      testRunTitle: XUnit Tests
+    condition: always()
 
 
-- ${{ if in(parameters.filter, 'All', 'Unit') }}:
   - task: PublishTestResults@2
     displayName: Publish JUnit test results
     inputs:
