@@ -2,7 +2,7 @@ param (
     [System.String]
     $Configuration = "Debug",
     [System.String]
-    $ResultsPath = ".\testoutput\xunit\",
+    $ResultsPath = ".\testoutput\xunit\"
 )
 
 if (-not (Test-Path -Path $ResultsPath -IsValid)) 
