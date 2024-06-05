@@ -5,6 +5,8 @@ trigger:
     - in-proc
     - v1.x
     - v3.x
+    - release/1.*
+    - release/3.*
     - release/4.*
     - release/in-proc
 
