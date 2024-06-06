@@ -123,22 +123,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
             environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, "TestContainer");
             Assert.True(environment.IsAnyLinuxConsumption());
             Assert.True(environment.IsLinuxConsumptionOnAtlas());
-            Assert.False(environment.IsFlexConsumptionSku());
-            Assert.True(HostWarmupMiddleware.IsWarmUpRequest(request, hostEnvironment.InStandbyMode, environment));
-
-            // Reset environment
-            environment.Clear();
-            hostEnvironment = new ScriptWebHostEnvironment(environment);
-
-            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
-            Assert.False(HostWarmupMiddleware.IsWarmUpRequest(request, hostEnvironment.InStandbyMode, environment));
-
-            request = HttpTestHelpers.CreateHttpRequest("POST", "http://azure.com/api/warmup");
-            environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, "TestContainer");
-            environment.SetEnvironmentVariable(EnvironmentSettingNames.LegionServiceHost, "1");
-            Assert.True(environment.IsAnyLinuxConsumption());
-            Assert.False(environment.IsLinuxConsumptionOnAtlas());
-            Assert.True(environment.IsFlexConsumptionSku());
             Assert.True(HostWarmupMiddleware.IsWarmUpRequest(request, hostEnvironment.InStandbyMode, environment));
         }
 

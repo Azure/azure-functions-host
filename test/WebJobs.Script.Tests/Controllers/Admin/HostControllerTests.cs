@@ -250,11 +250,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
-        [InlineData(true, ScriptConstants.FlexConsumptionSku)]
-        [InlineData(false, ScriptConstants.FlexConsumptionSku)]
         [InlineData(true, ScriptConstants.DynamicSku)]
         [InlineData(false, ScriptConstants.DynamicSku)]
-        public async Task SyncTriggers_RequiresRunningHost_ForFlexSku(bool hostInitialized, string sku)
+        public async Task SyncTriggers_EmitsExpectedMetrics_WhenHostNotRunning(bool hostInitialized, string sku)
         {
             if (!hostInitialized)
             {

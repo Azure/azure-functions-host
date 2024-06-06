@@ -141,11 +141,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         services.TryAddEnumerable(ServiceDescriptor.Singleton<IJobHostHttpMiddleware, JobHostEasyAuthMiddleware>());
                     }
 
-                    if (environment.IsFlexConsumptionSku())
-                    {
-                        services.TryAddEnumerable(ServiceDescriptor.Singleton<IListenerDecorator, FunctionGroupListenerDecorator>());
-                    }
-
                     services.AddSingleton<IScaleMetricsRepository, TableStorageScaleMetricsRepository>();
                     services.TryAddEnumerable(ServiceDescriptor.Singleton<IConcurrencyThrottleProvider, WorkerChannelThrottleProvider>());
 
