@@ -91,10 +91,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
             IsAlwaysReady = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsAlwaysReadyInstance) == "1";
         }
 
-        internal async Task OnPublishMetrics()
+        internal async Task OnPublishMetrics(DateTime now)
         {
             try
             {
+                lock (_lock)
+                {
+                    if (ActiveFunctionCount > 0)
+                    {
+                        // at the end of an interval, we'll meter any outstanding activity up to the end of the interval
+                        MeterCurrentActiveInterval(now);
+                    }
+                }
+
                 if (FunctionExecutionCount == 0 && FunctionExecutionTimeMS == 0 && !IsAlwaysReady && !_metricsProvider.HasMetrics())
                 {
                     // no activity to report
@@ -137,7 +146,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 
         private async void OnFunctionMetricsPublishTimer(object state)
         {
-            await OnPublishMetrics();
+            await OnPublishMetrics(DateTime.UtcNow);
         }
 
         private async Task PublishMetricsAsync(Metrics metrics)
@@ -280,26 +289,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
                 {
                     // We're transitioning from active to inactive, so we need to accumulate the elapsed time
                     // for this interval.
-                    DateTime adjustedActivityIntervalStart = _currentActivityIntervalStart;
-                    if (_activityIntervalHighWatermark > _currentActivityIntervalStart)
-                    {
-                        // If we've already metered a previous interval past the current time,
-                        // we move forward (since we never want to meter the same interval twice).
-                        adjustedActivityIntervalStart = _activityIntervalHighWatermark;
-                    }
-
-                    // If the elapsed duration is negative, it means invocations are still before
-                    // the high watermark, so have already been metered.
-                    double elapsedMS = (now - adjustedActivityIntervalStart).TotalMilliseconds;
-                    if (elapsedMS > 0)
-                    {
-                        // Accumulate the duration for this interval, applying the minimum
-                        var duration = Math.Max(elapsedMS, _options.MinimumActivityIntervalMS);
-                        FunctionExecutionTimeMS += RoundUp(duration, _options.MetricsGranularityMS);
-
-                        // Move the high watermark timestamp forward
-                        _activityIntervalHighWatermark = adjustedActivityIntervalStart.AddMilliseconds(duration);
-                    }
+                    MeterCurrentActiveInterval(now);
                 }
 
                 // for every completed invocation, increment our invocation count
@@ -312,10 +302,36 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
             // nothing to do here - we only care about Started/Completed events.
         }
 
-        // Rounds up the given metric to a specified granularity. For example, RoundUp(1320.00, 100) = 1400, but RoundUp(1300.00, 100) = 1300.
-        private static long RoundUp(double metric, int granularity)
+        private void MeterCurrentActiveInterval(DateTime now)
         {
-            return (long)Math.Ceiling(metric / granularity) * granularity;
+            DateTime adjustedActivityIntervalStart = _currentActivityIntervalStart;
+            if (_activityIntervalHighWatermark > _currentActivityIntervalStart)
+            {
+                // If we've already metered a previous interval past the current time,
+                // we move forward (since we never want to meter the same interval twice).
+                adjustedActivityIntervalStart = _activityIntervalHighWatermark;
+            }
+
+            // If the elapsed duration is negative, it means invocations are still before
+            // the high watermark, so have already been metered.
+            double elapsedMS = (now - adjustedActivityIntervalStart).TotalMilliseconds;
+            if (elapsedMS > 0)
+            {
+                // Accumulate the duration for this interval, applying minimums and rounding
+                var duration = Math.Max(elapsedMS, _options.MinimumActivityIntervalMS);
+                duration = RoundUp(duration, _options.MetricsGranularityMS);
+                FunctionExecutionTimeMS += (long)duration;
+
+                // Move the high watermark timestamp forward to the point
+                // up to which we've metered
+                _activityIntervalHighWatermark = adjustedActivityIntervalStart.AddMilliseconds(duration);
+            }
+        }
+
+        // Rounds up the given metric to a specified granularity. For example, RoundUp(1320.00, 100) = 1400, but RoundUp(1300.00, 100) = 1300.
+        private static double RoundUp(double metric, int granularity)
+        {
+            return Math.Ceiling(metric / granularity) * granularity;
         }
 
         public void Dispose()
