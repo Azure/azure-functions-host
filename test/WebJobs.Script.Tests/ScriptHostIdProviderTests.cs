@@ -94,29 +94,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.False(result.IsLocal);
         }
 
-        [Theory]
-        [InlineData("myfunctionstestapp", "6606e225f163a70190e4f4357d3dad78")]
-        [InlineData("TEST-FUNCTIONS-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", "9dd2d6d54f1135ee6db6116f084b29bd")]
-        [InlineData("TEST-FUNCTIONS-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXA", "c842e18afa2a84eac2818a956687a72e")]
-        [InlineData("TEST-FUNCTIONS-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXB", "b595edd5b794d34e79c81361c823487c")]
-        public void GetDefaultHostId_FlexConsumption_ReturnsExpectedResult(string siteName, string expected)
-        {
-            var options = new ScriptApplicationHostOptions
-            {
-                ScriptPath = @"c:\testscripts"
-            };
-
-            var environment = new TestEnvironment();
-            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, ScriptConstants.FlexConsumptionSku);
-            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName, siteName);
-
-            var result = ScriptHostIdProvider.GetDefaultHostId(environment, options);
-
-            Assert.Equal(expected, result.HostId);
-            Assert.Equal(32, result.HostId.Length);
-            Assert.False(result.IsTruncated);
-        }
-
         [Fact]
         public void GetDefaultHostId_PlaceholderMode_ReturnsExpectedResult()
         {
@@ -129,29 +106,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // default HostId, so we expect null.
             var environment = new TestEnvironment();
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId, "123123");
-
-            Assert.False(environment.IsFlexConsumptionSku());
-
-            var result = ScriptHostIdProvider.GetDefaultHostId(environment, options);
-
-            Assert.Equal(null, result.HostId);
-        }
-
-        [Fact]
-        public void GetDefaultHostId_PlaceholderMode_FlexConsumption_ReturnsExpectedResult()
-        {
-            var options = new ScriptApplicationHostOptions
-            {
-                ScriptPath = @"c:\testscripts"
-            };
-
-            // In placeholder mode, site name and other settings aren't available to compute the
-            // default HostId, so we expect null.
-            var environment = new TestEnvironment();
-            environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, "testContainer");
-            environment.SetEnvironmentVariable(EnvironmentSettingNames.LegionServiceHost, "legionhost");
-
-            Assert.True(environment.IsFlexConsumptionSku());
 
             var result = ScriptHostIdProvider.GetDefaultHostId(environment, options);
 

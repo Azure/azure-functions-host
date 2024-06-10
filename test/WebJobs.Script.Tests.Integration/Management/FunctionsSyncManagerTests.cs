@@ -209,10 +209,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 { "name", "req" },
                 { "functionName", "function1" }
             };
-            if (_mockEnvironment.Object.IsFlexConsumptionSku())
-            {
-                f1.Add("functionGroup", "http");
-            }
             triggers.Add(f1);
 
             JObject f2 = new JObject
@@ -224,10 +220,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 { "connection", postedConnection ?? string.Empty },
                 { "functionName", "function2" }
             };
-            if (_mockEnvironment.Object.IsFlexConsumptionSku())
-            {
-                f2.Add("functionGroup", "durable");
-            }
             AddDurableExtendedProperties(f2);
             triggers.Add(f2);
 
@@ -240,10 +232,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 { "connection", postedConnection  ?? string.Empty },
                 { "functionName", "function3" }
             };
-            if (_mockEnvironment.Object.IsFlexConsumptionSku())
-            {
-                f3.Add("functionGroup", "durable");
-            }
             AddDurableExtendedProperties(f3);
             triggers.Add(f3);
 
@@ -271,7 +259,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
         [Theory]
         [InlineData(ScriptConstants.DynamicSku)]
-        [InlineData(ScriptConstants.FlexConsumptionSku)]
         public async Task TrySyncTriggers_MaxSyncTriggersPayloadSize_Succeeds(string sku)
         {
             _sku = sku;
@@ -291,19 +278,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 Assert.True(syncString.Length < ScriptConstants.MaxTriggersStringLength);
                 var syncContent = JObject.Parse(syncString);
 
-                bool isFlexConsumptionSku = _mockEnvironment.Object.IsFlexConsumptionSku();
-                int expectedCount = isFlexConsumptionSku ? 3 : 2;
-                Assert.Equal(expectedCount, syncContent.Count);
+                Assert.Equal(2, syncContent.Count);
                 Assert.Equal("testhostid123", syncContent["hostId"]);
                 
                 JArray triggers = (JArray)syncContent["triggers"];
                 Assert.Equal(2, triggers.Count);
-
-                if (isFlexConsumptionSku)
-                {
-                    JObject hostConfig = (JObject)syncContent["hostConfig"];
-                    Assert.Equal(2, hostConfig.Count);
-                }
             }
         }
 
@@ -329,9 +308,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
         [Theory]
         [InlineData(true, true, ScriptConstants.DynamicSku)]
-        [InlineData(true, true, ScriptConstants.FlexConsumptionSku)]
         [InlineData(false, true, ScriptConstants.DynamicSku)]
-        [InlineData(false, true, ScriptConstants.FlexConsumptionSku)]
         [InlineData(true, false, ScriptConstants.DynamicSku)]
         public async Task TrySyncTriggers_PostsExpectedContent(bool cacheEnabled, bool swtIssuerEnabled, string sku)
         {
@@ -433,15 +410,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.Equal(expectedTriggersPayload, logObject["triggers"].ToString(Formatting.None));
             Assert.False(triggersLog.Contains("secrets"));
             
-            if (_mockEnvironment.Object.IsFlexConsumptionSku())
-            {
-                // verify hostConfig by spot checking a couple properties
-                var hostConfig = result["hostConfig"];
-                Assert.Equal(2, hostConfig["extensions"]["testExtension2"]["p2"]);
-                Assert.Equal("[Hidden Credential]", hostConfig["extensions"]["testExtension2"]["pwd"]);
-                Assert.Equal(0.85f, (float)hostConfig["concurrency"]["CPUThreshold"]);
-            }
-
             return result;
         }
 
