@@ -2,14 +2,15 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Threading;
-using Microsoft.Azure.Cosmos.Table;
+using System.Runtime.Serialization;
+using Azure;
+using Azure.Data.Tables;
 using Microsoft.Azure.WebJobs.Script.WebHost.Helpers;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
-    public class DiagnosticEvent : TableEntity
+    public class DiagnosticEvent : ITableEntity
     {
         internal const string CurrentEventVersion = "2024-05-01";
 
@@ -23,6 +24,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             EventVersion = CurrentEventVersion;
         }
 
+        public string PartitionKey { get; set; }
+
+        public string RowKey { get; set; }
+
+        public DateTimeOffset? Timestamp { get; set; }
+
+        public ETag ETag { get; set; }
+
         public string EventVersion { get; set; }
 
         public int HitCount { get; set; }
@@ -35,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public int Level { get; set; }
 
-        [IgnoreProperty]
+        [IgnoreDataMember]
         public LogLevel LogLevel
         {
             get { return (LogLevel)Level; }
