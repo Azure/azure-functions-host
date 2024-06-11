@@ -222,15 +222,15 @@ namespace Microsoft.Azure.WebJobs.Script
                 functionProviderTasks.Add(functionProvider.GetFunctionMetadataAsync());
             }
 
-            var functionMetadataListArray = Task.WhenAll(functionProviderTasks).GetAwaiter().GetResult();
-            var totalFunctionsCount = functionMetadataListArray.Sum(metadataArray => metadataArray.Length);
+            var providerFunctionMetadataResults = Task.WhenAll(functionProviderTasks).GetAwaiter().GetResult();
+            var totalFunctionsCount = providerFunctionMetadataResults.Sum(metadataArray => metadataArray.Length);
 
             // This is used to make sure no duplicates are registered
             var distinctFunctionNames = new HashSet<string>(functionMetadataList.Select(m => m.Name));
 
             _logger.FunctionsReturnedByProvider(totalFunctionsCount, _metadataProviderName);
 
-            foreach (var metadataArray in functionMetadataListArray)
+            foreach (var metadataArray in providerFunctionMetadataResults)
             {
                 if (!metadataArray.IsDefaultOrEmpty)
                 {
