@@ -1,5 +1,3 @@
-
-
 trigger:
   batch: true
   branches:
@@ -7,8 +5,7 @@ trigger:
     - dev
     - in-proc
     - release/4.*
-    - release/inproc6/4.*
-    - release/inproc8/4.*
+    - release/in-proc
 
 # CI only, does not trigger on PRs.
 pr: none
@@ -25,17 +22,10 @@ resources:
     ref: refs/tags/release
 
 variables:
-  - template: ci/variables/build.yml@eng
-  - template: ci/variables/cfs.yml@eng
+  - template: /eng/ci/templates/variables/build.yml@self
+  - template: /ci/variables/cfs.yml@eng
   - name: buildNumber
     value: $[ counter('build', 23000) ] # 23000 selected to be ahead of current host build
-  - name: minorVersionPrefix
-    ${{ if contains(variables['Build.SourceBranch'], 'release/inproc6/') }}:
-      value: "6"
-    ${{ elseif contains(variables['Build.SourceBranch'], 'release/inproc8/') }}:
-      value: "8"
-    ${{ else }}:
-      value: ""
 
 extends:
   template: v1/1ES.Official.PipelineTemplate.yml@1es
