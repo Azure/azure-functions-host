@@ -59,9 +59,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         }
 
         /// <inheritdoc />
-        public void LoadWorkerDescriptionFromProfiles(RpcWorkerDescription defaultWorkerDescription, out RpcWorkerDescription workerDescription)
+        public bool LoadWorkerDescriptionFromProfiles(RpcWorkerDescription defaultWorkerDescription, out RpcWorkerDescription workerDescription)
         {
-            if (GetEvaluatedProfile(defaultWorkerDescription.Language, out WorkerDescriptionProfile profile))
+            var validProfileFound = GetEvaluatedProfile(defaultWorkerDescription.Language, out WorkerDescriptionProfile profile);
+            if (validProfileFound)
             {
                 _logger?.LogInformation($"Worker initialized with profile - {profile.Name}, Profile ID {profile.ProfileId} from worker config.");
                 _activeProfiles[defaultWorkerDescription.Language] = profile.ProfileId;
@@ -71,6 +72,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             {
                 workerDescription = defaultWorkerDescription;
             }
+
+            return validProfileFound;
         }
 
         /// <inheritdoc />

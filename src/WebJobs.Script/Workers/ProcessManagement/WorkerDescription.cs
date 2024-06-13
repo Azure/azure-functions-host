@@ -45,6 +45,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         /// </summary>
         public abstract bool UseStdErrorStreamForErrorsOnly { get; set; }
 
+        /// <summary>
+        /// Gets or sets a value indicating whether the worker description should be skipped if none of the profiles defined is applicable.
+        /// This happens when conditions defined for that profile is not met.
+        /// </summary>
+        public bool SkipWhenProfileConditionsUnmet { get; set; }
+
         public abstract void ApplyDefaultsAndValidate(string workerDirectory, ILogger logger);
 
         internal void ThrowIfFileNotExists(string inputFile, string paramName)

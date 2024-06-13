@@ -138,7 +138,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                         if (workerDescriptionProfiles.Count > 0)
                         {
                             _profileManager.SetWorkerDescriptionProfiles(workerDescriptionProfiles, workerDescription.Language);
-                            _profileManager.LoadWorkerDescriptionFromProfiles(workerDescription, out workerDescription);
+                            var profileLoaded = _profileManager.LoadWorkerDescriptionFromProfiles(workerDescription, out workerDescription);
+
+                            // Skip the worker if SkipWhenProfileConditionsUnmet is true and none of the profiles were loaded.
+                            if (workerDescription.SkipWhenProfileConditionsUnmet && !profileLoaded)
+                            {
+                                _logger.LogInformation("Skipping WorkerConfig for language: {workerDescription.Language} since none of the profiles loaded and 'SkipWhenProfileConditionsUnmet' is true.", workerDescription.Language);
+                                return;
+                            }
                         }
                     }
 

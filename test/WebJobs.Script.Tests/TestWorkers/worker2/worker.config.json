@@ -1,0 +1,36 @@
+﻿{
+  "description": {
+    "language": "bar",
+    "SkipWhenProfileConditionsUnmet": true
+  },
+  "profiles": [
+    {
+      "profileName": "Profile1",
+      "conditions": [
+        {
+          "conditionType": "environment",
+          "conditionName": "NON_EXISTING_ENV_VAR",
+          "conditionExpression": "(?i)true$"
+        }
+      ],
+      "description": {
+        "defaultExecutablePath": "%FUNCTIONS_WORKER_DIRECTORY%/2.bat",
+        "defaultWorkerPath": "bin/2.bat"
+      }
+    },
+    {
+      "profileName": "Profile2",
+      "conditions": [
+        {
+          "conditionType": "environment",
+          "conditionName": "NON_EXISTING_ENV_VAR",
+          "conditionExpression": "(?i)true$"
+        }
+      ],
+      "description": {
+        "defaultExecutablePath": "%FUNCTIONS_WORKER_DIRECTORY%/2.bat",
+        "defaultWorkerPath": "bin/2.bat"
+      }
+    }
+  ]
+}
