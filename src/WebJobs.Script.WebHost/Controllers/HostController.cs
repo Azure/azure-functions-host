@@ -19,7 +19,6 @@ using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Scale;
-using Microsoft.Azure.WebJobs.Script.WebHost.Extensions;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
@@ -391,15 +390,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [HttpPost]
         [Route("admin/host/synctriggers")]
         [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal)]
+        [RequiresRunningHost]
         public async Task<IActionResult> SyncTriggers()
         {
             _metricsLogger.LogEvent(MetricEventNames.SyncTriggersInvoked);
-
-            // TEMP: Collecting temporary metrics on the host state during SyncTrigger requests
-            if (!_scriptHostManager.HostIsInitialized())
-            {
-                _metricsLogger.LogEvent(MetricEventNames.SyncTriggersHostNotInitialized);
-            }
 
             var result = await _functionsSyncManager.TrySyncTriggersAsync();
 

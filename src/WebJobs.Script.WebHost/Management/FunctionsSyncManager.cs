@@ -316,8 +316,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             var triggersArray = new JArray(triggers);
             int count = triggersArray.Count;
 
-            // Form the base minimal result
+            // add host configuration
             JObject hostConfig = null;
+            if (Utility.TryGetHostService<IHostOptionsProvider>(_scriptHostManager, out IHostOptionsProvider hostOptionsProvider))
+            {
+                hostConfig = hostOptionsProvider.GetOptions();
+            }
+
+            // Form the base minimal result
             string hostId = await _hostIdProvider.GetHostIdAsync(CancellationToken.None);
             JObject result = GetMinimalPayload(hostId, triggersArray, hostConfig);
 
