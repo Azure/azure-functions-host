@@ -138,14 +138,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                         if (workerDescriptionProfiles.Count > 0)
                         {
                             _profileManager.SetWorkerDescriptionProfiles(workerDescriptionProfiles, workerDescription.Language);
-                            var profileLoaded = _profileManager.LoadWorkerDescriptionFromProfiles(workerDescription, out workerDescription);
-
-                            // Skip the worker if SkipWhenProfileConditionsUnmet is true and none of the profiles were loaded.
-                            if (workerDescription.SkipWhenProfileConditionsUnmet && !profileLoaded)
-                            {
-                                _logger.LogInformation("Skipping WorkerConfig for language: {workerDescription.Language} since none of the profiles loaded and 'SkipWhenProfileConditionsUnmet' is true.", workerDescription.Language);
-                                return;
-                            }
+                            _profileManager.LoadWorkerDescriptionFromProfiles(workerDescription, out workerDescription);
                         }
                     }
 
@@ -157,6 +150,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
                     // Validate workerDescription
                     workerDescription.ApplyDefaultsAndValidate(Directory.GetCurrentDirectory(), _logger);
+
+                    if (workerDescription.IsDisabled == true)
+                    {
+                        _logger.LogInformation("Skipping WorkerConfig for stack: {language} since it is disabled.", workerDescription.Language);
+                        return;
+                    }
 
                     if (ShouldAddWorkerConfig(workerDescription.Language))
                     {
