@@ -139,6 +139,55 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public void FunctionMetadataManager_GetsMetadata_FromMultipleFunctionProviders_Success()
+        {
+            var functionMetadataCollection1 = new Collection<FunctionMetadata>
+            {
+                GetTestFunctionMetadata("somefile.dll", name: "HelloHttp")
+            };
+
+            var functionMetadataCollection2 = new Collection<FunctionMetadata>
+            {
+                GetTestFunctionMetadata("somefile2.dll", name: "Function1"),
+                GetTestFunctionMetadata("somefile2.dll", name: "Function2"),
+                GetTestFunctionMetadata("somefile2.dll", name: "Function3")
+            };
+
+            var expectedTotalFunctionsCount = functionMetadataCollection1.Count + functionMetadataCollection2.Count;
+
+            var mockFunctionMetadataProvider = new Mock<IFunctionMetadataProvider>();
+            mockFunctionMetadataProvider.Setup(m => m.GetFunctionMetadataAsync(It.IsAny<IEnumerable<RpcWorkerConfig>>(), It.IsAny<SystemEnvironment>(), It.IsAny<bool>()))
+                .Returns(Task.FromResult(new Collection<FunctionMetadata>().ToImmutableArray()));
+            mockFunctionMetadataProvider.Setup(m => m.FunctionErrors)
+                .Returns(new Dictionary<string, ICollection<string>>().ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray()));
+
+            var mockFunctionProvider = new Mock<IFunctionProvider>();
+            mockFunctionProvider.Setup(m => m.GetFunctionMetadataAsync()).ReturnsAsync(functionMetadataCollection1.ToImmutableArray());
+
+            var mockFunctionProvider2 = new Mock<IFunctionProvider>();
+            mockFunctionProvider2.Setup(m => m.GetFunctionMetadataAsync()).ReturnsAsync(functionMetadataCollection2.ToImmutableArray());
+
+            var testLoggerProvider = new TestLoggerProvider();
+            var loggerFactory = new LoggerFactory();
+            loggerFactory.AddProvider(testLoggerProvider);
+
+            FunctionMetadataManager testFunctionMetadataManager = TestFunctionMetadataManager.GetFunctionMetadataManager(
+                new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions),
+                mockFunctionMetadataProvider.Object,
+                new List<IFunctionProvider>() { mockFunctionProvider.Object, mockFunctionProvider2.Object },
+                new OptionsWrapper<HttpWorkerOptions>(_defaultHttpWorkerOptions),
+                loggerFactory,
+                new TestOptionsMonitor<LanguageWorkerOptions>(TestHelpers.GetTestLanguageWorkerOptions()));
+
+            var actualFunctionMetadata = testFunctionMetadataManager.LoadFunctionMetadata();
+
+            var traces = testLoggerProvider.GetAllLogMessages();
+            Assert.Equal(expectedTotalFunctionsCount, actualFunctionMetadata.Length);
+            Assert.Single(traces.Where(t => t.FormattedMessage.Contains("Reading functions metadata (Custom)")));
+            Assert.Single(traces.Where(t => t.FormattedMessage.Contains($"{expectedTotalFunctionsCount} functions found (Custom)")));
+        }
+
+        [Fact]
         public void FunctionMetadataManager_GetsMetadata_FromFunctionProviders()
         {
             var functionMetadataCollection = new Collection<FunctionMetadata>();
