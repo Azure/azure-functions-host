@@ -17,3 +17,7 @@
 - Fixed an issue leading to a race when invocation responses returned prior to HTTP requests being sent in proxied scenarios.
 - Language worker channels will not be started during placeholder mode if we are in-process (#10161)
 - Ordered invocations are now the default (#10201)
+<<<<<<< python/4.29.0
+=======
+- Fixed incorrect function count in the log message.(#10220)
+>>>>>>> dev
