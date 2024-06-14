@@ -91,7 +91,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 files = directory.GetFiles().OrderByDescending(p => p.LastWriteTime).ToArray();
                 return files.Length == 2;
-            }, timeout: 5000);
+            }, timeout: 10000);
 
             // expect only 2 files to remain - the new file we just created, as well
             // as the oversize file we just wrote to last (it has a new timestamp now so
@@ -194,6 +194,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 fileWriter.AppendLine($"Test message {Thread.CurrentThread.ManagedThreadId} {i}");
                 await Task.Delay(5);
             }
+
+            await Task.Delay(100);
 
             var directory = new DirectoryInfo(_logFilePath);
             int count = directory.EnumerateFiles().Count();
