@@ -8,6 +8,7 @@
     ".NETCoreApp,Version=v8.0": {
       "Microsoft.Azure.WebJobs.Script.WebHost/4.1033.6": {
         "dependencies": {
+          "Azure.Data.Tables": "12.8.3",
           "Azure.Identity": "1.11.4",
           "Azure.Security.KeyVault.Secrets": "4.2.0",
           "Microsoft.ApplicationInsights": "2.22.0",
@@ -73,6 +74,18 @@
           "lib/net6.0/Azure.Core.dll": {
             "assemblyVersion": "1.38.0.0",
             "fileVersion": "1.3800.24.12602"
+          }
+        }
+      },
+      "Azure.Data.Tables/12.8.3": {
+        "dependencies": {
+          "Azure.Core": "1.38.0",
+          "System.Text.Json": "8.0.1"
+        },
+        "runtime": {
+          "lib/netstandard2.0/Azure.Data.Tables.dll": {
+            "assemblyVersion": "12.8.3.0",
+            "fileVersion": "12.800.324.10602"
           }
         }
       },
@@ -3224,6 +3237,13 @@
       "sha512": "sha512-IuEgCoVA0ef7E4pQtpC3+TkPbzaoQfa77HlfJDmfuaJUCVJmn7fT0izamZiryW5sYUFKizsftIxMkXKbgIcPMQ==",
       "path": "azure.core/1.38.0",
       "hashPath": "azure.core.1.38.0.nupkg.sha512"
+    },
+    "Azure.Data.Tables/12.8.3": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-2wAUXLS1ebTnV+qm9qc1z1MZIPC3as2WJt9bEgL08oC1wlT5UhaW78PlYgTld89p/YWCawJycHtBwVx+SWIuLw==",
+      "path": "azure.data.tables/12.8.3",
+      "hashPath": "azure.data.tables.12.8.3.nupkg.sha512"
     },
     "Azure.Identity/1.11.4": {
       "type": "package",
