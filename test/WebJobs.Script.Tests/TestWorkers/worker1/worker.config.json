@@ -1,0 +1,7 @@
+﻿{
+  "description": {
+    "language": "foo",
+    "defaultExecutablePath": "%FUNCTIONS_WORKER_DIRECTORY%/1.bat",
+    "defaultWorkerPath": "1.bat"
+  }
+}
