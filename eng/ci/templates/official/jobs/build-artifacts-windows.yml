@@ -52,7 +52,7 @@ jobs:
       TargetFolder: $(Build.ArtifactStagingDirectory)
 
   - task: PowerShell@2
-    displayName: Build artifacts (net 6)
+    displayName: Build artifacts (.NET 6)
     inputs:
       filePath: build/build-extensions.ps1
       arguments: '-buildNumber "$(buildNumber)" -suffix "$(suffix)" -minorVersionPrefix "6"'
@@ -64,7 +64,7 @@ jobs:
       TargetFolder: $(Build.ArtifactStagingDirectory)
 
   - task: PowerShell@2
-    displayName: Build artifacts (net 8)
+    displayName: Build artifacts (.NET 8)
     inputs:
       filePath: build/build-extensions.ps1
       arguments: '-buildNumber "$(buildNumber)" -suffix "$(suffix)" -minorVersionPrefix "8"'
