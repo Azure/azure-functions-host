@@ -45,6 +45,18 @@ jobs:
       filePath: build/build-extensions.ps1
       arguments: '-buildNumber "$(buildNumber)" -suffix "$(suffix)"'
 
+  - task: PowerShell@2
+    displayName: Build artifacts (net 6)
+    inputs:
+      filePath: build/build-extensions.ps1
+      arguments: '-buildNumber "$(buildNumber)" -suffix "$(suffix)" -minorVersionPrefix "6"'
+
+  - task: PowerShell@2
+    displayName: Build artifacts (net 8)
+    inputs:
+      filePath: build/build-extensions.ps1
+      arguments: '-buildNumber "$(buildNumber)" -suffix "$(suffix)" -minorVersionPrefix "8"'
+
   - task: CopyFiles@2
     inputs:
       SourceFolder: out/pub/WebJobs.Script.WebHost
