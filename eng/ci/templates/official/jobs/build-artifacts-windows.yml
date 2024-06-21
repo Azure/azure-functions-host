@@ -45,11 +45,23 @@ jobs:
       filePath: build/build-extensions.ps1
       arguments: '-buildNumber "$(buildNumber)" -suffix "$(suffix)"'
 
+  - task: CopyFiles@2
+    inputs:
+      SourceFolder: out/pub/WebJobs.Script.WebHost
+      Contents: '**/*.zip'
+      TargetFolder: $(Build.ArtifactStagingDirectory)
+
   - task: PowerShell@2
     displayName: Build artifacts (net 6)
     inputs:
       filePath: build/build-extensions.ps1
       arguments: '-buildNumber "$(buildNumber)" -suffix "$(suffix)" -minorVersionPrefix "6"'
+
+  - task: CopyFiles@2
+    inputs:
+      SourceFolder: out/pub/WebJobs.Script.WebHost
+      Contents: '**/*.zip'
+      TargetFolder: $(Build.ArtifactStagingDirectory)
 
   - task: PowerShell@2
     displayName: Build artifacts (net 8)
