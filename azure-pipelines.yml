@@ -49,9 +49,6 @@ jobs:
     buildNumberSuffix: $[variables.buildNumberSuffixTemp]
     packSuffixSwitch: $[variables.packSuffixSwitchTemp]
     emgSuffixSwitch: $[variables.emgSuffixSwitchTemp]
-    majorVersion: $[dependencies.InitializePipeline.outputs['Initialize.MajorVersion']]
-    minorVersion: $[dependencies.InitializePipeline.outputs['Initialize.MinorVersion']]
-    patchVersion: $[dependencies.InitializePipeline.outputs['Initialize.PatchVersion']]
   pool:
     name: '1ES-Hosted-AzFunc'
     demands:
@@ -68,7 +65,7 @@ jobs:
     displayName: "Build artifacts"
     inputs:
       filePath: '$(Build.Repository.LocalPath)\build\build-extensions.ps1'
-      arguments: '-buildNumber "$(buildNumberSuffix)" -majorMinorVersion "$(majorVersion).$(minorVersion)" -patchVersion "$(patchVersion)" -suffix "$(suffix)" -commitHash "$(Build.SourceVersion)"'
+      arguments: '-buildNumber "$(buildNumberSuffix)" -suffix "$(suffix)" -commitHash "$(Build.SourceVersion)"'
   - task: PowerShell@2
     condition: eq(variables['RUNBUILDFORINTEGRATIONTESTS'], 'True')
     displayName: "Update host references"

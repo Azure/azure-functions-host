@@ -29,9 +29,6 @@ jobs:
       buildNumberSuffixTemp: $(buildNumber)
     suffix: $[variables.suffixTemp] # this resolves to an empty string if it is missing
     buildNumberSuffix: $[variables.buildNumberSuffixTemp]
-    majorVersion: $[dependencies.InitializePipeline.outputs['Initialize.MajorVersion']]
-    minorVersion: $[dependencies.InitializePipeline.outputs['Initialize.MinorVersion']]
-    patchVersion: $[dependencies.InitializePipeline.outputs['Initialize.PatchVersion']]
 
   steps:
   - template: /eng/ci/templates/install-dotnet.yml@self
@@ -40,7 +37,7 @@ jobs:
     displayName: Build artifacts
     inputs:
       filePath: build/build-extensions.ps1
-      arguments: '-buildNumber "$(buildNumberSuffix)" -majorMinorVersion "$(majorVersion).$(minorVersion)" -patchVersion "$(patchVersion)" -suffix "$(suffix)" -commitHash "$(Build.SourceVersion)"'
+      arguments: '-buildNumber "$(buildNumberSuffix)" -suffix "$(suffix)" -commitHash "$(Build.SourceVersion)"'
 
   - task: CopyFiles@2
     inputs:

@@ -17,6 +17,7 @@
     <NoWarn>$(NoWarn);NU1701</NoWarn>
     <DebugType>embedded</DebugType>
     <Deterministic>True</Deterministic>
+    <NugetAudit>false</NugetAudit>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(UseSourceLink)' == 'true'">
@@ -26,9 +27,9 @@
   <PropertyGroup>
     <!--
       NOTE: source link does not actually work for v3.x in 1ES as the git remote url is Azure DevOps, not GitHub.
-      However, we do not release public nuget packages from this branch anymore.
+      However, we do not release public nuget packages from this branch anymore so it is not even used.
     -->
-    <!-- <UseSourceLink Condition="$(UseSourceLink) == '' And $(CI) != ''">true</UseSourceLink> -->
+    <UseSourceLink Condition="$(UseSourceLink) == '' And $(CI) != ''">true</UseSourceLink>
   </PropertyGroup>
 
   <Target Name="GenerateSourceLink" BeforeTargets="CoreCompile" Condition="'$(UseSourceLink)' == 'true'">
