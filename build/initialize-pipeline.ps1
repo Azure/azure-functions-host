@@ -28,7 +28,7 @@ Write-Host "##vso[task.setvariable variable=PatchVersion;isOutput=true]$($versio
 Write-Host "Setting 'PatchVersion' to $($version.Patch)"
 
 #Update buildnumber with the same (Will be used by release pipelines)
-$customBuildNumber = "$majorVersion.$minorVersion.$patchVersion"
+$customBuildNumber = "$($version.Major).$($version.Minor).$($version.Patch)"
 if(($buildReason -eq "PullRequest") -or !($sourceBranch.ToLower().Contains("release")))
 {
   $customBuildNumber = "$customBuildNumber-$buildNumber"
