@@ -97,7 +97,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
         [Theory]
         [InlineData("")]
-        [InlineData(ScriptConstants.FlexConsumptionSku)]
         [InlineData(ScriptConstants.ElasticPremiumSku)]
         public void Configure_AppliesLongerDedicatedTimeoutDefault_ForExpectedSkus(string sku)
         {
@@ -200,7 +199,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
         [Theory]
         [InlineData(ScriptConstants.ElasticPremiumSku)]
-        [InlineData(ScriptConstants.FlexConsumptionSku)]
         [InlineData("")]
         public void Configure_NoMaxTimeoutLimits_ForSomeSkus(string sku)
         {
@@ -219,7 +217,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
         [Theory]
         [InlineData(ScriptConstants.ElasticPremiumSku)]
-        [InlineData(ScriptConstants.FlexConsumptionSku)]
         [InlineData("")]
         public void Configure_AppliesInfiniteTimeout_ForSomeSkus(string sku)
         {

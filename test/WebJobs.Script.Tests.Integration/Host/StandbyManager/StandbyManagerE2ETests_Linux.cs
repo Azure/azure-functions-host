@@ -58,7 +58,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var environment = new TestEnvironment(vars);
 
             Assert.True(environment.IsLinuxConsumptionOnAtlas());
-            Assert.False(environment.IsFlexConsumptionSku());
             Assert.True(environment.IsAnyLinuxConsumption());
 
             await InitializeTestHostAsync("Linux", environment);
@@ -183,7 +182,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var environment = new TestEnvironment(vars);
 
             Assert.True(environment.IsLinuxConsumptionOnAtlas());
-            Assert.False(environment.IsFlexConsumptionSku());
             Assert.True(environment.IsAnyLinuxConsumption());
 
             await InitializeTestHostAsync("Linux", environment);

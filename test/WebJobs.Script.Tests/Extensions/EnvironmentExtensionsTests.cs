@@ -156,12 +156,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         }
 
         [Theory]
-        [InlineData(true, false, false, true)]
-        [InlineData(false, false, true, true)]
-        [InlineData(false, true, false, true)]
-        [InlineData(false, false, false, false)]
-        [InlineData(true, true, false, true)]
-        public void IsConsumptionSku_ReturnsExpectedResult(bool isLinuxConsumption, bool isWindowsConsumption, bool isFlexConsumption, bool expectedValue)
+        [InlineData(true, false, true)]
+        [InlineData(false, true, true)]
+        [InlineData(false, false, false)]
+        [InlineData(true, true, true)]
+        public void IsConsumptionSku_ReturnsExpectedResult(bool isLinuxConsumption, bool isWindowsConsumption, bool expectedValue)
         {
             IEnvironment env = new TestEnvironment();
             if (isLinuxConsumption)
@@ -174,31 +173,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
                 env.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, ScriptConstants.DynamicSku);
             }
 
-            if (isFlexConsumption)
-            {
-                env.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, ScriptConstants.FlexConsumptionSku);
-            }
-
             Assert.Equal(expectedValue, env.IsConsumptionSku());
-        }
-
-        [Theory]
-        [InlineData("FlexConsumption", "", "", "", true)] // not a valid configuration, but testing for thoroughness
-        [InlineData(null, "", "container-name", "1", true)] // simulate placeholder mode where SKU not available yet
-        [InlineData("FlexConsumption", "", "container-name", "1", true)] // expected state when specialized
-        [InlineData(null, "website-instance-id", "container-name", "1", false)] // not a valid configuration, but testing for thoroughness
-        [InlineData("Dynamic", "", "", "", false)]
-        [InlineData("ElasticPremium", "", "", "", false)]
-        [InlineData("", "", "", "", false)]
-        public void IsFlexConsumptionSku_ReturnsExpectedResult(string sku, string websiteInstanceId, string containerName, string legionServiceHost, bool expected)
-        {
-            IEnvironment env = new TestEnvironment();
-            env.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, sku);
-            env.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId, websiteInstanceId);
-            env.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, containerName);
-            env.SetEnvironmentVariable(EnvironmentSettingNames.LegionServiceHost, legionServiceHost);
-
-            Assert.Equal(expected, env.IsFlexConsumptionSku());
         }
 
         [Theory]

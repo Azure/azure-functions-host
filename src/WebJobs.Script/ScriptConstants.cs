@@ -116,7 +116,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string XIdentityHeader = "X-IDENTITY-HEADER";
         public const string ContainerInstanceHeader = "fx-current-instance";
         public const string DynamicSku = "Dynamic";
-        public const string FlexConsumptionSku = "FlexConsumption";
         public const string ElasticPremiumSku = "ElasticPremium";
         public const string DefaultProductionSlotName = "production";
 

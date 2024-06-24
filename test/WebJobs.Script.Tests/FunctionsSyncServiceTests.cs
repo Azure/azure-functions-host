@@ -112,17 +112,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
-        [InlineData(true, true, false, true, true, true, false, false)] // in standby
         [InlineData(true, true, false, false, true, true, false, false)] // in standby
-        [InlineData(true, true, false, true, true, false, false, false)] // in standby
-        [InlineData(true, true, false, false, true, false, true, false)] // in standby
-        [InlineData(true, true, false, true, false, true, false, true)]
+        [InlineData(true, true, false, false, true, false, false, false)] // in standby
+        [InlineData(true, true, false, true, true, false, true, false)] // in standby
         [InlineData(true, true, false, false, false, true, false, true)]
-        [InlineData(false, true, true, true, false, false, false, false)] // container not ready
         [InlineData(false, true, true, false, false, false, false, false)] // container not ready
-        [InlineData(false, true, true, true, false, true, false, true)]
         [InlineData(false, true, true, false, false, true, false, true)]
-        [InlineData(false, false, true, true, false, true, false, false)] // no encryption key
         [InlineData(false, false, true, false, false, true, false, false)] // no encryption key
         // note: normally linux dedicated would have AzureWebsiteInstanceId set.
         // However the test will always catch it as Windows because it checks the OS of the running process.
@@ -134,15 +129,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             _mockWebHostEnvironment.SetupGet(p => p.InStandbyMode).Returns(standbyMode);
 
-            if (isConsumptionLinuxOnLegion)
-            {
-                _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku)).Returns(ScriptConstants.FlexConsumptionSku);
-            }
-            else
-            {
-                _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku)).Returns(ScriptConstants.DynamicSku);
-            }
-
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku)).Returns(ScriptConstants.DynamicSku);
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId)).Returns(isAppService ? "1" : null);
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey)).Returns(hasEncryptionKey ? "1" : null);
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.ContainerName)).Returns(isConsumptionLinuxOnAtlas || isConsumptionLinuxOnLegion ? "1" : null);

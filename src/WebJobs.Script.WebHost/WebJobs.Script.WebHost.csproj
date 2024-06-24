@@ -64,7 +64,7 @@
 
   <ItemGroup>
     <PackageReference Include="Azure.Data.Tables" Version="12.8.3" />
-    <PackageReference Include="Azure.Identity" Version="1.11.2" />
+    <PackageReference Include="Azure.Identity" Version="1.11.4" />
     <PackageReference Include="Azure.Security.KeyVault.Secrets" Version="4.2.0" />
     <PackageReference Include="Microsoft.ApplicationInsights" Version="2.22.0" />
     <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.21.0" />
@@ -139,10 +139,12 @@
     </EmbeddedResource>
   </ItemGroup>
 
+  <ItemGroup Condition="'$(Configuration)' != 'DebugPlaceholder' And '$(Configuration)' != 'ReleasePlaceholder'">
+    <Compile Remove="Middleware\SpecializationSimulatorMiddleware.cs" />
+  </ItemGroup>
+
   <ItemGroup>
-    <Content Update="web.config">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
+    <Content Update="web.config" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <!-- Remove all worker items from the ReadyToRun publish list -->
@@ -163,7 +165,24 @@
     </CreateItem>
   </Target>
 
-  <ItemGroup Condition="'$(Configuration)' != 'DebugPlaceholder' And '$(Configuration)' != 'ReleasePlaceholder'">
-    <Compile Remove="Middleware\SpecializationSimulatorMiddleware.cs" />
-  </ItemGroup>
+
+  <!--
+    Allows for zipping publish outputs:
+    Zip with a pre-determined name/location:
+    > `dotnet publish -p:PublishZip=true`
+    Zip with a pre-determined name to the provided location
+    > `dotnet publish -p:PublishZipDir={some directory}`
+    Zip with a provided name and location
+    > `dotnet publish -p:PublishZipTarget={some directory}/{some_file}.zip`
+  -->
+  <Target Name="ZipPublishContents" AfterTargets="Publish">
+    <PropertyGroup Condition="'$(PublishZipTarget)' == ''">
+      <PublishZipDir Condition="'$(PublishZipDir)' == '' AND '$(PublishZip)' == 'true'">$(PublishDir)..</PublishZipDir>
+      <PublishZipTarget Condition="'$(PublishZipDir)' != ''">$(PublishZipDir)\$(AssemblyName).$(Version).$(ArtifactsPivots).zip</PublishZipTarget>
+    </PropertyGroup>
+
+    <MakeDir Directories="$([System.IO.Path]::GetDirectoryName('$(PublishZipTarget)'))" Condition="'$(PublishZipTarget)' != ''" />
+    <ZipDirectory SourceDirectory="$(PublishDir)" DestinationFile="$(PublishZipTarget)" Condition="'$(PublishZipTarget)' != ''" />
+  </Target>
+
 </Project>

@@ -278,7 +278,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             Assert.True(traces.Length == expectedCount, $"Expected {expectedCount} messages, but found {traces.Length}. Actual logs:{Environment.NewLine}{string.Join(Environment.NewLine, traces.Select(t => t.Message))}");
 
             int idx = 0;
-            ValidateTrace(traces[idx++], "1 functions found", LogCategories.Startup);
+            ValidateTrace(traces[idx++], "0 functions found", LogCategories.Startup);
             ValidateTrace(traces[idx++], "2 functions loaded", LogCategories.Startup);
             ValidateTrace(traces[idx++], "A function allow list has been specified", LogCategories.Startup);
             ValidateTrace(traces[idx++], "Found the following functions:\r\n", LogCategories.Startup);
