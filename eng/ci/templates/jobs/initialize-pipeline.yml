@@ -8,5 +8,6 @@ jobs:
       name: Initialize
       inputs:
         filePath: build/initialize-pipeline.ps1
+        arguments: -buildNumber $(buildNumber)
         showWarnings: true
         pwsh: true
