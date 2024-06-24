@@ -1,0 +1,49 @@
+jobs:
+- job: BuildArtifactsWindows
+  displayName: Build Windows Artifacts
+
+  templateContext:
+    outputParentDirectory: $(Build.ArtifactStagingDirectory)
+    outputs:
+    - output: pipelineArtifact
+      displayName: Publish site extension
+      path: $(Build.ArtifactStagingDirectory)/SiteExtension
+      artifact: SiteExtension
+    - output: pipelineArtifact
+      displayName: Publish private site extension
+      path: $(Build.ArtifactStagingDirectory)/PrivateSiteExtension
+      artifact: PrivateSiteExtension
+    - output: pipelineArtifact
+      displayName: Publish site extension symbols
+      path: $(Build.ArtifactStagingDirectory)/Symbols
+      artifact: Symbols
+
+  pool:
+    name: 1es-pool-azfunc
+    image: 1es-windows-2022 
+    os: windows
+
+  variables:
+    ${{ if or( eq( variables['Build.Reason'], 'PullRequest' ), and( not( contains( variables['Build.SourceBranch'], 'release/3.0' ) ), not( contains( variables['Build.SourceBranch'], 'release/ExtensionsMetadataGenerator/' ) ) ) ) }}:
+      suffixTemp: ci
+      buildNumberSuffixTemp: $(buildNumber)
+    suffix: $[variables.suffixTemp] # this resolves to an empty string if it is missing
+    buildNumberSuffix: $[variables.buildNumberSuffixTemp]
+    majorVersion: $[dependencies.InitializePipeline.outputs['Initialize.MajorVersion']]
+    minorVersion: $[dependencies.InitializePipeline.outputs['Initialize.MinorVersion']]
+    patchVersion: $[dependencies.InitializePipeline.outputs['Initialize.PatchVersion']]
+
+  steps:
+  - template: /eng/ci/templates/install-dotnet.yml@self
+
+  - task: PowerShell@2
+    displayName: Build artifacts
+    inputs:
+      filePath: build/build-extensions.ps1
+      arguments: '-buildNumber "$(buildNumberSuffix)" -majorMinorVersion "$(majorVersion).$(minorVersion)" -patchVersion "$(patchVersion)" -suffix "$(suffix)" -commitHash "$(Build.SourceVersion)"'
+
+  - task: CopyFiles@2
+    inputs:
+      SourceFolder: '$(Build.Repository.LocalPath)\buildoutput'
+      Contents: '**\*.zip'
+      TargetFolder: '$(Build.ArtifactStagingDirectory)'

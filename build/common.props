@@ -16,14 +16,21 @@
     <CodeAnalysisRuleSet>$(MSBuildThisFileDirectory)..\src.ruleset</CodeAnalysisRuleSet>
     <NoWarn>$(NoWarn);NU1701</NoWarn>
     <DebugType>embedded</DebugType>
-    <UseSourceLink Condition="$(UseSourceLink) == '' And $(CI) != ''">true</UseSourceLink>
-	<Deterministic>True</Deterministic>
+    <Deterministic>True</Deterministic>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(UseSourceLink)' == 'true'">
     <SourceLink>$(BaseIntermediateOutputPath)source_link.json</SourceLink>
   </PropertyGroup>
-  
+
+  <PropertyGroup>
+    <!--
+      NOTE: source link does not actually work for v3.x in 1ES as the git remote url is Azure DevOps, not GitHub.
+      However, we do not release public nuget packages from this branch anymore.
+    -->
+    <!-- <UseSourceLink Condition="$(UseSourceLink) == '' And $(CI) != ''">true</UseSourceLink> -->
+  </PropertyGroup>
+
   <Target Name="GenerateSourceLink" BeforeTargets="CoreCompile" Condition="'$(UseSourceLink)' == 'true'">
     <PropertyGroup>
       <SrcRootDirectory>$([System.IO.Directory]::GetParent($(MSBuildThisFileDirectory.TrimEnd("\"))))</SrcRootDirectory>
