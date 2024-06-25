@@ -1,6 +1,18 @@
 steps:
 
 - task: UseDotNet@2
+  displayName: Install .NET Core 2.1 runtime (tests)
+  inputs:
+    packageType: runtime
+    version: 2.1.x
+
+- task: UseDotNet@2
+  displayName: Install .NET Core 3.1
+  inputs:
+    packageType: 'sdk'
+    version: '3.1.x'
+
+- task: UseDotNet@2
   displayName: Install .NET 8
   inputs:
     packageType: sdk
