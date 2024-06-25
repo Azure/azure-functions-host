@@ -188,6 +188,50 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public void FunctionMetadataManager_HandlesTimeoutsGracefully_WhenFunctionProvidersDoNotRespond()
+        {
+            var functionMetadataCollection = new Collection<FunctionMetadata>();
+            var mockFunctionErrors = new Dictionary<string, ImmutableArray<string>>();
+            var mockFunctionMetadataProvider = new Mock<IFunctionMetadataProvider>();
+            var badFunctionMetadataProvider = new Mock<IFunctionProvider>();
+            var goodFunctionMetadataProvider = new Mock<IFunctionProvider>();
+            var workerConfigs = TestHelpers.GetTestWorkerConfigs();
+            var testLoggerProvider = new TestLoggerProvider();
+            var loggerFactory = new LoggerFactory();
+            loggerFactory.AddProvider(testLoggerProvider);
+
+            mockFunctionMetadataProvider.Setup(m => m.GetFunctionMetadataAsync(workerConfigs, SystemEnvironment.Instance, false)).Returns(Task.FromResult(new Collection<FunctionMetadata>().ToImmutableArray()));
+            mockFunctionMetadataProvider.Setup(m => m.FunctionErrors).Returns(new Dictionary<string, ICollection<string>>().ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray()));
+
+            // A good provider that returns 2 functions
+            functionMetadataCollection.Add(GetTestFunctionMetadata("somefile.dll", name: "Function1"));
+            functionMetadataCollection.Add(GetTestFunctionMetadata("somefile.dll", name: "Function2"));
+            goodFunctionMetadataProvider.Setup(m => m.GetFunctionMetadataAsync()).ReturnsAsync(functionMetadataCollection.ToImmutableArray());
+
+            // A bad provider that will never return anything.
+            var tcs = new TaskCompletionSource<ImmutableArray<FunctionMetadata>>();
+            badFunctionMetadataProvider.Setup(m => m.GetFunctionMetadataAsync()).Returns(tcs.Task);
+
+            FunctionMetadataManager testFunctionMetadataManager = TestFunctionMetadataManager.GetFunctionMetadataManager(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions),
+                mockFunctionMetadataProvider.Object, new List<IFunctionProvider>() { goodFunctionMetadataProvider.Object, badFunctionMetadataProvider.Object }, new OptionsWrapper<HttpWorkerOptions>(_defaultHttpWorkerOptions), loggerFactory, new TestOptionsMonitor<LanguageWorkerOptions>(TestHelpers.GetTestLanguageWorkerOptions()));
+
+            // Set the timeout to 1 second for the test.
+            SystemEnvironment.Instance.SetEnvironmentVariable(EnvironmentSettingNames.MetadataProviderTimeoutInSeconds, "1");
+
+            // Run LoadFunctionMetadata in a separate Task to avoid blocking the test thread
+            var loadFunctionMetadataTask = Task.Run(() => testFunctionMetadataManager.LoadFunctionMetadata());
+
+            // wait couple of seconds.
+            loadFunctionMetadataTask.Wait(TimeSpan.FromSeconds(3));
+            var traces = testLoggerProvider.GetAllLogMessages();
+            Assert.Equal(1, traces.Count(t => t.FormattedMessage.Contains("Reading functions metadata (Custom)")));
+            // We should see log entry for the good provider.
+            Assert.Contains(traces, t => t.FormattedMessage.Contains("2 functions found (Custom)"));
+            // We should see an error log entry for the bad provider.
+            Assert.Contains(traces, t => t.FormattedMessage.Contains($"Timeout or failure in retrieving metadata from '{badFunctionMetadataProvider.Object.GetType().FullName}'"));
+        }
+
+        [Fact]
         public void FunctionMetadataManager_GetsMetadata_FromFunctionProviders()
         {
             var functionMetadataCollection = new Collection<FunctionMetadata>();

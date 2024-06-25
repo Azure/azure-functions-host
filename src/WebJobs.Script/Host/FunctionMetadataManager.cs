@@ -21,8 +21,9 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public class FunctionMetadataManager : IFunctionMetadataManager
     {
-        private const string _functionConfigurationErrorMessage = "Unable to determine the primary function script.Make sure atleast one script file is present.Try renaming your entry point script to 'run' or alternatively you can specify the name of the entry point script explicitly by adding a 'scriptFile' property to your function metadata.";
-        private const string _metadataProviderName = "Custom";
+        private const string FunctionConfigurationErrorMessage = "Unable to determine the primary function script.Make sure atleast one script file is present.Try renaming your entry point script to 'run' or alternatively you can specify the name of the entry point script explicitly by adding a 'scriptFile' property to your function metadata.";
+        private const string MetadataProviderName = "Custom";
+        private const int DefaultMetadataProviderTimeoutInSeconds = 30;
         private readonly IServiceProvider _serviceProvider;
         private IFunctionMetadataProvider _functionMetadataProvider;
         private bool _isHttpWorker;
@@ -79,7 +80,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         /// <param name="forceRefresh">Forces reload from all providers.</param>
         /// <param name="applyAllowList">Apply functions allow list filter.</param>
-        /// <param name="includeCustomProviders">Include any metadata provided by IFunctionProvider when loading the metadata</param>
+        /// <param name="includeCustomProviders">Include any metadata provided by IFunctionProvider when loading the metadata.</param>
         /// <returns> An Immutable array of FunctionMetadata.</returns>
         public ImmutableArray<FunctionMetadata> GetFunctionMetadata(bool forceRefresh, bool applyAllowList = true, bool includeCustomProviders = true, IList<RpcWorkerConfig> workerConfigs = null)
         {
@@ -188,7 +189,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 if (string.IsNullOrEmpty(functionMetadata.ScriptFile) && !_isHttpWorker && !functionMetadata.IsProxy() && _servicesReset)
                 {
-                    throw new FunctionConfigurationException(_functionConfigurationErrorMessage);
+                    throw new FunctionConfigurationException(FunctionConfigurationErrorMessage);
                 }
             }
             catch (FunctionConfigurationException exc)
@@ -214,12 +215,41 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private void AddMetadataFromCustomProviders(IEnumerable<IFunctionProvider> functionProviders, List<FunctionMetadata> functionMetadataList)
         {
-            _logger.ReadingFunctionMetadataFromProvider(_metadataProviderName);
+            _logger.ReadingFunctionMetadataFromProvider(MetadataProviderName);
 
             var functionProviderTasks = new List<Task<ImmutableArray<FunctionMetadata>>>();
+
+            if (!int.TryParse(_environment.GetEnvironmentVariable(EnvironmentSettingNames.MetadataProviderTimeoutInSeconds), out int metadataProviderTimeoutInSeconds))
+            {
+                metadataProviderTimeoutInSeconds = DefaultMetadataProviderTimeoutInSeconds;
+            }
+
             foreach (var functionProvider in functionProviders)
             {
-                functionProviderTasks.Add(functionProvider.GetFunctionMetadataAsync());
+                var getFunctionMetadataFromProviderTask = functionProvider.GetFunctionMetadataAsync();
+                Task delayTask = Task.Delay(TimeSpan.FromSeconds(metadataProviderTimeoutInSeconds));
+
+                var completedTask = Task.WhenAny(getFunctionMetadataFromProviderTask, delayTask).ContinueWith(t =>
+                {
+                    if (t.Result == getFunctionMetadataFromProviderTask)
+                    {
+                        if (getFunctionMetadataFromProviderTask.IsFaulted)
+                        {
+                            // Task completed but with an error
+                            _logger.LogWarning($"Failure in retrieving metadata from '{functionProvider.GetType().FullName}': {getFunctionMetadataFromProviderTask.Exception?.Flatten().ToString()}");
+                            return ImmutableArray<FunctionMetadata>.Empty;
+                        }
+                        else if (getFunctionMetadataFromProviderTask.IsCompletedSuccessfully)
+                        {
+                            return getFunctionMetadataFromProviderTask.Result;
+                        }
+                    }
+                    // Timeout case. getFunctionMetadataFromProviderTask was not the one that completed
+                    _logger.LogWarning($"Timeout or failure in retrieving metadata from '{functionProvider.GetType().FullName}'.");
+                    return ImmutableArray<FunctionMetadata>.Empty;
+                });
+
+                functionProviderTasks.Add(completedTask);
             }
 
             var providerFunctionMetadataResults = Task.WhenAll(functionProviderTasks).GetAwaiter().GetResult();
@@ -228,7 +258,7 @@ namespace Microsoft.Azure.WebJobs.Script
             // This is used to make sure no duplicates are registered
             var distinctFunctionNames = new HashSet<string>(functionMetadataList.Select(m => m.Name));
 
-            _logger.FunctionsReturnedByProvider(totalFunctionsCount, _metadataProviderName);
+            _logger.FunctionsReturnedByProvider(totalFunctionsCount, MetadataProviderName);
 
             foreach (var metadataArray in providerFunctionMetadataResults)
             {
