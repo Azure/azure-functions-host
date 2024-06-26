@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -32,6 +33,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
     public class SecretManagerTests
     {
         private const int TestSentinelWatcherInitializationDelayMS = 50;
+
+        [SuppressMessage("Microsoft.Security", "CS002:SecretInNextLine", Justification="Fake key for testing purposes.")]
         private const string TestEncryptionKey = "/a/vXvWJ3Hzgx4PFxlDUJJhQm5QVyGiu0NNLFm/ZMMg=";
         private readonly HostNameProvider _hostNameProvider;
         private readonly TestEnvironment _testEnvironment;
@@ -724,7 +727,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
         [Fact]
         public async Task SetMasterKey_WithProvidedKey_UsesProvidedKeyAndPersistsFile()
         {
-            string testSecret = "abcde0123456789abcde0123456789abcde0123456789";
+            string testSecret = "PLACEHOLDER";
             using (var directory = new TempDirectory())
             {
                 KeyOperationResult result;

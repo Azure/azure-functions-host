@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -20,6 +21,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
 {
     public class MeshServiceClientTests
     {
+        [SuppressMessage("Microsoft.Security", "CS002:SecretInNextLine", Justification = "Fake key for testing purposes.")]
+        private const string ConnectionString = "DefaultEndpointsProtocol=https;AccountName=storageaccount;AccountKey=whXtW6WP8QTh84TT5wdjgzeFTj7Vc1aOiCVjTXohpE+jALoKOQ9nlQpj5C5zpgseVJxEVbaAhptP5j5DpaLgtA==";
+
         private const string MeshInitUri = "http://localhost:8954/";
         private const string ContainerName = "MockContainerName";
         private readonly IMeshServiceClient _meshServiceClient;
@@ -79,10 +83,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                 StatusCode = HttpStatusCode.OK
             });
 
-            var connectionString =
-                "DefaultEndpointsProtocol=https;AccountName=storageaccount;AccountKey=whXtW6WP8QTh84TT5wdjgzeFTj7Vc1aOiCVjTXohpE+jALoKOQ9nlQpj5C5zpgseVJxEVbaAhptP5j5DpaLgtA==";
+            
 
-            await _meshServiceClient.MountCifs(connectionString, "sharename", "/data");
+            await _meshServiceClient.MountCifs(ConnectionString, "sharename", "/data");
 
             await Task.Delay(500);
 
