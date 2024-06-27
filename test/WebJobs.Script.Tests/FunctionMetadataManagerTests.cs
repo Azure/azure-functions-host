@@ -216,7 +216,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 mockFunctionMetadataProvider.Object, new List<IFunctionProvider>() { goodFunctionMetadataProvider.Object, badFunctionMetadataProvider.Object }, new OptionsWrapper<HttpWorkerOptions>(_defaultHttpWorkerOptions), loggerFactory, new TestOptionsMonitor<LanguageWorkerOptions>(TestHelpers.GetTestLanguageWorkerOptions()));
 
             // Set the timeout to 1 second for the test.
-            SystemEnvironment.Instance.SetEnvironmentVariable(EnvironmentSettingNames.MetadataProviderTimeoutInSeconds, "1");
+            testFunctionMetadataManager.MetadataProviderTimeoutInSeconds = 1;
 
             // Run LoadFunctionMetadata in a separate Task to avoid blocking the test thread
             var loadFunctionMetadataTask = Task.Run(() => testFunctionMetadataManager.LoadFunctionMetadata());

@@ -57,6 +57,8 @@ namespace Microsoft.Azure.WebJobs.Script
             };
         }
 
+        internal int MetadataProviderTimeoutInSeconds { get; set; } = DefaultMetadataProviderTimeoutInSeconds;
+
         public ImmutableDictionary<string, ImmutableArray<string>> Errors { get; private set; }
 
         public bool TryGetFunctionMetadata(string functionName, out FunctionMetadata functionMetadata, bool forceRefresh)
@@ -219,15 +221,10 @@ namespace Microsoft.Azure.WebJobs.Script
 
             var functionProviderTasks = new List<Task<ImmutableArray<FunctionMetadata>>>();
 
-            if (!int.TryParse(_environment.GetEnvironmentVariable(EnvironmentSettingNames.MetadataProviderTimeoutInSeconds), out int metadataProviderTimeoutInSeconds))
-            {
-                metadataProviderTimeoutInSeconds = DefaultMetadataProviderTimeoutInSeconds;
-            }
-
             foreach (var functionProvider in functionProviders)
             {
                 var getFunctionMetadataFromProviderTask = functionProvider.GetFunctionMetadataAsync();
-                Task delayTask = Task.Delay(TimeSpan.FromSeconds(metadataProviderTimeoutInSeconds));
+                var delayTask = Task.Delay(TimeSpan.FromSeconds(MetadataProviderTimeoutInSeconds));
 
                 var completedTask = Task.WhenAny(getFunctionMetadataFromProviderTask, delayTask).ContinueWith(t =>
                 {
