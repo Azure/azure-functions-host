@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Azure.WebJobs.Rpc.Core.Internal;
@@ -26,6 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private readonly object _lock = new();
         private readonly List<EndpointDataSource> _dataSources = new();
         private readonly IScriptHostManager _scriptHostManager;
+        private readonly TaskCompletionSource _initialized = new();
 
         private IServiceProvider _extensionServices;
         private List<Endpoint> _endpoints;
@@ -191,6 +193,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                         .GetService<IEnumerable<WebJobsRpcEndpointDataSource>>()
                         ?? Enumerable.Empty<WebJobsRpcEndpointDataSource>();
                     _dataSources.AddRange(sources);
+                    _initialized.TrySetResult(); // signal we have first initialized.
                 }
                 else
                 {
@@ -299,6 +302,16 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             if (_disposed)
             {
                 throw new ObjectDisposedException(nameof(ExtensionsCompositeEndpointDataSource));
+            }
+        }
+
+        public sealed class EnsureInitializedMiddleware(RequestDelegate next)
+        {
+            public async Task Invoke(HttpContext context)
+            {
+                ExtensionsCompositeEndpointDataSource source = context.RequestServices.GetRequiredService<ExtensionsCompositeEndpointDataSource>();
+                await source._initialized.Task;
+                await next(context);
             }
         }
     }

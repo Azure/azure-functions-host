@@ -17,3 +17,4 @@
 - Ordered invocations are now the default (#10201)
 - Skip worker description if none of the profile conditions are met (#9932)
 - Fixed incorrect function count in the log message.(#10220)
+- Fix race condition on startup with extension RPC endpoints not being available. (#10255)
