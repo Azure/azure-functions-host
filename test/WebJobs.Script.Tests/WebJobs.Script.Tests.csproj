@@ -75,6 +75,7 @@
     <None Update="Description\DotNet\TestFiles\**" CopyToOutputDirectory="PreserveNewest" />
     <None Update="TestFixture\HostOptionsProviderTests\*.json" CopyToOutputDirectory="PreserveNewest" />
     <None Update="Workers\Rpc\Resources\**" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="TestWorkers\**" CopyToOutputDirectory="PreserveNewest" />
     <None Update="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
     <None Update="DepsFiles\$(TargetFramework)\Microsoft.Azure.WebJobs.Script.WebHost.deps.json"
           CopyToOutputDirectory="Always"

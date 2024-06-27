@@ -151,6 +151,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     // Validate workerDescription
                     workerDescription.ApplyDefaultsAndValidate(Directory.GetCurrentDirectory(), _logger);
 
+                    if (workerDescription.IsDisabled == true)
+                    {
+                        _logger.LogInformation("Skipping WorkerConfig for stack: {language} since it is disabled.", workerDescription.Language);
+                        return;
+                    }
+
                     if (ShouldAddWorkerConfig(workerDescription.Language))
                     {
                         workerDescription.FormatWorkerPathIfNeeded(_systemRuntimeInformation, _environment, _logger);
