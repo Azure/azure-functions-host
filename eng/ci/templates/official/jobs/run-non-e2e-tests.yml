@@ -77,10 +77,8 @@ jobs:
       ConnectionStrings__CosmosDB: $(CosmosDB)
       AzureWebJobsEventHubSender: $(EventHub)
       AzureWebJobsEventHubReceiver: $(EventHub)
-      AzureWebJobsSecretStorageKeyVaultUri: $(KeyVaultUri)
-      AzureWebJobsSecretStorageKeyVaultTenantId: $(AzureTenantId)
-      AzureWebJobsSecretStorageKeyVaultClientId: $(AzureClientId)
-      AzureWebJobsSecretStorageKeyVaultClientSecret: $(AzureClientSecret)
+      AzureWebJobsSecretStorageKeyVaultConnectionString: $(KeyVaultConnectionString)
+      AzureWebJobsSecretStorageKeyVaultName: $(KeyVaultName)
 
   - task: PowerShell@2
     condition: always()
