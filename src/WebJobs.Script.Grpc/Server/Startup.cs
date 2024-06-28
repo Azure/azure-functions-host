@@ -16,6 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddSingleton<ExtensionsCompositeEndpointDataSource>();
+            services.AddSingleton<ExtensionsCompositeEndpointDataSource.EnsureInitializedMiddleware>();
             services.AddGrpc(options =>
             {
                 options.MaxReceiveMessageSize = MaxMessageLengthBytes;

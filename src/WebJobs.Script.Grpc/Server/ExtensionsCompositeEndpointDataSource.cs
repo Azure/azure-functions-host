@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Azure.WebJobs.Rpc.Core.Internal;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
 
 namespace Microsoft.Azure.WebJobs.Script.Grpc
@@ -305,12 +306,46 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
         }
 
-        public sealed class EnsureInitializedMiddleware(RequestDelegate next)
+        /// <summary>
+        /// Middleware to ensure <see cref="ExtensionsCompositeEndpointDataSource"/> is initialized before routing for the first time.
+        /// Must be registered as a singleton service.
+        /// </summary>
+        /// <param name="dataSource">The <see cref="ExtensionsCompositeEndpointDataSource"/> to ensure is initialized.</param>
+        /// <param name="logger">The logger.</param>
+        public sealed class EnsureInitializedMiddleware(ExtensionsCompositeEndpointDataSource dataSource, ILogger<EnsureInitializedMiddleware> logger) : IMiddleware
         {
-            public async Task Invoke(HttpContext context)
+            private TaskCompletionSource _initialized = new();
+            private bool _firstRun = true;
+
+            // used for testing to verify initialization success.
+            internal Task Initialized => _initialized.Task;
+
+            // settable only for testing purposes.
+            internal TimeSpan Timeout { get; init; } = TimeSpan.FromSeconds(2);
+
+            public Task InvokeAsync(HttpContext context, RequestDelegate next)
             {
-                ExtensionsCompositeEndpointDataSource source = context.RequestServices.GetRequiredService<ExtensionsCompositeEndpointDataSource>();
-                await source._initialized.Task;
+                return _firstRun ? InvokeCoreAsync(context, next) : next(context);
+            }
+
+            private async Task InvokeCoreAsync(HttpContext context, RequestDelegate next)
+            {
+                try
+                {
+                    await dataSource._initialized.Task.WaitAsync(Timeout);
+                }
+                catch (TimeoutException ex)
+                {
+                    // In case of deadlock we don't want to block all gRPC requests.
+                    // Log an error and continue.
+                    logger.LogError(ex, "Error initializing extension endpoints.");
+                    _initialized.TrySetException(ex);
+                }
+
+                // Even in case of timeout we don't want to continually test for initialization on subsequent requests.
+                // That would be a serious performance degredation.
+                _firstRun = false;
+                _initialized.TrySetResult();
                 await next(context);
             }
         }
