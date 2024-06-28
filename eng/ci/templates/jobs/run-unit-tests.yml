@@ -2,15 +2,32 @@ jobs:
 - job: RunUnitTests
   displayName: Run Unit Tests
 
+  variables:
+  - name: test_projects
+    value: '**\WebJobs.Script.Tests.csproj'
+
   steps:
   - template: /eng/ci/templates/install-dotnet.yml@self
+
+  - task: DotNetCoreCLI@2
+    displayName: Restore
+    inputs:
+      command: custom
+      custom: restore
+      arguments: -v m
+      projects: $(test_projects)
+
+  - task: DotNetCoreCLI@2
+    displayName: Build
+    inputs:
+      command: build
+      arguments: -v m -c release --no-restore
+      projects: $(test_projects)
 
   - task: DotNetCoreCLI@2
     displayName: Unit Tests
     inputs:
       command: test
       testRunTitle: Unit Tests
-      arguments: -v n
-      projects: |
-        **\WebJobs.Script.Scaling.Tests.csproj
-        **\WebJobs.Script.Tests.csproj
+      arguments: -v m --no-build -c release
+      projects: $(test_projects)
