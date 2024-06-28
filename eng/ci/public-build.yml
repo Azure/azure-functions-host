@@ -52,7 +52,7 @@ extends:
 
     settings:
       # PR's from forks do not have sufficient permissions to set tags.
-      skipBuildTagsForGitHubPullRequests: ${{ eq(variables['System.PullReqest.IsFork'], 'true') }}
+      skipBuildTagsForGitHubPullRequests: ${{ variables['System.PullReqest.IsFork'] }}
 
     stages:
     - stage: Test
