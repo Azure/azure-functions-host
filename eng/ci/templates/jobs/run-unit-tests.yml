@@ -3,10 +3,10 @@ jobs:
   displayName: Run Unit Tests
 
   variables:
-    - name: test_projects
-      value: |
-        **\ExtensionsMetadataGeneratorTests.csproj
-        **\WebJobs.Script.Tests.csproj
+  - name: test_projects
+    value: |
+      **\ExtensionsMetadataGeneratorTests.csproj
+      **\WebJobs.Script.Tests.csproj
 
   steps:
   - template: /eng/ci/templates/install-dotnet.yml@self
