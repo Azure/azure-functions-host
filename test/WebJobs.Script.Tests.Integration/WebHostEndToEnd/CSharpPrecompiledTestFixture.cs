@@ -6,7 +6,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
 {
     public class CSharpPrecompiledEndToEndTestFixture : EndToEndTestFixture
     {
+#if DEBUG
         private const string TestPathTemplate = "..\\..\\{0}\\debug";
+#elif RELEASE
+        private const string TestPathTemplate = "..\\..\\{0}\\release";
+#endif
+
         private readonly IDisposable _dispose;
 
         public CSharpPrecompiledEndToEndTestFixture(string testProjectName, IDictionary<string, string> envVars = null, string functionWorkerRuntime = "dotnet")
