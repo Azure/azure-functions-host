@@ -6,7 +6,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
 {
     public class CSharpPrecompiledEndToEndTestFixture : EndToEndTestFixture
     {
-        private const string TestPathTemplate = "..\\..\\{0}\\{{1}}";
+        private const string TestPathTemplate = "..\\..\\{0}\\{1}";
 
         private readonly IDisposable _dispose;
 
