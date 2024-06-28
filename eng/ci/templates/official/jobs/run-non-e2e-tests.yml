@@ -8,7 +8,7 @@ jobs:
     os: windows
 
   variables:
-    IntegrationProject: test/WebJobs.Script.Tests.Integration/WebJobs.Script.Tests.Integration.csproj
+    test_projects: test/WebJobs.Script.Tests.Integration/WebJobs.Script.Tests.Integration.csproj
 
   steps:
   - template: /eng/ci/templates/install-dotnet.yml@self
@@ -50,18 +50,27 @@ jobs:
       secretsFilter: '*'
 
   - task: DotNetCoreCLI@2
-    displayName: Build Integration.csproj
+    displayName: Restore
+    inputs:
+      command: custom
+      custom: restore
+      arguments: -v m
+      projects: $(test_projects)
+
+  - task: DotNetCoreCLI@2
+    displayName: Build
     inputs:
       command: build
-      projects: $(IntegrationProject)
+      arguments: -v m -c release --no-restore
+      projects: $(test_projects)
 
   - task: DotNetCoreCLI@2
     displayName: Non-E2E integration tests
     inputs:
       command: test
       testRunTitle: Non-E2E integration tests
-      arguments: '--filter "Category!=E2E"'
-      projects: $(IntegrationProject)
+      arguments: '--filter "Category!=E2E" -c release --no-build'
+      projects: $(test_projects)
     env:
       AzureWebJobsStorage: $(Storage)
       AzureWebJobsSecondaryStorage: $(SecondaryStorage)
