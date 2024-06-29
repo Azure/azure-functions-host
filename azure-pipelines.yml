@@ -84,7 +84,7 @@ jobs:
     inputs:
       command: 'custom'
       custom: 'pack'
-      arguments: '-p:BuildNumber=$(buildNumber) -c Release $(packSuffixSwitch) -p:MinorVersionPrefix="$(minorVersionPrefix)"'
+      arguments: '-p:BuildNumber=$(buildNumber) -c Release $(packSuffixSwitch)' # Do not pass any version prefix for the nuget package creation.
       projects: |
         **\WebJobs.Script.csproj
         **\WebJobs.Script.WebHost.csproj
