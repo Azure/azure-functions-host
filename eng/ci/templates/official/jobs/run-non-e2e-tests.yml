@@ -79,6 +79,7 @@ jobs:
       AzureWebJobsEventHubReceiver: $(EventHub)
       AzureWebJobsSecretStorageKeyVaultConnectionString: $(KeyVaultConnectionString)
       AzureWebJobsSecretStorageKeyVaultName: $(KeyVaultName)
+      AzureWebJobsEventHubPath: testhub
 
   - task: PowerShell@2
     condition: always()
