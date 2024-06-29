@@ -63,6 +63,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             if (string.IsNullOrWhiteSpace(builder.EntityPath))
             {
                 string eventHubPath = ScriptSettingsManager.Instance.GetSetting("AzureWebJobsEventHubPath");
+                if (string.IsNullOrEmpty(eventHubPath))
+                {
+                    eventHubPath = "testhub";
+                }
+
                 builder.EntityPath = eventHubPath;
             }
 
