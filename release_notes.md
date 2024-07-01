@@ -17,4 +17,4 @@
 - Ordered invocations are now the default (#10201)
 - Skip worker description if none of the profile conditions are met (#9932)
 - Fixed incorrect function count in the log message.(#10220)
-- Adding a timeout to `GetFunctionMetadataAsync` to prevent deadlocks (#10219)
+- Adding a timeout when retrieving function metadata from metadata providers (#10219)

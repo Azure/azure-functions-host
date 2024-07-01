@@ -229,22 +229,13 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 var completedTask = Task.WhenAny(getFunctionMetadataFromProviderTask, delayTask).ContinueWith(t =>
                 {
-                    if (t.Result == getFunctionMetadataFromProviderTask)
+                    if (t.Result == getFunctionMetadataFromProviderTask && getFunctionMetadataFromProviderTask.IsCompletedSuccessfully)
                     {
-                        if (getFunctionMetadataFromProviderTask.IsFaulted)
-                        {
-                            // Task completed but with an error
-                            _logger.LogWarning($"Failure in retrieving metadata from '{functionProvider.GetType().FullName}': {getFunctionMetadataFromProviderTask.Exception?.Flatten().ToString()}");
-                            return ImmutableArray<FunctionMetadata>.Empty;
-                        }
-                        else if (getFunctionMetadataFromProviderTask.IsCompletedSuccessfully)
-                        {
-                            return getFunctionMetadataFromProviderTask.Result;
-                        }
+                        return getFunctionMetadataFromProviderTask.Result;
                     }
-                    // Timeout case. getFunctionMetadataFromProviderTask was not the one that completed
-                    _logger.LogWarning($"Timeout or failure in retrieving metadata from '{functionProvider.GetType().FullName}'.");
-                    return ImmutableArray<FunctionMetadata>.Empty;
+
+                    // Timeout case.
+                    throw new TimeoutException($"Timeout occurred while retrieving metadata from provider '{functionProvider.GetType().FullName}'. The operation exceeded the configured timeout of {MetadataProviderTimeoutInSeconds} seconds.");
                 });
 
                 functionProviderTasks.Add(completedTask);
