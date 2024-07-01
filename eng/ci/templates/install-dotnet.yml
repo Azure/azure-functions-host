@@ -11,7 +11,6 @@ steps:
   inputs:
     packageType: 'sdk'
     version: '3.1.x'
-    installationPath: 'C:\Program Files\dotnet' # essential for tests
 
 - task: UseDotNet@2
   displayName: Install .NET 8
