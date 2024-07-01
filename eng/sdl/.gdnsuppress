@@ -1,0 +1,65 @@
+{
+  "hydrated": false,
+  "version": "1.0.0",
+  "suppressionSets": {
+    "default": {
+      "name": "default",
+      "createdDate": "2024-07-01 19:36:04Z",
+      "lastUpdatedDate": "2024-07-01 19:36:04Z"
+    }
+  },
+  "results": {
+    "f1e5ee29e845d190153e848d09bb89833962f9c6f66780d1e78538457442729e": {
+      "signature": "f1e5ee29e845d190153e848d09bb89833962f9c6f66780d1e78538457442729e",
+      "alternativeSignatures": [
+        "77837171ff1c48bab672e310c4c9a32ccb21e692ca895b2ca6e1bcde7a1abd9a"
+      ],
+      "target": "out/bin/WebJobs.Script/release/workers/dotnet-isolated/bin/FunctionsNetHost.exe",
+      "memberOf": [
+        "default"
+      ],
+      "tool": "binskim",
+      "ruleId": "BA2008",
+      "createdDate": "2024-07-01 19:36:04Z"
+    },
+    "073837647d84d1a96c3bf6e4030c6be939b84ea13fa989374285acb5c9a3239c": {
+      "signature": "073837647d84d1a96c3bf6e4030c6be939b84ea13fa989374285acb5c9a3239c",
+      "alternativeSignatures": [
+        "b5d61f7c79519a106dead18e5db7686344b80a9d0f16f6e22be8880ebc17a89a"
+      ],
+      "target": "out/bin/WebJobs.Script.Grpc/release/workers/dotnet-isolated/bin/FunctionsNetHost.exe",
+      "memberOf": [
+        "default"
+      ],
+      "tool": "binskim",
+      "ruleId": "BA2008",
+      "createdDate": "2024-07-01 19:36:04Z"
+    },
+    "c82e50a25e624db5140ff636d33bbbc6396bc41724f35e1e2e2a3a4c3be7b6d8": {
+      "signature": "c82e50a25e624db5140ff636d33bbbc6396bc41724f35e1e2e2a3a4c3be7b6d8",
+      "alternativeSignatures": [
+        "53a01cb91737f8b90c6e0cc3377dac6116da5c8243873a7c9cdec73856689114"
+      ],
+      "target": "out/bin/WebJobs.Script.Tests.Integration/release/workers/dotnet-isolated/bin/FunctionsNetHost.exe",
+      "memberOf": [
+        "default"
+      ],
+      "tool": "binskim",
+      "ruleId": "BA2008",
+      "createdDate": "2024-07-01 19:36:04Z"
+    },
+    "b368ec157fee48c5a06dcf06d7e810d9dfd7d57f0ba1aa28154e5819c6720640": {
+      "signature": "b368ec157fee48c5a06dcf06d7e810d9dfd7d57f0ba1aa28154e5819c6720640",
+      "alternativeSignatures": [
+        "f05bf31dfdfbf61385a64b1d1f6a0afb79da831809ac23dda0985922185bcd6a"
+      ],
+      "target": "out/bin/WebJobs.Script.WebHost/release/workers/dotnet-isolated/bin/FunctionsNetHost.exe",
+      "memberOf": [
+        "default"
+      ],
+      "tool": "binskim",
+      "ruleId": "BA2008",
+      "createdDate": "2024-07-01 19:36:04Z"
+    }
+  }
+}

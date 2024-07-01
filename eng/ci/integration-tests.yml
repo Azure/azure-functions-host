@@ -31,6 +31,10 @@ extends:
       image: 1es-windows-2022
       os: windows
 
+    sdl:
+      suppression:
+        suppressionFile: /eng/sdl/.gdnsuppress
+
     stages:
     - stage: Test
       jobs:
