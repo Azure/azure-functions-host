@@ -1,11 +1,13 @@
 param (
   [string]$buildNumber,
-  [string]$majorMinorVersion,
-  [string]$patchVersion,
   [string]$suffix = "",
   [string]$commitHash = "N/A",
   [string]$hashesForHardlinksFile = "hashesForHardlinks.txt"
 )
+
+$version = & $PSScriptRoot\Get-AzureFunctionsVersion.ps1
+$majorMinorVersion = "$($version.Major).$($version.Minor)"
+$patchVersion = $version.Patch
 
 $extensionVersion = "$majorMinorVersion.$patchVersion"
 Write-Host "ExtensionVersion is $extensionVersion"

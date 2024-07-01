@@ -1,0 +1,18 @@
+trigger:
+  branches:
+    include:
+    - v3.x
+    - release/3.*
+
+resources:
+  repositories:
+  - repository: eng
+    type: git
+    name: engineering
+    ref: refs/tags/release
+
+variables:
+  - template: ci/variables/cfs.yml@eng
+
+extends:
+  template: ci/code-mirror.yml@eng
