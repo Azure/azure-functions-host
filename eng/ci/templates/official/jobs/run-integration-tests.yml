@@ -11,17 +11,6 @@ jobs:
     test_projects: test/WebJobs.Script.Tests.Integration/WebJobs.Script.Tests.Integration.csproj
     is_release: $[contains(variables['Build.SourceBranch'], 'release/')]
     test_args: -c release --no-build
-    log_dir: $(Build.ArtifactStagingDirectory)/log
-
-  templateContext:
-    outputParentDirectory: $(Build.ArtifactStagingDirectory)
-    outputs:
-    - output: pipelineArtifact
-      displayName: Publish logs
-      path: $(log_dir)
-      artifact: Integration_Test_Log
-      sbomEnabled: false
-      condition: always()
 
   steps:
   - template: /eng/ci/templates/install-dotnet.yml@self
@@ -96,14 +85,14 @@ jobs:
     inputs:
       command: custom
       custom: restore
-      arguments: -v m -bl:$(log_dir)/restore.binlog
+      arguments: -v m
       projects: $(test_projects)
 
   - task: DotNetCoreCLI@2
     displayName: Build
     inputs:
       command: build
-      arguments: -v m -c release --no-restore -bl:$(log_dir)/build.binlog
+      arguments: -v m -c release --no-restore
       projects: $(test_projects)
 
   - task: DotNetCoreCLI@2

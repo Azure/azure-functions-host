@@ -7,18 +7,6 @@ jobs:
     value: |
       **\ExtensionsMetadataGeneratorTests.csproj
       **\WebJobs.Script.Tests.csproj
-  - name: log_dir
-    value: $(Build.ArtifactStagingDirectory)/log
-
-  templateContext:
-    outputParentDirectory: $(Build.ArtifactStagingDirectory)
-    outputs:
-    - output: pipelineArtifact
-      displayName: Publish logs
-      path: $(log_dir)
-      artifact: Unit_Test_Log
-      sbomEnabled: false
-      condition: always()
 
   steps:
   - template: /eng/ci/templates/install-dotnet.yml@self
@@ -28,14 +16,14 @@ jobs:
     inputs:
       command: custom
       custom: restore
-      arguments: -v m -bl:$(log_dir)/restore.binlog
+      arguments: -v m
       projects: $(test_projects)
 
   - task: DotNetCoreCLI@2
     displayName: Build
     inputs:
       command: build
-      arguments: -v m -c release --no-restore -bl:$(log_dir)/build.binlog
+      arguments: -v m -c release --no-restore
       projects: $(test_projects)
 
   - task: DotNetCoreCLI@2
