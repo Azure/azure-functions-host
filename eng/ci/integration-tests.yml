@@ -33,7 +33,7 @@ extends:
 
     sdl:
       suppression:
-        suppressionFile: /eng/sdl/.gdnsuppress
+        suppressionFile: $(Build.SourcesDirectory)/eng/sdl/.gdnsuppress
 
     stages:
     - stage: Test
