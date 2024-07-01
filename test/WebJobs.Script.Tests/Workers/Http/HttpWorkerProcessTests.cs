@@ -122,7 +122,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Http
 
         [Theory]
         [InlineData("AccountKey=abcde==", true)]
-        [InlineData("xyz", false)]
+        [InlineData("teststring", false)]
         public async Task StartProcess_VerifySanitizedCredentialLogging(string input, bool isSecret)
         {
             try
