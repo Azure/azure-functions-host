@@ -92,6 +92,7 @@ jobs:
       AzureWebJobsSecretStorageKeyVaultTenantId: $(AzureTenantId)
       AzureWebJobsSecretStorageKeyVaultClientId: $(AzureClientId)
       AzureWebJobsSecretStorageKeyVaultClientSecret: $(AzureClientSecret)
+      AzureWebJobsEventHubPath: testhub
 
   - task: PowerShell@2
     condition: always()
