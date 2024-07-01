@@ -119,5 +119,47 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Http
             var testLogs = _testLogger.GetLogMessages();
             Assert.Contains("File path does not exist, not assigning permissions", testLogs[0].FormattedMessage);
         }
+
+        [Theory]
+        [InlineData("AccountKey=abcde==", true)]
+        [InlineData("xyz", false)]
+        public async Task StartProcess_VerifySanitizedCredentialLogging(string input, bool isSecret)
+        {
+            try
+            {
+                _httpWorkerOptions.Arguments.WorkerArguments.Add(input);
+
+                File.Create(_executablePath).Dispose();
+                TestEnvironment testEnvironment = new TestEnvironment();
+                testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, "TestContainer");
+                var mockHttpWorkerProcess = new HttpWorkerProcess(_testWorkerId, _rootScriptPath, _httpWorkerOptions, _mockEventManager.Object, _defaultWorkerProcessFactory, _processRegistry, _testLogger, _languageWorkerConsoleLogSource.Object, testEnvironment, new TestMetricsLogger(), _serviceProviderMock.Object, new LoggerFactory());
+
+                try
+                {
+                    await mockHttpWorkerProcess.StartProcessAsync();
+                }
+                catch
+                {
+                    // expected to throw. Just verifying a log statement occurred before then.
+                }
+
+                // Verify
+                var testLogs = _testLogger.GetLogMessages();
+
+                if (isSecret)
+                {
+                    Assert.DoesNotContain(input, testLogs[1].FormattedMessage);
+                    Assert.Contains($"Arguments: [Hidden Credential]", testLogs[1].FormattedMessage);
+                }
+                else
+                {
+                    Assert.Contains($"Arguments: {input}", testLogs[1].FormattedMessage);
+                }
+            }
+            finally
+            {
+                File.Delete(_executablePath);
+            }
+        }
     }
 }
