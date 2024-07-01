@@ -12,6 +12,10 @@
       "resolutionPolicy": "private"
     },
     {
+      "name": "Azure.Data.Tables",
+      "resolutionPolicy": "private"
+    },
+    {
       "name": "Azure.Identity",
       "resolutionPolicy": "private"
     },
