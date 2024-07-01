@@ -1,0 +1,13 @@
+jobs:
+  - job: InitializePipeline
+    displayName: Initialize Pipeline
+
+    steps:
+    - task: PowerShell@2
+      displayName: 'Initialize'
+      name: Initialize
+      inputs:
+        filePath: build/initialize-pipeline.ps1
+        arguments: -buildNumber $(buildNumber)
+        showWarnings: true
+        pwsh: true

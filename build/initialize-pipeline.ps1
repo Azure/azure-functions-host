@@ -17,29 +17,21 @@ if ($buildReason -eq "PullRequest") {
 }
 
 # Get major, minor and patchVersions
-[xml]$XMLContents = [xml](Get-Content -Path ".\build\common.props")
-$XMLContents.GetElementsByTagName("MajorVersion") |  ForEach-Object {
-  $majorVersion = $_.InnerText
-  Write-Host "##vso[task.setvariable variable=MajorVersion;isOutput=true]$majorVersion"
-  Write-Host "Setting 'MajorVersion' to $majorVersion"
-}
+$version = & $PSScriptRoot\Get-AzureFunctionsVersion.ps1
+Write-Host "##vso[task.setvariable variable=MajorVersion;isOutput=true]$($version.Major)"
+Write-Host "Setting 'MajorVersion' to $($version.Major)"
 
-$XMLContents.GetElementsByTagName("MinorVersion") |  ForEach-Object {
-  $minorVersion = $_.InnerText
-  Write-Host "##vso[task.setvariable variable=MinorVersion;isOutput=true]$minorVersion"
-  Write-Host "Setting 'MinorVersion' to $minorVersion"
-}
+Write-Host "##vso[task.setvariable variable=MinorVersion;isOutput=true]$($version.Minor)"
+Write-Host "Setting 'MinorVersion' to $($version.Minor)"
 
-$XMLContents.GetElementsByTagName("PatchVersion") |  ForEach-Object {
-  $patchVersion = $_.InnerText
-  Write-Host "##vso[task.setvariable variable=PatchVersion;isOutput=true]$patchVersion"
-  Write-Host "Setting 'PatchVersion' to $patchVersion"
-}
+Write-Host "##vso[task.setvariable variable=PatchVersion;isOutput=true]$($version.Patch)"
+Write-Host "Setting 'PatchVersion' to $($version.Patch)"
 
 #Update buildnumber with the same (Will be used by release pipelines)
-$customBuildNumber = "$majorVersion.$minorVersion.$patchVersion"
+$customBuildNumber = "$($version.Major).$($version.Minor).$($version.Patch)"
 if(($buildReason -eq "PullRequest") -or !($sourceBranch.ToLower().Contains("release")))
 {
   $customBuildNumber = "$customBuildNumber-$buildNumber"
 }
+
 Write-Host "##vso[build.updatebuildnumber]$customBuildNumber"

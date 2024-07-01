@@ -1,0 +1,54 @@
+trigger:
+  batch: true
+  branches:
+    include:
+    - v3.x
+    - release/3.*
+
+# CI only, does not trigger on PRs.
+pr: none
+
+resources:
+  repositories:
+  - repository: 1es
+    type: git
+    name: 1ESPipelineTemplates/1ESPipelineTemplates
+    ref: refs/tags/release
+  - repository: eng
+    type: git
+    name: engineering
+    ref: refs/tags/release
+
+variables:
+  - template: /eng/ci/templates/variables/build.yml@self
+  - template: /ci/variables/cfs.yml@eng
+  - name: buildNumber
+    value: $[ counter('build', 23000) ] # 23000 selected to be ahead of current host build
+
+extends:
+  template: v1/1ES.Official.PipelineTemplate.yml@1es
+  parameters:
+    pool:
+      name: 1es-pool-azfunc
+      image: 1es-windows-2022
+      os: windows
+
+    stages:
+    - stage: Initialize
+
+      jobs:
+      - template: /eng/ci/templates/jobs/initialize-pipeline.yml@self
+
+    - stage: Build
+      dependsOn: Initialize
+
+      jobs:
+      - template: /eng/ci/templates/official/jobs/build-artifacts-windows.yml@self
+
+    - stage: Test
+      dependsOn: Initialize
+
+      jobs:
+      - template: /eng/ci/templates/jobs/run-unit-tests.yml@self
+      - template: /eng/ci/templates/official/jobs/run-non-e2e-tests.yml@self
+      - template: /eng/ci/templates/official/jobs/run-integration-tests.yml@self

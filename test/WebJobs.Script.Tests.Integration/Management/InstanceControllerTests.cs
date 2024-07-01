@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Net.Http;
 using System.Threading;
@@ -27,6 +28,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
     [Trait(TestTraits.Group, TestTraits.ContainerInstanceTests)]
     public class InstanceControllerTests
     {
+        [SuppressMessage("Microsoft.Security", "CS002:SecretInNextLine", Justification = "Fake key for testing purposes.")]
+        private const string ContainerEncryptionKey = "/a/vXvWJ3Hzgx4PFxlDUJJhQm5QVyGiu0NNLFm/ZMMg=";
+
         private readonly TestOptionsFactory<ScriptApplicationHostOptions> _optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions());
         private readonly Mock<IRunFromPackageHandler> _runFromPackageHandler;
 
@@ -69,7 +73,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var instanceController = new InstanceController(environment, instanceManager, loggerFactory, startupContextProvider);
 
-            const string containerEncryptionKey = "/a/vXvWJ3Hzgx4PFxlDUJJhQm5QVyGiu0NNLFm/ZMMg=";
             var hostAssignmentContext = new HostAssignmentContext
             {
                 Environment = new Dictionary<string, string>(),
@@ -79,14 +82,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             hostAssignmentContext.Environment[EnvironmentSettingNames.MsiEndpoint] = "http://localhost:8081";
             hostAssignmentContext.Environment[EnvironmentSettingNames.MsiSecret] = "secret";
 
-            var encryptedHostAssignmentValue = SimpleWebTokenHelper.Encrypt(JsonConvert.SerializeObject(hostAssignmentContext), containerEncryptionKey.ToKeyBytes());
+            var encryptedHostAssignmentValue = SimpleWebTokenHelper.Encrypt(JsonConvert.SerializeObject(hostAssignmentContext), ContainerEncryptionKey.ToKeyBytes());
 
             var encryptedHostAssignmentContext = new EncryptedHostAssignmentContext()
             {
                 EncryptedContext = encryptedHostAssignmentValue
             };
 
-            environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerEncryptionKey, containerEncryptionKey);
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerEncryptionKey, ContainerEncryptionKey);
 
             IActionResult result = await instanceController.Assign(encryptedHostAssignmentContext);
 
@@ -145,7 +148,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var instanceController = new InstanceController(environment, instanceManager, loggerFactory, startupContextProvider);
 
-            const string containerEncryptionKey = "/a/vXvWJ3Hzgx4PFxlDUJJhQm5QVyGiu0NNLFm/ZMMg=";
             var hostAssignmentContext = new HostAssignmentContext
             {
                 Environment = new Dictionary<string, string>()
@@ -156,14 +158,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             hostAssignmentContext.Secrets = new FunctionAppSecrets();
             hostAssignmentContext.IsWarmupRequest = false; // non-warmup Request
 
-            var encryptedHostAssignmentValue = SimpleWebTokenHelper.Encrypt(JsonConvert.SerializeObject(hostAssignmentContext), containerEncryptionKey.ToKeyBytes());
+            var encryptedHostAssignmentValue = SimpleWebTokenHelper.Encrypt(JsonConvert.SerializeObject(hostAssignmentContext), ContainerEncryptionKey.ToKeyBytes());
 
             var encryptedHostAssignmentContext = new EncryptedHostAssignmentContext()
             {
                 EncryptedContext = encryptedHostAssignmentValue
             };
 
-            environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerEncryptionKey, containerEncryptionKey);
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerEncryptionKey, ContainerEncryptionKey);
 
             await instanceController.Assign(encryptedHostAssignmentContext);
             Assert.NotNull(startupContextProvider.Context);
@@ -199,7 +201,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var instanceController = new InstanceController(environment, instanceManager, loggerFactory, startupContextProvider);
 
-            const string containerEncryptionKey = "/a/vXvWJ3Hzgx4PFxlDUJJhQm5QVyGiu0NNLFm/ZMMg=";
             var hostAssignmentContext = new HostAssignmentContext
             {
                 Environment = new Dictionary<string, string>()
@@ -210,14 +211,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             hostAssignmentContext.Secrets = new FunctionAppSecrets();
             hostAssignmentContext.IsWarmupRequest = true; // Warmup Request
 
-            var encryptedHostAssignmentValue = SimpleWebTokenHelper.Encrypt(JsonConvert.SerializeObject(hostAssignmentContext), containerEncryptionKey.ToKeyBytes());
+            var encryptedHostAssignmentValue = SimpleWebTokenHelper.Encrypt(JsonConvert.SerializeObject(hostAssignmentContext), ContainerEncryptionKey.ToKeyBytes());
 
             var encryptedHostAssignmentContext = new EncryptedHostAssignmentContext()
             {
                 EncryptedContext = encryptedHostAssignmentValue
             };
 
-            environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerEncryptionKey, containerEncryptionKey);
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerEncryptionKey, ContainerEncryptionKey);
 
             await instanceController.Assign(encryptedHostAssignmentContext);
             Assert.Null(startupContextProvider.Context);
@@ -243,7 +244,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var instanceController = new InstanceController(environment, instanceManager.Object, loggerFactory,
                 startupContextProvider);
 
-            const string containerEncryptionKey = "/a/vXvWJ3Hzgx4PFxlDUJJhQm5QVyGiu0NNLFm/ZMMg=";
             var hostAssignmentContext = new HostAssignmentContext
             {
                 Environment = new Dictionary<string, string>()
@@ -252,14 +252,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var encryptedHostAssignmentValue =
                 SimpleWebTokenHelper.Encrypt(JsonConvert.SerializeObject(hostAssignmentContext),
-                    containerEncryptionKey.ToKeyBytes());
+                    ContainerEncryptionKey.ToKeyBytes());
 
             var encryptedHostAssignmentContext = new EncryptedHostAssignmentContext()
             {
                 EncryptedContext = encryptedHostAssignmentValue
             };
 
-            environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerEncryptionKey, containerEncryptionKey);
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerEncryptionKey, ContainerEncryptionKey);
             
             await instanceController.Assign(encryptedHostAssignmentContext);
 

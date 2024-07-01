@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -19,6 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class StartupContextProviderTests
     {
+        [SuppressMessage("Microsoft.Security", "CS002:SecretInNextLine", Justification="Fake key for testing purposes.")]
         private const string TestEncryptionKey = "/a/vXvWJ3Hzgx4PFxlDUJJhQm5QVyGiu0NNLFm/ZMMg=";
 
         private readonly FunctionAppSecrets _secrets;
