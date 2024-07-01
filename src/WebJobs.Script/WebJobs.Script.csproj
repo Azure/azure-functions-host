@@ -49,7 +49,7 @@
     <PackageReference Include="Microsoft.ApplicationInsights.WindowsServer" Version="2.22.0" />
     <PackageReference Include="Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel" Version="2.22.0" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.WebApiCompatShim" Version="2.2.0" NoWarn="NU1701" />
-    <PackageReference Include="Microsoft.Azure.Functions.DotNetIsolatedNativeHost" Version="1.0.8" />
+    <PackageReference Include="Microsoft.Azure.Functions.DotNetIsolatedNativeHost" Version="1.0.9" />
     <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.41-11331" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Host.Storage" Version="5.0.0-beta.2-11957" />
     <PackageReference Include="Microsoft.Extensions.Azure" Version="1.7.0" />
