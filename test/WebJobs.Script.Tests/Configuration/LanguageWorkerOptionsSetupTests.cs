@@ -33,14 +33,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             }
             else
             {
-                // dotnet-isolated worker config requires placehoolder mode env variable to be set to 1.
+                // The dotnet-isolated worker only runs in placeholder mode. Setting the placeholder environment to 1 for the test.
                 testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
             }
 
             testProfileManager.Setup(pm => pm.LoadWorkerDescriptionFromProfiles(It.IsAny<RpcWorkerDescription>(), out It.Ref<RpcWorkerDescription>.IsAny))
                 .Callback((RpcWorkerDescription defaultDescription, out RpcWorkerDescription outDescription) =>
                 {
-                    // dotnet-isolated worker config does not have "DefaultExecutablePath" in the parent level.So we should set it from a profile.
+                    // dotnet-isolated worker config does not have "DefaultExecutablePath" in the parent level.So, we should set it from a profile.
                     if (defaultDescription.Language == "dotnet-isolated")
                     {
                         outDescription = new RpcWorkerDescription() { DefaultExecutablePath = "testPath", Language = "dotnet-isolated" };
