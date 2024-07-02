@@ -275,7 +275,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
                 !t.Message.Contains("Skipping WorkerConfig for language")
             ).ToArray();
 
-            int expectedCount = 16;
+            int expectedCount = 18;
             Assert.True(traces.Length == expectedCount, $"Expected {expectedCount} messages, but found {traces.Length}. Actual logs:{Environment.NewLine}{string.Join(Environment.NewLine, traces.Select(t => t.Message))}");
 
             int idx = 0;
@@ -295,6 +295,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             ValidateTrace(traces[idx++], "Job host started", LogCategories.Startup);
             ValidateTrace(traces[idx++], "Loading functions metadata", LogCategories.Startup);
             ValidateTrace(traces[idx++], "Reading functions metadata", LogCategories.Startup);
+
+            // The dotnet-isolated worker will not be loaded for this test as it is setup to run only in placeholder mode.
+            ValidateTrace(traces[idx++], "Skipping WorkerConfig for stack: dotnet-isolated since it is disabled.", LanguageWorkerConfigLogCategory);
+            // TO DO: Investigate why the message is logged twice. Tracking issue: https://github.com/Azure/azure-functions-host/issues/10268
+            ValidateTrace(traces[idx++], "Skipping WorkerConfig for stack: dotnet-isolated since it is disabled.", LanguageWorkerConfigLogCategory);
             ValidateTrace(traces[idx++], "Starting Host (HostId=", LogCategories.Startup);
         }
 
