@@ -26,7 +26,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
     public abstract class ApplicationInsightsEndToEndTestsBase<TTestFixture>
         : IClassFixture<TTestFixture> where TTestFixture : ApplicationInsightsTestFixture, new()
     {
-        private const string LanguageWorkerConfigLogCategory = "Host.LanguageWorkerConfig";
         private ApplicationInsightsTestFixture _fixture;
 
         public ApplicationInsightsEndToEndTestsBase(ApplicationInsightsTestFixture fixture)
@@ -276,7 +275,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             ).ToArray();
 
             int expectedCount = 16;
-
             Assert.True(traces.Length == expectedCount, $"Expected {expectedCount} messages, but found {traces.Length}. Actual logs:{Environment.NewLine}{string.Join(Environment.NewLine, traces.Select(t => t.Message))}");
 
             int idx = 0;
