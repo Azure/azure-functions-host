@@ -4,10 +4,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.Cosmos.Table;
+using Azure;
+using Azure.Data.Tables;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Script.WebHost.Helpers;
@@ -36,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly ILogger _logger;
         private readonly int _tableCreationRetries;
         private readonly IDelegatingHandlerProvider _delegatingHandlerProvider;
-        private CloudTableClient _tableClient;
+        private TableServiceClient _tableClient;
 
         public TableStorageScaleMetricsRepository(IConfiguration configuration, IHostIdProvider hostIdProvider, IOptions<ScaleOptions> scaleOptions, ILoggerFactory loggerFactory, IEnvironment environment)
             : this(configuration, hostIdProvider, scaleOptions, loggerFactory, DefaultTableCreationRetries, new DefaultDelegatingHandlerProvider(environment))
@@ -54,40 +56,38 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _delegatingHandlerProvider = delegatingHandlerProvider ?? throw new ArgumentNullException(nameof(delegatingHandlerProvider));
         }
 
-        internal CloudTableClient TableClient
+        internal TableServiceClient TableClient
         {
             get
             {
-                if (_tableClient == null)
+                if (_tableClient is null)
                 {
                     string storageConnectionString = _configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
-                    if (!string.IsNullOrEmpty(storageConnectionString) &&
-                        CloudStorageAccount.TryParse(storageConnectionString, out CloudStorageAccount account))
-                    {
-                        var restConfig = new RestExecutorConfiguration { DelegatingHandler = _delegatingHandlerProvider.Create() };
-                        var tableClientConfig = new TableClientConfiguration { RestExecutorConfiguration = restConfig };
 
-                        _tableClient = new CloudTableClient(account.TableStorageUri, account.Credentials, tableClientConfig);
-                    }
-                    else
+                    try
                     {
-                        _logger.LogError("Azure Storage connection string is empty or invalid. Unable to read/write scale metrics.");
+                        _tableClient = new TableServiceClient(storageConnectionString);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Azure Storage connection string is empty or invalid. Unable to read/write scale metrics.");
                     }
                 }
+
                 return _tableClient;
             }
         }
 
-        internal CloudTable GetMetricsTable(DateTime? now = null)
+        internal TableClient GetMetricsTable(DateTime? now = null)
         {
-            CloudTable table = null;
+            TableClient table = null;
 
             if (TableClient != null)
             {
                 // we'll roll automatically to a new table once per month
                 now = now ?? DateTime.UtcNow;
                 string tableName = string.Format("{0}{1:yyyyMM}", TableNamePrefix, now.Value);
-                return TableClient.GetTableReference(tableName);
+                return TableClient.GetTableClient(tableName);
             }
 
             return table;
@@ -106,7 +106,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                 var recentMetrics = await ReadRecentMetrics(metricsTable);
 
-                var entitiesByMonitorId = recentMetrics.ToLookup(p => p.Properties[MonitorIdPropertyName].StringValue, StringComparer.OrdinalIgnoreCase);
+                var entitiesByMonitorId = recentMetrics.ToLookup(p => p.GetString(MonitorIdPropertyName), StringComparer.OrdinalIgnoreCase);
                 foreach (var monitor in monitors)
                 {
                     var currMonitorMetrics = new List<ScaleMetrics>();
@@ -119,9 +119,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         foreach (var entity in monitorEntities)
                         {
                             var convertedMetrics = (ScaleMetrics)TableEntityConverter.ToObject(metricsType, entity);
-                            if (entity.Properties.TryGetValue(SampleTimestampPropertyName, out EntityProperty value) && value.DateTime.HasValue)
+                            var timestamp = entity.GetDateTime(SampleTimestampPropertyName);
+                            if (timestamp.HasValue)
                             {
-                                convertedMetrics.Timestamp = value.DateTime.Value;
+                                convertedMetrics.Timestamp = timestamp.Value;
                             }
                             currMonitorMetrics.Add(convertedMetrics);
                         }
@@ -134,7 +135,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                 return monitorMetrics;
             }
-            catch (StorageException e)
+            catch (RequestFailedException e)
             {
                 LogStorageException(e);
                 throw;
@@ -156,7 +157,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 var currMetricsBatch = monitorMetrics.Take(MaxTableOperationBatchCount).ToArray();
                 while (currMetricsBatch.Length > 0)
                 {
-                    var batch = new TableBatchOperation();
+                    var batch = new List<TableTransactionAction>();
                     foreach (var pair in currMetricsBatch)
                     {
                         await AccumulateMetricsBatchAsync(batch, pair.Key, new ScaleMetrics[] { pair.Value });
@@ -168,7 +169,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     currMetricsBatch = monitorMetrics.Skip(skip).Take(MaxTableOperationBatchCount).ToArray();
                 }
             }
-            catch (StorageException e)
+            catch (RequestFailedException e)
             {
                 LogStorageException(e);
                 throw;
@@ -177,7 +178,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         internal async Task WriteMetricsAsync(IScaleMonitor monitor, IEnumerable<ScaleMetrics> metrics, DateTime? now = null)
         {
-            var batch = new TableBatchOperation();
+            var batch = new List<TableTransactionAction>();
             await AccumulateMetricsBatchAsync(batch, monitor, metrics, now);
             await ExecuteBatchSafeAsync(batch, now);
         }
@@ -195,12 +196,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return null;
         }
 
-        internal void LogStorageException(StorageException ex)
+        internal void LogStorageException(RequestFailedException ex)
         {
-            _logger.LogError(ex, $"An unhandled storage exception occurred when reading/writing scale metrics: {ex.ToString()}");
+            _logger.LogError(ex, $"An unhandled storage exception occurred when reading/writing scale metrics: {ex}");
         }
 
-        internal async Task ExecuteBatchSafeAsync(TableBatchOperation batch, DateTime? now = null)
+        internal async Task ExecuteBatchSafeAsync(List<TableTransactionAction> batch, DateTime? now = null)
         {
             var metricsTable = GetMetricsTable(now);
             if (metricsTable != null && batch.Any())
@@ -208,15 +209,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 try
                 {
                     // TODO: handle paging and errors
-                    await metricsTable.ExecuteBatchAsync(batch);
+                    await metricsTable.SubmitTransactionAsync(batch);
                 }
-                catch (StorageException e)
+                catch (RequestFailedException e)
                 {
-                    if (IsNotFoundTableNotFound(e))
+                    if (IsTableNotFound(e))
                     {
                         // create the table and retry
                         await CreateIfNotExistsAsync(metricsTable);
-                        await metricsTable.ExecuteBatchAsync(batch);
+                        await metricsTable.SubmitTransactionAsync(batch);
                         return;
                     }
 
@@ -225,50 +226,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
-        internal async Task CreateIfNotExistsAsync(CloudTable table, int retryDelayMS = 1000)
+        internal async Task CreateIfNotExistsAsync(TableClient table, int retryDelayMS = 1000)
         {
-            int attempt = 0;
-            do
+            bool tableCreated = await TableStorageHelpers.CreateIfNotExistsAsync(table, TableClient, _tableCreationRetries, retryDelayMS);
+
+            if (tableCreated && _scaleOptions.MetricsPurgeEnabled)
             {
-                try
-                {
-                    bool tableCreated = true;
-                    if (!table.Exists())
-                    {
-                        tableCreated = await table.CreateIfNotExistsAsync();
-                    }
-
-                    if (tableCreated && _scaleOptions.MetricsPurgeEnabled)
-                    {
-                        // when we roll over to a new table, it's a good time to
-                        // do a background purge of any old tables
-                        QueueBackgroundMetricsTablePurge();
-                    }
-                }
-                catch (StorageException e)
-                {
-                    // Can get conflicts with multiple instances attempting to create
-                    // the same table.
-                    // Also, if a table queued up for deletion, we can get a conflict on create,
-                    // though these should only happen in tests not production, because we only ever
-                    // delete OLD tables and we'll never be attempting to recreate a table we just
-                    // deleted outside of tests.
-                    if (e.RequestInformation.HttpStatusCode == (int)HttpStatusCode.Conflict &&
-                        attempt < _tableCreationRetries)
-                    {
-                        // wait a bit and try again
-                        await Task.Delay(retryDelayMS);
-                        continue;
-                    }
-                    throw;
-                }
-
-                return;
+                // when we roll over to a new table, it's a good time to
+                // do a background purge of any old tables
+                QueueBackgroundMetricsTablePurge();
             }
-            while (attempt++ < _tableCreationRetries);
         }
 
-        internal async Task AccumulateMetricsBatchAsync(TableBatchOperation batch, IScaleMonitor monitor, IEnumerable<ScaleMetrics> metrics, DateTime? now = null)
+        internal async Task AccumulateMetricsBatchAsync(List<TableTransactionAction> batch, IScaleMonitor monitor, IEnumerable<ScaleMetrics> metrics, DateTime? now = null)
         {
             if (!metrics.Any())
             {
@@ -284,7 +254,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
-        internal static TableOperation CreateMetricsInsertOperation(ScaleMetrics metrics, string hostId, ScaleMonitorDescriptor descriptor, DateTime? now = null)
+        internal static TableTransactionAction CreateMetricsInsertOperation(ScaleMetrics metrics, string hostId, ScaleMonitorDescriptor descriptor, DateTime? now = null)
         {
             now = now ?? DateTime.UtcNow;
 
@@ -293,85 +263,54 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             string rowKey = TableStorageHelpers.GetRowKey(now.Value);
 
             var entity = TableEntityConverter.ToEntity(metrics, hostId, rowKey, metrics.Timestamp);
-            entity.Properties.Add(MonitorIdPropertyName, EntityProperty.GeneratePropertyForString(descriptor.Id));
+            entity.Add(MonitorIdPropertyName, descriptor.Id);
 
             // We map the sample timestamp to its own column so it doesn't conflict with the built in column.
             // We want to ensure that timestamp values for returned metrics are precise and monotonically
             // increasing when ordered results are returned. The built in timestamp doesn't guarantee this.
-            entity.Properties.Add(SampleTimestampPropertyName, EntityProperty.GeneratePropertyForDateTimeOffset(metrics.Timestamp));
+            entity.Add(SampleTimestampPropertyName, metrics.Timestamp);
 
-            return TableOperation.Insert(entity);
+            return new TableTransactionAction(TableTransactionActionType.Add, entity);
         }
 
-        internal async Task<IEnumerable<DynamicTableEntity>> ExecuteQuerySafeAsync(CloudTable metricsTable, TableQuery query)
+        internal async Task<IEnumerable<TableEntity>> ExecuteQuerySafeAsync(TableClient metricsTable, Expression<Func<TableEntity, bool>> query)
         {
             try
             {
-                return await ExecuteQueryWithContinuationAsync(metricsTable, query);
-            }
-            catch (StorageException e)
-            {
-                if (IsNotFoundTableNotFound(e))
+                List<TableEntity> results = new List<TableEntity>();
+
+                await foreach (var result in metricsTable.QueryAsync(query))
                 {
-                    return Enumerable.Empty<DynamicTableEntity>();
+                    results.Add(result);
+                }
+
+                return results;
+            }
+            catch (RequestFailedException e)
+            {
+                if (IsTableNotFound(e))
+                {
+                    return Enumerable.Empty<TableEntity>();
                 }
 
                 throw;
             }
         }
 
-        internal async Task<IEnumerable<DynamicTableEntity>> ReadRecentMetrics(CloudTable metricsTable)
+        internal async Task<IEnumerable<TableEntity>> ReadRecentMetrics(TableClient metricsTable)
         {
             // generate a query that will return the most recent metrics
             // based on the configurable max age
             string hostId = await _hostIdProvider.GetHostIdAsync(CancellationToken.None);
             var cuttoff = DateTime.UtcNow - _scaleOptions.ScaleMetricsMaxAge;
             var ticks = string.Format("{0:D19}", DateTime.MaxValue.Ticks - cuttoff.Ticks);
-            string filter = TableQuery.CombineFilters(
-                TableQuery.GenerateFilterCondition(nameof(TableEntity.PartitionKey), QueryComparisons.Equal, hostId),
-                TableOperators.And,
-                TableQuery.GenerateFilterCondition(nameof(TableEntity.RowKey), QueryComparisons.LessThan, ticks));
-            var query = new TableQuery().Where(filter);
-
-            return await ExecuteQuerySafeAsync(metricsTable, query);
+            return await ExecuteQuerySafeAsync(metricsTable, entity => entity.PartitionKey == hostId && string.Compare(entity.RowKey, ticks) < 0);
         }
 
-        private async Task<List<DynamicTableEntity>> ExecuteQueryWithContinuationAsync(CloudTable metricsTable, TableQuery query)
-        {
-            List<DynamicTableEntity> results = new List<DynamicTableEntity>();
-            TableContinuationToken continuationToken = null;
-
-            do
-            {
-                var result = await metricsTable.ExecuteQuerySegmentedAsync(query, continuationToken);
-                continuationToken = result.ContinuationToken;
-                results.AddRange(result.Results);
-            }
-            while (continuationToken != null);
-
-            return results;
-        }
-
-        private async Task<IEnumerable<CloudTable>> ListMetricsTablesAsync()
-        {
-            List<CloudTable> tables = new List<CloudTable>();
-            TableContinuationToken continuationToken = null;
-
-            do
-            {
-                var results = await TableClient.ListTablesSegmentedAsync(TableNamePrefix, continuationToken);
-                continuationToken = results.ContinuationToken;
-                tables.AddRange(results.Results);
-            }
-            while (continuationToken != null);
-
-            return tables;
-        }
-
-        internal async Task<IEnumerable<CloudTable>> ListOldMetricsTablesAsync()
+        internal async Task<IEnumerable<TableClient>> ListOldMetricsTablesAsync()
         {
             var currTable = GetMetricsTable();
-            var tables = await ListMetricsTablesAsync();
+            var tables = await TableStorageHelpers.ListTablesAsync(TableClient, TableNamePrefix);
             return tables.Where(p => !string.Equals(currTable.Name, p.Name, StringComparison.OrdinalIgnoreCase));
         }
 
@@ -392,7 +331,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 }
                 catch (Exception e)
                 {
-                    // best effort - if purge fails we log an ignore
+                    // best effort - if purge fails we log and ignore
                     // we'll try again another time
                     _logger.LogError(e, "Error occurred when attempting to delete old metrics tables.");
                 }
@@ -401,38 +340,26 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         internal async Task DeleteOldMetricsTablesAsync()
         {
-            var tablesToDelete = await ListOldMetricsTablesAsync();
+            var tablesToDelete = await TableStorageHelpers.ListOldTablesAsync(GetMetricsTable(), TableClient, TableNamePrefix);
             _logger.LogDebug($"Deleting {tablesToDelete.Count()} old metrics tables.");
             foreach (var table in tablesToDelete)
             {
                 _logger.LogDebug($"Deleting metrics table '{table.Name}'");
-                await table.DeleteIfExistsAsync();
+                await table.DeleteAsync();
                 _logger.LogDebug($"Metrics table '{table.Name}' deleted.");
             }
         }
 
-        private static bool IsNotFoundTableNotFound(StorageException exception)
+        private static bool IsTableNotFound(RequestFailedException exception)
         {
             ArgumentNullException.ThrowIfNull(exception);
 
-            var result = exception.RequestInformation;
-            if (result == null)
+            if (exception.Status != (int)HttpStatusCode.NotFound)
             {
                 return false;
             }
 
-            if (result.HttpStatusCode != (int)HttpStatusCode.NotFound)
-            {
-                return false;
-            }
-
-            var extendedInformation = result.ExtendedErrorInformation;
-            if (extendedInformation == null)
-            {
-                return false;
-            }
-
-            return extendedInformation.ErrorCode == "TableNotFound";
+            return exception.ErrorCode == "TableNotFound";
         }
     }
 }
