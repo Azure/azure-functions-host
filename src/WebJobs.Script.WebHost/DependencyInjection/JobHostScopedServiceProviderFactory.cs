@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
@@ -83,32 +84,34 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
         /// <param name="services">The service collection.</param>
         private void ShimBreakingChange(IServiceCollection services)
         {
-            static bool TryGetPreferredCtor(Type type, out ConstructorInfo ctor)
+            Dictionary<ServiceDescriptor, ServiceDescriptor> toReplace = null;
+            static bool HasPreferredCtor(Type type)
             {
                 foreach (ConstructorInfo c in type.GetConstructors())
                 {
                     if (c.IsDefined(typeof(ActivatorUtilitiesConstructorAttribute), false))
                     {
-                        ctor = c;
                         return true;
                     }
                 }
 
-                ctor = null;
                 return false;
             }
 
-            void ReplaceServiceRegistrator(ServiceDescriptor descriptor)
+            void CreateReplacement(ServiceDescriptor descriptor)
             {
-                if (!TryGetPreferredCtor(descriptor.ImplementationType, out ConstructorInfo ctor))
+                if (!HasPreferredCtor(descriptor.ImplementationType))
                 {
                     return;
                 }
 
                 _logger.LogInformation("Shimming DI constructor for {ImplementationType}.", descriptor.ImplementationType);
-                services.Remove(descriptor);
-                ObjectFactory factory = ActivatorUtilities.CreateFactory(ctor.DeclaringType, ctor.GetParameters().Select(x => x.ParameterType).ToArray());
-                services.Add(ServiceDescriptor.Describe(descriptor.ServiceType, sp => factory.Invoke(sp, null), descriptor.Lifetime));
+                toReplace ??= new Dictionary<ServiceDescriptor, ServiceDescriptor>();
+                ObjectFactory factory = ActivatorUtilities.CreateFactory(descriptor.ImplementationType, Type.EmptyTypes);
+
+                ServiceDescriptor replacement = ServiceDescriptor.Describe(
+                    descriptor.ServiceType, sp => factory.Invoke(sp, Type.EmptyTypes), descriptor.Lifetime);
+                toReplace.Add(descriptor, replacement);
             }
 
             // NetheriteProviderFactory uses ActivatorUtilitiesConstructorAttribute. We will replace this implementation with an explicit delegate.
@@ -117,8 +120,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
             {
                 if (netheriteProviderFactory is not null && descriptor.ImplementationType == netheriteProviderFactory)
                 {
-                    ReplaceServiceRegistrator(descriptor);
+                    CreateReplacement(descriptor);
                 }
+            }
+
+            foreach ((ServiceDescriptor key, ServiceDescriptor value) in toReplace)
+            {
+                services.Remove(key);
+                services.Add(value);
             }
         }
     }
