@@ -2,6 +2,8 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Linq;
+using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -57,6 +59,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
                 throw new HostInitializationException("Invalid host services detected.", ex);
             }
 
+            ShimBreakingChange(services);
+
             // Start from the root (web app level) as a base
             var jobHostServices = _rootProvider.CreateChildContainer(_rootServices);
 
@@ -67,6 +71,51 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
             }
 
             return jobHostServices.BuildServiceProvider();
+        }
+
+        /// <summary>
+        /// .NET 8 has a breaking change regarding <see cref="ActivatorUtilitiesConstructorAttribute"/> no longer functioning as expected.
+        /// We have some known extension types which are impacted by this. To avoid a regression, we are manually shimming those types.
+        /// </summary>
+        /// <param name="services">The service collection.</param>
+        private static void ShimBreakingChange(IServiceCollection services)
+        {
+            static bool TryGetPreferredCtor(Type type, out ConstructorInfo ctor)
+            {
+                foreach (ConstructorInfo c in type.GetConstructors())
+                {
+                    if (c.IsDefined(typeof(ActivatorUtilitiesConstructorAttribute), false))
+                    {
+                        ctor = c;
+                        return true;
+                    }
+                }
+
+                ctor = null;
+                return false;
+            }
+
+            void ReplaceServiceRegistrator(ServiceDescriptor descriptor)
+            {
+                if (!TryGetPreferredCtor(descriptor.ImplementationType, out ConstructorInfo ctor))
+                {
+                    return;
+                }
+
+                services.Remove(descriptor);
+                ObjectFactory factory = ActivatorUtilities.CreateFactory(ctor.DeclaringType, ctor.GetParameters().Select(x => x.ParameterType).ToArray());
+                services.Add(ServiceDescriptor.Describe(descriptor.ServiceType, sp => factory.Invoke(sp, null), descriptor.Lifetime));
+            }
+
+            // NetheriteProviderFactory uses ActivatorUtilitiesConstructorAttribute. We will replace this implementation with an explicit delegate.
+            Type netheriteProviderFactory = Type.GetType("DurableTask.Netherite.AzureFunctions.NetheriteProviderFactory, DurableTask.Netherite.AzureFunctions, Version=1.0.0.0, Culture=neutral, PublicKeyToken=ef8c4135b1b4225a");
+            foreach (ServiceDescriptor descriptor in services)
+            {
+                if (netheriteProviderFactory is not null && descriptor.ImplementationType == netheriteProviderFactory)
+                {
+                    ReplaceServiceRegistrator(descriptor);
+                }
+            }
         }
     }
 }
