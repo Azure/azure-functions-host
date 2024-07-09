@@ -18,3 +18,4 @@
 - Skip worker description if none of the profile conditions are met (#9932)
 - Fixed incorrect function count in the log message.(#10220)
 - Updated dotnet-isolated worker to [1.0.9](https://github.com/Azure/azure-functions-dotnet-worker/pull/2552) (#10262)
+- Adding a timeout when retrieving function metadata from metadata providers (#10219)
