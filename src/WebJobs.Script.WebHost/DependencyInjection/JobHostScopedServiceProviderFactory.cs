@@ -98,29 +98,32 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
                 return false;
             }
 
-            void CreateReplacement(ServiceDescriptor descriptor)
+            bool TryCreateReplacement(ServiceDescriptor descriptor, out ServiceDescriptor replacement)
             {
                 if (!HasPreferredCtor(descriptor.ImplementationType))
                 {
-                    return;
+                    replacement = null;
+                    return false;
                 }
 
                 _logger.LogInformation("Shimming DI constructor for {ImplementationType}.", descriptor.ImplementationType);
-                toReplace ??= new Dictionary<ServiceDescriptor, ServiceDescriptor>();
                 ObjectFactory factory = ActivatorUtilities.CreateFactory(descriptor.ImplementationType, Type.EmptyTypes);
 
-                ServiceDescriptor replacement = ServiceDescriptor.Describe(
+                replacement = ServiceDescriptor.Describe(
                     descriptor.ServiceType, sp => factory.Invoke(sp, Type.EmptyTypes), descriptor.Lifetime);
-                toReplace.Add(descriptor, replacement);
+                return true;
             }
 
             // NetheriteProviderFactory uses ActivatorUtilitiesConstructorAttribute. We will replace this implementation with an explicit delegate.
             Type netheriteProviderFactory = Type.GetType("DurableTask.Netherite.AzureFunctions.NetheriteProviderFactory, DurableTask.Netherite.AzureFunctions, Version=1.0.0.0, Culture=neutral, PublicKeyToken=ef8c4135b1b4225a");
             foreach (ServiceDescriptor descriptor in services)
             {
-                if (netheriteProviderFactory is not null && descriptor.ImplementationType == netheriteProviderFactory)
+                if (netheriteProviderFactory is not null
+                    && descriptor.ImplementationType == netheriteProviderFactory
+                    && TryCreateReplacement(descriptor, out ServiceDescriptor replacement))
                 {
-                    CreateReplacement(descriptor);
+                    toReplace ??= new Dictionary<ServiceDescriptor, ServiceDescriptor>();
+                    toReplace.Add(descriptor, replacement);
                 }
             }
 
