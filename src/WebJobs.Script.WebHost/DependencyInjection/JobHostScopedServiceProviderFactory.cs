@@ -6,6 +6,7 @@ using System.Linq;
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
 {
@@ -18,12 +19,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
         private readonly IServiceProvider _rootProvider;
         private readonly IServiceCollection _rootServices;
         private readonly IDependencyValidator _validator;
+        private readonly ILogger _logger;
 
         public JobHostScopedServiceProviderFactory(IServiceProvider rootProvider, IServiceCollection rootServices, IDependencyValidator validator)
         {
             _rootProvider = rootProvider ?? throw new ArgumentNullException(nameof(rootProvider));
             _rootServices = rootServices ?? throw new ArgumentNullException(nameof(rootServices));
             _validator = validator ?? throw new ArgumentNullException(nameof(validator));
+            _logger = ((ILogger)rootProvider.GetService<ILogger<JobHostScopedServiceProviderFactory>>()) ?? NullLogger.Instance;
         }
 
         public IServiceCollection CreateBuilder(IServiceCollection services)
@@ -78,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
         /// We have some known extension types which are impacted by this. To avoid a regression, we are manually shimming those types.
         /// </summary>
         /// <param name="services">The service collection.</param>
-        private static void ShimBreakingChange(IServiceCollection services)
+        private void ShimBreakingChange(IServiceCollection services)
         {
             static bool TryGetPreferredCtor(Type type, out ConstructorInfo ctor)
             {
@@ -102,6 +105,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
                     return;
                 }
 
+                _logger.LogInformation("Shimming DI constructor for {ImplementationType}.", descriptor.ImplementationType);
                 services.Remove(descriptor);
                 ObjectFactory factory = ActivatorUtilities.CreateFactory(ctor.DeclaringType, ctor.GetParameters().Select(x => x.ParameterType).ToArray());
                 services.Add(ServiceDescriptor.Describe(descriptor.ServiceType, sp => factory.Invoke(sp, null), descriptor.Lifetime));
