@@ -127,6 +127,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
                 }
             }
 
+            if (toReplace is null)
+            {
+                return;
+            }
+
             foreach ((ServiceDescriptor key, ServiceDescriptor value) in toReplace)
             {
                 services.Remove(key);
