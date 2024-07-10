@@ -87,14 +87,7 @@
     <PackageReference Include="System.Reactive.Linq" Version="5.0.0" />
     <PackageReference Include="System.Reactive.Core" Version="5.0.0" />
     <PackageReference Include="System.Runtime.Loader" Version="4.3.0" />
-<!--
-    Explicitly referencing version 6.0.9 of System.Text.Json to get two bug fixes for the Source Generator. Without this, the 6.0.0 version 
-    of the Source Generator is used, which causes issues. This reference can be removed in future framework versions.
-
-    https://github.com/dotnet/runtime/issues/62354
-    https://github.com/dotnet/runtime/issues/62082
-    -->
-    <PackageReference Include="System.Text.Json" Version="8.0.1" />
+    <PackageReference Include="System.Text.Json" Version="8.0.4" />
   </ItemGroup>
 
   <ItemGroup>
