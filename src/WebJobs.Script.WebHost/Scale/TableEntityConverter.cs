@@ -10,7 +10,7 @@ using Newtonsoft.Json.Linq;
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Scale
 {
     /// <summary>
-    /// Class providing methods to convert between DynamicTableEntity and custom pocos.
+    /// Class providing methods to convert between <see cref="TableEntity"/> and custom pocos.
     /// </summary>
     internal static class TableEntityConverter
     {

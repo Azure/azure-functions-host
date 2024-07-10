@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly ILogger _logger;
         private readonly int _tableCreationRetries;
         private readonly IDelegatingHandlerProvider _delegatingHandlerProvider;
-        private TableServiceClient _tableClient;
+        private TableServiceClient _tableServiceClient;
 
         public TableStorageScaleMetricsRepository(IConfiguration configuration, IHostIdProvider hostIdProvider, IOptions<ScaleOptions> scaleOptions, ILoggerFactory loggerFactory, IEnvironment environment)
             : this(configuration, hostIdProvider, scaleOptions, loggerFactory, DefaultTableCreationRetries, new DefaultDelegatingHandlerProvider(environment))
@@ -56,17 +56,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _delegatingHandlerProvider = delegatingHandlerProvider ?? throw new ArgumentNullException(nameof(delegatingHandlerProvider));
         }
 
-        internal TableServiceClient TableClient
+        internal TableServiceClient TableServiceClient
         {
             get
             {
-                if (_tableClient is null)
+                if (_tableServiceClient is null)
                 {
                     string storageConnectionString = _configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
 
                     try
                     {
-                        _tableClient = new TableServiceClient(storageConnectionString);
+                        _tableServiceClient = new TableServiceClient(storageConnectionString);
                     }
                     catch (Exception ex)
                     {
@@ -74,7 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     }
                 }
 
-                return _tableClient;
+                return _tableServiceClient;
             }
         }
 
@@ -82,12 +82,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             TableClient table = null;
 
-            if (TableClient != null)
+            if (TableServiceClient != null)
             {
                 // we'll roll automatically to a new table once per month
                 now = now ?? DateTime.UtcNow;
                 string tableName = string.Format("{0}{1:yyyyMM}", TableNamePrefix, now.Value);
-                return TableClient.GetTableClient(tableName);
+                return TableServiceClient.GetTableClient(tableName);
             }
 
             return table;
@@ -228,7 +228,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         internal async Task CreateIfNotExistsAsync(TableClient table, int retryDelayMS = 1000)
         {
-            bool tableCreated = await TableStorageHelpers.CreateIfNotExistsAsync(table, TableClient, _tableCreationRetries, retryDelayMS);
+            bool tableCreated = await TableStorageHelpers.CreateIfNotExistsAsync(table, TableServiceClient, _tableCreationRetries, retryDelayMS);
 
             if (tableCreated && _scaleOptions.MetricsPurgeEnabled)
             {
@@ -310,7 +310,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         internal async Task<IEnumerable<TableClient>> ListOldMetricsTablesAsync()
         {
             var currTable = GetMetricsTable();
-            var tables = await TableStorageHelpers.ListTablesAsync(TableClient, TableNamePrefix);
+            var tables = await TableStorageHelpers.ListTablesAsync(TableServiceClient, TableNamePrefix);
             return tables.Where(p => !string.Equals(currTable.Name, p.Name, StringComparison.OrdinalIgnoreCase));
         }
 
@@ -340,7 +340,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         internal async Task DeleteOldMetricsTablesAsync()
         {
-            var tablesToDelete = await TableStorageHelpers.ListOldTablesAsync(GetMetricsTable(), TableClient, TableNamePrefix);
+            var tablesToDelete = await TableStorageHelpers.ListOldTablesAsync(GetMetricsTable(), TableServiceClient, TableNamePrefix);
             _logger.LogDebug($"Deleting {tablesToDelete.Count()} old metrics tables.");
             foreach (var table in tablesToDelete)
             {

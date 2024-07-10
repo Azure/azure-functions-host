@@ -380,7 +380,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale
             // create 3 old tables
             for (int i = 0; i < 3; i++)
             {
-                var table = _repository.TableClient.GetTableClient($"{TableStorageScaleMetricsRepository.TableNamePrefix}Test{i}");
+                var table = _repository.TableServiceClient.GetTableClient($"{TableStorageScaleMetricsRepository.TableNamePrefix}Test{i}");
                 await _repository.CreateIfNotExistsAsync(table);
             }
 
@@ -403,7 +403,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale
         public async Task LogStorageException_LogsDetails()
         {
             RequestFailedException ex = null;
-            var table = _repository.TableClient.GetTableClient("dne");
+            var table = _repository.TableServiceClient.GetTableClient("dne");
 
             try
             {
@@ -482,7 +482,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale
             // instantly (they're queued for processing by Azure Storage). That causes
             // conflict issues when the tests attempt to recreate the table.
             var metricsTable = _repository.GetMetricsTable();
-            await EmptyTableAsync(metricsTable, _repository.TableClient);
+            await EmptyTableAsync(metricsTable, _repository.TableServiceClient);
         }
 
         private async Task EmptyTableAsync(TableClient table, TableServiceClient tableClient)
