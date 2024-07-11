@@ -188,6 +188,85 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public void FunctionMetadataManager_LoadFunctionMetadata_Throws_WhenFunctionProviderThrows()
+        {
+            var functionMetadataCollection = new Collection<FunctionMetadata>();
+            var mockFunctionErrors = new Dictionary<string, ImmutableArray<string>>();
+            var mockFunctionMetadataProvider = new Mock<IFunctionMetadataProvider>();
+            var badFunctionMetadataProvider = new Mock<IFunctionProvider>();
+            var goodFunctionMetadataProvider = new Mock<IFunctionProvider>();
+            var workerConfigs = TestHelpers.GetTestWorkerConfigs();
+            var testLoggerProvider = new TestLoggerProvider();
+            var loggerFactory = new LoggerFactory();
+            loggerFactory.AddProvider(testLoggerProvider);
+
+            mockFunctionMetadataProvider.Setup(m => m.GetFunctionMetadataAsync(workerConfigs, SystemEnvironment.Instance, false)).Returns(Task.FromResult(new Collection<FunctionMetadata>().ToImmutableArray()));
+            mockFunctionMetadataProvider.Setup(m => m.FunctionErrors).Returns(new Dictionary<string, ICollection<string>>().ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray()));
+
+            // A good provider that returns 2 functions
+            functionMetadataCollection.Add(GetTestFunctionMetadata("somefile.dll", name: "Function1"));
+            functionMetadataCollection.Add(GetTestFunctionMetadata("somefile.dll", name: "Function2"));
+            goodFunctionMetadataProvider.Setup(m => m.GetFunctionMetadataAsync()).ReturnsAsync(functionMetadataCollection.ToImmutableArray());
+
+            // A bad provider that will throw an exception for .GetFunctionMetadataAsync call.
+            var tcs = new TaskCompletionSource<ImmutableArray<FunctionMetadata>>();
+            badFunctionMetadataProvider.Setup(m => m.GetFunctionMetadataAsync()).Throws(new IOException("There was a custom IO error"));
+
+            FunctionMetadataManager testFunctionMetadataManager = TestFunctionMetadataManager.GetFunctionMetadataManager(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions),
+                mockFunctionMetadataProvider.Object, new List<IFunctionProvider>() { goodFunctionMetadataProvider.Object, badFunctionMetadataProvider.Object }, new OptionsWrapper<HttpWorkerOptions>(_defaultHttpWorkerOptions), loggerFactory, new TestOptionsMonitor<LanguageWorkerOptions>(TestHelpers.GetTestLanguageWorkerOptions()));
+
+            var exception = Assert.Throws<IOException>(() => testFunctionMetadataManager.LoadFunctionMetadata());
+            Assert.Contains($"There was a custom IO error", exception.Message);
+
+            var traces = testLoggerProvider.GetAllLogMessages();
+            Assert.Single(traces, t => t.FormattedMessage.Contains("Reading functions metadata (Custom)"));
+            Assert.DoesNotContain(traces, t => t.FormattedMessage.Contains("2 functions found (Custom)"));
+        }
+
+        [Fact]
+        public void FunctionMetadataManager_LoadFunctionMetadata_Throws_WhenFunctionProvidersTimesOut()
+        {
+            var functionMetadataCollection = new Collection<FunctionMetadata>();
+            var mockFunctionErrors = new Dictionary<string, ImmutableArray<string>>();
+            var mockFunctionMetadataProvider = new Mock<IFunctionMetadataProvider>();
+            var badFunctionMetadataProvider = new Mock<IFunctionProvider>();
+            var goodFunctionMetadataProvider = new Mock<IFunctionProvider>();
+            var workerConfigs = TestHelpers.GetTestWorkerConfigs();
+            var testLoggerProvider = new TestLoggerProvider();
+            var loggerFactory = new LoggerFactory();
+            loggerFactory.AddProvider(testLoggerProvider);
+
+            mockFunctionMetadataProvider.Setup(m => m.GetFunctionMetadataAsync(workerConfigs, SystemEnvironment.Instance, false)).Returns(Task.FromResult(new Collection<FunctionMetadata>().ToImmutableArray()));
+            mockFunctionMetadataProvider.Setup(m => m.FunctionErrors).Returns(new Dictionary<string, ICollection<string>>().ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray()));
+
+            // A good provider that returns 2 functions
+            functionMetadataCollection.Add(GetTestFunctionMetadata("somefile.dll", name: "Function1"));
+            functionMetadataCollection.Add(GetTestFunctionMetadata("somefile.dll", name: "Function2"));
+            goodFunctionMetadataProvider.Setup(m => m.GetFunctionMetadataAsync()).ReturnsAsync(functionMetadataCollection.ToImmutableArray());
+
+            // A bad provider that will never return anything.
+            var tcs = new TaskCompletionSource<ImmutableArray<FunctionMetadata>>();
+            badFunctionMetadataProvider.Setup(m => m.GetFunctionMetadataAsync()).Returns(async () =>
+            {
+                await Task.Delay(TimeSpan.FromSeconds(2)); // Simulate a delay longer than the timeout
+                return ImmutableArray<FunctionMetadata>.Empty;
+            });
+
+            FunctionMetadataManager testFunctionMetadataManager = TestFunctionMetadataManager.GetFunctionMetadataManager(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions),
+                mockFunctionMetadataProvider.Object, new List<IFunctionProvider>() { goodFunctionMetadataProvider.Object, badFunctionMetadataProvider.Object }, new OptionsWrapper<HttpWorkerOptions>(_defaultHttpWorkerOptions), loggerFactory, new TestOptionsMonitor<LanguageWorkerOptions>(TestHelpers.GetTestLanguageWorkerOptions()));
+
+            // Set the timeout to 1 second for the test.
+            testFunctionMetadataManager.MetadataProviderTimeoutInSeconds = 1;
+
+            var exception = Assert.Throws<TimeoutException>(() => testFunctionMetadataManager.LoadFunctionMetadata());
+            Assert.Contains($"Timeout occurred while retrieving metadata from provider '{badFunctionMetadataProvider.Object.GetType().FullName}'. The operation exceeded the configured timeout of 1 seconds.", exception.Message);
+
+            var traces = testLoggerProvider.GetAllLogMessages();
+            Assert.Single(traces, t => t.FormattedMessage.Contains("Reading functions metadata (Custom)"));
+            Assert.DoesNotContain(traces, t => t.FormattedMessage.Contains("2 functions found (Custom)"));
+        }
+
+        [Fact]
         public void FunctionMetadataManager_GetsMetadata_FromFunctionProviders()
         {
             var functionMetadataCollection = new Collection<FunctionMetadata>();
