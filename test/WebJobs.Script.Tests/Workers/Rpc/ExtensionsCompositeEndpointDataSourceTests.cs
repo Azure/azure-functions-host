@@ -3,12 +3,16 @@
 
 using System;
 using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Rpc.Core.Internal;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Primitives;
 using Moq;
 using Xunit;
@@ -17,6 +21,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 {
     public class ExtensionsCompositeEndpointDataSourceTests
     {
+        private static readonly ILogger<ExtensionsCompositeEndpointDataSource.EnsureInitializedMiddleware> _logger
+            = NullLogger<ExtensionsCompositeEndpointDataSource.EnsureInitializedMiddleware>.Instance;
+
         [Fact]
         public void NoActiveHost_NoEndpoints()
         {
@@ -41,6 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public void ActiveHostChanged_NoExtensions_NoEndpoints()
         {
             Mock<IScriptHostManager> manager = new();
+
             ExtensionsCompositeEndpointDataSource dataSource = new(manager.Object);
 
             IChangeToken token = dataSource.GetChangeToken();
@@ -65,6 +73,45 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 dataSource.Endpoints,
                 endpoint => Assert.Equal("Test1", endpoint.DisplayName),
                 endpoint => Assert.Equal("Test2", endpoint.DisplayName));
+        }
+
+        [Fact]
+        public async Task ActiveHostChanged_MiddlewareWaits_Success()
+        {
+            Mock<IScriptHostManager> manager = new();
+
+            ExtensionsCompositeEndpointDataSource dataSource = new(manager.Object);
+            ExtensionsCompositeEndpointDataSource.EnsureInitializedMiddleware middleware =
+                new(dataSource, _logger) { Timeout = Timeout.InfiniteTimeSpan };
+            TestDelegate next = new();
+
+            Task waiter = middleware.InvokeAsync(null, next.InvokeAsync);
+            Assert.False(waiter.IsCompleted); // should be blocked until we raise the event.
+
+            manager.Raise(x => x.ActiveHostChanged += null, new ActiveHostChangedEventArgs(null, GetHost()));
+            await waiter.WaitAsync(TimeSpan.FromSeconds(5));
+            await middleware.Initialized;
+            await next.Invoked;
+        }
+
+        [Fact]
+        public async Task NoActiveHostChanged_MiddlewareWaits_Timeout()
+        {
+            Mock<IScriptHostManager> manager = new();
+
+            ExtensionsCompositeEndpointDataSource dataSource = new(manager.Object);
+            ExtensionsCompositeEndpointDataSource.EnsureInitializedMiddleware middleware =
+                new(dataSource, _logger) { Timeout = TimeSpan.Zero };
+            TestDelegate next = new();
+
+            await middleware.InvokeAsync(null, next.InvokeAsync).WaitAsync(TimeSpan.FromSeconds(5)); // should not throw
+            await Assert.ThrowsAsync<TimeoutException>(() => middleware.Initialized);
+            await next.Invoked;
+
+            // invoke again to verify it processes the next request.
+            next = new();
+            await middleware.InvokeAsync(null, next.InvokeAsync);
+            await next.Invoked;
         }
 
         [Fact]
@@ -104,6 +151,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             public override IReadOnlyList<Endpoint> Endpoints { get; }
 
             public override IChangeToken GetChangeToken() => NullChangeToken.Singleton;
+        }
+
+        private class TestDelegate
+        {
+            private readonly TaskCompletionSource _invoked = new();
+
+            public Task Invoked => _invoked.Task;
+
+            public Task InvokeAsync(HttpContext context)
+            {
+                _invoked.TrySetResult();
+                return Task.CompletedTask;
+            }
         }
     }
 }
