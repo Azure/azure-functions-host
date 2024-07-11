@@ -13,3 +13,4 @@
 - Fixed incorrect function count in the log message.(#10220)
 - Migrate Diagnostic Events to Azure.Data.Tables (#10218)
 - Sanitize worker arguments before logging (#10260)
+- Adding a timeout when retrieving function metadata from metadata providers (#10219)
