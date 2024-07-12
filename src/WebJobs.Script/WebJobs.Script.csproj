@@ -29,6 +29,9 @@
     <EmbeddedResource Include="extensionrequirements.json">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </EmbeddedResource>
+	  <EmbeddedResource Include="extensionrequirements_FlexConsumption.json">
+		  <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+	  </EmbeddedResource>
     <EmbeddedResource Include="FileProvisioning\PowerShell\profile.ps1" />
     <EmbeddedResource Include="FileProvisioning\PowerShell\requirements.psd1" />
     <EmbeddedResource Include="runtimeassemblies-relaxed.json">

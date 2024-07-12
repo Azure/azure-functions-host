@@ -7,6 +7,7 @@ using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Google.Protobuf.Compiler;
 using Microsoft.Azure.WebJobs.Extensions;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Extensions.Storage;
@@ -602,8 +603,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        [Fact]
-        public async Task GetExtensionsStartupTypes_RejectsBundleBelowMinimumVersion()
+        [Theory]
+        [InlineData(true, "4.12.0", "4.9.0")]
+        [InlineData(false, "2.6.1", "2.1.0")]
+        public async Task GetExtensionsStartupTypes_RejectsBundleBelowMinimumVersion(bool isFlexConsumption, string expectedBundleVersion, string actualBundleVersion)
         {
             using (var directory = GetTempDirectory())
             {
@@ -614,12 +617,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var testLogger = factory.CreateLogger<ScriptStartupTypeLocator>();
 
                 var binPath = Path.Combine(directory.Path, "bin");
+                if (isFlexConsumption)
+                {
+                    Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, ScriptConstants.FlexConsumptionSku);
+                }
 
                 var mockExtensionBundleManager = new Mock<IExtensionBundleManager>();
                 mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
                 mockExtensionBundleManager.Setup(e => e.GetExtensionBundleBinPathAsync()).Returns(Task.FromResult(binPath));
                 mockExtensionBundleManager.Setup(e => e.IsLegacyExtensionBundle()).Returns(false);
-                mockExtensionBundleManager.Setup(e => e.GetExtensionBundleDetails()).Returns(Task.FromResult(GetV2BundleDetails("2.1.0")));
+                mockExtensionBundleManager.Setup(e => e.GetExtensionBundleDetails()).Returns(Task.FromResult(GetV2BundleDetails(actualBundleVersion)));
 
                 var languageWorkerOptions = new TestOptionsMonitor<LanguageWorkerOptions>(new LanguageWorkerOptions());
                 var mockFunctionMetadataManager = GetTestFunctionMetadataManager(languageWorkerOptions);
@@ -628,14 +635,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 // Act
                 var exception = await Assert.ThrowsAsync<HostInitializationException>(async () => await discoverer.GetExtensionsStartupTypesAsync());
                 var traces = testLoggerProvider.GetAllLogMessages();
+                Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, null);
 
                 // Assert
-                Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"Referenced bundle Microsoft.Azure.Functions.ExtensionBundle of version 2.1.0 does not meet the required minimum version of 2.6.1. Update your extension bundle reference in host.json to reference 2.6.1 or later.")));
+                Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"Referenced bundle Microsoft.Azure.Functions.ExtensionBundle of version {actualBundleVersion} does not meet the required minimum version of {expectedBundleVersion}. Update your extension bundle reference in host.json to reference {expectedBundleVersion} or later.")));
             }
         }
 
-        [Fact]
-        public async Task GetExtensionsStartupTypes_RejectsExtensionsBelowMinimumVersion()
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async Task GetExtensionsStartupTypes_RejectsExtensionsBelowMinimumVersion(bool isFlexConsumption)
         {
             var mockExtensionBundleManager = new Mock<IExtensionBundleManager>();
             TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
@@ -644,6 +654,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             using (var directory = new TempDirectory())
             {
                 var binPath = Path.Combine(directory.Path, "bin");
+                if (isFlexConsumption)
+                {
+                    Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, ScriptConstants.FlexConsumptionSku);
+                }
+
                 Directory.CreateDirectory(binPath);
 
                 void CopyToBin(string path)
@@ -671,11 +686,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var traces = testLoggerProvider.GetAllLogMessages();
 
                 // Assert
-
-                var storageTrace = traces.FirstOrDefault(m => m.FormattedMessage.StartsWith("ExtensionStartupType AzureStorageWebJobsStartup"));
-                Assert.NotNull(storageTrace);
-                Assert.Equal("ExtensionStartupType AzureStorageWebJobsStartup from assembly 'Microsoft.Azure.WebJobs.Extensions.Storage, Version=3.0.10.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35' does not meet the required minimum version of 4.0.4.0. Update your NuGet package reference for Microsoft.Azure.WebJobs.Extensions.Storage to 4.0.4 or later.",
-                    storageTrace.FormattedMessage);
+                try
+                {
+                    string exceptionType = isFlexConsumption ? "DurableTaskWebJobsStartup" : "AzureStorageWebJobsStartup";
+                    var trace = traces.FirstOrDefault(m => m.FormattedMessage.StartsWith($"ExtensionStartupType {exceptionType}"));
+                    Assert.NotNull(trace);
+                    string message = isFlexConsumption
+                        ? "ExtensionStartupType DurableTaskWebJobsStartup from assembly 'Microsoft.Azure.WebJobs.Extensions.DurableTask, Version=2.0.0.0, Culture=neutral, PublicKeyToken=014045d636e89289' does not meet the required minimum version of 2.12.0. Update your NuGet package reference for Microsoft.Azure.WebJobs.Extensions.DurableTask to 2.12.0 or later."
+                        : "ExtensionStartupType AzureStorageWebJobsStartup from assembly 'Microsoft.Azure.WebJobs.Extensions.Storage, Version=3.0.10.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35' does not meet the required minimum version of 4.0.4.0. Update your NuGet package reference for Microsoft.Azure.WebJobs.Extensions.Storage to 4.0.4 or later.";
+                    Assert.Equal(message, trace.FormattedMessage);
+                }
+                finally
+                {
+                    Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, null);
+                }
             }
         }
 

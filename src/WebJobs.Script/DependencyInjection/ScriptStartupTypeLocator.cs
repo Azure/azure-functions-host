@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
         private readonly Lazy<IEnumerable<Type>> _startupTypes;
         private readonly IOptionsMonitor<LanguageWorkerOptions> _languageWorkerOptions;
 
-        private static readonly ExtensionRequirementsInfo _extensionRequirements = DependencyHelper.GetExtensionRequirements();
+        private static ExtensionRequirementsInfo _extensionRequirements;
         private static string[] _builtinExtensionAssemblies = GetBuiltinExtensionAssemblies();
 
         public ScriptStartupTypeLocator(string rootScriptPath, ILogger<ScriptStartupTypeLocator> logger, IExtensionBundleManager extensionBundleManager,
@@ -52,6 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
             _metricsLogger = metricsLogger;
             _startupTypes = new Lazy<IEnumerable<Type>>(() => GetExtensionsStartupTypesAsync().ConfigureAwait(false).GetAwaiter().GetResult());
             _languageWorkerOptions = languageWorkerOptions;
+            _extensionRequirements = DependencyHelper.GetExtensionRequirements(SystemEnvironment.Instance);
         }
 
         private static string[] GetBuiltinExtensionAssemblies()

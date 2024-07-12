@@ -1,0 +1,131 @@
+﻿{
+  "bundles": [
+    {
+      "id": "Microsoft.Azure.Functions.ExtensionBundle",
+      "minimumVersion": "4.12.0"
+    }
+  ],
+  "types": [
+    {
+      "name": "NetheriteProviderStartup",
+      "assemblyName": "DurableTask.Netherite.AzureFunctions",
+      "minimumAssemblyVersion": "1.0.0.0",
+      "minimumAssemblyFileVersion": "1.4.0.4129",
+      "packageName": "Microsoft.Azure.DurableTask.Netherite.AzureFunctions",
+      "minimumPackageVersion": "1.4.0"
+    },  
+    {
+      "name": "SqlDurabilityProviderStartup",
+      "assemblyName": "DurableTask.SqlServer.AzureFunctions",
+      "minimumAssemblyVersion": "1.2.0.0",
+      "packageName": "Microsoft.DurableTask.SqlServer.AzureFunctions",
+      "minimumPackageVersion": "1.2.0"
+    },
+    {
+      "name": "CosmosDBWebJobsStartup",
+      "assemblyName": "Microsoft.Azure.WebJobs.Extensions.CosmosDB",
+      "minimumAssemblyVersion": "4.4.0.0",
+      "packageName": "Microsoft.Azure.WebJobs.Extensions.CosmosDB",
+      "minimumPackageVersion": "4.4.0"
+    },
+    {
+      "name": "DurableTaskWebJobsStartup",
+      "assemblyName": "Microsoft.Azure.WebJobs.Extensions.DurableTask",
+      "minimumAssemblyVersion": "2.0.0.0",
+      "MinimumAssemblyFileVersion": "2.12.0",
+      "packageName": "Microsoft.Azure.WebJobs.Extensions.DurableTask",
+      "minimumPackageVersion": "2.12.0"
+    },
+    {
+      "name": "EventGridWebJobsStartup",
+      "assemblyName": "Microsoft.Azure.WebJobs.Extensions.EventGrid",
+      "minimumAssemblyVersion": "3.3.0.0",
+      "packageName": "Microsoft.Azure.WebJobs.Extensions.EventGrid",
+      "minimumPackageVersion": "3.3.0"
+    },
+    {
+      "name": "EventHubsWebJobsStartup",
+      "assemblyName": "Microsoft.Azure.WebJobs.Extensions.EventHubs",
+      "minimumAssemblyVersion": "5.5.0.0",
+      "packageName": "Microsoft.Azure.WebJobs.Extensions.EventHubs",
+      "minimumPackageVersion": "5.5.0"
+    },
+    {
+      "name": "KafkaWebJobsStartup",
+      "assemblyName": "Microsoft.Azure.WebJobs.Extensions.Kafka",
+      "minimumAssemblyVersion": "3.9.0.0",
+      "packageName": "Microsoft.Azure.WebJobs.Extensions.Kafka",
+      "minimumPackageVersion": "3.9.0"
+    },
+    {
+      "name": "RabbitMQWebJobsStartup",
+      "assemblyName": "Microsoft.Azure.WebJobs.Extensions.RabbitMQ",
+      "minimumAssemblyVersion": "2.0.3.0",
+      "packageName": "Microsoft.Azure.WebJobs.Extensions.RabbitMQ",
+      "minimumPackageVersion": "2.0.3"
+    },
+    {
+      "name": "SendGridWebJobsStartup",
+      "assemblyName": "Microsoft.Azure.WebJobs.Extensions.SendGrid",
+      "minimumAssemblyVersion": "3.0.3.0",
+      "packageName": "Microsoft.Azure.WebJobs.Extensions.SendGrid",
+      "minimumPackageVersion": "3.0.3"
+    },
+    {
+      "name": "ServiceBusWebJobsStartup",
+      "assemblyName": "Microsoft.Azure.WebJobs.Extensions.ServiceBus",
+      "minimumAssemblyVersion": "5.12.0.0",
+      "packageName": "Microsoft.Azure.WebJobs.Extensions.ServiceBus",
+      "minimumPackageVersion": "5.12.0"
+    },
+    {
+      "name": "SignalRWebJobsStartup",
+      "assemblyName": "Microsoft.Azure.WebJobs.Extensions.SignalRService",
+      "minimumAssemblyVersion": "1.11.2.0",
+      "packageName": "Microsoft.Azure.WebJobs.Extensions.SignalRService",
+      "minimumPackageVersion": "1.11.2"
+    },
+    {
+      "name": "SqlBindingStartup",
+      "assemblyName": "Microsoft.Azure.WebJobs.Extensions.Sql",
+      "minimumAssemblyVersion": "3.0.461.0",
+      "packageName": "Microsoft.Azure.WebJobs.Extensions.Sql",
+      "minimumPackageVersion": "3.0.461"
+    },
+    {
+      "name": "AzureStorageBlobsWebJobsStartup",
+      "assemblyName": "Microsoft.Azure.WebJobs.Extensions.Storage.Blobs",
+      "minimumAssemblyVersion": "5.2.1.0",
+      "packageName": "Microsoft.Azure.WebJobs.Extensions.Storage.Blobs",
+      "minimumPackageVersion": "5.2.1"
+    },
+    {
+      "name": "AzureStorageQueuesWebJobsStartup",
+      "assemblyName": "Microsoft.Azure.WebJobs.Extensions.Storage.Queues",
+      "minimumAssemblyVersion": "5.2.0.0",
+      "packageName": "Microsoft.Azure.WebJobs.Extensions.Storage.Queues",
+      "minimumPackageVersion": "5.2.0"
+    },
+    {
+      "name": "AzureTablesWebJobsStartup",
+      "assemblyName": "Microsoft.Azure.WebJobs.Extensions.Tables",
+      "minimumAssemblyVersion": "1.2.0.0",
+      "packageName": "Microsoft.Azure.WebJobs.Extensions.Tables",
+      "minimumPackageVersion": "1.2.0"
+    },
+    {
+      "name": "TwilioWebJobsStartup",
+      "assemblyName": "Microsoft.Azure.WebJobs.Extensions.Twilio",
+      "minimumAssemblyVersion": "3.0.2.0",
+      "packageName": "Microsoft.Azure.WebJobs.Extensions.Twilio",
+      "minimumPackageVersion": "3.0.2"
+    },
+    {
+      "name": "WebPubSubWebJobsStartup",
+      "assemblyName": "Microsoft.Azure.WebJobs.Extensions.WebPubSub",
+      "minimumAssemblyVersion": "1.7.0.0",
+      "packageName": "Microsoft.Azure.WebJobs.Extensions.WebPubSub",
+      "minimumPackageVersion": "1.7.0"
+    }
+  ]
+}

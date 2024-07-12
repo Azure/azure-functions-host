@@ -91,9 +91,19 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 .ToDictionary(a => a.Name, StringComparer.OrdinalIgnoreCase);
         }
 
-        internal static ExtensionRequirementsInfo GetExtensionRequirements()
+        internal static ExtensionRequirementsInfo GetExtensionRequirements(IEnvironment environment)
         {
-            string requirementsJson = GetResourceFileContents("extensionrequirements.json");
+            string requirementsJson = string.Empty;
+
+            if (environment.IsFlexConsumptionSku())
+            {
+                requirementsJson = GetResourceFileContents("extensionrequirements_FlexConsumption.json");
+            }
+            else
+            {
+                requirementsJson = GetResourceFileContents("extensionrequirements.json");
+            }
+
             JObject requirements = JObject.Parse(requirementsJson);
 
             var bundleRequirements = requirements["bundles"]
@@ -184,7 +194,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         /// <returns> bool if string in was in proper assembly representation format. </returns>
         public static bool IsAssemblyReferenceFormat(string assemblyFormatString)
         {
-           return assemblyFormatString != null && assemblyFormatString.StartsWith(AssemblyNamePrefix);
+            return assemblyFormatString != null && assemblyFormatString.StartsWith(AssemblyNamePrefix);
         }
 
         /// <summary>

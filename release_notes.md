@@ -20,3 +20,4 @@
   - `Microsoft.Azure.WebJobs.Host.Storage` updated to 5.0.1
   - `Microsoft.Extensions.Azure` updated to 1.7.1
   - `Azure.Storage.Blobs` updated to 12.19.1
+- Enforcing Extension Bundle version [4.12.0](https://github.com/Azure/azure-functions-extension-bundles/releases/tag/4.12.0) as min version for Flex consumption (#9478)
