@@ -14,3 +14,4 @@
 - Migrate Diagnostic Events to Azure.Data.Tables (#10218)
 - Sanitize worker arguments before logging (#10260)
 - Fix race condition on startup with extension RPC endpoints not being available. (#10282)
+- Adding a timeout when retrieving function metadata from metadata providers (#10219)
