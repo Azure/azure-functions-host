@@ -271,7 +271,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             // in class LanguageWorkerOptionsSetup.cs -> Configure()
             // which is giving extra log lines for node worker
             traces = traces.Where(t =>
-                !t.Message.Contains("Skipping WorkerConfig for language")
+                !t.Message.Contains("Skipping WorkerConfig for language") && !t.Message.Contains("Skipping WorkerConfig for stack")
             ).ToArray();
 
             int expectedCount = 16;
