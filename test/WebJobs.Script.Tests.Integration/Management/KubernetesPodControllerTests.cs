@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Net.Http;
 using System.Threading;
@@ -60,7 +61,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var podController = new KubernetesPodController(environment, instanceManager, loggerFactory, startupContextProvider);
 
-            const string podEncryptionKey = "/a/vXvWJ3Hzgx4PFxlDUJJhQm5QVyGiu0NNLFm/ZMMg=";
             var hostAssignmentContext = new HostAssignmentContext
             {
                 Environment = new Dictionary<string, string>()
@@ -71,14 +71,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             hostAssignmentContext.Secrets = new FunctionAppSecrets();
             hostAssignmentContext.IsWarmupRequest = false;
 
-            var encryptedHostAssignmentValue = SimpleWebTokenHelper.Encrypt(JsonConvert.SerializeObject(hostAssignmentContext), podEncryptionKey.ToKeyBytes());
+            var encryptedHostAssignmentValue = SimpleWebTokenHelper.Encrypt(JsonConvert.SerializeObject(hostAssignmentContext), TestHelpers.EncryptionKey.ToKeyBytes());
 
             var encryptedHostAssignmentContext = new EncryptedHostAssignmentContext()
             {
                 EncryptedContext = encryptedHostAssignmentValue
             };
 
-            environment.SetEnvironmentVariable(EnvironmentSettingNames.PodEncryptionKey, podEncryptionKey);
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.PodEncryptionKey, TestHelpers.EncryptionKey);
             environment.SetEnvironmentVariable(EnvironmentSettingNames.KubernetesServiceHost, "http://localhost:80");
             environment.SetEnvironmentVariable(EnvironmentSettingNames.PodNamespace, "k8se-apps");
 
@@ -116,7 +116,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             InstanceManager.Reset();
 
-            const string podEncryptionKey = "/a/vXvWJ3Hzgx4PFxlDUJJhQm5QVyGiu0NNLFm/ZMMg=";
             var podController = new KubernetesPodController(environment, instanceManager, loggerFactory, startupContextProvider);
 
             var hostAssignmentContext = new HostAssignmentContext
@@ -129,7 +128,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             hostAssignmentContext.Secrets = new FunctionAppSecrets();
             hostAssignmentContext.IsWarmupRequest = false;
 
-            var encryptedHostAssignmentValue = SimpleWebTokenHelper.Encrypt(JsonConvert.SerializeObject(hostAssignmentContext), podEncryptionKey.ToKeyBytes());
+            var encryptedHostAssignmentValue = SimpleWebTokenHelper.Encrypt(JsonConvert.SerializeObject(hostAssignmentContext), TestHelpers.EncryptionKey.ToKeyBytes());
 
             var encryptedHostAssignmentContext = new EncryptedHostAssignmentContext()
             {

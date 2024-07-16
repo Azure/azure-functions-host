@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -18,7 +19,6 @@ using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security;
-using Microsoft.Azure.WebJobs.Script.WebHost.Storage;
 using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
     public class SecretManagerTests
     {
         private const int TestSentinelWatcherInitializationDelayMS = 50;
-        private const string TestEncryptionKey = "/a/vXvWJ3Hzgx4PFxlDUJJhQm5QVyGiu0NNLFm/ZMMg=";
+
         private readonly HostNameProvider _hostNameProvider;
         private readonly TestEnvironment _testEnvironment;
         private readonly TestLoggerProvider _loggerProvider;
@@ -60,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             {
                 string startupContextPath = Path.Combine(directory.Path, Guid.NewGuid().ToString());
                 _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteStartupContextCache, startupContextPath);
-                _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey, TestEncryptionKey);
+                _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey, TestHelpers.EncryptionKey);
 
                 WriteStartContextCache(startupContextPath);
 
@@ -117,7 +117,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             {
                 string startupContextPath = Path.Combine(directory.Path, Guid.NewGuid().ToString());
                 _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteStartupContextCache, startupContextPath);
-                _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey, TestEncryptionKey);
+                _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey, TestHelpers.EncryptionKey);
 
                 WriteStartContextCache(startupContextPath);
 
@@ -178,7 +178,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             };
 
             string json = JsonConvert.SerializeObject(context);
-            var encryptionKey = Convert.FromBase64String(TestEncryptionKey);
+            var encryptionKey = Convert.FromBase64String(TestHelpers.EncryptionKey);
             string encryptedJson = SimpleWebTokenHelper.Encrypt(json, encryptionKey);
 
             File.WriteAllText(path, encryptedJson);
@@ -724,7 +724,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
         [Fact]
         public async Task SetMasterKey_WithProvidedKey_UsesProvidedKeyAndPersistsFile()
         {
-            string testSecret = "abcde0123456789abcde0123456789abcde0123456789";
+            string testSecret = "PLACEHOLDER";
             using (var directory = new TempDirectory())
             {
                 KeyOperationResult result;

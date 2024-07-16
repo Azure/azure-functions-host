@@ -49,9 +49,6 @@ jobs:
     buildNumberSuffix: $[variables.buildNumberSuffixTemp]
     packSuffixSwitch: $[variables.packSuffixSwitchTemp]
     emgSuffixSwitch: $[variables.emgSuffixSwitchTemp]
-    majorVersion: $[dependencies.InitializePipeline.outputs['Initialize.MajorVersion']]
-    minorVersion: $[dependencies.InitializePipeline.outputs['Initialize.MinorVersion']]
-    patchVersion: $[dependencies.InitializePipeline.outputs['Initialize.PatchVersion']]
   pool:
     name: '1ES-Hosted-AzFunc'
     demands:
@@ -68,7 +65,7 @@ jobs:
     displayName: "Build artifacts"
     inputs:
       filePath: '$(Build.Repository.LocalPath)\build\build-extensions.ps1'
-      arguments: '-buildNumber "$(buildNumberSuffix)" -majorMinorVersion "$(majorVersion).$(minorVersion)" -patchVersion "$(patchVersion)" -suffix "$(suffix)" -commitHash "$(Build.SourceVersion)"'
+      arguments: '-buildNumber "$(buildNumberSuffix)" -suffix "$(suffix)" -commitHash "$(Build.SourceVersion)"'
   - task: PowerShell@2
     condition: eq(variables['RUNBUILDFORINTEGRATIONTESTS'], 'True')
     displayName: "Update host references"
@@ -112,14 +109,6 @@ jobs:
       publishVstsFeed: 'e6a70c92-4128-439f-8012-382fe78d6396/f37f760c-aebd-443e-9714-ce725cd427df'
       allowPackageConflicts: true
 
-  - task: DotNetCoreCLI@2
-    displayName: 'Build performance package'
-    inputs:
-      command: 'custom'
-      custom: 'pack'
-      arguments: '-o WebJobs.Script.Performance.App'
-      projects: |
-        **\WebJobs.Script.Performance.App.csproj
   - task: DotNetCoreCLI@2
     displayName: 'Build Abstractions and ExtensionsMetadataGenerator'
     inputs:
@@ -325,13 +314,6 @@ jobs:
       Verbosity: 'Information'
   - publish: $(Build.Repository.LocalPath)\packages
     artifact: NugetPackages
-  - task: ManifestGeneratorTask@0
-    displayName: 'SBOM Generation Task - Performance'
-    inputs:
-      BuildDropPath: '$(Build.Repository.LocalPath)\WebJobs.Script.Performance.App'
-      Verbosity: 'Information'
-  - publish: $(Build.Repository.LocalPath)\WebJobs.Script.Performance.App
-    artifact: Performance
 
 - job: RunUnitTests
   pool:
