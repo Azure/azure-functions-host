@@ -13,3 +13,10 @@
 - Fixed incorrect function count in the log message.(#10220)
 - Migrate Diagnostic Events to Azure.Data.Tables (#10218)
 - Sanitize worker arguments before logging (#10260)
+- Fix race condition on startup with extension RPC endpoints not being available. (#10282)
+- Adding a timeout when retrieving function metadata from metadata providers (#10219)
+- Upgraded the following package versions (#10288):
+  - `Microsoft.Azure.WebJobs` updated to 3.0.41
+  - `Microsoft.Azure.WebJobs.Host.Storage` updated to 5.0.1
+  - `Microsoft.Extensions.Azure` updated to 1.7.1
+  - `Azure.Storage.Blobs` updated to 12.19.1
