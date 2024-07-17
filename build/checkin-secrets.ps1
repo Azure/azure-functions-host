@@ -1,5 +1,4 @@
 param (
-  [string]$connectionString = "",
   [string]$leaseBlob = "",
   [string]$leaseToken = ""
 )
@@ -16,7 +15,7 @@ if ($leaseToken -eq "") {
 
 Write-Host "Breaking lease for $leaseBlob."
 
-$storageContext = New-AzStorageContext -ConnectionString $connectionString
+$storageContext = New-AzStorageContext -StorageAccountName "azurefunctionshostci0" -UseConnectedAccount
 $blob = Get-AzStorageBlob -Context $storageContext -Container "ci-locks" -Blob $leaseBlob
 
 $accessCondition = New-Object -TypeName Microsoft.Azure.Storage.AccessCondition
