@@ -1,7 +1,3 @@
-param (
-  [string]$connectionString = ""
-)
-
 function AcquireLease($blob) {
   try {
     return $blob.ICloudBlob.AcquireLease($null, $null, $null, $null, $null)
@@ -14,15 +10,10 @@ function AcquireLease($blob) {
 # use this for tracking metadata in lease blobs
 $buildName = "3.0." + $env:buildNumber + "_" + $env:SYSTEM_JOBDISPLAYNAME
 
-$azVersion = "1.11.0"
 Import-Module Az.Storage
-$azModule = Get-Module -Name Az.Storage
-if ($azModule.Version -ne $azVersion) {
-  throw "Az.Storage module version $azVersion was not found. Current version: $($azModule.Version)"
-}
 
 # get a blob lease to prevent test overlap
-$storageContext = New-AzStorageContext -ConnectionString $connectionString
+$storageContext = New-AzStorageContext -StorageAccountName "azurefunctionshostci0" -UseConnectedAccount
 
 While($true) {
   $blobs = Get-AzStorageBlob -Context $storageContext -Container "ci-locks"
