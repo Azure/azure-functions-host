@@ -1,7 +1,3 @@
-param (
-  [string]$connectionString = ""
-)
-
 function AcquireLease($blob) {
   try {
     return $blob.ICloudBlob.AcquireLease($null, $null, $null, $null, $null)
@@ -22,7 +18,7 @@ if ($azModule.Version -ne $azVersion) {
 }
 
 # get a blob lease to prevent test overlap
-$storageContext = New-AzStorageContext -ConnectionString $connectionString
+$storageContext = New-AzStorageContext -StorageAccountName "azurefunctionshostci0" -UseConnectedAccount
 
 While($true) {
   $blobs = Get-AzStorageBlob -Context $storageContext -Container "ci-locks"

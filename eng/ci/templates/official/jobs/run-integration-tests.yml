@@ -52,7 +52,6 @@ jobs:
     displayName: Checkout secrets
     inputs:
       filePath: build/checkout-secrets.ps1
-      arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'''
 
   - task: AzureKeyVault@1
     inputs:
@@ -206,4 +205,4 @@ jobs:
     displayName: Checkin secrets
     inputs:
       filePath: build/checkin-secrets.ps1
-      arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'' -leaseBlob $(LeaseBlob) -leaseToken $(LeaseToken)'
+      arguments: '-leaseBlob $(LeaseBlob) -leaseToken $(LeaseToken)'

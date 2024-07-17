@@ -323,7 +323,6 @@ jobs:
     displayName: 'Checkout secrets'
     inputs:
       filePath: '$(Build.Repository.LocalPath)\build\checkout-secrets.ps1'
-      arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'''
   - task: AzureKeyVault@1
     inputs:
       # Note: This is actually a Service Connection in DevOps, not an Azure subscription name
@@ -353,7 +352,7 @@ jobs:
     displayName: 'Checkin secrets'
     inputs:
       filePath: '$(Build.Repository.LocalPath)\build\checkin-secrets.ps1'
-      arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'' -leaseBlob $(LeaseBlob) -leaseToken $(LeaseToken)'
+      arguments: '-leaseBlob $(LeaseBlob) -leaseToken $(LeaseToken)'
 
 - job: RunIntegrationTests
   pool:
