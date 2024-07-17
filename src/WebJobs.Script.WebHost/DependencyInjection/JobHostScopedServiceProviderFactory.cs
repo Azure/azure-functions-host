@@ -2,8 +2,11 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
+using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
 {
@@ -16,12 +19,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
         private readonly IServiceProvider _rootProvider;
         private readonly IServiceCollection _rootServices;
         private readonly IDependencyValidator _validator;
+        private readonly ILogger _logger;
 
         public JobHostScopedServiceProviderFactory(IServiceProvider rootProvider, IServiceCollection rootServices, IDependencyValidator validator)
         {
             _rootProvider = rootProvider ?? throw new ArgumentNullException(nameof(rootProvider));
             _rootServices = rootServices ?? throw new ArgumentNullException(nameof(rootServices));
             _validator = validator ?? throw new ArgumentNullException(nameof(validator));
+            _logger = ((ILogger)rootProvider.GetService<ILogger<JobHostScopedServiceProviderFactory>>()) ?? NullLogger.Instance;
         }
 
         public IServiceCollection CreateBuilder(IServiceCollection services)
@@ -57,6 +62,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
                 throw new HostInitializationException("Invalid host services detected.", ex);
             }
 
+            ShimBreakingChange(services);
+
             // Start from the root (web app level) as a base
             var jobHostServices = _rootProvider.CreateChildContainer(_rootServices);
 
@@ -67,6 +74,68 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
             }
 
             return jobHostServices.BuildServiceProvider();
+        }
+
+        /// <summary>
+        /// .NET 8 has a breaking change regarding <see cref="ActivatorUtilitiesConstructorAttribute"/> no longer functioning as expected.
+        /// We have some known extension types which are impacted by this. To avoid a regression, we are manually shimming those types.
+        /// </summary>
+        /// <param name="services">The service collection.</param>
+        private void ShimBreakingChange(IServiceCollection services)
+        {
+            Dictionary<ServiceDescriptor, ServiceDescriptor> toReplace = null;
+            static bool HasPreferredCtor(Type type)
+            {
+                foreach (ConstructorInfo c in type.GetConstructors())
+                {
+                    if (c.IsDefined(typeof(ActivatorUtilitiesConstructorAttribute), false))
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
+            bool TryCreateReplacement(ServiceDescriptor descriptor, out ServiceDescriptor replacement)
+            {
+                if (!HasPreferredCtor(descriptor.ImplementationType))
+                {
+                    replacement = null;
+                    return false;
+                }
+
+                _logger.LogInformation("Shimming DI constructor for {ImplementationType}.", descriptor.ImplementationType);
+                ObjectFactory factory = ActivatorUtilities.CreateFactory(descriptor.ImplementationType, Type.EmptyTypes);
+
+                replacement = ServiceDescriptor.Describe(
+                    descriptor.ServiceType, sp => factory.Invoke(sp, Type.EmptyTypes), descriptor.Lifetime);
+                return true;
+            }
+
+            // NetheriteProviderFactory uses ActivatorUtilitiesConstructorAttribute. We will replace this implementation with an explicit delegate.
+            Type netheriteProviderFactory = Type.GetType("DurableTask.Netherite.AzureFunctions.NetheriteProviderFactory, DurableTask.Netherite.AzureFunctions, Version=1.0.0.0, Culture=neutral, PublicKeyToken=ef8c4135b1b4225a");
+            foreach (ServiceDescriptor descriptor in services)
+            {
+                if (netheriteProviderFactory is not null
+                    && descriptor.ImplementationType == netheriteProviderFactory
+                    && TryCreateReplacement(descriptor, out ServiceDescriptor replacement))
+                {
+                    toReplace ??= new Dictionary<ServiceDescriptor, ServiceDescriptor>();
+                    toReplace.Add(descriptor, replacement);
+                }
+            }
+
+            if (toReplace is null)
+            {
+                return;
+            }
+
+            foreach ((ServiceDescriptor key, ServiceDescriptor value) in toReplace)
+            {
+                services.Remove(key);
+                services.Add(value);
+            }
         }
     }
 }

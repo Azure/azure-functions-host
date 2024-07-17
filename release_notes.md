@@ -17,4 +17,11 @@
 - Ordered invocations are now the default (#10201)
 - Skip worker description if none of the profile conditions are met (#9932)
 - Fixed incorrect function count in the log message.(#10220)
+- Updated dotnet-isolated worker to [1.0.9](https://github.com/Azure/azure-functions-dotnet-worker/pull/2552) (#10262)
+- Fix race condition on startup with extension RPC endpoints not being available. (#10255)
 - Adding a timeout when retrieving function metadata from metadata providers (#10219)
+- Upgraded the following package versions (#10287):
+  - `Microsoft.Azure.WebJobs` updated to 3.0.41
+  - `Microsoft.Azure.WebJobs.Host.Storage` updated to 5.0.1
+  - `Microsoft.Extensions.Azure` updated to 1.7.1
+  - `Azure.Storage.Blobs` updated to 12.19.1

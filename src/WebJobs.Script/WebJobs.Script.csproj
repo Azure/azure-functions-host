@@ -42,17 +42,17 @@
     <PackageReference Include="Azure.Core" Version="1.38.0" />
     <PackageReference Include="Azure.Identity" Version="1.11.4" />
     <PackageReference Include="Azure.Monitor.OpenTelemetry.AspNetCore" Version="1.2.0-beta.2" />
-    <PackageReference Include="Azure.Storage.Blobs" Version="12.13.0" />
+    <PackageReference Include="Azure.Storage.Blobs" Version="12.19.1" />
     <PackageReference Include="Microsoft.ApplicationInsights" Version="2.22.0" />
     <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.22.0" />
     <PackageReference Include="Microsoft.ApplicationInsights.DependencyCollector" Version="2.22.0" />
     <PackageReference Include="Microsoft.ApplicationInsights.WindowsServer" Version="2.22.0" />
     <PackageReference Include="Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel" Version="2.22.0" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.WebApiCompatShim" Version="2.2.0" NoWarn="NU1701" />
-    <PackageReference Include="Microsoft.Azure.Functions.DotNetIsolatedNativeHost" Version="1.0.8" />
-    <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.41-11331" />
-    <PackageReference Include="Microsoft.Azure.WebJobs.Host.Storage" Version="5.0.0-beta.2-11957" />
-    <PackageReference Include="Microsoft.Extensions.Azure" Version="1.7.0" />
+    <PackageReference Include="Microsoft.Azure.Functions.DotNetIsolatedNativeHost" Version="1.0.9" />
+    <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.41" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Host.Storage" Version="5.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Azure" Version="1.7.1" />
 
     <!-- Workers -->
     <PackageReference Include="Microsoft.Azure.Functions.JavaWorker" Version="2.14.0" />
@@ -87,14 +87,7 @@
     <PackageReference Include="System.Reactive.Linq" Version="5.0.0" />
     <PackageReference Include="System.Reactive.Core" Version="5.0.0" />
     <PackageReference Include="System.Runtime.Loader" Version="4.3.0" />
-<!--
-    Explicitly referencing version 6.0.9 of System.Text.Json to get two bug fixes for the Source Generator. Without this, the 6.0.0 version 
-    of the Source Generator is used, which causes issues. This reference can be removed in future framework versions.
-
-    https://github.com/dotnet/runtime/issues/62354
-    https://github.com/dotnet/runtime/issues/62082
-    -->
-    <PackageReference Include="System.Text.Json" Version="8.0.1" />
+    <PackageReference Include="System.Text.Json" Version="8.0.4" />
   </ItemGroup>
 
   <ItemGroup>

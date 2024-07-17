@@ -153,6 +153,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
+            _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
             using (var variables = new TestScopedSettings(scriptSettingsManager, testEnvVariables))
             {
                 var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger(), _testWorkerProfileManager);
