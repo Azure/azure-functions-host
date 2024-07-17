@@ -4,8 +4,7 @@ trigger:
     - dev
     - in-proc
     - release/4.*
-    - release/inproc6/4.*
-    - release/inproc8/4.*
+    - release/in-proc
 
 resources:
   repositories:
@@ -13,6 +12,9 @@ resources:
     type: git
     name: engineering
     ref: refs/tags/release
+
+variables:
+  - template: ci/variables/cfs.yml@eng
 
 extends:
   template: ci/code-mirror.yml@eng

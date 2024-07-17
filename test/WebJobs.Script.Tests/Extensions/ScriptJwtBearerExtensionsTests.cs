@@ -18,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         [InlineData(true, false)]
         [InlineData(false, true)]
         [InlineData(false, false)]
-        public void CreateTokenValidationParameters_HasExpectedAudience(bool isPlaceholderModeEnabled, bool isLinuxConsumptionOnLegion)
+        public void CreateTokenValidationParameters_HasExpectedAudiences(bool isPlaceholderModeEnabled, bool isLinuxConsumptionOnLegion)
         {
             var podName = "RandomPodName";
             var containerName = "RandomContainerName";
@@ -79,6 +79,44 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
                     Assert.Equal(audiences.Count, expectedWithSiteName.Length);
                     Assert.True(audiences.Contains(expectedWithSiteName[0]));
                     Assert.True(audiences.Contains(expectedWithSiteName[1]));
+                }
+            }
+        }
+
+        [Theory]
+        [InlineData("testsite", "testsite")]
+        [InlineData("testsite", "testsite__5bb5")]
+        [InlineData("testsite", null)]
+        [InlineData("testsite", "")]
+        public void CreateTokenValidationParameters_NonProductionSlot_HasExpectedAudiences(string siteName, string runtimeSiteName)
+        {
+            string azFuncAudience = string.Format(ScriptConstants.SiteAzureFunctionsUriFormat, siteName);
+            string siteAudience = string.Format(ScriptConstants.SiteUriFormat, siteName);
+            string runtimeSiteAudience = string.Format(ScriptConstants.SiteUriFormat, runtimeSiteName);
+
+            var testEnv = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                { EnvironmentSettingNames.AzureWebsiteName, siteName },
+                { EnvironmentSettingNames.AzureWebsiteRuntimeSiteName, runtimeSiteName },
+                { ContainerEncryptionKey, Convert.ToBase64String(TestHelpers.GenerateKeyBytes()) }
+            };
+
+            using (new TestScopedSettings(ScriptSettingsManager.Instance, testEnv))
+            {
+                var tokenValidationParameters = ScriptJwtBearerExtensions.CreateTokenValidationParameters();
+                var audiences = tokenValidationParameters.ValidAudiences.ToArray();
+
+                Assert.Equal(audiences[0], azFuncAudience);
+                Assert.Equal(audiences[1], siteAudience);
+
+                if (string.Compare(siteName, runtimeSiteName, StringComparison.OrdinalIgnoreCase) == 0)
+                {
+                    Assert.Equal(2, audiences.Length);
+                }
+                else if (!string.IsNullOrEmpty(runtimeSiteName))
+                {
+                    Assert.Equal(3, audiences.Length);
+                    Assert.Equal(audiences[2], runtimeSiteAudience);
                 }
             }
         }

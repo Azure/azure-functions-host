@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Diagnostics.Metrics;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
@@ -17,8 +16,8 @@ using System.Threading.Tasks;
 using Microsoft.Azure.Storage;
 using Microsoft.Azure.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.Storage;
-using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Azure;
@@ -35,18 +34,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     {
         private const string Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
         private static readonly Random Random = new Random();
-
-        /// <summary>
-        /// Gets the common root directory that functions tests create temporary directories under.
-        /// This enables us to clean up test files by deleting this single directory.
-        /// </summary>
-        public static string FunctionsTestDirectory
-        {
-            get
-            {
-                return Path.Combine(Path.GetTempPath(), "FunctionsTest");
-            }
-        }
 
         public static Task WaitOneAsync(this WaitHandle waitHandle)
         {
@@ -116,8 +103,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     }
                     throw new ApplicationException(error);
                 }
-            }
         }
+            }
 
         public static async Task RetryFailedTest(Func<Task> test, int retries, ITestOutputHelper output = null)
         {
@@ -538,6 +525,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             mockFactory.Setup(m => m.CreateClient(It.IsAny<string>()))
                  .Returns(httpClient);
             return mockFactory.Object;
+        }
+
+        public static ManagedServiceIdentity CreateMsi(ManagedServiceIdentityType type, string prefix)
+        {
+            return new ManagedServiceIdentity
+            {
+                Type = type,
+                ClientId = $"{prefix}-clientId-placeholder",
+                PrincipalId = $"{prefix}-principalId-placeholder",
+                TenantId = $"{prefix}-tenantId-placeholder",
+                Thumbprint = $"{prefix}-thumbprint-placeholder",
+                SecretUrl = $"{prefix}-secretUrl-placeholder",
+                ResourceId = $"{prefix}-resourceId-placeholder",
+                Certificate = $"{prefix}-certificate-placeholder",
+                AuthenticationEndpoint = $"{prefix}-authenticationEndpoint-placeholder",
+            };
         }
 
         /// <summary>

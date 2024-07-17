@@ -1380,7 +1380,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         public class TestFixture : EndToEndTestFixture
         {
             public TestFixture()
-                : base(Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "..", "sample", "csharp"), "samples", RpcWorkerConstants.DotNetLanguageWorkerName)
+                : base(Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "sample", "csharp"), "samples", RpcWorkerConstants.DotNetLanguageWorkerName)
             {
                 MockWebHookProvider = new Mock<IScriptWebHookProvider>(MockBehavior.Strict);
             }
@@ -1390,6 +1390,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             public override void ConfigureWebHost(IServiceCollection services)
             {
                 base.ConfigureWebHost(services);
+
+                // SWT auth is disabled by default so we must enable to test
+                services.AddOptions<FunctionsHostingConfigOptions>()
+                    .Configure(o => o.SwtAuthenticationEnabled = true);
 
                 // The legacy http tests use sync IO so explicitly allow this
                 var environment = new TestEnvironment();

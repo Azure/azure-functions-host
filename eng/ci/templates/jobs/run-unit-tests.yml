@@ -1,0 +1,16 @@
+jobs:
+- job: RunUnitTests
+  displayName: Run Unit Tests
+
+  steps:
+  - template: /eng/ci/templates/install-dotnet.yml@self
+
+  - task: DotNetCoreCLI@2
+    displayName: Unit Tests
+    inputs:
+      command: test
+      testRunTitle: Unit Tests
+      arguments: -v n
+      projects: |
+        **\ExtensionsMetadataGeneratorTests.csproj
+        **\WebJobs.Script.Tests.csproj

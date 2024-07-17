@@ -49,7 +49,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Http
             {
             }
 
-            await Task.Delay(TimeSpan.FromMilliseconds(500));
             if (startWorkerProcessResult)
             {
                 Assert.Equal(dispatcher.State, FunctionInvocationDispatcherState.Initialized);

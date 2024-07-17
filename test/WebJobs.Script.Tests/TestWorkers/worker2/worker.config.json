@@ -1,0 +1,36 @@
+﻿{
+  "description": {
+    "language": "bar"
+  },
+  "profiles": [
+    {
+      "profileName": "SpecificConditionProfile",
+      "conditions": [
+        {
+          "conditionType": "environment",
+          "conditionName": "NON_EXISTING_ENV_VAR",
+          "conditionExpression": "(?i)true$"
+        }
+      ],
+      "description": {
+        "defaultExecutablePath": "%FUNCTIONS_WORKER_DIRECTORY%/2.bat",
+        "defaultWorkerPath": "2.bat"
+      }
+    },
+    {
+      "profileName": "FallbackProfileToDisableWorker",
+      "conditions": [
+        {
+          "conditionType": "environment",
+          "conditionName": "ENV_VAR_BAR",
+          "conditionExpression": "(?i)true$"
+        }
+      ],
+      "description": {
+        "defaultExecutablePath": "%FUNCTIONS_WORKER_DIRECTORY%/2.bat",
+        "defaultWorkerPath": "2.bat",
+        "isDisabled": true
+      }
+    }
+  ]
+}

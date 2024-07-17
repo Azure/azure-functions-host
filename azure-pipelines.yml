@@ -1,12 +1,6 @@
 variables:
   buildNumber: $[ counter('constant', 13000) ]
   isReleaseBranch: $[contains(variables['Build.SourceBranch'], 'release/')]
-  ${{ if contains(variables['Build.SourceBranch'], 'release/inproc6/') }}:
-    minorVersionPrefix: "6"
-  ${{ elseif contains(variables['Build.SourceBranch'], 'release/inproc8/') }}:
-    minorVersionPrefix: "8"
-  ${{ else }}:
-    minorVersionPrefix: ""
   DOTNET_NOLOGO: 1
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
   DOTNET_CLI_TELEMETRY_OPTOUT: 1
@@ -17,8 +11,7 @@ pr:
     - dev
     - in-proc
     - release/4.*
-    - release/inproc6/4.*
-    - release/inproc8/4.*
+    - release/in-proc
 
 trigger:
   branches:
@@ -26,8 +19,7 @@ trigger:
     - dev
     - in-proc
     - release/4.*
-    - release/inproc6/4.*
-    - release/inproc8/4.*
+    - release/in-proc
 
 jobs:
 - job: InitializePipeline
@@ -46,8 +38,8 @@ jobs:
     name: Initialize
     inputs:
       filePath: '$(Build.Repository.LocalPath)\build\initialize-pipeline.ps1'
-      arguments: -minorVersionPrefix "$(minorVersionPrefix)"
       showWarnings: true
+      pwsh: true
 
 - job: BuildArtifacts
   dependsOn: InitializePipeline
@@ -75,57 +67,21 @@ jobs:
     displayName: "Check for security vulnerabilities"
     inputs:
       filePath: '$(Build.Repository.LocalPath)\build\check-vulnerabilities.ps1'
-  - task: PowerShell@2
-    condition: eq(variables['RUNBUILDFORINTEGRATIONTESTS'], 'True')
-    displayName: "Update host references"
-    inputs:
-      filePath: '$(Build.Repository.LocalPath)\build\update-hostreferences.ps1'
   - task: CopyFiles@2
     inputs:
-      SourceFolder: '$(Build.Repository.LocalPath)\buildoutput'
-      Contents: '**\*.zip'
+      SourceFolder: 'out/pub/WebJobs.Script.WebHost'
+      Contents: '**/*.zip'
       TargetFolder: '$(Build.ArtifactStagingDirectory)'
   - task: DotNetCoreCLI@2
     displayName: 'Build host packages'
     inputs:
       command: 'custom'
       custom: 'pack'
-      arguments: -o packages -p:BuildNumber=$(buildNumber) -c Release $(packSuffixSwitch)
+      arguments: -p:BuildNumber=$(buildNumber) -c Release $(packSuffixSwitch)
       projects: |
         **\WebJobs.Script.csproj
         **\WebJobs.Script.WebHost.csproj
         **\WebJobs.Script.Grpc.csproj
-
-  - pwsh: |
-      foreach ($baseName in @("WebJobs.Script", "WebJobs.Script.WebHost", "WebJobs.Script.Grpc"))
-      {
-        $packageName = "Microsoft.Azure." + $baseName + "*.nupkg"
-        $sourcePath = "$(Build.Repository.LocalPath)/packages/$packageName"
-        if (-not (test-path $sourcePath))
-        {
-          throw "Unable to find '$packageName' at './package'"
-        }
-        Copy-Item -Path $sourcePath -Destination $(Build.ArtifactStagingDirectory) -ErrorAction Stop -Verbose -Force}
-    condition: eq(variables['RUNBUILDFORINTEGRATIONTESTS'], 'True')
-    displayName: 'Copy package to ArtifactStagingDirectory'
-
-  - task: NuGetCommand@2
-    condition: eq(variables['RUNBUILDFORINTEGRATIONTESTS'], 'True')
-    inputs:
-      command: 'push'
-      packagesToPush: '$(Build.ArtifactStagingDirectory)/**/*.nupkg;!$(Build.ArtifactStagingDirectory)/**/*.symbols.nupkg'
-      nuGetFeedType: 'internal'
-      publishVstsFeed: 'e6a70c92-4128-439f-8012-382fe78d6396/f37f760c-aebd-443e-9714-ce725cd427df'
-      allowPackageConflicts: true
-
-  - task: DotNetCoreCLI@2
-    displayName: 'Build performance package'
-    inputs:
-      command: 'custom'
-      custom: 'pack'
-      arguments: '-o WebJobs.Script.Performance.App'
-      projects: |
-        **\WebJobs.Script.Performance.App.csproj
   - task: DotNetCoreCLI@2
     displayName: 'Build Abstractions and ExtensionsMetadataGenerator'
     inputs:
@@ -138,7 +94,7 @@ jobs:
     displayName: 'ESRP CodeSigning: Strong Name and Authenticode'
     inputs:
       ConnectedServiceName: 'ESRP Service'
-      FolderPath: 'src\WebJobs.Script.Abstractions\bin\Release'
+      FolderPath: 'out/bin/WebJobs.Script.Abstractions/release'
       Pattern: Microsoft.Azure.WebJobs.Script.Abstractions*.dll
       signConfigType: inlineSignParams
       inlineOperation: |
@@ -173,14 +129,14 @@ jobs:
     inputs:
       command: 'custom'
       custom: 'pack'
-      arguments: '--no-build -c Release -o packages'
+      arguments: '--no-build -c Release'
       projects: |
         **\WebJobs.Script.Abstractions.csproj
   - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@2
     displayName: 'ESRP CodeSigning: Nupkg'
     inputs:
       ConnectedServiceName: 'ESRP Service'
-      FolderPath: 'packages'
+      FolderPath: 'out/pkg/release'
       Pattern: 'Microsoft.Azure.WebJobs.Script.Abstractions*.nupkg'
       signConfigType: inlineSignParams
       inlineOperation: |
@@ -204,8 +160,8 @@ jobs:
     displayName: 'ESRP CodeSigning: Strong Name and Authenticode'
     inputs:
       ConnectedServiceName: 'ESRP Service'
-      FolderPath: 'tools\ExtensionsMetadataGenerator\src\ExtensionsMetadataGenerator\bin\Release'
-      Pattern: Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator*.dll
+      FolderPath: 'out/bin/ExtensionsMetadataGenerator'
+      Pattern: 'Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator*.dll'
       signConfigType: inlineSignParams
       inlineOperation: |
         [
@@ -254,7 +210,7 @@ jobs:
     inputs:
       command: 'custom'
       custom: 'pack'
-      arguments: '--no-build -c Release -o packages $(emgSuffixSwitch)'
+      arguments: '--no-build -c Release $(emgSuffixSwitch)'
       projects: |
         **\ExtensionsMetadataGenerator.csproj
         steps:
@@ -262,7 +218,7 @@ jobs:
     displayName: 'ESRP CodeSigning: Nupkg'
     inputs:
       ConnectedServiceName: 'ESRP Service'
-      FolderPath: 'packages'
+      FolderPath: 'out/pkg/release'
       Pattern: 'Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator*.nupkg'
       signConfigType: inlineSignParams
       inlineOperation: |
@@ -294,22 +250,6 @@ jobs:
       Verbosity: 'Information'
   - publish: $(Build.ArtifactStagingDirectory)\SiteExtension
     artifact: SiteExtension
-  - pwsh: |
-      if ((test-path $(Build.ArtifactStagingDirectory)\ZippedPatchSiteExtension))
-      {
-        Write-Host "Patched site extension detected."
-        Write-Host "##vso[task.setvariable variable=isPatchVersion]true"
-      }
-    displayName: 'Set isPatchVersion'
-  - task: ManifestGeneratorTask@0
-    displayName: 'SBOM Generation Task - ZippedPatchSiteExtension'
-    inputs:
-      BuildDropPath: '$(Build.ArtifactStagingDirectory)\ZippedPatchSiteExtension'
-      Verbosity: 'Information'
-    condition: and(succeeded(), eq(variables['isPatchVersion'], 'true'))
-  - publish: $(Build.ArtifactStagingDirectory)\ZippedPatchSiteExtension
-    artifact: PatchedSiteExtension
-    condition: and(succeeded(), eq(variables['isPatchVersion'], 'true'))
   - task: ManifestGeneratorTask@0
     displayName: 'SBOM Generation Task - PrivateSiteExtension'
     inputs:
@@ -327,17 +267,10 @@ jobs:
   - task: ManifestGeneratorTask@0
     displayName: 'SBOM Generation Task - NugetPackages'
     inputs:
-      BuildDropPath: '$(Build.Repository.LocalPath)\packages'
+      BuildDropPath: 'out/pkg/release'
       Verbosity: 'Information'
-  - publish: $(Build.Repository.LocalPath)\packages
+  - publish: out/pkg/release
     artifact: NugetPackages
-  - task: ManifestGeneratorTask@0
-    displayName: 'SBOM Generation Task - Performance'
-    inputs:
-      BuildDropPath: '$(Build.Repository.LocalPath)\WebJobs.Script.Performance.App'
-      Verbosity: 'Information'
-  - publish: $(Build.Repository.LocalPath)\WebJobs.Script.Performance.App
-    artifact: Performance
 
 - job: RunUnitTests
   pool:
@@ -353,9 +286,16 @@ jobs:
       testRunTitle: 'Unit Tests'
       arguments: '-v n'
       projects: |
-        **\ExtensionsMetadataGeneratorTests.csproj
         **\WebJobs.Script.Scaling.Tests.csproj
         **\WebJobs.Script.Tests.csproj
+  - task: DotNetCoreCLI@2
+    displayName: 'ExtensionsMetadataGenerator Unit Tests'
+    inputs:
+      command: 'test'
+      testRunTitle: 'EGM Unit Tests'
+      arguments: '-v n'
+      projects: |
+        **\ExtensionsMetadataGeneratorTests.csproj
 
 - job: RunNonE2EIntegrationTests
   pool:
@@ -373,17 +313,12 @@ jobs:
       targetType: 'inline'
       script: 'Install-Module -Name Az.Storage -RequiredVersion 1.11.0 -Scope CurrentUser -Force -AllowClobber'
 
-  - task: AzureKeyVault@1
-    inputs:
-      # Note: This is actually a Service Connection in DevOps, not an Azure subscription name
-      azureSubscription: 'Azure-Functions-Host-CI'
-      keyVaultName: 'azure-functions-host-ci'
-      secretsFilter: '*'
-  - task: PowerShell@2
+  - task: AzurePowerShell@5
     displayName: 'Checkout secrets'
     inputs:
-      filePath: '$(Build.Repository.LocalPath)\build\checkout-secrets.ps1'
-      arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'''
+      azureSubscription: Azure-Functions-Host-CI
+      ScriptPath: '$(Build.Repository.LocalPath)\build\checkout-secrets.ps1'
+      azurePowerShellVersion: 'LatestVersion'
   - task: AzureKeyVault@1
     inputs:
       # Note: This is actually a Service Connection in DevOps, not an Azure subscription name
@@ -408,12 +343,14 @@ jobs:
       AzureWebJobsSecretStorageKeyVaultTenantId: $(AzureTenantId)
       AzureWebJobsSecretStorageKeyVaultClientId: $(AzureClientId)
       AzureWebJobsSecretStorageKeyVaultClientSecret: $(AzureClientSecret)
-  - task: PowerShell@2
+  - task: AzurePowerShell@5
     condition: always()
     displayName: 'Checkin secrets'
     inputs:
-      filePath: '$(Build.Repository.LocalPath)\build\checkin-secrets.ps1'
-      arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'' -leaseBlob $(LeaseBlob) -leaseToken $(LeaseToken)'
+      azureSubscription: Azure-Functions-Host-CI
+      ScriptPath: '$(Build.Repository.LocalPath)\build\checkin-secrets.ps1'
+      arguments: '-leaseBlob $(LeaseBlob) -leaseToken $(LeaseToken)'
+      azurePowerShellVersion: 'LatestVersion'
 
 - job: RunIntegrationTests
   pool:
@@ -445,11 +382,12 @@ jobs:
       azureSubscription: 'Azure-Functions-Host-CI'
       keyVaultName: 'azure-functions-host-ci'
       secretsFilter: '*'
-  - task: PowerShell@2
+  - task: AzurePowerShell@5
     displayName: 'Checkout secrets'
     inputs:
-      filePath: '$(Build.Repository.LocalPath)\build\checkout-secrets.ps1'
-      arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'''
+      azureSubscription: Azure-Functions-Host-CI
+      ScriptPath: '$(Build.Repository.LocalPath)\build\checkout-secrets.ps1'
+      azurePowerShellVersion: 'LatestVersion'
   - task: AzureKeyVault@1
     inputs:
       # Note: This is actually a Service Connection in DevOps, not an Azure subscription name
@@ -595,9 +533,11 @@ jobs:
       arguments: '--filter "Group=ReleaseTests" --no-build'
       projects: |
         **\WebJobs.Script.Tests.Integration.csproj
-  - task: PowerShell@2
+  - task: AzurePowerShell@5
     condition: always()
     displayName: 'Checkin secrets'
     inputs:
-      filePath: '$(Build.Repository.LocalPath)\build\checkin-secrets.ps1'
-      arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'' -leaseBlob $(LeaseBlob) -leaseToken $(LeaseToken)'
+      azureSubscription: Azure-Functions-Host-CI
+      ScriptPath: '$(Build.Repository.LocalPath)\build\checkin-secrets.ps1'
+      arguments: '-leaseBlob $(LeaseBlob) -leaseToken $(LeaseToken)'
+      azurePowerShellVersion: 'LatestVersion'

@@ -1,0 +1,5 @@
+<Project>
+
+  <Import Project="$(MSBuildThisFileDirectory)RepositoryInfo.targets" />
+
+</Project>

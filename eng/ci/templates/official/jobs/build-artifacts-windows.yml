@@ -1,0 +1,132 @@
+jobs:
+- job: BuildArtifactsWindows
+  displayName: Build Windows Artifacts
+
+  templateContext:
+    outputParentDirectory: $(Build.ArtifactStagingDirectory)
+    outputs:
+    - output: pipelineArtifact
+      displayName: Publish site extension
+      path: $(Build.ArtifactStagingDirectory)/SiteExtension
+      artifact: SiteExtension
+    - output: pipelineArtifact
+      displayName: Publish private site extension
+      path: $(Build.ArtifactStagingDirectory)/PrivateSiteExtension
+      artifact: PrivateSiteExtension
+    - output: pipelineArtifact
+      displayName: Publish site extension symbols
+      path: $(Build.ArtifactStagingDirectory)/Symbols
+      artifact: Symbols
+    - output: pipelineArtifact
+      displayName: Publish nuget packages
+      path: $(Build.ArtifactStagingDirectory)/NugetPackages
+      artifact: NugetPackages
+
+  pool:
+    name: 1es-pool-azfunc
+    image: 1es-windows-2022 
+    os: windows
+
+  variables:
+    ${{ if or( eq( variables['Build.Reason'], 'PullRequest' ), and(not( contains( variables['Build.SourceBranch'], 'release/in-proc.' ) ), not( contains( variables['Build.SourceBranch'], 'release/4.' ) ), not( contains( variables['Build.SourceBranch'], 'release/ExtensionsMetadataGenerator/' ) ) ) ) }}:
+        suffixTemp: $(buildNumber)
+        packSuffixSwitchTemp: --version-suffix $(buildNumber)
+        emgSuffixSwitchTemp: --version-suffix ci$(buildNumber)
+    suffix: $[variables.suffixTemp] # this resolves to an empty string if it is missing
+    packSuffixSwitch: $[variables.packSuffixSwitchTemp]
+    emgSuffixSwitch: $[variables.emgSuffixSwitchTemp]
+
+  steps:
+  - template: /eng/ci/templates/install-dotnet.yml@self
+
+  - task: PowerShell@2
+    displayName: Build artifacts
+    inputs:
+      filePath: build/build-extensions.ps1
+      arguments: '-buildNumber "$(buildNumber)" -suffix "$(suffix)"'
+
+  - task: CopyFiles@2
+    inputs:
+      SourceFolder: out/pub/WebJobs.Script.WebHost
+      Contents: '**/*.zip'
+      TargetFolder: $(Build.ArtifactStagingDirectory)
+
+  - task: DotNetCoreCLI@2
+    displayName: Build host packages
+    inputs:
+      command: custom
+      custom: pack
+      arguments: -p:BuildNumber=$(buildNumber) -c release $(packSuffixSwitch)
+      projects: |
+        **/WebJobs.Script.csproj
+        **/WebJobs.Script.WebHost.csproj
+        **/WebJobs.Script.Grpc.csproj
+
+  - task: DotNetCoreCLI@2
+    displayName: Build Abstractions and ExtensionsMetadataGenerator
+    inputs:
+      command: build
+      arguments: '-c release'
+      projects: |
+        **/ExtensionsMetadataGenerator.csproj
+        **/WebJobs.Script.Abstractions.csproj
+
+  - template: ci/sign-files.yml@eng
+    parameters:
+      displayName: Sign Abstractions assemblies
+      folderPath: out/bin/WebJobs.Script.Abstractions/release
+      pattern: Microsoft.Azure.WebJobs.Script.Abstractions*.dll
+      signType: dll
+
+  - task: DeleteFiles@1
+    displayName: Delete CodeSignSummary files
+    inputs:
+      contents: '**/CodeSignSummary-*.md'
+
+  - task: DotNetCoreCLI@2
+    displayName: Pack Abstractions
+    inputs:
+      command: custom
+      custom: pack
+      arguments: '--no-build -c release'
+      projects: |
+        **/WebJobs.Script.Abstractions.csproj
+
+  - template: ci/sign-files.yml@eng
+    parameters:
+      displayName: Sign ExtensionsMetadataGenerator assemblies
+      folderPath: out/bin/ExtensionsMetadataGenerator
+      pattern: Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator*.dll
+      signType: dll-strong-name
+
+  - task: DeleteFiles@1
+    displayName: Delete CodeSignSummary files
+    inputs:
+      contents: '**/CodeSignSummary-*.md'
+
+  - task: DotNetCoreCLI@2
+    displayName: Pack ExtensionsMetadataGenerator
+    inputs:
+      command: custom
+      custom: pack
+      arguments: '--no-build -c release $(emgSuffixSwitch)'
+      projects: |
+        **/ExtensionsMetadataGenerator.csproj
+
+  - template: ci/sign-files.yml@eng
+    parameters:
+      displayName: Sign NugetPackages
+      folderPath: out/pkg/release
+      pattern: '*.nupkg'
+      signType: nuget
+
+  - task: DeleteFiles@1
+    displayName: Delete CodeSignSummary files
+    inputs:
+      contents: '**/CodeSignSummary-*.md'
+
+  - task: CopyFiles@2
+    inputs:
+      SourceFolder: out/pkg/release
+      Contents: '**/*.nupkg'
+      TargetFolder: $(Build.ArtifactStagingDirectory)/NugetPackages
