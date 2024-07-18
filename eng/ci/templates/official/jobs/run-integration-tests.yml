@@ -202,4 +202,4 @@ jobs:
       azureSubscription: Azure-Functions-Host-CI-internal
       azurePowerShellVersion: 'LatestVersion'
       ScriptPath: build/checkin-secrets.ps1
-      arguments: '-leaseBlob $(LeaseBlob) -leaseToken $(LeaseToken)'
+      ScriptArguments: '-leaseBlob $(LeaseBlob) -leaseToken $(LeaseToken)'
