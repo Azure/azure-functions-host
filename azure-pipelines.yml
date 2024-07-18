@@ -376,7 +376,7 @@ jobs:
     inputs:
       azureSubscription: Azure-Functions-Host-CI
       ScriptPath: '$(Build.Repository.LocalPath)\build\checkin-secrets.ps1'
-      arguments: '-leaseBlob $(LeaseBlob) -leaseToken $(LeaseToken)'
+      ScriptArguments: '-leaseBlob $(LeaseBlob) -leaseToken $(LeaseToken)'
       azurePowerShellVersion: 'LatestVersion'
 
 - job: RunIntegrationTests
@@ -571,7 +571,7 @@ jobs:
     inputs:
       azureSubscription: Azure-Functions-Host-CI
       ScriptPath: '$(Build.Repository.LocalPath)\build\checkin-secrets.ps1'
-      arguments: '-leaseBlob $(LeaseBlob) -leaseToken $(LeaseToken)'
+      ScriptArguments: '-leaseBlob $(LeaseBlob) -leaseToken $(LeaseToken)'
       azurePowerShellVersion: 'LatestVersion'
 
 - job: PublishArtifacts
