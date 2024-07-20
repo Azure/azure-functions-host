@@ -49,11 +49,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
+        // KeyVaultSecretRespository tests are no longer supported in host V3
         [InlineData(SecretsRepositoryType.BlobStorage, "Dedicated")]
         [InlineData(SecretsRepositoryType.BlobStorage, "Dynamic")]
         [InlineData(SecretsRepositoryType.BlobStorageSas, "Dedicated")]
         [InlineData(SecretsRepositoryType.FileSystem, "Dedicated")]
-        [InlineData(SecretsRepositoryType.KeyVault, "Dedicated")]
         public async Task Constructor_CreatesSecretPathIfNotExists(SecretsRepositoryType repositoryType, string sku)
         {
             string path = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
@@ -84,14 +84,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
+        // KeyVaultSecretRespository tests are no longer supported in host V3
         [InlineData(SecretsRepositoryType.BlobStorage, ScriptSecretsType.Host)]
         [InlineData(SecretsRepositoryType.BlobStorage, ScriptSecretsType.Function)]
         [InlineData(SecretsRepositoryType.BlobStorageSas, ScriptSecretsType.Host)]
         [InlineData(SecretsRepositoryType.BlobStorageSas, ScriptSecretsType.Function)]
         [InlineData(SecretsRepositoryType.FileSystem, ScriptSecretsType.Host)]
         [InlineData(SecretsRepositoryType.FileSystem, ScriptSecretsType.Function)]
-        [InlineData(SecretsRepositoryType.KeyVault, ScriptSecretsType.Host)]
-        [InlineData(SecretsRepositoryType.KeyVault, ScriptSecretsType.Function)]
         public async Task ReadAsync_ReadsExpectedFile(SecretsRepositoryType repositoryType, ScriptSecretsType secretsType)
         {
             using (var directory = new TempDirectory())
@@ -140,9 +139,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        [Theory] // Only for Key Vault to test paging over large number of secrets
-        [InlineData(SecretsRepositoryType.KeyVault, ScriptSecretsType.Host)]
-        [InlineData(SecretsRepositoryType.KeyVault, ScriptSecretsType.Function)]
+        // KeyVaultSecretRespository tests are no longer supported in host V3
         public async Task ReadAsync_ReadsExpectedKeyVaultPages(SecretsRepositoryType repositoryType, ScriptSecretsType secretsType)
         {
             using (var directory = new TempDirectory())
@@ -213,14 +210,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
 
         [Theory]
+        // KeyVaultSecretRespository tests are no longer supported in host V3
         [InlineData(SecretsRepositoryType.BlobStorage, ScriptSecretsType.Host)]
         [InlineData(SecretsRepositoryType.BlobStorage, ScriptSecretsType.Function)]
         [InlineData(SecretsRepositoryType.BlobStorageSas, ScriptSecretsType.Host)]
         [InlineData(SecretsRepositoryType.BlobStorageSas, ScriptSecretsType.Function)]
         [InlineData(SecretsRepositoryType.FileSystem, ScriptSecretsType.Host)]
         [InlineData(SecretsRepositoryType.FileSystem, ScriptSecretsType.Function)]
-        [InlineData(SecretsRepositoryType.KeyVault, ScriptSecretsType.Host)]
-        [InlineData(SecretsRepositoryType.KeyVault, ScriptSecretsType.Function)]
         public async Task WriteAsync_CreatesExpectedFile(SecretsRepositoryType repositoryType, ScriptSecretsType secretsType)
         {
             using (var directory = new TempDirectory())
