@@ -349,17 +349,12 @@ jobs:
       targetType: 'inline'
       script: 'Install-Module -Name Az.Storage -RequiredVersion 1.11.0 -Scope CurrentUser -Force -AllowClobber'
 
-  - task: AzureKeyVault@1
-    inputs:
-      # Note: This is actually a Service Connection in DevOps, not an Azure subscription name
-      azureSubscription: 'Azure-Functions-Host-CI'
-      keyVaultName: 'azure-functions-host-ci'
-      secretsFilter: '*'
-  - task: PowerShell@2
+  - task: AzurePowerShell@5
     displayName: 'Checkout secrets'
     inputs:
-      filePath: '$(Build.Repository.LocalPath)\build\checkout-secrets.ps1'
-      arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'''
+      azureSubscription: Azure-Functions-Host-CI
+      ScriptPath: '$(Build.Repository.LocalPath)\build\checkout-secrets.ps1'
+      azurePowerShellVersion: 'LatestVersion'
   - task: AzureKeyVault@1
     inputs:
       # Note: This is actually a Service Connection in DevOps, not an Azure subscription name
@@ -382,12 +377,14 @@ jobs:
       AzureWebJobsEventHubReceiver: $(EventHub)
       AzureWebJobsSecretStorageKeyVaultConnectionString: $(KeyVaultConnectionString)
       AzureWebJobsSecretStorageKeyVaultName: $(KeyVaultName)
-  - task: PowerShell@2
+  - task: AzurePowerShell@5
     condition: always()
     displayName: 'Checkin secrets'
     inputs:
-      filePath: '$(Build.Repository.LocalPath)\build\checkin-secrets.ps1'
-      arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'' -leaseBlob $(LeaseBlob) -leaseToken $(LeaseToken)'
+      azureSubscription: Azure-Functions-Host-CI
+      ScriptPath: '$(Build.Repository.LocalPath)\build\checkin-secrets.ps1'
+      ScriptArguments: '-leaseBlob $(LeaseBlob) -leaseToken $(LeaseToken)'
+      azurePowerShellVersion: 'LatestVersion'
 
 - job: RunIntegrationTests
   pool:
@@ -425,11 +422,12 @@ jobs:
       azureSubscription: 'Azure-Functions-Host-CI'
       keyVaultName: 'azure-functions-host-ci'
       secretsFilter: '*'
-  - task: PowerShell@2
+  - task: AzurePowerShell@5
     displayName: 'Checkout secrets'
     inputs:
-      filePath: '$(Build.Repository.LocalPath)\build\checkout-secrets.ps1'
-      arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'''
+      azureSubscription: Azure-Functions-Host-CI
+      ScriptPath: '$(Build.Repository.LocalPath)\build\checkout-secrets.ps1'
+      azurePowerShellVersion: 'LatestVersion'
   - task: AzureKeyVault@1
     inputs:
       # Note: This is actually a Service Connection in DevOps, not an Azure subscription name
@@ -574,9 +572,11 @@ jobs:
       arguments: '--filter "Group=ReleaseTests" --no-build'
       projects: |
         **\WebJobs.Script.Tests.Integration.csproj
-  - task: PowerShell@2
+  - task: AzurePowerShell@5
     condition: always()
     displayName: 'Checkin secrets'
     inputs:
-      filePath: '$(Build.Repository.LocalPath)\build\checkin-secrets.ps1'
-      arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'' -leaseBlob $(LeaseBlob) -leaseToken $(LeaseToken)'
+      azureSubscription: Azure-Functions-Host-CI
+      ScriptPath: '$(Build.Repository.LocalPath)\build\checkin-secrets.ps1'
+      ScriptArguments: '-leaseBlob $(LeaseBlob) -leaseToken $(LeaseToken)'
+      azurePowerShellVersion: 'LatestVersion'
