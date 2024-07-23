@@ -57,11 +57,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
         }
 
-        internal KeyVaultSecretsRepository(string secretsSentinelFilePath, string vaultUri, string clientId, string clientSecret, string tenantId, ILogger logger, IEnvironment environment, TokenCredential testEnvironmentTokenCredential) : this(secretsSentinelFilePath, vaultUri, clientId, clientSecret, tenantId, logger, environment)
+        internal KeyVaultSecretsRepository(string secretsSentinelFilePath, string vaultUri, ILogger logger, IEnvironment environment, TokenCredential testEnvironmentTokenCredential)
+            : this(secretsSentinelFilePath, vaultUri, null, null, null, logger, environment)
         {
             _tokenCredential = new Lazy<TokenCredential>(() =>
             {
-                if (!TryCreateTokenCredential(clientId, clientSecret, tenantId, out TokenCredential credential))
+                if (!TryCreateTokenCredential(null, null, null, out TokenCredential credential))
                 {
                     throw new InvalidOperationException("Failed to create token credential for KeyVaultSecretsRepository");
                 }
