@@ -626,7 +626,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 }
                 else
                 {
-                    return new KeyVaultSecretsRepository(SecretsDirectory, KeyVaultUri, KeyVaultClientId, KeyVaultClientSecret, KeyVaultTenantId, logger, Environment);
+                    return new KeyVaultSecretsRepository(SecretsDirectory, KeyVaultUri, KeyVaultClientId, KeyVaultClientSecret, KeyVaultTenantId, logger, Environment, new WorkloadIdentityCredential());
                 }
             }
 

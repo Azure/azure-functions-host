@@ -26,6 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private const string FunctionKeyPrefix = "host--functionKey--";
         private const string SystemKeyPrefix = "host--systemKey--";
 
+        private readonly Lazy<TokenCredential> _tokenCredential;
         private readonly Lazy<SecretClient> _secretClient;
         private readonly IEnvironment _environment;
 
@@ -38,17 +39,35 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             Uri keyVaultUri = string.IsNullOrEmpty(vaultUri) ? throw new ArgumentException(nameof(vaultUri)) : new Uri(vaultUri);
 
+            _tokenCredential = new Lazy<TokenCredential>(() =>
+            {
+                if (!TryCreateTokenCredential(clientId, clientSecret, tenantId, out TokenCredential credential))
+                {
+                    throw new InvalidOperationException("Failed to create token credential for KeyVaultSecretsRepository");
+                }
+
+                return credential;
+            });
+
             _secretClient = new Lazy<SecretClient>(() =>
             {
-                // If clientSecret and tenantId are provided, use ClientSecret credential; otherwise use managed identity
-                TokenCredential credential = !string.IsNullOrEmpty(clientSecret) && !string.IsNullOrEmpty(tenantId)
-                    ? new ClientSecretCredential(tenantId, clientId, clientSecret)
-                    : new ChainedTokenCredential(new ManagedIdentityCredential(clientId), new ManagedIdentityCredential());
-
-                return new SecretClient(keyVaultUri, credential);
+                return new SecretClient(keyVaultUri, _tokenCredential.Value);
             });
 
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
+        }
+
+        internal KeyVaultSecretsRepository(string secretsSentinelFilePath, string vaultUri, string clientId, string clientSecret, string tenantId, ILogger logger, IEnvironment environment, TokenCredential testEnvironmentTokenCredential) : this(secretsSentinelFilePath, vaultUri, clientId, clientSecret, tenantId, logger, environment)
+        {
+            _tokenCredential = new Lazy<TokenCredential>(() =>
+            {
+                if (!TryCreateTokenCredential(clientId, clientSecret, tenantId, out TokenCredential credential))
+                {
+                    throw new InvalidOperationException("Failed to create token credential for KeyVaultSecretsRepository");
+                }
+
+                return new ChainedTokenCredential(testEnvironmentTokenCredential, credential);
+            });
         }
 
         // For testing
@@ -70,6 +89,25 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public override async Task<ScriptSecrets> ReadAsync(ScriptSecretsType type, string functionName)
         {
             return type == ScriptSecretsType.Host ? await ReadHostSecrets() : await ReadFunctionSecrets(functionName);
+        }
+
+        private static bool TryCreateTokenCredential(string clientId, string clientSecret, string tenantId, out TokenCredential credential)
+        {
+            if (!string.IsNullOrEmpty(clientId) && !string.IsNullOrEmpty(clientSecret) && !string.IsNullOrEmpty(tenantId))
+            {
+                credential = new ClientSecretCredential(tenantId, clientId, clientSecret);
+                return true;
+            }
+            else if (!string.IsNullOrEmpty(clientId))
+            {
+                credential = new ManagedIdentityCredential(clientId);
+                return true;
+            }
+            else
+            {
+                credential = new ManagedIdentityCredential();
+                return true;
+            }
         }
 
         public override async Task WriteAsync(ScriptSecretsType type, string functionName, ScriptSecrets secrets)

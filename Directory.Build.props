@@ -13,4 +13,11 @@
     <EngRoot>$(RepoRoot)eng/</EngRoot>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <!-- Nuget audit as warnings only, even in TreatWarningsAsErrors. -->
+    <WarningsNotAsErrors>NU1901;NU1902;NU1903;NU1904</WarningsNotAsErrors>
+    <NuGetAuditLevel>moderate</NuGetAuditLevel> <!-- warn on moderate severity only. -->
+    <NuGetAuditMode>all</NuGetAuditMode> <!-- audit transitive dependencies. -->
+  </PropertyGroup>
+
 </Project>
