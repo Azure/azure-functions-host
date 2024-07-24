@@ -46,7 +46,7 @@ if ($buildReason -eq "PullRequest") {
 $buildNumber = ""
 
 $branch = $sourceBranch.ToLower();
-$isRelease = $branch.Contains("release/4") -or $branch.Contains("release/inproc6/4") -or $branch.Contains("release/inproc8/4")
+$isRelease = $branch.Contains("release/4") -or $branch.Contains("release/in-proc")
 
 if(($buildReason -eq "PullRequest") -or !$isRelease)
 {
