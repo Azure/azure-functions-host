@@ -529,15 +529,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var configuration = TestHelpers.GetTestConfiguration();
                 BlobConnectionString = configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
 
-                KeyVaultConnectionString = configuration.GetWebJobsConnectionString(EnvironmentSettingNames.AzureWebJobsSecretStorageKeyVaultConnectionString);
-                KeyVaultName = configuration.GetWebJobsConnectionString(EnvironmentSettingNames.AzureWebJobsSecretStorageKeyVaultName);
-
-                if (KeyVaultConnectionString is not null && KeyVaultName is not null)
-                {
-                    AzureServiceTokenProvider azureServiceTokenProvider = new AzureServiceTokenProvider(KeyVaultConnectionString);
-                    KeyVaultClient = new KeyVaultClient(new KeyVaultClient.AuthenticationCallback(azureServiceTokenProvider.KeyVaultTokenCallback));
-                }
-
                 Environment = new TestEnvironment();
                 AzureStorageProvider = TestHelpers.GetAzureStorageProvider(configuration);
             }
@@ -553,8 +544,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             public Uri BlobSasConnectionUri { get; private set; }
 
             public CloudBlobContainer BlobContainer { get; private set; }
-
-            public KeyVaultClient KeyVaultClient { get; private set; }
 
             public string KeyVaultName { get; private set; }
 
@@ -587,11 +576,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 await ClearAllBlobSecrets();
                 ClearAllFileSecrets();
-
-                if (KeyVaultClient != null)
-                {
-                    await ClearAllKeyVaultSecrets();
-                }
 
                 LoggerProvider = new TestLoggerProvider();
                 var loggerFactory = new LoggerFactory();
@@ -626,7 +610,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     // delete blob files
                     ClearAllBlobSecrets().ContinueWith(t => { });
                     ClearAllFileSecrets();
-                    ClearAllKeyVaultSecrets().ContinueWith(t => { });
                 }
                 catch
                 {
@@ -663,9 +646,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     case SecretsRepositoryType.BlobStorageSas:
                         await WriteSecretsBlobAndUpdateSentinelFile(functionNameOrHost, ScriptSecretSerializer.SerializeSecrets(scriptSecret));
                         break;
-                    case SecretsRepositoryType.KeyVault:
-                        await WriteSecretsKeyVaultAndUpdateSectinelFile(functionNameOrHost, scriptSecret);
-                        break;
                     default:
                         break;
                 }
@@ -692,15 +672,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 }
             }
 
-            private async Task WriteSecretsKeyVaultAndUpdateSectinelFile(string functionNameOrHost, ScriptSecrets secrets, bool createSentinelFile = true)
-            {
-                Dictionary<string, string> dictionary = KeyVaultSecretsRepository.GetDictionaryFromScriptSecrets(secrets, functionNameOrHost);
-                foreach (string key in dictionary.Keys)
-                {
-                    await KeyVaultClient.SetSecretAsync(GetKeyVaultBaseUrl(), key, dictionary[key]);
-                }
-            }
-
             public async Task<ScriptSecrets> GetSecretText(string functionNameOrHost, ScriptSecretsType type)
             {
                 ScriptSecrets secrets = null;
@@ -713,9 +684,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     case SecretsRepositoryType.BlobStorage:
                     case SecretsRepositoryType.BlobStorageSas:
                         secrets = await GetSecretBlobText(functionNameOrHost, type);
-                        break;
-                    case SecretsRepositoryType.KeyVault:
-                        secrets = await GetSecretsFromKeyVault(functionNameOrHost, type);
                         break;
                     default:
                         break;
@@ -732,33 +700,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     blobText = await BlobContainer.GetBlockBlobReference(blobPath).DownloadTextAsync();
                 }
                 return ScriptSecretSerializer.DeserializeSecrets(type, blobText);
-            }
-
-            private async Task<ScriptSecrets> GetSecretsFromKeyVault(string functionNameOrHost, ScriptSecretsType type)
-            {
-                var secretResults = await KeyVaultClient.GetSecretsAsync(GetKeyVaultBaseUrl());
-                if (type == ScriptSecretsType.Host)
-                {
-                    SecretBundle masterBundle = await KeyVaultClient.GetSecretAsync(GetKeyVaultBaseUrl(), secretResults.FirstOrDefault(x => x.Identifier.Name.StartsWith("host--master")).Identifier.Name);
-                    SecretBundle functionKeyBundle = await KeyVaultClient.GetSecretAsync(GetKeyVaultBaseUrl(), secretResults.FirstOrDefault(x => x.Identifier.Name.StartsWith("host--functionKey")).Identifier.Name);
-                    SecretBundle systemKeyBundle = await KeyVaultClient.GetSecretAsync(GetKeyVaultBaseUrl(), secretResults.FirstOrDefault(x => x.Identifier.Name.StartsWith("host--systemKey")).Identifier.Name);
-                    HostSecrets hostSecrets = new HostSecrets()
-                    {
-                        FunctionKeys = new List<Key>() { new Key(GetSecretName(functionKeyBundle.SecretIdentifier.Name), functionKeyBundle.Value) },
-                        SystemKeys = new List<Key>() { new Key(GetSecretName(systemKeyBundle.SecretIdentifier.Name), systemKeyBundle.Value) }
-                    };
-                    hostSecrets.MasterKey = new Key("master", masterBundle.Value);
-                    return hostSecrets;
-                }
-                else
-                {
-                    SecretBundle functionKeyBundle = await KeyVaultClient.GetSecretAsync(GetKeyVaultBaseUrl(), secretResults.FirstOrDefault(x => x.Identifier.Name.StartsWith("function--")).Identifier.Name);
-                    FunctionSecrets functionSecrets = new FunctionSecrets()
-                    {
-                        Keys = new List<Key>() { new Key(GetSecretName(functionKeyBundle.SecretIdentifier.Name), functionKeyBundle.Value) }
-                    };
-                    return functionSecrets;
-                }
             }
 
             public bool MarkerFileExists(string functionNameOrHost)
@@ -798,18 +739,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 foreach (IListBlobItem blob in blobs.Results)
                 {
                     await BlobContainer.GetBlockBlobReference(((CloudBlockBlob)blob).Name).DeleteIfExistsAsync();
-                }
-            }
-
-            private async Task ClearAllKeyVaultSecrets()
-            {
-                var secretsPages = await KeyVaultSecretsRepository.GetKeyVaultSecretsPagesAsync(KeyVaultClient, GetKeyVaultBaseUrl());
-                foreach (IPage<SecretItem> secretsPage in secretsPages)
-                {
-                    foreach (SecretItem item in secretsPage)
-                    {
-                        await KeyVaultClient.DeleteSecretAsync(GetKeyVaultBaseUrl(), item.Identifier.Name);
-                    }
                 }
             }
         }
