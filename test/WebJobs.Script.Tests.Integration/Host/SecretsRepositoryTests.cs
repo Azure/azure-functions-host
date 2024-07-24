@@ -93,49 +93,47 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData(SecretsRepositoryType.KeyVault, ScriptSecretsType.Function)]
         public async Task ReadAsync_ReadsExpectedFile(SecretsRepositoryType repositoryType, ScriptSecretsType secretsType)
         {
-            using (var directory = new TempDirectory())
+            using var directory = new TempDirectory();
+
+            await _fixture.TestInitialize(repositoryType, directory.Path);
+            ScriptSecrets testSecrets = null;
+            if (secretsType == ScriptSecretsType.Host)
             {
-                await _fixture.TestInitialize(repositoryType, directory.Path);
-                ScriptSecrets testSecrets = null;
-                if (secretsType == ScriptSecretsType.Host)
+                testSecrets = new HostSecrets()
                 {
-                    testSecrets = new HostSecrets()
-                    {
-                        MasterKey = new Key("master", "test"),
-                        FunctionKeys = new List<Key>() { new Key(KeyName, "test") },
-                        SystemKeys = new List<Key>() { new Key(KeyName, "test") }
-                    };
-                }
-                else
+                    MasterKey = new("master", "test"),
+                    FunctionKeys = [new(KeyName, "test")],
+                    SystemKeys = [new(KeyName, "test")]
+                };
+            }
+            else
+            {
+                testSecrets = new FunctionSecrets()
                 {
-                    testSecrets = new FunctionSecrets()
-                    {
-                        Keys = new List<Key>() { new Key(KeyName, "test") }
-                    };
-                }
-                string testFunctionName = secretsType == ScriptSecretsType.Host ? "host" : functionName;
+                    Keys = [new(KeyName, "test")]
+                };
+            }
+            string testFunctionName = secretsType == ScriptSecretsType.Host ? "host" : functionName;
 
-                await _fixture.WriteSecret(testFunctionName, testSecrets);
+            await _fixture.WriteSecret(testFunctionName, testSecrets);
 
-                var target = _fixture.GetNewSecretRepository();
+            var target = _fixture.GetNewSecretRepository();
 
-                ScriptSecrets secretsContent = await target.ReadAsync(secretsType, testFunctionName);
+            ScriptSecrets secretsContent = await target.ReadAsync(secretsType, testFunctionName);
 
-                if (secretsType == ScriptSecretsType.Host)
-                {
-                    Assert.Equal((secretsContent as HostSecrets).MasterKey.Name, "master");
-                    Assert.Equal((secretsContent as HostSecrets).MasterKey.Value, "test");
-                    Assert.Equal((secretsContent as HostSecrets).FunctionKeys[0].Name, KeyName);
-                    Assert.Equal((secretsContent as HostSecrets).FunctionKeys[0].Value, "test");
-                    Assert.Equal((secretsContent as HostSecrets).SystemKeys[0].Name, KeyName);
-                    Assert.Equal((secretsContent as HostSecrets).SystemKeys[0].Value, "test");
-                }
-                else
-                {
-                    Assert.Equal((secretsContent as FunctionSecrets).Keys[0].Name, KeyName);
-                    Assert.Equal((secretsContent as FunctionSecrets).Keys[0].Value, "test");
-                }
-
+            if (secretsType == ScriptSecretsType.Host)
+            {
+                Assert.Equal((secretsContent as HostSecrets).MasterKey.Name, "master");
+                Assert.Equal((secretsContent as HostSecrets).MasterKey.Value, "test");
+                Assert.Equal((secretsContent as HostSecrets).FunctionKeys[0].Name, KeyName);
+                Assert.Equal((secretsContent as HostSecrets).FunctionKeys[0].Value, "test");
+                Assert.Equal((secretsContent as HostSecrets).SystemKeys[0].Name, KeyName);
+                Assert.Equal((secretsContent as HostSecrets).SystemKeys[0].Value, "test");
+            }
+            else
+            {
+                Assert.Equal((secretsContent as FunctionSecrets).Keys[0].Name, KeyName);
+                Assert.Equal((secretsContent as FunctionSecrets).Keys[0].Value, "test");
             }
         }
 
@@ -526,6 +524,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public class Fixture : IDisposable
         {
+            private readonly DefaultAzureCredentialOptions _azureCredentialOptions;
+
             public Fixture()
             {
                 TestSiteName = "Test_test";
@@ -534,17 +534,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var configuration = TestHelpers.GetTestConfiguration();
                 BlobConnectionString = configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
                 KeyVaultUri = configuration.GetWebJobsConnectionString(EnvironmentSettingNames.AzureWebJobsSecretStorageKeyVaultUri);
-                KeyVaultClientId = configuration.GetWebJobsConnectionString(EnvironmentSettingNames.AzureWebJobsSecretStorageKeyVaultClientId);
-                KeyVaultClientSecret = configuration.GetWebJobsConnectionString(EnvironmentSettingNames.AzureWebJobsSecretStorageKeyVaultClientSecret);
-                KeyVaultTenantId = configuration.GetWebJobsConnectionString(EnvironmentSettingNames.AzureWebJobsSecretStorageKeyVaultTenantId);
 
-                if (KeyVaultTenantId is not null && KeyVaultClientId is not null &&
-                    KeyVaultClientSecret is not null && KeyVaultUri is not null)
+                // Exclude managed identity for the test to avoid using the
+                // credential setup in the test environment.
+                _azureCredentialOptions = new DefaultAzureCredentialOptions
                 {
-                    // These will fail later if required; but sometimes when testing locally you don't care about KeyVault
-                    var credential = new ClientSecretCredential(KeyVaultTenantId, KeyVaultClientId, KeyVaultClientSecret);
-                    SecretClient = new SecretClient(new Uri(KeyVaultUri), credential);
-                }
+                    ExcludeManagedIdentityCredential = true,
+                };
+
+                SecretClient = new SecretClient(new Uri(KeyVaultUri), new DefaultAzureCredential(_azureCredentialOptions));
 
                 AzureBlobStorageProvider = TestHelpers.GetAzureBlobStorageProvider(configuration);
             }
@@ -564,12 +562,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             public SecretClient SecretClient { get; private set; }
 
             public string KeyVaultUri { get; private set; }
-
-            public string KeyVaultClientId { get; private set; }
-
-            public string KeyVaultClientSecret { get; private set; }
-
-            public string KeyVaultTenantId { get; private set; }
 
             public SecretsRepositoryType RepositoryType { get; private set; }
 
@@ -612,22 +604,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             public ISecretsRepository GetNewSecretRepository()
             {
                 var logger = LoggerProvider.CreateLogger("Test");
-                if (RepositoryType == SecretsRepositoryType.BlobStorage)
+
+                return RepositoryType switch
                 {
-                    return new BlobStorageSecretsRepository(SecretsDirectory, ConnectionStringNames.Storage, TestSiteName, logger, Environment, AzureBlobStorageProvider);
-                }
-                else if (RepositoryType == SecretsRepositoryType.BlobStorageSas)
-                {
-                    return new BlobStorageSasSecretsRepository(SecretsDirectory, BlobSasConnectionUri.ToString(), TestSiteName, logger, Environment, AzureBlobStorageProvider);
-                }
-                else if (RepositoryType == SecretsRepositoryType.FileSystem)
-                {
-                    return new FileSystemSecretsRepository(SecretsDirectory, logger, Environment);
-                }
-                else
-                {
-                    return new KeyVaultSecretsRepository(SecretsDirectory, KeyVaultUri, KeyVaultClientId, KeyVaultClientSecret, KeyVaultTenantId, logger, Environment, new WorkloadIdentityCredential());
-                }
+                    SecretsRepositoryType.BlobStorage => new BlobStorageSecretsRepository(SecretsDirectory, ConnectionStringNames.Storage, TestSiteName, logger, Environment, AzureBlobStorageProvider),
+                    SecretsRepositoryType.BlobStorageSas => new BlobStorageSasSecretsRepository(SecretsDirectory, BlobSasConnectionUri.ToString(), TestSiteName, logger, Environment, AzureBlobStorageProvider),
+                    SecretsRepositoryType.FileSystem => new FileSystemSecretsRepository(SecretsDirectory, logger, Environment),
+                    _ => new KeyVaultSecretsRepository(SecretsDirectory, KeyVaultUri, logger, Environment, new DefaultAzureCredential(_azureCredentialOptions))
+                };
             }
 
             public void Dispose()
@@ -652,10 +636,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             private string SecretsFileOrSentinelPath(string functionNameOrHost)
             {
-                string secretFilePath = null;
                 string fileName = string.Format(CultureInfo.InvariantCulture, "{0}.json", functionNameOrHost);
-                secretFilePath = Path.Combine(SecretsDirectory, fileName);
-                return secretFilePath;
+                return Path.Combine(SecretsDirectory, fileName);
             }
 
             public async Task WriteSecret(string functionNameOrHost, ScriptSecrets scriptSecret)
@@ -703,7 +685,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Dictionary<string, string> dictionary = KeyVaultSecretsRepository.GetDictionaryFromScriptSecrets(secrets, functionNameOrHost);
                 foreach (string key in dictionary.Keys)
                 {
-                    await SecretClient.SetSecretAsync(key, dictionary[key]);
+                    await Utility.InvokeWithRetriesWhenAsync(() => SecretClient.SetSecretAsync(key, dictionary[key]),
+                        5, TimeSpan.FromSeconds(1), (e) => e is RequestFailedException rfex && rfex.Status == 409);
                 }
             }
 
@@ -818,16 +801,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 }
             }
 
+            private async Task DeleteKeyVaultSecret(SecretProperties secret)
+            {
+                var result = await SecretClient.StartDeleteSecretAsync(secret.Name);
+                await result.WaitForCompletionAsync();
+
+                if (result.HasCompleted && secret.RecoveryLevel.Contains("purgeable", StringComparison.OrdinalIgnoreCase))
+                {
+                    await SecretClient.PurgeDeletedSecretAsync(secret.Name);
+                }
+            }
+
             private async Task ClearAllKeyVaultSecrets()
             {
-                var secretsPages = KeyVaultSecretsRepository.GetKeyVaultSecretsPagesAsync(SecretClient).AsPages();
-                await foreach (Page<SecretProperties> page in secretsPages)
+                var pages = SecretClient.GetPropertiesOfSecretsAsync();
+
+                var secretOperations = new List<Task>();
+                await foreach (var item in pages)
                 {
-                    foreach (SecretProperties item in page.Values)
-                    {
-                        await SecretClient.StartDeleteSecretAsync(item.Name);
-                    }
+                    secretOperations.Add(DeleteKeyVaultSecret(item));
                 }
+
+                await Task.WhenAll(secretOperations);
             }
         }
     }
