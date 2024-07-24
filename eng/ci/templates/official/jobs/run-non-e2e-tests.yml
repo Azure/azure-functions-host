@@ -43,6 +43,24 @@ jobs:
       keyVaultName: azure-functions-host-$(LeaseBlob)
       secretsFilter: '*'
 
+  - task: AzureCLI@2
+    displayName: 'Setup Azure environment'
+    inputs:
+      azureSubscription: Azure-Functions-Host-CI-internal
+      addSpnToEnvironment: true
+      scriptType: bash
+      scriptLocation: inlineScript
+      inlineScript: |
+        echo "##vso[task.setvariable variable=ARM_CLIENT_ID]$servicePrincipalId" 
+        echo "##vso[task.setvariable variable=ARM_ID_TOKEN]$idToken"
+        echo "##vso[task.setvariable variable=ARM_TENANT_ID]$tenantId"
+
+  # This step ensures the azure context defined by the previous task is persisted
+  # and available to subsequent steps/tasks.
+  - bash: |
+      az login --service-principal -u $(ARM_CLIENT_ID) --tenant $(ARM_TENANT_ID) --allow-no-subscriptions --federated-token $(ARM_ID_TOKEN)
+    displayName: 'Login to Azure'
+
   - task: DotNetCoreCLI@2
     displayName: Build Integration.csproj
     inputs:
