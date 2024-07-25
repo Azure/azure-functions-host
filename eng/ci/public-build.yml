@@ -49,6 +49,11 @@ extends:
         compiled:
           enabled: true
         runSourceLanguagesInSourceAnalysis: true
+      autobaseline:
+        enableForGitHub: true
+
+    featureFlags:
+      autoBaseline: true
 
     settings:
       # PR's from forks do not have sufficient permissions to set tags.
