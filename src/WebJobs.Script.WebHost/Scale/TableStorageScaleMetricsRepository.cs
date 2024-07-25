@@ -9,6 +9,7 @@ using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure;
+using Azure.Core.Pipeline;
 using Azure.Data.Tables;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Scale;
@@ -66,7 +67,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                     try
                     {
-                        _tableServiceClient = new TableServiceClient(storageConnectionString);
+                        var handler = _delegatingHandlerProvider.Create();
+                        TableClientOptions options = null;
+
+                        if (handler != null)
+                        {
+                            options = new TableClientOptions
+                            {
+                                Transport = new HttpClientTransport(handler)
+                            };
+                        }
+
+                        _tableServiceClient = new TableServiceClient(storageConnectionString, options);
                     }
                     catch (Exception ex)
                     {
