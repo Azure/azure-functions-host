@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Net;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure;
@@ -67,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                     try
                     {
-                        var handler = _delegatingHandlerProvider.Create();
+                        DelegatingHandler handler = _delegatingHandlerProvider.Create();
                         TableClientOptions options = null;
 
                         if (handler != null)
