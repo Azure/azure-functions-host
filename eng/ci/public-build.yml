@@ -35,6 +35,8 @@ resources:
 
 variables:
   - template: /eng/ci/templates/variables/build.yml@self
+  - name: buildNumber
+    value: $[ counter('build', 0) ]
 
 extends:
   template: v1/1ES.Unofficial.PipelineTemplate.yml@1es
