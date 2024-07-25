@@ -1,6 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
   <Import Project="..\..\build\common.props" />
-  <Import Project="..\..\build\workers.props" />
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <IsPackable>false</IsPackable>
@@ -20,6 +19,9 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <WarningsAsErrors />
   </PropertyGroup>
+
+  <Import Project="$(TargetsRoot)Workers.props" />
+
   <ItemGroup>
     <Compile Remove="ScriptHostEndToEnd\ListenerFailureTests.cs" />
     <Compile Remove="ServiceBus\ServiceBusEndToEndTestBase.cs" />

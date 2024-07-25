@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.Build.NoTargets">
+
   <Import Project="../../build/common.props" />
-  <Import Project="../../build/workers.props" />
 
   <PropertyGroup>
     <!-- TFM and RId are actually used. -->
@@ -11,6 +11,8 @@
     <CustomAfterNoTargets Condition="'$(TargetFramework)' == ''">$(MSBuildThisFileDirectory)Publish.MultiTFM.targets</CustomAfterNoTargets>
     <AddAdditionalExplicitAssemblyReferences>false</AddAdditionalExplicitAssemblyReferences>
   </PropertyGroup>
+
+  <Import Project="$(TargetsRoot)Workers.props" />
 
   <ItemGroup>
     <!-- We don't ship python with the site extension. -->

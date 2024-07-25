@@ -1,0 +1,6 @@
+<Project>
+
+  <!-- Individual workers are in their own props file. -->
+  <Import Project="$(MSBuildThisFileDirectory)Workers.*.props" />
+
+</Project>
