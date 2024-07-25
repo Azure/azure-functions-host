@@ -3005,6 +3005,12 @@
       "System.Text.Json/8.0.4": {
         "dependencies": {
           "System.Text.Encodings.Web": "8.0.0"
+        },
+        "runtime": {
+          "lib/net8.0/System.Text.Json.dll": {
+            "assemblyVersion": "8.0.0.0",
+            "fileVersion": "8.0.724.31311"
+          }
         }
       },
       "System.Text.RegularExpressions/4.3.1": {
@@ -3181,7 +3187,10 @@
           "System.Text.RegularExpressions": "4.3.1"
         },
         "runtime": {
-          "Microsoft.Azure.WebJobs.Script.dll": {}
+          "Microsoft.Azure.WebJobs.Script.dll": {
+            "assemblyVersion": "4.1035.1",
+            "fileVersion": ""
+          }
         }
       },
       "Microsoft.Azure.WebJobs.Script.Grpc/4.1035.1": {
@@ -3199,7 +3208,10 @@
           "Yarp.ReverseProxy": "2.0.1"
         },
         "runtime": {
-          "Microsoft.Azure.WebJobs.Script.Grpc.dll": {}
+          "Microsoft.Azure.WebJobs.Script.Grpc.dll": {
+            "assemblyVersion": "4.1035.1",
+            "fileVersion": ""
+          }
         }
       },
       "Microsoft.Azure.WebJobs.Script.Reference/4.1035.0.0": {
