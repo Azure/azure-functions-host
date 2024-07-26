@@ -46,6 +46,12 @@ jobs:
   - template: /eng/ci/templates/install-dotnet.yml@self
   - template: /eng/ci/templates/steps/build-site-ext.yml@self
 
+  # TODO: remove this extra build when we no longer release out-of-proc from in-proc branch
+  - template: /eng/ci/templates/steps/build-site-ext.yml@self
+    parameters:
+      extraBuildArgs: -f net6.0 -p:MinorVersionPrefix='' -p:SiteExtensionName=Functions
+      binlogPrefix: site_ext_oop
+
   - task: DotNetCoreCLI@2
     displayName: Build host packages
     inputs:
