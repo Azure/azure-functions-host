@@ -1,3 +1,11 @@
+parameters:
+- name: extraBuildArgs
+  type: string
+  default: ''
+- name: binlogPrefix
+  type: string
+  default: site_ext
+
 steps:
   # Not aware of a way to inject variables in the middle of a job from a template. Parameters seem unnecessary here as they should never be changed.
   - pwsh: |
@@ -15,7 +23,7 @@ steps:
       command: custom
       custom: restore
       projects: $(site_ext_proj)
-      arguments: '-v m -p:PublishReadyToRun=true -bl:$(log_dir)/site_ext.restore.binlog'
+      arguments: '-v m -p:PublishReadyToRun=true -bl:$(log_dir)/${{ parameters.binLogPrefix }}.restore.binlog'
 
   - task: DotNetCoreCLI@2
     displayName: Build site extension
@@ -23,7 +31,7 @@ steps:
       command: custom
       custom: build
       projects: $(site_ext_proj)
-      arguments: '--no-restore -v m -p:BuildNumber=$(buildNumber) -bl:$(log_dir)/site_ext.build.binlog'
+      arguments: '--no-restore -v m -p:BuildNumber=$(buildNumber) -bl:$(log_dir)/${{ parameters.binLogPrefix }}.build.binlog $(extraBuildArgs)'
 
   - task: DotNetCoreCLI@2
     displayName: Publish site extension
@@ -33,4 +41,4 @@ steps:
       publishWebProjects: false # we use our own publish logic
       zipAfterPublish: false # we use our own zip logic
       projects: $(site_ext_proj)
-      arguments: '--no-build -v m -p:BuildNumber=$(buildNumber) -p:ZipArtifactsPath=$(Build.ArtifactStagingDirectory) -bl:$(log_dir)/site_ext.publish.binlog'
+      arguments: '--no-build -v m -p:BuildNumber=$(buildNumber) -p:ZipArtifactsPath=$(Build.ArtifactStagingDirectory) -bl:$(log_dir)/${{ parameters.binLogPrefix }}.publish.binlog $(extraBuildArgs)'
