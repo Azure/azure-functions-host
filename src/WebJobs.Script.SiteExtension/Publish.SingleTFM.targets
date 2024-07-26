@@ -42,8 +42,8 @@
   <!-- Update files from worker pagaes to be copied into public SiteExtension. -->
   <Target Name="UpdateWorkerPaths" DependsOnTargets="UpdatePaths" BeforeTargets="AssignTargetPaths">
     <ItemGroup>
-      <None Condition="'%(TargetPath)' != '' AND $([System.String]::new('%(TargetPath)').StartsWith('workers'))">
-        <TargetPath>$(SiteExtensionRelativeDir)%(TargetPath)</TargetPath>
+      <None Condition="'%(None.TargetPath)' != '' AND $([System.String]::new('%(None.TargetPath)').StartsWith('workers'))">
+        <TargetPath>$(SiteExtensionRelativeDir)%(None.TargetPath)</TargetPath>
       </None>
     </ItemGroup>
   </Target>
