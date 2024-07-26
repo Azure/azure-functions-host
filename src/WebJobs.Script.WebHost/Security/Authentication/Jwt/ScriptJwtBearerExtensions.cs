@@ -86,11 +86,11 @@ namespace Microsoft.Extensions.DependencyInjection
                 }
             });
 
-        private static string[] GetValidAudiences()
+        private static IEnumerable<string> GetValidAudiences()
         {
             if (SystemEnvironment.Instance.IsPlaceholderModeEnabled())
             {
-                if (SystemEnvironment.Instance.IsFlexConsumptionSku())
+                if (SystemEnvironment.Instance.IsLinuxConsumptionOnLegion())
                 {
                     return new string[]
                     {
@@ -106,11 +106,22 @@ namespace Microsoft.Extensions.DependencyInjection
                 }
             }
 
-            return new string[]
+            string siteName = ScriptSettingsManager.Instance.GetSetting(AzureWebsiteName);
+            string runtimeSiteName = ScriptSettingsManager.Instance.GetSetting(AzureWebsiteRuntimeSiteName);
+            var audiences = new List<string>
             {
-                string.Format(SiteAzureFunctionsUriFormat, ScriptSettingsManager.Instance.GetSetting(AzureWebsiteName)),
-                string.Format(SiteUriFormat, ScriptSettingsManager.Instance.GetSetting(AzureWebsiteName))
+                string.Format(SiteAzureFunctionsUriFormat, siteName),
+                string.Format(SiteUriFormat, siteName)
             };
+
+            if (!string.IsNullOrEmpty(runtimeSiteName) && !string.Equals(siteName, runtimeSiteName, StringComparison.OrdinalIgnoreCase))
+            {
+                // on a non-production slot, the runtime site name will differ from the site name
+                // we allow both for audience
+                audiences.Add(string.Format(SiteUriFormat, runtimeSiteName));
+            }
+
+            return audiences;
         }
 
         public static TokenValidationParameters CreateTokenValidationParameters()

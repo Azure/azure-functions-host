@@ -141,8 +141,13 @@ namespace Microsoft.Azure.WebJobs.Script
             }, maxRetries, retryInterval);
         }
 
-        internal static async Task InvokeWithRetriesAsync(Func<Task> action, int maxRetries, TimeSpan retryInterval)
+        internal static async Task InvokeWithRetriesWhenAsync(Func<Task> action, int maxRetries, TimeSpan retryInterval, Func<Exception, bool> predicate)
         {
+            if (predicate is null)
+            {
+                throw new ArgumentNullException(nameof(predicate));
+            }
+
             int attempt = 0;
             while (true)
             {
@@ -151,7 +156,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     await action();
                     return;
                 }
-                catch (Exception ex) when (!ex.IsFatal())
+                catch (Exception ex) when (predicate(ex))
                 {
                     if (++attempt > maxRetries)
                     {
@@ -161,6 +166,9 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
             }
         }
+
+        internal static Task InvokeWithRetriesAsync(Func<Task> action, int maxRetries, TimeSpan retryInterval)
+            => InvokeWithRetriesWhenAsync(action, maxRetries, retryInterval, (e) => !e.IsFatal());
 
         /// <summary>
         /// Delays while the specified condition remains true.

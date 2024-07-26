@@ -79,7 +79,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
         {
             if (options.FunctionTimeout == null)
             {
-                options.FunctionTimeout = (_environment.IsConsumptionSku() && !_environment.IsFlexConsumptionSku()) ? DefaultConsumptionFunctionTimeout : DefaultFunctionTimeout;
+                options.FunctionTimeout = _environment.IsConsumptionSku() ? DefaultConsumptionFunctionTimeout : DefaultFunctionTimeout;
             }
             else if (SkuSupportsUnboundedTimeout(_environment) && TimeSpan.Compare(options.FunctionTimeout.Value, TimeSpan.FromDays(-1)) == 0)
             {
@@ -114,7 +114,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 
         private bool SkuSupportsUnboundedTimeout(IEnvironment environment)
         {
-            return !environment.IsConsumptionSku() || environment.IsFlexConsumptionSku();
+            return !environment.IsConsumptionSku();
         }
     }
 }

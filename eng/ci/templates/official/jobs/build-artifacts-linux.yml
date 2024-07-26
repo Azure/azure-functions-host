@@ -52,11 +52,21 @@ jobs:
       arguments: '$(build_args) --no-restore  -bl:$(log_dir)/build.binlog'
 
   - task: DotNetCoreCLI@2
-    displayName: Publish
+    displayName: Publish (net6.0)
     inputs:
       command: custom
       custom: publish
       publishWebProjects: false # we use our own publish logic
       zipAfterPublish: false # we use our own zip logic
       projects: $(project)
-      arguments: '$(build_args) --no-build -p:ZipArtifactsPath=$(zip_artifacts_path) -bl:$(log_dir)/publish.binlog'
+      arguments: '$(build_args) -f net6.0 --no-build -p:PublishZipDir=$(publish_zip_dir) -bl:$(log_dir)/publish.net6.binlog'
+
+  - task: DotNetCoreCLI@2
+    displayName: Publish (net8.0)
+    inputs:
+      command: custom
+      custom: publish
+      publishWebProjects: false # we use our own publish logic
+      zipAfterPublish: false # we use our own zip logic
+      projects: $(project)
+      arguments: '$(build_args) -f net8.0 --no-build -p:PublishZipDir=$(publish_zip_dir) -bl:$(log_dir)/publish.net8.binlog'

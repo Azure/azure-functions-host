@@ -130,7 +130,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddTransient<VirtualFileSystem>();
             services.AddTransient<VirtualFileSystemMiddleware>();
 
-            if (SystemEnvironment.Instance.IsFlexConsumptionSku())
+            if (SystemEnvironment.Instance.IsLinuxConsumptionOnLegion())
             {
                 services.AddSingleton<IInstanceManager, LegionInstanceManager>();
             }
@@ -206,7 +206,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.ConfigureOptionsWithChangeTokenSource<LanguageWorkerOptions, LanguageWorkerOptionsSetup, SpecializationChangeTokenSource<LanguageWorkerOptions>>();
             services.ConfigureOptionsWithChangeTokenSource<AppServiceOptions, AppServiceOptionsSetup, SpecializationChangeTokenSource<AppServiceOptions>>();
             services.ConfigureOptionsWithChangeTokenSource<HttpBodyControlOptions, HttpBodyControlOptionsSetup, SpecializationChangeTokenSource<HttpBodyControlOptions>>();
-            services.ConfigureOptions<FlexConsumptionMetricsPublisherOptionsSetup>();
             services.ConfigureOptions<ConsoleLoggingOptionsSetup>();
             services.AddHostingConfigOptions(configuration);
 
@@ -259,7 +258,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     var startupContextProvider = s.GetService<StartupContextProvider>();
                     return new AtlasContainerInitializationHostedService(environment, instanceManager, logger, startupContextProvider);
                 }
-                else if (environment.IsFlexConsumptionSku())
+                else if (environment.IsLinuxConsumptionOnLegion())
                 {
                     var instanceManager = s.GetService<IInstanceManager>();
                     var logger = s.GetService<ILogger<LegionContainerInitializationHostedService>>();
@@ -273,14 +272,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IMetricsPublisher>(s =>
             {
                 var environment = s.GetService<IEnvironment>();
-                if (environment.IsFlexConsumptionSku())
-                {
-                    var options = s.GetService<IOptions<FlexConsumptionMetricsPublisherOptions>>();
-                    var standbyOptions = s.GetService<IOptionsMonitor<StandbyOptions>>();
-                    var logger = s.GetService<ILogger<FlexConsumptionMetricsPublisher>>();
-                    return new FlexConsumptionMetricsPublisher(environment, standbyOptions, options, logger, new FileSystem());
-                }
-                else if (environment.IsLinuxMetricsPublishingEnabled())
+                if (environment.IsLinuxMetricsPublishingEnabled())
                 {
                     var logger = s.GetService<ILogger<LinuxContainerMetricsPublisher>>();
                     var standbyOptions = s.GetService<IOptionsMonitor<StandbyOptions>>();

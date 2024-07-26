@@ -50,24 +50,6 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             HostIdResult result = new HostIdResult();
 
-            if (environment.IsFlexConsumptionSku())
-            {
-                // in Flex Consumption, we use a Guid based host ID without truncation.
-                string uniqueSlotName = environment?.GetAzureWebsiteUniqueSlotName();
-                if (!string.IsNullOrEmpty(uniqueSlotName))
-                {
-                    byte[] hash;
-                    using (MD5 md5 = MD5.Create())
-                    {
-                        hash = md5.ComputeHash(Encoding.UTF8.GetBytes(uniqueSlotName));
-                    }
-
-                    result.HostId = new Guid(hash).ToString().Replace("-", string.Empty).ToLowerInvariant();
-                }
-
-                return result;
-            }
-
             // Note: HostIds must conform to the rules documented here: https://learn.microsoft.com/en-us/azure/azure-functions/functions-app-settings#azurefunctionswebhost__hostid
             string hostId = null;
             if (environment.IsAppService() || environment.IsAnyKubernetesEnvironment())

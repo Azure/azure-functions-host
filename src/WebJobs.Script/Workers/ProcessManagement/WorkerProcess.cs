@@ -81,8 +81,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                     Process.OutputDataReceived += (sender, e) => OnOutputDataReceived(sender, e);
                     Process.Exited += (sender, e) => OnProcessExited(sender, e);
                     Process.EnableRaisingEvents = true;
+                    string sanitizedArguments = Sanitizer.Sanitize(Process.StartInfo.Arguments);
 
-                    _workerProcessLogger?.LogDebug($"Starting worker process with FileName:{Process.StartInfo.FileName} WorkingDirectory:{Process.StartInfo.WorkingDirectory} Arguments:{Process.StartInfo.Arguments}");
+                    _workerProcessLogger?.LogDebug($"Starting worker process with FileName:{Process.StartInfo.FileName} WorkingDirectory:{Process.StartInfo.WorkingDirectory} Arguments:{sanitizedArguments}");
                     Process.Start();
                     _workerProcessLogger?.LogDebug($"{Process.StartInfo.FileName} process with Id={Process.Id} started");
 

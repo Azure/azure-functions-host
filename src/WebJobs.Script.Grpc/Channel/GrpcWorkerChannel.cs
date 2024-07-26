@@ -195,16 +195,17 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         // and a "new" Channel processor (for proper ordering of messages).
         private IInvocationMessageDispatcherFactory GetProcessorFactory()
         {
-            if (_hostingConfigOptions.Value.EnableOrderedInvocationMessages ||
-                FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableOrderedInvocationmessages, _environment))
-            {
-                _workerChannelLogger.LogDebug($"Using {nameof(OrderedInvocationMessageDispatcherFactory)}.");
-                return new OrderedInvocationMessageDispatcherFactory(ProcessItem, _workerChannelLogger);
-            }
-            else
+            // Ordered invocations is the default, but allow explicit disabling
+            if (!_hostingConfigOptions.Value.EnableOrderedInvocationMessages ||
+                FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagDisableOrderedInvocationMessages, _environment))
             {
                 _workerChannelLogger.LogDebug($"Using {nameof(ThreadPoolInvocationProcessorFactory)}.");
                 return new ThreadPoolInvocationProcessorFactory(_processInbound);
+            }
+            else
+            {
+                _workerChannelLogger.LogDebug($"Using {nameof(OrderedInvocationMessageDispatcherFactory)}.");
+                return new OrderedInvocationMessageDispatcherFactory(ProcessItem, _workerChannelLogger);
             }
         }
 

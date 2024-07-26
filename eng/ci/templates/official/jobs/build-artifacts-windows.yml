@@ -8,7 +8,7 @@ jobs:
     os: windows
 
   variables:
-    ${{ if or( eq( variables['Build.Reason'], 'PullRequest' ), and( not( contains( variables['Build.SourceBranch'], 'release/inproc6/4.' ) ), not( contains( variables['Build.SourceBranch'], 'release/inproc8/4.' ) ), not( contains( variables['Build.SourceBranch'], 'release/4.' ) ), not( contains( variables['Build.SourceBranch'], 'release/ExtensionsMetadataGenerator/' ) ) ) ) }}:
+    ${{ if or( eq( variables['Build.Reason'], 'PullRequest' ), and(not( contains( variables['Build.SourceBranch'], 'release/in-proc' ) ), not( contains( variables['Build.SourceBranch'], 'release/4.' ) ), not( contains( variables['Build.SourceBranch'], 'release/ExtensionsMetadataGenerator/' ) ) ) ) }}:
         packSuffixSwitchTemp: --version-suffix $(buildNumber)
         emgSuffixSwitchTemp: --version-suffix ci$(buildNumber)
     packSuffixSwitch: $[variables.packSuffixSwitchTemp]
@@ -66,36 +66,12 @@ jobs:
         **/ExtensionsMetadataGenerator.csproj
         **/WebJobs.Script.Abstractions.csproj
 
-  - task: EsrpCodeSigning@2
-    displayName: Sign Abstractions assemblies
-    inputs:
-      ConnectedServiceName: ESRP Service-internal
-      FolderPath: out/bin/WebJobs.Script.Abstractions/release
-      Pattern: Microsoft.Azure.WebJobs.Script.Abstractions*.dll
-      signConfigType: inlineSignParams
-      inlineOperation: |
-        [
-          {
-            "KeyCode": "CP-230012",
-            "OperationCode": "SigntoolSign",
-            "Parameters": {
-              "OpusName": "Microsoft",
-              "OpusInfo": "http://www.microsoft.com",
-              "FileDigest": "/fd \"SHA256\"",
-              "PageHash": "/NPH",
-              "TimeStamp": "/tr \"http://rfc3161.gtm.corp.microsoft.com/TSS/HttpTspServer\" /td sha256"
-            },
-            "ToolName": "sign",
-            "ToolVersion": "1.0"
-          },
-          {
-            "KeyCode": "CP-230012",
-            "OperationCode": "SigntoolVerify",
-            "Parameters": {},
-            "ToolName": "sign",
-            "ToolVersion": "1.0"
-          }
-        ]
+  - template: ci/sign-files.yml@eng
+    parameters:
+      displayName: Sign Abstractions assemblies
+      folderPath: out/bin/WebJobs.Script.Abstractions/release
+      pattern: Microsoft.Azure.WebJobs.Script.Abstractions*.dll
+      signType: dll
 
   - task: DotNetCoreCLI@2
     displayName: Pack Abstractions
@@ -106,75 +82,12 @@ jobs:
       projects: |
         **/WebJobs.Script.Abstractions.csproj
 
-  - task: EsrpCodeSigning@2
-    displayName: Sign Abstractions package
-    inputs:
-      ConnectedServiceName: ESRP Service-internal
-      FolderPath: $(nuget_package_path)
-      Pattern: Microsoft.Azure.WebJobs.Script.Abstractions*.nupkg
-      signConfigType: inlineSignParams
-      inlineOperation: |
-        [
-            {
-              "KeyCode": "CP-401405",
-              "OperationCode": "NuGetSign",
-              "Parameters": {},
-              "ToolName": "sign",
-              "ToolVersion": "1.0"
-            },
-            {
-              "KeyCode": "CP-401405",
-              "OperationCode": "NuGetVerify",
-              "Parameters": {},
-              "ToolName": "sign",
-              "ToolVersion": "1.0"
-            }
-        ]
-
-  - task: EsrpCodeSigning@2
-    displayName: Sign ExtensionsMetadataGenerator assemblies
-    inputs:
-      ConnectedServiceName: ESRP Service-internal
-      FolderPath: out/bin/ExtensionsMetadataGenerator
-      Pattern: Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator*.dll
-      signConfigType: inlineSignParams
-      inlineOperation: |
-        [
-          {
-              "KeyCode" : "CP-233863-SN",
-              "OperationCode" : "StrongNameSign",
-              "Parameters" : {},
-              "ToolName" : "sign",
-              "ToolVersion" : "1.0"
-          },
-          {
-              "KeyCode" : "CP-233863-SN",
-              "OperationCode" : "StrongNameVerify",
-              "Parameters" : {},
-              "ToolName" : "sign",
-              "ToolVersion" : "1.0"
-          },
-          {
-            "KeyCode": "CP-230012",
-            "OperationCode": "SigntoolSign",
-            "Parameters": {
-              "OpusName": "Microsoft",
-              "OpusInfo": "http://www.microsoft.com",
-              "FileDigest": "/fd \"SHA256\"",
-              "PageHash": "/NPH",
-              "TimeStamp": "/tr \"http://rfc3161.gtm.corp.microsoft.com/TSS/HttpTspServer\" /td sha256"
-            },
-            "ToolName": "sign",
-            "ToolVersion": "1.0"
-          },
-          {
-            "KeyCode": "CP-230012",
-            "OperationCode": "SigntoolVerify",
-            "Parameters": {},
-            "ToolName": "sign",
-            "ToolVersion": "1.0"
-          }
-        ]
+  - template: ci/sign-files.yml@eng
+    parameters:
+      displayName: Sign ExtensionsMetadataGenerator assemblies
+      folderPath: out/bin/ExtensionsMetadataGenerator
+      pattern: Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator*.dll
+      signType: dll-strong-name
 
   - task: DotNetCoreCLI@2
     displayName: Pack ExtensionsMetadataGenerator
@@ -185,30 +98,12 @@ jobs:
       projects: |
         **/ExtensionsMetadataGenerator.csproj
 
-  - task: EsrpCodeSigning@2
-    displayName: Sign ExtensionsMetadataGenerator package
-    inputs:
-      ConnectedServiceName: ESRP Service-internal
-      FolderPath: $(nuget_package_path)
-      Pattern: Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator*.nupkg
-      signConfigType: inlineSignParams
-      inlineOperation: |
-        [
-            {
-              "KeyCode": "CP-401405",
-              "OperationCode": "NuGetSign",
-              "Parameters": {},
-              "ToolName": "sign",
-              "ToolVersion": "1.0"
-            },
-            {
-              "KeyCode": "CP-401405",
-              "OperationCode": "NuGetVerify",
-              "Parameters": {},
-              "ToolName": "sign",
-              "ToolVersion": "1.0"
-            }
-        ]
+  - template: ci/sign-files.yml@eng
+    parameters:
+      displayName: Sign NugetPackages
+      folderPath: out/pkg/release
+      pattern: '*.nupkg'
+      signType: nuget
 
   - task: DeleteFiles@1
     displayName: Delete CodeSignSummary files

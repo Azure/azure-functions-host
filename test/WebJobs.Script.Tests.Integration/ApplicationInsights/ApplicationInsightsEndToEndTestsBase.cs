@@ -271,14 +271,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             // in class LanguageWorkerOptionsSetup.cs -> Configure()
             // which is giving extra log lines for node worker
             traces = traces.Where(t =>
-                !t.Message.Contains("Skipping WorkerConfig for language")
+                !t.Message.Contains("Skipping WorkerConfig for language") && !t.Message.Contains("Skipping WorkerConfig for stack")
             ).ToArray();
 
             int expectedCount = 16;
             Assert.True(traces.Length == expectedCount, $"Expected {expectedCount} messages, but found {traces.Length}. Actual logs:{Environment.NewLine}{string.Join(Environment.NewLine, traces.Select(t => t.Message))}");
 
             int idx = 0;
-            ValidateTrace(traces[idx++], "1 functions found", LogCategories.Startup);
+            ValidateTrace(traces[idx++], "0 functions found", LogCategories.Startup);
             ValidateTrace(traces[idx++], "2 functions loaded", LogCategories.Startup);
             ValidateTrace(traces[idx++], "A function allow list has been specified", LogCategories.Startup);
             ValidateTrace(traces[idx++], "Found the following functions:\r\n", LogCategories.Startup);

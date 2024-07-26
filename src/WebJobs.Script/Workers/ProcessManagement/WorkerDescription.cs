@@ -45,6 +45,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         /// </summary>
         public abstract bool UseStdErrorStreamForErrorsOnly { get; set; }
 
+        /// <summary>
+        /// Gets or sets a value indicating whether the worker description is disabled.
+        /// </summary>
+        public bool? IsDisabled { get; set; }
+
         public abstract void ApplyDefaultsAndValidate(string workerDirectory, ILogger logger);
 
         internal void ThrowIfFileNotExists(string inputFile, string paramName)

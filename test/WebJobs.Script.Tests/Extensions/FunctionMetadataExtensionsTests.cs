@@ -110,51 +110,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             Assert.Equal("httpTrigger", functionMetadata.Bindings[0].Raw["type"].Value<string>());
         }
 
-        [Theory]
-        [InlineData("httpTrigger", "http")]
-        [InlineData("orchestrationTrigger", "durable")]
-        [InlineData("activityTrigger", "durable")]
-        [InlineData("entityTrigger", "durable")]
-        [InlineData("timerTrigger", null)]
-        [InlineData("blobTrigger", null)]
-        [InlineData("queueTrigger", null)]
-        [InlineData("serviceBusTrigger", null)]
-        [InlineData("otherTrigger", null)]
-        public async Task ToFunctionTrigger_Grouping_ReturnsExpected(string trigger, string group)
-        {
-            var functionMetadata = new FunctionMetadata
-            {
-                Name = "TestFunction1",
-                Bindings =
-                {
-                    new BindingMetadata
-                    {
-                        Name = "input",
-                        Type = trigger,
-                        Direction = BindingDirection.In,
-                        Raw = new JObject()
-                        {
-                            ["name"] = "input",
-                            ["type"] = trigger,
-                            ["direction"] = "in",
-                        },
-                    }
-                }
-            };
-            var options = new ScriptJobHostOptions
-            {
-                RootScriptPath = _testRootScriptPath
-            };
-
-            group ??= $"function:{functionMetadata.Name}";
-            var result = await functionMetadata.ToFunctionTrigger(options, isFlexConsumption: true);
-            Assert.Equal("TestFunction1", result["functionName"].Value<string>());
-            Assert.Equal(trigger, result["type"].Value<string>());
-
-            Assert.True(result.TryGetValue("functionGroup", out JToken functionGroup));
-            Assert.Equal(group, functionGroup.Value<string>());
-        }
-
         [Fact]
         public async Task ToFunctionMetadataResponse_WithoutFiles_ReturnsExpected()
         {

@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.IO.Abstractions;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -376,9 +375,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             handlerMock.Protected().Setup<Task<HttpResponseMessage>>("SendAsync",
                 ItExpr.IsAny<HttpRequestMessage>(),
                 ItExpr.IsAny<CancellationToken>()).ReturnsAsync(new HttpResponseMessage
-            {
-                StatusCode = HttpStatusCode.NotFound
-            });
+                {
+                    StatusCode = HttpStatusCode.NotFound
+                });
 
             var instanceManager = new AtlasInstanceManager(_optionsFactory, TestHelpers.CreateHttpClientFactory(handlerMock.Object),
                 scriptWebEnvironment, environment, loggerFactory.CreateLogger<AtlasInstanceManager>(),
@@ -687,7 +686,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var environment = new Dictionary<string, string>()
             {
                 { EnvironmentSettingNames.MsiEndpoint, "http://localhost:8081" },
-                { EnvironmentSettingNames.MsiSecret, "secret" }
+                { EnvironmentSettingNames.MsiSecret, "PLACEHOLDER" }
             };
             var assignmentContext = new HostAssignmentContext
             {
@@ -698,55 +697,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 MSIContext = new MSIContext()
                 {
                     SiteName = "TestSite",
-                    MSISecret = "TestSecret1234",
-                    Identities = new[] { new ManagedServiceIdentity() { 
-                        Type = ManagedServiceIdentityType.SystemAssigned, 
-                        ClientId = "identityClientId",
-                        TenantId = "identityTenantId",
-                        Thumbprint = "identityThumbprint",
-                        SecretUrl = "identitySecretUrl",
-                        ResourceId = "identityResourceId",
-                        Certificate = "identityCertificate",
-                        PrincipalId = "identityPrincipalId",
-                        AuthenticationEndpoint = "identityAuthEndpoint"
-                    } },
-                    SystemAssignedIdentity = new ManagedServiceIdentity()
-                    {
-                        Type = ManagedServiceIdentityType.SystemAssigned,
-                        ClientId = "saClientId",
-                        TenantId = "saTenantId",
-                        Thumbprint = "saThumbprint",
-                        SecretUrl = "saSecretUrl",
-                        ResourceId = "saResourceId",
-                        Certificate = "saCertificate",
-                        PrincipalId = "saPrincipalId",
-                        AuthenticationEndpoint = "saAuthEndpoint"
-                    },
-                    DelegatedIdentities = new[] { new ManagedServiceIdentity() {
-                        Type = ManagedServiceIdentityType.SystemAssigned,
-                        ClientId = "delegatedClientId",
-                        TenantId = "delegatedTenantId",
-                        Thumbprint = "delegatedThumbprint",
-                        SecretUrl = "delegatedSecretUrl",
-                        ResourceId = "delegatedResourceId",
-                        Certificate = "delegatedCertificate",
-                        PrincipalId = "delegatedPrincipalId",
-                        AuthenticationEndpoint = "delegatedAuthEndpoint"
-                    } },
-                    UserAssignedIdentities = new[] { new ManagedServiceIdentity() {
-                        Type = ManagedServiceIdentityType.UserAssigned,
-                        ClientId = "uaClientId",
-                        TenantId = "uaTenantId",
-                        Thumbprint = "uaThumbprint",
-                        SecretUrl = "uaSecretUrl",
-                        ResourceId = "uaResourceId",
-                        Certificate = "uaCertificate",
-                        PrincipalId = "uaPrincipalId",
-                        AuthenticationEndpoint = "uaAuthEndpoint"
-                    } },
+                    MSISecret = "PLACEHOLDER",
+                    Identities = new[] { TestHelpers.CreateMsi(ManagedServiceIdentityType.SystemAssigned, "identity") },
+                    SystemAssignedIdentity = TestHelpers.CreateMsi(ManagedServiceIdentityType.SystemAssigned, "sa"),
+                    DelegatedIdentities = new[] { TestHelpers.CreateMsi(ManagedServiceIdentityType.SystemAssigned, "delegated") },
+                    UserAssignedIdentities = new[] { TestHelpers.CreateMsi(ManagedServiceIdentityType.UserAssigned, "ua") },
                 }
             };
-            
+
             static void verifyMSIPropertiesHelper(ManagedServiceIdentity msi)
             {
                 Assert.NotNull(msi);
@@ -1160,7 +1118,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var runFromPackageHandler = new Mock<IRunFromPackageHandler>(MockBehavior.Strict);
             runFromPackageHandler.Setup(r => r.MountAzureFileShare(context)).Returns(Task.FromResult(true));
-            
+
             runFromPackageHandler
                 .Setup(r => r.ApplyRunFromPackageContext(It.IsAny<RunFromPackageContext>(), It.IsAny<string>(), true,
                     false)).ReturnsAsync(false); // return false to trigger failure
@@ -1444,7 +1402,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             handlerMock.Protected().Setup<Task<HttpResponseMessage>>("SendAsync",
                 ItExpr.Is<HttpRequestMessage>(request => request.Method == HttpMethod.Post
-                                                         && (request.RequestUri.AbsoluteUri.Equals(msiEndpoint) 
+                                                         && (request.RequestUri.AbsoluteUri.Equals(msiEndpoint)
                                                             || request.RequestUri.AbsoluteUri.Equals(defaultEncryptedMsiEndpoint)
                                                             || request.RequestUri.AbsoluteUri.Equals(providedEncryptedMsiEndpoint))
                                                          && request.Content != null),

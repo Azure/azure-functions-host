@@ -63,7 +63,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ContainerManagement
             _environment.SetEnvironmentVariable(LegionServiceHost, null);
             Assert.True(_environment.IsAnyLinuxConsumption());
             Assert.True(_environment.IsLinuxConsumptionOnAtlas());
-            Assert.False(_environment.IsFlexConsumptionSku());
 
             var initializationHostService = new LegionContainerInitializationHostedService(_environment, _instanceManagerMock.Object, NullLogger<LegionContainerInitializationHostedService>.Instance, _startupContextProvider);
             await initializationHostService.StartAsync(CancellationToken.None);

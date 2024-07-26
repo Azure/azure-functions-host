@@ -316,17 +316,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             var triggersArray = new JArray(triggers);
             int count = triggersArray.Count;
 
+            // add host configuration
             JObject hostConfig = null;
-            if (_environment.IsFlexConsumptionSku())
+            if (Utility.TryGetHostService<IHostOptionsProvider>(_scriptHostManager, out IHostOptionsProvider hostOptionsProvider))
             {
-                // TODO: Only adding host configuration for Flex. Once SyncTriggers is marked RequiresRunningHost,
-                // we'll enable across the board.
-                // https://github.com/Azure/azure-functions-host/issues/9904
-                // If an active host is running, add host configuration.
-                if (Utility.TryGetHostService<IHostOptionsProvider>(_scriptHostManager, out IHostOptionsProvider hostOptionsProvider))
-                {
-                    hostConfig = hostOptionsProvider.GetOptions();
-                }
+                hostConfig = hostOptionsProvider.GetOptions();
             }
 
             // Form the base minimal result
@@ -471,7 +465,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         {
             var triggers = (await functionsMetadata
                 .Where(f => !f.IsProxy())
-                .Select(f => f.ToFunctionTrigger(hostOptions, _environment.IsFlexConsumptionSku()))
+                .Select(f => f.ToFunctionTrigger(hostOptions))
                 .WhenAll())
                 .Where(t => t != null);
 
