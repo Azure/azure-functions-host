@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.Build.NoTargets">
+
+  <Import Project="../../build/common.props" />
+
+  <PropertyGroup>
+    <!-- TFM and RId are actually used. -->
+    <TargetFrameworks>net6.0;net8.0</TargetFrameworks>
+    <RuntimeIdentifier>win</RuntimeIdentifier>
+    <CustomAfterNoTargets Condition="'$(TargetFramework)' != ''">$(MSBuildThisFileDirectory)Publish.SingleTFM.targets</CustomAfterNoTargets>
+    <CustomAfterNoTargets Condition="'$(TargetFramework)' == ''">$(MSBuildThisFileDirectory)Publish.MultiTFM.targets</CustomAfterNoTargets>
+    <AddAdditionalExplicitAssemblyReferences>false</AddAdditionalExplicitAssemblyReferences>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net6.0'">
+    <SiteExtensionName>FunctionsInProc</SiteExtensionName>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net8.0'">
+    <SiteExtensionName>FunctionsInProc8</SiteExtensionName>
+  </PropertyGroup>
+
+  <!-- Only .NET6 builds include workers. -->
+  <Import Project="$(TargetsRoot)Workers.props" Condition="'$(TargetFramework)' == 'net6.0'" />
+
+  <ItemGroup>
+    <ProjectReference Include="../WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- This item group controls what runtimes we will publish for public & private site extension -->
+    <PublishRuntimeIdentifier Include="win-x86" SelfContained="false" PublishDir="32bit" PrivateExtension="true" />
+    <PublishRuntimeIdentifier Include="win-x64" SelfContained="false" PublishDir="64bit" PrivateExtension="false" />
+  </ItemGroup>
+
+</Project>
