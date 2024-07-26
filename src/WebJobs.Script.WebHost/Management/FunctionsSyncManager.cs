@@ -21,6 +21,7 @@ using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Extensions;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
@@ -66,7 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions;
         private readonly IScriptHostManager _scriptHostManager;
 
-        private BlobClient _hashBlobClient;
+        private ISyncTriggerHashClient _hashClient;
 
         public FunctionsSyncManager(IHostIdProvider hostIdProvider, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger<FunctionsSyncManager> logger, IHttpClientFactory httpClientFactory, ISecretManagerProvider secretManagerProvider, IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment, HostNameProvider hostNameProvider, IFunctionMetadataManager functionMetadataManager, IAzureBlobStorageProvider azureBlobStorageProvider, IOptions<FunctionsHostingConfigOptions> functionsHostingConfigOptions, IScriptHostManager scriptHostManager)
         {
@@ -113,8 +114,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
                 PrepareSyncTriggers();
 
-                var hashBlobClient = await GetHashBlobAsync();
-                if (isBackgroundSync && hashBlobClient == null && !_environment.IsKubernetesManagedHosting())
+                var hashClient = await GetSyncTriggerHashClientAsync();
+                if (isBackgroundSync && hashClient == null && !_environment.IsKubernetesManagedHosting())
                 {
                     // short circuit before doing any work in background sync
                     // cases where we need to check/update hash but don't have
@@ -137,7 +138,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 string newHash = null;
                 if (isBackgroundSync && !_environment.IsKubernetesManagedHosting())
                 {
-                    newHash = await CheckHashAsync(hashBlobClient, payload.Content);
+                    newHash = await hashClient.CheckHashAsync(payload.Content);
                     shouldSyncTriggers = newHash != null;
                 }
 
@@ -146,7 +147,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     var (success, error) = await SetTriggersAsync(payload.Content);
                     if (success && newHash != null)
                     {
-                        await UpdateHashAsync(hashBlobClient, newHash);
+                        await hashClient.UpdateHashAsync(newHash);
                     }
                     result.Success = success;
                     result.Error = error;
@@ -227,83 +228,25 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             return true;
         }
 
-        private async Task<string> CheckHashAsync(BlobClient hashBlobClient, string content)
+        internal async Task<ISyncTriggerHashClient> GetSyncTriggerHashClientAsync()
         {
-            try
+            var secretsStorageType = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsSecretStorageType);
+            if (_hashClient == null)
             {
-                // compute the current hash value and compare it with
-                // the last stored value
-                string currentHash = null;
-                using (var sha256 = SHA256.Create())
+                string hostId = await _hostIdProvider.GetHostIdAsync(CancellationToken.None);
+                if (string.Equals(secretsStorageType, "files", StringComparison.OrdinalIgnoreCase))
                 {
-                    byte[] hash = sha256.ComputeHash(Encoding.UTF8.GetBytes(content));
-                    currentHash = hash
-                        .Aggregate(new StringBuilder(), (a, b) => a.Append(b.ToString("x2")))
-                        .ToString();
+                    _hashClient = new FileStorageSyncTriggerHashClient(Path.Combine(_applicationHostOptions.CurrentValue.SecretsPath, "synctriggers", $"{hostId}", "last"), _logger);
                 }
-
-                // get the last hash value if present
-                string lastHash = null;
-                if (await hashBlobClient.ExistsAsync())
+                else if (_azureBlobStorageProvider.TryCreateBlobServiceClientFromConnection(ConnectionStringNames.Storage, out BlobServiceClient blobClient))
                 {
-                    var downloadResponse = await hashBlobClient.DownloadAsync();
-                    using (StreamReader reader = new StreamReader(downloadResponse.Value.Content))
-                    {
-                        lastHash = reader.ReadToEnd();
-                    }
-                    _logger.LogDebug($"SyncTriggers hash (Last='{lastHash}', Current='{currentHash}')");
-                }
-
-                if (string.Compare(currentHash, lastHash) != 0)
-                {
-                    // hash will need to be updated - return the
-                    // new hash value
-                    return currentHash;
-                }
-            }
-            catch (Exception ex)
-            {
-                // best effort
-                _logger.LogError(ex, "Error checking SyncTriggers hash");
-            }
-
-            // if the last and current hash values are the same,
-            // or if any error occurs, return null
-            return null;
-        }
-
-        internal async Task UpdateHashAsync(BlobClient hashBlobClient, string hash)
-        {
-            try
-            {
-                // hash value has changed or was not yet stored
-                // update the last hash value in storage
-                using (Stream stream = new MemoryStream(Encoding.UTF8.GetBytes(hash)))
-                {
-                    await hashBlobClient.UploadAsync(stream, overwrite: true);
-                }
-                _logger.LogDebug($"SyncTriggers hash updated to '{hash}'");
-            }
-            catch (Exception ex)
-            {
-                // best effort
-                _logger.LogError(ex, "Error updating SyncTriggers hash");
-            }
-        }
-
-        internal async Task<BlobClient> GetHashBlobAsync()
-        {
-            if (_hashBlobClient == null)
-            {
-                if (_azureBlobStorageProvider.TryCreateBlobServiceClientFromConnection(ConnectionStringNames.Storage, out BlobServiceClient blobClient))
-                {
-                    string hostId = await _hostIdProvider.GetHostIdAsync(CancellationToken.None);
                     var blobContainerClient = blobClient.GetBlobContainerClient(ScriptConstants.AzureWebJobsHostsContainerName);
                     string hashBlobPath = $"synctriggers/{hostId}/last";
-                    _hashBlobClient = blobContainerClient.GetBlobClient(hashBlobPath);
+                    _hashClient = new BlobSyncTriggerHashClient(blobContainerClient.GetBlobClient(hashBlobPath), _logger);
                 }
             }
-            return _hashBlobClient;
+
+            return _hashClient;
         }
 
         private async Task<SyncTriggersPayload> GetSyncTriggersPayload()

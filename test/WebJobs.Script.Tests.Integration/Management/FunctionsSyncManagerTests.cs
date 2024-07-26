@@ -496,10 +496,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         {
             using (var env = new TestScopedEnvironmentVariable(_vars))
             {
-                var hashBlob = await _functionsSyncManager.GetHashBlobAsync();
-                if (hashBlob != null)
+                var hashClient = await _functionsSyncManager.GetSyncTriggerHashClientAsync();
+                if (hashClient != null)
                 {
-                    await hashBlob.DeleteIfExistsAsync();
+                    await hashClient.DeleteIfExistsAsync();
                 }
 
                 var syncResult = await _functionsSyncManager.TrySyncTriggersAsync(isBackgroundSync: true);
@@ -510,12 +510,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 var triggers = result["triggers"];
                 Assert.Equal(GetExpectedTriggersPayload(durableVersion: "V1"), triggers.ToString(Formatting.None));
 
-                string hash = string.Empty;
-                var downloadResponse = await hashBlob.DownloadAsync();
-                using (StreamReader reader = new StreamReader(downloadResponse.Value.Content))
-                {
-                    hash = reader.ReadToEnd();
-                }
+                string hash = await hashClient.GetHashAsync();
                 Assert.Equal(64, hash.Length);
 
                 // verify log statements
@@ -560,10 +555,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         {
             using (var env = new TestScopedEnvironmentVariable(_vars))
             {
-                var hashBlob = await _functionsSyncManager.GetHashBlobAsync();
-                if (hashBlob != null)
+                var hashClient = await _functionsSyncManager.GetSyncTriggerHashClientAsync();
+                if (hashClient != null)
                 {
-                    await hashBlob.DeleteIfExistsAsync();
+                    await hashClient.DeleteIfExistsAsync();
                 }
 
                 _mockHttpHandler.MockStatusCode = HttpStatusCode.InternalServerError;
@@ -575,7 +570,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 var result = JObject.Parse(_contentBuilder.ToString());
                 var triggers = result["triggers"];
                 Assert.Equal(GetExpectedTriggersPayload(durableVersion: "V1"), triggers.ToString(Formatting.None));
-                bool hashBlobExists = await hashBlob.ExistsAsync();
+                bool hashBlobExists = await hashClient.ExistsAsync();
                 Assert.False(hashBlobExists);
 
                 // verify log statements
@@ -836,29 +831,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         [Fact]
         public async Task UpdateHashAsync_Succeeds()
         {
-            var hashBlobClient = await _functionsSyncManager.GetHashBlobAsync();
-            await hashBlobClient.DeleteIfExistsAsync();
+            var hashClient = await _functionsSyncManager.GetSyncTriggerHashClientAsync();
+            await hashClient.DeleteIfExistsAsync();
 
             // add the hash when it doesn't exist
-            await _functionsSyncManager.UpdateHashAsync(hashBlobClient, "hash1");
+            await hashClient.UpdateHashAsync("hash1");
 
             // read the hash and make sure the value is what we wrote
-            string result;
-            var downloadResponse = await hashBlobClient.DownloadAsync();
-            using (StreamReader reader = new StreamReader(downloadResponse.Value.Content))
-            {
-                result = reader.ReadToEnd();
-            }
+            string result = await hashClient.GetHashAsync();
             Assert.Equal("hash1", result);
 
             // now update the existing hash to a new value
-            await _functionsSyncManager.UpdateHashAsync(hashBlobClient, "hash2");
+            await hashClient.UpdateHashAsync("hash2");
 
-            downloadResponse = await hashBlobClient.DownloadAsync();
-            using (StreamReader reader = new StreamReader(downloadResponse.Value.Content))
-            {
-                result = reader.ReadToEnd();
-            }
+            result = await hashClient.GetHashAsync();
             Assert.Equal("hash2", result);
         }
 
@@ -930,7 +916,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 // Therefore, we need to force refresh the configuration with an ActiveHostChanged event. This is because setting an empty environment variable
                 // removes it, but will not remove it from the ActiveHostConfigurationSource.
                 _scriptHostManager.OnActiveHostChanged();
-                var blob = await _functionsSyncManager.GetHashBlobAsync();
+                var blob = await _functionsSyncManager.GetSyncTriggerHashClientAsync();
                 Assert.Null(blob);
             }
         }
