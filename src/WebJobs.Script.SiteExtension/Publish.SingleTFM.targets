@@ -113,6 +113,14 @@
     <RemoveDir Directories="@(_RuntimesToRemove)" />
   </Target>
 
+  <Target Name="EnsureWorkersFolder"
+    AfterTargets="CopyFilesToPublishDirectory" BeforeTargets="ZipPublishArtifacts" Condition="!Exists('$(SiteExtensionDir)workers')">
+    <MakeDir Directories="$(SiteExtensionDir)workers" />
+    <WriteLinesToFile
+      File="$(SiteExtensionDir)workers/this_folder_intentionally_empty.txt"
+      Lines="This build does not include workers, but the host requires this folder to contain at least one file." />
+  </Target>
+
   <!-- Copies symbols from SiteExtension out so they can be distributed independently. -->
   <Target Name="MoveSymbols">
     <ItemGroup>
