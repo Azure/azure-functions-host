@@ -1,8 +1,11 @@
 <Project>
+
   <Import Project=".\package.props" />
   <PropertyGroup>
     <LangVersion>latest</LangVersion>
     <MajorVersion>4</MajorVersion>
+    <MinorVersionPrefix Condition="'$(TargetFramework)' == 'net6.0'">6</MinorVersionPrefix>
+    <MinorVersionPrefix Condition="'$(TargetFramework)' == 'net8.0'">8</MinorVersionPrefix>
     <MinorVersion>$(MinorVersionPrefix)34</MinorVersion>
     <PatchVersion>0</PatchVersion>
     <BuildNumber Condition="'$(BuildNumber)' == '' ">0</BuildNumber>

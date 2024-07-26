@@ -1,6 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
   <Import Project="..\..\build\common.props" />
-  <Import Project="..\..\build\workers.props" />
+  <Import Project="$(TargetsRoot)Workers.props" />
+
   <PropertyGroup>
     <TargetFrameworks>net8.0;net6.0</TargetFrameworks>
     <AssemblyName>Microsoft.Azure.WebJobs.Script.WebHost</AssemblyName>
@@ -142,27 +144,5 @@
   <ItemGroup>
     <Content Update="web.config" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
-
-  <!-- Remove all worker items from the ReadyToRun publish list -->
-  <Target Name="ExcludeWorkers" AfterTargets="ComputeFilesToPublish" BeforeTargets="ResolveReadyToRunCompilers">
-    <ItemGroup>
-      <_WorkerPublishFiles Include="@(ResolvedFileToPublish)" Condition="$([System.String]::new('%(ResolvedFileToPublish.TargetPath)').StartsWith('workers'))" />
-      <ResolvedFileToPublish Remove="@(_WorkerPublishFiles)" />
-    </ItemGroup>
-  </Target>
-
-  <!-- Add all worker items back to the publish list -->
-  <Target Name="ReAddWorkersToPublish" AfterTargets="CreateReadyToRunImages" BeforeTargets="CopyFilesToPublishDirectory" Condition="'$(PublishWorkers)' != 'false'">
-    <ItemGroup>
-      <ResolvedFileToPublish Include="@(_WorkerPublishFiles)" />
-    </ItemGroup>
-  </Target>
-
-  <!-- PythonWorker package injects its content files through custom targets. -->
-  <Target Name="SuppressPythonWorker" AfterTargets="Initialize" BeforeTargets="CopyOnPublish" Condition="'$(PublishWorkers)' == 'false'">
-    <ItemGroup>
-      <SourceFiles Remove="@(SourceFiles)" />
-    </ItemGroup>
-  </Target>
 
 </Project>

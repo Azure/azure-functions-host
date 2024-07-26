@@ -1,0 +1,15 @@
+<Project>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Azure.Functions.DotNetIsolatedNativeHost" Version="1.0.9" />
+  </ItemGroup>
+
+  <Target Name="CleanDotnetWorkerFiles" BeforeTargets="AssignTargetPaths" Condition="$(RuntimeIdentifier.StartsWith(win))">
+    <!-- Remove unnecessary dotnet isolated files -->
+    <ItemGroup>
+      <_DotnetWorkerFiles Include="@(None)" Condition="'%(None.DestinationSubDirectory)' == 'workers\dotnet-isolated\bin\'" />
+      <None Remove="@(_DotnetWorkerFiles)" Condition="'%(Extension)' != '.dll' AND '%(Extension)' != '.exe'" />
+    </ItemGroup>
+  </Target>
+
+</Project>

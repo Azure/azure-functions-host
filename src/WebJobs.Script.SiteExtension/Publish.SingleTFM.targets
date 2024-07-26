@@ -1,13 +1,14 @@
-<Project Sdk="Microsoft.Build.NoTargets">
-  <Import Project="../../build/common.props" />
-  <Import Project="../../build/workers.props" />
+<Project>
+
+  <!--
+    Publish.SingleTFM.targets: publish steps for a single TFM.
+  -->
+
+  <Import Project="Tasks.targets" />
 
   <PropertyGroup>
-    <!-- TFM and RId are actually used. -->
-    <TargetFramework>net6.0</TargetFramework>
-    <RuntimeIdentifier>win</RuntimeIdentifier>
-    <SiteExtensionName>Functions</SiteExtensionName>
     <PublishWebHostDependsOn>
+      ValidatePublishSettings;
       PublishProjectReferences;
       PublishPrivateProjectReferences;
       RemoveUnneededRuntimes;
@@ -18,22 +19,10 @@
     <PublishPropertiesToRemove>ZipAfterPublish;ZipArtifactsPath</PublishPropertiesToRemove>
   </PropertyGroup>
 
-  <ItemGroup>
-    <!-- We don't ship python with the site extension. -->
-    <PackageReference Remove="Microsoft.Azure.Functions.PythonWorker" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="../WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj" ReferenceOutputAssembly="false" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <!-- This item group controls what runtimes we will publish for public & private site extension -->
-    <PublishRuntimeIdentifier Include="win-x86" SelfContained="false" PublishDir="32bit" PrivateExtension="true" />
-    <PublishRuntimeIdentifier Include="win-x64" SelfContained="false" PublishDir="64bit" PrivateExtension="false" />
-  </ItemGroup>
-
-  <Import Project="Tasks.targets" />
+  <Target Name="ValidatePublishSettings">
+    <Error Condition="'$(SiteExtensionName)' == ''" Text="SiteExtensionName property must be set." />
+    <Error Condition="'@(PublishRuntimeIdentifier)' == ''" Text="PublishRuntimeIdentifier item group must be non-empty." />
+  </Target>
 
   <!-- We set many properties and items in targets to ensure $(Version) is finalized. -->
   <Target Name="UpdatePaths" BeforeTargets="AddRuntimesToProjects;AssignTargetPaths">
@@ -53,8 +42,8 @@
   <!-- Update files from worker pagaes to be copied into public SiteExtension. -->
   <Target Name="UpdateWorkerPaths" DependsOnTargets="UpdatePaths" BeforeTargets="AssignTargetPaths">
     <ItemGroup>
-      <None Condition="'%(TargetPath)' != '' AND $([System.String]::new('%(TargetPath)').StartsWith('workers'))">
-        <TargetPath>$(SiteExtensionRelativeDir)%(TargetPath)</TargetPath>
+      <None Condition="'%(None.TargetPath)' != '' AND $([System.String]::new('%(None.TargetPath)').StartsWith('workers'))">
+        <TargetPath>$(SiteExtensionRelativeDir)%(None.TargetPath)</TargetPath>
       </None>
     </ItemGroup>
   </Target>
