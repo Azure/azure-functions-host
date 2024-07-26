@@ -15,11 +15,6 @@
   <Import Project="$(TargetsRoot)Workers.props" />
 
   <ItemGroup>
-    <!-- We don't ship python with the site extension. -->
-    <PackageReference Remove="Microsoft.Azure.Functions.PythonWorker" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="../WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
