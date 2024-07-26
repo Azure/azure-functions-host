@@ -2,6 +2,12 @@ jobs:
   - job: InitializePipeline
     displayName: Initialize Pipeline
 
+    templateContext:
+      sdl:
+        codeql:
+          compiled:
+            enabled: false
+
     steps:
     - task: UseDotNet@2 # The pinned SDK we use to build
       displayName: 'Install .NET SDK from global.json'
@@ -14,6 +20,5 @@ jobs:
       name: Initialize
       inputs:
         filePath: build/initialize-pipeline.ps1
-        arguments: -minorVersionPrefix "$(minorVersionPrefix)"
         showWarnings: true
         pwsh: true

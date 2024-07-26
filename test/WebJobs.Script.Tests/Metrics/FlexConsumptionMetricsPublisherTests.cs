@@ -105,7 +105,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             int delay = 100;
             await Task.Delay(delay);
 
-            await publisher.OnPublishMetrics();
+            await publisher.OnPublishMetrics(DateTime.UtcNow);
 
             FileInfo[] files = GetMetricsFilesSafe(_metricsFilePath);
 
@@ -137,7 +137,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             delay = (int)executionDurationMS + 100;
             await Task.Delay(delay);
 
-            await publisher.OnPublishMetrics();
+            await publisher.OnPublishMetrics(DateTime.UtcNow);
 
             files = GetMetricsFilesSafe(_metricsFilePath);
             Assert.Equal(1, files.Length);
@@ -180,7 +180,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             int delay = (int)executionDurationMS + 100;
             await Task.Delay(delay);
 
-            await publisher.OnPublishMetrics();
+            await publisher.OnPublishMetrics(DateTime.UtcNow);
 
             FileInfo[] files = GetMetricsFilesSafe(_metricsFilePath);
             Assert.Equal(5, files.Length);
@@ -437,6 +437,121 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             Assert.Equal(4800, publisher.FunctionExecutionTimeMS);
         }
 
+        [Fact]
+        public async Task OnPublishMetrics_OutstandingActivityIsPublished()
+        {
+            CleanupMetricsFiles();
+
+            var publisher = CreatePublisher(metricsPublishInterval: TimeSpan.FromHours(1), inStandbyMode: false);
+
+            Assert.Equal(1000, _options.MinimumActivityIntervalMS);
+
+            Assert.Equal(0, publisher.ActiveFunctionCount);
+            Assert.Equal(0, publisher.FunctionExecutionCount);
+            Assert.Equal(0, publisher.FunctionExecutionTimeMS);
+
+            DateTime now = DateTime.UtcNow;
+
+            // *** Interval 0 ***
+            // one function starts but doesn't complete before the interval ends
+            now += TimeSpan.FromMilliseconds(200);
+            publisher.OnFunctionStarted("foo", "0", now);
+
+            now += TimeSpan.FromMilliseconds(1800);
+            await publisher.OnPublishMetrics(now);
+
+            FileInfo[] files = GetMetricsFilesSafe(_metricsFilePath);
+            var metrics = await ReadMetricsAsync(files[0].FullName, deleteFile: true);
+
+            // we expect to emit metrics for the duration of the active window
+            // while the function continues running
+            Assert.Equal(1, publisher.ActiveFunctionCount);
+            Assert.Equal(0, metrics.ExecutionCount);
+            Assert.Equal(1800, metrics.ExecutionTimeMS);
+
+            // *** Interval 1 ****
+            // another function starts and a short time later the first completes
+            now += TimeSpan.FromMilliseconds(100);
+            publisher.OnFunctionStarted("foo", "1", now);
+            now += TimeSpan.FromMilliseconds(100);
+            publisher.OnFunctionCompleted("foo", "0", now);
+
+            // a short time later another function starts
+            // then completes a short time later
+            now += TimeSpan.FromMilliseconds(700);
+            publisher.OnFunctionStarted("bar", "2", now);
+            now += TimeSpan.FromMilliseconds(800);
+            publisher.OnFunctionCompleted("bar", "2", now);
+
+            Assert.Equal(1, publisher.ActiveFunctionCount);
+            Assert.Equal(2, publisher.FunctionExecutionCount);
+            Assert.Equal(0, publisher.FunctionExecutionTimeMS);
+
+            // wait another 300ms then simulate the end of the interval
+            now += TimeSpan.FromMilliseconds(300);
+            await publisher.OnPublishMetrics(now);
+
+            files = GetMetricsFilesSafe(_metricsFilePath);
+            metrics = await ReadMetricsAsync(files[0].FullName, deleteFile: true);
+
+            // we expect metrics reflecting the activity during the entire window
+            Assert.Equal(1, publisher.ActiveFunctionCount);
+            Assert.Equal(2, metrics.ExecutionCount);
+            Assert.Equal(2000, metrics.ExecutionTimeMS);
+
+            // *** Interval 2 ***
+            // now, a little while later the invocation completes
+            // this gets metered for 1000ms (the minimum)
+            now += TimeSpan.FromMilliseconds(400);
+            publisher.OnFunctionCompleted("foo", "1", now);
+
+            // after a short time another function starts then completes
+            // because we've metered the previous function for 1000ms,
+            // this invocation isn't metered (it falls within the previous period)
+            now += TimeSpan.FromMilliseconds(200);
+            publisher.OnFunctionStarted("foo", "3", now);
+            now += TimeSpan.FromMilliseconds(300);
+            publisher.OnFunctionCompleted("foo", "3", now);
+
+            // another function starts and continues running past the
+            // end of the second interval
+            // at the end of thie interval, while the function has only
+            // ran for 700ms this gets rounded up to 1000ms
+            now += TimeSpan.FromMilliseconds(400);
+            publisher.OnFunctionStarted("foo", "4", now);
+            now += TimeSpan.FromMilliseconds(700);
+
+            await publisher.OnPublishMetrics(now);
+
+            files = GetMetricsFilesSafe(_metricsFilePath);
+            metrics = await ReadMetricsAsync(files[0].FullName, deleteFile: true);
+
+            Assert.Equal(1, publisher.ActiveFunctionCount);
+            Assert.Equal(2, metrics.ExecutionCount);
+            Assert.Equal(2000, metrics.ExecutionTimeMS);
+        }
+
+        [Fact]
+        public void OnFunctionCompleted_NoOutstandingInvocations_IgnoresEvent()
+        {
+            var publisher = CreatePublisher(metricsPublishInterval: TimeSpan.FromHours(1), inStandbyMode: false);
+
+            Assert.Equal(1000, _options.MinimumActivityIntervalMS);
+            Assert.Equal(0, publisher.ActiveFunctionCount);
+            Assert.Equal(0, publisher.FunctionExecutionCount);
+            Assert.Equal(0, publisher.FunctionExecutionTimeMS);
+
+            DateTime now = DateTime.UtcNow;
+
+            // send a function completion without a corresponding start event
+            now += TimeSpan.FromMilliseconds(300);
+            publisher.OnFunctionCompleted("foo", "1", now);
+
+            Assert.Equal(0, publisher.ActiveFunctionCount);
+            Assert.Equal(0, publisher.FunctionExecutionCount);
+            Assert.Equal(0, publisher.FunctionExecutionTimeMS);
+        }
+
         public void CleanupMetricsFiles()
         {
             var directory = new DirectoryInfo(_metricsFilePath);
@@ -452,9 +567,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             }
         }
 
-        private static async Task<FlexConsumptionMetricsPublisher.Metrics> ReadMetricsAsync(string metricsFilePath)
+        private static async Task<FlexConsumptionMetricsPublisher.Metrics> ReadMetricsAsync(string metricsFilePath, bool deleteFile = false)
         {
             string content = await File.ReadAllTextAsync(metricsFilePath);
+
+            if (deleteFile)
+            {
+                File.Delete(metricsFilePath);
+            }
+
             return JsonConvert.DeserializeObject<FlexConsumptionMetricsPublisher.Metrics>(content);
         }
 

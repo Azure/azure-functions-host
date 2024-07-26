@@ -21,8 +21,9 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public class FunctionMetadataManager : IFunctionMetadataManager
     {
-        private const string _functionConfigurationErrorMessage = "Unable to determine the primary function script.Make sure atleast one script file is present.Try renaming your entry point script to 'run' or alternatively you can specify the name of the entry point script explicitly by adding a 'scriptFile' property to your function metadata.";
-        private const string _metadataProviderName = "Custom";
+        private const string FunctionConfigurationErrorMessage = "Unable to determine the primary function script.Make sure atleast one script file is present.Try renaming your entry point script to 'run' or alternatively you can specify the name of the entry point script explicitly by adding a 'scriptFile' property to your function metadata.";
+        private const string MetadataProviderName = "Custom";
+        private const int DefaultMetadataProviderTimeoutInSeconds = 30;
         private readonly IServiceProvider _serviceProvider;
         private IFunctionMetadataProvider _functionMetadataProvider;
         private bool _isHttpWorker;
@@ -56,6 +57,9 @@ namespace Microsoft.Azure.WebJobs.Script
             };
         }
 
+        // Property is settable for testing purposes.
+        internal int MetadataProviderTimeoutInSeconds { get; set; } = DefaultMetadataProviderTimeoutInSeconds;
+
         public ImmutableDictionary<string, ImmutableArray<string>> Errors { get; private set; }
 
         public bool TryGetFunctionMetadata(string functionName, out FunctionMetadata functionMetadata, bool forceRefresh)
@@ -79,7 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         /// <param name="forceRefresh">Forces reload from all providers.</param>
         /// <param name="applyAllowList">Apply functions allow list filter.</param>
-        /// <param name="includeCustomProviders">Include any metadata provided by IFunctionProvider when loading the metadata</param>
+        /// <param name="includeCustomProviders">Include any metadata provided by IFunctionProvider when loading the metadata.</param>
         /// <returns> An Immutable array of FunctionMetadata.</returns>
         public ImmutableArray<FunctionMetadata> GetFunctionMetadata(bool forceRefresh, bool applyAllowList = true, bool includeCustomProviders = true, IList<RpcWorkerConfig> workerConfigs = null)
         {
@@ -188,7 +192,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 if (string.IsNullOrEmpty(functionMetadata.ScriptFile) && !_isHttpWorker && !functionMetadata.IsProxy() && _servicesReset)
                 {
-                    throw new FunctionConfigurationException(_functionConfigurationErrorMessage);
+                    throw new FunctionConfigurationException(FunctionConfigurationErrorMessage);
                 }
             }
             catch (FunctionConfigurationException exc)
@@ -214,22 +218,38 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private void AddMetadataFromCustomProviders(IEnumerable<IFunctionProvider> functionProviders, List<FunctionMetadata> functionMetadataList)
         {
-            _logger.ReadingFunctionMetadataFromProvider(_metadataProviderName);
+            _logger.ReadingFunctionMetadataFromProvider(MetadataProviderName);
 
             var functionProviderTasks = new List<Task<ImmutableArray<FunctionMetadata>>>();
+
             foreach (var functionProvider in functionProviders)
             {
-                functionProviderTasks.Add(functionProvider.GetFunctionMetadataAsync());
+                var getFunctionMetadataFromProviderTask = functionProvider.GetFunctionMetadataAsync();
+                var delayTask = Task.Delay(TimeSpan.FromSeconds(MetadataProviderTimeoutInSeconds));
+
+                var completedTask = Task.WhenAny(getFunctionMetadataFromProviderTask, delayTask).ContinueWith(t =>
+                {
+                    if (t.Result == getFunctionMetadataFromProviderTask && getFunctionMetadataFromProviderTask.IsCompletedSuccessfully)
+                    {
+                        return getFunctionMetadataFromProviderTask.Result;
+                    }
+
+                    // Timeout case.
+                    throw new TimeoutException($"Timeout occurred while retrieving metadata from provider '{functionProvider.GetType().FullName}'. The operation exceeded the configured timeout of {MetadataProviderTimeoutInSeconds} seconds.");
+                });
+
+                functionProviderTasks.Add(completedTask);
             }
 
-            var functionMetadataListArray = Task.WhenAll(functionProviderTasks).GetAwaiter().GetResult();
+            var providerFunctionMetadataResults = Task.WhenAll(functionProviderTasks).GetAwaiter().GetResult();
+            var totalFunctionsCount = providerFunctionMetadataResults.Where(metadataArray => !metadataArray.IsDefaultOrEmpty).Sum(metadataArray => metadataArray.Length);
 
             // This is used to make sure no duplicates are registered
             var distinctFunctionNames = new HashSet<string>(functionMetadataList.Select(m => m.Name));
 
-            _logger.FunctionsReturnedByProvider(functionMetadataListArray.Length, _metadataProviderName);
+            _logger.FunctionsReturnedByProvider(totalFunctionsCount, MetadataProviderName);
 
-            foreach (var metadataArray in functionMetadataListArray)
+            foreach (var metadataArray in providerFunctionMetadataResults)
             {
                 if (!metadataArray.IsDefaultOrEmpty)
                 {

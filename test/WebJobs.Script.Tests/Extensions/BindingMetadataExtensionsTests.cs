@@ -73,6 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         [Theory]
         [InlineData("eventGridTrigger", true)]
         [InlineData("signalRTrigger", true)]
+        [InlineData("assistantSkillTrigger", true)]
         [InlineData("blobTrigger", false, "eventGrid")]
         [InlineData("blobTrigger", false, "other")]
         [InlineData("httpTrigger", false)]

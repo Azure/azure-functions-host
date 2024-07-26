@@ -270,13 +270,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             }
         }
 
-        [Theory]
-        [InlineData(ScriptConstants.DynamicSku)]
-        [InlineData(ScriptConstants.FlexConsumptionSku)]
-        public async Task TrySyncTriggers_MaxSyncTriggersPayloadSize_Succeeds(string sku)
+        [Fact]
+        public async Task TrySyncTriggers_MaxSyncTriggersPayloadSize_Succeeds()
         {
-            _sku = sku;
-
             // create a dummy file that pushes us over size
             string maxString = new string('x', ScriptConstants.MaxTriggersStringLength + 1);
             _function1 = $"{{ bindings: [], test: '{maxString}'}}";
@@ -292,19 +288,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 Assert.True(syncString.Length < ScriptConstants.MaxTriggersStringLength);
                 var syncContent = JObject.Parse(syncString);
 
-                bool isFlexConsumptionSku = _mockEnvironment.Object.IsFlexConsumptionSku();
-                int expectedCount = isFlexConsumptionSku ? 3 : 2;
-                Assert.Equal(expectedCount, syncContent.Count);
+                Assert.Equal(3, syncContent.Count);
                 Assert.Equal("testhostid123", syncContent["hostId"]);
                 
                 JArray triggers = (JArray)syncContent["triggers"];
                 Assert.Equal(2, triggers.Count);
 
-                if (isFlexConsumptionSku)
-                {
-                    JObject hostConfig = (JObject)syncContent["hostConfig"];
-                    Assert.Equal(2, hostConfig.Count);
-                }
+                JObject hostConfig = (JObject)syncContent["hostConfig"];
+                Assert.Equal(2, hostConfig.Count);
             }
         }
 
@@ -329,15 +320,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         }
 
         [Theory]
-        [InlineData(true, true, ScriptConstants.DynamicSku)]
-        [InlineData(true, true, ScriptConstants.FlexConsumptionSku)]
-        [InlineData(false, true, ScriptConstants.DynamicSku)]
-        [InlineData(false, true, ScriptConstants.FlexConsumptionSku)]
-        [InlineData(true, false, ScriptConstants.DynamicSku)]
-        public async Task TrySyncTriggers_PostsExpectedContent(bool cacheEnabled, bool swtIssuerEnabled, string sku)
+        [InlineData(true, true)]
+        [InlineData(false, true)]
+        [InlineData(true, false)]
+        public async Task TrySyncTriggers_PostsExpectedContent(bool cacheEnabled, bool swtIssuerEnabled)
         {
-            _sku = sku;
-
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteArmCacheEnabled)).Returns(cacheEnabled ? "1" : "0");
             _hostingConfigOptions.SwtIssuerEnabled = swtIssuerEnabled;
 
@@ -434,14 +421,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.Equal(expectedTriggersPayload, logObject["triggers"].ToString(Formatting.None));
             Assert.False(triggersLog.Contains("secrets"));
             
-            if (_mockEnvironment.Object.IsFlexConsumptionSku())
-            {
-                // verify hostConfig by spot checking a couple properties
-                var hostConfig = result["hostConfig"];
-                Assert.Equal(2, hostConfig["extensions"]["testExtension2"]["p2"]);
-                Assert.Equal("[Hidden Credential]", hostConfig["extensions"]["testExtension2"]["pwd"]);
-                Assert.Equal(0.85f, (float)hostConfig["concurrency"]["CPUThreshold"]);
-            }
+            // verify hostConfig by spot checking a couple properties
+            var hostConfig = result["hostConfig"];
+            Assert.Equal(2, hostConfig["extensions"]["testExtension2"]["p2"]);
+            Assert.Equal("[Hidden Credential]", hostConfig["extensions"]["testExtension2"]["pwd"]);
+            Assert.Equal(0.85f, (float)hostConfig["concurrency"]["CPUThreshold"]);
 
             return result;
         }

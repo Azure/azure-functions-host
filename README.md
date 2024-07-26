@@ -2,13 +2,10 @@
 
 |Branch|Status|
 |---|---|
-|dev|[![Build Status](https://dev.azure.com/azfunc/Azure%20Functions/_apis/build/status/Azure.azure-functions-host?branchName=dev)](https://dev.azure.com/azfunc/Azure%20Functions/_build/latest?definitionId=37&branchName=dev)|
-|release/4.x|[![Build Status](https://dev.azure.com/azfunc/Azure%20Functions/_apis/build/status/Azure.azure-functions-host?branchName=release%2F4.x)](https://dev.azure.com/azfunc/Azure%20Functions/_build/latest?definitionId=37&branchName=release%2F4.x)|
-|v3.x|[![Build Status](https://dev.azure.com/azfunc/Azure%20Functions/_apis/build/status/Azure.azure-functions-host?branchName=v3.x)](https://dev.azure.com/azfunc/Azure%20Functions/_build/latest?definitionId=37&branchName=v3.x)
-|release/3.0|[![Build Status](https://dev.azure.com/azfunc/Azure%20Functions/_apis/build/status/Azure.azure-functions-host?branchName=release%2F3.0)](https://dev.azure.com/azfunc/Azure%20Functions/_build/latest?definitionId=37&branchName=release%2F3.0)|
-|v2.x|[![Build Status](https://dev.azure.com/azfunc/Azure%20Functions/_apis/build/status/Azure.azure-functions-host?branchName=v2.x)](https://dev.azure.com/azfunc/Azure%20Functions/_build/latest?definitionId=37&branchName=v2.x)|
-|release/2.0|[![Build Status](https://dev.azure.com/azfunc/Azure%20Functions/_apis/build/status/Azure.azure-functions-host?branchName=release%2F2.0)](https://dev.azure.com/azfunc/Azure%20Functions/_build/latest?definitionId=37&branchName=release%2F2.0)|
-|v1.x|[![Build Status](https://azfunc.visualstudio.com/Azure%20Functions/_apis/build/status/Azure.azure-functions-host?branchName=v1.x)](https://azfunc.visualstudio.com/Azure%20Functions/_build/latest?definitionId=37&branchName=v1.x)|
+|dev|[![Build Status](https://dev.azure.com/azfunc/public/_apis/build/status%2Fazure%2Fazure-functions-host%2Fhost.public?repoName=Azure%2Fazure-functions-host&branchName=dev)](https://dev.azure.com/azfunc/public/_build/latest?definitionId=377&repoName=Azure%2Fazure-functions-host&branchName=dev)|
+|in-proc|[![Build Status](https://dev.azure.com/azfunc/public/_apis/build/status%2Fazure%2Fazure-functions-host%2Fhost.public?repoName=Azure%2Fazure-functions-host&branchName=in-proc)](https://dev.azure.com/azfunc/public/_build/latest?definitionId=377&repoName=Azure%2Fazure-functions-host&branchName=in-proc)|
+|release/4.x|[![Build Status](https://dev.azure.com/azfunc/public/_apis/build/status%2Fazure%2Fazure-functions-host%2Fhost.public?repoName=Azure%2Fazure-functions-host&branchName=release%2F4.x)](https://dev.azure.com/azfunc/public/_build/latest?definitionId=377&repoName=Azure%2Fazure-functions-host&branchName=release%2F4.x)|
+|release/in-proc|[![Build Status](https://dev.azure.com/azfunc/public/_apis/build/status%2Fazure%2Fazure-functions-host%2Fhost.public?repoName=Azure%2Fazure-functions-host&branchName=release%2Fin-proc)](https://dev.azure.com/azfunc/public/_build/latest?definitionId=377&repoName=Azure%2Fazure-functions-host&branchName=release%2Fin-proc)|
 
 Azure Functions Host
 ===

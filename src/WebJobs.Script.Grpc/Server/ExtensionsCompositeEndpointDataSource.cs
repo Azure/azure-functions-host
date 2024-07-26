@@ -6,10 +6,12 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Azure.WebJobs.Rpc.Core.Internal;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
 
 namespace Microsoft.Azure.WebJobs.Script.Grpc
@@ -26,6 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private readonly object _lock = new();
         private readonly List<EndpointDataSource> _dataSources = new();
         private readonly IScriptHostManager _scriptHostManager;
+        private readonly TaskCompletionSource _initialized = new();
 
         private IServiceProvider _extensionServices;
         private List<Endpoint> _endpoints;
@@ -191,6 +194,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                         .GetService<IEnumerable<WebJobsRpcEndpointDataSource>>()
                         ?? Enumerable.Empty<WebJobsRpcEndpointDataSource>();
                     _dataSources.AddRange(sources);
+                    _initialized.TrySetResult(); // signal we have first initialized.
                 }
                 else
                 {
@@ -299,6 +303,50 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             if (_disposed)
             {
                 throw new ObjectDisposedException(nameof(ExtensionsCompositeEndpointDataSource));
+            }
+        }
+
+        /// <summary>
+        /// Middleware to ensure <see cref="ExtensionsCompositeEndpointDataSource"/> is initialized before routing for the first time.
+        /// Must be registered as a singleton service.
+        /// </summary>
+        /// <param name="dataSource">The <see cref="ExtensionsCompositeEndpointDataSource"/> to ensure is initialized.</param>
+        /// <param name="logger">The logger.</param>
+        public sealed class EnsureInitializedMiddleware(ExtensionsCompositeEndpointDataSource dataSource, ILogger<EnsureInitializedMiddleware> logger) : IMiddleware
+        {
+            private TaskCompletionSource _initialized = new();
+            private bool _firstRun = true;
+
+            // used for testing to verify initialization success.
+            internal Task Initialized => _initialized.Task;
+
+            // settable only for testing purposes.
+            internal TimeSpan Timeout { get; init; } = TimeSpan.FromSeconds(2);
+
+            public Task InvokeAsync(HttpContext context, RequestDelegate next)
+            {
+                return _firstRun ? InvokeCoreAsync(context, next) : next(context);
+            }
+
+            private async Task InvokeCoreAsync(HttpContext context, RequestDelegate next)
+            {
+                try
+                {
+                    await dataSource._initialized.Task.WaitAsync(Timeout);
+                }
+                catch (TimeoutException ex)
+                {
+                    // In case of deadlock we don't want to block all gRPC requests.
+                    // Log an error and continue.
+                    logger.LogError(ex, "Error initializing extension endpoints.");
+                    _initialized.TrySetException(ex);
+                }
+
+                // Even in case of timeout we don't want to continually test for initialization on subsequent requests.
+                // That would be a serious performance degredation.
+                _firstRun = false;
+                _initialized.TrySetResult();
+                await next(context);
             }
         }
     }
