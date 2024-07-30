@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Linq.Expressions;
 using System.Net;
 using System.Net.Http;
 using System.Threading;
@@ -286,13 +285,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return new TableTransactionAction(TableTransactionActionType.Add, entity);
         }
 
-        internal async Task<IEnumerable<TableEntity>> ExecuteQuerySafeAsync(TableClient metricsTable, Expression<Func<TableEntity, bool>> query)
+        internal async Task<IEnumerable<TableEntity>> ExecuteQuerySafeAsync(TableClient metricsTable, string query)
         {
             try
             {
                 List<TableEntity> results = new List<TableEntity>();
 
-                await foreach (var result in metricsTable.QueryAsync(query))
+                await foreach (var result in metricsTable.QueryAsync<TableEntity>(query))
                 {
                     results.Add(result);
                 }
@@ -317,7 +316,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             string hostId = await _hostIdProvider.GetHostIdAsync(CancellationToken.None);
             var cuttoff = DateTime.UtcNow - _scaleOptions.ScaleMetricsMaxAge;
             var ticks = string.Format("{0:D19}", DateTime.MaxValue.Ticks - cuttoff.Ticks);
-            return await ExecuteQuerySafeAsync(metricsTable, entity => entity.PartitionKey == hostId && string.Compare(entity.RowKey, ticks) < 0);
+            return await ExecuteQuerySafeAsync(metricsTable, TableClient.CreateQueryFilter($"PartitionKey eq {hostId} and RowKey lt {ticks}"));
         }
 
         internal async Task<IEnumerable<TableClient>> ListOldMetricsTablesAsync()
