@@ -3,7 +3,7 @@ jobs:
   displayName: Run Non-E2E Integration Tests
 
   pool:
-    name: 1es-pool-azfunc-large
+    name: 1es-pool-azfunc
     image: 1es-windows-2022
     os: windows
 
