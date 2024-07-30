@@ -155,7 +155,7 @@
   </Target>
 
   <!-- Write calculated hashes and filepaths to hashesForHardlinks.txt -->
-  <Target Name="WriteHardLinkHashes" DependsOnTargets="ComputeHardLinkHashes">
+  <Target Name="WriteHardLinkHashes" DependsOnTargets="ComputeHardLinkHashes" Condition="'$(ShouldWriteHardLinkHashes)' != 'false'">
     <ItemGroup>
       <_HashedFiles RelativePath=".$([System.IO.Path]::DirectorySeparatorChar)$([MSBuild]::MakeRelative('$(SiteExtensionDir)', '%(Identity)'))" />
     </ItemGroup>
