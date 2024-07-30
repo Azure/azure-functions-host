@@ -81,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                         _tableServiceClient = new TableServiceClient(storageConnectionString, options);
                     }
-                    catch (Exception ex)
+                    catch (Exception ex) when (!ex.IsFatal())
                     {
                         _logger.LogError(ex, "Azure Storage connection string is empty or invalid. Unable to read/write scale metrics.");
                     }
