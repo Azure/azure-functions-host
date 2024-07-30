@@ -55,6 +55,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private static readonly string _dotnetIsolatedUnsuppportedPath = Path.GetFullPath(@"..\..\DotNetIsolatedUnsupportedWorker\debug");
         private static readonly string _dotnetIsolatedEmptyScriptRoot = Path.GetFullPath(@"..\..\..\..\EmptyScriptRoot");
 
+        private static Action<IServiceCollection> _customizeScriptHostServices;
+
         private const string _specializedScriptRoot = @"TestScripts\CSharp";
 
         private readonly TestEnvironment _environment;
@@ -76,6 +78,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _loggerProvider = new TestLoggerProvider();
 
             _testOutputHelper = testOutputHelper;
+
+            // allow each test to override this
+            _customizeScriptHostServices = null;
         }
 
         [Fact]
@@ -1034,6 +1039,46 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Empty(completedLogs.Where(p => p.Level == LogLevel.Error));
         }
 
+        [Fact]
+        public async Task Specialization_Writes_WorkerStartupLogs()
+        {
+            // Create a test logger per-host so we can ensure logs go to the correct one when specializing
+            var perScriptHostLoggers = new List<(bool IsPlaceholderMode, TestLoggerProvider Logger)>();
+            _customizeScriptHostServices = s =>
+            {
+                var isPlaceholderMode = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode);
+                var testLoggerProvider = new TestLoggerProvider();
+                perScriptHostLoggers.Add(new(isPlaceholderMode == "1", testLoggerProvider));
+
+                s.AddSingleton<ILoggerProvider>(testLoggerProvider);
+            };
+
+            var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetIsolated60Path, "HttpRequestDataFunction", "QueueFunction");
+            var storageValue = TestHelpers.GetTestConfiguration().GetWebJobsConnectionString("AzureWebJobsStorage");
+
+            using var testServer = new TestServer(builder);
+
+            var client = testServer.CreateClient();
+            var response = await client.GetAsync("api/warmup");
+            response.EnsureSuccessStatusCode();
+
+            _environment.SetEnvironmentVariable("AzureWebJobsStorage", storageValue);
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+
+            response = await client.GetAsync("api/HttpRequestDataFunction");
+            response.EnsureSuccessStatusCode();
+
+            var placeholderLogger = perScriptHostLoggers.Where(p => p.IsPlaceholderMode).Single().Logger;
+            var userLogger = perScriptHostLoggers.Where(p => !p.IsPlaceholderMode).Single().Logger;
+
+            Assert.DoesNotContain("Host.Function.Console", placeholderLogger.GetAllLogMessages().Select(p => p.Category));
+            Assert.DoesNotContain("Console Out from worker on startup.", placeholderLogger.GetAllLogMessages().Select(p => p.FormattedMessage));
+
+            Assert.Contains("Host.Function.Console", userLogger.GetAllLogMessages().Select(p => p.Category));
+            Assert.Contains("Console Out from worker on startup.", userLogger.GetAllLogMessages().Select(p => p.FormattedMessage));
+        }
+
         private async Task DotNetIsolatedPlaceholderMiss(string scriptRootPath, Action additionalSpecializedSetup = null)
         {
             var builder = InitializeDotNetIsolatedPlaceholderBuilder(scriptRootPath, "HttpRequestDataFunction");
@@ -1153,6 +1198,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                             o.Functions = functions;
                         }
                     });
+
+                    _customizeScriptHostServices?.Invoke(s);
                 });
 
             return builder;
