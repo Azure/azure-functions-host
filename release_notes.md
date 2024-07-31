@@ -6,7 +6,7 @@
 - Marking SyncTriggers [RequiresRunningHost]. (#10233)
 - Defaulting SwtAuthenticationEnabled to False (#10195)
 - Adding runtime site name to valid JWT audiences (slot scenarios) (#10185)
-- Update Python Worker Version to [4.29.0](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.28.1)
+- Update Python Worker Version to [4.30.3](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.30.3)
 - Language worker channels will not be started during placeholder mode if we are in-process (#10161)
 - Ordered invocations are now the default (#10201)
 - Add IsDisabled property to worker description and skip if the value (#10250)
@@ -20,6 +20,7 @@
   - `Microsoft.Azure.WebJobs.Host.Storage` updated to 5.0.1
   - `Microsoft.Extensions.Azure` updated to 1.7.1
   - `Azure.Storage.Blobs` updated to 12.19.1
-- [in-proc] Updating FunctionsNetHost (dotnet isolated worker) to 1.0.9 (#10263)
+- [in-proc] Updating FunctionsNetHost (dotnet isolated worker) to 1.0.10 (#10340)
 - Update PowerShell 7.2 worker to [4.0.4020](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.4020)
 - Update PowerShell 7.4 worker to [4.0.4021](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.4021)
+
