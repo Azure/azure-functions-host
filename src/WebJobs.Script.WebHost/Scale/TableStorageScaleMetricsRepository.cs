@@ -210,7 +210,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         internal void LogStorageException(RequestFailedException ex)
         {
-            _logger.LogError(ex, $"An unhandled storage exception occurred when reading/writing scale metrics: {ex}");
+            _logger.LogError(ex, "An unhandled storage exception occurred when reading/writing scale metrics: {reason}", ex.Message);
         }
 
         internal async Task ExecuteBatchSafeAsync(List<TableTransactionAction> batch, DateTime? now = null)
