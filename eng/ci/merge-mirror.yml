@@ -1,8 +1,7 @@
 trigger:
   branches:
     include:
-    - release/4.*
-    - release/in-proc
+    - release/*
 
 resources:
   repositories:

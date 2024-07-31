@@ -4,7 +4,10 @@
       "commandName": "Project",
       "launchBrowser": true,
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+        "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+        "AzureWebJobsScriptRoot": "C:\\repos\\test\\test-func-restore\\out\\bin\\Isolated\\debug"
       },
       "applicationUrl": "https://localhost:62513;http://localhost:62514"
     }
