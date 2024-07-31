@@ -7,7 +7,9 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Threading.Tasks.Dataflow;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Azure.WebJobs.Host.Executors.Internal;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -631,8 +633,91 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.True(testLogs.Any(m => m.FormattedMessage.Contains("Removing errored webhost language worker channel for runtime")));
         }
 
-        private static RpcFunctionInvocationDispatcher GetTestFunctionDispatcher(int maxProcessCountValue = 1, bool addWebhostChannel = false,
-            Mock<IWebHostRpcWorkerChannelManager> mockwebHostLanguageWorkerChannelManager = null, bool throwOnProcessStartUp = false, TimeSpan? startupIntervals = null, string runtime = null, bool workerIndexing = false, bool placeholder = false)
+        [Fact]
+        public async Task FunctionDispatcher_InvokeAsync_SystemScope()
+        {
+            FunctionMetadata func1 = new FunctionMetadata()
+            {
+                Name = "func1",
+                Language = "node"
+            };
+            var functions = new List<FunctionMetadata>()
+            {
+                func1
+            };
+
+            ScriptInvocationContext context = new()
+            {
+                FunctionMetadata = func1,
+                ExecutionContext = new()
+                {
+                    InvocationId = Guid.NewGuid(),
+                    FunctionName = "func1",
+                },
+                ResultSource = new(),
+                CancellationToken = default,
+                Logger = _testLogger,
+                AsyncExecutionContext = System.Threading.ExecutionContext.Capture(),
+            };
+
+            BufferBlock<ScriptInvocationContext> inputBuffer = new();
+            ActionBlock<ScriptInvocationContext> actionBlock = new(context =>
+            {
+                try
+                {
+                    Assert.Equal(FunctionInvocationScope.System, FunctionInvoker.CurrentScope);
+                    context.ResultSource.TrySetResult(null);
+                }
+                catch (Exception ex)
+                {
+                    context.ResultSource.TrySetException(ex);
+                }
+            });
+
+            inputBuffer.LinkTo(actionBlock);
+
+            Mock<IDictionary<string, BufferBlock<ScriptInvocationContext>>> mockBufferBlocks = new();
+            mockBufferBlocks.Setup(m => m.TryGetValue(It.IsAny<string>(), out inputBuffer)).Returns(true);
+
+            Mock<IRpcWorkerChannel> mockChannel = new();
+            mockChannel.Setup(m => m.FunctionInputBuffers).Returns(mockBufferBlocks.Object);
+
+            IRpcWorkerChannel Create(
+                string workerRuntime, string language, IMetricsLogger metricsLogger, int attemptCount, IEnumerable<RpcWorkerConfig> workerConfigs)
+            {
+                var workerConfig = workerConfigs.SingleOrDefault(p => language.Equals(p.Description.Language, StringComparison.OrdinalIgnoreCase));
+                return new TestRpcWorkerChannel(
+                    Guid.NewGuid().ToString(), language, null, _testLogger, false, workerConfig: workerConfig)
+                {
+                    FunctionInputBuffers = mockBufferBlocks.Object,
+                };
+            }
+
+            Mock<IRpcWorkerChannelFactory> mockChannelFactory = new();
+            mockChannelFactory.Setup(
+                m => m.Create(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<IMetricsLogger>(), It.IsAny<int>(), It.IsAny<IEnumerable<RpcWorkerConfig>>()))
+                .Returns(Create);
+
+            RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher(
+                runtime: RpcWorkerConstants.NodeLanguageWorkerName, channelFactory: mockChannelFactory.Object);
+
+            await functionDispatcher.InitializeAsync(functions);
+            await WaitForFunctionDispactherStateInitialized(functionDispatcher);
+            using FunctionInvoker.Scope scope = FunctionInvoker.BeginUserScope();
+            await functionDispatcher.InvokeAsync(context);
+            await context.ResultSource.Task;
+        }
+
+        private static RpcFunctionInvocationDispatcher GetTestFunctionDispatcher(
+            int maxProcessCountValue = 1,
+            bool addWebhostChannel = false,
+            Mock<IWebHostRpcWorkerChannelManager> mockwebHostLanguageWorkerChannelManager = null,
+            bool throwOnProcessStartUp = false,
+            TimeSpan? startupIntervals = null,
+            string runtime = null,
+            bool workerIndexing = false,
+            bool placeholder = false,
+            IRpcWorkerChannelFactory channelFactory = null)
         {
             var eventManager = new ScriptEventManager();
             var metricsLogger = new Mock<IMetricsLogger>();
@@ -667,8 +752,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 WorkerConfigs = TestHelpers.GetTestWorkerConfigs(processCountValue: maxProcessCountValue, processStartupInterval: intervals,
                                     processRestartInterval: intervals, processShutdownTimeout: TimeSpan.FromSeconds(1), workerIndexing: workerIndexing)
             };
-            IRpcWorkerChannelFactory testLanguageWorkerChannelFactory = new TestRpcWorkerChannelFactory(eventManager, _testLogger, scriptOptions.Value.RootScriptPath, throwOnProcessStartUp);
-            IWebHostRpcWorkerChannelManager testWebHostLanguageWorkerChannelManager = new TestRpcWorkerChannelManager(eventManager, _testLogger, scriptOptions.Value.RootScriptPath, testLanguageWorkerChannelFactory);
+
+            channelFactory ??= new TestRpcWorkerChannelFactory(eventManager, _testLogger, scriptOptions.Value.RootScriptPath, throwOnProcessStartUp);
+            IWebHostRpcWorkerChannelManager testWebHostLanguageWorkerChannelManager = new TestRpcWorkerChannelManager(
+                eventManager, _testLogger, scriptOptions.Value.RootScriptPath, channelFactory);
             IJobHostRpcWorkerChannelManager jobHostLanguageWorkerChannelManager = new JobHostRpcWorkerChannelManager(_testLoggerFactory);
 
             if (addWebhostChannel)
@@ -681,6 +768,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             }
 
             var mockFunctionDispatcherLoadBalancer = new Mock<IRpcFunctionInvocationDispatcherLoadBalancer>();
+            mockFunctionDispatcherLoadBalancer.Setup(m => m.GetLanguageWorkerChannel(It.IsAny<IEnumerable<IRpcWorkerChannel>>()))
+                .Returns((IEnumerable<IRpcWorkerChannel> channels) => channels.FirstOrDefault());
             var mockHostMetrics = new Mock<IHostMetrics>();
 
             _javaTestChannel = new TestRpcWorkerChannel(Guid.NewGuid().ToString(), "java", eventManager, _testLogger, false);
@@ -693,7 +782,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 mockApplicationLifetime.Object,
                 eventManager,
                 _testLoggerFactory,
-                testLanguageWorkerChannelFactory,
+                channelFactory,
                 optionsMonitor,
                 testWebHostLanguageWorkerChannelManager,
                 jobHostLanguageWorkerChannelManager,
