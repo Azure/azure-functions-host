@@ -249,6 +249,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         [Theory]
         [InlineData(true, false, true)]
         [InlineData(false, true, true)]
+        [InlineData(true, true, true)]
         [InlineData(false, false, false)]
         public void IsContainerAppEnvironment_ReturnsExpectedResult(bool isManagedAppEnvironment, bool isConnectedAppEnvironment, bool expectedValue)
         {
