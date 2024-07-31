@@ -706,6 +706,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             using FunctionInvoker.Scope scope = FunctionInvoker.BeginUserScope();
             await functionDispatcher.InvokeAsync(context);
             await context.ResultSource.Task;
+            Assert.Equal(FunctionInvocationScope.User, FunctionInvoker.CurrentScope);
         }
 
         private static RpcFunctionInvocationDispatcher GetTestFunctionDispatcher(
