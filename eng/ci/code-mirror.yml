@@ -11,7 +11,7 @@ resources:
   - repository: eng
     type: git
     name: engineering
-    ref: refs/heads/main
+    ref: refs/heads/u/jviau/mirror-sdl
 
 variables:
   - template: ci/variables/cfs.yml@eng
