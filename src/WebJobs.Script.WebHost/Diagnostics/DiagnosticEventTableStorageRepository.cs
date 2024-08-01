@@ -7,7 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.Cosmos.Table;
+using Azure.Data.Tables;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Hosting;
 using Microsoft.Azure.WebJobs.Logging;
@@ -33,8 +33,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly object _syncLock = new object();
 
         private ConcurrentDictionary<string, DiagnosticEvent> _events = new ConcurrentDictionary<string, DiagnosticEvent>();
-        private CloudTableClient _tableClient;
-        private CloudTable _diagnosticEventsTable;
+        private TableServiceClient _tableClient;
+        private TableClient _diagnosticEventsTable;
         private string _hostId;
         private bool _disposed = false;
         private bool _purged = false;
@@ -55,22 +55,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             ILogger<DiagnosticEventTableStorageRepository> logger)
             : this(configuration, hostIdProvider, environment, scriptHost, logger, LogFlushInterval) { }
 
-        internal CloudTableClient TableClient
+        internal TableServiceClient TableClient
         {
             get
             {
                 if (!_environment.IsPlaceholderModeEnabled() && _tableClient == null)
                 {
                     string storageConnectionString = _configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
-                    if (!string.IsNullOrEmpty(storageConnectionString)
-                        && CloudStorageAccount.TryParse(storageConnectionString, out CloudStorageAccount account))
+
+                    try
                     {
-                        var tableClientConfig = new TableClientConfiguration();
-                        _tableClient = new CloudTableClient(account.TableStorageUri, account.Credentials, tableClientConfig);
+                        _tableClient = new TableServiceClient(storageConnectionString);
                     }
-                    else
+                    catch (Exception ex)
                     {
-                        _logger.LogError("Azure Storage connection string is empty or invalid. Unable to write diagnostic events.");
+                        _logger.LogError(ex, "Azure Storage connection string is empty or invalid. Unable to write diagnostic events.");
                     }
                 }
 
@@ -92,7 +91,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         internal ConcurrentDictionary<string, DiagnosticEvent> Events => _events;
 
-        internal CloudTable GetDiagnosticEventsTable(DateTime? now = null)
+        internal TableClient GetDiagnosticEventsTable(DateTime? now = null)
         {
             if (TableClient != null)
             {
@@ -103,7 +102,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 if (_diagnosticEventsTable == null || currentTableName != _tableName)
                 {
                     _tableName = currentTableName;
-                    _diagnosticEventsTable = TableClient.GetTableReference(_tableName);
+                    _diagnosticEventsTable = TableClient.GetTableClient(_tableName);
                 }
             }
 
@@ -134,31 +133,27 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
                     foreach (var table in tables)
                     {
-                        var tableRecords = await table.ExecuteQuerySegmentedAsync(new TableQuery<DiagnosticEvent>(), null);
+                        var tableQuery = table.QueryAsync<DiagnosticEvent>(cancellationToken: default);
 
-                        // Skip tables that have 0 records
-                        if (tableRecords.Results.Count == 0)
+                        await foreach (var record in tableQuery)
                         {
-                            continue;
-                        }
+                            // Delete table if it doesn't have records with EventVersion
+                            if (string.IsNullOrEmpty(record.EventVersion) == true)
+                            {
+                                _logger.LogDebug("Deleting table '{tableName}' as it contains records without an EventVersion.", table.Name);
+                                await table.DeleteAsync();
+                                tableDeleted = true;
+                                break;
+                            }
 
-                        // Delete table if it doesn't have records with EventVersion
-                        var eventVersionDoesNotExists = tableRecords.Results.Any(record => string.IsNullOrEmpty(record.EventVersion) == true);
-                        if (eventVersionDoesNotExists)
-                        {
-                            _logger.LogDebug("Deleting table '{tableName}' as it contains records without an EventVersion.", table.Name);
-                            await table.DeleteIfExistsAsync();
-                            tableDeleted = true;
-                            continue;
-                        }
-
-                        // If the table does have EventVersion, query if it is an outdated version
-                        var eventVersionOutdated = tableRecords.Results.Any(record => string.Compare(DiagnosticEvent.CurrentEventVersion, record.EventVersion, StringComparison.Ordinal) > 0);
-                        if (eventVersionOutdated)
-                        {
-                            _logger.LogDebug("Deleting table '{tableName}' as it contains records with an outdated EventVersion.", table.Name);
-                            await table.DeleteIfExistsAsync();
-                            tableDeleted = true;
+                            // If the table does have EventVersion, query if it is an outdated version
+                            if (string.Compare(DiagnosticEvent.CurrentEventVersion, record.EventVersion, StringComparison.Ordinal) > 0)
+                            {
+                                _logger.LogDebug("Deleting table '{tableName}' as it contains records with an outdated EventVersion.", table.Name);
+                                await table.DeleteAsync();
+                                tableDeleted = true;
+                                break;
+                            }
                         }
                     }
 
@@ -177,7 +172,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             }
         }
 
-        internal virtual async Task FlushLogs(CloudTable table = null)
+        internal virtual async Task FlushLogs(TableClient table = null)
         {
             if (_environment.IsPlaceholderModeEnabled())
             {
@@ -200,7 +195,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     return;
                 }
 
-                bool tableCreated = await TableStorageHelpers.CreateIfNotExistsAsync(table, TableCreationMaxRetryCount);
+                bool tableCreated = await TableStorageHelpers.CreateIfNotExistsAsync(table, TableClient, TableCreationMaxRetryCount);
                 if (tableCreated)
                 {
                     _logger.LogDebug("Queueing background table purge.");
@@ -225,20 +220,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             }
         }
 
-        internal async Task ExecuteBatchAsync(ConcurrentDictionary<string, DiagnosticEvent> events, CloudTable table)
+        internal async Task ExecuteBatchAsync(ConcurrentDictionary<string, DiagnosticEvent> events, TableClient table)
         {
             try
             {
-                var batch = new TableBatchOperation();
+                var batch = new List<TableTransactionAction>();
                 foreach (string errorCode in events.Keys)
                 {
                     var diagnosticEvent = events[errorCode];
                     diagnosticEvent.Message = Sanitizer.Sanitize(diagnosticEvent.Message);
                     diagnosticEvent.Details = Sanitizer.Sanitize(diagnosticEvent.Details);
-                    TableOperation insertOperation = TableOperation.Insert(diagnosticEvent);
-                    batch.Add(insertOperation);
+                    TableTransactionAction insertAction = new TableTransactionAction(TableTransactionActionType.Add, diagnosticEvent);
+                    batch.Add(insertAction);
                 }
-                await table.ExecuteBatchAsync(batch);
+                await table.SubmitTransactionAsync(batch);
                 events.Clear();
             }
             catch (Exception ex)

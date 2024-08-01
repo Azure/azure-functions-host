@@ -9,7 +9,7 @@ jobs:
     artifacts_path: $(Build.ArtifactStagingDirectory)
     log_dir: $(artifacts_path)/log
     zip_artifacts_path: $(artifacts_path)/Linux
-    build_args: '-v m -c $(configuration) -r $(runtime) --self-contained true -p:IsPackable=false'
+    build_args: '-v m -c $(configuration) -r $(runtime) --self-contained true'
 
   templateContext:
     outputParentDirectory: $(artifacts_path)

@@ -58,8 +58,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Azure.Identity" Version="1.11.2" />
-    <PackageReference Include="Azure.Security.KeyVault.Secrets" Version="4.2.0" />
+    <PackageReference Include="Azure.Data.Tables" Version="12.8.3" />
+    <PackageReference Include="Azure.Identity" Version="1.11.4" />
+    <PackageReference Include="Azure.Security.KeyVault.Secrets" Version="4.6.0" />
     <PackageReference Include="Microsoft.ApplicationInsights" Version="2.22.0" />
     <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.22.0" />
     <PackageReference Include="Microsoft.ApplicationInsights.DependencyCollector" Version="2.22.0" />
@@ -73,8 +74,8 @@
     <PackageReference Include="Microsoft.Azure.Cosmos.Table" Version="1.0.8" />
     <PackageReference Include="Microsoft.Azure.Storage.File" Version="11.1.7" />
 
-    <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.41-11331" />
-    <PackageReference Include="Microsoft.Azure.WebJobs.Host.Storage" Version="5.0.0-beta.2-11957" />
+    <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.41" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Host.Storage" Version="5.0.1" />
     <PackageReference Include="Microsoft.Azure.WebSites.DataProtection" Version="2.1.91-alpha" />
     <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="$(IdentityDependencyVersion)" />
     <PackageReference Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="$(IdentityDependencyVersion)" />
@@ -90,8 +91,6 @@
     <PackageReference Include="System.IO.FileSystem.AccessControl" Version="5.0.0" />
     <PackageReference Include="System.Net.NameResolution" Version="4.3.0" />
     <PackageReference Include="System.Private.Uri" Version="4.3.2" />
-    <PackageReference Include="System.Security.Cryptography.Xml" Version="4.7.1" />
-    <PackageReference Include="System.Text.RegularExpressions" Version="4.3.1" />
   </ItemGroup>
 
   <ItemGroup>
@@ -129,27 +128,5 @@
   <ItemGroup>
     <Content Update="web.config" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
-
-  <!-- Remove all worker items from the ReadyToRun publish list -->
-  <Target Name="ExcludeWorkers" AfterTargets="ComputeFilesToPublish" BeforeTargets="ResolveReadyToRunCompilers">
-    <ItemGroup>
-      <_WorkerPublishFiles Include="@(ResolvedFileToPublish)" Condition="$([System.String]::new('%(ResolvedFileToPublish.TargetPath)').StartsWith('workers'))" />
-      <ResolvedFileToPublish Remove="@(_WorkerPublishFiles)" />
-    </ItemGroup>
-  </Target>
-
-  <!-- Add all worker items back to the publish list -->
-  <Target Name="ReAddWorkersToPublish" AfterTargets="CreateReadyToRunImages" BeforeTargets="CopyFilesToPublishDirectory" Condition="'$(PublishWorkers)' != 'false'">
-    <ItemGroup>
-      <ResolvedFileToPublish Include="@(_WorkerPublishFiles)" />
-    </ItemGroup>
-  </Target>
-
-  <!-- PythonWorker package injects its content files through custom targets. -->
-  <Target Name="SuppressPythonWorker" AfterTargets="Initialize" BeforeTargets="CopyOnPublish" Condition="'$(PublishWorkers)' == 'false'">
-    <ItemGroup>
-      <SourceFiles Remove="@(SourceFiles)" />
-    </ItemGroup>
-  </Target>
 
 </Project>

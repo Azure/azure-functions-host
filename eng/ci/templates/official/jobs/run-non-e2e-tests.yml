@@ -11,9 +11,6 @@ jobs:
     IntegrationProject: test/WebJobs.Script.Tests.Integration/WebJobs.Script.Tests.Integration.csproj
 
   steps:
-  - task: NuGetAuthenticate@1
-    displayName: NuGet Authenticate
-
   - template: /eng/ci/templates/install-dotnet.yml@self
 
   - task: UseNode@1
@@ -32,18 +29,12 @@ jobs:
       targetType: inline
       script: 'Install-Module -Name Az.Storage -RequiredVersion 1.11.0 -Scope CurrentUser -Force -AllowClobber'
 
-  - task: AzureKeyVault@1
-    inputs:
-      # Note: This is actually a Service Connection in DevOps, not an Azure subscription name
-      azureSubscription: Azure-Functions-Host-CI-internal
-      keyVaultName: azure-functions-host-ci
-      secretsFilter: '*'
-
-  - task: PowerShell@2
+  - task: AzurePowerShell@5
     displayName: Checkout secrets
     inputs:
-      filePath: build/checkout-secrets.ps1
-      arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'''
+      azureSubscription: Azure-Functions-Host-CI-internal
+      azurePowerShellVersion: 'LatestVersion'
+      ScriptPath: build/checkout-secrets.ps1
 
   - task: AzureKeyVault@1
     inputs:
@@ -51,6 +42,24 @@ jobs:
       azureSubscription: Azure-Functions-Host-CI-internal
       keyVaultName: azure-functions-host-$(LeaseBlob)
       secretsFilter: '*'
+
+  - task: AzureCLI@2
+    displayName: 'Setup Azure environment'
+    inputs:
+      azureSubscription: Azure-Functions-Host-CI-internal
+      addSpnToEnvironment: true
+      scriptType: bash
+      scriptLocation: inlineScript
+      inlineScript: |
+        echo "##vso[task.setvariable variable=ARM_CLIENT_ID]$servicePrincipalId" 
+        echo "##vso[task.setvariable variable=ARM_ID_TOKEN]$idToken"
+        echo "##vso[task.setvariable variable=ARM_TENANT_ID]$tenantId"
+
+  # This step ensures the azure context defined by the previous task is persisted
+  # and available to subsequent steps/tasks.
+  - bash: |
+      az login --service-principal -u $(ARM_CLIENT_ID) --tenant $(ARM_TENANT_ID) --allow-no-subscriptions --federated-token $(ARM_ID_TOKEN)
+    displayName: 'Login to Azure'
 
   - task: DotNetCoreCLI@2
     displayName: Build Integration.csproj
@@ -76,9 +85,11 @@ jobs:
       AzureWebJobsSecretStorageKeyVaultClientId: $(AzureClientId)
       AzureWebJobsSecretStorageKeyVaultClientSecret: $(AzureClientSecret)
 
-  - task: PowerShell@2
+  - task: AzurePowerShell@5
     condition: always()
     displayName: Checkin secrets
     inputs:
-      filePath: build/checkin-secrets.ps1
-      arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'' -leaseBlob $(LeaseBlob) -leaseToken $(LeaseToken)'
+      azureSubscription: Azure-Functions-Host-CI-internal
+      azurePowerShellVersion: 'LatestVersion'
+      ScriptPath: build/checkin-secrets.ps1
+      ScriptArguments: '-leaseBlob $(LeaseBlob) -leaseToken $(LeaseToken)'

@@ -1,7 +1,4 @@
-variables:
-  DOTNET_NOLOGO: 1
-  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
-  DOTNET_CLI_TELEMETRY_OPTOUT: 1
+trigger: none # ensure this is not ran as a CI build
 
 pr:
   branches:
@@ -9,8 +6,7 @@ pr:
     - dev
     - in-proc
     - release/4.*
-    - release/inproc6/4.*
-    - release/inproc8/4.*
+    - release/in-proc
 
 resources:
   repositories:
@@ -18,18 +14,25 @@ resources:
     type: git
     name: 1ESPipelineTemplates/1ESPipelineTemplates
     ref: refs/tags/release
+  - repository: eng
+    type: git
+    name: engineering
+    ref: refs/tags/release
+
+variables:
+  - template: /eng/ci/templates/variables/build.yml@self
+  - template: /ci/variables/cfs.yml@eng
 
 extends:
   template: v1/1ES.Unofficial.PipelineTemplate.yml@1es
   parameters:
     pool:
       name: 1es-pool-azfunc
-      image: 1es-windows-2022 
+      image: 1es-windows-2022
       os: windows
 
     stages:
     - stage: Test
       jobs:
-
       - template: /eng/ci/templates/official/jobs/run-non-e2e-tests.yml@self
       - template: /eng/ci/templates/official/jobs/run-integration-tests.yml@self

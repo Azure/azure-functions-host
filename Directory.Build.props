@@ -13,6 +13,14 @@
     <EngRoot>$(RepoRoot)eng/</EngRoot>
     <SourceRoot>$(RepoRoot)src/</SourceRoot>
     <TestRoot>$(RepoRoot)test/</TestRoot>
+    <TargetsRoot>$(EngRoot)build/</TargetsRoot>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <!-- Nuget audit as warnings only, even in TreatWarningsAsErrors. -->
+    <WarningsNotAsErrors>NU1901;NU1902;NU1903;NU1904</WarningsNotAsErrors>
+    <NuGetAuditLevel>moderate</NuGetAuditLevel> <!-- warn on moderate severity only. -->
+    <NuGetAuditMode>all</NuGetAuditMode> <!-- audit transitive dependencies. -->
   </PropertyGroup>
 
   <Import Project="$(EngRoot)build/Engineering.props" />

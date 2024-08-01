@@ -391,23 +391,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [HttpPost]
         [Route("admin/host/synctriggers")]
         [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal)]
+        [RequiresRunningHost]
         public async Task<IActionResult> SyncTriggers()
         {
             _metricsLogger.LogEvent(MetricEventNames.SyncTriggersInvoked);
-
-            // TEMP: Collecting temporary metrics on the host state during SyncTrigger requests
-            if (!_scriptHostManager.HostIsInitialized())
-            {
-                _metricsLogger.LogEvent(MetricEventNames.SyncTriggersHostNotInitialized);
-            }
-
-            // TODO: We plan on making SyncTriggers RequiresRunningHost across the board,
-            // but for now only for Flex.
-            // https://github.com/Azure/azure-functions-host/issues/9904
-            if (_environment.IsFlexConsumptionSku())
-            {
-                await HttpContext.WaitForRunningHostAsync(_scriptHostManager, _applicationHostOptions.Value);
-            }
 
             var result = await _functionsSyncManager.TrySyncTriggersAsync();
 

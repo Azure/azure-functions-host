@@ -3,7 +3,6 @@
 
 using System;
 using System.IO;
-using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
@@ -12,7 +11,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Scale;
-using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.Scale;
@@ -247,40 +245,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var result = (StatusCodeResult)(await _hostController.Ping(_mockScriptHostManager.Object));
             Assert.Equal((int)HttpStatusCode.OK, result.StatusCode);
-        }
-
-        [Theory]
-        [InlineData(true, ScriptConstants.FlexConsumptionSku)]
-        [InlineData(false, ScriptConstants.FlexConsumptionSku)]
-        [InlineData(true, ScriptConstants.DynamicSku)]
-        [InlineData(false, ScriptConstants.DynamicSku)]
-        public async Task SyncTriggers_RequiresRunningHost_ForFlexSku(bool hostInitialized, string sku)
-        {
-            if (!hostInitialized)
-            {
-                _scriptHostState = ScriptHostState.Default;
-
-                _ = Task.Run(async () =>
-                {
-                    // simulate coming online after a short period
-                    await Task.Delay(1000);
-                    _scriptHostState = ScriptHostState.Running;
-                });
-            }
-
-            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku)).Returns(sku);
-            _functionsSyncManager.Setup(p => p.TrySyncTriggersAsync(false)).ReturnsAsync(new SyncTriggersResult { Success = true });
-
-            var result = (ObjectResult)(await _hostController.SyncTriggers());
-            Assert.Equal((int)HttpStatusCode.OK, result.StatusCode);
-
-            var loggedEvents = _testMetricsLogger.LoggedEvents.ToArray();
-            Assert.Single(loggedEvents.Where(p => p == MetricEventNames.SyncTriggersInvoked));
-
-            if (!hostInitialized)
-            {
-                Assert.Single(loggedEvents.Where(p => p == MetricEventNames.SyncTriggersHostNotInitialized));
-            }
         }
 
         [Theory]

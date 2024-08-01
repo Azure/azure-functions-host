@@ -1,20 +1,16 @@
+parameters:
+  - name: project
+    type: string
+    default: src/WebJobs.Script.SiteExtension/WebJobs.Script.SiteExtension.csproj
+
 steps:
-  # Not aware of a way to inject variables in the middle of a job from a template. Parameters seem unnecessary here as they should never be changed.
-  - pwsh: |
-      Write-Host "##vso[task.setvariable variable=site_ext_proj]src/WebJobs.Script.SiteExtension/WebJobs.Script.SiteExtension.proj"
-
-      if (-not '$(log_dir)'){
-        Write-Host "##vso[task.setvariable variable=log_dir]$(Build.ArtifactStagingDirectory)/log"
-      }
-    displayName: Update site ext variables
-
   # Restore must be a separate step so we can pass in 'PublishReadyToRun=true'
   - task: DotNetCoreCLI@2
     displayName: Restore site extension
     inputs:
       command: custom
       custom: restore
-      projects: $(site_ext_proj)
+      projects: ${{ parameters.project }}
       arguments: '-v m -p:PublishReadyToRun=true -bl:$(log_dir)/site_ext.restore.binlog'
 
   - task: DotNetCoreCLI@2
@@ -22,8 +18,8 @@ steps:
     inputs:
       command: custom
       custom: build
-      projects: $(site_ext_proj)
-      arguments: '--no-restore -v m -bl:$(log_dir)/site_ext.build.binlog'
+      projects: ${{ parameters.project }}
+      arguments: '--no-restore -v m -c release -bl:$(log_dir)/site_ext.build.binlog'
 
   - task: DotNetCoreCLI@2
     displayName: Publish site extension
@@ -32,5 +28,5 @@ steps:
       custom: publish
       publishWebProjects: false # we use our own publish logic
       zipAfterPublish: false # we use our own zip logic
-      projects: $(site_ext_proj)
-      arguments: '--no-build -v m -p:ZipArtifactsPath=$(Build.ArtifactStagingDirectory) -bl:$(log_dir)/site_ext.publish.binlog'
+      projects: ${{ parameters.project }}
+      arguments: '--no-build -v m -c release -p:ZipArtifactsPath=$(Build.ArtifactStagingDirectory) -bl:$(log_dir)/site_ext.publish.binlog'

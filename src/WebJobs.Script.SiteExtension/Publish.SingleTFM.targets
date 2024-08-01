@@ -1,12 +1,14 @@
-<Project Sdk="Microsoft.Build.NoTargets">
-  <Import Project="$(WorkersProps)" />
+<Project>
+
+  <!--
+    Publish.SingleTFM.targets: publish steps for a single TFM.
+  -->
+
+  <Import Project="Tasks.targets" />
 
   <PropertyGroup>
-    <!-- TFM and RId are actually used. -->
-    <TargetFramework>net6.0</TargetFramework>
-    <RuntimeIdentifier>win</RuntimeIdentifier>
-    <SiteExtensionName>Functions</SiteExtensionName>
     <PublishWebHostDependsOn>
+      ValidatePublishSettings;
       PublishProjectReferences;
       PublishPrivateProjectReferences;
       RemoveUnneededRuntimes;
@@ -17,22 +19,10 @@
     <PublishPropertiesToRemove>ZipAfterPublish;ZipArtifactsPath</PublishPropertiesToRemove>
   </PropertyGroup>
 
-  <ItemGroup>
-    <!-- We don't ship python with the site extension. -->
-    <PackageReference Remove="Microsoft.Azure.Functions.PythonWorker" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="../WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj" ReferenceOutputAssembly="false" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <!-- This item group controls what runtimes we will publish for public & private site extension -->
-    <PublishRuntimeIdentifier Include="win-x86" SelfContained="false" PublishDir="32bit" PrivateExtension="true" />
-    <PublishRuntimeIdentifier Include="win-x64" SelfContained="false" PublishDir="64bit" PrivateExtension="false" />
-  </ItemGroup>
-
-  <Import Project="Tasks.targets" />
+  <Target Name="ValidatePublishSettings">
+    <Error Condition="'$(SiteExtensionName)' == ''" Text="SiteExtensionName property must be set." />
+    <Error Condition="'@(PublishRuntimeIdentifier)' == ''" Text="PublishRuntimeIdentifier item group must be non-empty." />
+  </Target>
 
   <!-- We set many properties and items in targets to ensure $(Version) is finalized. -->
   <Target Name="UpdatePaths" BeforeTargets="AddRuntimesToProjects;AssignTargetPaths">
@@ -52,8 +42,8 @@
   <!-- Update files from worker pagaes to be copied into public SiteExtension. -->
   <Target Name="UpdateWorkerPaths" DependsOnTargets="UpdatePaths" BeforeTargets="AssignTargetPaths">
     <ItemGroup>
-      <None Condition="'%(TargetPath)' != '' AND $([System.String]::new('%(TargetPath)').StartsWith('workers'))">
-        <TargetPath>$(SiteExtensionRelativeDir)%(TargetPath)</TargetPath>
+      <None Condition="'%(None.TargetPath)' != '' AND $([System.String]::new('%(None.TargetPath)').StartsWith('workers'))">
+        <TargetPath>$(SiteExtensionRelativeDir)%(None.TargetPath)</TargetPath>
       </None>
     </ItemGroup>
   </Target>
@@ -123,6 +113,14 @@
     <RemoveDir Directories="@(_RuntimesToRemove)" />
   </Target>
 
+  <Target Name="EnsureWorkersFolder"
+    AfterTargets="CopyFilesToPublishDirectory" BeforeTargets="ZipPublishArtifacts" Condition="!Exists('$(SiteExtensionDir)workers')">
+    <MakeDir Directories="$(SiteExtensionDir)workers" />
+    <WriteLinesToFile
+      File="$(SiteExtensionDir)workers/this_folder_intentionally_empty.txt"
+      Lines="This build does not include workers, but the host requires this folder to contain at least one file." />
+  </Target>
+
   <!-- Copies symbols from SiteExtension out so they can be distributed independently. -->
   <Target Name="MoveSymbols">
     <ItemGroup>
@@ -157,7 +155,7 @@
   </Target>
 
   <!-- Write calculated hashes and filepaths to hashesForHardlinks.txt -->
-  <Target Name="WriteHardLinkHashes" DependsOnTargets="ComputeHardLinkHashes">
+  <Target Name="WriteHardLinkHashes" DependsOnTargets="ComputeHardLinkHashes" Condition="'$(ShouldWriteHardLinkHashes)' != 'false'">
     <ItemGroup>
       <_HashedFiles RelativePath=".$([System.IO.Path]::DirectorySeparatorChar)$([MSBuild]::MakeRelative('$(SiteExtensionDir)', '%(Identity)'))" />
     </ItemGroup>

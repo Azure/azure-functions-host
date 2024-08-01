@@ -93,6 +93,35 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
+        public void WorkerDescription_Skipped_When_Profile_Disables_Worker()
+        {
+            // The "TestWorkers" directory has 2 workers: "worker1" and "worker2".
+            // "worker2" has 2 profiles. The first profile will be skipped since the condition is not met.
+            // The second profile will be applied since the condition is met. The second profile updates
+            // the "IsDisabled" property to True and will cause the workerDescription to be skipped.
+
+            var testPath = Path.GetDirectoryName(new Uri(typeof(RpcWorkerConfigFactoryTests).Assembly.Location).LocalPath);
+            var testWorkersDirectory = Path.Combine(testPath, "TestWorkers");
+            var testEnvVariables = new Dictionary<string, string>
+            {
+                { $"{RpcWorkerConstants.LanguageWorkersSectionName}:{WorkerConstants.WorkersDirectorySectionName}", testWorkersDirectory }
+            };
+            var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
+                .AddInMemoryCollection(testEnvVariables);
+            var config = configBuilder.Build();
+            var scriptSettingsManager = new ScriptSettingsManager(config);
+            var testLogger = new TestLogger("test");
+            _testEnvironment.SetEnvironmentVariable("ENV_VAR_BAR", "True");
+            var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger(), _testWorkerProfileManager);
+
+            var workerConfigs = configFactory.GetConfigs();
+
+            Assert.False(testLogger.GetLogMessages().Any(m => m.Exception != null), "There should not be an exception logged while executing GetConfigs method.");
+            Assert.Equal(1, workerConfigs.Count);
+            Assert.EndsWith("worker1\\1.bat", workerConfigs[0].Description.DefaultWorkerPath);
+        }
+
+        [Fact]
         public void JavaPath_FromEnvVars()
         {
             var javaHome = Environment.GetEnvironmentVariable("JAVA_HOME");
@@ -124,6 +153,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
+            _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
             using (var variables = new TestScopedSettings(scriptSettingsManager, testEnvVariables))
             {
                 var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger(), _testWorkerProfileManager);
