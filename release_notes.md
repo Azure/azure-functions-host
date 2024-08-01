@@ -21,6 +21,8 @@
   - `Microsoft.Extensions.Azure` updated to 1.7.1
   - `Azure.Storage.Blobs` updated to 12.19.1
 - [in-proc] Updating FunctionsNetHost (dotnet isolated worker) to 1.0.10 (#10340)
+- Upgraded the following package versions (#10326):
+  - `Azure.Security.KeyVault.Secrets` updated to 4.6.0
+  - `System.Format.Asn1` updated to 6.0.1
 - Update PowerShell 7.2 worker to [4.0.4020](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.4020)
 - Update PowerShell 7.4 worker to [4.0.4021](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.4021)
-
