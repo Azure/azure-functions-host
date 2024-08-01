@@ -14,7 +14,7 @@
     <_BuildNumberMM>$(_BuildNumber.Substring(4, 2))</_BuildNumberMM>
     <_BuildNumberDD>$(_BuildNumber.Substring(6, 2))</_BuildNumberDD>
 
-    <!-- The build number should be <65,535 (Windows limitation). We convert into a short date to accomodate that. -->
+    <!-- The build number should be < 65,535 (Windows limitation). We convert into a short date to accomodate that. -->
     <!-- SHORT_DATE := yy * 1000 + MM * 50 + dd -->
     <BuildNumber>$([MSBuild]::Add($([MSBuild]::Add($([MSBuild]::Multiply($(_BuildNumberYY), 1000)), $([MSBuild]::Multiply($(_BuildNumberMM), 50)))), $(_BuildNumberDD)))</BuildNumber>
     <BuildCounter Condition="'$(BUILD_COUNTER)' != ''">$(BUILD_COUNTER)</BuildCounter>
