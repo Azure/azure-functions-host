@@ -20,8 +20,9 @@ resources:
     ref: refs/tags/release
 
 variables:
-  - template: /eng/ci/templates/variables/build.yml@self
-  - template: /ci/variables/cfs.yml@eng
+- template: /eng/ci/templates/variables/build.yml@self
+- name: buildNumber
+  value: $[ counter('build', 0) ]
 
 extends:
   template: v1/1ES.Unofficial.PipelineTemplate.yml@1es
