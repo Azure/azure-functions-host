@@ -3,7 +3,7 @@
   <!-- Additional paths -->
   <PropertyGroup>
     <EngBuildRoot>$(EngRoot)build/</EngBuildRoot>
-    <EngResourceRoot>$(EngRoot)resources/</EngResourceRoot>
+    <EngResourceRoot>$(EngRoot)res/</EngResourceRoot>
     <WorkersProps>$(EngBuildRoot)Workers.props</WorkersProps>
   </PropertyGroup>
 
