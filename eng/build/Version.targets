@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <!-- CI versioning steps -->
-  <PropertyGroup Condition="'$(CI)' == 'true' AND '$(Release)' == 'true'">
+  <PropertyGroup Condition="'$(CI)' == 'true' AND '$(PublicRelease)' != 'true'">
     <VersionSuffix Condition="'$(VersionSuffix)' != ''">$(VersionSuffix).$(BuildReason).$(BuildNumber).$(BuildCounter)</VersionSuffix>
     <VersionSuffix Condition="'$(VersionSuffix)' == ''">$(BuildReason).$(BuildNumber).$(BuildCounter)</VersionSuffix>
     <Version>$(VersionPrefix)-$(VersionSuffix)</Version>

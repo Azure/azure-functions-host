@@ -17,10 +17,12 @@
     </PropertyGroup>
   </Target>
 
-  <Target Name="AddTagToReleaseNotes" Condition="'$(ReleaseTag)' != ''">
+  <Target Name="AddTagToReleaseNotes" Condition="'$(PublicRelease)' == 'true'">
     <PropertyGroup>
+      <PublicReleaseUrl Condition="'$(PublicReleaseTag)' != ''">$(RepositoryUrl)/releases/tag/$(PublicReleaseTag)</PublicReleaseUrl>
+      <PublicReleaseUrl Condition="'$(PublicReleaseUrl)' == ''">$(RepositoryUrl)/releases/tag/v$(Version)</PublicReleaseUrl>
       <PackageReleaseNotes>
-See $(RepositoryUrl)/releases/tag/$(ReleaseTag)
+See $(PublicReleaseUrl)
 
 $(PackageReleaseNotes)
       </PackageReleaseNotes>

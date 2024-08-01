@@ -43,13 +43,13 @@
     <BuildReason Condition="'$(BUILD_REASON)' != ''">ci</BuildReason>
     <BuildReason Condition="'$(BUILD_REASON)' == 'PullRequest'">pr</BuildReason>
 
-    <!-- Only set release tag if this is a tag or a release branch -->
+    <!-- Only set public release if this is a release tag or a release branch -->
     <!-- tag must be either 'v{Version}' or {name}-v{Version} for a match -->
     <!-- release branch must be refs/heads/release/* -->
-    <ReleaseTag Condition="$([System.Text.RegularExpressions.Regex]::IsMatch($(BUILD_SOURCEBRANCH), `refs/tags/(?:.*-)?v.*`))">$(BUILD_SOURCEBRANCHNAME)</ReleaseTag>
-    <Release>false</Release>
-    <Release Condition="'$(ReleaseTag)' != ''">true</Release>
-    <Release Condition="'$(BUILD_SOURCEBRANCH)' != '' AND $(BUILD_SOURCEBRANCH.StartsWith('/refs/heads/release/'))">true</Release>
+    <PublicReleaseTag Condition="$([System.Text.RegularExpressions.Regex]::IsMatch($(BUILD_SOURCEBRANCH), `refs/tags/(?:.*-)?v.*`))">$(BUILD_SOURCEBRANCHNAME)</PublicReleaseTag>
+    <PublicRelease>false</PublicRelease>
+    <PublicRelease Condition="'$(PublicReleaseTag)' != ''">true</PublicRelease>
+    <PublicRelease Condition="'$(BUILD_SOURCEBRANCH)' != '' AND $(BUILD_SOURCEBRANCH.StartsWith('/refs/heads/release/'))">true</PublicRelease>
   </PropertyGroup>
 
   <ItemGroup>
