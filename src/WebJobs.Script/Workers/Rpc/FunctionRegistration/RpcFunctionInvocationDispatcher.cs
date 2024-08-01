@@ -10,6 +10,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Azure.WebJobs.Host.Executors.Internal;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -403,6 +404,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         public async Task InvokeAsync(ScriptInvocationContext invocationContext)
         {
+            // We have entered back into a system scope, ensure our logs are captured as such.
+            using FunctionInvoker.Scope scope = FunctionInvoker.BeginSystemScope();
+
             // This could throw if no initialized workers are found. Shut down instance and retry.
             IEnumerable<IRpcWorkerChannel> workerChannels = await GetInitializedWorkerChannelsAsync(invocationContext.FunctionMetadata.Language ?? _workerRuntime);
             var rpcWorkerChannel = _functionDispatcherLoadBalancer.GetLanguageWorkerChannel(workerChannels);
