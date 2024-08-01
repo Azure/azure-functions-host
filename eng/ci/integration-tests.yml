@@ -20,7 +20,8 @@ resources:
     ref: refs/tags/release
 
 variables:
-- template: /eng/ci/templates/variables/build.yml@self
+- template: /eng/ci/templates/variables/build.yml@sel
+- template: /ci/variables/cfs.yml@eng
 - name: buildNumber
   value: $[ counter('build', 0) ]
 
