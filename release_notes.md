@@ -12,3 +12,4 @@
 - Update PowerShell 7.4 worker to [4.0.4021](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.4021)
 - Updated dotnet-isolated worker to [1.0.10](https://github.com/Azure/azure-functions-dotnet-worker/pull/2629) (#10340)
 - Update Java Worker Version to [2.15.0](https://github.com/Azure/azure-functions-java-worker/releases/tag/2.15.0)
+- Resolved thread safety issue in the `GrpcWorkerChannel.LoadResponse` method. (#10352)
