@@ -26,3 +26,4 @@
   - `System.Format.Asn1` updated to 6.0.1
 - Update PowerShell 7.2 worker to [4.0.4020](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.4020)
 - Update PowerShell 7.4 worker to [4.0.4021](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.4021)
+- Update Java Worker Version to [2.15.0](https://github.com/Azure/azure-functions-java-worker/releases/tag/2.15.0)
