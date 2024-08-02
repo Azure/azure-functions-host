@@ -68,6 +68,7 @@ function BuildRuntime([string] $targetRid, [bool] $isSelfContained) {
 
     Write-Host ""
     $symbols = Get-ChildItem -Path $publishTarget -Filter *.pdb
+    $symbols += Get-ChildItem -Path "$publishTarget\workers\dotnet-isolated\*" -Include "*.pdb", "*.dbg" -Recurse
     Write-Host "Zipping symbols: $($symbols.Count) symbols found"
 
     $symbolsPath = "$publishDir\Symbols"
@@ -106,6 +107,13 @@ function CleanOutput([string] $rootPath) {
     Get-ChildItem "$rootPath\workers\powershell" -Directory -ErrorAction SilentlyContinue |
       ForEach-Object { Get-ChildItem "$($_.FullName)\runtimes" -Directory -Exclude $keepRuntimes } |
         Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+
+    Write-Host "  Removing FunctionsNetHost(linux executable) and dependencies from dotnet-isolated worker"
+    $dotnetIsolatedBinPath = Join-Path $rootPath "workers\dotnet-isolated\bin"
+    if (Test-Path $dotnetIsolatedBinPath) {
+        Remove-Item -Path (Join-Path $dotnetIsolatedBinPath "FunctionsNetHost") -ErrorAction SilentlyContinue
+        Get-ChildItem -Path $dotnetIsolatedBinPath -Filter "*.so" | Remove-Item -ErrorAction SilentlyContinue
+    }
 
     Write-Host "  Current size: $(GetFolderSizeInMb $rootPath) Mb"
 }
