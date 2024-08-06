@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Extensions.Configuration;
@@ -54,6 +55,26 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             var configFactory = new RpcWorkerConfigFactory(_configuration, _logger, SystemRuntimeInformation.Instance, _environment, _metricsLogger, _workerProfileManager);
             options.WorkerConfigs = configFactory.GetConfigs();
+        }
+    }
+
+    internal class JobHostLanguageWorkerOptionsSetup : IPostConfigureOptions<LanguageWorkerOptions>
+    {
+        private readonly ILoggerFactory _loggerFactory;
+
+        public JobHostLanguageWorkerOptionsSetup(ILoggerFactory loggerFactory)
+        {
+            _loggerFactory = loggerFactory;
+        }
+
+        public void PostConfigure(string name, LanguageWorkerOptions options)
+        {
+            var message = $"Call to configure {nameof(LanguageWorkerOptions)} from the JobHost scope. " +
+                $"If using {nameof(IOptions<LanguageWorkerOptions>)}, please use {nameof(IOptionsMonitor<LanguageWorkerOptions>)} instead.";
+            Debug.Fail(message);
+
+            var logger = _loggerFactory.CreateLogger("Host.LanguageWorkerConfig");
+            logger.LogInformation(message);
         }
     }
 }

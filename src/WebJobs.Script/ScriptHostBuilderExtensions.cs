@@ -311,10 +311,9 @@ namespace Microsoft.Azure.WebJobs.Script
                 // Configuration
                 services.AddSingleton<IOptions<ScriptApplicationHostOptions>>(new OptionsWrapper<ScriptApplicationHostOptions>(applicationHostOptions));
                 services.AddSingleton<IOptionsMonitor<ScriptApplicationHostOptions>>(new ScriptApplicationHostOptionsMonitor(applicationHostOptions));
+
                 services.ConfigureOptions<ScriptJobHostOptionsSetup>();
                 services.ConfigureOptions<JobHostFunctionTimeoutOptionsSetup>();
-                // LanguageWorkerOptionsSetup should be registered in WebHostServiceCollection as well to enable starting worker processing in placeholder mode.
-                services.ConfigureOptions<LanguageWorkerOptionsSetup>();
                 services.AddOptions<WorkerConcurrencyOptions>();
                 services.ConfigureOptions<HttpWorkerOptionsSetup>();
                 services.ConfigureOptions<ManagedDependencyOptionsSetup>();
@@ -329,8 +328,17 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 services.AddSingleton<IFileLoggingStatusManager, FileLoggingStatusManager>();
 
-                if (!applicationHostOptions.HasParentScope)
+                if (applicationHostOptions.HasParentScope)
                 {
+                    // Forward th host LanguageWorkerOptions to the Job Host.
+                    var languageWorkerOptions = applicationHostOptions.RootServiceProvider.GetService<IOptionsMonitor<LanguageWorkerOptions>>();
+                    services.AddSingleton(languageWorkerOptions);
+                    services.AddSingleton<IOptions<LanguageWorkerOptions>>((s) => new OptionsWrapper<LanguageWorkerOptions>(languageWorkerOptions.CurrentValue));
+                    services.ConfigureOptions<JobHostLanguageWorkerOptionsSetup>();
+                }
+                else
+                {
+                    services.ConfigureOptions<LanguageWorkerOptionsSetup>();
                     AddCommonServices(services);
                 }
 
