@@ -21,3 +21,4 @@
   - `Microsoft.Extensions.Azure` updated to 1.7.1
   - `Azure.Storage.Blobs` updated to 12.19.1
 - [in-proc] Updating FunctionsNetHost (dotnet isolated worker) to 1.0.10 (#10340)
+- Trim FunctionsNetHost artifacts (#10364)
