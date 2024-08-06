@@ -2,12 +2,14 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
-using Microsoft.Azure.Cosmos.Table;
+using Azure;
+using Azure.Data.Tables;
 using Microsoft.Azure.Storage.Blob;
 using Microsoft.Azure.Storage.Queue;
 using Microsoft.Azure.WebJobs.Script.BindingExtensions;
@@ -16,6 +18,7 @@ using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.WebHost.Helpers;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
@@ -25,7 +28,6 @@ using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
 using CloudStorageAccount = Microsoft.Azure.Storage.CloudStorageAccount;
-using TableStorageAccount = Microsoft.Azure.Cosmos.Table.CloudStorageAccount;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -61,7 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public CloudQueueClient QueueClient { get; private set; }
 
-        public CloudTableClient TableClient { get; private set; }
+        public TableServiceClient TableServiceClient { get; private set; }
 
         public CloudBlobClient BlobClient { get; private set; }
 
@@ -69,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public CloudQueue MobileTablesQueue { get; private set; }
 
-        public CloudTable TestTable { get; private set; }
+        public TableClient TestTable { get; private set; }
 
         public TestFunctionHost Host { get; private set; }
 
@@ -169,9 +171,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 QueueClient = storageAccount.CreateCloudQueueClient();
                 BlobClient = storageAccount.CreateCloudBlobClient();
-
-                TableStorageAccount tableStorageAccount = TableStorageAccount.Parse(connectionString);
-                TableClient = tableStorageAccount.CreateCloudTableClient();
+                TableServiceClient = new TableServiceClient(connectionString);
 
                 await CreateTestStorageEntities();
             }
@@ -229,50 +229,56 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await TestOutputContainer.CreateIfNotExistsAsync();
             await TestHelpers.ClearContainerAsync(TestOutputContainer);
 
-            TestTable = TableClient.GetTableReference("test");
+            TestTable = TableServiceClient.GetTableClient("test");
             await TestTable.CreateIfNotExistsAsync();
 
-            await DeleteEntities(TestTable, "AAA");
-            await DeleteEntities(TestTable, "BBB");
+            await DeleteEntities(TestTable, TableServiceClient, "AAA");
+            await DeleteEntities(TestTable, TableServiceClient, "BBB");
 
-            var batch = new TableBatchOperation();
-            batch.Insert(new TestEntity { PartitionKey = "AAA", RowKey = "001", Region = "West", Name = "Test Entity 1", Status = 0 });
-            batch.Insert(new TestEntity { PartitionKey = "AAA", RowKey = "002", Region = "East", Name = "Test Entity 2", Status = 1 });
-            batch.Insert(new TestEntity { PartitionKey = "AAA", RowKey = "003", Region = "West", Name = "Test Entity 3", Status = 1 });
-            batch.Insert(new TestEntity { PartitionKey = "AAA", RowKey = "004", Region = "West", Name = "Test Entity 4", Status = 1 });
-            batch.Insert(new TestEntity { PartitionKey = "AAA", RowKey = "005", Region = "East", Name = "Test Entity 5", Status = 0 });
-            await TestTable.ExecuteBatchAsync(batch);
+            var batch = new List<TableTransactionAction>
+            {
+                new TableTransactionAction(TableTransactionActionType.Add, new TestEntity { PartitionKey = "AAA", RowKey = "001", Region = "West", Name = "Test Entity 1", Status = 0 }),
+                new TableTransactionAction(TableTransactionActionType.Add, new TestEntity { PartitionKey = "AAA", RowKey = "002", Region = "East", Name = "Test Entity 2", Status = 1 }),
+                new TableTransactionAction (TableTransactionActionType.Add, new TestEntity { PartitionKey = "AAA", RowKey = "003", Region = "West", Name = "Test Entity 3", Status = 1 }),
+                new TableTransactionAction (TableTransactionActionType.Add, new TestEntity { PartitionKey = "AAA", RowKey = "004", Region = "West", Name = "Test Entity 4", Status = 1 }),
+                new TableTransactionAction (TableTransactionActionType.Add, new TestEntity { PartitionKey = "AAA", RowKey = "005", Region = "East", Name = "Test Entity 5", Status = 0 })
+            };
+            await TestTable.SubmitTransactionAsync(batch);
 
-            batch = new TableBatchOperation();
-            batch.Insert(new TestEntity { PartitionKey = "BBB", RowKey = "001", Region = "South", Name = "Test Entity 1", Status = 0 });
-            batch.Insert(new TestEntity { PartitionKey = "BBB", RowKey = "002", Region = "West", Name = "Test Entity 2", Status = 1 });
-            batch.Insert(new TestEntity { PartitionKey = "BBB", RowKey = "003", Region = "West", Name = "Test Entity 3", Status = 0 });
-            await TestTable.ExecuteBatchAsync(batch);
+            batch =
+            [
+                new TableTransactionAction(TableTransactionActionType.Add, new TestEntity { PartitionKey = "BBB", RowKey = "001", Region = "South", Name = "Test Entity 1", Status = 0 }),
+                new TableTransactionAction(TableTransactionActionType.Add, new TestEntity { PartitionKey = "BBB", RowKey = "002", Region = "West", Name = "Test Entity 2", Status = 1 }),
+                new TableTransactionAction(TableTransactionActionType.Add, new TestEntity { PartitionKey = "BBB", RowKey = "003", Region = "West", Name = "Test Entity 3", Status = 0 }),
+            ];
+            await TestTable.SubmitTransactionAsync(batch);
         }
 
-        public async Task DeleteEntities(CloudTable table, string partition = null)
+        public async Task DeleteEntities(TableClient table, TableServiceClient tableServiceClient, string partition = null)
         {
-            if (!await table.ExistsAsync())
+            if (!await TableStorageHelpers.TableExistAsync(table, tableServiceClient))
             {
                 return;
             }
 
-            TableQuery query = new TableQuery();
+            string query = string.Empty;
             if (partition != null)
             {
-                query.FilterString = string.Format("PartitionKey eq '{0}'", partition);
+                query = TableClient.CreateQueryFilter($"PartitionKey eq {partition}");
             }
 
-            var entities = await table.ExecuteQuerySegmentedAsync(query, null);
+            var entities = table.QueryAsync<TableEntity>(query, null);
 
-            if (entities.Any())
+
+            var batch = new List<TableTransactionAction>();
+            await foreach (var entity in entities)
             {
-                var batch = new TableBatchOperation();
-                foreach (var entity in entities)
-                {
-                    batch.Delete(entity);
-                }
-                await table.ExecuteBatchAsync(batch);
+                batch.Add(new TableTransactionAction(TableTransactionActionType.Delete, entity));
+            }
+
+            if (batch.Count != 0)
+            {
+                await table.SubmitTransactionAsync(batch);
             }
         }
 
@@ -345,13 +351,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         }
 
-        private class TestEntity : TableEntity
+        private class TestEntity : ITableEntity
         {
             public string Name { get; set; }
 
             public string Region { get; set; }
 
             public int Status { get; set; }
+
+            public string PartitionKey { get; set; }
+
+            public string RowKey { get; set; }
+
+            public DateTimeOffset? Timestamp { get; set; }
+
+            public ETag ETag { get; set; }
         }
     }
 }
