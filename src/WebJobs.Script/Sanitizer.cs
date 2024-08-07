@@ -21,8 +21,8 @@ namespace Microsoft.Azure.WebJobs.Logging
         internal static readonly string[] CredentialTokens = new string[] { "Token=", "DefaultEndpointsProtocol=http", "AccountKey=", "Data Source=", "Server=", "Password=", "pwd=", "&amp;sig=", "&sig=", "?sig=", "SharedAccessKey=", "&amp;code=", "&code=", "?code=" };
         private static readonly string[] CredentialNameFragments = new[] { "password", "pwd", "key", "secret", "token", "sas" };
 
-        private static readonly string WebSocketPattern = "(?i)((amqp|ssh|(ht|f)tps?)://[^%:\\s\"'/][^:\\s\"'/\\$]+[^:\\s\"'/\\$%]:([^%\\s\"'/][^@\\s\"'/]{0,100}[^%\\s\"'/])@[\\$a-z0-9:\\._%\\?=/]+|[a-z0-9]{3,5}://[^%:\\s\"'/][^:\\s\"'/\\$]+[^:\\s\"'/\\$%]:([^%\\s\"'/][^@\\s\"'/]{0,100}[^%\\s\"'/])@[\\$a-z0-9:\\._%\\?=/\\-]+)";
-        private static readonly Regex WebSocketRegex = new Regex(WebSocketPattern, RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly string Pattern = "(?i)((amqp|ssh|(ht|f)tps?)://[^%:\\s\"'/][^:\\s\"'/\\$]+[^:\\s\"'/\\$%]:([^%\\s\"'/][^@\\s\"'/]{0,100}[^%\\s\"'/])@[\\$a-z0-9:\\._%\\?=/]+|[a-z0-9]{3,5}://[^%:\\s\"'/][^:\\s\"'/\\$]+[^:\\s\"'/\\$%]:([^%\\s\"'/][^@\\s\"'/]{0,100}[^%\\s\"'/])@[\\$a-z0-9:\\._%\\?=/\\-]+)";
+        private static readonly Regex Regex = new Regex(Pattern, RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         /// <summary>
         /// Removes well-known credential strings from strings.
@@ -36,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Logging
                 return string.Empty;
             }
 
-            input = WebSocketRegex.Replace(input, SecretReplacement);
+            input = Regex.Replace(input, SecretReplacement);
 
             // Everything we *might* replace contains an equal, so if we don't have that short circuit out.
             // This can be likely be more efficient with a Regex, but that's best done with a large test suite and this is
