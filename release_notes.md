@@ -3,6 +3,7 @@
 <!-- Please add your release notes in the following format:
 - My change description (#PR)
 -->
+- Update Java Worker Version to [2.16.0](https://github.com/Azure/azure-functions-java-worker/releases/tag/2.16.0)
 - Marking SyncTriggers [RequiresRunningHost]. (#10233)
 - Defaulting SwtAuthenticationEnabled to False (#10195)
 - Adding runtime site name to valid JWT audiences (slot scenarios) (#10185)
