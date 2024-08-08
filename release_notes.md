@@ -10,5 +10,6 @@
 - Update Python Worker Version to [4.30.3](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.30.3)
 - Update PowerShell 7.2 worker to [4.0.4020](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.4020)
 - Update PowerShell 7.4 worker to [4.0.4021](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.4021)
-- Updated dotnet-isolated worker to [1.0.10](https://github.com/Azure/azure-functions-dotnet-worker/pull/2629) (#10340)
+- Updated dotnet-isolated worker to [1.0.11](https://github.com/Azure/azure-functions-dotnet-worker/pull/2653) (#10379)
+- Update Java Worker Version to [2.15.0](https://github.com/Azure/azure-functions-java-worker/releases/tag/2.15.0)
 - Worker termination path update (#10367)
