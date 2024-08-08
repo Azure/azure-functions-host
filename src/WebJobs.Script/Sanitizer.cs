@@ -156,6 +156,6 @@ namespace Microsoft.Azure.WebJobs.Logging
         /// Checks if a string even *possibly* contains one of our <see cref="CredentialTokens"/>.
         /// Useful for short-circuiting more expensive checks and replacements if it's known we wouldn't do anything.
         /// </summary>
-        internal static bool MayContainCredentials(string input) => input.Contains("=");
+        internal static bool MayContainCredentials(string input) => input.Contains("=") || input.Contains(":");
     }
 }
