@@ -167,7 +167,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public void VerifySanitizedErrorMessage_Success()
         {
-            WorkerProcessUtilities.AddStdErrMessage(_rpcWorkerProcess.ProcessStdErrDataQueue, "test aaa://aaa:aaaaaa1111aa@aaa.aaa.io:1111/");
+            WorkerProcessUtilities.AddStdErrMessage(_rpcWorkerProcess.ProcessStdErrDataQueue, "test aaa://aaa:aaaaaa1111aa@aaa.aaa.io:1111");
             WorkerProcessUtilities.AddStdErrMessage(_rpcWorkerProcess.ProcessStdErrDataQueue, "Error2");
             WorkerProcessUtilities.AddStdErrMessage(_rpcWorkerProcess.ProcessStdErrDataQueue, "Error3");
             Assert.True(_rpcWorkerProcess.ProcessStdErrDataQueue.Count == 3);

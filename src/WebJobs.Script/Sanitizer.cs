@@ -22,8 +22,19 @@ namespace Microsoft.Azure.WebJobs.Logging
         private static readonly string[] CredentialNameFragments = new[] { "password", "pwd", "key", "secret", "token", "sas" };
 
         // Pattern of format : "<protocol>://<username>:<password>@<address>:<port>"
-        private static readonly string Pattern = "\\b(([^:\\/\\s]+):\\/\\/)?([^:\\/\\s]+):([^@\\/\\s]+)@([^:\\/\\s]+)(:[0-9]+)?(\\/\\S*)?\\b";
-        private static readonly Regex Regex = new Regex(Pattern, RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly string Pattern = @"
+                                                \b([a-zA-Z]+)            # Capture protocol
+                                                :\/\/                    # '://'
+                                                ([^:/\s]+)               # Capture username
+                                                :                        # ':'
+                                                ([^@/\s]+)               # Capture password
+                                                @                        # '@'
+                                                ([^:/\s]+)               # Capture address
+                                                :                        # ':'
+                                                ([0-9]+)\b               # Capture port number
+                                            ";
+
+        private static readonly Regex Regex = new Regex(Pattern, RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.IgnorePatternWhitespace);
 
         /// <summary>
         /// Removes well-known credential strings from strings.
