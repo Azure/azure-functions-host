@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 Assert.False(appInsightsOptions.SnapshotConfiguration.IsEnabled);
             }
         }
-        
+
         /*
         [Fact]
         public void Logging_Filters()
