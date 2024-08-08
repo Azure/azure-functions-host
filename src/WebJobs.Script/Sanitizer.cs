@@ -2,7 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Text.RegularExpressions;
+using BenchmarkDotNet.Attributes;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Logging
@@ -26,6 +26,7 @@ namespace Microsoft.Azure.WebJobs.Logging
         /// </summary>
         /// <param name="input">The string to sanitize.</param>
         /// <returns>The sanitized string.</returns>
+        [Benchmark]
         internal static string Sanitize(string input)
         {
             if (string.IsNullOrEmpty(input))
@@ -41,7 +42,11 @@ namespace Microsoft.Azure.WebJobs.Logging
                 return input;
             }
 
-            input = SanitizerRegex.Regex().Replace(input, SecretReplacement);
+            // This check avoids unnecessary regex evaluation if the input does not contain any url
+            if (input.Contains(":"))
+            {
+                input = SanitizerRegex.Regex().Replace(input, SecretReplacement);
+            }
 
             string t = input;
             string inputWithAllowedTokensHidden = input;
