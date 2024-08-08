@@ -21,7 +21,8 @@ namespace Microsoft.Azure.WebJobs.Logging
         internal static readonly string[] CredentialTokens = new string[] { "Token=", "DefaultEndpointsProtocol=http", "AccountKey=", "Data Source=", "Server=", "Password=", "pwd=", "&amp;sig=", "&sig=", "?sig=", "SharedAccessKey=", "&amp;code=", "&code=", "?code=" };
         private static readonly string[] CredentialNameFragments = new[] { "password", "pwd", "key", "secret", "token", "sas" };
 
-        private static readonly string Pattern = "(?i)((amqp|ssh|(ht|f)tps?)://[^%:\\s\"'/][^:\\s\"'/\\$]+[^:\\s\"'/\\$%]:([^%\\s\"'/][^@\\s\"'/]{0,100}[^%\\s\"'/])@[\\$a-z0-9:\\._%\\?=/]+|[a-z0-9]{3,5}://[^%:\\s\"'/][^:\\s\"'/\\$]+[^:\\s\"'/\\$%]:([^%\\s\"'/][^@\\s\"'/]{0,100}[^%\\s\"'/])@[\\$a-z0-9:\\._%\\?=/\\-]+)";
+        // Pattern of format : "<protocol>://<username>:<password>@<address>:<port>"
+        private static readonly string Pattern = "\\b(([^:\\/\\s]+):\\/\\/)?([^:\\/\\s]+):([^@\\/\\s]+)@([^:\\/\\s]+)(:[0-9]+)?(\\/\\S*)?\\b";
         private static readonly Regex Regex = new Regex(Pattern, RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         /// <summary>
