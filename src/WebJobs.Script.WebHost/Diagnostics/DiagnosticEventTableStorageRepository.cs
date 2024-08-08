@@ -12,6 +12,7 @@ using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Hosting;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.WebHost.Helpers;
+using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -31,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly ILogger<DiagnosticEventTableStorageRepository> _logger;
         private readonly IServiceProvider _serviceProvider;
         private readonly object _syncLock = new object();
-
+        private readonly TableServiceClientProvider _tableServiceClientProvider;
         private ConcurrentDictionary<string, DiagnosticEvent> _events = new ConcurrentDictionary<string, DiagnosticEvent>();
         private TableServiceClient _tableClient;
         private TableClient _diagnosticEventsTable;
@@ -41,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private string _tableName;
 
         internal DiagnosticEventTableStorageRepository(IConfiguration configuration, IHostIdProvider hostIdProvider, IEnvironment environment, IScriptHostManager scriptHostManager,
-            ILogger<DiagnosticEventTableStorageRepository> logger, int logFlushInterval)
+            ILogger<DiagnosticEventTableStorageRepository> logger, AzureComponentFactory componentFactory, AzureEventSourceLogForwarder logForwarder, int logFlushInterval)
         {
             _configuration = configuration;
             _hostIdProvider = hostIdProvider;
@@ -49,11 +50,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _serviceProvider = scriptHostManager as IServiceProvider;
             _logger = logger;
             _flushLogsTimer = new Timer(OnFlushLogs, null, logFlushInterval, logFlushInterval);
+            _tableServiceClientProvider = new TableServiceClientProvider(componentFactory, logForwarder);
         }
 
         public DiagnosticEventTableStorageRepository(IConfiguration configuration, IHostIdProvider hostIdProvider, IEnvironment environment, IScriptHostManager scriptHost,
-            ILogger<DiagnosticEventTableStorageRepository> logger)
-            : this(configuration, hostIdProvider, environment, scriptHost, logger, LogFlushInterval) { }
+            ILogger<DiagnosticEventTableStorageRepository> logger, AzureComponentFactory componentFactory, AzureEventSourceLogForwarder logForwarder)
+            : this(configuration, hostIdProvider, environment, scriptHost, logger, componentFactory, logForwarder, LogFlushInterval)
+        {
+        }
 
         internal TableServiceClient TableClient
         {
@@ -61,14 +65,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             {
                 if (!_environment.IsPlaceholderModeEnabled() && _tableClient == null)
                 {
-                    string storageConnectionString = _configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
-
                     try
                     {
-                        _tableClient = new TableServiceClient(storageConnectionString);
+                        _tableClient = _tableServiceClientProvider.Create(ConnectionStringNames.Storage, _configuration);
                     }
                     catch (Exception ex)
                     {
+                        // Should refactor so we don't log every time we try to get the property
                         _logger.LogError(ex, "Azure Storage connection string is empty or invalid. Unable to write diagnostic events.");
                     }
                 }
