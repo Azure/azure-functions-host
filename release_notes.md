@@ -20,5 +20,5 @@
   - `Microsoft.Azure.WebJobs.Host.Storage` updated to 5.0.1
   - `Microsoft.Extensions.Azure` updated to 1.7.1
   - `Azure.Storage.Blobs` updated to 12.19.1
-- [in-proc] Updating FunctionsNetHost (dotnet isolated worker) to 1.0.10 (#10340)
+- [in-proc] Updating FunctionsNetHost (dotnet isolated worker) to 1.0.11 (#10379)
 - Trim FunctionsNetHost artifacts (#10364)
