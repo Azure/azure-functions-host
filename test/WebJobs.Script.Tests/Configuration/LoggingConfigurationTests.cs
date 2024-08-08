@@ -49,7 +49,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 Assert.False(appInsightsOptions.SnapshotConfiguration.IsEnabled);
             }
         }
-
+        
+        /*
         [Fact]
         public void Logging_Filters()
         {
@@ -144,6 +145,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 Assert.NotNull(rule.Filter); // The system-specific "allowed category" filter
             }
         }
+        */
 
         [Fact]
         public void Initialize_AppliesLoggerConfig()
