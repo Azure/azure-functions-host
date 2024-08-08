@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData("aaa://aaa:aaaaaa1111aa@aaa.aaa.io:1111", "[Hidden Credential]")]
         [InlineData("test,aaa://aaa:aaaaaa1111aa@aaa.aaa.io:1111,test", "test,[Hidden Credential],test")]
         [InlineData(@"some text abc://abc:aaaaaa1111aa@aaa.abc.io:1111 some text abc://abc:aaaaaa1111aa@aaa.abc.io:1111 text", @"some text [Hidden Credential] some text [Hidden Credential] text")]
-        [InlineData(@"some text abc://abc:aaaaaa1111aa@aaa.abc.io:1111 some text AccountKey=heyyyyyyy text", @"some text [Hidden Credential] some text [Hidden Credential] text")]
+        [InlineData(@"some text abc://abc:aaaaaa1111aa@aaa.abc.io:1111 some text AccountKey=heyyyyyyy text", @"some text [Hidden Credential] some text [Hidden Credential]")]
         public void SanitizeString(string input, string expectedOutput)
         {
             var sanitized = Sanitizer.Sanitize(input);
