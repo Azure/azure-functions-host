@@ -17,7 +17,7 @@
 - Ordered invocations are now the default (#10201)
 - Skip worker description if none of the profile conditions are met (#9932)
 - Fixed incorrect function count in the log message.(#10220)
-- Updated dotnet-isolated worker to [1.0.10](https://github.com/Azure/azure-functions-dotnet-worker/pull/2629) (#10340)
+- Updated dotnet-isolated worker to [1.0.11](https://github.com/Azure/azure-functions-dotnet-worker/pull/2653) (#10379)
 - Fix race condition on startup with extension RPC endpoints not being available. (#10255)
 - Adding a timeout when retrieving function metadata from metadata providers (#10219)
 - Upgraded the following package versions (#10287):
