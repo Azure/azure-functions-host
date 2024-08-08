@@ -21,21 +21,6 @@ namespace Microsoft.Azure.WebJobs.Logging
         internal static readonly string[] CredentialTokens = new string[] { "Token=", "DefaultEndpointsProtocol=http", "AccountKey=", "Data Source=", "Server=", "Password=", "pwd=", "&amp;sig=", "&sig=", "?sig=", "SharedAccessKey=", "&amp;code=", "&code=", "?code=" };
         private static readonly string[] CredentialNameFragments = new[] { "password", "pwd", "key", "secret", "token", "sas" };
 
-        // Pattern of format : "<protocol>://<username>:<password>@<address>:<port>"
-        private static readonly string Pattern = @"
-                                                \b([a-zA-Z]+)            # Capture protocol
-                                                :\/\/                    # '://'
-                                                ([^:/\s]+)               # Capture username
-                                                :                        # ':'
-                                                ([^@/\s]+)               # Capture password
-                                                @                        # '@'
-                                                ([^:/\s]+)               # Capture address
-                                                :                        # ':'
-                                                ([0-9]+)\b               # Capture port number
-                                            ";
-
-        private static readonly Regex Regex = new Regex(Pattern, RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.IgnorePatternWhitespace);
-
         /// <summary>
         /// Removes well-known credential strings from strings.
         /// </summary>
@@ -48,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Logging
                 return string.Empty;
             }
 
-            input = Regex.Replace(input, SecretReplacement);
+            input = SanitizerRegex.Regex().Replace(input, SecretReplacement);
 
             // Everything we *might* replace contains an equal, so if we don't have that short circuit out.
             // This can be likely be more efficient with a Regex, but that's best done with a large test suite and this is
