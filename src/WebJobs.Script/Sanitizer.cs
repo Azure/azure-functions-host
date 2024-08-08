@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Text.RegularExpressions;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Logging
@@ -19,6 +20,21 @@ namespace Microsoft.Azure.WebJobs.Logging
         private static readonly string[] AllowedTokens = new string[] { "PublicKeyToken=" };
         internal static readonly string[] CredentialTokens = new string[] { "Token=", "DefaultEndpointsProtocol=http", "AccountKey=", "Data Source=", "Server=", "Password=", "pwd=", "&amp;sig=", "&sig=", "?sig=", "SharedAccessKey=", "&amp;code=", "&code=", "?code=" };
         private static readonly string[] CredentialNameFragments = new[] { "password", "pwd", "key", "secret", "token", "sas" };
+
+        // Pattern of format : "<protocol>://<username>:<password>@<address>:<port>"
+        private static readonly string Pattern = @"
+                                                \b([a-zA-Z]+)            # Capture protocol
+                                                :\/\/                    # '://'
+                                                ([^:/\s]+)               # Capture username
+                                                :                        # ':'
+                                                ([^@/\s]+)               # Capture password
+                                                @                        # '@'
+                                                ([^:/\s]+)               # Capture address
+                                                :                        # ':'
+                                                ([0-9]+)\b               # Capture port number
+                                            ";
+
+        private static readonly Regex Regex = new Regex(Pattern, RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.IgnorePatternWhitespace);
 
         /// <summary>
         /// Removes well-known credential strings from strings.
@@ -43,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Logging
             // This check avoids unnecessary regex evaluation if the input does not contain any url
             if (input.Contains(":"))
             {
-                input = SanitizerRegex.Regex().Replace(input, SecretReplacement);
+                input = Regex.Replace(input, SecretReplacement);
             }
 
             string t = input;
