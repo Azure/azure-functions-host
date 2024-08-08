@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Linq;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Script;
@@ -26,6 +27,13 @@ namespace Microsoft.Extensions.Logging
         {
             builder.AddFilter<T>(null, LogLevel.None);
             builder.AddFilter<T>((c, l) => Filter(c, l, level));
+            return builder;
+        }
+
+        public static ILoggingBuilder AddDefaultWebJobsFiltersExcept<T>(this ILoggingBuilder builder, string category, LogLevel level) where T : ILoggerProvider
+        {
+            builder.AddFilter<T>(null, LogLevel.None);
+            builder.AddFilter<T>((c, l) => !c.Equals(category) && Filter(c, l, level));
             return builder;
         }
 

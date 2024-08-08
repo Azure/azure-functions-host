@@ -14,6 +14,8 @@ namespace Microsoft.Extensions.Logging
 
             // Log all logs to SystemLogger
             builder.AddDefaultWebJobsFilters<T>(LogLevel.Trace);
+
+            builder.AddDefaultWebJobsFiltersExcept<T>("Host.Startup", LogLevel.Trace);
         }
     }
 }
