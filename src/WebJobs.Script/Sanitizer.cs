@@ -56,12 +56,6 @@ namespace Microsoft.Azure.WebJobs.Logging
                 return input;
             }
 
-            // This check avoids unnecessary regex evaluation if the input does not contain any url
-            if (input.Contains(":"))
-            {
-                input = Regex.Replace(input, SecretReplacement);
-            }
-
             string t = input;
             string inputWithAllowedTokensHidden = input;
 
@@ -93,6 +87,12 @@ namespace Microsoft.Azure.WebJobs.Logging
                     t = t.Substring(0, startIndex) + SecretReplacement + (credentialEnd != -1 ? t.Substring(credentialEnd) : string.Empty);
                     inputWithAllowedTokensHidden = inputWithAllowedTokensHidden.Substring(0, startIndex) + SecretReplacement + (credentialEnd != -1 ? inputWithAllowedTokensHidden.Substring(credentialEnd) : string.Empty);
                 }
+            }
+
+            // This check avoids unnecessary regex evaluation if the input does not contain any url
+            if (input.Contains(":"))
+            {
+                t = Regex.Replace(t, SecretReplacement);
             }
 
             return t;
