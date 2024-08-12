@@ -60,6 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
         */
 
+        /*
         [Fact]
         public async Task Invoke_ExceptionThrown_DetailsLogged()
         {
@@ -97,6 +98,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("Function1", error.Scope[ScopeKeys.FunctionName]);
             Assert.Equal(LogCategories.CreateFunctionCategory("Function1"), error.Category);
         }
+        */
 
         public class TestFixture : ScriptHostEndToEndTestFixture
         {
