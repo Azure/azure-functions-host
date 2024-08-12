@@ -153,11 +153,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             var configuration = new ConfigurationBuilder().Build();
             DiagnosticEventTableStorageRepository repository =
                 new DiagnosticEventTableStorageRepository(configuration, _hostIdProvider, testEnvironment, _scriptHostMock.Object, _logger);
+
+            // The repository should be initially enabled and then disabled after TableServiceClient failure.
+            Assert.True(repository.IsEnabled());
             DateTime dateTime = new DateTime(2021, 1, 1);
             var cloudTable = repository.GetDiagnosticEventsTable(dateTime);
             Assert.Null(cloudTable);
             var messages = _loggerProvider.GetAllLogMessages();
-            Assert.Equal(messages[0].FormattedMessage, "Azure Storage connection string is empty or invalid. Unable to write diagnostic events.");
+            Assert.Equal(messages[0].FormattedMessage, "The Azure Storage connection string is either empty or invalid. Unable to record diagnostic events, so the diagnostic logging service is being stopped.");
+            Assert.False(repository.IsEnabled());
         }
 
         [Fact]
@@ -274,7 +278,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             var logMessage = _loggerProvider.GetAllLogMessages().SingleOrDefault(m => m.FormattedMessage.Contains("Unable to get table reference"));
             Assert.NotNull(logMessage);
 
-            var messagePresent = _loggerProvider.GetAllLogMessages().Any(m => m.FormattedMessage.Contains("Azure Storage connection string is empty or invalid. Unable to write diagnostic events."));
+            var messagePresent = _loggerProvider.GetAllLogMessages().Any(m => m.FormattedMessage.Contains("The Azure Storage connection string is either empty or invalid. Unable to record diagnostic events, so the diagnostic logging service is being stopped."));
             Assert.True(messagePresent);
 
             Assert.Equal(0, repository.Events.Values.Count());
