@@ -54,13 +54,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
         {
-            if (!IsEnabled(logLevel))
+            if (_diagnosticEventRepository is null || _diagnosticEventRepository.IsEnabled())
             {
-                return;
-            }
+                if (!IsEnabled(logLevel) || !(state is IDictionary<string, object> stateInfo && IsDiagnosticEvent(stateInfo)))
+                {
+                    return;
+                }
 
-            if (state is IDictionary<string, object> stateInfo && IsDiagnosticEvent(stateInfo))
-            {
                 string message = formatter(state, exception);
                 if (_diagnosticEventRepository == null)
                 {
