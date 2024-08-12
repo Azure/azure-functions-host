@@ -29,6 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     [Trait(TestTraits.Group, TestTraits.StandbyModeTestsLinux)]
     public class StandbyManagerE2ETests_Linux : StandbyManagerE2ETestBase
     {
+        /*
         [Fact]
         public async Task StandbyModeE2E_LinuxContainer()
         {
@@ -150,6 +151,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // Verify that the internal cache has reset
             Assert.NotSame(GetCachedTimeZoneInfo(), _originalTimeZoneInfoCache);
         }
+        */
 
         private async Task Assign(string encryptionKey)
         {

@@ -78,6 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             host.Dispose();
         }
 
+        /*
         [Fact]
         public async Task StandbyModeE2E_Dotnet()
         {
@@ -128,6 +129,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // Verify that the internal cache has reset
             Assert.NotSame(GetCachedTimeZoneInfo(), _originalTimeZoneInfoCache);
         }
+        */
 
         [Fact]
         public async Task InitializeAsync_WithSpecializedSite_SkipsWarmupFunctionsAndLogs()

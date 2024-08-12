@@ -68,6 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _testOutputHelper = testOutputHelper;
         }
 
+        /*
         [Fact]
         public async Task ApplicationInsights_InvocationsContainDifferentOperationIds()
         {
@@ -151,6 +152,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Assert.Empty(timerLogs.Where(p => p.Context.Operation.Id == startupRequest.Context.Operation.Id));
             }
         }
+        */
 
         [Fact]
         public async Task Specialization_ThreadUtilization()

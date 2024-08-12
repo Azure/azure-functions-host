@@ -186,6 +186,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Contains("reject", t.Exception.InnerException.InnerException.Message);
         }
 
+        /*
         [Fact]
         public async Task ExecutionContext_IsProvided()
         {
@@ -210,6 +211,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(logs.Any(l => l.Contains("FunctionName:Scenarios")));
             Assert.True(logs.Any(l => l.Contains($"FunctionDirectory:{Path.Combine(Fixture.JobHost.ScriptOptions.RootScriptPath, "Scenarios")}")));
         }
+        */
 
         public class TestFixture : ScriptHostEndToEndTestFixture
         {

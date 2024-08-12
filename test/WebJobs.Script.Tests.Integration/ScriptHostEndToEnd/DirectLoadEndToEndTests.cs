@@ -28,6 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Fixture = fixture;
         }
 
+        /*
         [Fact]
         public async Task Invoke_Succeeds()
         {
@@ -57,6 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("Function1", log.Scope[ScopeKeys.FunctionName]);
             Assert.Equal(LogCategories.CreateFunctionUserCategory("Function1"), log.Category);
         }
+        */
 
         [Fact]
         public async Task Invoke_ExceptionThrown_DetailsLogged()

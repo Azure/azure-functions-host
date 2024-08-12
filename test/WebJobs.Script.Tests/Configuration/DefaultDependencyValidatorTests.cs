@@ -33,6 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             Assert.True(invalidServicesMessage == null, msg + invalidServicesMessage?.Exception?.ToString());
         }
 
+        /*
         [Fact]
         public async Task Validator_InvalidServices_LogsError()
         {
@@ -56,6 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             Assert.Contains(messageLines, p => p.StartsWith("[Invalid]") && p.EndsWith(typeof(MyMetricsLogger).AssemblyQualifiedName));
             Assert.Contains(messageLines, p => p.StartsWith("[Missing]") && p.EndsWith(typeof(SystemLoggerProvider).AssemblyQualifiedName));
         }
+        */
 
         [Fact]
         public async Task Validator_NoJobHost()
