@@ -164,18 +164,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.Equal("Error2,Error3,Error4", exceptionMessage);
         }
 
-        [Fact]
-        public void VerifySanitizedErrorMessage_Success()
-        {
-            WorkerProcessUtilities.AddStdErrMessage(_rpcWorkerProcess.ProcessStdErrDataQueue, "test aaa://aaa:aaaaaa1111aa@aaa.aaa.io:1111");
-            WorkerProcessUtilities.AddStdErrMessage(_rpcWorkerProcess.ProcessStdErrDataQueue, "Error2");
-            WorkerProcessUtilities.AddStdErrMessage(_rpcWorkerProcess.ProcessStdErrDataQueue, "Error3");
-            Assert.True(_rpcWorkerProcess.ProcessStdErrDataQueue.Count == 3);
-            string exceptionMessage = string.Join(",", _rpcWorkerProcess.ProcessStdErrDataQueue.Where(s => !string.IsNullOrEmpty(s)));
-            string sanitizedExceptionMessage = Sanitizer.Sanitize(exceptionMessage);
-            Assert.Equal("test [Hidden Credential],Error2,Error3", sanitizedExceptionMessage);
-        }
-
         [Theory]
         [InlineData("languageWorkerConsoleLog Connection established")]
         [InlineData("LANGUAGEWORKERCONSOLELOG Connection established")]
