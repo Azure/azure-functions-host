@@ -32,7 +32,6 @@ namespace Microsoft.Extensions.Logging
             return builder;
         }
 
-
         internal static bool Filter(string category, LogLevel actualLevel, LogLevel minLevel)
         {
             bool a = actualLevel >= minLevel && IsFiltered(category);
