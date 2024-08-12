@@ -286,8 +286,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             await repository.FlushLogs();
 
             // Assert
-            var logMessage = _loggerProvider.GetAllLogMessages().SingleOrDefault(m => m.FormattedMessage.Contains("Unable to get table reference"));
-            Assert.NotNull(logMessage);
+            // This should not happen if we return as we don't have TableClient. Do we want to remove this check?
+            //var logMessage = _loggerProvider.GetAllLogMessages().SingleOrDefault(m => m.FormattedMessage.Contains("Unable to get table reference"));
+            //Assert.NotNull(logMessage);
 
             var messagePresent = _loggerProvider.GetAllLogMessages().Any(m => m.FormattedMessage.Contains("Azure Storage connection string is empty or invalid. Unable to write diagnostic events."));
             Assert.True(messagePresent);

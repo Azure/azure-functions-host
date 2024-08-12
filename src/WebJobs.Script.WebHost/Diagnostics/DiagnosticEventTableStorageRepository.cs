@@ -39,6 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private string _hostId;
         private bool _disposed = false;
         private bool _purged = false;
+        private bool _tableClientInitializationFailed = false;
         private string _tableName;
 
         internal DiagnosticEventTableStorageRepository(IConfiguration configuration, IHostIdProvider hostIdProvider, IEnvironment environment, IScriptHostManager scriptHostManager,
@@ -63,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         {
             get
             {
-                if (!_environment.IsPlaceholderModeEnabled() && _tableClient == null)
+                if (!_environment.IsPlaceholderModeEnabled() && !_tableClientInitializationFailed && _tableClient == null)
                 {
                     try
                     {
@@ -71,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     }
                     catch (Exception ex)
                     {
-                        // Should refactor so we don't log every time we try to get the property
+                        _tableClientInitializationFailed = true; // Set the flag to indicate that TableClient initialization failed
                         _logger.LogError(ex, "Azure Storage connection string is empty or invalid. Unable to write diagnostic events.");
                     }
                 }
@@ -185,6 +186,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             if (IsPrimaryHost() && !_purged)
             {
                 await PurgePreviousEventVersions();
+            }
+
+            if (_tableClientInitializationFailed)
+            {
+                StopTimer();
+                return;
             }
 
             try
