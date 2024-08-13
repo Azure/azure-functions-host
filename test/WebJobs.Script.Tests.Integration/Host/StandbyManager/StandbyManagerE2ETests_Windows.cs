@@ -79,7 +79,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact(Skip = "Skipping this test as logs have been disabled in Host V3.")]
-
         public async Task StandbyModeE2E_Dotnet()
         {
             _settings.Add(EnvironmentSettingNames.AzureWebsiteInstanceId, Guid.NewGuid().ToString());
