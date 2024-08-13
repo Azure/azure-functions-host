@@ -67,6 +67,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     try
                     {
                         _tableClient = new TableServiceClient(storageConnectionString);
+
+                        // The TableServiceClient only verifies the format of the connection string.
+                        // To ensure the storage account exists and supports Table storage, validate the connection string by retrieving the properties of the table service.
+                        _ = _tableClient.GetProperties();
                     }
                     catch (Exception ex)
                     {
