@@ -26,17 +26,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         [Fact]
         public async Task TimeoutTest_SyncFunction_CSharp()
         {
+            ScriptSettingsManager.Instance.SetSetting(EnvironmentSettingNames.AzureWebJobsFeatureFlags, EnvironmentSettingNames.EnableLogsInHostV3);
             await TimeoutTest_SyncFunction("CSharp");
         }
 
         private async Task TimeoutTest_SyncFunction(string scriptLang)
         {
+            ScriptSettingsManager.Instance.SetSetting(EnvironmentSettingNames.AzureWebJobsFeatureFlags, EnvironmentSettingNames.EnableLogsInHostV3);
             await RunTimeoutTest(scriptLang, "TimeoutSync");
         }
 
         [Fact]
         public async Task TimeoutTest_UsingToken_CSharp()
         {
+            ScriptSettingsManager.Instance.SetSetting(EnvironmentSettingNames.AzureWebJobsFeatureFlags, EnvironmentSettingNames.EnableLogsInHostV3);
+
             await RunTokenTest("useToken", async (logs) =>
              {
                  // The function should 'clean up' and write 'Done'
@@ -51,6 +55,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         [Fact]
         public async Task TimeoutTest_IgnoringToken_CSharp()
         {
+            ScriptSettingsManager.Instance.SetSetting(EnvironmentSettingNames.AzureWebJobsFeatureFlags, EnvironmentSettingNames.EnableLogsInHostV3);
+
             await RunTokenTest("ignoreToken", (logs) =>
              {
                  // We do not expect 'Done' to be written here.
@@ -61,6 +67,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
         private async Task RunTokenTest(string scenario, Action<IEnumerable<string>> verify)
         {
+            ScriptSettingsManager.Instance.SetSetting(EnvironmentSettingNames.AzureWebJobsFeatureFlags, EnvironmentSettingNames.EnableLogsInHostV3);
+
             string functionName = "TimeoutToken";
             TestHelpers.ClearFunctionLogs(functionName);
             IHostBuilder builder = CreateTimeoutHostBuilder(@"TestScripts\CSharp", TimeSpan.FromSeconds(3), functionName);
@@ -84,6 +92,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
         private async Task RunTimeoutTest(string scriptLang, string functionName)
         {
+            ScriptSettingsManager.Instance.SetSetting(EnvironmentSettingNames.AzureWebJobsFeatureFlags, EnvironmentSettingNames.EnableLogsInHostV3);
+
             TestHelpers.ClearFunctionLogs(functionName);
             TimeSpan testTimeout = TimeSpan.FromSeconds(3);
             IHostBuilder builder = CreateTimeoutHostBuilder($@"TestScripts\{scriptLang}", testTimeout, functionName);
@@ -117,6 +127,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
         private IHostBuilder CreateTimeoutHostBuilder(string scriptPath, TimeSpan timeout, string functionName)
         {
+            ScriptSettingsManager.Instance.SetSetting(EnvironmentSettingNames.AzureWebJobsFeatureFlags, EnvironmentSettingNames.EnableLogsInHostV3);
+
             var builder = new HostBuilder()
                .ConfigureDefaultTestWebScriptHost(b =>
                {

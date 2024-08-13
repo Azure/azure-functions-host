@@ -1,10 +1,13 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Concurrent;
+using System.Collections.Immutable;
 using System.Linq;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Script;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
@@ -36,7 +39,11 @@ namespace Microsoft.Extensions.Logging
 
         private static bool IsFiltered(string category)
         {
-            return _filteredCategoryCache.GetOrAdd(category, c => ScriptConstants.SystemLogCategoryPrefixes.Where(p => category.StartsWith(p)).Any());
+            ImmutableArray<string> systemLogCategoryPrefixes = FeatureFlags.IsEnabled(EnvironmentSettingNames.EnableLogsInHostV3)
+                                                                ? ScriptConstants.SystemLogCategoryPrefixes
+                                                                : ScriptConstants.SystemLogCategoryPrefixesForV3;
+
+            return _filteredCategoryCache.GetOrAdd(category, c => systemLogCategoryPrefixes.Where(p => category.StartsWith(p)).Any());
         }
 
         public static void AddConsoleIfEnabled(this ILoggingBuilder builder, HostBuilderContext context)

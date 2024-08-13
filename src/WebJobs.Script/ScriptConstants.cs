@@ -214,6 +214,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public static readonly long DefaultMaxRequestBodySize = 104857600;
 
         public static readonly ImmutableArray<string> SystemLogCategoryPrefixes = ImmutableArray.Create("Microsoft.Azure.WebJobs.", "Function.", "Worker.", "Host.");
+        public static readonly ImmutableArray<string> SystemLogCategoryPrefixesForV3 = ImmutableArray.Create("Host.Startup");
 
         public static readonly string FunctionsHostingConfigSectionName = "FunctionsHostingConfig";
         public static readonly string MaximumSupportedBundleV3Version = "FunctionRuntimeV3MaxBundleV3Version";
