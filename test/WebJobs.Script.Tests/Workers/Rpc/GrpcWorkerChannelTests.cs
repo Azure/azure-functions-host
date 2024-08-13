@@ -966,8 +966,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 Task.Run(() => _testFunctionRpcService.PublishFunctionLoadResponseEvent(function.Id)));
 
             await Task.WhenAll(publishFunctionLoadResponseTasks);
-            // Give some time for the logs to be written.
-            await Task.Delay(TimeSpan.FromMilliseconds(500));
+
+            await TestHelpers.Await(() =>
+            {
+                return _logger.GetLogMessages().Count(m => m.FormattedMessage.StartsWith("Received FunctionLoadResponse")) == allFunctionIdsAndNames.Count;
+            });
 
             var traces = _logger.GetLogMessages();
 
