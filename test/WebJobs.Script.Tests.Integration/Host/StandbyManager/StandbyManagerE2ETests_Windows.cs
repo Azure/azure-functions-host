@@ -78,8 +78,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             host.Dispose();
         }
 
-        /*
-        [Fact]
+        [Fact(Skip = "Skipping this test as logs have been disabled in Host V3.")]
+
         public async Task StandbyModeE2E_Dotnet()
         {
             _settings.Add(EnvironmentSettingNames.AzureWebsiteInstanceId, Guid.NewGuid().ToString());
@@ -129,7 +129,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // Verify that the internal cache has reset
             Assert.NotSame(GetCachedTimeZoneInfo(), _originalTimeZoneInfoCache);
         }
-        */
 
         [Fact]
         public async Task InitializeAsync_WithSpecializedSite_SkipsWarmupFunctionsAndLogs()

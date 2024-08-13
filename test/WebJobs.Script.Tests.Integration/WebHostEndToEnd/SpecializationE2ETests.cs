@@ -68,8 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _testOutputHelper = testOutputHelper;
         }
 
-        /*
-        [Fact]
+        [Fact(Skip = "Skipping this test as logs have been disabled in Host V3.")]
         public async Task ApplicationInsights_InvocationsContainDifferentOperationIds()
         {
             // Verify that when a request specializes the host we don't capture the context
@@ -152,7 +151,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Assert.Empty(timerLogs.Where(p => p.Context.Operation.Id == startupRequest.Context.Operation.Id));
             }
         }
-        */
 
         [Fact]
         public async Task Specialization_ThreadUtilization()

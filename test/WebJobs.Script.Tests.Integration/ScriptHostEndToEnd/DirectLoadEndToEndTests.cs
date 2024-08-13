@@ -28,8 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Fixture = fixture;
         }
 
-        /*
-        [Fact]
+        [Fact(Skip = "Skipping this test as logs have been disabled in Host V3.")]
         public async Task Invoke_Succeeds()
         {
             var context = new DefaultHttpContext();
@@ -58,10 +57,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("Function1", log.Scope[ScopeKeys.FunctionName]);
             Assert.Equal(LogCategories.CreateFunctionUserCategory("Function1"), log.Category);
         }
-        */
 
-        /*
-        [Fact]
+        [Fact(Skip = "Skipping this test as logs have been disabled in Host V3.")]
         public async Task Invoke_ExceptionThrown_DetailsLogged()
         {
             var context = new DefaultHttpContext();
@@ -98,7 +95,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("Function1", error.Scope[ScopeKeys.FunctionName]);
             Assert.Equal(LogCategories.CreateFunctionCategory("Function1"), error.Category);
         }
-        */
 
         public class TestFixture : ScriptHostEndToEndTestFixture
         {

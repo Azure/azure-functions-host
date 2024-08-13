@@ -34,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             await RunTimeoutTest(scriptLang, "TimeoutSync");
         }
 
-        [Fact]
+        [Fact(Skip = "Skipping this test as logs have been disabled in Host V3.")]
         public async Task TimeoutTest_UsingToken_CSharp()
         {
             await RunTokenTest("useToken", async (logs) =>

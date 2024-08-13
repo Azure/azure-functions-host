@@ -3,7 +3,7 @@
 
 using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Script;
@@ -34,20 +34,16 @@ namespace Microsoft.Extensions.Logging
 
         internal static bool Filter(string category, LogLevel actualLevel, LogLevel minLevel)
         {
-            bool a = actualLevel >= minLevel && IsFiltered(category);
-            return a;
+            return actualLevel >= minLevel && IsFiltered(category);
         }
 
         private static bool IsFiltered(string category)
         {
-            if (!FeatureFlags.IsEnabled("EnableLogsInV3"))
-            {
-                return _filteredCategoryCache.GetOrAdd(category, c => ScriptConstants.SystemLogCategoryPrefixes1.Where(p => category.StartsWith(p)).Any());
-            }
-            else
-            {
-                return _filteredCategoryCache.GetOrAdd(category, c => ScriptConstants.SystemLogCategoryPrefixes.Where(p => category.StartsWith(p)).Any());
-            }
+            ImmutableArray<string> systemLogCategoryPrefixes = FeatureFlags.IsEnabled(EnvironmentSettingNames.EnableLogsInHostV3)
+                                                                ? ScriptConstants.SystemLogCategoryPrefixes
+                                                                : ScriptConstants.SystemLogCategoryPrefixesForV3;
+
+            return _filteredCategoryCache.GetOrAdd(category, c => systemLogCategoryPrefixes.Where(p => category.StartsWith(p)).Any());
         }
 
         public static void AddConsoleIfEnabled(this ILoggingBuilder builder, HostBuilderContext context)
