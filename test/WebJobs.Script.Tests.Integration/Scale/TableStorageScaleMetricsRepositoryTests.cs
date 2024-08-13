@@ -12,7 +12,6 @@ using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Helpers;
-using Microsoft.Azure.WebJobs.Script.WebHost.Storage;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -30,6 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale
         private readonly TestLoggerProvider _loggerProvider;
         private readonly Mock<IHostIdProvider> _hostIdProviderMock;
         private readonly ScaleOptions _scaleOptions;
+        private readonly IAzureTableStorageProvider _azureTableStorageProvider;
 
         public TableStorageScaleMetricsRepositoryTests()
         {
@@ -43,9 +43,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale
             _loggerProvider = new TestLoggerProvider();
             ILoggerFactory loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(_loggerProvider);
-
+            _azureTableStorageProvider = TestHelpers.GetAzureTableStorageProvider(configuration, new TestEnvironment());
             // Allow for up to 30 seconds of creation retries for tests due to slow table deletes
-            _repository = new TableStorageScaleMetricsRepository(configuration, _hostIdProviderMock.Object, new OptionsWrapper<ScaleOptions>(_scaleOptions), loggerFactory, 60, new DefaultDelegatingHandlerProvider(new TestEnvironment()));
+            _repository = new TableStorageScaleMetricsRepository(_hostIdProviderMock.Object, new OptionsWrapper<ScaleOptions>(_scaleOptions), loggerFactory, _azureTableStorageProvider, 60);
 
             EmptyMetricsTableAsync().GetAwaiter().GetResult();
         }
@@ -59,7 +59,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale
             var options = new ScaleOptions();
             ILoggerFactory loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(_loggerProvider);
-            var localRepository = new TableStorageScaleMetricsRepository(configuration, _hostIdProviderMock.Object, new OptionsWrapper<ScaleOptions>(options), loggerFactory, new TestEnvironment());
+            var localStorageProvider = TestHelpers.GetAzureTableStorageProvider(configuration);
+            var localRepository = new TableStorageScaleMetricsRepository(_hostIdProviderMock.Object, new OptionsWrapper<ScaleOptions>(options), loggerFactory, localStorageProvider);
 
             var monitor1 = new TestScaleMonitor1();
             var monitor2 = new TestScaleMonitor2();

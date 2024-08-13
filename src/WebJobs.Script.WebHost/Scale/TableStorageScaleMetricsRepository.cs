@@ -5,18 +5,14 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
-using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure;
-using Azure.Core.Pipeline;
 using Azure.Data.Tables;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Script.WebHost.Helpers;
 using Microsoft.Azure.WebJobs.Script.WebHost.Scale;
-using Microsoft.Azure.WebJobs.Script.WebHost.Storage;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -33,57 +29,35 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private const int MetricsPurgeDelaySeconds = 30;
         private const int DefaultTableCreationRetries = 3;
 
-        private readonly IConfiguration _configuration;
         private readonly IHostIdProvider _hostIdProvider;
+        private readonly IAzureTableStorageProvider _azureTableStorageProvider;
         private readonly ScaleOptions _scaleOptions;
         private readonly ILogger _logger;
         private readonly int _tableCreationRetries;
-        private readonly IDelegatingHandlerProvider _delegatingHandlerProvider;
         private TableServiceClient _tableServiceClient;
 
-        public TableStorageScaleMetricsRepository(IConfiguration configuration, IHostIdProvider hostIdProvider, IOptions<ScaleOptions> scaleOptions, ILoggerFactory loggerFactory, IEnvironment environment)
-            : this(configuration, hostIdProvider, scaleOptions, loggerFactory, DefaultTableCreationRetries, new DefaultDelegatingHandlerProvider(environment))
+        public TableStorageScaleMetricsRepository(IHostIdProvider hostIdProvider, IOptions<ScaleOptions> scaleOptions, ILoggerFactory loggerFactory, IAzureTableStorageProvider azureTableStorageProvider)
+            : this(hostIdProvider, scaleOptions, loggerFactory, azureTableStorageProvider, DefaultTableCreationRetries)
         {
         }
 
-        internal TableStorageScaleMetricsRepository(IConfiguration configuration, IHostIdProvider hostIdProvider, IOptions<ScaleOptions> scaleOptions, ILoggerFactory loggerFactory,
-            int tableCreationRetries, IDelegatingHandlerProvider delegatingHandlerProvider)
+        internal TableStorageScaleMetricsRepository(IHostIdProvider hostIdProvider, IOptions<ScaleOptions> scaleOptions, ILoggerFactory loggerFactory,
+            IAzureTableStorageProvider azureTableStorageProvider, int tableCreationRetries)
         {
-            _configuration = configuration;
             _hostIdProvider = hostIdProvider;
+            _azureTableStorageProvider = azureTableStorageProvider;
             _scaleOptions = scaleOptions.Value;
             _logger = loggerFactory.CreateLogger<TableStorageScaleMetricsRepository>();
             _tableCreationRetries = tableCreationRetries;
-            _delegatingHandlerProvider = delegatingHandlerProvider ?? throw new ArgumentNullException(nameof(delegatingHandlerProvider));
         }
 
         internal TableServiceClient TableServiceClient
         {
             get
             {
-                if (_tableServiceClient is null)
+                if (_tableServiceClient is null && !_azureTableStorageProvider.TryCreateHostingTableServiceClient(out _tableServiceClient))
                 {
-                    string storageConnectionString = _configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
-
-                    try
-                    {
-                        DelegatingHandler handler = _delegatingHandlerProvider.Create();
-                        TableClientOptions options = null;
-
-                        if (handler != null)
-                        {
-                            options = new TableClientOptions
-                            {
-                                Transport = new HttpClientTransport(handler)
-                            };
-                        }
-
-                        _tableServiceClient = new TableServiceClient(storageConnectionString, options);
-                    }
-                    catch (Exception ex) when (!ex.IsFatal())
-                    {
-                        _logger.LogError(ex, "Azure Storage connection string is empty or invalid. Unable to read/write scale metrics.");
-                    }
+                    _logger.LogError("Azure Storage connection string is empty or invalid. Unable to read/write scale metrics.");
                 }
 
                 return _tableServiceClient;
