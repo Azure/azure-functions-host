@@ -46,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             bool startHost = true, ICollection<string> functions = null, bool addWorkerConcurrency = false)
         {
             _settingsManager = ScriptSettingsManager.Instance;
-            ScriptSettingsManager.Instance.SetSetting(EnvironmentSettingNames.AzureWebJobsFeatureFlags, "EnableLogsInHostV3");
+            ScriptSettingsManager.Instance.SetSetting(EnvironmentSettingNames.AzureWebJobsFeatureFlags, EnvironmentSettingNames.EnableLogsInHostV3);
             FixtureId = testId;
             RequestConfiguration = new HttpConfiguration();
             EventManager = new ScriptEventManager();
@@ -93,7 +93,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public async Task InitializeAsync()
         {
-            Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, "EnableLogsInHostV3");
+            Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, EnvironmentSettingNames.EnableLogsInHostV3);
 
             if (!string.IsNullOrEmpty(_functionsWorkerLanguage))
             {

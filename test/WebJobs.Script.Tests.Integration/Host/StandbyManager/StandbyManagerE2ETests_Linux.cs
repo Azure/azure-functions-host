@@ -47,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 { EnvironmentSettingNames.AzureWebsiteSku, "Dynamic" },
                 { EnvironmentSettingNames.AzureWebsiteZipDeployment, null },
                 { "AzureWebEncryptionKey", "0F75CA46E7EBDD39E4CA6B074D1F9A5972B849A55F91A248" },
-                { EnvironmentSettingNames.AzureWebJobsFeatureFlags, "EnableLogsInHostV3" }
+                { EnvironmentSettingNames.AzureWebJobsFeatureFlags, EnvironmentSettingNames.EnableLogsInHostV3 }
             };
 
             var environment = new TestEnvironment(vars);

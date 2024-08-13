@@ -82,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task StandbyModeE2E_Dotnet()
         {
             _settings.Add(EnvironmentSettingNames.AzureWebsiteInstanceId, Guid.NewGuid().ToString());
-            _settings.Add(EnvironmentSettingNames.AzureWebJobsFeatureFlags, "EnableLogsInHostV3");
+            _settings.Add(EnvironmentSettingNames.AzureWebJobsFeatureFlags, EnvironmentSettingNames.EnableLogsInHostV3);
             var environment = new TestEnvironment(_settings);
             await InitializeTestHostAsync("Windows", environment);
 
@@ -93,7 +93,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
             environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "dotnet");
-            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, "EnableLogsInHostV3");
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, EnvironmentSettingNames.EnableLogsInHostV3);
 
             Assert.False(environment.IsPlaceholderModeEnabled());
             Assert.True(environment.IsContainerReady());
