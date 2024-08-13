@@ -12,7 +12,6 @@ using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Hosting;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.WebHost.Helpers;
-using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -26,13 +25,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private const int TableCreationMaxRetryCount = 5;
 
         private readonly Timer _flushLogsTimer;
-        private readonly IConfiguration _configuration;
         private readonly IHostIdProvider _hostIdProvider;
         private readonly IEnvironment _environment;
         private readonly ILogger<DiagnosticEventTableStorageRepository> _logger;
+        private readonly IAzureTableStorageProvider _azureTableStorageProvider;
         private readonly IServiceProvider _serviceProvider;
         private readonly object _syncLock = new object();
-        private readonly TableServiceClientProvider _tableServiceClientProvider;
         private ConcurrentDictionary<string, DiagnosticEvent> _events = new ConcurrentDictionary<string, DiagnosticEvent>();
         private TableServiceClient _tableClient;
         private TableClient _diagnosticEventsTable;
@@ -42,21 +40,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private bool _tableClientInitializationFailed = false;
         private string _tableName;
 
-        internal DiagnosticEventTableStorageRepository(IConfiguration configuration, IHostIdProvider hostIdProvider, IEnvironment environment, IScriptHostManager scriptHostManager,
-            ILogger<DiagnosticEventTableStorageRepository> logger, AzureComponentFactory componentFactory, AzureEventSourceLogForwarder logForwarder, int logFlushInterval)
+        internal DiagnosticEventTableStorageRepository(IHostIdProvider hostIdProvider, IEnvironment environment, IScriptHostManager scriptHostManager,
+            ILogger<DiagnosticEventTableStorageRepository> logger, IAzureTableStorageProvider azureTableStorageProvider, int logFlushInterval)
         {
-            _configuration = configuration;
             _hostIdProvider = hostIdProvider;
             _environment = environment;
             _serviceProvider = scriptHostManager as IServiceProvider;
             _logger = logger;
+            _azureTableStorageProvider = azureTableStorageProvider;
             _flushLogsTimer = new Timer(OnFlushLogs, null, logFlushInterval, logFlushInterval);
-            _tableServiceClientProvider = new TableServiceClientProvider(componentFactory, logForwarder);
         }
 
-        public DiagnosticEventTableStorageRepository(IConfiguration configuration, IHostIdProvider hostIdProvider, IEnvironment environment, IScriptHostManager scriptHost,
-            ILogger<DiagnosticEventTableStorageRepository> logger, AzureComponentFactory componentFactory, AzureEventSourceLogForwarder logForwarder)
-            : this(configuration, hostIdProvider, environment, scriptHost, logger, componentFactory, logForwarder, LogFlushInterval)
+        public DiagnosticEventTableStorageRepository(IHostIdProvider hostIdProvider, IEnvironment environment, IScriptHostManager scriptHost, ILogger<DiagnosticEventTableStorageRepository> logger,
+            IAzureTableStorageProvider azureTableStorageProvider)
+            : this(hostIdProvider, environment, scriptHost, logger, azureTableStorageProvider, LogFlushInterval)
         {
         }
 
@@ -66,14 +63,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             {
                 if (!_environment.IsPlaceholderModeEnabled() && !_tableClientInitializationFailed && _tableClient == null)
                 {
-                    try
+                    if (!_azureTableStorageProvider.TryCreateHostingTableServiceClient(out _tableClient))
                     {
-                        _tableClient = _tableServiceClientProvider.Create(ConnectionStringNames.Storage, _configuration);
-                    }
-                    catch (Exception ex)
-                    {
-                        _tableClientInitializationFailed = true; // Set the flag to indicate that TableClient initialization failed
-                        _logger.LogError(ex, "Azure Storage connection string is empty or invalid. Unable to write diagnostic events.");
+                        _tableClientInitializationFailed = true;
+                        _logger.LogError("Azure Storage connection string is empty or invalid. Unable to write diagnostic events.");
                     }
                 }
 

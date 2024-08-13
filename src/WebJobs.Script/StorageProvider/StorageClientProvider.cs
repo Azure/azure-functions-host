@@ -37,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return this.Create(resolvedName, configuration);
         }
 
-        public virtual TClient Create(string name, IConfiguration configuration)
+        public virtual TClient Create(string name, IConfiguration configuration, TClientOptions options = null)
         {
             if (string.IsNullOrWhiteSpace(name))
             {
@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             var credential = _componentFactory.CreateTokenCredential(connectionSection);
-            var options = CreateClientOptions(connectionSection);
+            options ??= CreateClientOptions(connectionSection);
             return CreateClient(connectionSection, credential, options);
         }
 
