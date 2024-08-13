@@ -56,6 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 { EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1" },
                 { EnvironmentSettingNames.AzureWebsiteContainerReady, null },
+                { EnvironmentSettingNames.AzureWebJobsFeatureFlags, "EnableLogsInHostV3" },
              };
 
             _environment = new TestEnvironment(settings);
@@ -68,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _testOutputHelper = testOutputHelper;
         }
 
-        [Fact(Skip = "Skipping this test as logs have been disabled in Host V3.")]
+        [Fact]
         public async Task ApplicationInsights_InvocationsContainDifferentOperationIds()
         {
             // Verify that when a request specializes the host we don't capture the context

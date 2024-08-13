@@ -186,7 +186,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Contains("reject", t.Exception.InnerException.InnerException.Message);
         }
 
-        [Fact(Skip = "Skipping this test as logs have been disabled in Host V3.")]
+        [Fact]
         public async Task ExecutionContext_IsProvided()
         {
             TestHelpers.ClearFunctionLogs("Scenarios");
