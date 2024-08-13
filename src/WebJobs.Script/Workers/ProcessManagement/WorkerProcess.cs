@@ -173,7 +173,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 else
                 {
                     string exceptionMessage = string.Join(",", _processStdErrDataQueue.Where(s => !string.IsNullOrEmpty(s)));
-                    var processExitEx = new WorkerProcessExitException($"{Process.StartInfo.FileName} exited with code {Process.ExitCode} (0x{Process.ExitCode.ToString("X")})", new Exception(exceptionMessage));
+                    string sanitizedExceptionMessage = Sanitizer.Sanitize(exceptionMessage);
+                    var processExitEx = new WorkerProcessExitException($"{Process.StartInfo.FileName} exited with code {Process.ExitCode} (0x{Process.ExitCode.ToString("X")})", new Exception(sanitizedExceptionMessage));
                     processExitEx.ExitCode = Process.ExitCode;
                     processExitEx.Pid = Process.Id;
                     HandleWorkerProcessExitError(processExitEx);

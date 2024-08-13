@@ -16,3 +16,4 @@
 - Update Java Worker Version to [2.15.0](https://github.com/Azure/azure-functions-java-worker/releases/tag/2.15.0)
   - Update grpc-protobuf to 1.64.0 and application insights agent version to 3.5.2
 - Resolved thread safety issue in the `GrpcWorkerChannel.LoadResponse` method. (#10352)
+- Worker termination path updated with sanitized logging (#10367)
