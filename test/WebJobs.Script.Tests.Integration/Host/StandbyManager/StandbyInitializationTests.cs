@@ -32,11 +32,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string standbyPath = Path.Combine(Path.GetTempPath(), "functions", "standby", "wwwroot");
             string specializedScriptRoot = @"TestScripts\CSharp";
             string scriptRootConfigPath = ConfigurationPath.Combine(ConfigurationSectionNames.WebHost, nameof(ScriptApplicationHostOptions.ScriptPath));
+            SystemEnvironment.Instance.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, EnvironmentSettingNames.EnableLogsInHostV3);
 
             var settings = new Dictionary<string, string>()
             {
                 { EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1" },
                 { EnvironmentSettingNames.AzureWebsiteContainerReady, null },
+                { EnvironmentSettingNames.AzureWebJobsFeatureFlags, EnvironmentSettingNames.EnableLogsInHostV3 }
              };
 
             var environment = new TestEnvironment(settings);
@@ -89,6 +91,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             HttpResponseMessage response = await InvokeFunction(client);
             response.EnsureSuccessStatusCode();
 
+            string log = loggerProvider.GetLog();
+            Assert.Contains("Creating StandbyMode placeholder function directory", log);
+            Assert.Contains("Starting host specialization", log);
+
             // Make sure this was registered.
             var hostedServices = server.Host.Services.GetServices<IHostedService>();
             Assert.Contains(hostedServices, p => p is StandbyInitializationService);
@@ -99,6 +105,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
             environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "dotnet");
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, EnvironmentSettingNames.EnableLogsInHostV3);
         }
 
         private static async Task<HttpResponseMessage> InvokeFunction(HttpClient client)
