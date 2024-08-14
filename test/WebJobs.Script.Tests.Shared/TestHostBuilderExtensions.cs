@@ -69,6 +69,7 @@ namespace Microsoft.WebJobs.Script.Tests
             AddMockedSingleton<ISharedMemoryManager>(services);
             AddMockedSingleton<IFunctionDataCache>(services);
             AddMockedSingleton<IAzureBlobStorageProvider>(services);
+            AddMockedSingleton<IAzureTableStorageProvider>(services);
             services.AddSingleton<IDiagnosticEventRepository, TestDiagnosticEventRepository>();
             services.AddSingleton<IDiagnosticEventRepositoryFactory, TestDiagnosticEventRepositoryFactory>();
             services.AddSingleton<ISecretManagerProvider, TestSecretManagerProvider>();
