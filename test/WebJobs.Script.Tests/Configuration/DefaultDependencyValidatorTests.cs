@@ -33,9 +33,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             Assert.True(invalidServicesMessage == null, msg + invalidServicesMessage?.Exception?.ToString());
         }
 
-        [Fact(Skip = "Skipping this test as logs have been disabled in Host V3.")]
+        [Fact]
         public async Task Validator_InvalidServices_LogsError()
         {
+            SystemEnvironment.Instance.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, EnvironmentSettingNames.EnableLogsInHostV3);
+
             LogMessage invalidServicesMessage = await RunTest(configureJobHost: s =>
             {
                 s.AddSingleton<IHostedService, MyHostedService>();

@@ -46,7 +46,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             bool startHost = true, ICollection<string> functions = null, bool addWorkerConcurrency = false)
         {
             _settingsManager = ScriptSettingsManager.Instance;
-            ScriptSettingsManager.Instance.SetSetting(EnvironmentSettingNames.AzureWebJobsFeatureFlags, EnvironmentSettingNames.EnableLogsInHostV3);
             FixtureId = testId;
             RequestConfiguration = new HttpConfiguration();
             EventManager = new ScriptEventManager();
@@ -103,6 +102,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerDynamicConcurrencyEnabled, "true");
             }
+
+            Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, EnvironmentSettingNames.EnableLogsInHostV3);
             IConfiguration configuration = TestHelpers.GetTestConfiguration();
             string connectionString = configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
             CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
