@@ -37,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var settings = new Dictionary<string, string>()
             {
                 { EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1" },
-                { EnvironmentSettingNames.AzureWebsiteContainerReady, null }
+                { EnvironmentSettingNames.AzureWebsiteContainerReady, null },
              };
 
             var environment = new TestEnvironment(settings);

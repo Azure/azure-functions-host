@@ -82,7 +82,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task StandbyModeE2E_Dotnet()
         {
             _settings.Add(EnvironmentSettingNames.AzureWebsiteInstanceId, Guid.NewGuid().ToString());
-
             var environment = new TestEnvironment(_settings);
             await InitializeTestHostAsync("Windows", environment);
 
