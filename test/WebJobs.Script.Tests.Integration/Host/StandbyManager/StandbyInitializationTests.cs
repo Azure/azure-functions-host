@@ -37,8 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var settings = new Dictionary<string, string>()
             {
                 { EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1" },
-                { EnvironmentSettingNames.AzureWebsiteContainerReady, null },
-                { EnvironmentSettingNames.AzureWebJobsFeatureFlags, EnvironmentSettingNames.EnableLogsInHostV3 }
+                { EnvironmentSettingNames.AzureWebsiteContainerReady, null }
              };
 
             var environment = new TestEnvironment(settings);
@@ -105,7 +104,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
             environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "dotnet");
-            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, EnvironmentSettingNames.EnableLogsInHostV3);
         }
 
         private static async Task<HttpResponseMessage> InvokeFunction(HttpClient client)
