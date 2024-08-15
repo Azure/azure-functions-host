@@ -181,7 +181,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         {
             static TestFixture()
             {
-                ScriptSettingsManager.Instance.SetSetting(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableLogsInHostV3);
+                ScriptSettingsManager.Instance.SetSetting(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.EnableHostLogs);
             }
         }
     }

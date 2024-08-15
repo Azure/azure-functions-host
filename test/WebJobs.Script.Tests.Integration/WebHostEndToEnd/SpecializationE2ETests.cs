@@ -56,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 { EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1" },
                 { EnvironmentSettingNames.AzureWebsiteContainerReady, null },
-                { EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableLogsInHostV3 },
+                { EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.EnableHostLogs },
              };
 
             _environment = new TestEnvironment(settings);

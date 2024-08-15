@@ -38,9 +38,9 @@ namespace Microsoft.Extensions.Logging
 
         private static bool IsFiltered(string category)
         {
-            ImmutableArray<string> systemLogCategoryPrefixes = FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableLogsInHostV3)
+            ImmutableArray<string> systemLogCategoryPrefixes = FeatureFlags.IsEnabled(ScriptConstants.EnableHostLogs)
                                                                 ? ScriptConstants.SystemLogCategoryPrefixes
-                                                                : ScriptConstants.SystemLogCategoryPrefixesForV3;
+                                                                : ScriptConstants.RestrictedSystemLogCategoryPrefixes;
 
             return _filteredCategoryCache.GetOrAdd(category, c => systemLogCategoryPrefixes.Any(p => category.StartsWith(p)));
         }
