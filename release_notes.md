@@ -33,3 +33,4 @@
 - Update PowerShell 7.4 worker to [4.0.4021](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.4021)
 - Trim FunctionsNetHost artifacts (#10364)
 - Resolved thread safety issue in the `GrpcWorkerChannel.LoadResponse` method. (#10352)
+- Worker termination path updated with sanitized logging (#10397)
