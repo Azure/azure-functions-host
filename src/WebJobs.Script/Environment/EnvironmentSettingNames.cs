@@ -64,7 +64,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string FunctionsRequestBodySizeLimit = "FUNCTIONS_REQUEST_BODY_SIZE_LIMIT";
         public const string FunctionsHostIdCheckLevel = "FUNCTIONS_HOSTID_CHECK_LEVEL";
         public const string FunctionsPlatformConfigFilePath = "FUNCTIONS_PLATFORM_CONFIG_FILE_PATH";
-        public const string EnableLogsInHostV3 = "EnableLogsInHostV3";
 
         //Function in Kubernetes
         public const string PodNamespace = "POD_NAMESPACE";

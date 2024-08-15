@@ -66,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName, "test-host-name");
             }
 
-            SystemEnvironment.Instance.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, EnvironmentSettingNames.EnableLogsInHostV3);
+            SystemEnvironment.Instance.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableLogsInHostV3);
 
             var webHostBuilder = Program.CreateWebHostBuilder()
                 .ConfigureAppConfiguration(c =>
