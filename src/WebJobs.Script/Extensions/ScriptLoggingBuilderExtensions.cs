@@ -42,7 +42,7 @@ namespace Microsoft.Extensions.Logging
                                                                 ? ScriptConstants.SystemLogCategoryPrefixes
                                                                 : ScriptConstants.SystemLogCategoryPrefixesForV3;
 
-            return _filteredCategoryCache.GetOrAdd(category, c => systemLogCategoryPrefixes.Where(p => category.StartsWith(p)).Any());
+            return _filteredCategoryCache.GetOrAdd(category, c => systemLogCategoryPrefixes.Any(p => category.StartsWith(p)));
         }
 
         public static void AddConsoleIfEnabled(this ILoggingBuilder builder, HostBuilderContext context)
