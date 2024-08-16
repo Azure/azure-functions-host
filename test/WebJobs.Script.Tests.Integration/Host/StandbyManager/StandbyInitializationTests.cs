@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string standbyPath = Path.Combine(Path.GetTempPath(), "functions", "standby", "wwwroot");
             string specializedScriptRoot = @"TestScripts\CSharp";
             string scriptRootConfigPath = ConfigurationPath.Combine(ConfigurationSectionNames.WebHost, nameof(ScriptApplicationHostOptions.ScriptPath));
-            SystemEnvironment.Instance.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.EnableHostLogs);
+            SystemEnvironment.Instance.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableHostLogs);
 
             var settings = new Dictionary<string, string>()
             {

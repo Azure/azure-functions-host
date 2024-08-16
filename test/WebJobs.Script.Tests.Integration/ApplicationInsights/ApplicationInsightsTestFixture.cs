@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             string scriptPath = Path.Combine(Environment.CurrentDirectory, scriptRoot);
             string logPath = Path.Combine(Path.GetTempPath(), @"Functions");
             Environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, testId);
-            Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.EnableHostLogs);
+            Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableHostLogs);
 
             WebHostOptions = new ScriptApplicationHostOptions
             {
