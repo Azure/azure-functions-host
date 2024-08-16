@@ -10,7 +10,7 @@ using Microsoft.Extensions.Configuration;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
-    internal class TableServiceClientProvider : StorageClientProvider<TableServiceClient, TableClientOptions>
+    internal sealed class TableServiceClientProvider : StorageClientProvider<TableServiceClient, TableClientOptions>
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="TableServiceClientProvider"/> class that uses the registered Azure services to create a <see cref="TableServiceClient"/>.
