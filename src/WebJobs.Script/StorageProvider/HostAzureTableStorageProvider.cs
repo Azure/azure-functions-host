@@ -16,20 +16,22 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly ILogger<HostAzureTableStorageProvider> _logger;
         private readonly IDelegatingHandlerProvider _delegatingHandlerProvider;
         private readonly TableServiceClientProvider _tableServiceClientProvider;
+        private readonly IConfiguration _configuration;
 
         public HostAzureTableStorageProvider(IConfiguration configuration, ILogger<HostAzureTableStorageProvider> logger, AzureComponentFactory componentFactory, AzureEventSourceLogForwarder logForwarder, IDelegatingHandlerProvider delegatingHandlerProvider)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _delegatingHandlerProvider = delegatingHandlerProvider;
             _tableServiceClientProvider = new TableServiceClientProvider(componentFactory, logForwarder);
-            Configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         }
 
-        public virtual IConfiguration Configuration { get; private set; }
-
-        public virtual bool TryCreateTableServiceClientFromConnection(string connection, out TableServiceClient client)
+        public bool TryCreateTableServiceClient(string connection, out TableServiceClient client)
         {
-            var connectionToUse = connection ?? ConnectionStringNames.Storage;
+            if (string.IsNullOrEmpty(connection))
+            {
+                throw new ArgumentException($"'{nameof(connection)}' cannot be null or empty.", nameof(connection));
+            }
 
             try
             {
@@ -44,17 +46,17 @@ namespace Microsoft.Azure.WebJobs.Script
                     };
                 }
 
-                client = _tableServiceClientProvider.Create(connectionToUse, Configuration, options);
+                client = _tableServiceClientProvider.Create(connection, _configuration, options);
                 return true;
             }
             catch (Exception e)
             {
-                _logger.LogDebug($"Could not create TableServiceClient. Exception: {e}");
+                _logger.LogDebug(e, "Could not create TableServiceClient. Exception: {message}", e.Message);
                 client = default;
                 return false;
             }
         }
 
-        public virtual bool TryCreateHostingTableServiceClient(out TableServiceClient client) => TryCreateTableServiceClientFromConnection(ConnectionStringNames.Storage, out client);
+        public bool TryCreateHostingTableServiceClient(out TableServiceClient client) => TryCreateTableServiceClient(ConnectionStringNames.Storage, out client);
     }
 }

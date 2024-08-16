@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script
             // If connection string is present, it will be honored first; bypass creating a serviceUri
             if (!IsConnectionStringPresent(configuration))
             {
-                var serviceUri = configuration.Get<StorageServiceUriOptions>().GetTableServiceUri();
+                var serviceUri = configuration.Get<StorageServiceUriOptions>()?.GetTableServiceUri();
                 if (serviceUri != null)
                 {
                     return new TableServiceClient(serviceUri, tokenCredential, options);
@@ -53,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script
             /// Gets or sets the resource URI for table storage. If this property is given explicitly, it will be
             /// honored over the AccountName property.
             /// </summary>
-            public string TableServiceUri { get; set; }
+            public Uri TableServiceUri { get; set; }
 
             /// <summary>
             /// Gets or sets the name of the storage account.
@@ -61,18 +61,19 @@ namespace Microsoft.Azure.WebJobs.Script
             public string AccountName { get; set; }
 
             /// <summary>
-            /// Constructs the blob service URI from the properties in this class.
-            /// First checks if BlobServiceUri is specified. If not, the AccountName is used
+            /// Constructs the table service URI from the properties in this class.
+            /// First checks if TableServiceUri is specified. If not, the AccountName is used
             /// to construct a table service URI with https scheme and core.windows.net endpoint suffix.
             /// </summary>
             /// <returns>Service URI to Azure Table storage.</returns>
             public Uri GetTableServiceUri()
             {
-                if (!string.IsNullOrEmpty(TableServiceUri))
+                if (TableServiceUri is not null)
                 {
-                    return new Uri(TableServiceUri);
+                    return TableServiceUri;
                 }
-                else if (!string.IsNullOrEmpty(AccountName))
+
+                if (!string.IsNullOrEmpty(AccountName))
                 {
                     var uri = string.Format(CultureInfo.InvariantCulture, "{0}://{1}.table.{2}", DefaultScheme, AccountName, DefaultEndpointSuffix);
                     return new Uri(uri);

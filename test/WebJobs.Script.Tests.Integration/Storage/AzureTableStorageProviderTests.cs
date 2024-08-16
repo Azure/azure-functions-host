@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
             var azureTableStorageProvider = TestHelpers.GetAzureTableStorageProvider(webHostConfiguration);
             Assert.False(azureTableStorageProvider.TryCreateHostingTableServiceClient(out _));
 
-            Assert.False(azureTableStorageProvider.TryCreateTableServiceClientFromConnection(ConnectionStringNames.Storage, out TableServiceClient blobServiceClient));
+            Assert.False(azureTableStorageProvider.TryCreateTableServiceClient(ConnectionStringNames.Storage, out TableServiceClient blobServiceClient));
         }
 
         private async Task VerifyTableServiceClientAvailable(TableServiceClient client)
