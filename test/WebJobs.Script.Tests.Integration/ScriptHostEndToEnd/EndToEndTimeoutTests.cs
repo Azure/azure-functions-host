@@ -18,10 +18,17 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 {
-    public class EndToEndTimeoutTests
+    public class EndToEndTimeoutTests : IClassFixture<EndToEndTimeoutTests.TestFixture>
     {
         private static readonly ScriptSettingsManager SettingsManager = ScriptSettingsManager.Instance;
         private TestLoggerProvider _loggerProvider = new TestLoggerProvider();
+
+        TestFixture Fixture;
+
+        public EndToEndTimeoutTests(TestFixture fixture)
+        {
+            Fixture = fixture;
+        }
 
         [Fact]
         public async Task TimeoutTest_SyncFunction_CSharp()
@@ -167,6 +174,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             {
                 UnhandledExceptionInfos.Add(exceptionInfo);
                 return Task.CompletedTask;
+            }
+        }
+
+        public class TestFixture
+        {
+            static TestFixture()
+            {
+                ScriptSettingsManager.Instance.SetSetting(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableHostLogs);
             }
         }
     }

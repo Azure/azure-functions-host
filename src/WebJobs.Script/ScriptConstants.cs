@@ -124,6 +124,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string FeatureFlagDisableWorkerIndexing = "DisableWorkerIndexing";
         public const string FeatureFlagEnableMultiLanguageWorker = "EnableMultiLanguageWorker";
         public const string FeatureFlagEnableLinuxEPExecutionCount = "EnableLinuxFEC";
+        public const string FeatureFlagEnableHostLogs = "EnableHostLogs";
         public const string HostingConfigSwtAuthenticationEnabled = "SwtAuthenticationEnabled";
         public const string HostingConfigSwtIssuerEnabled = "SwtIssuerEnabled";
 
@@ -214,6 +215,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public static readonly long DefaultMaxRequestBodySize = 104857600;
 
         public static readonly ImmutableArray<string> SystemLogCategoryPrefixes = ImmutableArray.Create("Microsoft.Azure.WebJobs.", "Function.", "Worker.", "Host.");
+        public static readonly ImmutableArray<string> RestrictedSystemLogCategoryPrefixes = ImmutableArray.Create("Host.Startup");
 
         public static readonly string FunctionsHostingConfigSectionName = "FunctionsHostingConfig";
         public static readonly string MaximumSupportedBundleV3Version = "FunctionRuntimeV3MaxBundleV3Version";
