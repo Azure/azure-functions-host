@@ -11,7 +11,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
-    internal class HostAzureTableStorageProvider : IAzureTableStorageProvider
+    internal sealed class HostAzureTableStorageProvider : IAzureTableStorageProvider
     {
         private readonly ILogger<HostAzureTableStorageProvider> _logger;
         private readonly IDelegatingHandlerProvider _delegatingHandlerProvider;
