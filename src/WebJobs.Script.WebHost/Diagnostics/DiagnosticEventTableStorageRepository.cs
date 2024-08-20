@@ -39,6 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private bool _disposed = false;
         private bool _purged = false;
         private string _tableName;
+        private bool _isEnabled = true;
 
         internal DiagnosticEventTableStorageRepository(IConfiguration configuration, IHostIdProvider hostIdProvider, IEnvironment environment, IScriptHostManager scriptHostManager,
             ILogger<DiagnosticEventTableStorageRepository> logger, int logFlushInterval)
@@ -66,10 +67,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     try
                     {
                         _tableClient = new TableServiceClient(storageConnectionString);
+
+                        // The TableServiceClient only verifies the format of the connection string.
+                        // To ensure the storage account exists and supports Table storage, validate the connection string by retrieving the properties of the table service.
+                        _ = _tableClient.GetProperties();
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Azure Storage connection string is empty or invalid. Unable to write diagnostic events.");
+                        _logger.LogError(ex, "The Azure Storage connection string is either empty or invalid. Unable to record diagnostic events, so the diagnostic logging service is being stopped.");
+                        _isEnabled = false;
+                        StopTimer();
                     }
                 }
 
@@ -267,6 +274,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     _events[errorCode].HitCount++;
                 }
             }
+        }
+
+        public bool IsEnabled()
+        {
+            return _isEnabled;
         }
 
         private bool IsPrimaryHost()

@@ -54,20 +54,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
         {
-            if (!IsEnabled(logLevel))
+            // Exit early if logging is not enabled or the state is not a diagnostic event
+            if (!IsEnabled(logLevel) ||
+                (_diagnosticEventRepository != null && !_diagnosticEventRepository.IsEnabled()) ||
+                !(state is IDictionary<string, object> stateInfo && IsDiagnosticEvent(stateInfo)))
             {
                 return;
             }
 
-            if (state is IDictionary<string, object> stateInfo && IsDiagnosticEvent(stateInfo))
-            {
-                string message = formatter(state, exception);
-                if (_diagnosticEventRepository == null)
-                {
-                    _diagnosticEventRepository = _diagnosticEventRepositoryFactory.Create();
-                }
-                _diagnosticEventRepository.WriteDiagnosticEvent(DateTime.UtcNow, stateInfo[ScriptConstants.ErrorCodeKey].ToString(), logLevel, message, stateInfo[ScriptConstants.HelpLinkKey].ToString(), exception);
-            }
+            string message = formatter(state, exception);
+            _diagnosticEventRepository ??= _diagnosticEventRepositoryFactory.Create();
+            _diagnosticEventRepository.WriteDiagnosticEvent(DateTime.UtcNow, stateInfo[ScriptConstants.ErrorCodeKey].ToString(), logLevel, message, stateInfo[ScriptConstants.HelpLinkKey].ToString(), exception);
         }
 
         public void Dispose()
