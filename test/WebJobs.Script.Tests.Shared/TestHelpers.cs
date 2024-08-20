@@ -528,8 +528,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 })
                 .Build();
 
-            var azureBlobStorageProvider = tempHost.Services.GetRequiredService<IAzureTableStorageProvider>();
-            return azureBlobStorageProvider;
+            var azureTableStorageProvider = tempHost.Services.GetRequiredService<IAzureTableStorageProvider>();
+            return azureTableStorageProvider;
         }
 
         public static IServiceCollection AddTestAzureTableStorageProvider(IServiceCollection services, IConfiguration configuration, IEnvironment environment)
