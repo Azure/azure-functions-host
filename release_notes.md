@@ -16,3 +16,7 @@
 - Update PowerShell 7.4 worker to [4.0.4021](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.4021)
 - Resolved thread safety issue in the `GrpcWorkerChannel.LoadResponse` method. (#10352)
 - Worker termination path updated with sanitized logging (#10397)
+- [in-proc] Avoid redundant DiagnosticEvents error message (#10396)
+- Fixing thread safety issue in the GrpcWorkerChannel.LoadResponse method (#10363) (#10400)
+- Updating DotNetIsolatedNativeHost package to 1.0.11 (#10380)
+- Migrate E2E Integration tests to Azure.Data.Tables (#10362)
