@@ -15,7 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
         private const string StorageConnection = "AzureWebJobsStorage";
 
         [Fact]
-        public async Task TestAzureTableStorageProvider_ConnectionInWebHostConfiguration()
+        public async Task TryCreateHostingTableServiceClient_ConnectionInWebHostConfiguration()
         {
             var testConfiguration = TestHelpers.GetTestConfiguration();
             var testData = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -34,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
         }
 
         [Fact]
-        public void TestAzureTableStorageProvider_NoConnectionThrowsException()
+        public void TryCreateHostingTableServiceClient_NoConnectionThrowsException()
         {
             var webHostConfiguration = new ConfigurationBuilder()
                 .Build();

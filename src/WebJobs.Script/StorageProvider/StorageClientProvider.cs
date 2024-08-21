@@ -4,6 +4,7 @@
 using System;
 using Azure.Core;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Configuration;
 
@@ -48,7 +49,8 @@ namespace Microsoft.Azure.WebJobs.Script
             if (connectionSection == null || !connectionSection.Exists())
             {
                 // Not found
-                throw new InvalidOperationException($"Storage account connection string '{IConfigurationExtensions.GetPrefixedConnectionStringName(name)}' does not exist. Make sure that it is a defined App Setting.");
+                string santizedSettingName = Sanitizer.Sanitize(IConfigurationExtensions.GetPrefixedConnectionStringName(name));
+                throw new InvalidOperationException($"Storage account connection string '{santizedSettingName}' does not exist. Make sure that it is a defined App Setting.");
             }
 
             var credential = _componentFactory.CreateTokenCredential(connectionSection);

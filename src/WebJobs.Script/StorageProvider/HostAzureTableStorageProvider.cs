@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public HostAzureTableStorageProvider(IConfiguration configuration, ILogger<HostAzureTableStorageProvider> logger, AzureComponentFactory componentFactory, AzureEventSourceLogForwarder logForwarder, IDelegatingHandlerProvider delegatingHandlerProvider)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _delegatingHandlerProvider = delegatingHandlerProvider;
+            _delegatingHandlerProvider = delegatingHandlerProvider ?? throw new ArgumentNullException(nameof(delegatingHandlerProvider));
             _tableServiceClientProvider = new TableServiceClientProvider(componentFactory, logForwarder);
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         }
@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             try
             {
-                DelegatingHandler handler = _delegatingHandlerProvider?.Create();
+                DelegatingHandler handler = _delegatingHandlerProvider.Create();
                 TableClientOptions options = null;
 
                 if (handler != null)

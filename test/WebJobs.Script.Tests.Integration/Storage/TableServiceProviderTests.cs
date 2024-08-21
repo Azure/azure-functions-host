@@ -42,14 +42,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
         }
 
         [Fact]
-        public async Task TestTableStorageProvider_ConnectionName()
+        public async Task Create_ConnectionName()
         {
             var client = _tableServiceClientProvider.Create(StorageConnection, _configuration);
             await VerifyServiceAvailable(client);
         }
 
         [Fact]
-        public async Task TestTableStorageProvider_ConnectionNameWithResolver()
+        public async Task Create_ConnectionNameWithResolver()
         {
             var resolver = new DefaultNameResolver(_configuration);
 
@@ -60,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
         [Theory]
         [InlineData("ConnectionStrings:AzureWebJobsStorage")]
         [InlineData("AzureWebJobsStorage")]
-        public async Task TestTableStorageProvider_TryConnectionStringVariants(string keyName)
+        public async Task Create_TryConnectionStringVariants(string keyName)
         {
             var testData = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
