@@ -62,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
                 throw new HostInitializationException("Invalid host services detected.", ex);
             }
 
-            ShimBreakingChange(services);
+            ShimBreakingChanges(services, _logger);
 
             // Start from the root (web app level) as a base
             var jobHostServices = _rootProvider.CreateChildContainer(_rootServices);
@@ -76,12 +76,71 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
             return jobHostServices.BuildServiceProvider();
         }
 
+        private static void ShimBreakingChanges(IServiceCollection services, ILogger logger)
+        {
+            ShimActivatorUtilitiesConstructorAttributeTypes(services, logger);
+            ShimLegacyNetWorkerMetadataProvider(services, logger);
+        }
+
+        /// <summary>
+        /// Versions 1.3.0 and older of Microsoft.Azure.Functions.Worker.Sdk register a type with a constructor that
+        /// takes a string parameter. This worked with DryIoc, but not with the new DI container.
+        /// Shimming those types to provide backwards compatibility, but this should be removed in the future.
+        /// </summary>
+        /// <param name="services">The <see cref="ServiceCollection"/> to inspect and modify.</param>
+        /// <param name="logger">The <see cref="ILogger"/> to log information.</param>
+        private static void ShimLegacyNetWorkerMetadataProvider(IServiceCollection services, ILogger logger)
+        {
+            const string functionProviderTypeName = "Microsoft.Azure.WebJobs.Extensions.FunctionMetadataLoader.JsonFunctionProvider, Microsoft.Azure.WebJobs.Extensions.FunctionMetadataLoader, Version=1.0.0.0, Culture=neutral, PublicKeyToken=551316b6919f366c";
+            const string jsonReaderTypeName = "Microsoft.Azure.WebJobs.Extensions.FunctionMetadataLoader.FunctionMetadataJsonReader, Microsoft.Azure.WebJobs.Extensions.FunctionMetadataLoader, Version=1.0.0.0, Culture=neutral, PublicKeyToken=551316b6919f366c";
+
+            Type functionProviderType = Type.GetType(functionProviderTypeName);
+            if (functionProviderType is null)
+            {
+                return;
+            }
+
+            Type jsonReaderType = Type.GetType(jsonReaderTypeName);
+            var constructor = functionProviderType.GetConstructor([jsonReaderType, typeof(string)]);
+            if (constructor is null)
+            {
+                return;
+            }
+
+            ServiceDescriptor descriptorToShim = null;
+            foreach (ServiceDescriptor descriptor in services)
+            {
+                if (descriptor.ImplementationType == functionProviderType)
+                {
+                    logger.LogInformation("Shimming .NET Worker Function Provider constructor for {ImplementationType}.", descriptor.ImplementationType);
+                    descriptorToShim = descriptor;
+                    break;
+                }
+            }
+
+            if (descriptorToShim is not null)
+            {
+                var newDescriptor = ServiceDescriptor.Describe(
+                    descriptorToShim.ServiceType,
+                    sp =>
+                    {
+                        var jsonReader = sp.GetRequiredService(jsonReaderType);
+                        return constructor.Invoke([jsonReader, null]);
+                    },
+                    descriptorToShim.Lifetime);
+
+                services.Remove(descriptorToShim);
+                services.Add(newDescriptor);
+            }
+        }
+
         /// <summary>
         /// .NET 8 has a breaking change regarding <see cref="ActivatorUtilitiesConstructorAttribute"/> no longer functioning as expected.
         /// We have some known extension types which are impacted by this. To avoid a regression, we are manually shimming those types.
         /// </summary>
         /// <param name="services">The service collection.</param>
-        private void ShimBreakingChange(IServiceCollection services)
+        /// <param name="logger">The <see cref="ILogger"/> to log information.</param>
+        private static void ShimActivatorUtilitiesConstructorAttributeTypes(IServiceCollection services, ILogger logger)
         {
             Dictionary<ServiceDescriptor, ServiceDescriptor> toReplace = null;
             static bool HasPreferredCtor(Type type)
@@ -105,7 +164,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
                     return false;
                 }
 
-                _logger.LogInformation("Shimming DI constructor for {ImplementationType}.", descriptor.ImplementationType);
+                logger.LogInformation("Shimming DI constructor for {ImplementationType}.", descriptor.ImplementationType);
                 ObjectFactory factory = ActivatorUtilities.CreateFactory(descriptor.ImplementationType, Type.EmptyTypes);
 
                 replacement = ServiceDescriptor.Describe(
