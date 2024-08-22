@@ -16,5 +16,8 @@
 - Update Java Worker Version to [2.15.0](https://github.com/Azure/azure-functions-java-worker/releases/tag/2.15.0)
   - Update grpc-protobuf to 1.64.0 and application insights agent version to 3.5.2
 - Resolved thread safety issue in the `GrpcWorkerChannel.LoadResponse` method. (#10352)
+- Fixing thread safety issue in the GrpcWorkerChannel.LoadResponse method (#10363)
 - Worker termination path updated with sanitized logging (#10367)
+- Avoid redundant DiagnosticEvents error message (#10395)
 - Added logic to shim older versions of the .NET Worker JsonFunctionProvider to ensure backwards compatibility (#10410)
+- Shimming legacy .NET worker JsonFunctionProvider to ensure backwards compatibility (#10411)
