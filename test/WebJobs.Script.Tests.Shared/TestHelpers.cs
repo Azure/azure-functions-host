@@ -537,7 +537,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // Adds necessary Azure services to create clients
             services.AddAzureClientsCore();
             services.AddSingleton<IAzureTableStorageProvider, HostAzureTableStorageProvider>();
-            services.AddSingleton<IDelegatingHandlerProvider>(new WebHost.Storage.DefaultDelegatingHandlerProvider(environment));
 
             return services;
         }

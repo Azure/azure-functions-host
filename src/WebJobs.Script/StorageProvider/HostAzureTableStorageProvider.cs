@@ -2,8 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Net.Http;
-using Azure.Core.Pipeline;
 using Azure.Data.Tables;
 using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Configuration;
@@ -14,14 +12,12 @@ namespace Microsoft.Azure.WebJobs.Script
     internal sealed class HostAzureTableStorageProvider : IAzureTableStorageProvider
     {
         private readonly ILogger<HostAzureTableStorageProvider> _logger;
-        private readonly IDelegatingHandlerProvider _delegatingHandlerProvider;
         private readonly TableServiceClientProvider _tableServiceClientProvider;
         private readonly IConfiguration _configuration;
 
-        public HostAzureTableStorageProvider(IConfiguration configuration, ILogger<HostAzureTableStorageProvider> logger, AzureComponentFactory componentFactory, AzureEventSourceLogForwarder logForwarder, IDelegatingHandlerProvider delegatingHandlerProvider)
+        public HostAzureTableStorageProvider(IConfiguration configuration, ILogger<HostAzureTableStorageProvider> logger, AzureComponentFactory componentFactory, AzureEventSourceLogForwarder logForwarder)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _delegatingHandlerProvider = delegatingHandlerProvider ?? throw new ArgumentNullException(nameof(delegatingHandlerProvider));
             _tableServiceClientProvider = new TableServiceClientProvider(componentFactory, logForwarder);
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         }
@@ -35,18 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             try
             {
-                DelegatingHandler handler = _delegatingHandlerProvider.Create();
-                TableClientOptions options = null;
-
-                if (handler != null)
-                {
-                    options = new TableClientOptions
-                    {
-                        Transport = new HttpClientTransport(handler)
-                    };
-                }
-
-                client = _tableServiceClientProvider.Create(connection, _configuration, options);
+                client = _tableServiceClientProvider.Create(connection, _configuration);
                 return true;
             }
             catch (Exception e)

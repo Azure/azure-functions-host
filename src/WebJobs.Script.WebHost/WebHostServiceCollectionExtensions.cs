@@ -366,7 +366,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // we need to register the JobHostInternalStorageOptions in the WebHost layer too, using the merged configuration implementation in ActiveHostWebJobsOptionsSetup.
             services.ConfigureOptionsWithChangeTokenSource<JobHostInternalStorageOptions, ActiveHostWebJobsOptionsSetup<JobHostInternalStorageOptions>, SpecializationChangeTokenSource<JobHostInternalStorageOptions>>();
             services.AddSingleton<IAzureBlobStorageProvider, HostAzureBlobStorageProvider>();
-            services.TryAddSingleton<IDelegatingHandlerProvider, DefaultDelegatingHandlerProvider>();
             services.AddSingleton<IAzureTableStorageProvider, HostAzureTableStorageProvider>();
         }
 

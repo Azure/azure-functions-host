@@ -3,7 +3,7 @@
 
 using System.Net.Http;
 
-namespace Microsoft.Azure.WebJobs.Script
+namespace Microsoft.Azure.WebJobs.Script.WebHost.Storage
 {
     /// <summary>
     /// Represents a type used to create a <see cref="DelegatingHandler"/> to be used by the WebJobs Azure Storage clients.
