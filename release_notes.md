@@ -4,11 +4,10 @@
 - My change description (#PR)
 -->
 - Update Python Worker Version to [4.31.0](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.31.0)
+  - Includes fixes from 4.30.0
 - Update Java Worker Version to [2.16.0](https://github.com/Azure/azure-functions-java-worker/releases/tag/2.16.0):
   - Fix thread context classloader for middleware chain
-- Update Java Worker Version to [2.15.0](https://github.com/Azure/azure-functions-java-worker/releases/tag/2.15.0):
-  - Update grpc-protobuf to 1.64.0 and application insights agent version to 3.5.2
-- Update Python Worker Version to [4.30.3](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.30.3)
+  - Includes fixes from 2.15.0
 - Upgraded the following package versions (#10326):
   - `Azure.Security.KeyVault.Secrets` updated to 4.6.0
   - `System.Format.Asn1` updated to 6.0.1
