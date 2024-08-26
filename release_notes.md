@@ -4,33 +4,15 @@
 - My change description (#PR)
 -->
 - Update Python Worker Version to [4.31.0](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.31.0)
+  - Includes fixes from 4.30.0
 - Update Java Worker Version to [2.16.0](https://github.com/Azure/azure-functions-java-worker/releases/tag/2.16.0):
   - Fix thread context classloader for middleware chain
-- Update Java Worker Version to [2.15.0](https://github.com/Azure/azure-functions-java-worker/releases/tag/2.15.0):
-  - Update grpc-protobuf to 1.64.0 and application insights agent version to 3.5.2
-- Marking SyncTriggers [RequiresRunningHost]. (#10233)
-- Defaulting SwtAuthenticationEnabled to False (#10195)
-- Adding runtime site name to valid JWT audiences (slot scenarios) (#10185)
-- Update Python Worker Version to [4.30.3](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.30.3)
-- Language worker channels will not be started during placeholder mode if we are in-process (#10161)
-- Ordered invocations are now the default (#10201)
-- Add IsDisabled property to worker description and skip if the value (#10250)
-- Fixed incorrect function count in the log message.(#10220)
-- Migrate Diagnostic Events to Azure.Data.Tables (#10218)
-- Sanitize worker arguments before logging (#10260)
-- Fix race condition on startup with extension RPC endpoints not being available. (#10282)
-- Adding a timeout when retrieving function metadata from metadata providers (#10219)
-- Upgraded the following package versions (#10288):
-  - `Microsoft.Azure.WebJobs` updated to 3.0.41
-  - `Microsoft.Azure.WebJobs.Host.Storage` updated to 5.0.1
-  - `Microsoft.Extensions.Azure` updated to 1.7.1
-  - `Azure.Storage.Blobs` updated to 12.19.1
-- [in-proc] Updating FunctionsNetHost (dotnet isolated worker) to 1.0.11 (#10379)
+  - Includes fixes from 2.15.0
 - Upgraded the following package versions (#10326):
   - `Azure.Security.KeyVault.Secrets` updated to 4.6.0
   - `System.Format.Asn1` updated to 6.0.1
 - Update PowerShell 7.2 worker to [4.0.4020](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.4020)
 - Update PowerShell 7.4 worker to [4.0.4021](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.4021)
-- Trim FunctionsNetHost artifacts (#10364)
 - Resolved thread safety issue in the `GrpcWorkerChannel.LoadResponse` method. (#10352)
 - Worker termination path updated with sanitized logging (#10397)
+- Avoid redundant DiagnosticEvents error message (#10395)
