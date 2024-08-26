@@ -3,6 +3,7 @@
 <!-- Please add your release notes in the following format:
 - My change description (#PR)
 -->
+- Update Java Worker Version to [2.17.0](https://github.com/Azure/azure-functions-java-worker/releases/tag/2.17.0)
 - Update Python Worker Version to [4.31.0](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.31.0)
 - Update Java Worker Version to [2.16.0](https://github.com/Azure/azure-functions-java-worker/releases/tag/2.16.0):
   - Fix thread context classloader for middleware chain
