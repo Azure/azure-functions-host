@@ -298,7 +298,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             string hostFilePath = Path.Combine(_scriptOptions.Value.RootScriptPath, ScriptConstants.HostMetadataFileName);
 
-            // Look for host.json file in the nested directories, this is to validate the scenario where host.json is not at the root. THis is common for an improperly zipped function app.
+            // Search for the host.json file within nested directories to verify scenarios where it isn't located at the root. This situation often occurs when a function app has been improperly zipped.
             IEnumerable<string> hostJsonFiles = null;
             try
             {
