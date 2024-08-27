@@ -213,7 +213,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.TryAddSingleton<IJobHostMiddlewarePipeline>(s => DefaultMiddlewarePipeline.Empty);
 
             // Add AzureBlobStorageProvider to WebHost (also needed for ScriptHost)
-            services.AddAzureBlobStorageProvider();
+            services.AddAzureStorageProviders();
         }
 
         internal static void AddHostingConfigOptions(this IServiceCollection services, IConfiguration configuration)
@@ -340,16 +340,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IBashCommandHandler, BashCommandHandler>();
         }
 
-        private static void AddAzureBlobStorageProvider(this IServiceCollection services)
+        private static void AddAzureStorageProviders(this IServiceCollection services)
         {
             // Adds necessary Azure services to create clients
             services.AddAzureClientsCore();
 
             // HostAzureBlobStorageProvider depends on JobHostInternalStorageOptions to support ability to provide a SAS blob container as the Hosting container.
             // This is registered in WebJobs.Host.Storage, but since IAzureBlobStorageProvider needs to be accessible in the WebHost layer,
-            // we need to register the JobHostInternalStorageOptions in the WebHost layer too, using the merged configuration implemention in ActiveHostWebJobsOptionsSetup.
+            // we need to register the JobHostInternalStorageOptions in the WebHost layer too, using the merged configuration implementation in ActiveHostWebJobsOptionsSetup.
             services.ConfigureOptionsWithChangeTokenSource<JobHostInternalStorageOptions, ActiveHostWebJobsOptionsSetup<JobHostInternalStorageOptions>, SpecializationChangeTokenSource<JobHostInternalStorageOptions>>();
             services.AddSingleton<IAzureBlobStorageProvider, HostAzureBlobStorageProvider>();
+            services.AddSingleton<IAzureTableStorageProvider, HostAzureTableStorageProvider>();
         }
 
         private static IServiceCollection ConfigureOptionsWithChangeTokenSource<TOptions, TOptionsSetup, TOptionsChangeTokenSource>(this IServiceCollection services)
