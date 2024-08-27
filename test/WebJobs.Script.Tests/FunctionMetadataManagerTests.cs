@@ -438,6 +438,43 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("newFunction", testFunctionMetadataManager.GetFunctionMetadata(true).FirstOrDefault()?.Name);
         }
 
+        [Fact]
+        public void FunctionMetadataManager_GetsMetadata_ValidateHostJson()
+        {
+            var functionMetadataCollection1 = new Collection<FunctionMetadata>
+            {
+            };
+
+            var expectedTotalFunctionsCount = 0;
+
+            var mockFunctionMetadataProvider = new Mock<IFunctionMetadataProvider>();
+            mockFunctionMetadataProvider.Setup(m => m.GetFunctionMetadataAsync(It.IsAny<IEnumerable<RpcWorkerConfig>>(), It.IsAny<SystemEnvironment>(), It.IsAny<bool>()))
+                .Returns(Task.FromResult(new Collection<FunctionMetadata>().ToImmutableArray()));
+            mockFunctionMetadataProvider.Setup(m => m.FunctionErrors)
+                .Returns(new Dictionary<string, ICollection<string>>().ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray()));
+
+            var mockFunctionProvider = new Mock<IFunctionProvider>();
+            mockFunctionProvider.Setup(m => m.GetFunctionMetadataAsync()).ReturnsAsync(functionMetadataCollection1.ToImmutableArray());
+
+            var testLoggerProvider = new TestLoggerProvider();
+            var loggerFactory = new LoggerFactory();
+            loggerFactory.AddProvider(testLoggerProvider);
+
+            FunctionMetadataManager testFunctionMetadataManager = TestFunctionMetadataManager.GetFunctionMetadataManager(
+                new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions),
+                mockFunctionMetadataProvider.Object,
+                new List<IFunctionProvider>() { mockFunctionProvider.Object },
+                new OptionsWrapper<HttpWorkerOptions>(_defaultHttpWorkerOptions),
+                loggerFactory,
+                new TestOptionsMonitor<LanguageWorkerOptions>(TestHelpers.GetTestLanguageWorkerOptions()));
+
+            var actualFunctionMetadata = testFunctionMetadataManager.LoadFunctionMetadata();
+
+            var traces = testLoggerProvider.GetAllLogMessages();
+            Assert.Equal(expectedTotalFunctionsCount, actualFunctionMetadata.Length);
+            Assert.Single(traces.Where(t => t.FormattedMessage.Contains("No functions were found. The host.json file was not located at the root. A default host.json was created at the root using a default configuration to start the function app. See https://aka.ms/functions-deployment-technologies for more information on deployment.")));
+        }
+
         [Theory]
         [InlineData("")]
         [InlineData(null)]
