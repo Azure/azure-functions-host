@@ -17,5 +17,7 @@
   - Update grpc-protobuf to 1.64.0 and application insights agent version to 3.5.2
 - Resolved thread safety issue in the `GrpcWorkerChannel.LoadResponse` method. (#10352)
 - Worker termination path updated with sanitized logging (#10367)
+- Avoid redundant DiagnosticEvents error message (#10395)
+- Added logic to shim older versions of the .NET Worker JsonFunctionProvider to ensure backwards compatibility (#10410)
 - Migrated Scale Metrics to use `Azure.Data.Tables` SDK (#10276)
   - Added support for Identity-based connections

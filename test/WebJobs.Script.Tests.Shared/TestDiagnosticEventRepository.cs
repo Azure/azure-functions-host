@@ -35,4 +35,9 @@ public class TestDiagnosticEventRepository : IDiagnosticEventRepository
     {
         Events.Clear();
     }
+
+    public bool IsEnabled()
+    {
+        return true;
+    }
 }
