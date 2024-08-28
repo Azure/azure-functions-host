@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     }
                     else
                     {
-                        _logger.LogWarning($"Unsupported exception type in {nameof(RetryProxyHandler)}. Request will not be retried. Exception: {exception}", ex);
+                        _logger.LogWarning($"Unsupported exception type in {nameof(RetryProxyHandler)}. Request will not be retried. Exception: {{exception}}", ex);
                     }
 
                     throw;
