@@ -93,5 +93,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public const string RevertWorkerShutdownBehavior = "REVERT_WORKER_SHUTDOWN_BEHAVIOR";
         public const string ShutdownWebhostWorkerChannelsOnHostShutdown = "ShutdownWebhostWorkerChannelsOnHostShutdown";
         public const string ThrowOnMissingFunctionsWorkerRuntime = "THROW_ON_MISSING_FUNCTIONS_WORKER_RUNTIME";
+        public const string ThrowOnFunctionsWorkerRuntimeMismatchWithMetadataFromPayload = "THROW_ON_FUNCTIONS_WORKER_RUNTIME_MISMATCH_WITH_PAYLOAD";
     }
 }

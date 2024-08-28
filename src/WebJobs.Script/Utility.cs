@@ -644,10 +644,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     throw new HostInitializationException($"Found functions with more than one language. Select a language for your function app by specifying {RpcWorkerConstants.FunctionWorkerRuntimeSettingName} AppSetting");
                 }
-                else
-                {
-                    throw new HostInitializationException($"Did not find functions with language [{workerRuntime}].");
-                }
             }
         }
 
@@ -748,10 +744,20 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 return functions.Any(f => dotNetLanguages.Any(l => l.Equals(f.Language, StringComparison.OrdinalIgnoreCase)));
             }
+
+            return ContainsAnyFunctionMatchingWorkerRuntime(functions, workerRuntime);
+        }
+
+        /// <summary>
+        /// Inspect the functions metadata to determine if atleast one function is of the specified worker runtime.
+        /// </summary>
+        internal static bool ContainsAnyFunctionMatchingWorkerRuntime(IEnumerable<FunctionMetadata> functions, string workerRuntime)
+        {
             if (functions != null && functions.Any())
             {
                 return functions.Any(f => !string.IsNullOrEmpty(f.Language) && f.Language.Equals(workerRuntime, StringComparison.OrdinalIgnoreCase));
             }
+
             return false;
         }
 

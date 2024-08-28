@@ -19,3 +19,4 @@
 - Worker termination path updated with sanitized logging (#10367)
 - Avoid redundant DiagnosticEvents error message (#10395)
 - Added logic to shim older versions of the .NET Worker JsonFunctionProvider to ensure backwards compatibility (#10410)
+- Added fallback behavior when FUNCTIONS_WORKER_RUNTIME does not match with metadata from deployed app payload.

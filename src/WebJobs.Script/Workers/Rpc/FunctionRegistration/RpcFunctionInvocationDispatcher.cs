@@ -40,6 +40,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly Lazy<Task<int>> _maxProcessCount;
         private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions;
         private readonly IHostMetrics _hostMetrics;
+        private readonly TimeSpan _defaultProcessStartupInterval = TimeSpan.FromSeconds(5);
+        private readonly TimeSpan _defaultProcessRestartInterval = TimeSpan.FromSeconds(5);
+        private readonly TimeSpan _defaultProcessShutdownInterval = TimeSpan.FromSeconds(5);
 
         private IScriptEventManager _eventManager;
         private IWebHostRpcWorkerChannelManager _webHostLanguageWorkerChannelManager;
@@ -308,13 +311,19 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
             else
             {
-                _processStartupInterval = workerConfig.CountOptions.ProcessStartupInterval;
-                _restartWait = workerConfig.CountOptions.ProcessRestartInterval;
-                _shutdownTimeout = workerConfig.CountOptions.ProcessShutdownTimeout;
+                _processStartupInterval = workerConfig?.CountOptions?.ProcessStartupInterval ?? _defaultProcessStartupInterval;
+                _restartWait = workerConfig?.CountOptions.ProcessRestartInterval ?? _defaultProcessRestartInterval;
+                _shutdownTimeout = workerConfig?.CountOptions.ProcessShutdownTimeout ?? _defaultProcessShutdownInterval;
             }
             ErrorEventsThreshold = 3 * await _maxProcessCount.Value;
 
-            if (Utility.IsSupportedRuntime(_workerRuntime, _workerConfigs) || _environment.IsMultiLanguageRuntimeEnvironment())
+            // If the configured worker runtime is "dotnet-isolated" and no worker config is found, we should assume that this was caused by
+            //  1. App did not start in placeholder mode (so that the dotnet-isolated worker config was not initialized because of https://github.com/Azure/azure-functions-dotnet-worker/pull/2552)
+            //  2. App payload deployed is not "dotnet-isolated" (but "in-proc")
+            // In this case, we want to go ahead and initialize a language worker channel for the runtime.
+            var missingWorkerConfigForDotnetIsolated = !_workerConfigs.Any() && _workerRuntime == RpcWorkerConstants.DotNetIsolatedLanguageWorkerName;
+
+            if (missingWorkerConfigForDotnetIsolated || Utility.IsSupportedRuntime(_workerRuntime, _workerConfigs) || _environment.IsMultiLanguageRuntimeEnvironment())
             {
                 State = FunctionInvocationDispatcherState.Initializing;
                 IDictionary<string, TaskCompletionSource<IRpcWorkerChannel>> webhostLanguageWorkerChannels = _webHostLanguageWorkerChannelManager.GetChannels(_workerRuntime);

@@ -183,6 +183,14 @@ namespace Microsoft.Azure.WebJobs.Script.Config
             }
         }
 
+        internal bool ThrowOnFunctionsWorkerRuntimeMismatchWithMetadataFromPayload
+        {
+            get
+            {
+                return GetFeature(RpcWorkerConstants.ThrowOnFunctionsWorkerRuntimeMismatchWithMetadataFromPayload) == "1";
+            }
+        }
+
         /// <summary>
         /// Gets feature by name.
         /// </summary>
