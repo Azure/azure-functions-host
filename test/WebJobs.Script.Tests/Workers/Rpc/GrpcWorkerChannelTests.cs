@@ -940,6 +940,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
+        public async Task ReceivesInboundEvent_Error_FunctionLoadResponse()
+        {
+            await CreateDefaultWorkerChannel();
+            var functionMetadatas = GetTestFunctionsList("node");
+            _workerChannel.SetupFunctionInvocationBuffers(functionMetadatas);
+            _testFunctionRpcService.OnMessage(StreamingMessage.ContentOneofCase.FunctionLoadRequest,
+                _ => _testFunctionRpcService.PublishErrorFunctionLoadResponseEvent("TestFunctionId1"));
+            _workerChannel.SendFunctionLoadRequests(null, TimeSpan.FromMinutes(5));
+
+            await Task.Delay(500);
+            var traces = _logger.GetLogMessages();
+            ShowOutput(traces);
+
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "abc [Hidden Credential]")));
+        }
+
+        [Fact]
         public async Task Receives_Individual_FunctionLoadResponses_Parallel()
         {
             await CreateDefaultWorkerChannel();
