@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -40,6 +41,19 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                         currentDelay, attemptCount, _maxRetries);
 
                     await Task.Delay(currentDelay, cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    if (attemptCount == _maxRetries)
+                    {
+                        _logger.LogWarning("Reached the maximum retry count for worker request proxying. Error: {exception}", ex);
+                    }
+                    else
+                    {
+                        _logger.LogWarning($"Unsupported exception type in {nameof(RetryProxyHandler)}. Request will not be retried. Exception: {{exception}}", ex);
+                    }
+
+                    throw;
                 }
             }
 
