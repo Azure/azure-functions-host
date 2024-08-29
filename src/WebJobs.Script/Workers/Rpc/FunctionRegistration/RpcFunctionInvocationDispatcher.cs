@@ -317,13 +317,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
             ErrorEventsThreshold = 3 * await _maxProcessCount.Value;
 
-            // If the configured worker runtime is "dotnet-isolated" and no worker config is found, we should assume that this was caused by
-            //  1. App did not start in placeholder mode (so that the dotnet-isolated worker config was not initialized because of https://github.com/Azure/azure-functions-dotnet-worker/pull/2552)
-            //  2. App payload deployed is not "dotnet-isolated" (but "in-proc")
-            // In this case, we want to go ahead and initialize a language worker channel for the runtime.
-            var missingWorkerConfigForDotnetIsolated = !_workerConfigs.Any() && _workerRuntime == RpcWorkerConstants.DotNetIsolatedLanguageWorkerName;
-
-            if (missingWorkerConfigForDotnetIsolated || Utility.IsSupportedRuntime(_workerRuntime, _workerConfigs) || _environment.IsMultiLanguageRuntimeEnvironment())
+            if (Utility.IsSupportedRuntime(_workerRuntime, _workerConfigs) || _environment.IsMultiLanguageRuntimeEnvironment())
             {
                 State = FunctionInvocationDispatcherState.Initializing;
                 IDictionary<string, TaskCompletionSource<IRpcWorkerChannel>> webhostLanguageWorkerChannels = _webHostLanguageWorkerChannelManager.GetChannels(_workerRuntime);
