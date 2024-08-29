@@ -504,6 +504,34 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             return services;
         }
 
+        public static IAzureTableStorageProvider GetAzureTableStorageProvider(IConfiguration configuration, IEnvironment environment = default)
+        {
+            environment ??= new TestEnvironment();
+
+            IHost tempHost = new HostBuilder()
+                .ConfigureServices(services =>
+                {
+                    AddTestAzureTableStorageProvider(services, configuration, environment);
+                })
+                .ConfigureAppConfiguration(c =>
+                {
+                    c.AddConfiguration(configuration);
+                })
+                .Build();
+
+            var azureTableStorageProvider = tempHost.Services.GetRequiredService<IAzureTableStorageProvider>();
+            return azureTableStorageProvider;
+        }
+
+        public static IServiceCollection AddTestAzureTableStorageProvider(IServiceCollection services, IConfiguration configuration, IEnvironment environment)
+        {
+            // Adds necessary Azure services to create clients
+            services.AddAzureClientsCore();
+            services.AddSingleton<IAzureTableStorageProvider, HostAzureTableStorageProvider>();
+
+            return services;
+        }
+
         /// <summary>
         /// Mock an HttpClientFactory and its CreateClient functionality.
         /// </summary>
