@@ -776,9 +776,9 @@ namespace Microsoft.Azure.WebJobs.Script
         // Ensure customer deployed application payload matches with the worker runtime configured for the function app and log a warning if not.
         // If a customer has "dotnet-isolated" worker runtime configured for the function app, and then they deploy an in-proc app payload, this will warn/error
         // If there is a mismatch, the method will return false, else true.
-        internal static bool ValidateAndLogRuntimeMismatch(IEnumerable<FunctionMetadata> functionMetadata, string workerRuntime, IOptions<FunctionsHostingConfigOptions> hostingConfigOptions, ILogger logger)
+        internal static bool ValidateAndLogRuntimeMismatchForDotnetIsolated(IEnumerable<FunctionMetadata> functionMetadata, string workerRuntime, IOptions<FunctionsHostingConfigOptions> hostingConfigOptions, ILogger logger)
         {
-            if (functionMetadata.Any() && !Utility.ContainsAnyFunctionMatchingWorkerRuntime(functionMetadata, workerRuntime))
+            if (functionMetadata.Any() && string.Equals(workerRuntime, RpcWorkerConstants.DotNetIsolatedLanguageWorkerName, StringComparison.OrdinalIgnoreCase) && !Utility.ContainsAnyFunctionMatchingWorkerRuntime(functionMetadata, workerRuntime))
             {
                 string baseMessage = $"The '{EnvironmentSettingNames.FunctionWorkerRuntime}' is not matching with worker runtime of function metadata of deployed function app artifacts. See {DiagnosticEventConstants.WorkerRuntimeDoesNotMatchWithFunctionMetadataHelpLink} for more information.";
 
@@ -801,10 +801,9 @@ namespace Microsoft.Azure.WebJobs.Script
             Collection<FunctionDescriptor> functionDescriptors = new Collection<FunctionDescriptor>();
             if (!cancellationToken.IsCancellationRequested)
             {
-                var isWorkerRuntimeMatchingWithMetadatFromDeployedArtifacts = ValidateAndLogRuntimeMismatch(functions, workerRuntime, _hostingConfigOptions, _logger);
-                if (!isWorkerRuntimeMatchingWithMetadatFromDeployedArtifacts)
+                if (!ValidateAndLogRuntimeMismatchForDotnetIsolated(functions, workerRuntime, _hostingConfigOptions, _logger))
                 {
-                    UpdateFunctionMetadataLanguage(functions, workerRuntime);
+                    UpdateFunctionMetadataLanguageForDotnetAssembly(functions, workerRuntime);
                 }
 
                 var httpFunctions = new Dictionary<string, HttpTriggerAttribute>();
@@ -848,7 +847,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return functionDescriptors;
         }
 
-        private static void UpdateFunctionMetadataLanguage(IEnumerable<FunctionMetadata> functions, string workerRuntime)
+        private static void UpdateFunctionMetadataLanguageForDotnetAssembly(IEnumerable<FunctionMetadata> functions, string workerRuntime)
         {
             foreach (var function in functions)
             {
