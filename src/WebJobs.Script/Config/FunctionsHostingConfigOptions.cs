@@ -187,7 +187,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         {
             get
             {
-                return GetFeature(RpcWorkerConstants.ThrowOnFunctionsWorkerRuntimeMismatchWithMetadataFromPayload) == "1";
+                return GetFeatureAsBooleanOrDefault(RpcWorkerConstants.ThrowOnFunctionsWorkerRuntimeMismatchWithMetadataFromPayload, false);
             }
         }
 

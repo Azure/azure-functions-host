@@ -629,7 +629,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return true;
         }
 
-        internal static void VerifyFunctionsMatchSpecifiedLanguage(IEnumerable<FunctionMetadata> functions, string workerRuntime, bool isPlaceholderMode, bool isHttpWorker, CancellationToken cancellationToken)
+        internal static void VerifyFunctionsMatchSpecifiedLanguage(IEnumerable<FunctionMetadata> functions, string workerRuntime, bool isPlaceholderMode, bool isHttpWorker, CancellationToken cancellationToken, bool throwOnMismatch = true)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -643,6 +643,13 @@ namespace Microsoft.Azure.WebJobs.Script
                 if (string.IsNullOrEmpty(workerRuntime))
                 {
                     throw new HostInitializationException($"Found functions with more than one language. Select a language for your function app by specifying {RpcWorkerConstants.FunctionWorkerRuntimeSettingName} AppSetting");
+                }
+            }
+            else
+            {
+                if (throwOnMismatch)
+                {
+                    throw new HostInitializationException($"Did not find functions with language [{workerRuntime}].");
                 }
             }
         }
@@ -749,7 +756,7 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
-        /// Inspect the functions metadata to determine if atleast one function is of the specified worker runtime.
+        /// Inspect the functions metadata to determine if at least one function is of the specified worker runtime.
         /// </summary>
         internal static bool ContainsAnyFunctionMatchingWorkerRuntime(IEnumerable<FunctionMetadata> functions, string workerRuntime)
         {

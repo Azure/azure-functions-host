@@ -776,11 +776,11 @@ namespace Microsoft.Azure.WebJobs.Script
         // Ensure customer deployed application payload matches with the worker runtime configured for the function app and log a warning if not.
         // If a customer has "dotnet-isolated" worker runtime configured for the function app, and then they deploy an in-proc app payload, this will warn/error
         // If there is a mismatch, the method will return false, else true.
-        internal static bool ValidateAndLogRuntimeMismatchForDotnetIsolated(IEnumerable<FunctionMetadata> functionMetadata, string workerRuntime, IOptions<FunctionsHostingConfigOptions> hostingConfigOptions, ILogger logger)
+        internal static bool ValidateAndLogRuntimeMismatch(IEnumerable<FunctionMetadata> functionMetadata, string workerRuntime, IOptions<FunctionsHostingConfigOptions> hostingConfigOptions, ILogger logger)
         {
-            if (functionMetadata.Any() && string.Equals(workerRuntime, RpcWorkerConstants.DotNetIsolatedLanguageWorkerName, StringComparison.OrdinalIgnoreCase) && !Utility.ContainsAnyFunctionMatchingWorkerRuntime(functionMetadata, workerRuntime))
+            if (functionMetadata != null && functionMetadata.Any() && !Utility.ContainsAnyFunctionMatchingWorkerRuntime(functionMetadata, workerRuntime))
             {
-                string baseMessage = $"The '{EnvironmentSettingNames.FunctionWorkerRuntime}' is not matching with worker runtime of function metadata of deployed function app artifacts. See {DiagnosticEventConstants.WorkerRuntimeDoesNotMatchWithFunctionMetadataHelpLink} for more information.";
+                string baseMessage = $"The '{EnvironmentSettingNames.FunctionWorkerRuntime}' is set to '{workerRuntime}', which does not match the worker runtime metadata found in the deployed function app artifacts. See {DiagnosticEventConstants.WorkerRuntimeDoesNotMatchWithFunctionMetadataHelpLink} for more information.";
 
                 if (hostingConfigOptions.Value.ThrowOnFunctionsWorkerRuntimeMismatchWithMetadataFromPayload)
                 {
@@ -788,7 +788,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     throw new HostInitializationException(baseMessage);
                 }
 
-                string warningMessage = baseMessage + " The application will continue to run, but may throw an exception in a future release.";
+                string warningMessage = baseMessage + " The application will continue to run, but may throw an exception in the future.";
                 logger.LogDiagnosticEventWarning(DiagnosticEventConstants.WorkerRuntimeDoesNotMatchWithFunctionMetadataErrorCode, warningMessage, DiagnosticEventConstants.WorkerRuntimeDoesNotMatchWithFunctionMetadataHelpLink, null);
                 return false;
             }
@@ -801,14 +801,21 @@ namespace Microsoft.Azure.WebJobs.Script
             Collection<FunctionDescriptor> functionDescriptors = new Collection<FunctionDescriptor>();
             if (!cancellationToken.IsCancellationRequested)
             {
-                if (!ValidateAndLogRuntimeMismatchForDotnetIsolated(functions, workerRuntime, _hostingConfigOptions, _logger))
+                bool throwOnWorkerRuntimeAndPayloadMetadataMismatch = true;
+                // this dotnet isolated specific logic is temporary to ensure in-proc payload compatibility with "dotnet-isolated" as the FUNCTIONS_WORKER_RUNTIME value.
+                if (string.Equals(workerRuntime, RpcWorkerConstants.DotNetIsolatedLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
                 {
-                    UpdateFunctionMetadataLanguageForDotnetAssembly(functions, workerRuntime);
+                    bool isDotnetIsolatedRuntimeWithValidPayload = ValidateAndLogRuntimeMismatch(functions, workerRuntime, _hostingConfigOptions, _logger);
+                    if (!isDotnetIsolatedRuntimeWithValidPayload)
+                    {
+                        UpdateFunctionMetadataLanguageForDotnetAssembly(functions, workerRuntime);
+                        throwOnWorkerRuntimeAndPayloadMetadataMismatch = false; // we do not want to throw an exception in this case
+                    }
                 }
 
                 var httpFunctions = new Dictionary<string, HttpTriggerAttribute>();
 
-                Utility.VerifyFunctionsMatchSpecifiedLanguage(functions, workerRuntime, _environment.IsPlaceholderModeEnabled(), _isHttpWorker, cancellationToken);
+                Utility.VerifyFunctionsMatchSpecifiedLanguage(functions, workerRuntime, _environment.IsPlaceholderModeEnabled(), _isHttpWorker, cancellationToken, throwOnMismatch: throwOnWorkerRuntimeAndPayloadMetadataMismatch);
 
                 foreach (FunctionMetadata metadata in functions)
                 {
