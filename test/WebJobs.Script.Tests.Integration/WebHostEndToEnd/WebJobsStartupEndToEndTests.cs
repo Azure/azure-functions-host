@@ -3,6 +3,7 @@ using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
@@ -29,6 +30,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
         {
             // We need different fixture setup for each test.
             var fixture = new CSharpPrecompiledEndToEndTestFixture(_projectName, _envVars);
+            try
+            {
+                await fixture.InitializeAsync();
+                var client = fixture.Host.HttpClient;
+
+                var response = await client.GetAsync($"api/Function1");
+
+                // The function does all the validation internally.
+                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            }
+            finally
+            {
+                await fixture.DisposeAsync();
+            }
+        }
+
+        [Fact]
+        public async Task InProcAppsWorkWithDotnetIsolatedAsFunctionWorkerRuntimeValue()
+        {
+            // test uses an in-proc app, but we are setting "dotnet-isolated" as functions worker runtime value.
+            var fixture = new CSharpPrecompiledEndToEndTestFixture(_projectName, _envVars, functionWorkerRuntime: RpcWorkerConstants.DotNetIsolatedLanguageWorkerName);
             try
             {
                 await fixture.InitializeAsync();
