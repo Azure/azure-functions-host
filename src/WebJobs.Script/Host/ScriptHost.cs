@@ -776,7 +776,7 @@ namespace Microsoft.Azure.WebJobs.Script
         // Ensure customer deployed application payload matches with the worker runtime configured for the function app and log a warning if not.
         // If a customer has "dotnet-isolated" worker runtime configured for the function app, and then they deploy an in-proc app payload, this will warn/error
         // If there is a mismatch, the method will return false, else true.
-        internal static bool ValidateAndLogRuntimeMismatch(IEnumerable<FunctionMetadata> functionMetadata, string workerRuntime, IOptions<FunctionsHostingConfigOptions> hostingConfigOptions, ILogger logger)
+        private static bool ValidateAndLogRuntimeMismatch(IEnumerable<FunctionMetadata> functionMetadata, string workerRuntime, IOptions<FunctionsHostingConfigOptions> hostingConfigOptions, ILogger logger)
         {
             if (functionMetadata != null && functionMetadata.Any() && !Utility.ContainsAnyFunctionMatchingWorkerRuntime(functionMetadata, workerRuntime))
             {
@@ -805,8 +805,8 @@ namespace Microsoft.Azure.WebJobs.Script
                 // this dotnet isolated specific logic is temporary to ensure in-proc payload compatibility with "dotnet-isolated" as the FUNCTIONS_WORKER_RUNTIME value.
                 if (string.Equals(workerRuntime, RpcWorkerConstants.DotNetIsolatedLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
                 {
-                    bool isDotnetIsolatedRuntimeWithValidPayload = ValidateAndLogRuntimeMismatch(functions, workerRuntime, _hostingConfigOptions, _logger);
-                    if (!isDotnetIsolatedRuntimeWithValidPayload)
+                    bool payloadMatchesWorkerRuntime = ValidateAndLogRuntimeMismatch(functions, workerRuntime, _hostingConfigOptions, _logger);
+                    if (!payloadMatchesWorkerRuntime)
                     {
                         UpdateFunctionMetadataLanguageForDotnetAssembly(functions, workerRuntime);
                         throwOnWorkerRuntimeAndPayloadMetadataMismatch = false; // we do not want to throw an exception in this case
