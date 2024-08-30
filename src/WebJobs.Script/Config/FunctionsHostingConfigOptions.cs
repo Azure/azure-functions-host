@@ -183,11 +183,11 @@ namespace Microsoft.Azure.WebJobs.Script.Config
             }
         }
 
-        internal bool ThrowOnFunctionsWorkerRuntimeMismatchWithMetadataFromPayload
+        internal bool WorkerRuntimeStrictValidationEnabled
         {
             get
             {
-                return GetFeatureAsBooleanOrDefault(RpcWorkerConstants.ThrowOnFunctionsWorkerRuntimeMismatchWithMetadataFromPayload, false);
+                return GetFeatureAsBooleanOrDefault(RpcWorkerConstants.WorkerRuntimeStrictValidationEnabled, false);
             }
         }
 

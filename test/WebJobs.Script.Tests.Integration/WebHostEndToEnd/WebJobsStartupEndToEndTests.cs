@@ -60,6 +60,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
 
                 // The function does all the validation internally.
                 Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+                const string expectedLogEntry =
+                    "The 'FUNCTIONS_WORKER_RUNTIME' is set to 'dotnet-isolated', " +
+                    "which does not match the worker runtime metadata found in the deployed function app artifacts. " +
+                    "The deployed artifacts are for 'dotnet'. See https://aka.ms/functions-invalid-worker-runtime " +
+                    "for more information. The application will continue to run, but may throw an exception in the future.";
+                Assert.Single(fixture.Host.GetScriptHostLogMessages(), p => p.FormattedMessage != null && p.FormattedMessage.EndsWith(expectedLogEntry));
             }
             finally
             {

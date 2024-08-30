@@ -780,15 +780,16 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             if (functionMetadata != null && functionMetadata.Any() && !Utility.ContainsAnyFunctionMatchingWorkerRuntime(functionMetadata, workerRuntime))
             {
-                string baseMessage = $"The '{EnvironmentSettingNames.FunctionWorkerRuntime}' is set to '{workerRuntime}', which does not match the worker runtime metadata found in the deployed function app artifacts. See {DiagnosticEventConstants.WorkerRuntimeDoesNotMatchWithFunctionMetadataHelpLink} for more information.";
+                var languages = string.Join(", ", functionMetadata.Select(f => f.Language).Distinct()).Replace(DotNetScriptTypes.DotNetAssembly, RpcWorkerConstants.DotNetLanguageWorkerName);
+                var baseMessage = $"The '{EnvironmentSettingNames.FunctionWorkerRuntime}' is set to '{workerRuntime}', which does not match the worker runtime metadata found in the deployed function app artifacts. The deployed artifacts are for '{languages}'. See {DiagnosticEventConstants.WorkerRuntimeDoesNotMatchWithFunctionMetadataHelpLink} for more information.";
 
-                if (hostingConfigOptions.Value.ThrowOnFunctionsWorkerRuntimeMismatchWithMetadataFromPayload)
+                if (hostingConfigOptions.Value.WorkerRuntimeStrictValidationEnabled)
                 {
                     logger.LogDiagnosticEventError(DiagnosticEventConstants.WorkerRuntimeDoesNotMatchWithFunctionMetadataErrorCode, baseMessage, DiagnosticEventConstants.WorkerRuntimeDoesNotMatchWithFunctionMetadataHelpLink, null);
                     throw new HostInitializationException(baseMessage);
                 }
 
-                string warningMessage = baseMessage + " The application will continue to run, but may throw an exception in the future.";
+                var warningMessage = baseMessage + " The application will continue to run, but may throw an exception in the future.";
                 logger.LogDiagnosticEventWarning(DiagnosticEventConstants.WorkerRuntimeDoesNotMatchWithFunctionMetadataErrorCode, warningMessage, DiagnosticEventConstants.WorkerRuntimeDoesNotMatchWithFunctionMetadataHelpLink, null);
                 return false;
             }
