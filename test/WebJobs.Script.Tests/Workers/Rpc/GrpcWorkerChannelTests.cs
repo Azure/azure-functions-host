@@ -946,14 +946,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var functionMetadatas = GetTestFunctionsList("node");
             _workerChannel.SetupFunctionInvocationBuffers(functionMetadatas);
             _testFunctionRpcService.OnMessage(StreamingMessage.ContentOneofCase.FunctionLoadRequest,
-                _ => _testFunctionRpcService.PublishErrorFunctionLoadResponseEvent("TestFunctionId1"));
+                _ => _testFunctionRpcService.PublishSystemErrorFunctionLoadResponseEvent("TestFunctionId1", "abc AccountKey== "));
             _workerChannel.SendFunctionLoadRequests(null, TimeSpan.FromMinutes(5));
 
             await Task.Delay(500);
             var traces = _logger.GetLogMessages();
             ShowOutput(traces);
 
-            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "abc [Hidden Credential]")));
+            Assert.True(traces.Any(m => m.Exception != null && m.Exception.Message.Contains("abc [Hidden Credential]")));
         }
 
         [Fact]

@@ -154,7 +154,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Write(responseMessage);
         }
 
-        public void PublishErrorFunctionLoadResponseEvent(string functionId)
+        public void PublishSystemErrorFunctionLoadResponseEvent(string functionId, string exceptionMessage)
         {
             StatusResult statusResult = new StatusResult()
             {
@@ -166,20 +166,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 Result = statusResult
             };
 
-            RpcLog r = new RpcLog()
+            RpcLog rpcLog = new RpcLog()
             {
                 LogCategory = RpcLogCategory.System,
                 Level = Level.Error,
                 Exception = new RpcException()
                 {
-                    Message = "abc AccountKey=="
+                    Message = exceptionMessage
                 }
             };
 
             StreamingMessage responseMessage = new StreamingMessage()
             {
                 FunctionLoadResponse = functionLoadResponse,
-                RpcLog = r
+                RpcLog = rpcLog
             };
 
             Write(responseMessage);
