@@ -644,12 +644,12 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     throw new HostInitializationException($"Found functions with more than one language. Select a language for your function app by specifying {RpcWorkerConstants.FunctionWorkerRuntimeSettingName} AppSetting");
                 }
-            }
-            else
-            {
-                if (throwOnMismatch)
+                else
                 {
-                    throw new HostInitializationException($"Did not find functions with language [{workerRuntime}].");
+                    if (throwOnMismatch)
+                    {
+                        throw new HostInitializationException($"Did not find functions with language [{workerRuntime}].");
+                    }
                 }
             }
         }
