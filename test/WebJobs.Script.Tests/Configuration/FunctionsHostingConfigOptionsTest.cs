@@ -138,7 +138,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
                 (nameof(FunctionsHostingConfigOptions.ThrowOnMissingFunctionsWorkerRuntime), "THROW_ON_MISSING_FUNCTIONS_WORKER_RUNTIME=1", true),
                 (nameof(FunctionsHostingConfigOptions.WorkerIndexingDisabledApps), "WORKER_INDEXING_DISABLED_APPS=teststring", "teststring"),
-                (nameof(FunctionsHostingConfigOptions.WorkerIndexingEnabled), "WORKER_INDEXING_ENABLED=1", true)
+                (nameof(FunctionsHostingConfigOptions.WorkerIndexingEnabled), "WORKER_INDEXING_ENABLED=1", true),
+                (nameof(FunctionsHostingConfigOptions.ThrowOnFunctionsWorkerRuntimeMismatchWithMetadataFromPayload), "THROW_ON_FUNCTIONS_WORKER_RUNTIME_MISMATCH_WITH_PAYLOAD=1", true)
             };
 
             // use reflection to ensure that we have a test that uses every value exposed on FunctionsHostingConfigOptions
