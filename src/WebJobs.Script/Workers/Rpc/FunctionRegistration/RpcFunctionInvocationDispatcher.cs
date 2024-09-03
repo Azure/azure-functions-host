@@ -40,6 +40,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly Lazy<Task<int>> _maxProcessCount;
         private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions;
         private readonly IHostMetrics _hostMetrics;
+        private readonly TimeSpan _defaultProcessStartupInterval = TimeSpan.FromSeconds(5);
+        private readonly TimeSpan _defaultProcessRestartInterval = TimeSpan.FromSeconds(5);
+        private readonly TimeSpan _defaultProcessShutdownInterval = TimeSpan.FromSeconds(5);
 
         private IScriptEventManager _eventManager;
         private IWebHostRpcWorkerChannelManager _webHostLanguageWorkerChannelManager;
@@ -308,9 +311,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
             else
             {
-                _processStartupInterval = workerConfig.CountOptions.ProcessStartupInterval;
-                _restartWait = workerConfig.CountOptions.ProcessRestartInterval;
-                _shutdownTimeout = workerConfig.CountOptions.ProcessShutdownTimeout;
+                _processStartupInterval = workerConfig?.CountOptions?.ProcessStartupInterval ?? _defaultProcessStartupInterval;
+                _restartWait = workerConfig?.CountOptions.ProcessRestartInterval ?? _defaultProcessRestartInterval;
+                _shutdownTimeout = workerConfig?.CountOptions.ProcessShutdownTimeout ?? _defaultProcessShutdownInterval;
             }
             ErrorEventsThreshold = 3 * await _maxProcessCount.Value;
 
