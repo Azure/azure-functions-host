@@ -16,5 +16,6 @@
 - Resolved thread safety issue in the `GrpcWorkerChannel.LoadResponse` method. (#10352)
 - Worker termination path updated with sanitized logging (#10397)
 - Avoid redundant DiagnosticEvents error message (#10395)
+- Added fallback behavior to ensure in-proc payload compatibility with "dotnet-isolated" as the `FUNCTIONS_WORKER_RUNTIME` value (#10439)
 - Migrated Scale Metrics to use `Azure.Data.Tables` SDK (#10276)
   - Added support for Identity-based connections
