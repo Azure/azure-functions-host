@@ -10,12 +10,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
     internal class RpcWorkerContext : WorkerContext
     {
         public RpcWorkerContext(string requestId,
-                int maxMessageLength,
-                string workerId,
-                WorkerProcessArguments workerProcessArguments,
-                string workingDirectory,
-                Uri serverUri,
-                IDictionary<string, string> environmentVariables = null)
+            int maxMessageLength,
+            string workerId,
+            WorkerProcessArguments workerProcessArguments,
+            string workingDirectory,
+            Uri serverUri,
+            IDictionary<string, string> environmentVariables = null,
+            string palEmulated = null,
+            string palPackagePath = null,
+            string palExePath = null)
         {
             if (serverUri == null)
             {
@@ -25,8 +28,22 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             {
                 throw new InvalidOperationException($"{nameof(ServerUri.Host)} is null");
             }
+            if (palEmulated == "false")
+            {
+                if (string.IsNullOrEmpty(palPackagePath))
+                {
+                    throw new ArgumentNullException(nameof(palPackagePath));
+                }
+                if (string.IsNullOrEmpty(palExePath))
+                {
+                    throw new ArgumentNullException(nameof(palExePath));
+                }
+            }
 
-            RequestId = requestId;
+            this.PalEmulated = palEmulated;
+            this.PalPackagePath = palPackagePath;
+            this.PalExePath = palExePath;
+            this.RequestId = requestId;
             MaxMessageLength = RpcWorkerConstants.DefaultMaxMessageLengthBytes;
             WorkerId = workerId;
             Arguments = workerProcessArguments;
@@ -37,6 +54,21 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 EnvironmentVariables = environmentVariables;
             }
         }
+
+        /// <summary>
+        /// Gets or sets the if palrun emulation should be performed.
+        /// </summary>
+        public string PalEmulated { get; set; }
+
+        /// <summary>
+        /// Gets or sets SPF package path.
+        /// </summary>
+        public string PalPackagePath { get; set; }
+
+        /// <summary>
+        /// Gets or sets SPF .exe path.
+        /// </summary>
+        public string PalExePath { get; set; }
 
         public Uri ServerUri { get; set; }
 

@@ -24,6 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly string _workerDirectory;
         private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions;
         private readonly IEnvironment _environment;
+        private readonly RpcWorkerDescription _rpcWorkerDescription;
 
         internal RpcWorkerProcess(string runtime,
                                        string workerId,
@@ -51,13 +52,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _scriptRootPath = rootScriptPath;
             _workerProcessArguments = rpcWorkerConfig.Arguments;
             _workerDirectory = rpcWorkerConfig.Description.WorkerDirectory;
+            _rpcWorkerDescription = rpcWorkerConfig.Description;
             _hostingConfigOptions = hostingConfigOptions;
             _environment = environment;
         }
 
         internal override Process CreateWorkerProcess()
         {
-            var workerContext = new RpcWorkerContext(Guid.NewGuid().ToString(), RpcWorkerConstants.DefaultMaxMessageLengthBytes, _workerId, _workerProcessArguments, _scriptRootPath, _serverUri);
+            var workerContext = new RpcWorkerContext(Guid.NewGuid().ToString(), RpcWorkerConstants.DefaultMaxMessageLengthBytes, _workerId, _workerProcessArguments, _scriptRootPath, _serverUri, null, _rpcWorkerDescription.PalEmulated, _rpcWorkerDescription.PalPackagePath, _rpcWorkerDescription.PalExePath);
             workerContext.EnvironmentVariables.Add(WorkerConstants.FunctionsWorkerDirectorySettingName, _workerDirectory);
             workerContext.EnvironmentVariables.Add(WorkerConstants.FunctionsApplicationDirectorySettingName, _scriptRootPath);
             workerContext.EnvironmentVariables.Add(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName));
