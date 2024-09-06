@@ -1069,8 +1069,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             response = await client.GetAsync("api/HttpRequestDataFunction");
             response.EnsureSuccessStatusCode();
 
-            var placeholderLogger = perScriptHostLoggers.Where(p => p.IsPlaceholderMode).Single().Logger;
-            var userLogger = perScriptHostLoggers.Where(p => !p.IsPlaceholderMode).Single().Logger;
+            var placeholderLogger = perScriptHostLoggers.Single(p => p.IsPlaceholderMode).Logger;
+            var userLogger = perScriptHostLoggers.Single(p => !p.IsPlaceholderMode).Logger;
 
             Assert.DoesNotContain("Host.Function.Console", placeholderLogger.GetAllLogMessages().Select(p => p.Category));
             Assert.DoesNotContain("Console Out from worker on startup.", placeholderLogger.GetAllLogMessages().Select(p => p.FormattedMessage));
