@@ -11,7 +11,7 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public static class ScriptJobHostExtensions
     {
-        internal const string WarmupFunctionName = "Warmup";
+        private const string WarmupFunctionName = "Warmup";
         private const string WarmupTriggerName = "WarmupTrigger";
 
         /// <summary>
