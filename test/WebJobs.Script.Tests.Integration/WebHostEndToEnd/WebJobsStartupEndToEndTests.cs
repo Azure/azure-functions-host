@@ -66,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
                     "which does not match the worker runtime metadata found in the deployed function app artifacts. " +
                     "The deployed artifacts are for 'dotnet'. See https://aka.ms/functions-invalid-worker-runtime " +
                     "for more information. The application will continue to run, but may throw an exception in the future.";
-                Assert.Single(fixture.Host.GetScriptHostLogMessages(), p => p.FormattedMessage != null && p.FormattedMessage.EndsWith(expectedLogEntry));
+                Assert.Single(fixture.Host.GetScriptHostLogMessages().Where(a => a.Level == Microsoft.Extensions.Logging.LogLevel.Warning), p => p.FormattedMessage != null && p.FormattedMessage.EndsWith(expectedLogEntry));
             }
             finally
             {
