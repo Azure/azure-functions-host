@@ -79,6 +79,37 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             host.Dispose();
         }
 
+
+        [Fact]
+        public async Task StandbyModeE2E_DotnetIsolated_WarmupSucceeds()
+        {
+            _settings.Add(EnvironmentSettingNames.AzureWebsiteInstanceId, Guid.NewGuid().ToString());
+
+            var environment = new TestEnvironment(_settings);
+            environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.DotNetIsolatedLanguageWorkerName);
+
+            await InitializeTestHostAsync("Windows", environment);
+
+            await VerifyWarmupSucceeds();
+
+            await TestHelpers.Await(() =>
+            {
+                // wait for the trace indicating that the host has started in placeholder mode.
+                var logs = _loggerProvider.GetAllLogMessages().Where(p => p.FormattedMessage != null).Select(p => p.FormattedMessage).ToArray();
+                return logs.Contains("Job host started") && logs.Contains("Host state changed from Initialized to Running.");
+            }, userMessageCallback: () => string.Join(Environment.NewLine, _loggerProvider.GetAllLogMessages().Select(p => $"[{p.Timestamp.ToString("HH:mm:ss.fff")}] {p.FormattedMessage}")));
+
+            var logLines = _loggerProvider.GetAllLogMessages().Where(p => p.FormattedMessage != null).Select(p => p.FormattedMessage).ToArray();
+
+            Assert.Single(logLines.Where(l => l.EndsWith("[FunctionsNetHost] Starting FunctionsNetHost")));
+            Assert.Equal(1, logLines.Count(p => p.Contains("Creating StandbyMode placeholder function directory")));
+            Assert.Equal(1, logLines.Count(p => p.Contains("StandbyMode placeholder function directory created")));
+            Assert.Equal(1, logLines.Count(p => p.Contains("Host is in standby mode")));
+
+            // Worker runtime mismatch validation should not consider "Warmup" functions which are added in placeholder mode and have "CSharp" as language.
+            Assert.Equal(0, logLines.Count(p => p.Contains("The 'FUNCTIONS_WORKER_RUNTIME' is set to 'dotnet-isolated', which does not match the worker runtime metadata found in the deployed function app artifacts. The deployed artifacts are for 'CSharp'")));
+        }
+
         [Theory]
         [InlineData(true)]
         [InlineData(false)]
