@@ -776,19 +776,11 @@ namespace Microsoft.Azure.WebJobs.Script
         // Ensure customer deployed application payload matches with the worker runtime configured for the function app and log a warning if not.
         // If a customer has "dotnet-isolated" worker runtime configured for the function app, and then they deploy an in-proc app payload, this will warn/error
         // If there is a mismatch, the method will return false, else true.
-        private bool ValidateAndLogRuntimeMismatch(IEnumerable<FunctionMetadata> functionMetadata, string workerRuntime, IOptions<FunctionsHostingConfigOptions> hostingConfigOptions, ILogger logger)
+        private static bool ValidateAndLogRuntimeMismatch(IEnumerable<FunctionMetadata> functionMetadata, string workerRuntime, IOptions<FunctionsHostingConfigOptions> hostingConfigOptions, ILogger logger)
         {
-            IEnumerable<FunctionMetadata> functionMetadataToCheck = functionMetadata ?? Enumerable.Empty<FunctionMetadata>();
-
-            // Placeholder mode will add "WarmUp" function of type CSharp. we should ignore this function for validating the metadata matching with worker runtime.
-            if (_environment.IsPlaceholderModeEnabled())
+            if (functionMetadata != null && functionMetadata.Any() && !Utility.ContainsAnyFunctionMatchingWorkerRuntime(functionMetadata, workerRuntime))
             {
-                functionMetadataToCheck = functionMetadataToCheck.Where(f => !f.Name.Equals(ScriptJobHostExtensions.WarmupFunctionName, StringComparison.OrdinalIgnoreCase));
-            }
-
-            if (functionMetadataToCheck.Any() && !Utility.ContainsAnyFunctionMatchingWorkerRuntime(functionMetadataToCheck, workerRuntime))
-            {
-                var languages = string.Join(", ", functionMetadataToCheck.Select(f => f.Language).Distinct()).Replace(DotNetScriptTypes.DotNetAssembly, RpcWorkerConstants.DotNetLanguageWorkerName);
+                var languages = string.Join(", ", functionMetadata.Select(f => f.Language).Distinct()).Replace(DotNetScriptTypes.DotNetAssembly, RpcWorkerConstants.DotNetLanguageWorkerName);
                 var baseMessage = $"The '{EnvironmentSettingNames.FunctionWorkerRuntime}' is set to '{workerRuntime}', which does not match the worker runtime metadata found in the deployed function app artifacts. The deployed artifacts are for '{languages}'. See {DiagnosticEventConstants.WorkerRuntimeDoesNotMatchWithFunctionMetadataHelpLink} for more information.";
 
                 if (hostingConfigOptions.Value.WorkerRuntimeStrictValidationEnabled)
@@ -812,7 +804,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 bool throwOnWorkerRuntimeAndPayloadMetadataMismatch = true;
                 // this dotnet isolated specific logic is temporary to ensure in-proc payload compatibility with "dotnet-isolated" as the FUNCTIONS_WORKER_RUNTIME value.
-                if (string.Equals(workerRuntime, RpcWorkerConstants.DotNetIsolatedLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(workerRuntime, RpcWorkerConstants.DotNetIsolatedLanguageWorkerName, StringComparison.OrdinalIgnoreCase) && !_environment.IsPlaceholderModeEnabled())
                 {
                     bool payloadMatchesWorkerRuntime = ValidateAndLogRuntimeMismatch(functions, workerRuntime, _hostingConfigOptions, _logger);
                     if (!payloadMatchesWorkerRuntime)

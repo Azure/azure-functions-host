@@ -106,7 +106,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(1, logLines.Count(p => p.Contains("StandbyMode placeholder function directory created")));
             Assert.Equal(1, logLines.Count(p => p.Contains("Host is in standby mode")));
 
-            // Worker runtime mismatch validation should not consider "Warmup" functions which are added in placeholder mode and have "CSharp" as language.
+            // Validating Functions worker runtime with function metadata does not happen in placeholder mode.
             Assert.Equal(0, logLines.Count(p => p.Contains("The 'FUNCTIONS_WORKER_RUNTIME' is set to 'dotnet-isolated', which does not match the worker runtime metadata found in the deployed function app artifacts. The deployed artifacts are for 'CSharp'")));
         }
 

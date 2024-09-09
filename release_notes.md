@@ -9,4 +9,4 @@
   - Includes fixes from 2.16.0
 - Migrated Scale Metrics to use `Azure.Data.Tables` SDK (#10276)
   - Added support for Identity-based connections
-- Excluding WarmUp function during placeholder mode when validating `FUNCTIONS_WORKER_RUNTIME` with funciton metadata. (#10459)
+- Skip validation of `FUNCTIONS_WORKER_RUNTIME` with funciton metadata in placeholder mode. (#10459)
