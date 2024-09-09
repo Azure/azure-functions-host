@@ -9,6 +9,7 @@ using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Hosting;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
@@ -38,12 +39,11 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
         private readonly IMetricsLogger _metricsLogger;
         private readonly Lazy<IEnumerable<Type>> _startupTypes;
         private readonly IOptionsMonitor<LanguageWorkerOptions> _languageWorkerOptions;
-
-        private static readonly ExtensionRequirementsInfo _extensionRequirements = DependencyHelper.GetExtensionRequirements();
+        private readonly ExtensionRequirementOptions _extensionRequirementOptions;
         private static string[] _builtinExtensionAssemblies = GetBuiltinExtensionAssemblies();
 
         public ScriptStartupTypeLocator(string rootScriptPath, ILogger<ScriptStartupTypeLocator> logger, IExtensionBundleManager extensionBundleManager,
-            IFunctionMetadataManager functionMetadataManager, IMetricsLogger metricsLogger, IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions)
+            IFunctionMetadataManager functionMetadataManager, IMetricsLogger metricsLogger, IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions, ExtensionRequirementOptions extensionRequirementOptions = null)
         {
             _rootScriptPath = rootScriptPath ?? throw new ArgumentNullException(nameof(rootScriptPath));
             _extensionBundleManager = extensionBundleManager ?? throw new ArgumentNullException(nameof(extensionBundleManager));
@@ -52,6 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
             _metricsLogger = metricsLogger;
             _startupTypes = new Lazy<IEnumerable<Type>>(() => GetExtensionsStartupTypesAsync().ConfigureAwait(false).GetAwaiter().GetResult());
             _languageWorkerOptions = languageWorkerOptions;
+            _extensionRequirementOptions = extensionRequirementOptions;
         }
 
         private static string[] GetBuiltinExtensionAssemblies()
@@ -84,11 +85,12 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
 
             // dotnet app precompiled -> Do not use bundles
             var workerConfigs = _languageWorkerOptions.CurrentValue.WorkerConfigs;
+            ExtensionRequirementsInfo extensionRequirements = GetExtensionRequirementsInfo();
             ImmutableArray<FunctionMetadata> functionMetadataCollection = ImmutableArray<FunctionMetadata>.Empty;
             if (bundleConfigured)
             {
                 ExtensionBundleDetails bundleDetails = await _extensionBundleManager.GetExtensionBundleDetails();
-                ValidateBundleRequirements(bundleDetails);
+                ValidateBundleRequirements(bundleDetails, extensionRequirements);
 
                 functionMetadataCollection = _functionMetadataManager.GetFunctionMetadata(forceRefresh: true, includeCustomProviders: false, workerConfigs: workerConfigs);
                 bindingsSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -218,7 +220,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
                 }
             }
 
-            ValidateExtensionRequirements(startupTypes);
+            ValidateExtensionRequirements(startupTypes, extensionRequirements);
 
             return startupTypes;
         }
@@ -254,9 +256,10 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
             }
         }
 
-        private void ValidateBundleRequirements(ExtensionBundleDetails bundleDetails)
+        private void ValidateBundleRequirements(ExtensionBundleDetails bundleDetails, ExtensionRequirementsInfo requirementsInfo)
         {
-            if (_extensionRequirements.BundleRequirementsByBundleId.TryGetValue(bundleDetails.Id, out BundleRequirement requirement))
+            if (requirementsInfo.BundleRequirementsByBundleId != null
+                && requirementsInfo.BundleRequirementsByBundleId.TryGetValue(bundleDetails.Id, out BundleRequirement requirement))
             {
                 var bundleVersion = new Version(bundleDetails.Version);
                 var minimumVersion = new Version(requirement.MinimumVersion);
@@ -269,8 +272,12 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
             }
         }
 
-        private void ValidateExtensionRequirements(List<Type> startupTypes)
+        private void ValidateExtensionRequirements(List<Type> startupTypes, ExtensionRequirementsInfo requirementsInfo)
         {
+            if (requirementsInfo.ExtensionRequirementsByStartupType == null)
+            {
+                return;
+            }
             var errors = new List<string>();
 
             void CollectError(Type extensionType, Version minimumVersion, ExtensionStartupTypeRequirement requirement)
@@ -282,7 +289,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
 
             foreach (var extensionType in startupTypes)
             {
-                if (_extensionRequirements.ExtensionRequirementsByStartupType.TryGetValue(extensionType.Name, out ExtensionStartupTypeRequirement requirement))
+                if (requirementsInfo.ExtensionRequirementsByStartupType.TryGetValue(extensionType.Name, out ExtensionStartupTypeRequirement requirement))
                 {
                     Version minimumAssemblyVersion = new Version(requirement.MinimumAssemblyVersion);
 
@@ -340,6 +347,14 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
         {
             string workerRuntime = Utility.GetWorkerRuntime(functions, environment);
             return workerRuntime?.Equals(RpcWorkerConstants.DotNetIsolatedLanguageWorkerName, StringComparison.OrdinalIgnoreCase) ?? false;
+        }
+
+        private ExtensionRequirementsInfo GetExtensionRequirementsInfo()
+        {
+            ExtensionRequirementsInfo requirementsInfo = _extensionRequirementOptions?.Bundles != null || _extensionRequirementOptions?.Extensions != null
+                ? new ExtensionRequirementsInfo(_extensionRequirementOptions.Bundles, _extensionRequirementOptions.Extensions)
+                : DependencyHelper.GetExtensionRequirements();
+            return requirementsInfo;
         }
 
         private class TypeNameEqualityComparer : IEqualityComparer<Type>

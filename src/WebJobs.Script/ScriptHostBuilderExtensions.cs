@@ -110,6 +110,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
                 // Adding hosting config into job host configuration
                 configBuilder.Add(new FunctionsHostingConfigSource(SystemEnvironment.Instance));
+                configBuilder.Add(new FunctionsHostingEnvironmentConfigSource(SystemEnvironment.Instance));
                 IConfiguration scriptHostConfiguration = applicationOptions.RootServiceProvider.GetService<IConfiguration>();
                 if (scriptHostConfiguration != null)
                 {
@@ -130,11 +131,15 @@ namespace Microsoft.Azure.WebJobs.Script
                 var optionsSetup = new FunctionsHostingConfigOptionsSetup(config);
                 optionsSetup.Configure(configOption);
 
+                ExtensionRequirementOptions extensionRequirementOptions = new ExtensionRequirementOptions();
+                var extensionRequirementOptionsSetup = new ExtensionRequirementOptionsSetup(config);
+                extensionRequirementOptionsSetup.Configure(extensionRequirementOptions);
+
                 var bundleManager = new ExtensionBundleManager(extensionBundleOptions, SystemEnvironment.Instance, loggerFactory, configOption);
                 var metadataServiceManager = applicationOptions.RootServiceProvider.GetService<IFunctionMetadataManager>();
                 var languageWorkerOptions = applicationOptions.RootServiceProvider.GetService<IOptionsMonitor<LanguageWorkerOptions>>();
 
-                var locator = new ScriptStartupTypeLocator(applicationOptions.ScriptPath, loggerFactory.CreateLogger<ScriptStartupTypeLocator>(), bundleManager, metadataServiceManager, metricsLogger, languageWorkerOptions);
+                var locator = new ScriptStartupTypeLocator(applicationOptions.ScriptPath, loggerFactory.CreateLogger<ScriptStartupTypeLocator>(), bundleManager, metadataServiceManager, metricsLogger, languageWorkerOptions, extensionRequirementOptions);
 
                 // The locator (and thus the bundle manager) need to be created now in order to configure app configuration.
                 // Store them so they do not need to be re-created later when configuring services.

@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <Import Project="..\..\build\common.props" />
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
@@ -77,6 +77,16 @@
     <None Update="Description\DotNet\TestFiles\**" CopyToOutputDirectory="PreserveNewest" />
     <None Update="Microsoft.Azure.WebJobs.Script.WebHost.deps.json" CopyToOutputDirectory="PreserveNewest" />
     <None Update="TestFixture\HostOptionsProviderTests\*.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="TestFixture\ExtensionRequirementOptionsTest\EmptyFile.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="TestFixture\ExtensionRequirementOptionsTest\FunctionsHostingEnvironmentConfig_extensionsOnly.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="TestFixture\ExtensionRequirementOptionsTest\FunctionsHostingEnvironmentConfig_bundlesOnly.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="TestFixture\ExtensionRequirementOptionsTest\FunctionsHostingEnvironmentConfig.json" CopyToOutputDirectory="PreserveNewest" />
     <None Update="Workers\Rpc\Resources\**" CopyToOutputDirectory="PreserveNewest" />
     <None Update="TestWorkers\**" CopyToOutputDirectory="PreserveNewest" />
     <None Update="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />

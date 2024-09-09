@@ -1,0 +1,10 @@
+﻿{
+  "extensionRequirements": {
+    "bundles": [
+      {
+        "id": "Microsoft.Azure.Functions.ExtensionBundle",
+        "minimumVersion": "4.12.0"
+      }
+    ]
+  }
+}

@@ -12,10 +12,10 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionRequirements
         public ExtensionRequirementsInfo(IEnumerable<BundleRequirement> bundleRequirements, IEnumerable<ExtensionStartupTypeRequirement> extensionRequirements)
         {
             BundleRequirementsByBundleId = bundleRequirements
-                .ToDictionary(a => a.Id, StringComparer.OrdinalIgnoreCase);
+                ?.ToDictionary(a => a.Id, StringComparer.OrdinalIgnoreCase);
 
             ExtensionRequirementsByStartupType = extensionRequirements
-                .ToDictionary(a => a.Name, StringComparer.OrdinalIgnoreCase);
+                ?.ToDictionary(a => a.Name, StringComparer.OrdinalIgnoreCase);
         }
 
         public Dictionary<string, BundleRequirement> BundleRequirementsByBundleId { get; private set; }
