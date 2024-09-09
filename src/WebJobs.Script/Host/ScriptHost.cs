@@ -776,8 +776,13 @@ namespace Microsoft.Azure.WebJobs.Script
         // Ensure customer deployed application payload matches with the worker runtime configured for the function app and log a warning if not.
         // If a customer has "dotnet-isolated" worker runtime configured for the function app, and then they deploy an in-proc app payload, this will warn/error
         // If there is a mismatch, the method will return false, else true.
-        private static bool ValidateAndLogRuntimeMismatch(IEnumerable<FunctionMetadata> functionMetadata, string workerRuntime, IOptions<FunctionsHostingConfigOptions> hostingConfigOptions, ILogger logger)
+        private bool ValidateAndLogRuntimeMismatch(IEnumerable<FunctionMetadata> functionMetadata, string workerRuntime, IOptions<FunctionsHostingConfigOptions> hostingConfigOptions, ILogger logger)
         {
+            if (_environment.IsPlaceholderModeEnabled())
+            {
+                throw new InvalidOperationException($"Validation of '{EnvironmentSettingNames.FunctionWorkerRuntime}' with deployed payload metadata should not occur in placeholder mode.");
+            }
+
             if (functionMetadata != null && functionMetadata.Any() && !Utility.ContainsAnyFunctionMatchingWorkerRuntime(functionMetadata, workerRuntime))
             {
                 var languages = string.Join(", ", functionMetadata.Select(f => f.Language).Distinct()).Replace(DotNetScriptTypes.DotNetAssembly, RpcWorkerConstants.DotNetLanguageWorkerName);
@@ -804,7 +809,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 bool throwOnWorkerRuntimeAndPayloadMetadataMismatch = true;
                 // this dotnet isolated specific logic is temporary to ensure in-proc payload compatibility with "dotnet-isolated" as the FUNCTIONS_WORKER_RUNTIME value.
-                if (string.Equals(workerRuntime, RpcWorkerConstants.DotNetIsolatedLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(workerRuntime, RpcWorkerConstants.DotNetIsolatedLanguageWorkerName, StringComparison.OrdinalIgnoreCase) && !_environment.IsPlaceholderModeEnabled())
                 {
                     bool payloadMatchesWorkerRuntime = ValidateAndLogRuntimeMismatch(functions, workerRuntime, _hostingConfigOptions, _logger);
                     if (!payloadMatchesWorkerRuntime)
