@@ -27,6 +27,7 @@ using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -1062,6 +1063,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var response = await client.GetAsync("api/warmup");
             response.EnsureSuccessStatusCode();
 
+            var webChannelManager = testServer.Services.GetService<IWebHostRpcWorkerChannelManager>();
+            var placeholderChannel = await webChannelManager.GetChannels("dotnet-isolated").Single().Value.Task;
+            var process = placeholderChannel.WorkerProcess as WorkerProcess;
+            process.BuildAndLogConsoleLog("Fake console out from placeholder", LogLevel.Information);
+
             _environment.SetEnvironmentVariable("AzureWebJobsStorage", storageValue);
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
@@ -1072,11 +1078,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var placeholderLogger = perScriptHostLoggers.Single(p => p.IsPlaceholderMode).Logger;
             var userLogger = perScriptHostLoggers.Single(p => !p.IsPlaceholderMode).Logger;
 
-            Assert.DoesNotContain("Host.Function.Console", placeholderLogger.GetAllLogMessages().Select(p => p.Category));
-            Assert.DoesNotContain("Console Out from worker on startup.", placeholderLogger.GetAllLogMessages().Select(p => p.FormattedMessage));
+            string logs = placeholderLogger.GetLog();
 
-            Assert.Contains("Host.Function.Console", userLogger.GetAllLogMessages().Select(p => p.Category));
-            Assert.Contains("Console Out from worker on startup.", userLogger.GetAllLogMessages().Select(p => p.FormattedMessage));
+            Assert.Null(placeholderLogger.GetAllLogMessages().SingleOrDefault(p => p.Category == "Host.Function.Console"));
+            var placeholderMessages = placeholderLogger.GetAllLogMessages().Select(p => p.FormattedMessage);
+            Assert.DoesNotContain("Console Out from worker on startup.", placeholderMessages);
+            Assert.DoesNotContain("Fake console out from placeholder", placeholderMessages); // placeholder 'user' console logs should never be logged
+
+            Assert.Single(userLogger.GetAllLogMessages().Select(p => p.Category), "Host.Function.Console");
+            var userMessages = userLogger.GetAllLogMessages().Select(p => p.FormattedMessage);
+            Assert.Contains("Console Out from worker on startup.", userMessages);
+            Assert.DoesNotContain("Fake console out from placeholder", userMessages); // this log should be 'lost' and never written
         }
 
         private async Task DotNetIsolatedPlaceholderMiss(string scriptRootPath, Action additionalSpecializedSetup = null)

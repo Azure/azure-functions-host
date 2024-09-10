@@ -14,6 +14,7 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Mono.Unix;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers
@@ -30,13 +31,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         private readonly IDisposable _eventSubscription;
         private readonly Lazy<ILogger> _toolingConsoleJsonLoggerLazy;
         private readonly IEnvironment _environment;
+        private readonly IOptionsMonitor<ScriptApplicationHostOptions> _scriptApplicationHostOptions;
 
         private bool _useStdErrorStreamForErrorsOnly;
         private Queue<string> _processStdErrDataQueue = new Queue<string>(3);
         private IHostProcessMonitor _processMonitor;
         private object _syncLock = new object();
 
-        internal WorkerProcess(IScriptEventManager eventManager, IProcessRegistry processRegistry, ILogger workerProcessLogger, IWorkerConsoleLogSource consoleLogSource, IMetricsLogger metricsLogger, IServiceProvider serviceProvider, ILoggerFactory loggerFactory, IEnvironment environment, bool useStdErrStreamForErrorsOnly = false)
+        internal WorkerProcess(IScriptEventManager eventManager, IProcessRegistry processRegistry, ILogger workerProcessLogger, IWorkerConsoleLogSource consoleLogSource, IMetricsLogger metricsLogger,
+            IServiceProvider serviceProvider, ILoggerFactory loggerFactory, IEnvironment environment, IOptionsMonitor<ScriptApplicationHostOptions> scriptApplicationHostOptions, bool useStdErrStreamForErrorsOnly = false)
         {
             _processRegistry = processRegistry;
             _workerProcessLogger = workerProcessLogger;
@@ -46,6 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             _useStdErrorStreamForErrorsOnly = useStdErrStreamForErrorsOnly;
             _serviceProvider = serviceProvider;
             _environment = environment;
+            _scriptApplicationHostOptions = scriptApplicationHostOptions;
             _toolingConsoleJsonLoggerLazy = new Lazy<ILogger>(() => loggerFactory.CreateLogger(WorkerConstants.ToolingConsoleLogCategoryName), isThreadSafe: true);
 
             // We subscribe to host start events so we can handle the restart that occurs
@@ -218,7 +222,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             }
             else
             {
-                _consoleLogSource?.Log(consoleLog);
+                // These are 'user' console logs and should be forwarded to the ScriptHost, unless
+                // we're in placeholder mode. In that case, we ignore the logs so they are not captured
+                // by the specialized host when it starts.
+                if (!_scriptApplicationHostOptions.CurrentValue.IsStandbyConfiguration)
+                {
+                    _consoleLogSource?.Log(consoleLog);
+                }
             }
         }
 
