@@ -79,6 +79,38 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             host.Dispose();
         }
 
+
+        [Fact]
+        public async Task StandbyModeE2E_DotnetIsolated_WarmupSucceeds()
+        {
+            _settings.Add(EnvironmentSettingNames.AzureWebsiteInstanceId, Guid.NewGuid().ToString());
+
+            var environment = new TestEnvironment(_settings);
+            environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.DotNetIsolatedLanguageWorkerName);
+
+            await InitializeTestHostAsync("Windows", environment);
+
+            await VerifyWarmupSucceeds();
+
+            await TestHelpers.Await(() =>
+            {
+                // wait for the trace indicating that the host has started in placeholder mode.
+                var logs = _loggerProvider.GetAllLogMessages().Where(p => p.FormattedMessage != null).Select(p => p.FormattedMessage).ToArray();
+                return logs.Contains("Job host started") && logs.Contains("Host state changed from Initialized to Running.");
+            }, userMessageCallback: () => string.Join(Environment.NewLine, _loggerProvider.GetAllLogMessages().Select(p => $"[{p.Timestamp.ToString("HH:mm:ss.fff")}] {p.FormattedMessage}")));
+
+            var logLines = _loggerProvider.GetAllLogMessages().Where(p => p.FormattedMessage != null).Select(p => p.FormattedMessage).ToArray();
+
+            Assert.Single(logLines.Where(l => l.EndsWith("[FunctionsNetHost] Starting FunctionsNetHost")));
+            Assert.Equal(1, logLines.Count(p => p.Contains("Creating StandbyMode placeholder function directory")));
+            Assert.Equal(1, logLines.Count(p => p.Contains("StandbyMode placeholder function directory created")));
+            Assert.Equal(1, logLines.Count(p => p.Contains("Host is in standby mode")));
+
+            // Ensure no warning logs are present.
+            var warningLogEntries = _loggerProvider.GetAllLogMessages().Where(a => a.Level == Microsoft.Extensions.Logging.LogLevel.Warning);
+            Assert.True(!warningLogEntries.Any(), $"Warnings found in logs: {string.Join(Environment.NewLine, warningLogEntries.Select(e => e.FormattedMessage))}");
+        }
+
         [Theory]
         [InlineData(true)]
         [InlineData(false)]

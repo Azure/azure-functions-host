@@ -183,6 +183,14 @@ namespace Microsoft.Azure.WebJobs.Script.Config
             }
         }
 
+        internal bool WorkerRuntimeStrictValidationEnabled
+        {
+            get
+            {
+                return GetFeatureAsBooleanOrDefault(RpcWorkerConstants.WorkerRuntimeStrictValidationEnabled, false);
+            }
+        }
+
         /// <summary>
         /// Gets feature by name.
         /// </summary>
