@@ -21,12 +21,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly IMetricsLogger _metricsLogger;
         private readonly IWorkerProfileManager _workerProfileManager;
         private readonly IServiceProvider _serviceProvider;
+        private readonly IScriptHostManager _scriptHostManager;
 
         public LanguageWorkerOptionsSetup(IConfiguration configuration,
                                           ILoggerFactory loggerFactory,
                                           IEnvironment environment,
                                           IMetricsLogger metricsLogger,
-                                          IWorkerProfileManager workerProfileManager
+                                          IWorkerProfileManager workerProfileManager,
+                                          IScriptHostManager scriptHostManager
             //,  IServiceProvider serviceProvider
             )
         {
@@ -35,7 +37,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 throw new ArgumentNullException(nameof(loggerFactory));
             }
 
-           // _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+            _scriptHostManager = scriptHostManager ?? throw new ArgumentNullException(nameof(scriptHostManager));
+            // _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _metricsLogger = metricsLogger ?? throw new ArgumentNullException(nameof(metricsLogger));
@@ -60,6 +63,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             //            var latestConfiguration = _serviceProvider.GetRequiredService<IConfiguration>();
 
+            if (_scriptHostManager is IServiceProvider scriptHostManagerServiceProvider)
+            {
+                var config = scriptHostManagerServiceProvider.GetService<IConfiguration>();
+                if (config is not null)
+                {
+                    // to do: rebuild by merging this config and other IConfiguration instance.
+                }
+            }
             var configFactory = new RpcWorkerConfigFactory(_configuration, _logger, SystemRuntimeInformation.Instance, _environment, _metricsLogger, _workerProfileManager);
             options.WorkerConfigs = configFactory.GetConfigs();
         }
