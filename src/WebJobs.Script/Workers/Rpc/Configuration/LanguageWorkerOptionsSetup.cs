@@ -7,6 +7,7 @@ using System.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -19,18 +20,22 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly IEnvironment _environment;
         private readonly IMetricsLogger _metricsLogger;
         private readonly IWorkerProfileManager _workerProfileManager;
+        private readonly IServiceProvider _serviceProvider;
 
         public LanguageWorkerOptionsSetup(IConfiguration configuration,
                                           ILoggerFactory loggerFactory,
                                           IEnvironment environment,
                                           IMetricsLogger metricsLogger,
-                                          IWorkerProfileManager workerProfileManager)
+                                          IWorkerProfileManager workerProfileManager
+            //,  IServiceProvider serviceProvider
+            )
         {
             if (loggerFactory is null)
             {
                 throw new ArgumentNullException(nameof(loggerFactory));
             }
 
+           // _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _metricsLogger = metricsLogger ?? throw new ArgumentNullException(nameof(metricsLogger));
@@ -52,6 +57,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 options.WorkerConfigs = new List<RpcWorkerConfig>();
                 return;
             }
+
+            //            var latestConfiguration = _serviceProvider.GetRequiredService<IConfiguration>();
 
             var configFactory = new RpcWorkerConfigFactory(_configuration, _logger, SystemRuntimeInformation.Instance, _environment, _metricsLogger, _workerProfileManager);
             options.WorkerConfigs = configFactory.GetConfigs();

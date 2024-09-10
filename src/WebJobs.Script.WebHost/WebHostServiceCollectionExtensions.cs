@@ -207,7 +207,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // will reset the ScriptApplicationHostOptions only after StandbyOptions have been reset.
             services.ConfigureOptions<ScriptApplicationHostOptionsSetup>();
             services.AddSingleton<IOptionsChangeTokenSource<ScriptApplicationHostOptions>, ScriptApplicationHostOptionsChangeTokenSource>();
-
             services.ConfigureOptions<StandbyOptionsSetup>();
             services.ConfigureOptionsWithChangeTokenSource<LanguageWorkerOptions, LanguageWorkerOptionsSetup, SpecializationChangeTokenSource<LanguageWorkerOptions>>();
             services.ConfigureOptionsWithChangeTokenSource<AppServiceOptions, AppServiceOptionsSetup, SpecializationChangeTokenSource<AppServiceOptions>>();
@@ -215,6 +214,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.ConfigureOptions<FlexConsumptionMetricsPublisherOptionsSetup>();
             services.ConfigureOptions<ConsoleLoggingOptionsSetup>();
             services.AddHostingConfigOptions(configuration);
+
+            // Refresh LanguageWorkerOptions when HostBuiltChangeTokenSource is triggered.
+            services.AddSingleton<HostBuiltChangeTokenSource<LanguageWorkerOptions>>();
+            services.AddSingleton<IOptionsChangeTokenSource<LanguageWorkerOptions>>(s => s.GetRequiredService<HostBuiltChangeTokenSource<LanguageWorkerOptions>>());
 
             services.TryAddSingleton<IDependencyValidator, DependencyValidator>();
             services.TryAddSingleton<IJobHostMiddlewarePipeline>(s => DefaultMiddlewarePipeline.Empty);
