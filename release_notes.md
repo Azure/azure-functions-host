@@ -9,5 +9,6 @@
   - Includes fixes from 2.16.0
 - Migrated Scale Metrics to use `Azure.Data.Tables` SDK (#10276)
   - Added support for Identity-based connections
-- Skip validation of `FUNCTIONS_WORKER_RUNTIME` with funciton metadata in placeholder mode. (#10459)
+- Skip validation of `FUNCTIONS_WORKER_RUNTIME` with function metadata in placeholder mode. (#10459)
 - Sanitize exception logs (#10443)
+- Improving console log handling during specialization (#10345)
