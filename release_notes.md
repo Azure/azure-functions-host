@@ -19,3 +19,4 @@
 - Added fallback behavior to ensure in-proc payload compatibility with "dotnet-isolated" as the `FUNCTIONS_WORKER_RUNTIME` value (#10439)
 - Migrated Scale Metrics to use `Azure.Data.Tables` SDK (#10276)
   - Added support for Identity-based connections
+- Update Node.js Worker Version to [3.10.1](https://github.com/Azure/azure-functions-nodejs-worker/releases/tag/v3.10.1)
