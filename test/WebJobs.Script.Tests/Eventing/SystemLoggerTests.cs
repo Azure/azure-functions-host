@@ -111,7 +111,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             string eventName = string.Empty;
             string details = string.Empty;
-            string message = "TestMessage";
+            string message = "TestMessage Accountkey== abc";
             string functionInvocationId = Guid.NewGuid().ToString();
             string activityId = Guid.NewGuid().ToString();
             var scopeState = new Dictionary<string, object>
@@ -119,7 +119,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 [ScriptConstants.LogPropertyFunctionInvocationIdKey] = functionInvocationId
             };
 
-            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(LogLevel.Debug, _subscriptionId, _websiteName, _functionName, eventName, _category, details, message, string.Empty, string.Empty, functionInvocationId, _hostInstanceId, activityId, _runtimeSiteName, _slotName, It.IsAny<DateTime>()));
+            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(LogLevel.Debug, _subscriptionId, _websiteName, _functionName, eventName, _category, details, message, typeof(FunctionInvocationException).ToString(), "123 AccountKey= ", functionInvocationId, _hostInstanceId, activityId, _runtimeSiteName, _slotName, It.IsAny<DateTime>()));
 
             var logData = new Dictionary<string, object>
             {
@@ -138,13 +138,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void Log_Error_EmitsExpectedEvent()
         {
             string eventName = string.Empty;
-            string message = "TestMessage";
+            string message = "TestMessage AccountKey== ";
             string functionInvocationId = string.Empty;
             string activityId = string.Empty;
 
-            Exception ex = new Exception("Kaboom");
+            Exception ex = new FunctionInvocationException("Kaboom AccountKey== ", new InvalidOperationException("abc AccountKey== "));
 
-            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(LogLevel.Error, _subscriptionId, _websiteName, _functionName, eventName, _category, ex.ToFormattedString(), message, ex.GetType().ToString(), ex.Message, functionInvocationId, _hostInstanceId, activityId, _runtimeSiteName, _slotName, It.IsAny<DateTime>()));
+            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(LogLevel.Error, _subscriptionId, _websiteName, _functionName, eventName, _category, Sanitizer.Sanitize(ex.ToFormattedString()), Sanitizer.Sanitize(message), ex.InnerException.GetType().ToString(), Sanitizer.Sanitize(ex.InnerException.Message), functionInvocationId, _hostInstanceId, activityId, _runtimeSiteName, _slotName, It.IsAny<DateTime>()));
 
             _logger.LogError(ex, message);
 
