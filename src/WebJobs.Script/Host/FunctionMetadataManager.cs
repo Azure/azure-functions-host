@@ -186,6 +186,12 @@ namespace Microsoft.Azure.WebJobs.Script
                 Errors = _functionErrors.Where(kvp => functionsAllowList.Any(functionName => functionName.Equals(kvp.Key, StringComparison.CurrentCultureIgnoreCase))).ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray());
             }
 
+            if (functionMetadataList.Count == 0 && !_environment.IsPlaceholderModeEnabled())
+            {
+                // Validate the host.json file if no functions are found.
+                HostJsonFileValidator();
+            }
+
             return functionMetadataList.OrderBy(f => f.Name, StringComparer.OrdinalIgnoreCase).ToImmutableArray();
         }
 
@@ -252,11 +258,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
             _logger.FunctionsReturnedByProvider(totalFunctionsCount, MetadataProviderName);
 
-            if (totalFunctionsCount == 0)
-            {
-                ValidateHostJsonIfNoFunctionsFound();
-            }
-
             foreach (var metadataArray in providerFunctionMetadataResults)
             {
                 if (!metadataArray.IsDefaultOrEmpty)
@@ -294,37 +295,35 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        private void ValidateHostJsonIfNoFunctionsFound()
+        private void HostJsonFileValidator()
         {
-            string hostFilePath = Path.Combine(_scriptOptions.Value.RootScriptPath, ScriptConstants.HostMetadataFileName);
-
-            // Search for the host.json file within nested directories to verify scenarios where it isn't located at the root. This situation often occurs when a function app has been improperly zipped.
-            IEnumerable<string> hostJsonFiles = null;
             try
             {
-                hostJsonFiles = Directory.GetFiles(_scriptOptions.Value.RootScriptPath, ScriptConstants.HostMetadataFileName, SearchOption.AllDirectories)
+                // Search for the host.json file within nested directories to verify scenarios where it isn't located at the root. This situation often occurs when a function app has been improperly zipped.
+                string hostFilePath = Path.Combine(_scriptOptions.Value.RootScriptPath, ScriptConstants.HostMetadataFileName);
+                IEnumerable<string> hostJsonFiles = Directory.GetFiles(_scriptOptions.Value.RootScriptPath, ScriptConstants.HostMetadataFileName, SearchOption.AllDirectories)
                     .Where(file => !file.Equals(hostFilePath, StringComparison.OrdinalIgnoreCase));
-            }
-            catch
-            {
-                // Ignore any exceptions while looking for host.json files in nested directories.
-            }
 
-            if (IsDefaultHostConfig())
-            {
-                if (hostJsonFiles != null && hostJsonFiles.Any())
+                if (IsDefaultHostConfig())
                 {
-                    string hostJsonFilesPath = string.Join(", ", hostJsonFiles).Replace(_scriptOptions.Value.RootScriptPath, string.Empty);
-                    _logger.ValidateHostJsonZipIssue(hostJsonFilesPath);
+                    if (hostJsonFiles != null && hostJsonFiles.Any())
+                    {
+                        string hostJsonFilesPath = string.Join(", ", hostJsonFiles).Replace(_scriptOptions.Value.RootScriptPath, string.Empty);
+                        _logger.HostJsonZipDeploymentIssue(hostJsonFilesPath);
+                    }
+                    else
+                    {
+                        _logger.NoHostJsonFile();
+                    }
                 }
                 else
                 {
-                    _logger.ValidateHostJsonNoHostJson();
+                    _logger.MissingFunctionsDeploymentIssue();
                 }
             }
-            else
+            catch
             {
-                _logger.ValidateHostJson();
+                // Ignore any exceptions.
             }
         }
 
