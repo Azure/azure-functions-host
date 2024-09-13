@@ -12,3 +12,4 @@
 - Skip validation of `FUNCTIONS_WORKER_RUNTIME` with function metadata in placeholder mode. (#10459)
 - Sanitize exception logs (#10443)
 - Improving console log handling during specialization (#10345)
+- Update Node.js Worker Version to [3.10.1](https://github.com/Azure/azure-functions-nodejs-worker/releases/tag/v3.10.1)
