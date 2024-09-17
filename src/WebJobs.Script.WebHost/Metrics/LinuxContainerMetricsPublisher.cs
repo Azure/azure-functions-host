@@ -27,6 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         public const string ContainerNameHeader = "x-ms-functions-container-name";
         public const string HostNameHeader = "x-ms-functions-host-name";
         public const string StampNameHeader = "x-ms-site-home-stamp";
+        public const string ResourceIdHeader = "x-ms-site-arm-id";
 
         private const string _requestUriFormat = "https://{0}:31002/api/metrics";
         private const int _maxErrorLimit = 5;
@@ -63,6 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         private Timer _metricsPublisherTimer;
         private int _errorCount = 0;
         private string _stampName;
+        private string _resourceId;
         private bool _initialized = false;
 
         public LinuxContainerMetricsPublisher(IEnvironment environment, IOptionsMonitor<StandbyOptions> standbyOptions, ILogger<LinuxContainerMetricsPublisher> logger, HostNameProvider hostNameProvider, IOptions<FunctionsHostingConfigOptions> functionsHostingConfigOptions, HttpClient httpClient = null)
@@ -247,6 +249,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         public void Initialize()
         {
             _stampName = _environment.GetEnvironmentVariable(EnvironmentSettingNames.WebSiteHomeStampName);
+            _resourceId = _environment.GetEnvironmentVariable(EnvironmentSettingNames.WebsiteArmResourceId);
             _tenant = _environment.GetEnvironmentVariable(EnvironmentSettingNames.WebSiteStampDeploymentId)?.ToLowerInvariant();
             _process = Process.GetCurrentProcess();
             _initialized = true;
@@ -291,6 +294,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
             request.Headers.Add(ContainerNameHeader, _containerName);
             request.Headers.Add(HostNameHeader, _hostNameProvider.Value);
             request.Headers.Add(StampNameHeader, _stampName);
+            request.Headers.Add(ResourceIdHeader, _resourceId);
 
             if (_hostingConfigOptions.Value.SwtIssuerEnabled)
             {
