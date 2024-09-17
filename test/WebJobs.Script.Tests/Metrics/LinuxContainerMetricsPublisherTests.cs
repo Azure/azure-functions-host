@@ -28,6 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
         private const string _testIpAddress = "test-ip";
         private const string _testHostName = "test-host";
         private const string _testStampName = "test-stamp";
+        private const string _testResourceId = "test-resource-id";
         private const string _testTenant = "test-tenant";
         private readonly FunctionsHostingConfigOptions _hostingConfigOptions;
 
@@ -73,6 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.LinuxNodeIpAddress)).Returns(_testIpAddress);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName)).Returns(_testHostName);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.WebSiteHomeStampName)).Returns(_testStampName);
+            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.WebsiteArmResourceId)).Returns(_testResourceId);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.WebSiteStampDeploymentId)).Returns(_testTenant);
 
             var websiteAuthEncryptionKey = TestHelpers.GenerateKeyBytes();
@@ -98,6 +100,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             Assert.Equal(request.Headers.GetValues(LinuxContainerMetricsPublisher.ContainerNameHeader).Single(), _containerName);
             Assert.Equal(request.Headers.GetValues(LinuxContainerMetricsPublisher.HostNameHeader).Single(), _testHostName);
             Assert.Equal(request.Headers.GetValues(LinuxContainerMetricsPublisher.StampNameHeader).Single(), _testStampName);
+            Assert.Equal(request.Headers.GetValues(LinuxContainerMetricsPublisher.ResourceIdHeader).Single(), _testResourceId);
 
             if (_hostingConfigOptions.SwtIssuerEnabled)
             {
