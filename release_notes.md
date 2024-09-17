@@ -20,3 +20,4 @@
 - Migrated Scale Metrics to use `Azure.Data.Tables` SDK (#10276)
   - Added support for Identity-based connections
 - Update Node.js Worker Version to [3.10.1](https://github.com/Azure/azure-functions-nodejs-worker/releases/tag/v3.10.1)
+- Pass ARM ID header for Linux consumption metrics requests (#10477)
