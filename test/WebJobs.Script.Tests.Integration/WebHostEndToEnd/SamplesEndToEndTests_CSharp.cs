@@ -522,6 +522,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             }
         }
 
+        [Theory]
+        [InlineData("", HttpStatusCode.Unauthorized)]
+        [InlineData("|", HttpStatusCode.Unauthorized)]
+        [InlineData("/admin/host/foo|/admin/host/bar", HttpStatusCode.Unauthorized)]
+        [InlineData("/admin/host/status|/admin/host/synctriggers", HttpStatusCode.OK)]
+        public async Task SyncTriggers_InternalAuth_AllowListSpecified_ReturnsExpectedResult(string allowList, HttpStatusCode expected)
+        {
+            var options = _fixture.Host.WebHostServices.GetService<IOptions<FunctionsHostingConfigOptions>>().Value;
+
+            try
+            {
+                options.InternalAuthApisAllowList = allowList;
+
+                using (var httpClient = _fixture.Host.CreateHttpClient())
+                {
+                    string uri = "admin/host/synctriggers";
+                    HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
+                    HttpResponseMessage response = await httpClient.SendAsync(request);
+                    Assert.Equal(expected, response.StatusCode);
+                }
+            }
+            finally
+            {
+                options.InternalAuthApisAllowList = null;
+            }
+        }
+
         [Fact]
         public async Task SyncTriggers_ExternalUnauthorized_ReturnsUnauthorized()
         {

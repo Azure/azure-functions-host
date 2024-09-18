@@ -10,8 +10,10 @@ using System.Security.Principal;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.Tests.HttpWorker;
+using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Xunit;
@@ -66,6 +68,36 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
                 request.HttpContext.RequestServices = servicesMock.Object;
                 Assert.True(request.IsPlatformInternalRequest());
             }
+        }
+
+        [Theory]
+        [InlineData("/admin/host/drain", null, true)] // no allow list
+        [InlineData("/admin/host/drain", "", false)] // empty allow list
+        [InlineData("/admin/host/drain", "|", false)] // empty allow list
+        [InlineData("/admin/host/drain", "/admin/host/foo|/admin/host/bar", false)] // target not in allow list
+        [InlineData("/admin/host/synctriggers", "/admin/host/status|/admin/host/synctriggers", true)] // target in allow list
+        [InlineData("/runtime/webhooks/foo/", "/admin/host/status|/admin/host/synctriggers|/runtime/webhooks", true)] // target in allow list
+        [InlineData("/runtime/webhooks/foo/bar?foo=1&bar=2", "/admin/host/status|/admin/host/synctriggers|/runtime/webhooks", true)] // target in allow list
+        [InlineData("/runtime/webhooks/foo/bar/", "/admin/host/status|/admin/host/synctriggers|/runtime/webhooks", true)] // target in allow list
+        [InlineData("/runtime/webhooks/foo/bar/", "/admin/host/status|/admin/host/synctriggers", false)] // target not in allow list
+        public void IsInternalAuthAllowed_ReturnsExpectedResult(string targetPath, string allowList, bool expected)
+        {
+            var options = new FunctionsHostingConfigOptions();
+
+            if (allowList != null)
+            {
+                options.InternalAuthApisAllowList = allowList;
+            }
+
+            var request = HttpTestHelpers.CreateHttpRequest("GET", $"http://host{targetPath}");
+
+            var environment = SystemEnvironment.Instance;
+            var servicesMock = new Mock<IServiceProvider>();
+            servicesMock.Setup(s => s.GetService(typeof(IEnvironment))).Returns(environment);
+            servicesMock.Setup(s => s.GetService(typeof(IOptions<FunctionsHostingConfigOptions>))).Returns(new OptionsWrapper<FunctionsHostingConfigOptions>(options));
+            request.HttpContext.RequestServices = servicesMock.Object;
+
+            Assert.Equal(expected, request.IsInternalAuthAllowed());
         }
 
         [Fact]
