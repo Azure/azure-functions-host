@@ -170,6 +170,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     IOptionsMonitor<FunctionsHostingConfigOptions> hostingConfigOptionsMonitor = rootServiceProvider.GetService<IOptionsMonitor<FunctionsHostingConfigOptions>>();
                     services.AddSingleton(hostingConfigOptions);
                     services.AddSingleton(hostingConfigOptionsMonitor);
+                    IOptions<ExtensionRequirementOptions> extensionRequirementOptions = rootServiceProvider.GetService<IOptions<ExtensionRequirementOptions>>();
+                    services.AddSingleton(extensionRequirementOptions);
 
                     ConfigureRegisteredBuilders(services, rootServiceProvider);
                 });

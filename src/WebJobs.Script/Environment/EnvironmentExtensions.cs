@@ -400,6 +400,14 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
+        /// Get hosting environment configuration file (different from scmhosting file).
+        /// </summary>
+        public static string GetFunctionsHostingEnvironmentConfigFilePath(this IEnvironment environment)
+        {
+            return environment.GetEnvironmentVariableOrDefault(FunctionsHostingEnvironmentConfigFilePath, string.Empty);
+        }
+
+        /// <summary>
         /// Gets if runtime environment is logic apps.
         /// </summary>
         public static bool IsLogicApp(this IEnvironment environment)

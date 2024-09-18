@@ -7,7 +7,7 @@ using System.Text;
 
 namespace Microsoft.Azure.WebJobs.Script.ExtensionRequirements
 {
-    internal sealed class ExtensionStartupTypeRequirement
+    public sealed class ExtensionStartupTypeRequirement
     {
         // The loaded startup type must match this name for this requirement to be enforced.
         public string Name { get; set; }

@@ -10,10 +10,12 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Extensions;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Extensions.Storage;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
+using Microsoft.Azure.WebJobs.Script.ExtensionRequirements;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
@@ -28,6 +30,343 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class ScriptStartupTypeDiscovererTests
     {
+        [Fact]
+        public async Task GetExtensionsStartupTypes_UsesDefaultMinVersion()
+        {
+            using (var directory = GetTempDirectory())
+            {
+                TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
+                TestLoggerProvider testLoggerProvider = new TestLoggerProvider();
+                LoggerFactory factory = new LoggerFactory();
+                factory.AddProvider(testLoggerProvider);
+                var testLogger = factory.CreateLogger<ScriptStartupTypeLocator>();
+
+                var binPath = Path.Combine(directory.Path, "bin");
+
+                var mockExtensionBundleManager = new Mock<IExtensionBundleManager>();
+                mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
+                mockExtensionBundleManager.Setup(e => e.GetExtensionBundleBinPathAsync()).Returns(Task.FromResult(binPath));
+                mockExtensionBundleManager.Setup(e => e.IsLegacyExtensionBundle()).Returns(false);
+                mockExtensionBundleManager.Setup(e => e.GetExtensionBundleDetails()).Returns(Task.FromResult(GetBundleDetails("2.1.0")));
+
+                var languageWorkerOptions = new TestOptionsMonitor<LanguageWorkerOptions>(new LanguageWorkerOptions());
+                var mockFunctionMetadataManager = GetTestFunctionMetadataManager(languageWorkerOptions);
+                OptionsWrapper<ExtensionRequirementOptions> optionsWrapper = new(new ExtensionRequirementOptions());
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger, languageWorkerOptions, optionsWrapper);
+
+                // Act
+                var exception = await Assert.ThrowsAsync<HostInitializationException>(async () => await discoverer.GetExtensionsStartupTypesAsync());
+                var traces = testLoggerProvider.GetAllLogMessages();
+
+                // Assert
+                Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"Referenced bundle Microsoft.Azure.Functions.ExtensionBundle of version 2.1.0 does not meet the required minimum version of 2.6.1. Update your extension bundle reference in host.json to reference 2.6.1 or later.")));
+            }
+        }
+
+        [Theory]
+        [InlineData("4.12.0", "4.9.0")]
+        [InlineData("2.6.1", "2.1.0")]
+        public async Task GetExtensionsStartupTypes_RejectsBundleConfiguredviaHostingEnvConfig(string expectedBundleVersion, string actualBundleVersion)
+        {
+            using (var directory = GetTempDirectory())
+            {
+                TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
+                TestLoggerProvider testLoggerProvider = new TestLoggerProvider();
+                LoggerFactory factory = new LoggerFactory();
+                factory.AddProvider(testLoggerProvider);
+                var testLogger = factory.CreateLogger<ScriptStartupTypeLocator>();
+
+                var binPath = Path.Combine(directory.Path, "bin");
+
+                var mockExtensionBundleManager = new Mock<IExtensionBundleManager>();
+                mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
+                mockExtensionBundleManager.Setup(e => e.GetExtensionBundleBinPathAsync()).Returns(Task.FromResult(binPath));
+                mockExtensionBundleManager.Setup(e => e.IsLegacyExtensionBundle()).Returns(false);
+                mockExtensionBundleManager.Setup(e => e.GetExtensionBundleDetails()).Returns(Task.FromResult(GetBundleDetails(actualBundleVersion)));
+
+                var languageWorkerOptions = new TestOptionsMonitor<LanguageWorkerOptions>(new LanguageWorkerOptions());
+                var mockFunctionMetadataManager = GetTestFunctionMetadataManager(languageWorkerOptions);
+
+                var extensionRequirementOptions = new Config.ExtensionRequirementOptions();
+                extensionRequirementOptions.Bundles = new List<BundleRequirement>()
+                {
+                    new BundleRequirement()
+                    {
+                        Id = "Microsoft.Azure.Functions.ExtensionBundle",
+                        MinimumVersion = expectedBundleVersion
+                    }
+                };
+
+                OptionsWrapper<ExtensionRequirementOptions> optionsWrapper = new(extensionRequirementOptions);
+
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger, languageWorkerOptions, optionsWrapper);
+
+                // Act
+                var exception = await Assert.ThrowsAsync<HostInitializationException>(async () => await discoverer.GetExtensionsStartupTypesAsync());
+                var traces = testLoggerProvider.GetAllLogMessages();
+
+                // Assert
+                Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"Referenced bundle Microsoft.Azure.Functions.ExtensionBundle of version {actualBundleVersion} does not meet the required minimum version of {expectedBundleVersion}. Update your extension bundle reference in host.json to reference {expectedBundleVersion} or later.")));
+            }
+        }
+
+        [Theory]
+        [InlineData("4.12.0", "4.17.0", null)]
+        [InlineData("4.12.0", null, "4.0.4")]
+        [InlineData("4.12.0", "4.17.0", "4.0.4")]
+        [InlineData(null, "4.17.0", "4.0.4")]
+        public async Task GetExtensionsStartupTypes_AcceptsRequiredBundleVersions(string minBundleVersion, string actualBundleVersion, string minExtensionVersion)
+        {
+            // "TypeName": , Microsoft.Azure.WebJobs.Extensions.Storage, Version=4.0.5.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
+            using (var directory = GetTempDirectory())
+            {
+                TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
+                TestLoggerProvider testLoggerProvider = new TestLoggerProvider();
+                LoggerFactory factory = new LoggerFactory();
+                factory.AddProvider(testLoggerProvider);
+                var testLogger = factory.CreateLogger<ScriptStartupTypeLocator>();
+
+                var binPath = Path.Combine(directory.Path, "bin");
+
+                var mockExtensionBundleManager = new Mock<IExtensionBundleManager>();
+
+                if (string.IsNullOrEmpty(actualBundleVersion))
+                {
+                    mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(false);
+                }
+                else
+                {
+                    mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
+                }
+
+                mockExtensionBundleManager.Setup(e => e.GetExtensionBundleBinPathAsync()).Returns(Task.FromResult(binPath));
+                mockExtensionBundleManager.Setup(e => e.IsLegacyExtensionBundle()).Returns(false);
+                mockExtensionBundleManager.Setup(e => e.GetExtensionBundleDetails()).Returns(Task.FromResult(GetBundleDetails(actualBundleVersion)));
+
+                var languageWorkerOptions = new TestOptionsMonitor<LanguageWorkerOptions>(new LanguageWorkerOptions());
+                var mockFunctionMetadataManager = GetTestFunctionMetadataManager(languageWorkerOptions);
+
+                var extensionRequirementOptions = new Config.ExtensionRequirementOptions();
+
+                IEnumerable<BundleRequirement> bundleRequirment = string.IsNullOrEmpty(minBundleVersion)
+                    ? null
+                    : new List<BundleRequirement>() { new BundleRequirement() { Id = "Microsoft.Azure.Functions.ExtensionBundle", MinimumVersion = minBundleVersion } };
+
+                IEnumerable<ExtensionStartupTypeRequirement> extensionRequirements = string.IsNullOrEmpty(minExtensionVersion)
+                    ? null
+                    : new List<ExtensionStartupTypeRequirement>()
+                    {
+                         new ExtensionStartupTypeRequirement()
+                        {
+                            Name = "AzureStorageWebJobsStartup",
+                            AssemblyName = "Microsoft.Azure.WebJobs.Extensions.Storage",
+                            MinimumAssemblyVersion = minExtensionVersion
+                        }
+                    };
+
+                extensionRequirementOptions.Bundles = bundleRequirment;
+                extensionRequirementOptions.Extensions = extensionRequirements;
+
+                OptionsWrapper<ExtensionRequirementOptions> optionsWrapper = new(extensionRequirementOptions);
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger, languageWorkerOptions, optionsWrapper);
+                var types = await discoverer.GetExtensionsStartupTypesAsync();
+                // Act
+                var traces = testLoggerProvider.GetAllLogMessages();
+
+                if (string.IsNullOrEmpty(actualBundleVersion))
+                {
+                    Assert.True(traces.Any(m => m.FormattedMessage.Contains($"Extension Bundle not loaded")));
+                }
+                else
+                {
+                    Assert.True(traces.Any(m => m.FormattedMessage.Contains($"Loading extension bundle")));
+                }
+                Assert.True(traces.Any(m => m.FormattedMessage.Contains($"Loading startup extension 'Storage")));
+            }
+        }
+
+        [Theory]
+        [InlineData("4.12.0", "4.9.0", null)]
+        [InlineData(null, "4.9.0", "4.0.6")]
+        [InlineData("4.12.0", "4.9.0", "4.0.6")]
+        public async Task GetExtensionsStartupTypes_RejectsRequiredBundleVersions(string minBundleVersion, string actualBundleVersion, string minExtensionVersion)
+        {
+            // "TypeName": , Microsoft.Azure.WebJobs.Extensions.Storage, Version=4.0.5.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
+            using (var directory = GetTempDirectory())
+            {
+                TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
+                TestLoggerProvider testLoggerProvider = new TestLoggerProvider();
+                LoggerFactory factory = new LoggerFactory();
+                factory.AddProvider(testLoggerProvider);
+                var testLogger = factory.CreateLogger<ScriptStartupTypeLocator>();
+
+                var binPath = Path.Combine(directory.Path, "bin");
+
+                var mockExtensionBundleManager = new Mock<IExtensionBundleManager>();
+
+                if (string.IsNullOrEmpty(actualBundleVersion))
+                {
+                    mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(false);
+                }
+                else
+                {
+                    mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
+                }
+
+                mockExtensionBundleManager.Setup(e => e.GetExtensionBundleBinPathAsync()).Returns(Task.FromResult(binPath));
+                mockExtensionBundleManager.Setup(e => e.IsLegacyExtensionBundle()).Returns(false);
+                mockExtensionBundleManager.Setup(e => e.GetExtensionBundleDetails()).Returns(Task.FromResult(GetBundleDetails(actualBundleVersion)));
+
+                var languageWorkerOptions = new TestOptionsMonitor<LanguageWorkerOptions>(new LanguageWorkerOptions());
+                var mockFunctionMetadataManager = GetTestFunctionMetadataManager(languageWorkerOptions);
+
+                var extensionRequirementOptions = new Config.ExtensionRequirementOptions();
+
+                IEnumerable<BundleRequirement> bundleRequirment = string.IsNullOrEmpty(minBundleVersion)
+                    ? null
+                    : new List<BundleRequirement>() { new BundleRequirement() { Id = "Microsoft.Azure.Functions.ExtensionBundle", MinimumVersion = minBundleVersion } };
+
+                IEnumerable<ExtensionStartupTypeRequirement> extensionRequirements = string.IsNullOrEmpty(minExtensionVersion)
+                    ? null
+                    : new List<ExtensionStartupTypeRequirement>()
+                    {
+                        new ExtensionStartupTypeRequirement()
+                        {
+                            Name = "AzureStorageWebJobsStartup",
+                            AssemblyName = "Microsoft.Azure.WebJobs.Extensions.Storage",
+                            MinimumAssemblyVersion = minExtensionVersion
+                        }
+                    };
+
+                extensionRequirementOptions.Bundles = bundleRequirment;
+                extensionRequirementOptions.Extensions = extensionRequirements;
+
+                OptionsWrapper<ExtensionRequirementOptions> optionsWrapper = new(extensionRequirementOptions);
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger, languageWorkerOptions, optionsWrapper);
+                var exception = await Assert.ThrowsAsync<HostInitializationException>(async () => await discoverer.GetExtensionsStartupTypesAsync());
+                var traces = testLoggerProvider.GetAllLogMessages();
+
+                if (!string.IsNullOrEmpty(minBundleVersion))
+                {
+                    // Assert
+                    Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"Referenced bundle Microsoft.Azure.Functions.ExtensionBundle of version 4.9.0 does not meet the required minimum version of 4.12.0. Update your extension bundle reference in host.json to reference 4.12.0 or later.")));
+                }
+            }
+        }
+
+        [Theory]
+        [InlineData("4.12.0", true, null)]
+        [InlineData(null, false, "4.0.4")]
+        [InlineData("4.12.0", true, "4.0.4")]
+        [InlineData("4.12.0", false, "4.0.4")]
+        public async Task GetExtensionsStartupTypes_AcceptsRequiredExtensionVersions(string minBundleVersion, bool extensionConfigured, string minExtensionVersion)
+        {
+            // "TypeName": , Microsoft.Azure.WebJobs.Extensions.Storage, Version=4.0.5.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
+            using (var directory = GetTempDirectory(extensionConfigured))
+            {
+                TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
+                TestLoggerProvider testLoggerProvider = new TestLoggerProvider();
+                LoggerFactory factory = new LoggerFactory();
+                factory.AddProvider(testLoggerProvider);
+                var testLogger = factory.CreateLogger<ScriptStartupTypeLocator>();
+
+                var binPath = Path.Combine(directory.Path, "bin");
+
+                var mockExtensionBundleManager = new Mock<IExtensionBundleManager>();
+
+                mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(false);
+
+                var languageWorkerOptions = new TestOptionsMonitor<LanguageWorkerOptions>(new LanguageWorkerOptions());
+                var mockFunctionMetadataManager = GetTestFunctionMetadataManager(languageWorkerOptions);
+
+                var extensionRequirementOptions = new Config.ExtensionRequirementOptions();
+
+                IEnumerable<BundleRequirement> bundleRequirment = string.IsNullOrEmpty(minBundleVersion)
+                    ? null
+                    : new List<BundleRequirement>() { new BundleRequirement() { Id = "Microsoft.Azure.Functions.ExtensionBundle", MinimumVersion = minBundleVersion } };
+
+                IEnumerable<ExtensionStartupTypeRequirement> extensionRequirements = string.IsNullOrEmpty(minExtensionVersion)
+                    ? null
+                    : new List<ExtensionStartupTypeRequirement>()
+                    {
+                         new ExtensionStartupTypeRequirement()
+                        {
+                            Name = "AzureStorageWebJobsStartup",
+                            AssemblyName = "Microsoft.Azure.WebJobs.Extensions.Storage",
+                            MinimumAssemblyVersion = minExtensionVersion
+                        }
+                    };
+
+                extensionRequirementOptions.Bundles = bundleRequirment;
+                extensionRequirementOptions.Extensions = extensionRequirements;
+
+                OptionsWrapper<ExtensionRequirementOptions> optionsWrapper = new(extensionRequirementOptions);
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger, languageWorkerOptions, optionsWrapper);
+                var types = await discoverer.GetExtensionsStartupTypesAsync();
+                // Act
+                var traces = testLoggerProvider.GetAllLogMessages();
+                Assert.True(traces.Any(m => m.FormattedMessage.Contains($"Extension Bundle not loaded")));
+                if (extensionConfigured)
+                {
+                    Assert.True(traces.Any(m => m.FormattedMessage.Contains($"Loading startup extension 'Storage")));
+                }
+            }
+        }
+
+        [Theory]
+        [InlineData(null, "4.0.6")]
+        [InlineData("4.12.0", "4.0.6")]
+        public async Task GetExtensionsStartupTypes_RejectsRequiredExtensionVersions(string minBundleVersion, string minExtensionVersion)
+        {
+            using (var directory = GetTempDirectory())
+            {
+                TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
+                TestLoggerProvider testLoggerProvider = new TestLoggerProvider();
+                LoggerFactory factory = new LoggerFactory();
+                factory.AddProvider(testLoggerProvider);
+                var testLogger = factory.CreateLogger<ScriptStartupTypeLocator>();
+
+                var binPath = Path.Combine(directory.Path, "bin");
+
+                var mockExtensionBundleManager = new Mock<IExtensionBundleManager>();
+
+                mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(false);
+
+                var languageWorkerOptions = new TestOptionsMonitor<LanguageWorkerOptions>(new LanguageWorkerOptions());
+                var mockFunctionMetadataManager = GetTestFunctionMetadataManager(languageWorkerOptions);
+
+                var extensionRequirementOptions = new Config.ExtensionRequirementOptions();
+
+                IEnumerable<BundleRequirement> bundleRequirment = string.IsNullOrEmpty(minBundleVersion)
+                    ? null
+                    : new List<BundleRequirement>() { new BundleRequirement() { Id = "Microsoft.Azure.Functions.ExtensionBundle", MinimumVersion = minBundleVersion } };
+
+                IEnumerable<ExtensionStartupTypeRequirement> extensionRequirements = string.IsNullOrEmpty(minExtensionVersion)
+                    ? null
+                    : new List<ExtensionStartupTypeRequirement>()
+                    {
+                        new ExtensionStartupTypeRequirement()
+                        {
+                            Name = "AzureStorageWebJobsStartup",
+                            AssemblyName = "Microsoft.Azure.WebJobs.Extensions.Storage",
+                            MinimumAssemblyVersion = minExtensionVersion
+                        }
+                    };
+
+                extensionRequirementOptions.Bundles = bundleRequirment;
+                extensionRequirementOptions.Extensions = extensionRequirements;
+
+                OptionsWrapper<ExtensionRequirementOptions> optionsWrapper = new(extensionRequirementOptions);
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger, languageWorkerOptions, optionsWrapper);
+                var exception = await Assert.ThrowsAsync<HostInitializationException>(async () => await discoverer.GetExtensionsStartupTypesAsync());
+
+                // Act
+                var traces = testLoggerProvider.GetAllLogMessages();
+                Assert.True(traces.Any(m => m.FormattedMessage.Contains($"Extension Bundle not loaded")));
+                Assert.True(traces.Any(m => m.FormattedMessage.Contains($"ExtensionStartupType AzureStorageWebJobsStartup from assembly 'Microsoft.Azure.WebJobs.Extensions.Storage, Version=4.0.5.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35' does not meet the required minimum version of 4.0.6")));
+            }
+        }
+
         [Fact]
         public async Task GetExtensionsStartupTypes_FiltersBuiltinExtensionsAsync()
         {
@@ -71,8 +410,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var languageWorkerOptions = new TestOptionsMonitor<LanguageWorkerOptions>(new LanguageWorkerOptions());
 
                 var mockFunctionMetadataManager = GetTestFunctionMetadataManager(languageWorkerOptions, ImmutableArray<FunctionMetadata>.Empty);
-
-                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger, languageWorkerOptions);
+                OptionsWrapper<ExtensionRequirementOptions> optionsWrapper = new(new ExtensionRequirementOptions());
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger, languageWorkerOptions, optionsWrapper);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
@@ -93,7 +432,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var mockExtensionBundleManager = new Mock<IExtensionBundleManager>();
             mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
             mockExtensionBundleManager.Setup(e => e.GetExtensionBundlePath()).ReturnsAsync(string.Empty);
-            mockExtensionBundleManager.Setup(e => e.GetExtensionBundleDetails()).Returns(Task.FromResult(GetV2BundleDetails()));
+            mockExtensionBundleManager.Setup(e => e.GetExtensionBundleDetails()).Returns(Task.FromResult(GetBundleDetails()));
 
             using (var directory = new TempDirectory())
             {
@@ -105,7 +444,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 var languageWorkerOptions = new TestOptionsMonitor<LanguageWorkerOptions>(new LanguageWorkerOptions());
                 var mockFunctionMetadataManager = GetTestFunctionMetadataManager(languageWorkerOptions, ImmutableArray<FunctionMetadata>.Empty);
-                var discoverer = new ScriptStartupTypeLocator(string.Empty, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger, languageWorkerOptions);
+                OptionsWrapper<ExtensionRequirementOptions> optionsWrapper = new(new ExtensionRequirementOptions());
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger, languageWorkerOptions, optionsWrapper);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
@@ -136,7 +476,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var mockExtensionBundleManager = new Mock<IExtensionBundleManager>();
             mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
-            mockExtensionBundleManager.Setup(e => e.GetExtensionBundleDetails()).Returns(Task.FromResult(GetV2BundleDetails()));
+            mockExtensionBundleManager.Setup(e => e.GetExtensionBundleDetails()).Returns(Task.FromResult(GetBundleDetails()));
             TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
 
             using (var directory = new TempDirectory())
@@ -163,7 +503,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 var languageWorkerOptions = new TestOptionsMonitor<LanguageWorkerOptions>(new LanguageWorkerOptions());
                 var mockFunctionMetadataManager = GetTestFunctionMetadataManager(languageWorkerOptions, ImmutableArray<FunctionMetadata>.Empty);
-                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger, languageWorkerOptions);
+                OptionsWrapper<ExtensionRequirementOptions> optionsWrapper = new(new ExtensionRequirementOptions());
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger, languageWorkerOptions, optionsWrapper);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
@@ -183,7 +524,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var mockExtensionBundleManager = new Mock<IExtensionBundleManager>();
             mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
-            mockExtensionBundleManager.Setup(e => e.GetExtensionBundleDetails()).Returns(Task.FromResult(GetV2BundleDetails()));
+            mockExtensionBundleManager.Setup(e => e.GetExtensionBundleDetails()).Returns(Task.FromResult(GetBundleDetails()));
             mockExtensionBundleManager.Setup(e => e.GetExtensionBundlePath()).ReturnsAsync(string.Empty);
 
             TestLoggerProvider testLoggerProvider = new TestLoggerProvider();
@@ -194,7 +535,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var languageWorkerOptions = new TestOptionsMonitor<LanguageWorkerOptions>(new LanguageWorkerOptions());
             var mockFunctionMetadataManager = GetTestFunctionMetadataManager(languageWorkerOptions, ImmutableArray<FunctionMetadata>.Empty);
-            var discoverer = new ScriptStartupTypeLocator(string.Empty, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger, languageWorkerOptions);
+            OptionsWrapper<ExtensionRequirementOptions> optionsWrapper = new(new ExtensionRequirementOptions());
+            var discoverer = new ScriptStartupTypeLocator(string.Empty, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger, languageWorkerOptions, optionsWrapper);
 
             // Act
             var types = await discoverer.GetExtensionsStartupTypesAsync();
@@ -244,8 +586,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var mockExtensionBundleManager = new Mock<IExtensionBundleManager>();
                 mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
                 mockExtensionBundleManager.Setup(e => e.GetExtensionBundleBinPathAsync()).Returns(Task.FromResult(binPath));
-                mockExtensionBundleManager.Setup(e => e.GetExtensionBundleDetails()).Returns(Task.FromResult(GetV2BundleDetails()));
-                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger, languageWorkerOptions);
+                mockExtensionBundleManager.Setup(e => e.GetExtensionBundleDetails()).Returns(Task.FromResult(GetBundleDetails()));
+                OptionsWrapper<ExtensionRequirementOptions> optionsWrapper = new(new ExtensionRequirementOptions());
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger, languageWorkerOptions, optionsWrapper);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
@@ -296,7 +639,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 // mock Function metadata
                 var languageWorkerOptions = new TestOptionsMonitor<LanguageWorkerOptions>(new LanguageWorkerOptions());
                 var mockFunctionMetadataManager = GetTestFunctionMetadataManager(languageWorkerOptions, ImmutableArray<FunctionMetadata>.Empty);
-                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger, languageWorkerOptions);
+                OptionsWrapper<ExtensionRequirementOptions> optionsWrapper = new(new ExtensionRequirementOptions());
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger, languageWorkerOptions, optionsWrapper);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
@@ -348,8 +692,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var mockExtensionBundleManager = new Mock<IExtensionBundleManager>();
                 mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
                 mockExtensionBundleManager.Setup(e => e.GetExtensionBundleBinPathAsync()).Returns(Task.FromResult(binPath));
-                mockExtensionBundleManager.Setup(e => e.GetExtensionBundleDetails()).Returns(Task.FromResult(GetV2BundleDetails()));
-                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger, languageWorkerOptions);
+                mockExtensionBundleManager.Setup(e => e.GetExtensionBundleDetails()).Returns(Task.FromResult(GetBundleDetails()));
+                OptionsWrapper<ExtensionRequirementOptions> optionsWrapper = new(new ExtensionRequirementOptions());
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger, languageWorkerOptions, optionsWrapper);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
@@ -376,11 +721,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
                 mockExtensionBundleManager.Setup(e => e.GetExtensionBundleBinPathAsync()).Returns(Task.FromResult(binPath));
                 mockExtensionBundleManager.Setup(e => e.IsLegacyExtensionBundle()).Returns(true);
-                mockExtensionBundleManager.Setup(e => e.GetExtensionBundleDetails()).Returns(Task.FromResult(GetV2BundleDetails()));
+                mockExtensionBundleManager.Setup(e => e.GetExtensionBundleDetails()).Returns(Task.FromResult(GetBundleDetails()));
 
                 var languageWorkerOptions = new TestOptionsMonitor<LanguageWorkerOptions>(new LanguageWorkerOptions());
                 var mockFunctionMetadataManager = GetTestFunctionMetadataManager(languageWorkerOptions, hasPrecompiledFunction: hasPrecompiledFunctions);
-                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger, languageWorkerOptions);
+                OptionsWrapper<ExtensionRequirementOptions> optionsWrapper = new(new ExtensionRequirementOptions());
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger, languageWorkerOptions, optionsWrapper);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
@@ -411,7 +757,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
                 mockExtensionBundleManager.Setup(e => e.GetExtensionBundleBinPathAsync()).Returns(Task.FromResult(binPath));
                 mockExtensionBundleManager.Setup(e => e.IsLegacyExtensionBundle()).Returns(false);
-                mockExtensionBundleManager.Setup(e => e.GetExtensionBundleDetails()).Returns(Task.FromResult(GetV2BundleDetails()));
+                mockExtensionBundleManager.Setup(e => e.GetExtensionBundleDetails()).Returns(Task.FromResult(GetBundleDetails()));
 
                 RpcWorkerConfig nodeWorkerConfig = new RpcWorkerConfig() { Description = TestHelpers.GetTestWorkerDescription("node", "none", false) };
                 RpcWorkerConfig dotnetIsolatedWorkerConfig = new RpcWorkerConfig() { Description = TestHelpers.GetTestWorkerDescription("dotnet-isolated", "none", false) };
@@ -426,7 +772,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 var languageWorkerOptions = new TestOptionsMonitor<LanguageWorkerOptions>(tempOptions);
 
-                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger, languageWorkerOptions);
+                OptionsWrapper<ExtensionRequirementOptions> optionsWrapper = new(new ExtensionRequirementOptions());
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger, languageWorkerOptions, optionsWrapper);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
@@ -476,7 +823,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
                 mockExtensionBundleManager.Setup(e => e.GetExtensionBundleBinPathAsync()).Returns(Task.FromResult(binPath));
                 mockExtensionBundleManager.Setup(e => e.IsLegacyExtensionBundle()).Returns(false);
-                mockExtensionBundleManager.Setup(e => e.GetExtensionBundleDetails()).Returns(Task.FromResult(GetV2BundleDetails()));
+                mockExtensionBundleManager.Setup(e => e.GetExtensionBundleDetails()).Returns(Task.FromResult(GetBundleDetails()));
 
                 RpcWorkerConfig workerConfig = new RpcWorkerConfig() { Description = TestHelpers.GetTestWorkerDescription("dotnet-isolated", "none", true) };
                 var tempOptions = new LanguageWorkerOptions();
@@ -492,7 +839,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 var languageWorkerOptions = new TestOptionsMonitor<LanguageWorkerOptions>(tempOptions);
 
-                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger, languageWorkerOptions);
+                OptionsWrapper<ExtensionRequirementOptions> optionsWrapper = new(new ExtensionRequirementOptions());
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger, languageWorkerOptions, optionsWrapper);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
@@ -535,11 +883,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
                 mockExtensionBundleManager.Setup(e => e.GetExtensionBundleBinPathAsync()).Returns(Task.FromResult(binPath));
                 mockExtensionBundleManager.Setup(e => e.IsLegacyExtensionBundle()).Returns(false);
-                mockExtensionBundleManager.Setup(e => e.GetExtensionBundleDetails()).Returns(Task.FromResult(GetV2BundleDetails()));
+                mockExtensionBundleManager.Setup(e => e.GetExtensionBundleDetails()).Returns(Task.FromResult(GetBundleDetails()));
 
                 var languageWorkerOptions = new TestOptionsMonitor<LanguageWorkerOptions>(new LanguageWorkerOptions());
                 var mockFunctionMetadataManager = GetTestFunctionMetadataManager(languageWorkerOptions, hasPrecompiledFunction: hasPrecompiledFunctions);
-                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger, languageWorkerOptions);
+                OptionsWrapper<ExtensionRequirementOptions> optionsWrapper = new(new ExtensionRequirementOptions());
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger, languageWorkerOptions, optionsWrapper);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
@@ -590,7 +939,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 var languageWorkerOptions = new TestOptionsMonitor<LanguageWorkerOptions>(new LanguageWorkerOptions());
                 var mockFunctionMetadataManager = GetTestFunctionMetadataManager(languageWorkerOptions);
-                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger, languageWorkerOptions);
+                OptionsWrapper<ExtensionRequirementOptions> optionsWrapper = new(new ExtensionRequirementOptions());
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger, languageWorkerOptions, optionsWrapper);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
@@ -619,11 +969,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
                 mockExtensionBundleManager.Setup(e => e.GetExtensionBundleBinPathAsync()).Returns(Task.FromResult(binPath));
                 mockExtensionBundleManager.Setup(e => e.IsLegacyExtensionBundle()).Returns(false);
-                mockExtensionBundleManager.Setup(e => e.GetExtensionBundleDetails()).Returns(Task.FromResult(GetV2BundleDetails("2.1.0")));
+                mockExtensionBundleManager.Setup(e => e.GetExtensionBundleDetails()).Returns(Task.FromResult(GetBundleDetails("2.1.0")));
 
                 var languageWorkerOptions = new TestOptionsMonitor<LanguageWorkerOptions>(new LanguageWorkerOptions());
                 var mockFunctionMetadataManager = GetTestFunctionMetadataManager(languageWorkerOptions);
-                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger, languageWorkerOptions);
+                OptionsWrapper<ExtensionRequirementOptions> optionsWrapper = new(new ExtensionRequirementOptions());
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger, languageWorkerOptions, optionsWrapper);
 
                 // Act
                 var exception = await Assert.ThrowsAsync<HostInitializationException>(async () => await discoverer.GetExtensionsStartupTypesAsync());
@@ -664,7 +1015,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 var languageWorkerOptions = new TestOptionsMonitor<LanguageWorkerOptions>(new LanguageWorkerOptions());
                 var mockFunctionMetadataManager = GetTestFunctionMetadataManager(languageWorkerOptions, ImmutableArray<FunctionMetadata>.Empty);
-                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger, languageWorkerOptions);
+                OptionsWrapper<ExtensionRequirementOptions> optionsWrapper = new(new ExtensionRequirementOptions());
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger, languageWorkerOptions, optionsWrapper);
 
                 // Act
                 var exception = await Assert.ThrowsAsync<HostInitializationException>(async () => await discoverer.GetExtensionsStartupTypesAsync());
@@ -729,7 +1081,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var languageWorkerOptions = new TestOptionsMonitor<LanguageWorkerOptions>(tempOptions);
                 Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing);
                 Environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "python");
-                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger, languageWorkerOptions);
+                OptionsWrapper<ExtensionRequirementOptions> optionsWrapper = new(new ExtensionRequirementOptions());
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger, languageWorkerOptions, optionsWrapper);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
@@ -773,35 +1126,40 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             return metricsLogger.EventsBegan.Contains(MetricEventNames.ParseExtensions) && metricsLogger.EventsEnded.Contains(MetricEventNames.ParseExtensions);
         }
 
-        private TempDirectory GetTempDirectory()
+        private TempDirectory GetTempDirectory(bool copyExtensionsToBin = true)
         {
             var directory = new TempDirectory();
-            var storageExtensionReference = new ExtensionReference { Name = "Storage", TypeName = typeof(AzureStorageWebJobsStartup).AssemblyQualifiedName };
-            storageExtensionReference.Bindings.Add("blob");
-            var sendGridExtensionReference = new ExtensionReference { Name = "SendGrid", TypeName = typeof(AzureStorageWebJobsStartup).AssemblyQualifiedName };
-            sendGridExtensionReference.Bindings.Add("sendGrid");
-            var references = new[] { storageExtensionReference, sendGridExtensionReference };
 
-            var extensions = new JObject
+            if (copyExtensionsToBin)
             {
-                { "extensions", JArray.FromObject(references) }
-            };
+                var storageExtensionReference = new ExtensionReference { Name = "Storage", TypeName = typeof(AzureStorageWebJobsStartup).AssemblyQualifiedName };
+                storageExtensionReference.Bindings.Add("blob");
+                var sendGridExtensionReference = new ExtensionReference { Name = "SendGrid", TypeName = typeof(AzureStorageWebJobsStartup).AssemblyQualifiedName };
+                sendGridExtensionReference.Bindings.Add("sendGrid");
+                var references = new[] { storageExtensionReference, sendGridExtensionReference };
 
-            var binPath = Path.Combine(directory.Path, "bin");
-            Directory.CreateDirectory(binPath);
+                var extensions = new JObject
+                {
+                    { "extensions", JArray.FromObject(references) }
+                };
 
-            void CopyToBin(string path)
-            {
-                File.Copy(path, Path.Combine(binPath, Path.GetFileName(path)));
+                var binPath = Path.Combine(directory.Path, "bin");
+                Directory.CreateDirectory(binPath);
+
+                void CopyToBin(string path)
+                {
+                    File.Copy(path, Path.Combine(binPath, Path.GetFileName(path)));
+                }
+
+                CopyToBin(typeof(AzureStorageWebJobsStartup).Assembly.Location);
+
+                File.WriteAllText(Path.Combine(binPath, "extensions.json"), extensions.ToString());
             }
 
-            CopyToBin(typeof(AzureStorageWebJobsStartup).Assembly.Location);
-
-            File.WriteAllText(Path.Combine(binPath, "extensions.json"), extensions.ToString());
             return directory;
         }
 
-        private ExtensionBundleDetails GetV2BundleDetails(string version = "2.7.0")
+        private ExtensionBundleDetails GetBundleDetails(string version = "2.7.0")
         {
             return new ExtensionBundleDetails
             {

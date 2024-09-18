@@ -216,6 +216,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.ConfigureOptions<FlexConsumptionMetricsPublisherOptionsSetup>();
             services.ConfigureOptions<ConsoleLoggingOptionsSetup>();
             services.AddHostingConfigOptions(configuration);
+            services.ConfigureOptions<ExtensionRequirementOptionsSetup>();
 
             services.TryAddSingleton<IDependencyValidator, DependencyValidator>();
             services.TryAddSingleton<IJobHostMiddlewarePipeline>(s => DefaultMiddlewarePipeline.Empty);
