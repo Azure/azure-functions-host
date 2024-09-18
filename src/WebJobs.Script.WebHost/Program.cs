@@ -75,7 +75,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         IsLinuxAppServiceEnvironment = SystemEnvironment.Instance.IsLinuxAppService()
                     });
                     config.Add(new FunctionsHostingConfigSource(SystemEnvironment.Instance));
-                    config.Add(new FunctionsHostingEnvironmentConfigSource(SystemEnvironment.Instance));
+
+                    var hostingEnvironmentConfigFilePath = SystemEnvironment.Instance.GetFunctionsHostingEnvironmentConfigFilePath();
+                    if (!string.IsNullOrEmpty(hostingEnvironmentConfigFilePath))
+                    {
+                        config.AddJsonFile(hostingEnvironmentConfigFilePath, optional: true, reloadOnChange: false);
+                    }
                 })
                 .ConfigureLogging((context, loggingBuilder) =>
                 {

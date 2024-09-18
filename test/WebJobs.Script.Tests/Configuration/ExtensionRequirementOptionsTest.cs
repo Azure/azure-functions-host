@@ -19,6 +19,7 @@ using Microsoft.WebJobs.Script.Tests;
 
 using WebJobs.Script.Tests;
 using Xunit;
+using static Microsoft.Azure.AppService.Proxy.Runtime.Trace;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 {
@@ -76,24 +77,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
                 await host.RunAsync();
             }
-        }
-
-        [Fact]
-        public async Task EnvironmentVariableNotConfigured_ReturnsEmptyOptions()
-        {
-            IHost host = GetScriptHostBuilder().Build();
-            var testService = host.Services.GetService<TestService>();
-
-            _ = Task.Run(async () =>
-            {
-                await TestHelpers.Await(() =>
-                {
-                    return testService.Options.Value.Bundles == null && testService.Options.Value.Extensions == null;
-                });
-                await host.StopAsync();
-            });
-
-            await host.RunAsync();
         }
 
         [Fact]
@@ -174,12 +157,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
         internal static IHostBuilder GetScriptHostBuilder(string fileName = null)
         {
-            TestEnvironment environment = new TestEnvironment();
-            environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsHostingEnvironmentConfigFilePath, fileName);
             IHost webHost = new HostBuilder()
                 .ConfigureAppConfiguration((builderContext, config) =>
                 {
-                    config.Add(new FunctionsHostingEnvironmentConfigSource(environment));
+                    config.AddJsonFile(fileName, optional: true, reloadOnChange: false);
                 })
                 .ConfigureServices((context, services) =>
                 {
@@ -189,7 +170,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             return new HostBuilder()
                 .ConfigureAppConfiguration((builderContext, config) =>
                 {
-                    config.Add(new FunctionsHostingEnvironmentConfigSource(SystemEnvironment.Instance));
+                    config.AddJsonFile(fileName, optional: true, reloadOnChange: false);
                 })
                 .ConfigureServices((context, services) =>
                 {

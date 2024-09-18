@@ -110,7 +110,13 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
                 // Adding hosting config into job host configuration
                 configBuilder.Add(new FunctionsHostingConfigSource(SystemEnvironment.Instance));
-                configBuilder.Add(new FunctionsHostingEnvironmentConfigSource(SystemEnvironment.Instance));
+
+                var hostingEnvironmentConfigFilePath = SystemEnvironment.Instance.GetFunctionsHostingEnvironmentConfigFilePath();
+                if (!string.IsNullOrEmpty(hostingEnvironmentConfigFilePath))
+                {
+                    configBuilder.AddJsonFile(hostingEnvironmentConfigFilePath, optional: true, reloadOnChange: false);
+                }
+
                 IConfiguration scriptHostConfiguration = applicationOptions.RootServiceProvider.GetService<IConfiguration>();
                 if (scriptHostConfiguration != null)
                 {
