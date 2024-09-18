@@ -11,6 +11,10 @@ using Microsoft.Extensions.Configuration.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.Config
 {
+    /// <summary>
+    /// A JSON file based Microsoft.Extensions.Configuration.FileConfigurationProvider.
+    /// Reads a Json file from the stream and adds its contents to FunctionsHostingEnvironmentConfig config section.
+    /// </summary>
     public class FunctionsHostingEnvironmentConfigProvider : JsonConfigurationProvider
     {
         /// <summary>

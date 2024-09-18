@@ -131,9 +131,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 var optionsSetup = new FunctionsHostingConfigOptionsSetup(config);
                 optionsSetup.Configure(configOption);
 
-                ExtensionRequirementOptions extensionRequirementOptions = new ExtensionRequirementOptions();
-                var extensionRequirementOptionsSetup = new ExtensionRequirementOptionsSetup(config);
-                extensionRequirementOptionsSetup.Configure(extensionRequirementOptions);
+                var extensionRequirementOptions = applicationOptions.RootServiceProvider.GetService<IOptions<ExtensionRequirementOptions>>();
 
                 var bundleManager = new ExtensionBundleManager(extensionBundleOptions, SystemEnvironment.Instance, loggerFactory, configOption);
                 var metadataServiceManager = applicationOptions.RootServiceProvider.GetService<IFunctionMetadataManager>();

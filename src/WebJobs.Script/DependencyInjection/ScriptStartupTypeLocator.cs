@@ -39,11 +39,11 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
         private readonly IMetricsLogger _metricsLogger;
         private readonly Lazy<IEnumerable<Type>> _startupTypes;
         private readonly IOptionsMonitor<LanguageWorkerOptions> _languageWorkerOptions;
-        private readonly ExtensionRequirementOptions _extensionRequirementOptions;
+        private readonly IOptions<ExtensionRequirementOptions> _extensionRequirementOptions;
         private static string[] _builtinExtensionAssemblies = GetBuiltinExtensionAssemblies();
 
         public ScriptStartupTypeLocator(string rootScriptPath, ILogger<ScriptStartupTypeLocator> logger, IExtensionBundleManager extensionBundleManager,
-            IFunctionMetadataManager functionMetadataManager, IMetricsLogger metricsLogger, IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions, ExtensionRequirementOptions extensionRequirementOptions)
+            IFunctionMetadataManager functionMetadataManager, IMetricsLogger metricsLogger, IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions, IOptions<ExtensionRequirementOptions> extensionRequirementOptions)
         {
             _rootScriptPath = rootScriptPath ?? throw new ArgumentNullException(nameof(rootScriptPath));
             _extensionBundleManager = extensionBundleManager ?? throw new ArgumentNullException(nameof(extensionBundleManager));
@@ -274,7 +274,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
 
         private void ValidateExtensionRequirements(List<Type> startupTypes, ExtensionRequirementsInfo requirementsInfo)
         {
-            if (requirementsInfo.ExtensionRequirementsByStartupType == null)
+            if (requirementsInfo.ExtensionRequirementsByStartupType is null)
             {
                 return;
             }
@@ -351,8 +351,8 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
 
         private ExtensionRequirementsInfo GetExtensionRequirementsInfo()
         {
-            ExtensionRequirementsInfo requirementsInfo = _extensionRequirementOptions?.Bundles != null || _extensionRequirementOptions?.Extensions != null
-                ? new ExtensionRequirementsInfo(_extensionRequirementOptions.Bundles, _extensionRequirementOptions.Extensions)
+            ExtensionRequirementsInfo requirementsInfo = _extensionRequirementOptions.Value.Bundles != null || _extensionRequirementOptions.Value.Extensions != null
+                ? new ExtensionRequirementsInfo(_extensionRequirementOptions.Value.Bundles, _extensionRequirementOptions.Value.Extensions)
                 : DependencyHelper.GetExtensionRequirements();
             return requirementsInfo;
         }

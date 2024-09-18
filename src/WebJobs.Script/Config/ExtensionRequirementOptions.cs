@@ -8,6 +8,9 @@ using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 
 namespace Microsoft.Azure.WebJobs.Script.Config
 {
+    /// <summary>
+    /// Represents collection of minumum bundle and extension requirements for a function app.
+    /// </summary>
     public class ExtensionRequirementOptions
     {
         /// <summary>
