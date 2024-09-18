@@ -11,7 +11,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
     public class ExtensionRequirementOptions
     {
         /// <summary>
-        /// Gets or Sets the minimum bundles configuration required for the function app.
+        /// Gets or sets the minimum bundles configuration required for the function app.
         /// </summary>
         public IEnumerable<BundleRequirement> Bundles { get; set; }
 
