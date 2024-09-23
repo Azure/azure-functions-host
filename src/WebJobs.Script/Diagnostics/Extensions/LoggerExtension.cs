@@ -161,10 +161,10 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
                 new EventId(333, nameof(IncorrectAutorestGeneratedJsonFile)),
                 "autorest_generated.json file found is incorrect (https://aka.ms/stencil) | exception:\n{contents}");
 
-        private static readonly Action<ILogger, string, bool, bool, bool, bool, bool, Exception> _scriptStartUpNotLoadingExtensionBundle =
-            LoggerMessage.Define<string, bool, bool, bool, bool, bool>(LogLevel.Information,
+        private static readonly Action<ILogger, string, bool, bool, bool, bool, Exception> _scriptStartUpNotLoadingExtensionBundle =
+            LoggerMessage.Define<string, bool, bool, bool, bool>(LogLevel.Information,
                 new EventId(334, nameof(ScriptStartNotLoadingExtensionBundle)),
-                "Extension Bundle not loaded. Loading extensions from {path}. BundleConfigured: {bundleConfigured}, PrecompiledFunctionApp: {isPrecompiledFunctionApp}, LegacyBundle: {isLegacyExtensionBundle}, DotnetIsolatedApp: {isDotnetIsolatedApp}, isLogicApp: {isLogicApp}");
+                "Extension Bundle not loaded. Loading extensions from {path}. BundleConfigured: {bundleConfigured}, LegacyBundle: {isLegacyExtensionBundle}, DotnetIsolatedApp: {isDotnetIsolatedApp}, isLogicApp: {isLogicApp}");
 
         private static readonly Action<ILogger, string, Exception> _scriptStartupResettingLoadContextWithBasePath =
             LoggerMessage.Define<string>(LogLevel.Information,
@@ -216,9 +216,9 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
             _scriptStartupResettingLoadContextWithBasePath(logger, path, null);
         }
 
-        public static void ScriptStartNotLoadingExtensionBundle(this ILogger logger, string path, bool bundleConfigured, bool isPrecompiledFunctionApp, bool isLegacyExtensionBundle, bool isDotnetIsolatedApp, bool isLogicApp)
+        public static void ScriptStartNotLoadingExtensionBundle(this ILogger logger, string path, bool bundleConfigured, bool isLegacyExtensionBundle, bool isDotnetIsolatedApp, bool isLogicApp)
         {
-            _scriptStartUpNotLoadingExtensionBundle(logger, path, bundleConfigured, isPrecompiledFunctionApp, isLegacyExtensionBundle, isDotnetIsolatedApp, isLogicApp, null);
+            _scriptStartUpNotLoadingExtensionBundle(logger, path, bundleConfigured, isLegacyExtensionBundle, isDotnetIsolatedApp, isLogicApp, null);
         }
 
         public static void ScriptStartUpLoadingStartUpExtension(this ILogger logger, string startupExtensionName)

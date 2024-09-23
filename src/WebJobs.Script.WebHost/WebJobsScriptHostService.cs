@@ -339,6 +339,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 bool skipJobHostStartup = isOffline || hasNonTransientErrors;
                 bool skipHostJsonConfiguration = startupMode == JobHostStartupMode.HandlingConfigurationParsingError;
                 string functionsExtensionVersion = _environment.GetFunctionsExtensionVersion();
+
                 _logger.Building(functionsExtensionVersion, skipJobHostStartup, skipHostJsonConfiguration, activeOperation.Id);
 
                 using (_metricsLogger.LatencyEvent(MetricEventNames.ScriptHostManagerBuildScriptHost))

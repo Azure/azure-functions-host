@@ -81,7 +81,6 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
             HashSet<string> bindingsSet = null;
             var bundleConfigured = _extensionBundleManager.IsExtensionBundleConfigured();
             bool isLegacyExtensionBundle = _extensionBundleManager.IsLegacyExtensionBundle();
-            bool isPrecompiledFunctionApp = false;
 
             // dotnet app precompiled -> Do not use bundles
             var workerConfigs = _languageWorkerOptions.CurrentValue.WorkerConfigs;
@@ -102,24 +101,22 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
                     {
                         bindingsSet.Add(binding.Type);
                     }
-                    isPrecompiledFunctionApp = isPrecompiledFunctionApp || functionMetadata.Language == DotNetScriptTypes.DotNetAssembly;
                 }
             }
 
             bool isDotnetIsolatedApp = IsDotnetIsolatedApp(functionMetadataCollection, SystemEnvironment.Instance);
-            bool isDotnetApp = isPrecompiledFunctionApp || isDotnetIsolatedApp;
             var isLogicApp = SystemEnvironment.Instance.IsLogicApp();
 
             if (SystemEnvironment.Instance.IsPlaceholderModeEnabled())
             {
                 // Do not move this.
                 // Calling this log statement in the placeholder mode to avoid jitting during specializtion
-                _logger.ScriptStartNotLoadingExtensionBundle("WARMUP_LOG_ONLY", bundleConfigured, isPrecompiledFunctionApp, isLegacyExtensionBundle, isDotnetIsolatedApp, isLogicApp);
+                _logger.ScriptStartNotLoadingExtensionBundle("WARMUP_LOG_ONLY", bundleConfigured, isLegacyExtensionBundle, isDotnetIsolatedApp, isLogicApp);
             }
 
             string baseProbingPath = null;
 
-            if (bundleConfigured && (!isDotnetApp || isLegacyExtensionBundle || isLogicApp))
+            if (bundleConfigured && (!isDotnetIsolatedApp || isLegacyExtensionBundle || isLogicApp))
             {
                 extensionsMetadataPath = await _extensionBundleManager.GetExtensionBundleBinPathAsync();
                 if (string.IsNullOrEmpty(extensionsMetadataPath))
@@ -137,7 +134,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
                 {
                     extensionsMetadataPath = resolvedPath;
                 }
-                _logger.ScriptStartNotLoadingExtensionBundle(extensionsMetadataPath, bundleConfigured, isPrecompiledFunctionApp, isLegacyExtensionBundle, isDotnetIsolatedApp, isLogicApp);
+                _logger.ScriptStartNotLoadingExtensionBundle(extensionsMetadataPath, bundleConfigured, isLegacyExtensionBundle, isDotnetIsolatedApp, isLogicApp);
             }
 
             baseProbingPath ??= extensionsMetadataPath;

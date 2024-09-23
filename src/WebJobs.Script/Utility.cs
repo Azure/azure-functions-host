@@ -62,8 +62,6 @@ namespace Microsoft.Azure.WebJobs.Script
         private static readonly string UTF8ByteOrderMark = Encoding.UTF8.GetString(Encoding.UTF8.GetPreamble());
         private static readonly FilteredExpandoObjectConverter _filteredExpandoObjectConverter = new FilteredExpandoObjectConverter();
 
-        private static List<string> dotNetLanguages = new List<string>() { DotNetScriptTypes.CSharp, DotNetScriptTypes.DotNetAssembly };
-
         public static int ColdStartDelayMS { get; set; } = 5000;
 
         internal static bool TryGetHostService<TService>(IScriptHostManager scriptHostManager, out TService service) where TService : class
@@ -693,10 +691,6 @@ namespace Microsoft.Azure.WebJobs.Script
                     return null;
                 }
 
-                if (IsDotNetLanguageFunction(functionLanguage))
-                {
-                    return RpcWorkerConstants.DotNetLanguageWorkerName;
-                }
                 return functionLanguage;
             }
             return null;
@@ -721,37 +715,13 @@ namespace Microsoft.Azure.WebJobs.Script
             return !string.IsNullOrEmpty(functionMetadata.Language) && workerConfigs.Select(wc => wc.Description.Language).Contains(functionMetadata.Language);
         }
 
-        public static bool IsDotNetLanguageFunction(string functionLanguage)
-        {
-            return dotNetLanguages.Any(lang => string.Equals(lang, functionLanguage, StringComparison.OrdinalIgnoreCase));
-        }
-
         public static bool IsSupportedRuntime(string workerRuntime, IEnumerable<RpcWorkerConfig> workerConfigs)
         {
             return workerConfigs.Any(config => string.Equals(config.Description.Language, workerRuntime, StringComparison.OrdinalIgnoreCase));
         }
 
-        public static bool IsCodelessDotNetLanguageFunction(FunctionMetadata functionMetadata)
-        {
-            if (functionMetadata == null)
-            {
-                throw new ArgumentNullException(nameof(functionMetadata));
-            }
-
-            if (functionMetadata.IsCodeless() && !string.IsNullOrEmpty(functionMetadata.Language))
-            {
-                return IsDotNetLanguageFunction(functionMetadata.Language);
-            }
-            return false;
-        }
-
         private static bool ContainsFunctionWithWorkerRuntime(IEnumerable<FunctionMetadata> functions, string workerRuntime)
         {
-            if (string.Equals(workerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
-            {
-                return functions.Any(f => dotNetLanguages.Any(l => l.Equals(f.Language, StringComparison.OrdinalIgnoreCase)));
-            }
-
             return ContainsAnyFunctionMatchingWorkerRuntime(functions, workerRuntime);
         }
 
@@ -883,7 +853,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         /// <summary>
         /// Utility function to validate a blob URL by attempting to retrieve the account name from it.
-        /// Borrowed from https://github.com/Azure/azure-sdk-for-net/blob/e0fd1cd415d8339947b20c3565c7adc7d7f60fbe/sdk/storage/Azure.Storage.Common/src/Shared/UriExtensions.cs
+        /// Borrowed from https://github.com/Azure/azure-sdk-for-net/blob/e0fd1cd415d8339947b20c3565c7adc7d7f60fbe/sdk/storage/Azure.Storage.Common/src/Shared/UriExtensions.cs.
         /// </summary>
         private static string GetAccountNameFromDomain(string domain)
         {

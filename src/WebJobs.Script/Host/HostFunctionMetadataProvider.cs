@@ -185,32 +185,10 @@ namespace Microsoft.Azure.WebJobs.Script
             // determine the script type based on the primary script file extension
             string extension = Path.GetExtension(scriptFilePath).ToLowerInvariant().TrimStart('.');
 
-            // In the special case of a null `functionsWorkerRuntime` and an extension of "dll",
-            // we want to short-circuit the worker config check (to prevent the dotnet-isolated worker from
-            // being chosen) and allow in-proc handling to be used.
-            // Other notes:
-            // - when dotnet-isolated, the `functionsWorkerRuntime` is required to be set to "dotnet-isolated"
-            // - when `functionsWorkerRuntime` is set to "dotnet", workerConfigs is empty so this correctly falls
-            //   through to choose DotNetAssembly with a "dll" extension
-            if (functionsWorkerRuntime is null && string.Equals(extension, "dll", StringComparison.OrdinalIgnoreCase))
-            {
-                return DotNetScriptTypes.DotNetAssembly;
-            }
-
             var workerConfig = workerConfigs.FirstOrDefault(config => config.Description.Extensions.Contains($".{extension}", StringComparer.OrdinalIgnoreCase));
             if (workerConfig != null)
             {
                 return workerConfig.Description.Language;
-            }
-
-            // If no worker claimed these extensions, use in-proc.
-            switch (extension)
-            {
-                case "csx":
-                case "cs":
-                    return DotNetScriptTypes.CSharp;
-                case "dll":
-                    return DotNetScriptTypes.DotNetAssembly;
             }
 
             return null;
