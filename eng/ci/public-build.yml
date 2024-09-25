@@ -24,7 +24,7 @@ pr:
     - dev
     - in-proc
     - release/4.*
-    - release/in-proc
+    - release/in-proc*
 
 resources:
   repositories:
