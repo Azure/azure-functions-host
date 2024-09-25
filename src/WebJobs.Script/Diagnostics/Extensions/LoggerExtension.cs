@@ -184,9 +184,9 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
             "Referenced bundle {bundleId} of version {bundleVersion} does not meet the required minimum version of {minimumVersion}. Update your extension bundle reference in host.json to reference {minimumVersion2} or later.");
 
         private static readonly Action<ILogger, string, Exception> _hostJsonZipDeploymentIssue =
-    LoggerMessage.Define<string>(LogLevel.Warning,
+    LoggerMessage.Define<string>(LogLevel.Error,
         new EventId(338, nameof(HostJsonZipDeploymentIssue)),
-        "No functions were found. The host.json file was not located at the root, but it was found at the following path(s): {hostJsonFilesPath}. A default host.json was created at the root using a default configuration to start the function app. See https://aka.ms/deployment-zip-push for more information on deployment.");
+        "No functions were found. The host.json file was not located at the root, but it was found at the following path(s): {hostJsonFilesPath}. This might be due to an issue with the .zip deployment package. See https://aka.ms/deployment-zip-push for more information on deployment.");
 
         private static readonly Action<ILogger, Exception> _noHostJsonFile =
     LoggerMessage.Define(LogLevel.Information,

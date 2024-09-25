@@ -189,7 +189,7 @@ namespace Microsoft.Azure.WebJobs.Script
             if (functionMetadataList.Count == 0 && !_environment.IsPlaceholderModeEnabled())
             {
                 // Validate the host.json file if no functions are found.
-                HostJsonFileValidator();
+                ValidateHostJsonFile();
             }
 
             return functionMetadataList.OrderBy(f => f.Name, StringComparer.OrdinalIgnoreCase).ToImmutableArray();
@@ -295,7 +295,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        private void HostJsonFileValidator()
+        private void ValidateHostJsonFile()
         {
             try
             {
