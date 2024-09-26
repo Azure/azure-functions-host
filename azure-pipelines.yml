@@ -12,6 +12,7 @@ pr:
     - in-proc
     - release/4.*
     - release/in-proc
+    - aibhandari/*
 
 trigger:
   branches:
