@@ -5,7 +5,7 @@
     <TargetFrameworks>net8.0;net6.0</TargetFrameworks>
     <AssemblyName>Microsoft.Azure.WebJobs.Script.WebHost</AssemblyName>
     <RootNamespace>Microsoft.Azure.WebJobs.Script.WebHost</RootNamespace>
-    <PackageId>Microsoft.Azure.WebJobs.Script.WebHost</PackageId>
+    <PackageId>Microsoft.Azure.WebJobs.Script.WebHost.InProc</PackageId>
     <IsPackable Condition="'$(IsPackable)' != ''">true</IsPackable>
     <AspNetCoreHostingModel>InProcess</AspNetCoreHostingModel>
     <TieredCompilation>false</TieredCompilation>
