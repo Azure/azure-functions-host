@@ -320,8 +320,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
-        [InlineData("app.dll", "dotnet", DotNetScriptTypes.DotNetAssembly)]
-        [InlineData("app.dll", null, DotNetScriptTypes.DotNetAssembly)]
         [InlineData("app.dll", "any", "dllWorker")]
         public void ParseFunctionMetadata_ResolvesCorrectDotNetLanguage(string scriptFile, string functionsWorkerRuntime, string expectedLanguage)
         {

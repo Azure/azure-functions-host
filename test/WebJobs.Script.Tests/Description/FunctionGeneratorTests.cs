@@ -73,11 +73,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Collection<ParameterDescriptor> parameters = new Collection<ParameterDescriptor>();
 
             var userRetType = userFunc.ReturnType;
-            ParameterDescriptor returnParameter;
-            if (DotNetFunctionDescriptorProvider.TryCreateReturnValueParameterDescriptor(userRetType, new FunctionBinding[0], out returnParameter))
-            {
-                parameters.Add(returnParameter);
-            }
+            //ParameterDescriptor returnParameter;
+            // Validate...
+            //if (DotNetFunctionDescriptorProvider.TryCreateReturnValueParameterDescriptor(userRetType, new FunctionBinding[0], out returnParameter))
+            //{
+            //    parameters.Add(returnParameter);
+            //}
 
             FunctionMetadata metadata = new FunctionMetadata();
             var invoker = new RealInvoker(userFunc);

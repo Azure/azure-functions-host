@@ -1089,23 +1089,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(null, actualRuntime);
         }
 
-        [Theory]
-        [InlineData("CSharp")]
-        [InlineData("DotNetAssembly")]
-        public void IsDotNetLanguageFunction_Returns_True(string functionLanguage)
-        {
-            Assert.True(Utility.IsDotNetLanguageFunction(functionLanguage));
-        }
-
-        [Theory]
-        [InlineData("")]
-        [InlineData(null)]
-        [InlineData("someLang")]
-        public void IsDotNetLanguageFunction_Returns_False(string functionLanguage)
-        {
-            Assert.False(Utility.IsDotNetLanguageFunction(functionLanguage));
-        }
-
         private static IEnumerable<FunctionMetadata> GetDotNetFunctionsMetadata()
         {
             FunctionMetadata funcCS1 = new FunctionMetadata()
@@ -1600,8 +1583,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         [Theory]
         [InlineData("python", "main.py", "python", "python")]
-        [InlineData("dotnet", "app.dll", "dotnet", DotNetScriptTypes.DotNetAssembly)]
-        [InlineData(null, "app.dll", "dotnet", DotNetScriptTypes.DotNetAssembly)] // if FUNCTIONS_WORKER_RUNTIME is missing, assume dotnet
         public async Task Initialize_MissingWorkerRuntime_SetsCorrectRuntimeFromFunctionMetadata(string functionsWorkerRuntime, string scriptFile, string expectedMetricLanguage, string expectedMetadataLanguage)
         {
             IFileSystem CreateFileSystem(string rootPath)

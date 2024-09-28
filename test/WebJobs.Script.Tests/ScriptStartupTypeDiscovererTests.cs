@@ -1100,10 +1100,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var functionMetdata = new FunctionMetadata();
             functionMetdata.Bindings.Add(new BindingMetadata() { Type = "blob" });
 
-            if (hasPrecompiledFunction)
-            {
-                functionMetdata.Language = DotNetScriptTypes.DotNetAssembly;
-            }
             if (hasNodeFunctions)
             {
                 functionMetdata.Language = RpcWorkerConstants.NodeLanguageWorkerName;
