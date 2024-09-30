@@ -186,9 +186,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<WebJobsScriptHostService>();
             services.AddSingleton<IHostedService>(s => s.GetRequiredService<WebJobsScriptHostService>());
 
-            // Performs function assembly analysis to generete log use of unoptimized assemblies.
-            services.AddSingleton<IHostedService, AssemblyAnalyzer.AssemblyAnalysisService>();
-
             // Performs checks to see if the sas token within the urls are expired.
             services.AddSingleton<IHostedService, Health.TokenExpirationService>();
 

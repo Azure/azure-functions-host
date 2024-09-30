@@ -4,7 +4,12 @@
       "commandName": "Project",
       "launchBrowser": true,
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "AzureWebJobsScriptRoot": "C:\\Users\\facaval\\source\\repos\\TestInprocFunction\\TestInprocFunction\\bin\\Debug\\net6.0",
+        "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+        "FUNCTIONS_WORKER_RUNTIME": "dotnet",
+        "AZURE_FUNCTIONS_ENVIRONMENT": "Development",
+        "FUNCTIONS_RUNTIME_VERSION": "8"
       },
       "applicationUrl": "https://localhost:62513;http://localhost:62514"
     }

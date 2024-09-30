@@ -530,14 +530,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 functionWrapperType
             };
 
-            foreach (var descriptor in Functions)
-            {
-                if (descriptor.Metadata.Properties.TryGetValue(ScriptConstants.FunctionMetadataDirectTypeKey, out Type type))
-                {
-                    types.Add(type);
-                }
-            }
-
             _typeLocator.SetTypes(types);
         }
 
@@ -701,78 +693,6 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        // Validate that for any precompiled assembly, all functions have the same configuration precedence.
-        private void VerifyPrecompileStatus(IEnumerable<FunctionDescriptor> functions)
-        {
-            HashSet<string> illegalScriptAssemblies = new HashSet<string>();
-
-            Dictionary<string, bool> mapAssemblySettings = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
-            foreach (var function in functions)
-            {
-                var metadata = function.Metadata;
-                var scriptFile = metadata.ScriptFile;
-                if (scriptFile != null && scriptFile.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
-                {
-                    bool isDirect = metadata.IsDirect();
-                    if (mapAssemblySettings.TryGetValue(scriptFile, out bool prevIsDirect))
-                    {
-                        if (prevIsDirect != isDirect)
-                        {
-                            illegalScriptAssemblies.Add(scriptFile);
-                        }
-                    }
-                    mapAssemblySettings[scriptFile] = isDirect;
-                }
-            }
-
-            foreach (var function in functions)
-            {
-                var metadata = function.Metadata;
-                var scriptFile = metadata.ScriptFile;
-
-                if (illegalScriptAssemblies.Contains(scriptFile))
-                {
-                    // Error. All entries pointing to the same dll must have the same value for IsDirect
-                    string msg = string.Format(CultureInfo.InvariantCulture, "Configuration error: all functions in {0} must have the same value for 'configurationSource'.",
-                        scriptFile);
-
-                    // Adding a function error will cause this function to get ignored
-                    Utility.AddFunctionError(this.FunctionErrors, metadata.Name, msg);
-
-                    _logger.ConfigurationError(msg);
-                }
-
-                return;
-            }
-        }
-
-        /// <summary>
-        /// Sets the type that should be directly loaded by WebJobs if using attribute based configuration (these have the "configurationSource" : "attributes" set)
-        /// They will be indexed and invoked directly by the WebJobs SDK and skip the IL generator and invoker paths.
-        /// </summary>
-        private void TrySetDirectType(FunctionMetadata metadata)
-        {
-            if (!metadata.IsDirect())
-            {
-                return;
-            }
-
-            string path = metadata.ScriptFile;
-            var typeName = Utility.GetFullClassName(metadata.EntryPoint);
-
-            Assembly assembly = FunctionAssemblyLoadContext.Shared.LoadFromAssemblyPath(path);
-            var type = assembly.GetType(typeName);
-            if (type != null)
-            {
-                metadata.Properties.Add(ScriptConstants.FunctionMetadataDirectTypeKey, type);
-            }
-            else
-            {
-                // This likely means the function.json and dlls are out of sync. Perhaps a badly generated function.json?
-                _logger.FailedToLoadType(typeName, path);
-            }
-        }
-
         // Ensure customer deployed application payload matches with the worker runtime configured for the function app and log a warning if not.
         // If a customer has "dotnet-isolated" worker runtime configured for the function app, and then they deploy an in-proc app payload, this will warn/error
         // If there is a mismatch, the method will return false, else true.
@@ -825,12 +745,20 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 foreach (FunctionMetadata metadata in functions)
                 {
+                    // If this is metadata represents a function that supports direct type indexing (in-proc), log a warning and skip it.
+                    // This is temporary and will be removed in a future release, along with all other logic to support the in-proc model.
+                    if (metadata.IsDirect())
+                    {
+                        throw new HostInitializationException(".NET In-process function detected. This model is not supported by the current host." +
+                                                              " See https://aka.ms/azure-functions-retirements/in-process-model for more information.");
+                    }
+
                     try
                     {
-                        bool created = false;
                         FunctionDescriptor descriptor = null;
                         foreach (var provider in descriptorProviders)
                         {
+                            var created = false;
                             (created, descriptor) = await provider.TryCreate(metadata);
                             if (created)
                             {
@@ -843,10 +771,6 @@ namespace Microsoft.Azure.WebJobs.Script
                             ValidateFunction(descriptor, httpFunctions, _environment);
                             functionDescriptors.Add(descriptor);
                         }
-
-                        // If this is metadata represents a function that supports direct type indexing,
-                        // set that type int he function metadata
-                        TrySetDirectType(metadata);
                     }
                     catch (Exception ex)
                     {
@@ -854,8 +778,6 @@ namespace Microsoft.Azure.WebJobs.Script
                         Utility.AddFunctionError(FunctionErrors, metadata.Name, Utility.FlattenException(ex, includeSource: false));
                     }
                 }
-
-                VerifyPrecompileStatus(functionDescriptors);
             }
             return functionDescriptors;
         }
