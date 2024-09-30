@@ -737,7 +737,7 @@ namespace Microsoft.Azure.WebJobs.Script
                         scriptFile);
 
                     // Adding a function error will cause this function to get ignored
-                    Utility.AddFunctionError(this.FunctionErrors, metadata.Name, msg);
+                    Utility.AddFunctionError(FunctionErrors, metadata.Name, msg);
 
                     _logger.ConfigurationError(msg);
                 }
@@ -823,15 +823,34 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 Utility.VerifyFunctionsMatchSpecifiedLanguage(functions, workerRuntime, _environment.IsPlaceholderModeEnabled(), _isHttpWorker, cancellationToken, throwOnMismatch: throwOnWorkerRuntimeAndPayloadMetadataMismatch);
 
+                var inProcIndexingSupported = _environment.IsPlaceholderModeEnabled()
+                                              || (_environment.IsDotNetInProcSupported()
+                                                  && !_hostingConfigOptions.Value.IsDotNetInProcDisabled);
+
                 foreach (FunctionMetadata metadata in functions)
                 {
                     try
                     {
-                        bool created = false;
+                        // If this is metadata represents a function that requires direct type indexing (in-proc), and that is not supported,
+                        // throw an exception with detailed information.
+                        // This is temporary and will be removed in a future release, along with all other logic to support the in-proc model.
+                        if (metadata.IsDotNetInProc())
+                        {
+                            if (!inProcIndexingSupported)
+                            {
+                                throw new HostInitializationException(".NET In-process function detected. This model is not supported by the host in the current environment." +
+                                                                      " See https://aka.ms/azure-functions-retirements/in-process-model for more information.");
+                            }
+
+                            // If this is metadata represents a function that supports direct type indexing,
+                            // set that type in the function metadata
+                            TrySetDirectType(metadata);
+                        }
+
                         FunctionDescriptor descriptor = null;
                         foreach (var provider in descriptorProviders)
                         {
-                            (created, descriptor) = await provider.TryCreate(metadata);
+                            (bool created, descriptor) = await provider.TryCreate(metadata);
                             if (created)
                             {
                                 break;
@@ -843,12 +862,8 @@ namespace Microsoft.Azure.WebJobs.Script
                             ValidateFunction(descriptor, httpFunctions, _environment);
                             functionDescriptors.Add(descriptor);
                         }
-
-                        // If this is metadata represents a function that supports direct type indexing,
-                        // set that type int he function metadata
-                        TrySetDirectType(metadata);
                     }
-                    catch (Exception ex)
+                    catch (Exception ex) when (ex is not HostInitializationException)
                     {
                         // log any unhandled exceptions and continue
                         Utility.AddFunctionError(FunctionErrors, metadata.Name, Utility.FlattenException(ex, includeSource: false));

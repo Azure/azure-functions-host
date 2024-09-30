@@ -144,6 +144,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string HostingConfigSwtAuthenticationEnabled = "SwtAuthenticationEnabled";
         public const string HostingConfigSwtIssuerEnabled = "SwtIssuerEnabled";
         public const string HostingConfigInternalAuthApisAllowList = "InternalAuthApisAllowList";
+        public const string HostingConfigDotNetInProcDisabled = "DotNetInProcDisabled";
 
         public const string SiteAzureFunctionsUriFormat = "https://{0}.azurewebsites.net/azurefunctions";
         public const string ScmSiteUriFormat = "https://{0}.scm.azurewebsites.net";
