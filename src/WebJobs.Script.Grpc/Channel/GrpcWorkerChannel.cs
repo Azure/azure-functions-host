@@ -590,8 +590,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         public void SetupFunctionInvocationBuffers(IEnumerable<FunctionMetadata> functions)
         {
-            _functions = functions;
-            foreach (FunctionMetadata metadata in functions)
+            var functionMetadatasList = functions as FunctionMetadata[] ?? functions.ToArray();
+            _functions = functionMetadatasList;
+            foreach (FunctionMetadata metadata in functionMetadatasList)
             {
                 string functionId = metadata.GetFunctionId();
                 _workerChannelLogger.LogDebug("Setting up FunctionInvocationBuffer for function: '{functionName}' with functionId: '{functionId}'", metadata.Name, functionId);
@@ -617,18 +618,19 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     timeout = _functionLoadTimeout;
                 }
 
-                var count = _functions.Count();
+                var functionMetadatas = _functions as FunctionMetadata[] ?? _functions.ToArray();
+                var count = functionMetadatas.Count();
                 if (capabilityEnabled)
                 {
                     RegisterCallbackForNextGrpcMessage(MsgType.FunctionLoadResponseCollection, timeout, count, msg => LoadResponse(msg.Message.FunctionLoadResponseCollection), HandleWorkerFunctionLoadError);
 
-                    SendFunctionLoadRequestCollection(_functions, managedDependencyOptions);
+                    SendFunctionLoadRequestCollection(functionMetadatas, managedDependencyOptions);
                 }
                 else
                 {
                     RegisterCallbackForNextGrpcMessage(MsgType.FunctionLoadResponse, timeout, count, msg => LoadResponse(msg.Message.FunctionLoadResponse), HandleWorkerFunctionLoadError);
 
-                    foreach (FunctionMetadata metadata in _functions)
+                    foreach (FunctionMetadata metadata in functionMetadatas)
                     {
                         SendFunctionLoadRequest(metadata, managedDependencyOptions);
                     }

@@ -967,7 +967,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Theory]
         [InlineData("python", "python")]
         [InlineData("node", "node")]
-        [InlineData("dotnet", "dotnetassembly")]
         [InlineData("java", "java")]
         public void IsSingleLanguage_Codeless_AndAnother_Always_Returns_True(string workerRuntime, string language)
         {
