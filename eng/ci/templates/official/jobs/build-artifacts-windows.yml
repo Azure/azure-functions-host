@@ -49,7 +49,7 @@ jobs:
   # TODO: remove this extra build when we no longer release out-of-proc from in-proc branch
   - template: /eng/ci/templates/steps/build-site-ext.yml@self
     parameters:
-      extraBuildArgs: -f net6.0 -p:MinorVersionPrefix='' -p:SiteExtensionName=Functions
+      extraBuildArgs: -f net6.0 -p:MinorVersionPrefix='' -p:SiteExtensionName=Functions -p:ShouldWriteHardLinkHashes=true
       binlogPrefix: site_ext_oop
 
   - task: DotNetCoreCLI@2

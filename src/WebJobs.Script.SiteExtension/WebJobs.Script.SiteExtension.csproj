@@ -9,6 +9,7 @@
     <CustomAfterNoTargets Condition="'$(TargetFramework)' != ''">$(MSBuildThisFileDirectory)Publish.SingleTFM.targets</CustomAfterNoTargets>
     <CustomAfterNoTargets Condition="'$(TargetFramework)' == ''">$(MSBuildThisFileDirectory)Publish.MultiTFM.targets</CustomAfterNoTargets>
     <AddAdditionalExplicitAssemblyReferences>false</AddAdditionalExplicitAssemblyReferences>
+    <ShouldWriteHardLinkHashes>false</ShouldWriteHardLinkHashes>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(TargetFramework)' == 'net6.0'">
