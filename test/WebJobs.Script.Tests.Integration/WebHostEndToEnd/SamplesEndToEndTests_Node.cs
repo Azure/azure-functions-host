@@ -12,7 +12,6 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.EventHubs;
 using Microsoft.Azure.Storage.Blob;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -37,49 +36,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         {
             _fixture = fixture;
             _settingsManager = ScriptSettingsManager.Instance;
-        }
-
-        [Fact(Skip = "Need to investigate .NET 6 failure")]
-        public async Task EventHubTrigger()
-        {
-            // write 3 events
-            List<EventData> events = new List<EventData>();
-            string[] ids = new string[3];
-            for (int i = 0; i < 3; i++)
-            {
-                ids[i] = Guid.NewGuid().ToString();
-                JObject jo = new JObject
-                {
-                    { "value", ids[i] }
-                };
-                var evt = new EventData(Encoding.UTF8.GetBytes(jo.ToString(Formatting.None)));
-                evt.Properties.Add("TestIndex", i);
-                events.Add(evt);
-            }
-
-            string connectionString = Environment.GetEnvironmentVariable("AzureWebJobsEventHubSender");
-            EventHubsConnectionStringBuilder builder = new EventHubsConnectionStringBuilder(connectionString);
-
-            if (string.IsNullOrWhiteSpace(builder.EntityPath))
-            {
-                string eventHubPath = ScriptSettingsManager.Instance.GetSetting("AzureWebJobsEventHubPath");
-                builder.EntityPath = eventHubPath;
-            }
-
-            EventHubClient eventHubClient = EventHubClient.CreateFromConnectionString(builder.ToString());
-
-            await eventHubClient.SendAsync(events);
-
-            string logs = null;
-            await TestHelpers.Await(() =>
-            {
-                // wait until all of the 3 of the unique IDs sent
-                // above have been processed
-                logs = _fixture.Host.GetLog();
-                return ids.All(p => logs.Contains(p));
-            }, userMessageCallback: _fixture.Host.GetLog);
-
-            Assert.True(logs.Contains("IsArray true"));
         }
 
         [Fact]
