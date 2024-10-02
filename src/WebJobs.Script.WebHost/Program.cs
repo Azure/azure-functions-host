@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public static IWebHostBuilder CreateWebHostBuilder(string[] args = null)
         {
-// Setting this env variable to test placeholder scenarios locally.
+            // Setting this env variable to test placeholder scenarios locally.
 #if PLACEHOLDERSIMULATION
             SystemEnvironment.Instance.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
             SystemEnvironment.Instance.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "0");
@@ -75,6 +75,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         IsLinuxAppServiceEnvironment = SystemEnvironment.Instance.IsLinuxAppService()
                     });
                     config.Add(new FunctionsHostingConfigSource(SystemEnvironment.Instance));
+
+                    var hostingEnvironmentConfigFilePath = SystemEnvironment.Instance.GetFunctionsHostingEnvironmentConfigFilePath();
+                    if (!string.IsNullOrEmpty(hostingEnvironmentConfigFilePath))
+                    {
+                        config.AddJsonFile(hostingEnvironmentConfigFilePath, optional: true, reloadOnChange: false);
+                    }
                 })
                 .ConfigureLogging((context, loggingBuilder) =>
                 {

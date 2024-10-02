@@ -31,5 +31,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public const string NonHISSecretLoaded = "AZFD0012";
         public const string NonHISSecretLoadedHelpLink = "https://aka.ms/functions-non-his-secrets";
+
+        public const string WorkerRuntimeDoesNotMatchWithFunctionMetadataErrorCode = "AZFD0013";
+        public const string WorkerRuntimeDoesNotMatchWithFunctionMetadataHelpLink = "https://aka.ms/functions-invalid-worker-runtime";
     }
 }

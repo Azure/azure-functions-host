@@ -44,7 +44,7 @@
     <PackageReference Include="FluentAssertions" Version="5.9.0" />
     <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.Testing" Version="8.1.0" />
-    <PackageReference Include="Microsoft.Azure.Functions.PythonWorker" Version="4.30.3" />
+    <PackageReference Include="Microsoft.Azure.Functions.PythonWorker" Version="4.33.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.9.4" />
     <PackageReference Include="Moq" Version="4.18.4" />
     <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.435">
@@ -77,6 +77,16 @@
     <None Update="Description\DotNet\TestFiles\**" CopyToOutputDirectory="PreserveNewest" />
     <None Update="Microsoft.Azure.WebJobs.Script.WebHost.deps.json" CopyToOutputDirectory="PreserveNewest" />
     <None Update="TestFixture\HostOptionsProviderTests\*.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="TestFixture\ExtensionRequirementOptionsTest\EmptyFile.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="TestFixture\ExtensionRequirementOptionsTest\FunctionsHostingEnvironmentConfig_extensionsOnly.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="TestFixture\ExtensionRequirementOptionsTest\FunctionsHostingEnvironmentConfig_bundlesOnly.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="TestFixture\ExtensionRequirementOptionsTest\FunctionsHostingEnvironmentConfig.json" CopyToOutputDirectory="PreserveNewest" />
     <None Update="Workers\Rpc\Resources\**" CopyToOutputDirectory="PreserveNewest" />
     <None Update="TestWorkers\**" CopyToOutputDirectory="PreserveNewest" />
     <None Update="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />

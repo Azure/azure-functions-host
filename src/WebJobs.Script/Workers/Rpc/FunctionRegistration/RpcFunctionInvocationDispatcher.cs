@@ -10,6 +10,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Azure.WebJobs.Host.Executors.Internal;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -39,6 +40,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly Lazy<Task<int>> _maxProcessCount;
         private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions;
         private readonly IHostMetrics _hostMetrics;
+        private readonly TimeSpan _defaultProcessStartupInterval = TimeSpan.FromSeconds(5);
+        private readonly TimeSpan _defaultProcessRestartInterval = TimeSpan.FromSeconds(5);
+        private readonly TimeSpan _defaultProcessShutdownInterval = TimeSpan.FromSeconds(5);
 
         private IScriptEventManager _eventManager;
         private IWebHostRpcWorkerChannelManager _webHostLanguageWorkerChannelManager;
@@ -307,9 +311,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
             else
             {
-                _processStartupInterval = workerConfig.CountOptions.ProcessStartupInterval;
-                _restartWait = workerConfig.CountOptions.ProcessRestartInterval;
-                _shutdownTimeout = workerConfig.CountOptions.ProcessShutdownTimeout;
+                _processStartupInterval = workerConfig?.CountOptions?.ProcessStartupInterval ?? _defaultProcessStartupInterval;
+                _restartWait = workerConfig?.CountOptions.ProcessRestartInterval ?? _defaultProcessRestartInterval;
+                _shutdownTimeout = workerConfig?.CountOptions.ProcessShutdownTimeout ?? _defaultProcessShutdownInterval;
             }
             ErrorEventsThreshold = 3 * await _maxProcessCount.Value;
 
@@ -403,6 +407,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         public async Task InvokeAsync(ScriptInvocationContext invocationContext)
         {
+            // We have entered back into a system scope, ensure our logs are captured as such.
+            using FunctionInvoker.Scope scope = FunctionInvoker.BeginSystemScope();
+
             // This could throw if no initialized workers are found. Shut down instance and retry.
             IEnumerable<IRpcWorkerChannel> workerChannels = await GetInitializedWorkerChannelsAsync(invocationContext.FunctionMetadata.Language ?? _workerRuntime);
             var rpcWorkerChannel = _functionDispatcherLoadBalancer.GetLanguageWorkerChannel(workerChannels);

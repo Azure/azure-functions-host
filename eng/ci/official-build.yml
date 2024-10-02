@@ -4,8 +4,8 @@ trigger:
     include:
     - dev
     - in-proc
-    - release/4.*
-    - release/in-proc
+    - release/*
+    - internal/release/*
 
 schedules:
 # Ensure we build nightly to catch any new CVEs and report SDL often.

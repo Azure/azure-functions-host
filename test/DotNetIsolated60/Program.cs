@@ -1,5 +1,6 @@
-using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Hosting;
+
+Console.WriteLine("Console Out from worker on startup.");
 
 //Debugger.Launch();
 
