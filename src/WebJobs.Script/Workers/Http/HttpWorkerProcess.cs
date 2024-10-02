@@ -6,6 +6,7 @@ using System.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 {
@@ -30,8 +31,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                                        IEnvironment environment,
                                        IMetricsLogger metricsLogger,
                                        IServiceProvider serviceProvider,
+                                       IOptionsMonitor<ScriptApplicationHostOptions> scriptApplicationHostOptions,
                                        ILoggerFactory loggerFactory)
-            : base(eventManager, processRegistry, workerProcessLogger, consoleLogSource, metricsLogger, serviceProvider, loggerFactory, environment, httpWorkerOptions.Description.UseStdErrorStreamForErrorsOnly)
+            : base(eventManager, processRegistry, workerProcessLogger, consoleLogSource, metricsLogger, serviceProvider, loggerFactory, environment,
+                  scriptApplicationHostOptions, httpWorkerOptions.Description.UseStdErrorStreamForErrorsOnly)
         {
             _processFactory = processFactory;
             _eventManager = eventManager;

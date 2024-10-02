@@ -143,6 +143,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string FeatureFlagEnableLegacyDurableVersionCheck = "EnableLegacyDurableVersionCheck";
         public const string HostingConfigSwtAuthenticationEnabled = "SwtAuthenticationEnabled";
         public const string HostingConfigSwtIssuerEnabled = "SwtIssuerEnabled";
+        public const string HostingConfigInternalAuthApisAllowList = "InternalAuthApisAllowList";
 
         public const string SiteAzureFunctionsUriFormat = "https://{0}.azurewebsites.net/azurefunctions";
         public const string ScmSiteUriFormat = "https://{0}.scm.azurewebsites.net";
@@ -243,6 +244,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public static readonly string LiveLogsSessionAIKey = "#AzFuncLiveLogsSessionId";
 
         public static readonly string FunctionsHostingConfigSectionName = "FunctionsHostingConfig";
+        public static readonly string FunctionsHostingEnvironmentConfigSectionName = "HostingEnvironmentConfig";
+        public static readonly string ExtensionRequirementsSection = $"{FunctionsHostingEnvironmentConfigSectionName}:extensionRequirements";
         public static readonly string MaximumBundleV3Version = "FunctionRuntimeV4MaxBundleV3Version";
         public static readonly string MaximumBundleV4Version = "FunctionRuntimeV4MaxBundleV4Version";
 

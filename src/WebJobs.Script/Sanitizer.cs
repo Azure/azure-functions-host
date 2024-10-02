@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Text.RegularExpressions;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Logging
@@ -17,8 +18,23 @@ namespace Microsoft.Azure.WebJobs.Logging
 
         // List of keywords that should not be replaced with [Hidden Credential]
         private static readonly string[] AllowedTokens = new string[] { "PublicKeyToken=" };
-        internal static readonly string[] CredentialTokens = new string[] { "Token=", "DefaultEndpointsProtocol=http", "AccountKey=", "Data Source=", "Server=", "Password=", "pwd=", "&amp;sig=", "&sig=", "?sig=", "SharedAccessKey=", "&amp;code=", "&code=", "?code=" };
+        internal static readonly string[] CredentialTokens = new string[] { "Token=", "DefaultEndpointsProtocol=http", "AccountKey=", "Data Source=", "Server=", "Password=", "pwd=", "&amp;sig=", "&sig=", "?sig=", "SharedAccessKey=", "&amp;code=", "&code=", "?code=", "key=" };
         private static readonly string[] CredentialNameFragments = new[] { "password", "pwd", "key", "secret", "token", "sas" };
+
+        // Pattern of format : "<protocol>://<username>:<password>@<address>:<port>"
+        private static readonly string Pattern = @"
+                                                \b([a-zA-Z]+)            # Capture protocol
+                                                :\/\/                    # '://'
+                                                ([^:/\s]+)               # Capture username
+                                                :                        # ':'
+                                                ([^@/\s]+)               # Capture password
+                                                @                        # '@'
+                                                ([^:/\s]+)               # Capture address
+                                                :                        # ':'
+                                                ([0-9]+)\b               # Capture port number
+                                            ";
+
+        private static readonly Regex Regex = new Regex(Pattern, RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.IgnorePatternWhitespace);
 
         /// <summary>
         /// Removes well-known credential strings from strings.
@@ -71,6 +87,12 @@ namespace Microsoft.Azure.WebJobs.Logging
                     t = t.Substring(0, startIndex) + SecretReplacement + (credentialEnd != -1 ? t.Substring(credentialEnd) : string.Empty);
                     inputWithAllowedTokensHidden = inputWithAllowedTokensHidden.Substring(0, startIndex) + SecretReplacement + (credentialEnd != -1 ? inputWithAllowedTokensHidden.Substring(credentialEnd) : string.Empty);
                 }
+            }
+
+            // This check avoids unnecessary regex evaluation if the input does not contain any url
+            if (input.Contains(":"))
+            {
+                t = Regex.Replace(t, SecretReplacement);
             }
 
             return t;
@@ -153,6 +175,6 @@ namespace Microsoft.Azure.WebJobs.Logging
         /// Checks if a string even *possibly* contains one of our <see cref="CredentialTokens"/>.
         /// Useful for short-circuiting more expensive checks and replacements if it's known we wouldn't do anything.
         /// </summary>
-        internal static bool MayContainCredentials(string input) => input.Contains("=");
+        internal static bool MayContainCredentials(string input) => input.Contains("=") || input.Contains(":");
     }
 }

@@ -3,11 +3,14 @@
 <!-- Please add your release notes in the following format:
 - My change description (#PR)
 -->
-
-- Upgraded the following package versions (#10325):
-  - `Azure.Security.KeyVault.Secrets` updated to 4.6.0
-  - `System.Format.Asn1` updated to 6.0.1
-- Update Python Worker Version to [4.30.3](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.30.3)
-- Update PowerShell 7.2 worker to [4.0.4020](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.4020)
-- Update PowerShell 7.4 worker to [4.0.4021](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.4021)
-- Updated dotnet-isolated worker to [1.0.10](https://github.com/Azure/azure-functions-dotnet-worker/pull/2629) (#10340)
+- Update Python Worker Version to [4.33.0](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.33.0)
+- Added fallback behavior to ensure in-proc payload compatibility with "dotnet-isolated" as the `FUNCTIONS_WORKER_RUNTIME` value (#10439)
+- Update Java Worker Version to [2.17.0](https://github.com/Azure/azure-functions-java-worker/releases/tag/2.17.0)
+  - Update application insights agent version to 3.5.4
+  - Includes fixes from 2.16.0
+- Migrated Scale Metrics to use `Azure.Data.Tables` SDK (#10276)
+  - Added support for Identity-based connections
+- Skip validation of `FUNCTIONS_WORKER_RUNTIME` with function metadata in placeholder mode. (#10459)
+- Sanitize exception logs (#10443)
+- Improving console log handling during specialization (#10345)
+- Update Node.js Worker Version to [3.10.1](https://github.com/Azure/azure-functions-nodejs-worker/releases/tag/v3.10.1)

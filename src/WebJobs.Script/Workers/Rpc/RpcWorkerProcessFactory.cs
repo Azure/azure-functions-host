@@ -22,6 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly IServiceProvider _serviceProvider;
         private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions;
         private readonly IEnvironment _environment;
+        private readonly IOptionsMonitor<ScriptApplicationHostOptions> _scriptApplicationHostOptions;
 
         public RpcWorkerProcessFactory(IRpcServer rpcServer,
                                        IScriptEventManager eventManager,
@@ -32,7 +33,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                                        IMetricsLogger metricsLogger,
                                        IServiceProvider serviceProvider,
                                        IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
-                                       IEnvironment environment)
+                                       IEnvironment environment,
+                                       IOptionsMonitor<ScriptApplicationHostOptions> scriptApplicationHostOptions)
         {
             _loggerFactory = loggerFactory;
             _eventManager = eventManager;
@@ -44,12 +46,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _serviceProvider = serviceProvider;
             _hostingConfigOptions = hostingConfigOptions;
             _environment = environment;
+            _scriptApplicationHostOptions = scriptApplicationHostOptions;
         }
 
         public IWorkerProcess Create(string workerId, string runtime, string scriptRootPath, RpcWorkerConfig workerConfig)
         {
             ILogger workerProcessLogger = _loggerFactory.CreateLogger($"Worker.rpcWorkerProcess.{runtime}.{workerId}");
-            return new RpcWorkerProcess(runtime, workerId, scriptRootPath, _rpcServer.Uri, workerConfig, _eventManager, _workerProcessFactory, _processRegistry, workerProcessLogger, _consoleLogSource, _metricsLogger, _serviceProvider, _hostingConfigOptions, _environment, _loggerFactory);
+            return new RpcWorkerProcess(runtime, workerId, scriptRootPath, _rpcServer.Uri, workerConfig, _eventManager, _workerProcessFactory, _processRegistry,
+                workerProcessLogger, _consoleLogSource, _metricsLogger, _serviceProvider, _hostingConfigOptions, _environment, _scriptApplicationHostOptions, _loggerFactory);
         }
     }
 }
