@@ -25,6 +25,8 @@ jobs:
         **\WebJobs.Script.Tests.csproj
 
   - task: CopyFiles@2
+    displayName: Copy deps.json
+    condition: always()
     inputs:
       SourceFolder: out/bin/WebJobs.Script.WebHost/debug
       Contents: '**/*.deps.json'

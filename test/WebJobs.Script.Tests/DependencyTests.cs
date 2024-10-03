@@ -61,8 +61,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(File.Exists(oldDepsJson), $"{oldDepsJson} not found.");
             Assert.True(File.Exists(newDepsJson), $"{newDepsJson} not found.");
 
-            IEnumerable<RuntimeFile> oldAssets = GetRuntimeFiles(oldDepsJson);
-            IEnumerable<RuntimeFile> newAssets = GetRuntimeFiles(newDepsJson);
+            IEnumerable<RuntimeFile> oldAssets = GetRuntimeFiles(oldDepsJson).ToList();
+            IEnumerable<RuntimeFile> newAssets = GetRuntimeFiles(newDepsJson).ToList();
 
             var comparer = new RuntimeFileComparer();
 
@@ -163,8 +163,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             public int GetHashCode([DisallowNull] RuntimeFile obj)
             {
-                string code = obj.Path + obj.AssemblyVersion + obj.FileVersion;
-                return code.GetHashCode();
+                return HashCode.Combine(obj.Path, obj.AssemblyVersion, obj.FileVersion);
             }
         }
     }
