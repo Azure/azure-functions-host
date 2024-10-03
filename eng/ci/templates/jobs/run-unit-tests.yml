@@ -10,6 +10,7 @@ jobs:
       displayName: Publish deps.json
       path: $(Build.ArtifactStagingDirectory)
       artifact: WebHost_Deps
+      condition: always()
 
   steps:
   - template: /eng/ci/templates/install-dotnet.yml@self
@@ -29,5 +30,5 @@ jobs:
     condition: always()
     inputs:
       SourceFolder: out/bin/WebJobs.Script.WebHost/debug
-      Contents: '**/*.deps.json'
+      Contents: '**/Microsoft.Azure.WebJobs.Script.WebHost.deps.json'
       TargetFolder: $(Build.ArtifactStagingDirectory)
