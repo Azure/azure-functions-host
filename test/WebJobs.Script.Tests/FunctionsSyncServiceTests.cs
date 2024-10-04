@@ -81,8 +81,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task StartAsync_TokenCancelledBeforeTimeout_DoesNotSyncTriggers()
         {
-            var cts = new CancellationTokenSource();
-            cts.CancelAfter(_testDueTime / 2);
+            using CancellationTokenSource cts = new();
+            cts.Cancel();
             await _syncService.StartAsync(cts.Token);
             await Task.Delay(2 * _testDueTime);
 

@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             bool usePublishPath = false)
         {
             string template = usePublishPath ? PublishPathTemplate : BuildPathTemplate;
-            _testPath = Path.GetFullPath(string.Format(template, testProjectName, "debug"));
+            _testPath = Path.GetFullPath(string.Format(template, testProjectName, TestHelpers.BuildConfig));
             _envVars = envVars ?? new Dictionary<string, string>();
         }
 
