@@ -14,3 +14,4 @@
 - Sanitize exception logs (#10443)
 - Improving console log handling during specialization (#10345)
 - Update Node.js Worker Version to [3.10.1](https://github.com/Azure/azure-functions-nodejs-worker/releases/tag/v3.10.1)
+- Pass ARM ID header for Linux consumption metrics requests (#10476)
