@@ -1,0 +1,55 @@
+<Project>
+
+  <ItemDefinitionGroup>
+    <!-- Makes these properties referencable for all items in this group -->
+    <ZipArtifact>
+      <TargetPath></TargetPath>
+      <TargetName></TargetName>
+    </ZipArtifact>
+  </ItemDefinitionGroup>
+
+  <Target Name="PrepareZipArtifacts" AfterTargets="Publish">
+    <PropertyGroup>
+      <!-- By default, we zip to package output path (as this is the 'packed' publish artifact). -->
+      <ZipArtifactsPath Condition="'$(ZipArtifactsPath)' == '' AND '$(ZipAfterPublish)' == 'true'">$(PackageOutputPath)</ZipArtifactsPath>
+      <ZipArtifactsPath Condition="'$(ZipArtifactsPath)' != ''">$([MSBuild]::EnsureTrailingSlash('$(ZipArtifactsPath)'))</ZipArtifactsPath>
+      <_RuntimeIdentifierWithPeriod Condition="'$(RuntimeIdentifier)' != ''">.$(RuntimeIdentifier.ToLowerInvariant())</_RuntimeIdentifierWithPeriod>
+    </PropertyGroup>
+
+    <!-- If no publish artifact is available, we will add the publish directory as a default. -->
+    <ItemGroup Condition="'$(ZipArtifactsPath)' != '' AND '@(ZipArtifact)' == ''">
+      <ZipArtifact Include="$(PublishDir)" TargetPath="$(ZipArtifactsPath)$(AssemblyName).$(Version)$(_RuntimeIdentifierWithPeriod).zip" />
+    </ItemGroup>
+  </Target>
+
+  <!--
+    Allows for zipping publish outputs:
+    Zip with a pre-determined name/location:
+    > `dotnet publish -p:ZipAfterPublish=true`
+    Zip with a pre-determined name to the provided location
+    > `dotnet publish -p:ZipArtifactsPath={some_directory}`
+  -->
+  <Target Name="ZipPublishArtifacts"
+    AfterTargets="Publish"
+    DependsOnTargets="PrepareZipArtifacts"
+    Condition="'$(ZipArtifactsPath)' != '' AND '@(ZipArtifact)' != '' AND '$(IsCrossTargetingBuild)' != 'true' AND '$(IsPackable)' == 'true'">
+    <ItemGroup Condition="'$(ZipArtifactsPath)' != ''">
+      <ZipArtifact Condition="'%(TargetPath)' == '' AND '%(TargetName)' != ''">
+        <TargetPath>$([MSBuild]::EnsureTrailingSlash('$(ZipArtifactsPath)'))%(TargetName)</TargetPath>
+      </ZipArtifact>
+    </ItemGroup>
+
+    <!-- Get all parent directories we will be zipping artifacts to. So we can ensure they exist. -->
+    <ItemGroup>
+      <_ZipArtifactTargetPath Include="@(ZipArtifact->'%(TargetPath)')" />
+      <_ZipArtifactTargetDirectories Include="@(_ZipArtifactTargetPath->'%(RootDir)%(Directory)'->Distinct())" />
+    </ItemGroup>
+
+    <Error Condition="'%(ZipArtifact.TargetPath)' == ''" Text="ZipArtifact %(Identity) has no TargetPath or TargetName (required)." />
+
+    <MakeDir Directories="@(_ZipArtifactTargetDirectories)" /> <!-- Ensure parent directories exist. -->
+    <Delete Files="@(ZipArtifact->'%(TargetPath)')" /> <!-- Delete any existing zip artifacts. -->
+    <ZipDirectory SourceDirectory="@(ZipArtifact)" DestinationFile="%(TargetPath)" /> <!-- Generate zip artifacts. -->
+  </Target>
+
+</Project>

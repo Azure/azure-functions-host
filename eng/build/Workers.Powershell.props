@@ -1,0 +1,29 @@
+<Project>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Azure.Functions.PowerShellWorker.PS7.0" Version="4.0.3148" />
+    <PackageReference Include="Microsoft.Azure.Functions.PowerShellWorker.PS7.2" Version="4.0.4020" />
+    <PackageReference Include="Microsoft.Azure.Functions.PowerShellWorker.PS7.4" Version="4.0.4021" />
+  </ItemGroup>
+
+  <Target Name="RemovePowershellWorkerRuntimes" BeforeTargets="AssignTargetPaths" Condition="$(RuntimeIdentifier.StartsWith(win))">
+    <ItemGroup>
+      <_KeepPowerShellRuntime Include="win;win-x86;win10-x86;win-x64;win10-x64" />
+    </ItemGroup>
+
+    <PropertyGroup>
+      <!--
+        Match files that start with "workers/powershell/{version}/runtimes" but also not one of the win runtimes we want to keep.
+        1. Transform @(_KeepPowerShellRuntime) into a regex that matches runtime folders to keep, all or'd together.
+        2. Build a regex that matches all runtimes except the runtimes folders from the first step.
+      -->
+      <_PowershellRuntimesToKeepRegex>@(_KeepPowerShellRuntime->'%(Identity)(/|\\)', '|')</_PowershellRuntimesToKeepRegex>
+      <_PowershellRuntimesToRemoveRegex>^workers(/|\\)powershell(/|\\).*(/|\\)runtimes(/|\\)(?!$(_PowershellRuntimesToKeepRegex))</_PowershellRuntimesToRemoveRegex>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <_PowershellRuntimeToRemove Include="@(None)" Condition="'%(None.TargetPath)' != '' AND $([System.Text.RegularExpressions.Regex]::IsMatch('%(None.TargetPath)', $(_PowershellRuntimesToRemoveRegex)))" />
+      <None Remove="@(_PowershellRuntimeToRemove)" />
+    </ItemGroup>
+  </Target>
+</Project>

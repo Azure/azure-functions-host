@@ -1,5 +1,6 @@
 <Project>
-  <ItemGroup>
-    <PackageReference Include="Microsoft.Azure.Functions.PythonWorker" Version="4.33.0" />
-  </ItemGroup>
+  <!-- See /eng/build/Workers.Python.props -->
+  <Target Name="_DoNotImport" BeforeTargets="Build">
+    <Error Text="This file should not be imported. Import '$(TargetsRoot)Workers.props'." />
+  </Target>
 </Project>

@@ -11,6 +11,7 @@
   <PropertyGroup>
     <RepoRoot>$(MSBuildThisFileDirectory)</RepoRoot>
     <EngRoot>$(RepoRoot)eng/</EngRoot>
+    <TargetsRoot>$(EngRoot)build/</TargetsRoot>
   </PropertyGroup>
 
   <PropertyGroup>
