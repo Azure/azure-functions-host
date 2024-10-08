@@ -52,7 +52,6 @@
     <PackageReference Include="Microsoft.ApplicationInsights.WindowsServer" Version="2.21.0" />
     <PackageReference Include="Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel" Version="2.21.0" />
     <PackageReference Include="Microsoft.AspNet.WebApi.Client" Version="5.2.8" />
-    <PackageReference Include="Microsoft.Azure.Cosmos.Table" Version="1.0.8" />
     <PackageReference Include="Microsoft.Azure.Functions.Platform.Metrics.LinuxConsumption" Version="1.0.5" />
     <PackageReference Include="Microsoft.Azure.Storage.File" Version="11.1.7" />
     <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.42" />
@@ -65,7 +64,6 @@
     <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.435" PrivateAssets="all" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="$(IdentityDependencyVersion)" />
     <PackageReference Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="$(IdentityDependencyVersion)" />
-
 
     <!--
       System.IO.FileSystem.AccessControl/5.0.0 pinned to avoid an unintented downgrade to 4.7.0.
