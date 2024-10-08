@@ -19,3 +19,5 @@
 - Migrated Scale Metrics to use `Azure.Data.Tables` SDK (#10276)
   - Added support for Identity-based connections
 - Update Node.js Worker Version to [3.10.1](https://github.com/Azure/azure-functions-nodejs-worker/releases/tag/v3.10.1)
+- Update PowerShell 7.2 worker to [4.0.4023](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.4023)
+- Update PowerShell 7.4 worker to [4.0.4024](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.4024)
