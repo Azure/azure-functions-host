@@ -333,7 +333,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     // Forward th host LanguageWorkerOptions to the Job Host.
                     var languageWorkerOptions = applicationHostOptions.RootServiceProvider.GetService<IOptionsMonitor<LanguageWorkerOptions>>();
                     services.AddSingleton(languageWorkerOptions);
-                    services.AddSingleton<IOptions<LanguageWorkerOptions>>((s) => new OptionsWrapper<LanguageWorkerOptions>(languageWorkerOptions.CurrentValue));
+                    services.AddSingleton<IOptions<LanguageWorkerOptions>>(s => new OptionsWrapper<LanguageWorkerOptions>(languageWorkerOptions.CurrentValue));
                     services.ConfigureOptions<JobHostLanguageWorkerOptionsSetup>();
                 }
                 else
