@@ -330,7 +330,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 if (applicationHostOptions.HasParentScope)
                 {
-                    // Forward th host LanguageWorkerOptions to the Job Host.
+                    // Forward the host LanguageWorkerOptions to the Job Host.
                     var languageWorkerOptions = applicationHostOptions.RootServiceProvider.GetService<IOptionsMonitor<LanguageWorkerOptions>>();
                     services.AddSingleton(languageWorkerOptions);
                     services.AddSingleton<IOptions<LanguageWorkerOptions>>(s => new OptionsWrapper<LanguageWorkerOptions>(languageWorkerOptions.CurrentValue));
