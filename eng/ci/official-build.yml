@@ -47,7 +47,7 @@ extends:
     sdl:
       codeql:
         # Move codeql for source languages to source analysis stage
-        runSourceLanguagesInSourceAnalysis: true
+        # runSourceLanguagesInSourceAnalysis: true # temporary change to clean up stale python resuls
 
     stages:
     - stage: Initialize

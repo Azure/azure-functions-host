@@ -46,7 +46,7 @@ extends:
       codeql:
         compiled:
           enabled: true
-        runSourceLanguagesInSourceAnalysis: true
+        # runSourceLanguagesInSourceAnalysis: true # temporary change to clean up stale python resuls
 
     settings:
       # PR's from forks do not have sufficient permissions to set tags.
