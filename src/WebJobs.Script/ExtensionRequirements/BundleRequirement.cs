@@ -7,7 +7,7 @@ using System.Text;
 
 namespace Microsoft.Azure.WebJobs.Script.ExtensionRequirements
 {
-    internal sealed class BundleRequirement
+    public sealed class BundleRequirement
     {
         public string Id { get; set; }
 

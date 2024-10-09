@@ -940,6 +940,65 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
+        public async Task ReceivesInboundEvent_Error_FunctionLoadResponse()
+        {
+            await CreateDefaultWorkerChannel();
+            var functionMetadatas = GetTestFunctionsList("node");
+            _workerChannel.SetupFunctionInvocationBuffers(functionMetadatas);
+            _testFunctionRpcService.OnMessage(StreamingMessage.ContentOneofCase.FunctionLoadRequest,
+                _ => _testFunctionRpcService.PublishSystemErrorFunctionLoadResponseEvent("TestFunctionId1", "abc AccountKey== "));
+            _workerChannel.SendFunctionLoadRequests(null, TimeSpan.FromMinutes(5));
+
+            await Task.Delay(500);
+            var traces = _logger.GetLogMessages();
+            ShowOutput(traces);
+
+            Assert.True(traces.Any(m => m.Exception != null && m.Exception.Message.Contains("abc [Hidden Credential]")));
+        }
+
+        [Fact]
+        public async Task Receives_Individual_FunctionLoadResponses_Parallel()
+        {
+            await CreateDefaultWorkerChannel();
+
+            var startStreamMessage = new StreamingMessage()
+            {
+                StartStream = new StartStream()
+                {
+                    WorkerId = _workerId
+                }
+            };
+
+            var rpcEvent = new GrpcEvent(_workerId, startStreamMessage);
+            _workerChannel.SendWorkerInitRequest(rpcEvent);
+
+            var functionMetadataList = GetTestFunctionsList("node", numberOfFunctions: 250);
+            _workerChannel.SetupFunctionInvocationBuffers(functionMetadataList);
+            _workerChannel.SendFunctionLoadRequests(managedDependencyOptions: null, TimeSpan.FromSeconds(1));
+
+            var allFunctionIdsAndNames = functionMetadataList.Select(f => new { Id = f.Properties["FunctionId"].ToString(), f.Name }).ToList();
+
+            // Send function load responses for each function, not necessarily in the order the load requests were sent.
+            var publishFunctionLoadResponseTasks = allFunctionIdsAndNames.Select(function =>
+                Task.Run(() => _testFunctionRpcService.PublishFunctionLoadResponseEvent(function.Id)));
+
+            await Task.WhenAll(publishFunctionLoadResponseTasks);
+
+            await TestHelpers.Await(() =>
+            {
+                return _logger.GetLogMessages().Count(m => m.FormattedMessage.StartsWith("Received FunctionLoadResponse")) == allFunctionIdsAndNames.Count;
+            });
+
+            var traces = _logger.GetLogMessages();
+
+            foreach (var function in allFunctionIdsAndNames)
+            {
+                Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"Setting up FunctionInvocationBuffer for function: '{function.Name}' with functionId: '{function.Id}'")), $"setup {function.Id}");
+                Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"Received FunctionLoadResponse for function: '{function.Name}' with functionId: '{function.Id}'.")), $"FunctionLoadResponse {function.Id}");
+            }
+        }
+
+        [Fact]
         public async Task ReceivesInboundEvent_Failed_FunctionLoadResponses()
         {
             IDictionary<string, string> capabilities = new Dictionary<string, string>()
@@ -1489,41 +1548,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
         private static IEnumerable<FunctionMetadata> GetTestFunctionsList(string runtime, bool addWorkerProperties = false)
         {
-            var metadata1 = new FunctionMetadata()
-            {
-                Language = runtime,
-                Name = "js1"
-            };
-
-            metadata1.SetFunctionId("TestFunctionId1");
-            metadata1.Properties.Add(LogConstants.CategoryNameKey, "testcat1");
-            metadata1.Properties.Add(ScriptConstants.LogPropertyHostInstanceIdKey, "testhostId1");
-
-            if (addWorkerProperties)
-            {
-                metadata1.Properties.Add("worker.functionId", "fn1");
-            }
-
-            var metadata2 = new FunctionMetadata()
-            {
-                Language = runtime,
-                Name = "js2",
-            };
-
-            metadata2.SetFunctionId("TestFunctionId2");
-            metadata2.Properties.Add(LogConstants.CategoryNameKey, "testcat2");
-            metadata2.Properties.Add(ScriptConstants.LogPropertyHostInstanceIdKey, "testhostId2");
-
-            if (addWorkerProperties)
-            {
-                metadata2.Properties.Add("WORKER.functionId", "fn2");
-            }
-
-            return new List<FunctionMetadata>()
-            {
-                metadata1,
-                metadata2
-            };
+            return GetTestFunctionsList(runtime, numberOfFunctions: 2, addWorkerProperties);
         }
 
         public static ScriptInvocationContext GetTestScriptInvocationContext(Guid invocationId, TaskCompletionSource<ScriptInvocationResult> resultSource,
@@ -1546,6 +1571,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 AsyncExecutionContext = System.Threading.ExecutionContext.Capture(),
                 Logger = logger
             };
+        }
+
+        private static List<FunctionMetadata> GetTestFunctionsList(string runtime, int numberOfFunctions, bool addWorkerProperties = false)
+        {
+            var functions = new List<FunctionMetadata>();
+
+            for (int i = 1; i <= numberOfFunctions; i++)
+            {
+                var metadata = new FunctionMetadata()
+                {
+                    Language = runtime,
+                    Name = $"js{i}"
+                };
+
+                metadata.SetFunctionId($"TestFunctionId{i}");
+                metadata.Properties.Add(LogConstants.CategoryNameKey, $"testcat1");
+                metadata.Properties.Add(ScriptConstants.LogPropertyHostInstanceIdKey, $"testhostId1");
+
+                if (addWorkerProperties)
+                {
+                    metadata.Properties.Add("worker.functionId", $"fn{i}");
+                }
+
+                functions.Add(metadata);
+            }
+
+            return functions;
         }
 
         /// <summary>

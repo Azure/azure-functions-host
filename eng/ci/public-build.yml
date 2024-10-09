@@ -6,8 +6,7 @@ trigger:
     include:
     - dev
     - in-proc
-    - release/4.*
-    - release/in-proc
+    - release/*
 
 schedules:
   # Ensure we build nightly to catch any new CVEs and report SDL often.
@@ -24,8 +23,7 @@ pr:
     include:
     - dev
     - in-proc
-    - release/4.*
-    - release/in-proc
+    - release/*
 
 resources:
   repositories:
@@ -51,7 +49,7 @@ extends:
       codeql:
         compiled:
           enabled: true
-        runSourceLanguagesInSourceAnalysis: true
+        # runSourceLanguagesInSourceAnalysis: true # temporary change to clean up stale python resuls
       autobaseline:
         enableForGitHub: true
 

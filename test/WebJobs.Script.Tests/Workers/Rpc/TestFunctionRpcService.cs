@@ -11,6 +11,7 @@ using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.Logging;
+using static Microsoft.Azure.WebJobs.Script.Grpc.Messages.RpcLog.Types;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 {
@@ -150,6 +151,37 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 FunctionLoadResponse = functionLoadResponse
             };
+            Write(responseMessage);
+        }
+
+        public void PublishSystemErrorFunctionLoadResponseEvent(string functionId, string exceptionMessage)
+        {
+            StatusResult statusResult = new StatusResult()
+            {
+                Status = StatusResult.Types.Status.Failure
+            };
+            FunctionLoadResponse functionLoadResponse = new FunctionLoadResponse()
+            {
+                FunctionId = functionId,
+                Result = statusResult
+            };
+
+            RpcLog rpcLog = new RpcLog()
+            {
+                LogCategory = RpcLogCategory.System,
+                Level = Level.Error,
+                Exception = new RpcException()
+                {
+                    Message = exceptionMessage
+                }
+            };
+
+            StreamingMessage responseMessage = new StreamingMessage()
+            {
+                FunctionLoadResponse = functionLoadResponse,
+                RpcLog = rpcLog
+            };
+
             Write(responseMessage);
         }
 
