@@ -191,6 +191,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             lock (_lock)
             {
                 // Do not clear out endpoints when host changes to null, as functions may still be running.
+                // TODO: there are still edge cases where we will switch active hosts, leading to potential
+                // issues with draining invocations.
                 if (args?.NewHost?.Services is { } services)
                 {
                     _extensionServices = services;
