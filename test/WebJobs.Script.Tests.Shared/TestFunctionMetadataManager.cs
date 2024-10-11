@@ -9,6 +9,7 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -41,6 +42,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             managerMock.As<IServiceProvider>().Setup(m => m.GetService(typeof(IOptions<HttpWorkerOptions>))).Returns(httpOptions);
             managerMock.As<IServiceProvider>().Setup(m => m.GetService(typeof(IOptionsMonitor<LanguageWorkerOptions>))).Returns(languageWorkerOptions);
             managerMock.As<IServiceProvider>().Setup(m => m.GetService(typeof(ILoggerFactory))).Returns(loggerFactory);
+
+            var testData = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                { "AzureFunctionsJobHost:isDefaultHostConfig", "true" }
+            };
+
+            var testActiveHostConfig = new ConfigurationBuilder()
+                .AddInMemoryCollection(testData)
+                .Build();
+
+            managerMock.As<IServiceProvider>().Setup(m => m.GetService(typeof(IConfiguration))).Returns(testActiveHostConfig);
 
             var options = new ScriptApplicationHostOptions()
             {
