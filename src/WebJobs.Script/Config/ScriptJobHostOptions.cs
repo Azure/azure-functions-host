@@ -135,5 +135,11 @@ namespace Microsoft.Azure.WebJobs.Script
         /// Gets or sets the telemetry mode.
         /// </summary>
         internal TelemetryMode TelemetryMode { get; set; } = TelemetryMode.ApplicationInsights;
+
+        /// <summary>
+        /// Gets or sets a value indicating the timeout duration for the function metadata provider.
+        /// Defaults to 30 seconds.
+        /// </summary>
+        public TimeSpan? MetadataProviderTimeout { get; set; }
     }
 }

@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public class FunctionMetadataManager : IFunctionMetadataManager
     {
-        private const string FunctionConfigurationErrorMessage = "Unable to determine the primary function script.Make sure atleast one script file is present.Try renaming your entry point script to 'run' or alternatively you can specify the name of the entry point script explicitly by adding a 'scriptFile' property to your function metadata.";
+        private const string FunctionConfigurationErrorMessage = "Unable to determine the primary function script. Make sure atleast one script file is present. Try renaming your entry point script to 'run' or alternatively you can specify the name of the entry point script explicitly by adding a 'scriptFile' property to your function metadata.";
         private const string MetadataProviderName = "Custom";
         private const int DefaultMetadataProviderTimeoutInSeconds = 30;
         private readonly IServiceProvider _serviceProvider;
@@ -39,12 +39,15 @@ namespace Microsoft.Azure.WebJobs.Script
             IOptions<HttpWorkerOptions> httpWorkerOptions, IScriptHostManager scriptHostManager, ILoggerFactory loggerFactory,
             IEnvironment environment)
         {
-            _scriptOptions = scriptOptions;
+            _scriptOptions = scriptOptions ?? throw new ArgumentNullException(nameof(scriptOptions));
             _serviceProvider = scriptHostManager as IServiceProvider;
             _functionMetadataProvider = functionMetadataProvider;
             _logger = loggerFactory.CreateLogger(LogCategories.Startup);
             _isHttpWorker = httpWorkerOptions?.Value?.Description != null;
             _environment = environment;
+
+            var metadataProviderTimeout = _scriptOptions.Value.MetadataProviderTimeout;
+            MetadataProviderTimeoutInSeconds = metadataProviderTimeout.HasValue ? metadataProviderTimeout.Value.TotalSeconds : DefaultMetadataProviderTimeoutInSeconds;
 
             // Every time script host is re-initializing, we also need to re-initialize
             // services that change with the scope of the script host.
@@ -58,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         // Property is settable for testing purposes.
-        internal int MetadataProviderTimeoutInSeconds { get; set; } = DefaultMetadataProviderTimeoutInSeconds;
+        internal int MetadataProviderTimeoutInSeconds { get; set; }
 
         public ImmutableDictionary<string, ImmutableArray<string>> Errors { get; private set; }
 
