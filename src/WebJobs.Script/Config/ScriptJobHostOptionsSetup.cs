@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Threading;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
@@ -59,6 +60,12 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             // FunctionTimeout
             ConfigureFunctionTimeout(options);
 
+            if (_environment.IsLogicApp())
+            {
+                // Logic Apps requires no timeout
+                options.MetadataProviderTimeout = Timeout.InfiniteTimeSpan;
+            }
+
             // If we have a read only file system, override any configuration and
             // disable file watching
             if (_applicationHostOptions.Value.IsFileSystemReadOnly)
@@ -88,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 
         private void ConfigureFunctionTimeout(ScriptJobHostOptions options)
         {
-            if (options.FunctionTimeout == null)
+            if (options.FunctionTimeout is null)
             {
                 options.FunctionTimeout = (_environment.IsConsumptionSku() && !_environment.IsFlexConsumptionSku()) ? DefaultConsumptionFunctionTimeout : DefaultFunctionTimeout;
             }
