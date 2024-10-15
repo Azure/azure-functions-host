@@ -20,6 +20,7 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.Scale;
+using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -58,6 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly bool _originalStandbyModeValue;
         private readonly string _originalFunctionsWorkerRuntime;
         private readonly string _originalFunctionsWorkerRuntimeVersion;
+        private readonly HostBuiltChangeTokenSource<LanguageWorkerOptions> _hostBuiltChangeTokenSourceForLanguageWorkerOptions;
         private IScriptEventManager _eventManager;
 
         private IHost _host;
@@ -76,7 +78,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             IScriptWebHostEnvironment scriptWebHostEnvironment, IEnvironment environment,
             HostPerformanceManager hostPerformanceManager, IOptions<HostHealthMonitorOptions> healthMonitorOptions,
             IMetricsLogger metricsLogger, IApplicationLifetime applicationLifetime, IConfiguration config, IScriptEventManager eventManager, IHostMetrics hostMetrics,
-            IOptions<FunctionsHostingConfigOptions> hostingConfigOptions)
+            IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
+            HostBuiltChangeTokenSource<LanguageWorkerOptions> hostBuiltChangeTokenSource)
         {
             ArgumentNullException.ThrowIfNull(loggerFactory);
 
@@ -87,6 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             RegisterApplicationLifetimeEvents();
 
             _metricsLogger = metricsLogger;
+            _hostBuiltChangeTokenSourceForLanguageWorkerOptions = hostBuiltChangeTokenSource ?? throw new ArgumentNullException(nameof(hostBuiltChangeTokenSource));
             _applicationHostOptions = applicationHostOptions ?? throw new ArgumentNullException(nameof(applicationHostOptions));
             _scriptWebHostEnvironment = scriptWebHostEnvironment ?? throw new ArgumentNullException(nameof(scriptWebHostEnvironment));
             _scriptHostBuilder = scriptHostBuilder ?? throw new ArgumentNullException(nameof(scriptHostBuilder));
@@ -347,6 +351,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 }
 
                 ActiveHost = localHost;
+
+                _hostBuiltChangeTokenSourceForLanguageWorkerOptions.TriggerChange();
 
                 var scriptHost = (ScriptHost)ActiveHost.Services.GetService<ScriptHost>();
                 if (scriptHost != null)

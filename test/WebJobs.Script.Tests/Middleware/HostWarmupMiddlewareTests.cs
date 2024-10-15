@@ -79,7 +79,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
             _testLogger = new TestLogger("WebHostLanguageWorkerChannelManagerTests");
             _rpcWorkerChannelFactory = new TestRpcWorkerChannelFactory(_eventManager, _testLogger, _scriptRootPath);
             _emptyConfig = new ConfigurationBuilder().Build();
-            _rpcWorkerChannelManager = new WebHostRpcWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, _rpcWorkerChannelFactory, _optionsMonitor, new TestMetricsLogger(), _emptyConfig, _workerProfileManager, new OptionsWrapper<FunctionsHostingConfigOptions>(new FunctionsHostingConfigOptions()));
+            _rpcWorkerChannelManager = new WebHostRpcWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, _rpcWorkerChannelFactory, _optionsMonitor, new TestMetricsLogger(), _emptyConfig, _workerProfileManager, new TestOptionsMonitor<LanguageWorkerOptions>(TestHelpers.GetTestLanguageWorkerOptions()), new OptionsWrapper<FunctionsHostingConfigOptions>(new FunctionsHostingConfigOptions()));
         }
 
         [Fact]
