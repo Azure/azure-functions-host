@@ -256,7 +256,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 mockFunctionMetadataProvider.Object, new List<IFunctionProvider>() { goodFunctionMetadataProvider.Object, badFunctionMetadataProvider.Object }, new OptionsWrapper<HttpWorkerOptions>(_defaultHttpWorkerOptions), loggerFactory, new TestOptionsMonitor<LanguageWorkerOptions>(TestHelpers.GetTestLanguageWorkerOptions()));
 
             // Set the timeout to 1 second for the test.
-            testFunctionMetadataManager.MetadataProviderTimeoutInSeconds = 1;
+            testFunctionMetadataManager.MetadataProviderTimeout = TimeSpan.FromSeconds(1);
 
             var exception = Assert.Throws<TimeoutException>(() => testFunctionMetadataManager.LoadFunctionMetadata());
             Assert.Contains($"Timeout occurred while retrieving metadata from provider '{badFunctionMetadataProvider.Object.GetType().FullName}'. The operation exceeded the configured timeout of 1 seconds.", exception.Message);
