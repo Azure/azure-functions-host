@@ -19,6 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
         internal static readonly TimeSpan DefaultConsumptionFunctionTimeout = TimeSpan.FromMinutes(5);
         internal static readonly TimeSpan MaxFunctionTimeoutDynamic = TimeSpan.FromMinutes(10);
         internal static readonly TimeSpan DefaultFunctionTimeout = TimeSpan.FromMinutes(30);
+        internal static readonly TimeSpan DefaultMetadataProviderTimeout = TimeSpan.FromSeconds(30);
 
         public ScriptJobHostOptionsSetup(IConfiguration configuration, IEnvironment environment, IOptions<ScriptApplicationHostOptions> applicationHostOptions)
         {
@@ -60,10 +61,10 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             // FunctionTimeout
             ConfigureFunctionTimeout(options);
 
-            if (_environment.IsLogicApp())
+            if (options.MetadataProviderTimeout == TimeSpan.Zero)
             {
-                // Logic Apps requires no timeout
-                options.MetadataProviderTimeout = Timeout.InfiniteTimeSpan;
+                // If the timeout value is not configured and we are running in a logic app, we want to disable the timeout
+                options.MetadataProviderTimeout = _environment.IsLogicApp() ? Timeout.InfiniteTimeSpan : DefaultMetadataProviderTimeout;
             }
 
             // If we have a read only file system, override any configuration and

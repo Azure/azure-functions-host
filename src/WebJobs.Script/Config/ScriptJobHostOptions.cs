@@ -138,8 +138,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         /// <summary>
         /// Gets or sets a value indicating the timeout duration for the function metadata provider.
-        /// Defaults to 30 seconds.
         /// </summary>
-        public TimeSpan MetadataProviderTimeout { get; set; } = TimeSpan.FromSeconds(30);
+        public TimeSpan MetadataProviderTimeout { get; set; } = TimeSpan.Zero;
     }
 }

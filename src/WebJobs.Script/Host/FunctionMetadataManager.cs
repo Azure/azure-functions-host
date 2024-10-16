@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public class FunctionMetadataManager : IFunctionMetadataManager
     {
-        private const string FunctionConfigurationErrorMessage = "Unable to determine the primary function script. Make sure atleast one script file is present. Try renaming your entry point script to 'run' or alternatively you can specify the name of the entry point script explicitly by adding a 'scriptFile' property to your function metadata.";
+        private const string FunctionConfigurationErrorMessage = "Unable to determine the primary function script. Make sure at least one script file is present. Try renaming your entry point script to 'run' or alternatively you can specify the name of the entry point script explicitly by adding a 'scriptFile' property to your function metadata.";
         private const string MetadataProviderName = "Custom";
         private readonly IServiceProvider _serviceProvider;
         private IFunctionMetadataProvider _functionMetadataProvider;
