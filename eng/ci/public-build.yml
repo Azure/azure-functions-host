@@ -49,7 +49,7 @@ extends:
       codeql:
         compiled:
           enabled: true
-        # runSourceLanguagesInSourceAnalysis: true # temporary change to clean up stale python resuls
+        runSourceLanguagesInSourceAnalysis: true
       autobaseline:
         enableForGitHub: true
 
