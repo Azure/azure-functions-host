@@ -3,15 +3,12 @@
 
 using System;
 using System.Collections.Generic;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors.Internal;
 using Microsoft.Azure.WebJobs.Host.Indexers;
-using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Eventing;
-using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -29,10 +26,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly IDebugStateProvider _debugStateProvider;
         private readonly IScriptEventManager _eventManager;
         private readonly IExternalScopeProvider _scopeProvider;
+        private readonly IDeferredLogDispatcher _deferredLogDispatcher;
         private AppServiceOptions _appServiceOptions;
 
-        public SystemLogger(string hostInstanceId, string categoryName, IEventGenerator eventGenerator, IEnvironment environment,  IDebugStateProvider debugStateProvider,
-           IScriptEventManager eventManager, IExternalScopeProvider scopeProvider, IOptionsMonitor<AppServiceOptions> appServiceOptionsMonitor)
+        public SystemLogger(string hostInstanceId, string categoryName, IEventGenerator eventGenerator, IEnvironment environment, IDebugStateProvider debugStateProvider,
+           IScriptEventManager eventManager, IExternalScopeProvider scopeProvider, IOptionsMonitor<AppServiceOptions> appServiceOptionsMonitor, IDeferredLogDispatcher deferredLogDispatcher)
         {
             _environment = environment;
             _eventGenerator = eventGenerator;
@@ -47,6 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
             appServiceOptionsMonitor.OnChange(newOptions => _appServiceOptions = newOptions);
             _appServiceOptions = appServiceOptionsMonitor.CurrentValue;
+            _deferredLogDispatcher = deferredLogDispatcher;
         }
 
         public IDisposable BeginScope<TState>(TState state) => _scopeProvider.Push(state);
@@ -181,8 +180,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 formattedMessage = Sanitizer.Sanitize(formattedMessage);
                 innerExceptionMessage = innerExceptionMessage ?? string.Empty;
             }
-
             _eventGenerator.LogFunctionTraceEvent(logLevel, subscriptionId, appName, functionName, eventName, source, details, summary, innerExceptionType, innerExceptionMessage, invocationId, _hostInstanceId, activityId, runtimeSiteName, slotName, DateTime.UtcNow);
+
+            if (_deferredLogDispatcher.IsEnabled && !_environment.IsPlaceholderModeEnabled())
+            {
+                var log = new DeferredLogEntry
+                {
+                    LogLevel = logLevel,
+                    Category = _categoryName,
+                    Message = formattedMessage,
+                    Exception = exception,
+                    EventId = eventId
+                };
+
+                _deferredLogDispatcher.Log(log);
+            }
         }
     }
 }

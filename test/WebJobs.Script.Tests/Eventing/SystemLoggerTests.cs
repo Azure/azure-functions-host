@@ -35,6 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly TestChangeTokenSource<StandbyOptions> _changeTokenSource;
         private readonly string _slotName = "production";
         private readonly string _runtimeSiteName = "test";
+        private readonly IDeferredLogDispatcher _deferredLogDispatcher;
         private bool _inDiagnosticMode;
 
         public SystemLoggerTests()
@@ -68,8 +69,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _category = LogCategories.CreateFunctionCategory(_functionName);
             _debugStateProvider = new Mock<IDebugStateProvider>(MockBehavior.Strict);
             _debugStateProvider.Setup(p => p.InDiagnosticMode).Returns(() => _inDiagnosticMode);
+            _deferredLogDispatcher = new DeferredLogDispatcher();
 
-            _logger = new SystemLogger(_hostInstanceId, _category, _mockEventGenerator.Object, _environment, _debugStateProvider.Object, null, new LoggerExternalScopeProvider(), _appServiceOptions);
+            _logger = new SystemLogger(_hostInstanceId, _category, _mockEventGenerator.Object, _environment, _debugStateProvider.Object, null, new LoggerExternalScopeProvider(), _appServiceOptions, _deferredLogDispatcher);
         }
 
         [Fact]
@@ -161,7 +163,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(LogLevel.Error, _subscriptionId, _websiteName, functionName, eventName, string.Empty, functionException.ToFormattedString(), functionException.Message, functionException.InnerException.GetType().ToString(), functionException.InnerException.Message, functionInvocationId, _hostInstanceId, activityId, _runtimeSiteName, _slotName, It.IsAny<DateTime>()));
 
-            ILogger localLogger = new SystemLogger(_hostInstanceId, string.Empty, _mockEventGenerator.Object, _environment, _debugStateProvider.Object, null, new LoggerExternalScopeProvider(), _appServiceOptions);
+            ILogger localLogger = new SystemLogger(_hostInstanceId, string.Empty, _mockEventGenerator.Object, _environment, _debugStateProvider.Object, null, new LoggerExternalScopeProvider(), _appServiceOptions, _deferredLogDispatcher);
             localLogger.LogError(functionException, functionException.Message);
 
             _mockEventGenerator.VerifyAll();
@@ -196,7 +198,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void Log_Ignores_FunctionUserCategory()
         {
             // Create a logger with the Function.{FunctionName}.User category, which is what determines user logs.
-            ILogger logger = new SystemLogger(Guid.NewGuid().ToString(), LogCategories.CreateFunctionUserCategory(_functionName), _mockEventGenerator.Object, new TestEnvironment(), _debugStateProvider.Object, null, new LoggerExternalScopeProvider(), _appServiceOptions);
+            ILogger logger = new SystemLogger(Guid.NewGuid().ToString(), LogCategories.CreateFunctionUserCategory(_functionName), _mockEventGenerator.Object, new TestEnvironment(), _debugStateProvider.Object, null, new LoggerExternalScopeProvider(), _appServiceOptions, _deferredLogDispatcher);
             logger.LogDebug("TestMessage");
 
             // Make sure it's never been called.
@@ -247,7 +249,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 [key] = "TestFunction2"
             };
 
-            var localLogger = new SystemLogger(_hostInstanceId, "Not.A.Function", _mockEventGenerator.Object, _environment, _debugStateProvider.Object, null, new LoggerExternalScopeProvider(), _appServiceOptions);
+            var localLogger = new SystemLogger(_hostInstanceId, "Not.A.Function", _mockEventGenerator.Object, _environment, _debugStateProvider.Object, null, new LoggerExternalScopeProvider(), _appServiceOptions, _deferredLogDispatcher);
 
             _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(LogLevel.Debug, It.IsAny<string>(), It.IsAny<string>(), "TestFunction2", It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTime>()));
             localLogger.Log(LogLevel.Debug, 0, logState, null, (s, e) => "TestMessage");
@@ -266,7 +268,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 [key] = "TestFunction3"
             };
 
-            var localLogger = new SystemLogger(_hostInstanceId, "Not.A.Function", _mockEventGenerator.Object, _environment, _debugStateProvider.Object, null, new LoggerExternalScopeProvider(), _appServiceOptions);
+            var localLogger = new SystemLogger(_hostInstanceId, "Not.A.Function", _mockEventGenerator.Object, _environment, _debugStateProvider.Object, null, new LoggerExternalScopeProvider(), _appServiceOptions, _deferredLogDispatcher);
 
             _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(LogLevel.Debug, It.IsAny<string>(), It.IsAny<string>(), "TestFunction3", It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTime>()));
 
@@ -282,7 +284,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void AppEnvironment_Reset_OnSpecialization()
         {
             var testEventGenerator = new TestEventGenerator();
-            var localLogger = new SystemLogger(_hostInstanceId, "Test", testEventGenerator, _environment, _debugStateProvider.Object, null, new LoggerExternalScopeProvider(), _appServiceOptions);
+            var localLogger = new SystemLogger(_hostInstanceId, "Test", testEventGenerator, _environment, _debugStateProvider.Object, null, new LoggerExternalScopeProvider(), _appServiceOptions, _deferredLogDispatcher);
 
             localLogger.LogInformation("test");
 

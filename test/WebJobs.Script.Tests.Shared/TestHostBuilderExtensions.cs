@@ -79,6 +79,7 @@ namespace Microsoft.WebJobs.Script.Tests
             services.AddLogging();
             services.AddFunctionMetadataManager();
             services.AddHostMetrics();
+            services.AddSingleton<IDeferredLogDispatcher, DeferredLogDispatcher>();
 
             configureRootServices?.Invoke(services);
 

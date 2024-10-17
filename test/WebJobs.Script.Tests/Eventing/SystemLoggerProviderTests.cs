@@ -17,6 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     {
         private readonly IOptions<ScriptJobHostOptions> _options;
         private readonly IEnvironment _environment = new TestEnvironment();
+        private readonly IDeferredLogDispatcher _deferredLogDispatcher = new DeferredLogDispatcher();
         private readonly SystemLoggerProvider _provider;
         private bool _inDiagnosticMode;
 
@@ -33,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             debugStateProvider.Setup(p => p.InDiagnosticMode).Returns(() => _inDiagnosticMode);
 
             var appServiceOptions = new TestOptionsMonitor<AppServiceOptions>(new AppServiceOptions());
-            _provider = new SystemLoggerProvider(_options, null, _environment, debugStateProvider.Object, null, appServiceOptions);
+            _provider = new SystemLoggerProvider(_options, null, _environment, debugStateProvider.Object, null, appServiceOptions, _deferredLogDispatcher);
         }
 
         [Fact]
