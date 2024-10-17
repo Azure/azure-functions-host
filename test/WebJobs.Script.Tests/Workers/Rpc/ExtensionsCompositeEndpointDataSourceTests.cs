@@ -21,13 +21,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 {
     public class ExtensionsCompositeEndpointDataSourceTests
     {
-        private static readonly ILogger<ExtensionsCompositeEndpointDataSource.EnsureInitializedMiddleware> _logger
+        private static readonly ILogger<ExtensionsCompositeEndpointDataSource> _dataSourceLogger
+            = NullLogger<ExtensionsCompositeEndpointDataSource>.Instance;
+
+        private static readonly ILogger<ExtensionsCompositeEndpointDataSource.EnsureInitializedMiddleware> _middlewareLogger
             = NullLogger<ExtensionsCompositeEndpointDataSource.EnsureInitializedMiddleware>.Instance;
 
         [Fact]
         public void NoActiveHost_NoEndpoints()
         {
-            ExtensionsCompositeEndpointDataSource dataSource = new(Mock.Of<IScriptHostManager>());
+            ExtensionsCompositeEndpointDataSource dataSource = new(Mock.Of<IScriptHostManager>(), _dataSourceLogger);
             Assert.Empty(dataSource.Endpoints);
         }
 
@@ -35,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public void ActiveHostChanged_NullHost_NoEndpoints()
         {
             Mock<IScriptHostManager> manager = new();
-            ExtensionsCompositeEndpointDataSource dataSource = new(manager.Object);
+            ExtensionsCompositeEndpointDataSource dataSource = new(manager.Object, _dataSourceLogger);
 
             IChangeToken token = dataSource.GetChangeToken();
             Assert.False(token.HasChanged);
@@ -49,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             Mock<IScriptHostManager> manager = new();
 
-            ExtensionsCompositeEndpointDataSource dataSource = new(manager.Object);
+            ExtensionsCompositeEndpointDataSource dataSource = new(manager.Object, _dataSourceLogger);
 
             IChangeToken token = dataSource.GetChangeToken();
             Assert.False(token.HasChanged);
@@ -62,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public void ActiveHostChanged_NewExtensions_NewEndpoints()
         {
             Mock<IScriptHostManager> manager = new();
-            ExtensionsCompositeEndpointDataSource dataSource = new(manager.Object);
+            ExtensionsCompositeEndpointDataSource dataSource = new(manager.Object, _dataSourceLogger);
             IHost host = GetHost(new TestEndpoints(new Endpoint(null, null, "Test1"), new Endpoint(null, null, "Test2")));
 
             IChangeToken token = dataSource.GetChangeToken();
@@ -80,9 +83,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             Mock<IScriptHostManager> manager = new();
 
-            ExtensionsCompositeEndpointDataSource dataSource = new(manager.Object);
+            ExtensionsCompositeEndpointDataSource dataSource = new(manager.Object, _dataSourceLogger);
             ExtensionsCompositeEndpointDataSource.EnsureInitializedMiddleware middleware =
-                new(dataSource, _logger) { Timeout = Timeout.InfiniteTimeSpan };
+                new(dataSource, _middlewareLogger) { Timeout = Timeout.InfiniteTimeSpan };
             TestDelegate next = new();
 
             Task waiter = middleware.InvokeAsync(null, next.InvokeAsync);
@@ -99,9 +102,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             Mock<IScriptHostManager> manager = new();
 
-            ExtensionsCompositeEndpointDataSource dataSource = new(manager.Object);
+            ExtensionsCompositeEndpointDataSource dataSource = new(manager.Object, _dataSourceLogger);
             ExtensionsCompositeEndpointDataSource.EnsureInitializedMiddleware middleware =
-                new(dataSource, _logger) { Timeout = TimeSpan.Zero };
+                new(dataSource, _middlewareLogger) { Timeout = TimeSpan.Zero };
             TestDelegate next = new();
 
             await middleware.InvokeAsync(null, next.InvokeAsync).WaitAsync(TimeSpan.FromSeconds(5)); // should not throw
@@ -118,7 +121,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public void Dispose_GetThrows()
         {
             Mock<IScriptHostManager> manager = new();
-            ExtensionsCompositeEndpointDataSource dataSource = new(manager.Object);
+            ExtensionsCompositeEndpointDataSource dataSource = new(manager.Object, _dataSourceLogger);
             IHost host = GetHost(new TestEndpoints(new Endpoint(null, null, "Test1"), new Endpoint(null, null, "Test2")));
             manager.Raise(x => x.ActiveHostChanged += null, new ActiveHostChangedEventArgs(null, host));
             dataSource.Dispose();
