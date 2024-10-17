@@ -14,9 +14,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly Channel<DeferredLogEntry> _channel = Channel.CreateBounded<DeferredLogEntry>(new BoundedChannelOptions(150)
         {
             FullMode = BoundedChannelFullMode.DropOldest,
-            // Avoids locks and interlocked operations when reading and writing to the channel.
+            // Avoids locks and interlocked operations when reading from the channel.
             SingleReader = true,
-            SingleWriter = true
+            SingleWriter = false
         });
 
         private readonly List<ILoggerProvider> _forwardingProviders = new(1);
