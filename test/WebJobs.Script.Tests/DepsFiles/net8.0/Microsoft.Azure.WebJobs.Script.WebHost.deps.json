@@ -936,15 +936,15 @@
           }
         }
       },
-      "Microsoft.Azure.WebJobs.Extensions/5.0.0-beta.2-10879": {
+      "Microsoft.Azure.WebJobs.Extensions/5.1.0-12067": {
         "dependencies": {
           "Microsoft.Azure.WebJobs": "3.0.41",
-          "NCrontab.Signed": "3.3.2"
+          "NCrontab.Signed": "3.3.3"
         },
         "runtime": {
           "lib/netstandard2.0/Microsoft.Azure.WebJobs.Extensions.dll": {
-            "assemblyVersion": "5.0.0.0",
-            "fileVersion": "5.0.0.0"
+            "assemblyVersion": "5.1.0.0",
+            "fileVersion": "5.1.0.0"
           }
         }
       },
@@ -967,7 +967,7 @@
       "Microsoft.Azure.WebJobs.Extensions.Timers.Storage/1.0.0-beta.1": {
         "dependencies": {
           "Azure.Storage.Blobs": "12.19.1",
-          "Microsoft.Azure.WebJobs.Extensions": "5.0.0-beta.2-10879",
+          "Microsoft.Azure.WebJobs.Extensions": "5.1.0-12067",
           "Microsoft.Azure.WebJobs.Host.Storage": "5.0.1"
         },
         "runtime": {
@@ -1039,7 +1039,7 @@
         "runtime": {
           "lib/netstandard2.0/Microsoft.Azure.WebJobs.Script.Abstractions.dll": {
             "assemblyVersion": "1.0.0.0",
-            "fileVersion": "1.0.21962.0"
+            "fileVersion": "1.0.19706.0"
           }
         }
       },
@@ -1802,11 +1802,11 @@
           }
         }
       },
-      "NCrontab.Signed/3.3.2": {
+      "NCrontab.Signed/3.3.3": {
         "runtime": {
           "lib/netstandard2.0/NCrontab.Signed.dll": {
-            "assemblyVersion": "3.3.2.0",
-            "fileVersion": "3.3.2.0"
+            "assemblyVersion": "3.3.3.0",
+            "fileVersion": "3.3.3.0"
           }
         }
       },
@@ -3016,7 +3016,7 @@
           "Microsoft.Azure.Functions.PowerShellWorker.PS7.2": "4.0.4020",
           "Microsoft.Azure.Functions.PowerShellWorker.PS7.4": "4.0.4021",
           "Microsoft.Azure.WebJobs": "3.0.41",
-          "Microsoft.Azure.WebJobs.Extensions": "5.0.0-beta.2-10879",
+          "Microsoft.Azure.WebJobs.Extensions": "5.1.0-12067",
           "Microsoft.Azure.WebJobs.Extensions.Http": "3.2.0",
           "Microsoft.Azure.WebJobs.Extensions.Timers.Storage": "1.0.0-beta.1",
           "Microsoft.Azure.WebJobs.Host.Storage": "5.0.1",
@@ -3719,23 +3719,23 @@
     "Microsoft.Azure.WebJobs/3.0.41": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-nprqeSOAkhFrpIW1KVkXQb6BZCbnS8d1ytq0nUzIYnpkmbvmfkcQlJE9zp3Dbo26Q/0h0JdPSQ3BaVVBNPOUZg==",
+      "sha512": "sha512-EOigHt+kjrpbg53s8SYn4dlTpZG9IgWPNrdmcdSG8c7U8qKZvcF4BwZtF7ETy3KGir2NtIpJaIc7dUm2+k9/GA==",
       "path": "microsoft.azure.webjobs/3.0.41",
       "hashPath": "microsoft.azure.webjobs.3.0.41.nupkg.sha512"
     },
     "Microsoft.Azure.WebJobs.Core/3.0.41": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-VtmzMUEMhhY7+lxhXxphPbn/1du+QFKU+VtH3UHzmn/sS2JwXJNtQNk/SiC+wad69GSGzgKH5x1aN2qTnEXh+Q==",
+      "sha512": "sha512-nNW4I8m5GEhOxxD/NVZGjT6ZARGSy7wi8q+ihvKDin4IY4zYLpTy/GakZeGgbi7vPxcPHL5Z65n9DAV+goasqA==",
       "path": "microsoft.azure.webjobs.core/3.0.41",
       "hashPath": "microsoft.azure.webjobs.core.3.0.41.nupkg.sha512"
     },
-    "Microsoft.Azure.WebJobs.Extensions/5.0.0-beta.2-10879": {
+    "Microsoft.Azure.WebJobs.Extensions/5.1.0-12067": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-oaGjQ3qTaLAo/f+J3hPY3IKmn7tXPYlx0cTmxmIfvSdxI2qncwClNe1ya9j9zv7+loPGsS2hjhjgOSSZLkKb9Q==",
-      "path": "microsoft.azure.webjobs.extensions/5.0.0-beta.2-10879",
-      "hashPath": "microsoft.azure.webjobs.extensions.5.0.0-beta.2-10879.nupkg.sha512"
+      "sha512": "sha512-OQSN8ixu1B6O6odoKUV+kvHt/0fiFSK9KD+OBHB/mFI/tA1+oASySIGRtxcBAk02O+qSF6IztktFzvj0CECWgw==",
+      "path": "microsoft.azure.webjobs.extensions/5.1.0-12067",
+      "hashPath": "microsoft.azure.webjobs.extensions.5.1.0-12067.nupkg.sha512"
     },
     "Microsoft.Azure.WebJobs.Extensions.Http/3.2.0": {
       "type": "package",
@@ -3775,7 +3775,7 @@
     "Microsoft.Azure.WebJobs.Script.Abstractions/1.0.4-preview": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-6yQIbQWV+Js168FJFPu0aIdwaVl6IkaIqZOuq9RT/8QgNFjIiHYE6w/bJjTDWzf4FccVgbYAz9nXWXd5u45OEg==",
+      "sha512": "sha512-mvgXnFKwh4/Gw8BXc99ZJd2iQ8DQJTCotvY9PZ9Y2UHa4KiOsYaEW4kuZ5RFBD9KqGO2vXG56w3wMFVyxmaA2g==",
       "path": "microsoft.azure.webjobs.script.abstractions/1.0.4-preview",
       "hashPath": "microsoft.azure.webjobs.script.abstractions.1.0.4-preview.nupkg.sha512"
     },
@@ -4206,12 +4206,12 @@
       "path": "mono.posix.netstandard/1.0.0",
       "hashPath": "mono.posix.netstandard.1.0.0.nupkg.sha512"
     },
-    "NCrontab.Signed/3.3.2": {
+    "NCrontab.Signed/3.3.3": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-Ef9nJs/iIkM3hAcAEDD5dZy0cDFfmmPlhRAt/IPYcsWdMUHZ6MQLuqv5oA6TZrpvO6Sj8lq/B5njbJUMnxedLg==",
-      "path": "ncrontab.signed/3.3.2",
-      "hashPath": "ncrontab.signed.3.3.2.nupkg.sha512"
+      "sha512": "sha512-YzLZyFiovVnAvvsTDnQygC82KhQyJIMsBspTYvHaK4Fp73UgUCni05mIQgOMZIZDlnO8Mg9fcNi5fpDArgQO4A==",
+      "path": "ncrontab.signed/3.3.3",
+      "hashPath": "ncrontab.signed.3.3.3.nupkg.sha512"
     },
     "NETStandard.Library/2.0.1": {
       "type": "package",
