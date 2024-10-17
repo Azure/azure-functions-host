@@ -334,6 +334,38 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             Assert.Equal(expectedMode, options.TelemetryMode.ToString());
         }
 
+        [Fact]
+        public void Configure_MetadataProviderTimeout_ValidateDefaultTimeoutValue()
+        {
+            var options = GetConfiguredOptions(new Dictionary<string, string>());
+
+            Assert.Equal(TimeSpan.FromSeconds(30), options.MetadataProviderTimeout);
+        }
+
+        [Fact]
+        public void Configure_MetadataProviderTimeout_IsLogicApp_SetTimeoutToInfinite()
+        {
+            var environment = new TestEnvironment();
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AppKind, "workflowapp");
+
+            var options = GetConfiguredOptions(new Dictionary<string, string>(), environment);
+
+            Assert.Equal(TimeSpan.FromMilliseconds(-1), options.MetadataProviderTimeout);
+        }
+
+        [Fact]
+        public void Configure_MetadataProviderTimeout_AppliesConfiguredTimeoutValue()
+        {
+            var settings = new Dictionary<string, string>
+            {
+                { ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "metadataProviderTimeout"), "00:00:43" }
+            };
+
+            var options = GetConfiguredOptions(settings);
+
+            Assert.Equal(TimeSpan.FromSeconds(43), options.MetadataProviderTimeout);
+        }
+
         private ScriptJobHostOptions GetConfiguredOptions(Dictionary<string, string> settings, IEnvironment environment = null)
         {
             ScriptJobHostOptionsSetup setup = CreateSetupWithConfiguration(settings, environment);

@@ -25,5 +25,6 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
         public const string SequentialJobHostRestart = JobHost + ":sequentialRestart";
         public const string SendCanceledInvocationsToWorker = "sendCanceledInvocationsToWorker";
         public const string TelemetryMode = "telemetryMode";
+        public const string MetadataProviderTimeout = "metadataProviderTimeout";
     }
 }
