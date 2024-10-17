@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
-        public void ActiveHostChanged_NullHost_NoEndpoints()
+        public void ActiveHostChanged_NullHost_EndpointsRemain()
         {
             Mock<IScriptHostManager> manager = new();
             ExtensionsCompositeEndpointDataSource dataSource = new(manager.Object, _dataSourceLogger);
@@ -43,8 +43,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             IChangeToken token = dataSource.GetChangeToken();
             Assert.False(token.HasChanged);
             manager.Raise(x => x.ActiveHostChanged += null, new ActiveHostChangedEventArgs(null, null));
-            Assert.True(token.HasChanged);
-            Assert.Empty(dataSource.Endpoints);
+            Assert.False(token.HasChanged);
+            Assert.NotEmpty(dataSource.Endpoints);
         }
 
         [Fact]
