@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
@@ -14,12 +15,14 @@ using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.ApplicationInsights.Extensibility.Implementation.ApplicationId;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.Scale;
+using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -347,6 +350,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 }
 
                 ActiveHost = localHost;
+
+                var deferredLogDispatcher = ActiveHost.Services.GetService<IDeferredLogDispatcher>();
+                var loggerProviders = ActiveHost.Services.GetServices<ILoggerProvider>();
+
+                if (deferredLogDispatcher is not null && loggerProviders is not null)
+                {
+                    foreach (var provider in loggerProviders)
+                    {
+                        // Add AppInsights and OpenTelemetry providers to the deferred log dispatcher
+                        if (provider is ApplicationInsightsLoggerProvider || provider is OpenTelemetryLoggerProvider)
+                        {
+                            deferredLogDispatcher.AddLoggerProvider(provider);
+                        }
+                    }
+                    deferredLogDispatcher.ProcessBufferedLogs();
+                }
 
                 var scriptHost = (ScriptHost)ActiveHost.Services.GetService<ScriptHost>();
                 if (scriptHost != null)
