@@ -164,7 +164,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             var cloudTable = repository.GetDiagnosticEventsTable(dateTime);
             Assert.Null(cloudTable);
             var messages = _loggerProvider.GetAllLogMessages();
-            Assert.Equal(messages[0].FormattedMessage, "The Azure Storage connection string is either empty or invalid. Unable to record diagnostic events, so the diagnostic logging service is being stopped.");
+            Assert.Equal(messages[0].FormattedMessage, "An error occurred initializing the Table Storage Client. We are unable to record diagnostic events, so the diagnostic logging service is being stopped.");
             Assert.False(repository.IsEnabled());
         }
 
@@ -283,7 +283,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             var logMessage = _loggerProvider.GetAllLogMessages().SingleOrDefault(m => m.FormattedMessage.Contains("Unable to get table reference"));
             Assert.NotNull(logMessage);
 
-            var messagePresent = _loggerProvider.GetAllLogMessages().Any(m => m.FormattedMessage.Contains("The Azure Storage connection string is either empty or invalid. Unable to record diagnostic events, so the diagnostic logging service is being stopped."));
+            var messagePresent = _loggerProvider.GetAllLogMessages().Any(m => m.FormattedMessage.Contains("An error occurred initializing the Table Storage Client. We are unable to record diagnostic events, so the diagnostic logging service is being stopped."));
             Assert.True(messagePresent);
 
             Assert.Equal(0, repository.Events.Values.Count());

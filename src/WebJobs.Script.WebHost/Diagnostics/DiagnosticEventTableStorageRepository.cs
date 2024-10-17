@@ -61,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             {
                 if (!_environment.IsPlaceholderModeEnabled() && _tableClient == null && !_azureTableStorageProvider.TryCreateHostingTableServiceClient(out _tableClient))
                 {
-                    _logger.LogError("The Azure Storage connection string is either empty or invalid. Unable to record diagnostic events, so the diagnostic logging service is being stopped.");
+                    _logger.LogWarning("An error occurred initializing the Table Storage Client. We are unable to record diagnostic events, so the diagnostic logging service is being stopped.");
                     _isEnabled = false;
                     StopTimer();
                 }
