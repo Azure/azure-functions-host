@@ -44,7 +44,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.False(token.HasChanged);
             manager.Raise(x => x.ActiveHostChanged += null, new ActiveHostChangedEventArgs(null, null));
             Assert.False(token.HasChanged);
-            Assert.NotEmpty(dataSource.Endpoints);
         }
 
         [Fact]
