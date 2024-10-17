@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script
             IOptions<HttpWorkerOptions> httpWorkerOptions, IScriptHostManager scriptHostManager, ILoggerFactory loggerFactory,
             IEnvironment environment)
         {
-            _scriptOptions = scriptOptions ?? throw new ArgumentNullException(nameof(scriptOptions));
+            _scriptOptions = scriptOptions;
             _serviceProvider = scriptHostManager as IServiceProvider;
             _functionMetadataProvider = functionMetadataProvider;
             _logger = loggerFactory.CreateLogger(LogCategories.Startup);
