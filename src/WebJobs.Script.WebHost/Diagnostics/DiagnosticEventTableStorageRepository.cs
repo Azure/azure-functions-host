@@ -12,7 +12,6 @@ using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Hosting;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.WebHost.Helpers;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -25,9 +24,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private const int TableCreationMaxRetryCount = 5;
 
         private readonly Timer _flushLogsTimer;
-        private readonly IConfiguration _configuration;
         private readonly IHostIdProvider _hostIdProvider;
         private readonly IEnvironment _environment;
+        private readonly IAzureTableStorageProvider _azureTableStorageProvider;
         private readonly ILogger<DiagnosticEventTableStorageRepository> _logger;
         private readonly IServiceProvider _serviceProvider;
         private readonly object _syncLock = new object();
@@ -41,43 +40,30 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private string _tableName;
         private bool _isEnabled = true;
 
-        internal DiagnosticEventTableStorageRepository(IConfiguration configuration, IHostIdProvider hostIdProvider, IEnvironment environment, IScriptHostManager scriptHostManager,
-            ILogger<DiagnosticEventTableStorageRepository> logger, int logFlushInterval)
+        internal DiagnosticEventTableStorageRepository(IHostIdProvider hostIdProvider, IEnvironment environment, IScriptHostManager scriptHostManager,
+            IAzureTableStorageProvider azureTableStorageProvider, ILogger<DiagnosticEventTableStorageRepository> logger, int logFlushInterval)
         {
-            _configuration = configuration;
             _hostIdProvider = hostIdProvider;
             _environment = environment;
             _serviceProvider = scriptHostManager as IServiceProvider;
             _logger = logger;
             _flushLogsTimer = new Timer(OnFlushLogs, null, logFlushInterval, logFlushInterval);
+            _azureTableStorageProvider = azureTableStorageProvider;
         }
 
-        public DiagnosticEventTableStorageRepository(IConfiguration configuration, IHostIdProvider hostIdProvider, IEnvironment environment, IScriptHostManager scriptHost,
-            ILogger<DiagnosticEventTableStorageRepository> logger)
-            : this(configuration, hostIdProvider, environment, scriptHost, logger, LogFlushInterval) { }
+        public DiagnosticEventTableStorageRepository(IHostIdProvider hostIdProvider, IEnvironment environment, IScriptHostManager scriptHost,
+            IAzureTableStorageProvider azureTableStorageProvider, ILogger<DiagnosticEventTableStorageRepository> logger)
+            : this(hostIdProvider, environment, scriptHost, azureTableStorageProvider, logger, LogFlushInterval) { }
 
         internal TableServiceClient TableClient
         {
             get
             {
-                if (!_environment.IsPlaceholderModeEnabled() && _tableClient == null)
+                if (!_environment.IsPlaceholderModeEnabled() && _tableClient == null && !_azureTableStorageProvider.TryCreateHostingTableServiceClient(out _tableClient))
                 {
-                    string storageConnectionString = _configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
-
-                    try
-                    {
-                        _tableClient = new TableServiceClient(storageConnectionString);
-
-                        // The TableServiceClient only verifies the format of the connection string.
-                        // To ensure the storage account exists and supports Table storage, validate the connection string by retrieving the properties of the table service.
-                        _ = _tableClient.GetProperties();
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "The Azure Storage connection string is either empty or invalid. Unable to record diagnostic events, so the diagnostic logging service is being stopped.");
-                        _isEnabled = false;
-                        StopTimer();
-                    }
+                    _logger.LogWarning("An error occurred initializing the Table Storage Client. We are unable to record diagnostic events, so the diagnostic logging service is being stopped.");
+                    _isEnabled = false;
+                    StopTimer();
                 }
 
                 return _tableClient;
