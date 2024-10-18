@@ -26,6 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 .Add(new ScriptEnvironmentVariablesConfigurationSource());
             var configuration = configurationBuilder.Build();
             var testProfileManager = new Mock<IWorkerProfileManager>();
+            var testScriptHostManager = new Mock<IScriptHostManager>();
 
             if (!string.IsNullOrEmpty(workerRuntime))
             {
@@ -52,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                     }
                 });
 
-            LanguageWorkerOptionsSetup setup = new LanguageWorkerOptionsSetup(configuration, NullLoggerFactory.Instance, testEnvironment, testMetricLogger, testProfileManager.Object);
+            LanguageWorkerOptionsSetup setup = new LanguageWorkerOptionsSetup(configuration, NullLoggerFactory.Instance, testEnvironment, testMetricLogger, testProfileManager.Object, testScriptHostManager.Object);
             LanguageWorkerOptions options = new LanguageWorkerOptions();
 
             setup.Configure(options);
