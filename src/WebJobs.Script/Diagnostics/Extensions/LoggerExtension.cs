@@ -186,7 +186,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
         private static readonly Action<ILogger, string, Exception> _hostJsonZipDeploymentIssue =
     LoggerMessage.Define<string>(LogLevel.Error,
         new EventId(338, nameof(HostJsonZipDeploymentIssue)),
-        "No functions were found. The host.json file was not located at the root, but it was found at the following path(s): {hostJsonFilesPath}. This might be due to an issue with the .zip deployment package. See https://aka.ms/deployment-zip-push for more information on deployment.");
+        "No functions were found. A valid host.json file wasn't found in the package root. However, one was located at: {hostJsonFilesPath}. This state indicates that your deployment package was created incorrectly. For deployment package requirements, see https://aka.ms/deployment-zip-push.");
 
         private static readonly Action<ILogger, Exception> _noHostJsonFile =
     LoggerMessage.Define(LogLevel.Information,
