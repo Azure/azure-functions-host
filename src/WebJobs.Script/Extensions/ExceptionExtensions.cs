@@ -14,19 +14,14 @@ namespace System
         {
             while (exception != null)
             {
-                if ((exception is OutOfMemoryException && !(exception is InsufficientMemoryException)) ||
-                    exception is ThreadAbortException ||
-                    exception is AccessViolationException ||
-                    exception is SEHException ||
-                    exception is StackOverflowException)
+                if (exception
+                    is (OutOfMemoryException and not InsufficientMemoryException)
+                    or ThreadAbortException
+                    or AccessViolationException
+                    or SEHException
+                    or StackOverflowException)
                 {
                     return true;
-                }
-
-                if (exception is TypeInitializationException &&
-                    exception is TargetInvocationException)
-                {
-                    break;
                 }
 
                 exception = exception.InnerException;
