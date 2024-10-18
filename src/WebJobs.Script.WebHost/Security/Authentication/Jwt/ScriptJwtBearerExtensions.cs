@@ -25,6 +25,7 @@ namespace Microsoft.Extensions.DependencyInjection
 {
     public static class ScriptJwtBearerExtensions
     {
+        private const string SlotSeparator = "__";
         private static double _specialized = 0;
 
         public static AuthenticationBuilder AddScriptJwtBearer(this AuthenticationBuilder builder)
@@ -110,15 +111,26 @@ namespace Microsoft.Extensions.DependencyInjection
             string runtimeSiteName = ScriptSettingsManager.Instance.GetSetting(AzureWebsiteRuntimeSiteName);
             var audiences = new List<string>
             {
-                string.Format(SiteAzureFunctionsUriFormat, siteName),
-                string.Format(SiteUriFormat, siteName)
+                string.Format(SiteUriFormat, siteName),
+                string.Format(SiteAzureFunctionsUriFormat, siteName)
             };
 
-            if (!string.IsNullOrEmpty(runtimeSiteName) && !string.Equals(siteName, runtimeSiteName, StringComparison.OrdinalIgnoreCase))
+            if (TryGetNormalizedSiteName(siteName, out string normalizedSiteName))
             {
-                // on a non-production slot, the runtime site name will differ from the site name
-                // we allow both for audience
-                audiences.Add(string.Format(SiteUriFormat, runtimeSiteName));
+                // If we're dealing with a runtime site name (e.g. https://test__5bb5.azurewebsites.net)
+                // we want to add a normalized version (e.g. https://test.azurewebsites.net).
+                audiences.Add(string.Format(SiteUriFormat, normalizedSiteName));
+            }
+
+            if (!string.IsNullOrEmpty(runtimeSiteName))
+            {
+                // In slots scenarios the runtime site name can differ from the site name
+                // we allow both for audience.
+                string audience = string.Format(SiteUriFormat, runtimeSiteName);
+                if (!audiences.Contains(audience, StringComparer.OrdinalIgnoreCase))
+                {
+                    audiences.Add(audience);
+                }
             }
 
             return audiences;
@@ -158,12 +170,61 @@ namespace Microsoft.Extensions.DependencyInjection
             return issuer;
         }
 
-        private static bool AudienceValidator(IEnumerable<string> audiences, SecurityToken securityToken, TokenValidationParameters validationParameters)
+        internal static bool AudienceValidator(IEnumerable<string> audiences, SecurityToken securityToken, TokenValidationParameters validationParameters)
         {
             foreach (string audience in audiences)
             {
+                // First see if we have an exact match.
                 if (validationParameters.ValidAudiences.Any(p => string.Equals(audience, p, StringComparison.OrdinalIgnoreCase)))
                 {
+                    return true;
+                }
+
+                // In slots scenarios, the hostname of the incoming audience may include a runtime
+                // site name slot component (e.g. https://test__5bb5.azurewebsites.net). We normalize
+                // this by removing the slot component (e.g. "__5bb5") and check again.
+                if (TryGetNormalizedAudience(audience, out string normalizedAudience) &&
+                    validationParameters.ValidAudiences.Any(p => string.Equals(normalizedAudience, p, StringComparison.OrdinalIgnoreCase)))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static bool TryGetNormalizedAudience(string audience, out string normalizedAudience)
+        {
+            normalizedAudience = null;
+
+            if (!string.IsNullOrEmpty(audience))
+            {
+                int left = audience.IndexOf(SlotSeparator);
+                if (left != -1)
+                {
+                    int right = audience.IndexOf('.', left);
+                    int length = right - left;
+                    if (length > 0)
+                    {
+                        normalizedAudience = audience.Remove(left, length);
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        private static bool TryGetNormalizedSiteName(string siteName, out string normalizedSiteName)
+        {
+            normalizedSiteName = null;
+
+            if (!string.IsNullOrEmpty(siteName))
+            {
+                int idx = siteName.IndexOf(SlotSeparator);
+                if (idx != -1)
+                {
+                    normalizedSiteName = siteName.Substring(0, idx);
                     return true;
                 }
             }

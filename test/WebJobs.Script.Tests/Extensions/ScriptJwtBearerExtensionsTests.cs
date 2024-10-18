@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.IdentityModel.Tokens;
 using Xunit;
 using static Microsoft.Azure.WebJobs.Script.EnvironmentSettingNames;
 
@@ -84,11 +85,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         }
 
         [Theory]
-        [InlineData("testsite", "testsite")]
-        [InlineData("testsite", "testsite__5bb5")]
-        [InlineData("testsite", null)]
-        [InlineData("testsite", "")]
-        public void CreateTokenValidationParameters_NonProductionSlot_HasExpectedAudiences(string siteName, string runtimeSiteName)
+        [InlineData("testsite", "testsite", "https://testsite.azurewebsites.net,https://testsite.azurewebsites.net/azurefunctions")]
+        [InlineData("testsite", "testsite__5bb5", "https://testsite.azurewebsites.net,https://testsite.azurewebsites.net/azurefunctions,https://testsite__5bb5.azurewebsites.net")]
+        [InlineData("testsite", null, "https://testsite.azurewebsites.net,https://testsite.azurewebsites.net/azurefunctions")]
+        [InlineData("testsite", "", "https://testsite.azurewebsites.net,https://testsite.azurewebsites.net/azurefunctions")]
+        [InlineData("testsite__5bb5", null, "https://testsite__5bb5.azurewebsites.net,https://testsite__5bb5.azurewebsites.net/azurefunctions,https://testsite.azurewebsites.net")]
+        [InlineData("testsite__5bb5", "testsite__5bb5", "https://testsite__5bb5.azurewebsites.net,https://testsite__5bb5.azurewebsites.net/azurefunctions,https://testsite.azurewebsites.net")]
+        [InlineData("testsite__5bb5", "testsite", "https://testsite__5bb5.azurewebsites.net,https://testsite__5bb5.azurewebsites.net/azurefunctions,https://testsite.azurewebsites.net")]
+        public void CreateTokenValidationParameters_NonProductionSlot_HasExpectedAudiences(string siteName, string runtimeSiteName, string expectedAudienceList)
         {
             string azFuncAudience = string.Format(ScriptConstants.SiteAzureFunctionsUriFormat, siteName);
             string siteAudience = string.Format(ScriptConstants.SiteUriFormat, siteName);
@@ -104,20 +108,47 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             using (new TestScopedSettings(ScriptSettingsManager.Instance, testEnv))
             {
                 var tokenValidationParameters = ScriptJwtBearerExtensions.CreateTokenValidationParameters();
-                var audiences = tokenValidationParameters.ValidAudiences.ToArray();
+                string[] audiences = tokenValidationParameters.ValidAudiences.ToArray();
 
-                Assert.Equal(audiences[0], azFuncAudience);
-                Assert.Equal(audiences[1], siteAudience);
+                string[] expectedAudiences = expectedAudienceList.Split(',').ToArray();
+                Assert.Equal(expectedAudiences, audiences);
+            }
+        }
 
-                if (string.Compare(siteName, runtimeSiteName, StringComparison.OrdinalIgnoreCase) == 0)
-                {
-                    Assert.Equal(2, audiences.Length);
-                }
-                else if (!string.IsNullOrEmpty(runtimeSiteName))
-                {
-                    Assert.Equal(3, audiences.Length);
-                    Assert.Equal(audiences[2], runtimeSiteAudience);
-                }
+        [Theory]
+        [InlineData("testsite", null, "https://testsite.azurewebsites.net", true)]
+        [InlineData("testsite", "testsite", "https://testsite.azurewebsites.net", true)]
+        [InlineData("testsite", "testsite__5bb5", "https://testsite__5bb5.azurewebsites.net", true)]
+        [InlineData("testsite", null, "https://testsite__5bb5.azurewebsites.net", true)]
+        [InlineData("testsite__5bb5", "testsite", "https://testsite.azurewebsites.net", true)]
+        [InlineData("testsite__5bb5", null, "https://testsite.azurewebsites.net", true)]
+        [InlineData("testsite__5bb5", "testsite__5bb5", "https://testsite.azurewebsites.net", true)]
+        [InlineData("testsite__5bb5", null, "https://testsite__5bb5.azurewebsites.net", true)]
+        [InlineData("testsite__5bb5", "testsite__5bb5", "https://testsite__5bb5.azurewebsites.net", true)]
+        [InlineData("c", null, "https://a.azurewebsites.net,https://b.azurewebsites.net,https://c.azurewebsites.net", true)]
+        [InlineData("d", null, "https://a.azurewebsites.net,https://b.azurewebsites.net,https://c.azurewebsites.net", false)]
+        public void IssuerValidator_PerformsExpectedValidations(string siteName, string runtimeSiteName, string audienceList, bool expected)
+        {
+            string[] audiences = audienceList.Split(",");
+            string azFuncAudience = string.Format(ScriptConstants.SiteAzureFunctionsUriFormat, siteName);
+            string siteAudience = string.Format(ScriptConstants.SiteUriFormat, siteName);
+            string runtimeSiteAudience = string.Format(ScriptConstants.SiteUriFormat, runtimeSiteName);
+
+            var testEnv = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                { EnvironmentSettingNames.AzureWebsiteName, siteName },
+                { EnvironmentSettingNames.AzureWebsiteRuntimeSiteName, runtimeSiteName },
+                { ContainerEncryptionKey, Convert.ToBase64String(TestHelpers.GenerateKeyBytes()) }
+            };
+
+            using (new TestScopedSettings(ScriptSettingsManager.Instance, testEnv))
+            {
+                var tokenValidationParameters = ScriptJwtBearerExtensions.CreateTokenValidationParameters();
+
+                SecurityToken securityToken = null;
+                bool result = ScriptJwtBearerExtensions.AudienceValidator(audiences, securityToken, tokenValidationParameters);
+
+                Assert.Equal(expected, result);
             }
         }
     }
