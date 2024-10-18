@@ -183,6 +183,21 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
             new EventId(337, nameof(MinimumBundleVersionNotSatisfied)),
             "Referenced bundle {bundleId} of version {bundleVersion} does not meet the required minimum version of {minimumVersion}. Update your extension bundle reference in host.json to reference {minimumVersion2} or later.");
 
+        private static readonly Action<ILogger, string, Exception> _hostJsonZipDeploymentIssue =
+    LoggerMessage.Define<string>(LogLevel.Error,
+        new EventId(338, nameof(HostJsonZipDeploymentIssue)),
+        "No functions were found. The host.json file was not located at the root, but it was found at the following path(s): {hostJsonFilesPath}. This might be due to an issue with the .zip deployment package. See https://aka.ms/deployment-zip-push for more information on deployment.");
+
+        private static readonly Action<ILogger, Exception> _noHostJsonFile =
+    LoggerMessage.Define(LogLevel.Information,
+        new EventId(339, nameof(NoHostJsonFile)),
+        "No functions were found. A default host.json file with standard configuration was created at the root to initialize the function app. If the app was deployed, the host.json file was missing from the deployment payload. For more information on deployment, see https://aka.ms/functions-deployment-technologies.");
+
+        private static readonly Action<ILogger, Exception> _missingFunctionsDeploymentIssue =
+    LoggerMessage.Define(LogLevel.Warning,
+        new EventId(340, nameof(MissingFunctionsDeploymentIssue)),
+        "We located the host.json file in the root directory, but no functions were found. This could be due to a deployment issue. For more details on deployment, please visit https://aka.ms/functions-deployment-technologies.");
+
         private static readonly Action<ILogger, string, Exception> _publishingMetrics =
             LoggerMessage.Define<string>(LogLevel.Debug, new EventId(338, nameof(PublishingMetrics)), "{metrics}");
 
@@ -366,6 +381,21 @@ Lock file hash: {currentLockFileHash}";
         public static void MinimumBundleVersionNotSatisfied(this ILogger logger, string bundleId, string bundleVersion, string minimumVersion)
         {
             _minimumBundleVersionNotSatisfied(logger, bundleId, bundleVersion, minimumVersion, minimumVersion, null);
+        }
+
+        public static void HostJsonZipDeploymentIssue(this ILogger logger, string path)
+        {
+            _hostJsonZipDeploymentIssue(logger, path, null);
+        }
+
+        public static void NoHostJsonFile(this ILogger logger)
+        {
+            _noHostJsonFile(logger, null);
+        }
+
+        public static void MissingFunctionsDeploymentIssue(this ILogger logger)
+        {
+            _missingFunctionsDeploymentIssue(logger, null);
         }
     }
 }
