@@ -223,7 +223,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             // Add AzureBlobStorageProvider to WebHost (also needed for ScriptHost) and AzureTableStorageProvider
             services.AddAzureStorageProviders();
-            services.AddSingleton<IDeferredLogDispatcher, DeferredLogDispatcher>();
         }
 
         internal static void AddHostingConfigOptions(this IServiceCollection services, IConfiguration configuration)

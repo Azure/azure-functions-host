@@ -17,5 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         public Exception Exception { get; set; }
 
         public EventId EventId { get; set; }
+
+        public string Scope { get; set; }
     }
 }

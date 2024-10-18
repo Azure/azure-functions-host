@@ -351,20 +351,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                 ActiveHost = localHost;
 
-                var deferredLogDispatcher = ActiveHost.Services.GetService<IDeferredLogDispatcher>();
+                // Forward initial startup logs to AppInsights/OpenTelemetry.
+                // These are not tracked by the AppInsights and OpenTelemetry logger provider as these are added in the script host.
                 var loggerProviders = ActiveHost.Services.GetServices<ILoggerProvider>();
-
-                if (deferredLogDispatcher is not null && loggerProviders is not null)
+                var deferredLogProvider = ActiveHost.Services.GetService<DeferredLoggerProvider>();
+                if (deferredLogProvider is not null && loggerProviders is not null)
                 {
-                    foreach (var provider in loggerProviders)
-                    {
-                        // Add AppInsights and OpenTelemetry providers to the deferred log dispatcher
-                        if (provider is ApplicationInsightsLoggerProvider || provider is OpenTelemetryLoggerProvider)
-                        {
-                            deferredLogDispatcher.AddLoggerProvider(provider);
-                        }
-                    }
-                    deferredLogDispatcher.ProcessBufferedLogs();
+                    var selectedProviders = loggerProviders.Where(provider => provider is ApplicationInsightsLoggerProvider || provider is OpenTelemetryLoggerProvider);
+                    deferredLogProvider.ProcessBufferedLogs(selectedProviders);
                 }
 
                 var scriptHost = (ScriptHost)ActiveHost.Services.GetService<ScriptHost>();

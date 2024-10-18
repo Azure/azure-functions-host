@@ -3,13 +3,15 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
-    public class DeferredLogDispatcher : IDeferredLogDispatcher, IDisposable
+    public class DeferredLoggerProvider : ILoggerProvider
     {
         private readonly Channel<DeferredLogEntry> _channel = Channel.CreateBounded<DeferredLogEntry>(new BoundedChannelOptions(150)
         {
@@ -19,25 +21,24 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             SingleWriter = false
         });
 
-        private readonly List<ILoggerProvider> _forwardingProviders = new(1);
         private bool _isEnabled = true;
         private bool _disposed = false;
 
         public int Count => _channel.Reader.Count;
 
-        bool IDeferredLogDispatcher.IsEnabled => _isEnabled;
-
-        public void AddLoggerProvider(ILoggerProvider provider)
+        public ILogger CreateLogger(string categoryName)
         {
-            _forwardingProviders.Add(provider);
+            if (_isEnabled)
+            {
+                return new DeferredLogger(_channel, categoryName);
+            }
+            else
+            {
+                return NullLogger.Instance;
+            }
         }
 
-        public void Log(DeferredLogEntry log)
-        {
-            _channel.Writer.TryWrite(log);
-        }
-
-        public void ProcessBufferedLogs(bool runImmediately = false)
+        public void ProcessBufferedLogs(IEnumerable<ILoggerProvider> forwardingProviders, bool runImmediately = false)
         {
             // Disable the channel and let the consumer know that there won't be any more logs.
             _isEnabled = false;
@@ -54,18 +55,28 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
                 try
                 {
+                    if (!forwardingProviders.Any())
+                    {
+                        // No providers, just drain the messages without logging
+                        while (_channel.Reader.TryRead(out _))
+                        {
+                            // Drain the channel
+                        }
+                    }
+
                     await foreach (var log in _channel.Reader.ReadAllAsync())
                     {
-                        if (_forwardingProviders.Count == 0)
-                        {
-                            // No providers, just drain the messages without logging
-                            continue;
-                        }
-
-                        foreach (var forwardingProvider in _forwardingProviders)
+                        foreach (var forwardingProvider in forwardingProviders)
                         {
                             var logger = forwardingProvider.CreateLogger(log.Category);
-                            logger.Log(log.LogLevel, log.EventId, log.Exception, log.Message);
+                            if (string.IsNullOrEmpty(log.Scope))
+                            {
+                                logger.Log(log.LogLevel, log.EventId, log.Exception, log.Message);
+                            }
+                            else
+                            {
+                                logger.Log(log.LogLevel, log.EventId, log.Exception, $"{log.Scope} | {log.Message}");
+                            }
                         }
                     }
                 }
@@ -91,11 +102,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
             if (disposing)
             {
-                // Stop accepting logs
                 _isEnabled = false;
-
                 // Signal channel completion
                 _channel.Writer.TryComplete();
+                _disposed = true;
             }
         }
     }
