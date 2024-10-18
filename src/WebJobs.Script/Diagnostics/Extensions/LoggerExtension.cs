@@ -191,12 +191,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
         private static readonly Action<ILogger, Exception> _noHostJsonFile =
     LoggerMessage.Define(LogLevel.Information,
         new EventId(339, nameof(NoHostJsonFile)),
-        "No functions were found. A default host.json file with standard configuration was created at the root to initialize the function app. If the app was deployed, the host.json file was missing from the deployment payload. For more information on deployment, see https://aka.ms/functions-deployment-technologies.");
-
-        private static readonly Action<ILogger, Exception> _missingFunctionsDeploymentIssue =
-    LoggerMessage.Define(LogLevel.Warning,
-        new EventId(340, nameof(MissingFunctionsDeploymentIssue)),
-        "We located the host.json file in the root directory, but no functions were found. This could be due to a deployment issue. For more details on deployment, please visit https://aka.ms/functions-deployment-technologies.");
+        "No functions were found. This can occur before you deploy code to your function app or when the host.json file is missing from the most recent deployment. Make sure that your deployment package includes the host.json file in the root of the package. For deployment package requirements, see https://aka.ms/functions-deployment-technologies.");
 
         private static readonly Action<ILogger, string, Exception> _publishingMetrics =
             LoggerMessage.Define<string>(LogLevel.Debug, new EventId(338, nameof(PublishingMetrics)), "{metrics}");
@@ -391,11 +386,6 @@ Lock file hash: {currentLockFileHash}";
         public static void NoHostJsonFile(this ILogger logger)
         {
             _noHostJsonFile(logger, null);
-        }
-
-        public static void MissingFunctionsDeploymentIssue(this ILogger logger)
-        {
-            _missingFunctionsDeploymentIssue(logger, null);
         }
     }
 }

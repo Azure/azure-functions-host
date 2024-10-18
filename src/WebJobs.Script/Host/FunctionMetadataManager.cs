@@ -316,10 +316,6 @@ namespace Microsoft.Azure.WebJobs.Script
                         _logger.NoHostJsonFile();
                     }
                 }
-                else
-                {
-                    _logger.MissingFunctionsDeploymentIssue();
-                }
             }
             catch
             {
