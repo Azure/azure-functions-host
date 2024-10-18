@@ -15,26 +15,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
     {
         private readonly Channel<DeferredLogEntry> _channel;
         private readonly string _categoryName;
-        private readonly List<string> _scopes = new List<string>();
+        private IExternalScopeProvider _scopeProvider;
 
-        public DeferredLogger(Channel<DeferredLogEntry> channel, string categoryName)
+        public DeferredLogger(Channel<DeferredLogEntry> channel, string categoryName, IExternalScopeProvider scopeProvider)
         {
             _channel = channel;
             _categoryName = categoryName;
+            _scopeProvider = scopeProvider;
         }
 
-        public IDisposable BeginScope<TState>(TState state)
-        {
-            string scopeData = state is string value ? value : string.Empty;
-
-            if (!string.IsNullOrEmpty(scopeData))
-            {
-                _scopes.Add(scopeData);
-            }
-
-            // Return IDisposable to remove scope from active scopes when done
-            return new ScopeRemover(() => _scopes.Remove(scopeData));
-        }
+        public IDisposable BeginScope<TState>(TState state) => _scopeProvider.Push(state);
 
         public bool IsEnabled(LogLevel logLevel) => logLevel >= LogLevel.Debug;
 
@@ -45,31 +35,43 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             {
                 return;
             }
+
             var log = new DeferredLogEntry
             {
                 LogLevel = logLevel,
                 Category = _categoryName,
                 Message = formattedMessage,
                 Exception = exception,
-                EventId = eventId,
-                Scope = string.Join(", ", _scopes)
+                EventId = eventId
             };
+
+            IList<string> stringScope = null;
+            _scopeProvider.ForEachScope((scope, _) =>
+            {
+                if (scope is IEnumerable<KeyValuePair<string, object>> kvps)
+                {
+                    log.ScopeCollection = log.ScopeCollection ?? new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+
+                    foreach (var kvp in kvps)
+                    {
+                        // ToString to ignore any context.
+                        log.ScopeCollection[kvp.Key] = kvp.Value.ToString();
+                    }
+                }
+                else if (scope is string stringValue && !string.IsNullOrEmpty(stringValue))
+                {
+                    stringScope = stringScope ?? new List<string>();
+                    stringScope.Add(stringValue);
+                }
+            }, (object)null);
+
+            if (stringScope != null)
+            {
+                log.ScopeCollection = log.ScopeCollection ?? new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+                log.ScopeCollection.Add("Scope", string.Join(" => ", stringScope));
+            }
+
             _channel.Writer.TryWrite(log);
-        }
-    }
-
-    public class ScopeRemover : IDisposable
-    {
-        private readonly Action _onDispose;
-
-        public ScopeRemover(Action onDispose)
-        {
-            _onDispose = onDispose;
-        }
-
-        public void Dispose()
-        {
-            _onDispose();
         }
     }
 }

@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
@@ -18,6 +19,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public EventId EventId { get; set; }
 
-        public string Scope { get; set; }
+        public IDictionary<string, object> ScopeCollection { get; set; }
     }
 }

@@ -11,7 +11,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
-    public class DeferredLoggerProvider : ILoggerProvider
+    public class DeferredLoggerProvider : ILoggerProvider, ISupportExternalScope
     {
         private readonly Channel<DeferredLogEntry> _channel = Channel.CreateBounded<DeferredLogEntry>(new BoundedChannelOptions(150)
         {
@@ -21,6 +21,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             SingleWriter = false
         });
 
+        private readonly TimeSpan _deferredLogDelay = TimeSpan.FromSeconds(10);
+        private IExternalScopeProvider _scopeProvider;
         private bool _isEnabled = true;
         private bool _disposed = false;
 
@@ -28,18 +30,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public ILogger CreateLogger(string categoryName)
         {
-            if (_isEnabled)
-            {
-                return new DeferredLogger(_channel, categoryName);
-            }
-            else
-            {
-                return NullLogger.Instance;
-            }
+            return _isEnabled ? new DeferredLogger(_channel, categoryName, _scopeProvider) : NullLogger.Instance;
         }
 
         public void ProcessBufferedLogs(IEnumerable<ILoggerProvider> forwardingProviders, bool runImmediately = false)
         {
+            forwardingProviders ??= Enumerable.Empty<ILoggerProvider>();
+
             // Disable the channel and let the consumer know that there won't be any more logs.
             _isEnabled = false;
             _channel.Writer.TryComplete();
@@ -50,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 if (!runImmediately)
                 {
                     // Wait for 10 seconds, this will increase the probability of these logs appearing in live metrics.
-                    await Task.Delay(10000);
+                    await Task.Delay(_deferredLogDelay);
                 }
 
                 try
@@ -69,13 +66,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                         foreach (var forwardingProvider in forwardingProviders)
                         {
                             var logger = forwardingProvider.CreateLogger(log.Category);
-                            if (string.IsNullOrEmpty(log.Scope))
+                            if (log.ScopeCollection is not null && log.ScopeCollection.Count > 0)
                             {
-                                logger.Log(log.LogLevel, log.EventId, log.Exception, log.Message);
+                                using (logger.BeginScope(log.ScopeCollection))
+                                {
+                                    logger.Log(log.LogLevel, log.EventId, log.Exception, log.Message);
+                                }
                             }
                             else
                             {
-                                logger.Log(log.LogLevel, log.EventId, log.Exception, $"{log.Scope} | {log.Message}");
+                                logger.Log(log.LogLevel, log.EventId, log.Exception, log.Message);
                             }
                         }
                     }
@@ -85,6 +85,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     // Ignore any exception.
                 }
             });
+        }
+
+        public void SetScopeProvider(IExternalScopeProvider scopeProvider)
+        {
+            _scopeProvider = scopeProvider;
         }
 
         public void Dispose()
