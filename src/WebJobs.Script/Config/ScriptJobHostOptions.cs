@@ -129,5 +129,10 @@ namespace Microsoft.Azure.WebJobs.Script
         /// invocation to the worker.
         /// </summary>
         public bool SendCanceledInvocationsToWorker { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets a value indicating the timeout duration for the function metadata provider.
+        /// </summary>
+        public TimeSpan MetadataProviderTimeout { get; set; } = TimeSpan.Zero;
     }
 }
