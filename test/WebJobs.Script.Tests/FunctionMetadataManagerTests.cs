@@ -17,13 +17,12 @@ using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Xunit;
-using static Microsoft.Azure.AppService.Proxy.Common.Constants.WellKnownHttpHeaders;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class FunctionMetadataManagerTests
     {
-        private const string _expectedErrorMessage = "Unable to determine the primary function script.Make sure atleast one script file is present.Try renaming your entry point script to 'run' or alternatively you can specify the name of the entry point script explicitly by adding a 'scriptFile' property to your function metadata.";
+        private const string _expectedErrorMessage = "Unable to determine the primary function script. Make sure at least one script file is present. Try renaming your entry point script to 'run' or alternatively you can specify the name of the entry point script explicitly by adding a 'scriptFile' property to your function metadata.";
         private ScriptJobHostOptions _scriptJobHostOptions = new ScriptJobHostOptions();
         private Mock<IFunctionMetadataProvider> _mockFunctionMetadataProvider;
         private FunctionMetadataManager _testFunctionMetadataManager;
@@ -256,7 +255,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 mockFunctionMetadataProvider.Object, new List<IFunctionProvider>() { goodFunctionMetadataProvider.Object, badFunctionMetadataProvider.Object }, new OptionsWrapper<HttpWorkerOptions>(_defaultHttpWorkerOptions), loggerFactory, new TestOptionsMonitor<LanguageWorkerOptions>(TestHelpers.GetTestLanguageWorkerOptions()));
 
             // Set the timeout to 1 second for the test.
-            testFunctionMetadataManager.MetadataProviderTimeoutInSeconds = 1;
+            _scriptJobHostOptions.MetadataProviderTimeout = TimeSpan.FromSeconds(1);
 
             var exception = Assert.Throws<TimeoutException>(() => testFunctionMetadataManager.LoadFunctionMetadata());
             Assert.Contains($"Timeout occurred while retrieving metadata from provider '{badFunctionMetadataProvider.Object.GetType().FullName}'. The operation exceeded the configured timeout of 1 seconds.", exception.Message);
