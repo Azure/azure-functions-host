@@ -4,7 +4,6 @@
 using System;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
@@ -21,12 +20,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public IDiagnosticEventRepository Create()
         {
-            // Using this to break circular dependency for ILoggers. Typically you cannot log errors within the logging pipeline because it creates infinte loop.
+            // Using this to break circular dependency for ILoggers. Typically you cannot log errors within the logging pipeline because it creates infinite loop.
             // However in this case that loop is broken because of the filtering in the DiagnosticEventLogger
 
-            IConfigurationSection connectionSection = _configuration.GetWebJobsConnectionSection(ConnectionStringNames.Storage);
+            IConfigurationSection storageConnectionSection = _configuration.GetWebJobsConnectionSection(ConnectionStringNames.Storage);
 
-            if (connectionSection == null || !connectionSection.Exists())
+            if (storageConnectionSection is null || !storageConnectionSection.Exists())
             {
                 return new DiagnosticEventNullRepository();
             }
