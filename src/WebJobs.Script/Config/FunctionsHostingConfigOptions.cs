@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 
 namespace Microsoft.Azure.WebJobs.Script.Config
@@ -209,6 +210,14 @@ namespace Microsoft.Azure.WebJobs.Script.Config
             get
             {
                 return GetFeatureAsBooleanOrDefault(RpcWorkerConstants.WorkerRuntimeStrictValidationEnabled, false);
+            }
+        }
+
+        internal bool IsDotNetInProcDisabled
+        {
+            get
+            {
+                return GetFeatureAsBooleanOrDefault(ScriptConstants.HostingConfigDotNetInProcDisabled, false);
             }
         }
 

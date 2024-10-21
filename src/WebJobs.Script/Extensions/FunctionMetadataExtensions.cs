@@ -124,6 +124,14 @@ namespace Microsoft.Azure.WebJobs.Script
             return result;
         }
 
+        public static bool IsDotNetInProc(this FunctionMetadata metadata)
+        {
+            return metadata.IsDirect()
+                   || (string.Equals(metadata.Language, DotNetScriptTypes.CSharp, StringComparison.OrdinalIgnoreCase)
+                       || string.Equals(metadata.Language, DotNetScriptTypes.DotNetAssembly, StringComparison.OrdinalIgnoreCase)
+                       || string.Equals(metadata.Language, DotNetScriptTypes.RawDotNetAssembly, StringComparison.OrdinalIgnoreCase));
+        }
+
         public static bool IsDisabled(this FunctionMetadata metadata)
         {
             Utility.TryReadAsBool(metadata.Properties, IsDisabledKey, out bool result);

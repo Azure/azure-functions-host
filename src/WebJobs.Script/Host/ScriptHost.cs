@@ -530,6 +530,14 @@ namespace Microsoft.Azure.WebJobs.Script
                 functionWrapperType
             };
 
+            foreach (var descriptor in Functions)
+            {
+                if (descriptor.Metadata.Properties.TryGetValue(ScriptConstants.FunctionMetadataDirectTypeKey, out Type type))
+                {
+                    types.Add(type);
+                }
+            }
+
             _typeLocator.SetTypes(types);
         }
 
@@ -743,18 +751,29 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 Utility.VerifyFunctionsMatchSpecifiedLanguage(functions, workerRuntime, _environment.IsPlaceholderModeEnabled(), _isHttpWorker, cancellationToken, throwOnMismatch: throwOnWorkerRuntimeAndPayloadMetadataMismatch);
 
+                var inProcIndexingSupported = _environment.IsDotNetInProcSupported()
+                                              && !_hostingConfigOptions.Value.IsDotNetInProcDisabled;
+
                 foreach (FunctionMetadata metadata in functions)
                 {
-                    // If this is metadata represents a function that supports direct type indexing (in-proc), log a warning and skip it.
-                    // This is temporary and will be removed in a future release, along with all other logic to support the in-proc model.
-                    if (metadata.IsDirect())
-                    {
-                        throw new HostInitializationException(".NET In-process function detected. This model is not supported by the current host." +
-                                                              " See https://aka.ms/azure-functions-retirements/in-process-model for more information.");
-                    }
-
                     try
                     {
+                        // If this is metadata represents a function that supports direct type indexing (in-proc), log a warning and skip it.
+                        // This is temporary and will be removed in a future release, along with all other logic to support the in-proc model.
+                        if (metadata.IsDotNetInProc())
+                        {
+                            if (!inProcIndexingSupported)
+                            {
+                                throw new HostInitializationException(".NET In-process function detected. This model is not supported by the host in the current environment." +
+                                                                      " See https://aka.ms/azure-functions-retirements/in-process-model for more information.");
+                            }
+
+                            // If this is metadata represents a function that supports direct type indexing,
+                            // set that type in the function metadata
+                            TrySetDirectType(metadata);
+                        }
+
+                        bool created = false;
                         FunctionDescriptor descriptor = null;
                         foreach (var provider in descriptorProviders)
                         {
@@ -772,7 +791,7 @@ namespace Microsoft.Azure.WebJobs.Script
                             functionDescriptors.Add(descriptor);
                         }
                     }
-                    catch (Exception ex)
+                    catch (Exception ex) when (ex is not HostInitializationException)
                     {
                         // log any unhandled exceptions and continue
                         Utility.AddFunctionError(FunctionErrors, metadata.Name, Utility.FlattenException(ex, includeSource: false));
@@ -780,6 +799,33 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
             }
             return functionDescriptors;
+        }
+
+        /// <summary>
+        /// Sets the type that should be directly loaded by WebJobs if using attribute based configuration (these have the "configurationSource" : "attributes" set)
+        /// They will be indexed and invoked directly by the WebJobs SDK and skip the IL generator and invoker paths.
+        /// </summary>
+        private void TrySetDirectType(FunctionMetadata metadata)
+        {
+            if (!metadata.IsDirect())
+            {
+                return;
+            }
+
+            string path = metadata.ScriptFile;
+            var typeName = Utility.GetFullClassName(metadata.EntryPoint);
+
+            Assembly assembly = FunctionAssemblyLoadContext.Shared.LoadFromAssemblyPath(path);
+            var type = assembly.GetType(typeName);
+            if (type != null)
+            {
+                metadata.Properties.Add(ScriptConstants.FunctionMetadataDirectTypeKey, type);
+            }
+            else
+            {
+                // This likely means the function.json and dlls are out of sync. Perhaps a badly generated function.json?
+                _logger.FailedToLoadType(typeName, path);
+            }
         }
 
         private static void UpdateFunctionMetadataLanguageForDotnetAssembly(IEnumerable<FunctionMetadata> functions, string workerRuntime)

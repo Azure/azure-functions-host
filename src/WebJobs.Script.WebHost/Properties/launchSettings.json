@@ -9,7 +9,8 @@
         "AzureWebJobsStorage": "UseDevelopmentStorage=true",
         "FUNCTIONS_WORKER_RUNTIME": "dotnet",
         "AZURE_FUNCTIONS_ENVIRONMENT": "Development",
-        "FUNCTIONS_RUNTIME_VERSION": "8"
+        "FUNCTIONS_RUNTIME_VERSION": "8",
+        "FUNCTIONS_DISABLE_INPROC" : "1"
       },
       "applicationUrl": "https://localhost:62513;http://localhost:62514"
     }
