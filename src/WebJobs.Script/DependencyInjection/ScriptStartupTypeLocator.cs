@@ -84,7 +84,6 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
             bool isPrecompiledFunctionApp = false;
 
             // dotnet app precompiled -> Do not use bundles
-            var workerConfigs = _languageWorkerOptions.CurrentValue.WorkerConfigs;
             ExtensionRequirementsInfo extensionRequirements = GetExtensionRequirementsInfo();
             ImmutableArray<FunctionMetadata> functionMetadataCollection = ImmutableArray<FunctionMetadata>.Empty;
             if (bundleConfigured)
@@ -92,10 +91,10 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
                 ExtensionBundleDetails bundleDetails = await _extensionBundleManager.GetExtensionBundleDetails();
                 ValidateBundleRequirements(bundleDetails, extensionRequirements);
 
-                functionMetadataCollection = _functionMetadataManager.GetFunctionMetadata(forceRefresh: true, includeCustomProviders: false, workerConfigs: workerConfigs);
+                functionMetadataCollection = _functionMetadataManager.GetFunctionMetadata(forceRefresh: true, includeCustomProviders: false);
                 bindingsSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-                // Generate a Hashset of all the binding types used in the function app
+                // Generate a HashSet of all the binding types used in the function app
                 foreach (var functionMetadata in functionMetadataCollection)
                 {
                     foreach (var binding in functionMetadata.Bindings)
@@ -113,7 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
             if (SystemEnvironment.Instance.IsPlaceholderModeEnabled())
             {
                 // Do not move this.
-                // Calling this log statement in the placeholder mode to avoid jitting during specializtion
+                // Calling this log statement in the placeholder mode to avoid jitting during specialization
                 _logger.ScriptStartNotLoadingExtensionBundle("WARMUP_LOG_ONLY", bundleConfigured, isPrecompiledFunctionApp, isLegacyExtensionBundle, isDotnetIsolatedApp, isLogicApp);
             }
 
