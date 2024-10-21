@@ -11,4 +11,6 @@
 - Implement host configuration property to allow configuration of the metadata provider timeout period (#10526)
   - The value can be set via `metadataProviderTimeout` in host.json and defaults to "00:00:30" (30 seconds).
   - For logic apps, unless configured via the host.json, the timeout is disabled by default.
+- Update PowerShell 7.2 worker to [4.0.4025](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.4025)
+- Update PowerShell 7.4 worker to [4.0.4026](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.4026)
 - Added support for identity-based connections to Diagnostic Events (#10438)
