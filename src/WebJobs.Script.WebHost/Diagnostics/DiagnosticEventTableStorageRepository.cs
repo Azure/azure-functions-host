@@ -167,7 +167,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         internal virtual async Task FlushLogs(TableClient table = null)
         {
-            if (_environment.IsPlaceholderModeEnabled())
+            // TableClient is initialized lazily and it will stop the timer that schedules flush logs whenever it fails to initialize.
+            // We need to check if the TableClient is null before proceeding. This helps when the first time the property is accessed is as part of the FlushLogs method.
+            // We should not have any events stored pending to be written since WriteDiagnosticEvent will check for an initialized TableClient.
+            if (_environment.IsPlaceholderModeEnabled() || TableClient is null)
             {
                 return;
             }
@@ -237,7 +240,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public void WriteDiagnosticEvent(DateTime timestamp, string errorCode, LogLevel level, string message, string helpLink, Exception exception)
         {
-            if (TableClient == null || string.IsNullOrEmpty(HostId))
+            if (TableClient is null || string.IsNullOrEmpty(HostId))
             {
                 return;
             }
