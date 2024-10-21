@@ -299,13 +299,13 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             try
             {
-                // Search for the host.json file within nested directories to verify scenarios where it isn't located at the root. This situation often occurs when a function app has been improperly zipped.
-                string hostFilePath = Path.Combine(_scriptOptions.Value.RootScriptPath, ScriptConstants.HostMetadataFileName);
-                IEnumerable<string> hostJsonFiles = Directory.GetFiles(_scriptOptions.Value.RootScriptPath, ScriptConstants.HostMetadataFileName, SearchOption.AllDirectories)
-                    .Where(file => !file.Equals(hostFilePath, StringComparison.OrdinalIgnoreCase));
-
-                if (IsDefaultHostConfig())
+                if (_scriptOptions.Value.RootScriptPath is not null && _scriptOptions.Value.IsDefaultHostConfig)
                 {
+                    // Search for the host.json file within nested directories to verify scenarios where it isn't located at the root. This situation often occurs when a function app has been improperly zipped.
+                    string hostFilePath = Path.Combine(_scriptOptions.Value.RootScriptPath, ScriptConstants.HostMetadataFileName);
+                    IEnumerable<string> hostJsonFiles = Directory.GetFiles(_scriptOptions.Value.RootScriptPath, ScriptConstants.HostMetadataFileName, SearchOption.AllDirectories)
+                        .Where(file => !file.Equals(hostFilePath, StringComparison.OrdinalIgnoreCase));
+
                     if (hostJsonFiles != null && hostJsonFiles.Any())
                     {
                         string hostJsonFilesPath = string.Join(", ", hostJsonFiles).Replace(_scriptOptions.Value.RootScriptPath, string.Empty);
@@ -321,22 +321,6 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 // Ignore any exceptions.
             }
-        }
-
-        private bool IsDefaultHostConfig()
-        {
-            IConfiguration configuration = _serviceProvider?.GetRequiredService<IConfiguration>();
-
-            if (configuration == null)
-            {
-                return false;
-            }
-
-            // The host creates a default host.json if it is not found at the root. A newly created function app from the portal would not have a host.json file.
-            // Determine if the host is using a default host configuration.
-            IConfigurationSection jobHostSection = configuration.GetSection(ConfigurationSectionNames.JobHost);
-            string isDefaultHostConfigValue = jobHostSection.GetSection(ConfigurationSectionNames.IsDefaultHostConfig).Value;
-            return bool.TryParse(isDefaultHostConfigValue, out bool isDefaultHostConfig) && isDefaultHostConfig;
         }
     }
 }
