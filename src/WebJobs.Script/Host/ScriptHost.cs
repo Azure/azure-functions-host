@@ -773,12 +773,10 @@ namespace Microsoft.Azure.WebJobs.Script
                             TrySetDirectType(metadata);
                         }
 
-                        bool created = false;
                         FunctionDescriptor descriptor = null;
                         foreach (var provider in descriptorProviders)
                         {
-                            var created = false;
-                            (created, descriptor) = await provider.TryCreate(metadata);
+                            (bool created, descriptor) = await provider.TryCreate(metadata);
                             if (created)
                             {
                                 break;
@@ -797,8 +795,54 @@ namespace Microsoft.Azure.WebJobs.Script
                         Utility.AddFunctionError(FunctionErrors, metadata.Name, Utility.FlattenException(ex, includeSource: false));
                     }
                 }
+
+                VerifyPrecompileStatus(functionDescriptors);
             }
             return functionDescriptors;
+        }
+
+        private void VerifyPrecompileStatus(IEnumerable<FunctionDescriptor> functions)
+        {
+            HashSet<string> illegalScriptAssemblies = new HashSet<string>();
+
+            Dictionary<string, bool> mapAssemblySettings = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+            foreach (var function in functions)
+            {
+                var metadata = function.Metadata;
+                var scriptFile = metadata.ScriptFile;
+                if (scriptFile != null && scriptFile.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+                {
+                    bool isDirect = metadata.IsDirect();
+                    if (mapAssemblySettings.TryGetValue(scriptFile, out bool prevIsDirect))
+                    {
+                        if (prevIsDirect != isDirect)
+                        {
+                            illegalScriptAssemblies.Add(scriptFile);
+                        }
+                    }
+                    mapAssemblySettings[scriptFile] = isDirect;
+                }
+            }
+
+            foreach (var function in functions)
+            {
+                var metadata = function.Metadata;
+                var scriptFile = metadata.ScriptFile;
+
+                if (illegalScriptAssemblies.Contains(scriptFile))
+                {
+                    // Error. All entries pointing to the same dll must have the same value for IsDirect
+                    string msg = string.Format(CultureInfo.InvariantCulture, "Configuration error: all functions in {0} must have the same value for 'configurationSource'.",
+                        scriptFile);
+
+                    // Adding a function error will cause this function to get ignored
+                    Utility.AddFunctionError(this.FunctionErrors, metadata.Name, msg);
+
+                    _logger.ConfigurationError(msg);
+                }
+
+                return;
+            }
         }
 
         /// <summary>
