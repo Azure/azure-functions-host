@@ -19,3 +19,4 @@
 - Added fallback behavior to ensure in-proc payload compatibility with "dotnet-isolated" as the `FUNCTIONS_WORKER_RUNTIME` value (#10439)
 - Migrated Scale Metrics to use `Azure.Data.Tables` SDK (#10276)
   - Added support for Identity-based connections
+- Update project dependencies to the latest versions
