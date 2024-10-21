@@ -135,6 +135,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             Assert.False(options.SwtIssuerEnabled);
         }
 
+        [Fact]
+        public void RestrictHostLog_ReturnsExpectedValuee()
+        {
+            FunctionsHostingConfigOptions options = new FunctionsHostingConfigOptions();
+
+            // defaults to true
+            Assert.True(options.RestrictHostLogs);
+
+            // returns true when explicitly enabled
+            options.Features[ScriptConstants.HostingConfigRestrictHostLogs] = "1";
+            Assert.True(options.RestrictHostLogs);
+
+            // returns false when disabled
+            options.Features[ScriptConstants.HostingConfigRestrictHostLogs] = "0";
+            Assert.False(options.RestrictHostLogs);
+        }
+
         internal static IHostBuilder GetScriptHostBuilder(string fileName, string fileContent)
         {
             if (!string.IsNullOrEmpty(fileContent))

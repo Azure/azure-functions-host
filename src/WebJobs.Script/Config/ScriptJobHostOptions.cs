@@ -122,10 +122,5 @@ namespace Microsoft.Azure.WebJobs.Script
         /// Gets or sets a value indicating whether the ScriptHost is in standby mode.
         /// </summary>
         public bool IsStandbyConfiguration { get; set; }
-
-        /// <summary>
-        /// Gets or sets a value indicating whether non-critical logs should be disabled in the host.
-        /// </summary>
-        public bool? DisableHostLogs { get; set; }
     }
 }

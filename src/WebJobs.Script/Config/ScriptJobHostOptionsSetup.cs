@@ -2,9 +2,8 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Configuration
@@ -66,9 +65,6 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                 options.FileWatchingEnabled = false;
             }
 
-            // Disable non-critial logs post-configuration/startup
-            ConfigureHostLogs(options);
-
             // Set the root script path to the value the runtime was initialized with:
             ScriptApplicationHostOptions webHostOptions = _applicationHostOptions.Value;
             options.RootScriptPath = webHostOptions.ScriptPath;
@@ -93,19 +89,6 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             else
             {
                 ValidateTimeoutValue(options, options.FunctionTimeout);
-            }
-        }
-
-        private void ConfigureHostLogs(ScriptJobHostOptions options)
-        {
-            if (options.DisableHostLogs is null)
-            {
-                options.DisableHostLogs = true;
-            }
-
-            if (options.DisableHostLogs == true && !FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableHostLogs))
-            {
-                ScriptLoggingBuilderExtensions.SystemLogCategoryPrefixes = ScriptConstants.RestrictedSystemLogCategoryPrefixes;
             }
         }
 

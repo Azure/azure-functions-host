@@ -4,13 +4,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Moq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
@@ -326,57 +323,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var options = GetConfiguredOptions(settings);
 
             Assert.Equal(expectedMode, options.FileLoggingMode);
-        }
-
-        [Fact]
-        public void Configure_DisableHostLogsIsNull_SetsDisableHostLogsToTrue()
-        {
-            var settings = new Dictionary<string, string>();
-            var options = GetConfiguredOptions(settings);
-            Assert.True(options.DisableHostLogs);
-        }
-
-        [Fact]
-        public void Configure_DisableHostLogsIsSet_ApplySetting()
-        {
-            var settings = new Dictionary<string, string>
-            {
-                { ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "disableHostLogs"), "false" }
-            };
-
-            var options = GetConfiguredOptions(settings);
-            Assert.Equal(false, options.DisableHostLogs);
-        }
-
-        [Theory]
-        [InlineData(true, false, false)] // DisableHostLogs is true, FeatureFlag is not set, should result in restricted system log category prefixes
-        [InlineData(true, true, false)] // DisableHostLogs is true, FeatureFlag is set, should result in unrestricted system log category prefixes
-        [InlineData(false, false, false)] // DisableHostLogs is false, FeatureFlag is not set, should result in unrestricted system log category prefixes
-        [InlineData(false, true, false)] // DisableHostLogs is false, FeatureFlag is set, should result in unrestricted system log category prefixes
-        public void ConfigureHostLogs_SetsSystemLogCategoryPrefixes(bool disableHostLogs, bool setFeatureFlag, bool shouldResultInRestrictedSystemLogs)
-        {
-            var settings = new Dictionary<string, string>();
-            if (!disableHostLogs)
-            {
-                settings.Add(ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "disableHostLogs"), "false");
-            }
-
-            if (setFeatureFlag)
-            {
-                Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableHostLogs);
-            }
-
-            var options = GetConfiguredOptions(settings);
-
-            // Assert
-            if (shouldResultInRestrictedSystemLogs)
-            {
-                Assert.Equal(ScriptConstants.RestrictedSystemLogCategoryPrefixes, ScriptLoggingBuilderExtensions.SystemLogCategoryPrefixes);
-            }
-            else
-            {
-                Assert.NotEqual(ScriptConstants.SystemLogCategoryPrefixes, ScriptLoggingBuilderExtensions.SystemLogCategoryPrefixes);
-            }
         }
 
         private ScriptJobHostOptions GetConfiguredOptions(Dictionary<string, string> settings, IEnvironment environment = null)

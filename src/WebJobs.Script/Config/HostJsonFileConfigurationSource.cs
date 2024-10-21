@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             {
                 "version", "functionTimeout", "retry", "functions", "http", "watchDirectories", "watchFiles", "queues", "serviceBus",
                 "eventHub", "singleton", "logging", "aggregator", "healthMonitor", "extensionBundle", "managedDependencies",
-                "customHandler", "httpWorker", "extensions", "concurrency", "disableHostLogs"
+                "customHandler", "httpWorker", "extensions", "concurrency"
             };
 
             private static readonly string[] CredentialNameFragments = new[] { "password", "pwd", "key", "secret", "token", "sas" };

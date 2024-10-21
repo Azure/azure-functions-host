@@ -1,12 +1,8 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Config
@@ -23,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         public void Configure(FunctionsHostingConfigOptions options)
         {
             IConfigurationSection section = _configuration.GetSection(ScriptConstants.FunctionsHostingConfigSectionName);
-            if (section != null)
+            if (section is not null)
             {
                 foreach (var pair in section.GetChildren())
                 {
@@ -32,6 +28,17 @@ namespace Microsoft.Azure.WebJobs.Script.Config
                         options.Features[pair.Key] = pair.Value;
                     }
                 }
+            }
+
+            // Restrict non-critial logs post-configuration/startup
+            ConfigureHostLogs(options);
+        }
+
+        private void ConfigureHostLogs(FunctionsHostingConfigOptions options)
+        {
+            if (options.RestrictHostLogs == true && !FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableHostLogs))
+            {
+                ScriptLoggingBuilderExtensions.SystemLogCategoryPrefixes = ScriptConstants.RestrictedSystemLogCategoryPrefixes;
             }
         }
     }
