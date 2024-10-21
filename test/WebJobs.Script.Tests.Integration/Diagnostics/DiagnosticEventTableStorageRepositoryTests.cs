@@ -255,7 +255,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
         }
 
         [Fact]
-        public async Task FlushLogs_LogsErrorAndClearsEvents_WhenTableCreatingFails()
+        public async Task FlushLogs_OnPrimaryHost_DoesNotTryToPurgeEvents_WhenTableClientNotInitialized()
         {
             // Arrange
             IEnvironment testEnvironment = new TestEnvironment();
@@ -271,22 +271,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
                 .AddInMemoryCollection(testData)
                 .Build();
 
+            var mockPrimaryHostStateProvider = new Mock<IPrimaryHostStateProvider>(MockBehavior.Strict);
+            mockPrimaryHostStateProvider.Setup(p => p.IsPrimary).Returns(true);
+
+            var scriptHostMock = new Mock<IScriptHostManager>(MockBehavior.Strict);
+            scriptHostMock.As<IServiceProvider>().Setup(m => m.GetService(typeof(IPrimaryHostStateProvider))).Returns(mockPrimaryHostStateProvider.Object);
+
             var localStorageProvider = TestHelpers.GetAzureTableStorageProvider(configuration);
             DiagnosticEventTableStorageRepository repository =
-                new DiagnosticEventTableStorageRepository(_hostIdProvider, testEnvironment, _scriptHostMock.Object, localStorageProvider, _logger);
+                new DiagnosticEventTableStorageRepository(_hostIdProvider, testEnvironment, scriptHostMock.Object, localStorageProvider, _logger);
 
             // Act
-            repository.WriteDiagnosticEvent(DateTime.UtcNow, "eh1", LogLevel.Information, "This is the message", "https://fwlink/", new Exception("exception message"));
             await repository.FlushLogs();
 
             // Assert
-            var logMessage = _loggerProvider.GetAllLogMessages().SingleOrDefault(m => m.FormattedMessage.Contains("Unable to get table reference"));
-            Assert.NotNull(logMessage);
+            var createFailureMessagePresent = _loggerProvider.GetAllLogMessages().Any(m => m.FormattedMessage.Contains("An error occurred initializing the Table Storage Client. We are unable to record diagnostic events, so the diagnostic logging service is being stopped."));
+            Assert.True(createFailureMessagePresent);
 
-            var messagePresent = _loggerProvider.GetAllLogMessages().Any(m => m.FormattedMessage.Contains("An error occurred initializing the Table Storage Client. We are unable to record diagnostic events, so the diagnostic logging service is being stopped."));
-            Assert.True(messagePresent);
+            var purgeEventMessagePresent = _loggerProvider.GetAllLogMessages().Any(m => m.FormattedMessage.Contains("Purging diagnostic events with versions older than"));
+            Assert.False(purgeEventMessagePresent);
 
-            Assert.Equal(0, repository.Events.Values.Count());
         }
 
         [Theory]
