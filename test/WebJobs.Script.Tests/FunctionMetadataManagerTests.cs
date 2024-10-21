@@ -459,7 +459,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var testLoggerProvider = new TestLoggerProvider();
             var loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(testLoggerProvider);
-
+            _scriptJobHostOptions.IsDefaultHostConfig = true;
             FunctionMetadataManager testFunctionMetadataManager = TestFunctionMetadataManager.GetFunctionMetadataManagerWithDefaultHostConfig(
                 new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions),
                 mockFunctionMetadataProvider.Object,
@@ -497,6 +497,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(testLoggerProvider);
 
+            _scriptJobHostOptions.IsDefaultHostConfig = true;
             FunctionMetadataManager testFunctionMetadataManager = TestFunctionMetadataManager.GetFunctionMetadataManager(
                 new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions),
                 mockFunctionMetadataProvider.Object,
@@ -509,7 +510,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var traces = testLoggerProvider.GetAllLogMessages();
             Assert.Equal(expectedTotalFunctionsCount, actualFunctionMetadata.Length);
-            Assert.Single(traces.Where(t => t.EventId.Name.Equals("MissingFunctionsDeploymentIssue", StringComparison.OrdinalIgnoreCase)));
+            Assert.Single(traces.Where(t => t.EventId.Name.Equals("NoHostJsonFile", StringComparison.OrdinalIgnoreCase)));
         }
 
         [Theory]
