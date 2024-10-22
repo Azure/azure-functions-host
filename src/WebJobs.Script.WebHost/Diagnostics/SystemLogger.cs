@@ -155,7 +155,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             // Apply standard event properties.
             // Note: we must be sure to default any null values to empty string
             // otherwise the ETW event will fail to be persisted (silently).
-            string summary = formattedMessage ?? string.Empty;
             string eventName = !string.IsNullOrEmpty(eventId.Name) ? eventId.Name : stateEventName ?? string.Empty;
             eventName = isDiagnosticEvent ? $"DiagnosticEvent-{diagnosticEventErrorCode}" : eventName;
 
@@ -181,8 +180,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 formattedMessage = Sanitizer.Sanitize(formattedMessage);
                 innerExceptionMessage = innerExceptionMessage ?? string.Empty;
             }
-
-            _eventGenerator.LogFunctionTraceEvent(logLevel, subscriptionId, appName, functionName, eventName, source, details, summary, innerExceptionType, innerExceptionMessage, invocationId, _hostInstanceId, activityId, runtimeSiteName, slotName, DateTime.UtcNow);
+            _eventGenerator.LogFunctionTraceEvent(logLevel, subscriptionId, appName, functionName, eventName, source, details, formattedMessage, innerExceptionType, innerExceptionMessage, invocationId, _hostInstanceId, activityId, runtimeSiteName, slotName, DateTime.UtcNow);
         }
     }
 }
