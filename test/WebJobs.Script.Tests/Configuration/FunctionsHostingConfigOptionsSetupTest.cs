@@ -116,31 +116,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             using (TempDirectory tempDir = new TempDirectory())
             {
                 string fileName = Path.Combine(tempDir.Path, "settings.txt");
+                TestScopedEnvironmentVariable enableHostLogsFeatureFlag = null;
 
                 try
                 {
                     if (setFeatureFlag)
                     {
-                        SystemEnvironment.Instance.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableHostLogs);
+                        enableHostLogsFeatureFlag = new (EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableHostLogs);
                     }
 
                     IConfiguration configuraton = restrictHostLogs
                         ? GetConfiguration(fileName, string.Empty) // defaults to true
                         : GetConfiguration(fileName, $"{ScriptConstants.HostingConfigRestrictHostLogs}=0");
 
-                    // Log environment variable
-                    Console.WriteLine($"FeatureFlag: {SystemEnvironment.Instance.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags)}");
-
                     FunctionsHostingConfigOptionsSetup setup = new (configuraton);
                     FunctionsHostingConfigOptions options = new ();
                     setup.Configure(options);
 
-                    Console.WriteLine($"RestrictHostLogs: {options.RestrictHostLogs}");
-
-                    // Log the result
-                    Console.WriteLine($"SystemLogCategoryPrefixes: {ScriptLoggingBuilderExtensions.SystemLogCategoryPrefixes}");
-
-                    // Assert
                     if (shouldResultInRestrictedSystemLogs)
                     {
                         Assert.Equal(ScriptConstants.RestrictedSystemLogCategoryPrefixes, ScriptLoggingBuilderExtensions.SystemLogCategoryPrefixes);
@@ -152,9 +144,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 }
                 finally
                 {
-                    // Reset to default values
-                    SystemEnvironment.Instance.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, null);
+                    // Reset to default value
                     ScriptLoggingBuilderExtensions.SystemLogCategoryPrefixes = ScriptConstants.SystemLogCategoryPrefixes;
+                    enableHostLogsFeatureFlag?.Dispose();
                 }
             }
         }
