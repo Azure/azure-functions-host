@@ -18,6 +18,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly IExternalScopeProvider _scopeProvider;
         private readonly IEnvironment _environment;
 
+        // Cached placeholder mode flag
+        private bool _isPlaceholderModeDisabled = false;
+
         public DeferredLogger(Channel<DeferredLogEntry> channel, string categoryName, IExternalScopeProvider scopeProvider, IEnvironment environment)
         {
             _channel = channel;
@@ -34,11 +37,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
         {
-            if (!IsEnabled(logLevel) || _environment.IsPlaceholderModeEnabled())
+            // Skip logging if it's not enabled or placeholder mode is enabled
+            if (!IsEnabled(logLevel))
+            {
+                return;
+            }
+
+            // Only check IsPlaceholderModeEnabled if it hasn't been disabled
             if (!_isPlaceholderModeDisabled && _environment.IsPlaceholderModeEnabled())
             {
                 return;
             }
+
+            // Cache the fact that placeholder mode is disabled
+            _isPlaceholderModeDisabled = true;
 
             string formattedMessage = formatter?.Invoke(state, exception);
             if (string.IsNullOrEmpty(formattedMessage))
