@@ -36,7 +36,13 @@ namespace Microsoft.Azure.WebJobs.Script.Config
 
         private void ConfigureHostLogs(FunctionsHostingConfigOptions options)
         {
-            if (options.RestrictHostLogs == true && !FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableHostLogs))
+            // Feature flag should take precedence over the host configuration
+            if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableHostLogs))
+            {
+                return;
+            }
+
+            if (options.RestrictHostLogs)
             {
                 ScriptLoggingBuilderExtensions.SystemLogCategoryPrefixes = ScriptConstants.RestrictedSystemLogCategoryPrefixes;
             }
