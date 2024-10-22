@@ -26,10 +26,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
     internal sealed class ExtensionsCompositeEndpointDataSource : EndpointDataSource, IDisposable
     {
         private readonly object _lock = new();
-        private readonly List<EndpointDataSource> _dataSources = new();
         private readonly IScriptHostManager _scriptHostManager;
         private readonly TaskCompletionSource _initialized = new();
+        private readonly ILogger _logger;
 
+        private IList<EndpointDataSource> _dataSources = Array.Empty<EndpointDataSource>();
         private IServiceProvider _extensionServices;
         private List<Endpoint> _endpoints;
         private IChangeToken _consumerChangeToken;
@@ -37,10 +38,13 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private List<IDisposable> _changeTokenRegistrations;
         private bool _disposed;
 
-        public ExtensionsCompositeEndpointDataSource(IScriptHostManager scriptHostManager)
+        public ExtensionsCompositeEndpointDataSource(
+            IScriptHostManager scriptHostManager,
+            ILogger<ExtensionsCompositeEndpointDataSource> logger)
         {
             _scriptHostManager = scriptHostManager;
             _scriptHostManager.ActiveHostChanged += OnHostChanged;
+            _logger = logger;
         }
 
         /// <inheritdoc />
@@ -186,23 +190,21 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         {
             lock (_lock)
             {
-                _dataSources.Clear();
+                // Do not clear out endpoints when host changes to null, as functions may still be running.
+                // TODO: there are still edge cases where we will switch active hosts, leading to potential
+                // issues with draining invocations.
                 if (args?.NewHost?.Services is { } services)
                 {
                     _extensionServices = services;
-                    IEnumerable<WebJobsRpcEndpointDataSource> sources = services
-                        .GetService<IEnumerable<WebJobsRpcEndpointDataSource>>()
-                        ?? Enumerable.Empty<WebJobsRpcEndpointDataSource>();
-                    _dataSources.AddRange(sources);
+                    IEnumerable<EndpointDataSource> sources = services.GetServices<WebJobsRpcEndpointDataSource>();
+                    _dataSources = sources.ToList();
+
+                    int totalEndpoints = _dataSources.Sum(x => x.Endpoints.Count);
+                    _logger.LogDebug("Host changed. Registering {ExtensionCount} extension data sources and {EndpointCount} total endpoints.", _dataSources.Count, totalEndpoints);
                     _initialized.TrySetResult(); // signal we have first initialized.
-                }
-                else
-                {
-                    _extensionServices = null;
+                    OnEndpointsChange(collectionChanged: true);
                 }
             }
-
-            OnEndpointsChange(collectionChanged: true);
         }
 
         private void OnEndpointsChange(bool collectionChanged)

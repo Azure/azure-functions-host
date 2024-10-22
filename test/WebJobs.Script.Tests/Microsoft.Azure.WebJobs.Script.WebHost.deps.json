@@ -36,7 +36,6 @@
           "System.IO.FileSystem.AccessControl": "5.0.0",
           "System.IdentityModel.Tokens.Jwt": "6.35.0",
           "System.Net.NameResolution": "4.3.0",
-          "System.Private.Uri": "4.3.2",
           "Microsoft.Azure.WebJobs.Script.Reference": "4.1036.0.0",
           "Microsoft.Azure.WebJobs.Script.Grpc.Reference": "4.1036.0.0"
         },
@@ -64,7 +63,7 @@
           "System.Memory.Data": "1.0.2",
           "System.Numerics.Vectors": "4.5.0",
           "System.Text.Encodings.Web": "8.0.0",
-          "System.Text.Json": "8.0.4",
+          "System.Text.Json": "8.0.5",
           "System.Threading.Tasks.Extensions": "4.5.4"
         },
         "runtime": {
@@ -77,7 +76,7 @@
       "Azure.Data.Tables/12.8.3": {
         "dependencies": {
           "Azure.Core": "1.38.0",
-          "System.Text.Json": "8.0.4"
+          "System.Text.Json": "8.0.5"
         },
         "runtime": {
           "lib/netstandard2.0/Azure.Data.Tables.dll": {
@@ -93,7 +92,7 @@
           "Microsoft.Identity.Client.Extensions.Msal": "4.61.3",
           "System.Memory": "4.5.4",
           "System.Security.Cryptography.ProtectedData": "6.0.0",
-          "System.Text.Json": "8.0.4",
+          "System.Text.Json": "8.0.5",
           "System.Threading.Tasks.Extensions": "4.5.4"
         },
         "runtime": {
@@ -148,7 +147,7 @@
         "dependencies": {
           "Azure.Core": "1.38.0",
           "System.Memory": "4.5.4",
-          "System.Text.Json": "8.0.4",
+          "System.Text.Json": "8.0.5",
           "System.Threading.Tasks.Extensions": "4.5.4"
         },
         "runtime": {
@@ -161,7 +160,7 @@
       "Azure.Storage.Blobs/12.19.1": {
         "dependencies": {
           "Azure.Storage.Common": "12.18.1",
-          "System.Text.Json": "8.0.4"
+          "System.Text.Json": "8.0.5"
         },
         "runtime": {
           "lib/net6.0/Azure.Storage.Blobs.dll": {
@@ -926,15 +925,15 @@
           }
         }
       },
-      "Microsoft.Azure.WebJobs.Extensions/5.0.0-beta.2-10879": {
+      "Microsoft.Azure.WebJobs.Extensions/5.1.0-12067": {
         "dependencies": {
           "Microsoft.Azure.WebJobs": "3.0.41",
-          "NCrontab.Signed": "3.3.2"
+          "NCrontab.Signed": "3.3.3"
         },
         "runtime": {
           "lib/netstandard2.0/Microsoft.Azure.WebJobs.Extensions.dll": {
-            "assemblyVersion": "5.0.0.0",
-            "fileVersion": "5.0.0.0"
+            "assemblyVersion": "5.1.0.0",
+            "fileVersion": "5.1.0.0"
           }
         }
       },
@@ -957,7 +956,7 @@
       "Microsoft.Azure.WebJobs.Extensions.Timers.Storage/1.0.0-beta.1": {
         "dependencies": {
           "Azure.Storage.Blobs": "12.19.1",
-          "Microsoft.Azure.WebJobs.Extensions": "5.0.0-beta.2-10879",
+          "Microsoft.Azure.WebJobs.Extensions": "5.1.0-12067",
           "Microsoft.Azure.WebJobs.Host.Storage": "5.0.1"
         },
         "runtime": {
@@ -1029,7 +1028,7 @@
         "runtime": {
           "lib/netstandard2.0/Microsoft.Azure.WebJobs.Script.Abstractions.dll": {
             "assemblyVersion": "1.0.0.0",
-            "fileVersion": "1.0.21962.0"
+            "fileVersion": "1.0.22000.0"
           }
         }
       },
@@ -1490,7 +1489,7 @@
           "Microsoft.Extensions.Logging.Abstractions": "8.0.0",
           "Microsoft.Extensions.Logging.Configuration": "8.0.0",
           "Microsoft.Extensions.Options": "8.0.0",
-          "System.Text.Json": "8.0.4"
+          "System.Text.Json": "8.0.5"
         }
       },
       "Microsoft.Extensions.ObjectPool/2.2.0": {},
@@ -1554,7 +1553,7 @@
           "Microsoft.IdentityModel.Tokens": "6.35.0",
           "System.Text.Encoding": "4.3.0",
           "System.Text.Encodings.Web": "8.0.0",
-          "System.Text.Json": "8.0.4"
+          "System.Text.Json": "8.0.5"
         },
         "runtime": {
           "lib/net6.0/Microsoft.IdentityModel.JsonWebTokens.dll": {
@@ -1765,11 +1764,11 @@
           }
         }
       },
-      "NCrontab.Signed/3.3.2": {
+      "NCrontab.Signed/3.3.3": {
         "runtime": {
           "lib/netstandard2.0/NCrontab.Signed.dll": {
-            "assemblyVersion": "3.3.2.0",
-            "fileVersion": "3.3.2.0"
+            "assemblyVersion": "3.3.3.0",
+            "fileVersion": "3.3.3.0"
           }
         }
       },
@@ -1937,7 +1936,7 @@
         "dependencies": {
           "OpenTelemetry": "1.8.0",
           "System.Text.Encodings.Web": "8.0.0",
-          "System.Text.Json": "8.0.4"
+          "System.Text.Json": "8.0.5"
         },
         "runtime": {
           "lib/net6.0/OpenTelemetry.Exporter.Console.dll": {
@@ -2088,7 +2087,7 @@
       "System.ClientModel/1.0.0": {
         "dependencies": {
           "System.Memory.Data": "1.0.2",
-          "System.Text.Json": "8.0.4"
+          "System.Text.Json": "8.0.5"
         },
         "runtime": {
           "lib/net6.0/System.ClientModel.dll": {
@@ -2337,7 +2336,7 @@
       "System.Memory.Data/1.0.2": {
         "dependencies": {
           "System.Text.Encodings.Web": "8.0.0",
-          "System.Text.Json": "8.0.4"
+          "System.Text.Json": "8.0.5"
         },
         "runtime": {
           "lib/netstandard2.0/System.Memory.Data.dll": {
@@ -2754,14 +2753,11 @@
         }
       },
       "System.Text.Encodings.Web/8.0.0": {},
-      "System.Text.Json/8.0.4": {
-        "dependencies": {
-          "System.Text.Encodings.Web": "8.0.0"
-        },
+      "System.Text.Json/8.0.5": {
         "runtime": {
           "lib/net8.0/System.Text.Json.dll": {
             "assemblyVersion": "8.0.0.0",
-            "fileVersion": "8.0.724.31311"
+            "fileVersion": "8.0.1024.46610"
           }
         }
       },
@@ -2896,7 +2892,7 @@
           "Microsoft.Azure.Functions.PowerShellWorker.PS7.2": "4.0.4020",
           "Microsoft.Azure.Functions.PowerShellWorker.PS7.4": "4.0.4021",
           "Microsoft.Azure.WebJobs": "3.0.41",
-          "Microsoft.Azure.WebJobs.Extensions": "5.0.0-beta.2-10879",
+          "Microsoft.Azure.WebJobs.Extensions": "5.1.0-12067",
           "Microsoft.Azure.WebJobs.Extensions.Http": "3.2.0",
           "Microsoft.Azure.WebJobs.Extensions.Timers.Storage": "1.0.0-beta.1",
           "Microsoft.Azure.WebJobs.Host.Storage": "5.0.1",
@@ -2918,11 +2914,13 @@
           "System.Formats.Asn1": "6.0.1",
           "System.IO.Abstractions": "2.1.0.227",
           "System.Net.Http": "4.3.4",
+          "System.Private.Uri": "4.3.2",
           "System.Reactive.Core": "5.0.0",
           "System.Reactive.Linq": "5.0.0",
           "System.Runtime.Loader": "4.3.0",
           "System.Security.Cryptography.Xml": "4.7.1",
-          "System.Text.Json": "8.0.4",
+          "System.Text.Encodings.Web": "8.0.0",
+          "System.Text.Json": "8.0.5",
           "System.Text.RegularExpressions": "4.3.1"
         },
         "runtime": {
@@ -2951,7 +2949,7 @@
         "runtime": {
           "Microsoft.Azure.WebJobs.Script.dll": {
             "assemblyVersion": "4.1036.0.0",
-            "fileVersion": "4.1036.2.0"
+            "fileVersion": "4.1036.2.43"
           }
         }
       },
@@ -2959,7 +2957,7 @@
         "runtime": {
           "Microsoft.Azure.WebJobs.Script.Grpc.dll": {
             "assemblyVersion": "4.1036.0.0",
-            "fileVersion": "4.1036.2.0"
+            "fileVersion": "4.1036.2.43"
           }
         }
       }
@@ -3611,16 +3609,16 @@
     "Microsoft.Azure.WebJobs.Core/3.0.41": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-nNW4I8m5GEhOxxD/NVZGjT6ZARGSy7wi8q+ihvKDin4IY4zYLpTy/GakZeGgbi7vPxcPHL5Z65n9DAV+goasqA==",
+      "sha512": "sha512-VtmzMUEMhhY7+lxhXxphPbn/1du+QFKU+VtH3UHzmn/sS2JwXJNtQNk/SiC+wad69GSGzgKH5x1aN2qTnEXh+Q==",
       "path": "microsoft.azure.webjobs.core/3.0.41",
       "hashPath": "microsoft.azure.webjobs.core.3.0.41.nupkg.sha512"
     },
-    "Microsoft.Azure.WebJobs.Extensions/5.0.0-beta.2-10879": {
+    "Microsoft.Azure.WebJobs.Extensions/5.1.0-12067": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-oaGjQ3qTaLAo/f+J3hPY3IKmn7tXPYlx0cTmxmIfvSdxI2qncwClNe1ya9j9zv7+loPGsS2hjhjgOSSZLkKb9Q==",
-      "path": "microsoft.azure.webjobs.extensions/5.0.0-beta.2-10879",
-      "hashPath": "microsoft.azure.webjobs.extensions.5.0.0-beta.2-10879.nupkg.sha512"
+      "sha512": "sha512-OQSN8ixu1B6O6odoKUV+kvHt/0fiFSK9KD+OBHB/mFI/tA1+oASySIGRtxcBAk02O+qSF6IztktFzvj0CECWgw==",
+      "path": "microsoft.azure.webjobs.extensions/5.1.0-12067",
+      "hashPath": "microsoft.azure.webjobs.extensions.5.1.0-12067.nupkg.sha512"
     },
     "Microsoft.Azure.WebJobs.Extensions.Http/3.2.0": {
       "type": "package",
@@ -3660,7 +3658,7 @@
     "Microsoft.Azure.WebJobs.Script.Abstractions/1.0.4-preview": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-6yQIbQWV+Js168FJFPu0aIdwaVl6IkaIqZOuq9RT/8QgNFjIiHYE6w/bJjTDWzf4FccVgbYAz9nXWXd5u45OEg==",
+      "sha512": "sha512-U/aVn/i0P9MdPsca9TrLmTlKuGOJ8okTdifrBeNviwd80Xbv/+dIM/GGReQXaVVtUM5/SlbUHRAhvA9w0yuEyA==",
       "path": "microsoft.azure.webjobs.script.abstractions/1.0.4-preview",
       "hashPath": "microsoft.azure.webjobs.script.abstractions.1.0.4-preview.nupkg.sha512"
     },
@@ -4070,12 +4068,12 @@
       "path": "mono.posix.netstandard/1.0.0",
       "hashPath": "mono.posix.netstandard.1.0.0.nupkg.sha512"
     },
-    "NCrontab.Signed/3.3.2": {
+    "NCrontab.Signed/3.3.3": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-Ef9nJs/iIkM3hAcAEDD5dZy0cDFfmmPlhRAt/IPYcsWdMUHZ6MQLuqv5oA6TZrpvO6Sj8lq/B5njbJUMnxedLg==",
-      "path": "ncrontab.signed/3.3.2",
-      "hashPath": "ncrontab.signed.3.3.2.nupkg.sha512"
+      "sha512": "sha512-YzLZyFiovVnAvvsTDnQygC82KhQyJIMsBspTYvHaK4Fp73UgUCni05mIQgOMZIZDlnO8Mg9fcNi5fpDArgQO4A==",
+      "path": "ncrontab.signed/3.3.3",
+      "hashPath": "ncrontab.signed.3.3.3.nupkg.sha512"
     },
     "NETStandard.Library/2.0.1": {
       "type": "package",
@@ -4882,12 +4880,12 @@
       "path": "system.text.encodings.web/8.0.0",
       "hashPath": "system.text.encodings.web.8.0.0.nupkg.sha512"
     },
-    "System.Text.Json/8.0.4": {
+    "System.Text.Json/8.0.5": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-bAkhgDJ88XTsqczoxEMliSrpijKZHhbJQldhAmObj/RbrN3sU5dcokuXmWJWsdQAhiMJ9bTayWsL1C9fbbCRhw==",
-      "path": "system.text.json/8.0.4",
-      "hashPath": "system.text.json.8.0.4.nupkg.sha512"
+      "sha512": "sha512-0f1B50Ss7rqxXiaBJyzUu9bWFOO2/zSlifZ/UNMdiIpDYe4cY4LQQicP4nirK1OS31I43rn062UIJ1Q9bpmHpg==",
+      "path": "system.text.json/8.0.5",
+      "hashPath": "system.text.json.8.0.5.nupkg.sha512"
     },
     "System.Text.RegularExpressions/4.3.1": {
       "type": "package",

@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Threading;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
@@ -18,6 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
         internal static readonly TimeSpan DefaultConsumptionFunctionTimeout = TimeSpan.FromMinutes(5);
         internal static readonly TimeSpan MaxFunctionTimeoutDynamic = TimeSpan.FromMinutes(10);
         internal static readonly TimeSpan DefaultFunctionTimeout = TimeSpan.FromMinutes(30);
+        internal static readonly TimeSpan DefaultMetadataProviderTimeout = TimeSpan.FromSeconds(30);
 
         public ScriptJobHostOptionsSetup(IConfiguration configuration, IEnvironment environment, IOptions<ScriptApplicationHostOptions> applicationHostOptions)
         {
@@ -59,6 +61,12 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             // FunctionTimeout
             ConfigureFunctionTimeout(options);
 
+            if (options.MetadataProviderTimeout == TimeSpan.Zero)
+            {
+                // If the timeout value is not configured and we are running in a logic app, we want to disable the timeout
+                options.MetadataProviderTimeout = _environment.IsLogicApp() ? Timeout.InfiniteTimeSpan : DefaultMetadataProviderTimeout;
+            }
+
             // If we have a read only file system, override any configuration and
             // disable file watching
             if (_applicationHostOptions.Value.IsFileSystemReadOnly)
@@ -88,7 +96,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 
         private void ConfigureFunctionTimeout(ScriptJobHostOptions options)
         {
-            if (options.FunctionTimeout == null)
+            if (options.FunctionTimeout is null)
             {
                 options.FunctionTimeout = (_environment.IsConsumptionSku() && !_environment.IsFlexConsumptionSku()) ? DefaultConsumptionFunctionTimeout : DefaultFunctionTimeout;
             }
