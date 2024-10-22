@@ -629,7 +629,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return true;
         }
 
-        internal static void VerifyFunctionsMatchSpecifiedLanguage(IEnumerable<FunctionMetadata> functions, string workerRuntime, bool isPlaceholderMode, bool isHttpWorker, CancellationToken cancellationToken)
+        internal static void VerifyFunctionsMatchSpecifiedLanguage(IEnumerable<FunctionMetadata> functions, string workerRuntime, bool isPlaceholderMode, bool isHttpWorker, CancellationToken cancellationToken, bool throwOnMismatch = true)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -646,7 +646,10 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
                 else
                 {
-                    throw new HostInitializationException($"Did not find functions with language [{workerRuntime}].");
+                    if (throwOnMismatch)
+                    {
+                        throw new HostInitializationException($"Did not find functions with language [{workerRuntime}].");
+                    }
                 }
             }
         }
@@ -748,10 +751,20 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 return functions.Any(f => dotNetLanguages.Any(l => l.Equals(f.Language, StringComparison.OrdinalIgnoreCase)));
             }
+
+            return ContainsAnyFunctionMatchingWorkerRuntime(functions, workerRuntime);
+        }
+
+        /// <summary>
+        /// Inspect the functions metadata to determine if at least one function is of the specified worker runtime.
+        /// </summary>
+        internal static bool ContainsAnyFunctionMatchingWorkerRuntime(IEnumerable<FunctionMetadata> functions, string workerRuntime)
+        {
             if (functions != null && functions.Any())
             {
                 return functions.Any(f => !string.IsNullOrEmpty(f.Language) && f.Language.Equals(workerRuntime, StringComparison.OrdinalIgnoreCase));
             }
+
             return false;
         }
 

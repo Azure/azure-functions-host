@@ -13,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
     internal class TestWorkerProcess : WorkerProcess
     {
         internal TestWorkerProcess(IScriptEventManager eventManager, IProcessRegistry processRegistry, ILogger workerProcessLogger, IWorkerConsoleLogSource consoleLogSource, IMetricsLogger metricsLogger, IServiceProvider serviceProvider, ILoggerFactory loggerFactory, IEnvironment environment, bool useStdErrStreamForErrorsOnly = false)
-        : base(eventManager, processRegistry, workerProcessLogger, consoleLogSource, metricsLogger, serviceProvider, loggerFactory, environment, useStdErrStreamForErrorsOnly)
+        : base(eventManager, processRegistry, workerProcessLogger, consoleLogSource, metricsLogger, serviceProvider, loggerFactory, environment, new TestOptionsMonitor<ScriptApplicationHostOptions>(), useStdErrStreamForErrorsOnly)
         {
         }
 

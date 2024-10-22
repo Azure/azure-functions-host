@@ -12,6 +12,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly Func<T> _optionsFactory;
         private Action<T, string> _listener;
 
+        public TestOptionsMonitor()
+            : this(() => new T())
+        {
+        }
+
         public TestOptionsMonitor(T options)
             : this(() => options ?? new T())
         {

@@ -7,18 +7,21 @@ using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers
 {
     internal class WorkerConsoleLogService : IHostedService, IDisposable
     {
         private readonly ILogger _logger;
+        private readonly ScriptApplicationHostOptions _options;
         private readonly IWorkerConsoleLogSource _source;
         private readonly CancellationTokenSource _cts = new CancellationTokenSource();
         private Task _processingTask;
         private bool _disposed = false;
 
-        public WorkerConsoleLogService(ILoggerFactory loggerFactory, IWorkerConsoleLogSource consoleLogSource)
+        public WorkerConsoleLogService(ILoggerFactory loggerFactory, IWorkerConsoleLogSource consoleLogSource,
+            IOptions<ScriptApplicationHostOptions> options)
         {
             if (loggerFactory == null)
             {
@@ -27,6 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
             _source = consoleLogSource ?? throw new ArgumentNullException(nameof(consoleLogSource));
             _logger = loggerFactory.CreateLogger(WorkerConstants.ConsoleLogCategoryName);
+            _options = options.Value;
         }
 
         internal WorkerConsoleLogService(ILogger logger, IWorkerConsoleLogSource consoleLogSource)
@@ -37,7 +41,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
-            _processingTask = ProcessLogs();
+            // Don't start processing logs if this is a standby configuration. This can lead
+            // to placeholder loggers capturing user logs during specialization.
+            if (!_options.IsStandbyConfiguration)
+            {
+                _processingTask = ProcessLogs();
+            }
             return Task.CompletedTask;
         }
 

@@ -140,5 +140,9 @@ namespace Microsoft.Azure.WebJobs.Script
         /// Gets or sets a value indicating whether the host.json file was created by the host.
         /// </summary>
         public bool IsDefaultHostConfig { get; set; }
+      
+        /// Gets or sets a value indicating the timeout duration for the function metadata provider.
+        /// </summary>
+        public TimeSpan MetadataProviderTimeout { get; set; } = TimeSpan.Zero;
     }
 }

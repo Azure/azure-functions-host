@@ -3,6 +3,7 @@ using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
@@ -38,6 +39,34 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
 
                 // The function does all the validation internally.
                 Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            }
+            finally
+            {
+                await fixture.DisposeAsync();
+            }
+        }
+
+        [Fact]
+        public async Task InProcAppsWorkWithDotnetIsolatedAsFunctionWorkerRuntimeValue()
+        {
+            // test uses an in-proc app, but we are setting "dotnet-isolated" as functions worker runtime value.
+            var fixture = new CSharpPrecompiledEndToEndTestFixture(_projectName, _envVars, functionWorkerRuntime: RpcWorkerConstants.DotNetIsolatedLanguageWorkerName);
+            try
+            {
+                await fixture.InitializeAsync();
+                var client = fixture.Host.HttpClient;
+
+                var response = await client.GetAsync($"api/Function1");
+
+                // The function does all the validation internally.
+                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+                const string expectedLogEntry =
+                    "The 'FUNCTIONS_WORKER_RUNTIME' is set to 'dotnet-isolated', " +
+                    "which does not match the worker runtime metadata found in the deployed function app artifacts. " +
+                    "The deployed artifacts are for 'dotnet'. See https://aka.ms/functions-invalid-worker-runtime " +
+                    "for more information. The application will continue to run, but may throw an exception in the future.";
+                Assert.Single(fixture.Host.GetScriptHostLogMessages().Where(a => a.Level == Microsoft.Extensions.Logging.LogLevel.Warning), p => p.FormattedMessage != null && p.FormattedMessage.EndsWith(expectedLogEntry));
             }
             finally
             {

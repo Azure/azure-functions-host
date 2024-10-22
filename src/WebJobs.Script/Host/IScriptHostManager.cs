@@ -15,7 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script
         event EventHandler HostInitializing;
 
         /// <summary>
-        /// Evewnt raised when the active host managed by this instance changes.
+        /// Event raised when the active host managed by this instance changes.
         /// </summary>
         event EventHandler<ActiveHostChangedEventArgs> ActiveHostChanged;
 

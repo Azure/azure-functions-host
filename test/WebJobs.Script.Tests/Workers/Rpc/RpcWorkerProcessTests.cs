@@ -44,6 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             serviceProviderMock.Setup(p => p.GetService(typeof(IScriptHostManager))).Returns(scriptHostManagerMock.Object);
 
             _functionsHostingConfigOptions = Options.Create(new FunctionsHostingConfigOptions());
+            var scriptApplicationHostOptions = new TestOptionsMonitor<ScriptApplicationHostOptions>();
 
             _rpcWorkerProcess = new RpcWorkerProcess("node",
                 "testworkerId",
@@ -59,6 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 serviceProviderMock.Object,
                 _functionsHostingConfigOptions,
                 testEnv,
+                scriptApplicationHostOptions,
                 new LoggerFactory());
         }
 

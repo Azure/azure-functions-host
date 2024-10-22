@@ -3,19 +3,14 @@
 <!-- Please add your release notes in the following format:
 - My change description (#PR)
 -->
-- Update Python Worker Version to [4.31.0](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.31.0)
-- Update Java Worker Version to [2.16.0](https://github.com/Azure/azure-functions-java-worker/releases/tag/2.16.0):
-  - Fix thread context classloader for middleware chain
-- Upgraded the following package versions (#10325):
-  - `Azure.Security.KeyVault.Secrets` updated to 4.6.0
-  - `System.Format.Asn1` updated to 6.0.1
-- Update Python Worker Version to [4.30.3](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.30.3)
-- Update PowerShell 7.2 worker to [4.0.4020](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.4020)
-- Update PowerShell 7.4 worker to [4.0.4021](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.4021)
-- Updated dotnet-isolated worker to [1.0.11](https://github.com/Azure/azure-functions-dotnet-worker/pull/2653) (#10379)
-- Update Java Worker Version to [2.15.0](https://github.com/Azure/azure-functions-java-worker/releases/tag/2.15.0)
-  - Update grpc-protobuf to 1.64.0 and application insights agent version to 3.5.2
-- Resolved thread safety issue in the `GrpcWorkerChannel.LoadResponse` method. (#10352)
-- Worker termination path updated with sanitized logging (#10367)
-- Avoid redundant DiagnosticEvents error message (#10395)
-- Added logic to shim older versions of the .NET Worker JsonFunctionProvider to ensure backwards compatibility (#10410)
+- Update Python Worker Version to [4.34.0](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.34.0)
+- Sanitize exception logs (#10443)
+- Improving console log handling during specialization (#10345)
+- Update Node.js Worker Version to [3.10.1](https://github.com/Azure/azure-functions-nodejs-worker/releases/tag/v3.10.1)
+- Remove packages `Microsoft.Azure.Cosmos.Table` and `Microsoft.Azure.DocumentDB.Core` (#10503)
+- Implement host configuration property to allow configuration of the metadata provider timeout period (#10526)
+  - The value can be set via `metadataProviderTimeout` in host.json and defaults to "00:00:30" (30 seconds).
+  - For logic apps, unless configured via the host.json, the timeout is disabled by default.
+- Update PowerShell 7.2 worker to [4.0.4025](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.4025)
+- Update PowerShell 7.4 worker to [4.0.4026](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.4026)
+- Added support for identity-based connections to Diagnostic Events (#10438)

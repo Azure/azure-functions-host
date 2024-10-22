@@ -1,0 +1,29 @@
+﻿{
+  "HostingEnvironmentConfig": {
+    "extensionRequirements": {
+      "bundles": [
+        {
+          "id": "Microsoft.Azure.Functions.ExtensionBundle",
+          "minimumVersion": "4.12.0"
+        }
+      ],
+      "extensions": [
+        {
+          "name": "NetheriteProviderStartup",
+          "assemblyName": "DurableTask.Netherite.AzureFunctions",
+          "minimumAssemblyVersion": "1.0.0.0",
+          "minimumAssemblyFileVersion": "1.4.0.4129",
+          "packageName": "Microsoft.Azure.DurableTask.Netherite.AzureFunctions",
+          "minimumPackageVersion": "1.4.0"
+        },
+        {
+          "name": "SqlDurabilityProviderStartup",
+          "assemblyName": "DurableTask.SqlServer.AzureFunctions",
+          "minimumAssemblyVersion": "1.2.0.0",
+          "packageName": "Microsoft.DurableTask.SqlServer.AzureFunctions",
+          "minimumPackageVersion": "1.2.0"
+        }
+      ]
+    }
+  }
+}
