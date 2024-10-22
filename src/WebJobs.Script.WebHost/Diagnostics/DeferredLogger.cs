@@ -15,7 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
     {
         private readonly Channel<DeferredLogEntry> _channel;
         private readonly string _categoryName;
-        private IExternalScopeProvider _scopeProvider;
+        private readonly IExternalScopeProvider _scopeProvider;
 
         public DeferredLogger(Channel<DeferredLogEntry> channel, string categoryName, IExternalScopeProvider scopeProvider)
         {
@@ -26,10 +26,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public IDisposable BeginScope<TState>(TState state) => _scopeProvider.Push(state);
 
-        public bool IsEnabled(LogLevel logLevel) => logLevel >= LogLevel.Debug;
+        // Restrict logging to errors only
+        public bool IsEnabled(LogLevel logLevel) => logLevel >= LogLevel.Error;
 
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
         {
+            if (!IsEnabled(logLevel))
+            {
+                return;
+            }
+
             string formattedMessage = formatter?.Invoke(state, exception);
             if (string.IsNullOrEmpty(formattedMessage))
             {
@@ -45,31 +51,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 EventId = eventId
             };
 
-            IList<string> stringScope = null;
-            _scopeProvider.ForEachScope((scope, _) =>
+            _scopeProvider.ForEachScope((scope, state) =>
             {
-                if (scope is IEnumerable<KeyValuePair<string, object>> kvps)
-                {
-                    log.ScopeCollection = log.ScopeCollection ?? new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
-
-                    foreach (var kvp in kvps)
-                    {
-                        // ToString to ignore any context.
-                        log.ScopeCollection[kvp.Key] = kvp.Value.ToString();
-                    }
-                }
-                else if (scope is string stringValue && !string.IsNullOrEmpty(stringValue))
-                {
-                    stringScope = stringScope ?? new List<string>();
-                    stringScope.Add(stringValue);
-                }
-            }, (object)null);
-
-            if (stringScope != null)
-            {
-                log.ScopeCollection = log.ScopeCollection ?? new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
-                log.ScopeCollection.Add("Scope", string.Join(" => ", stringScope));
-            }
+                state.ScopeStorage ??= new List<object>();
+                state.ScopeStorage.Add(scope);
+            }, log);
 
             _channel.Writer.TryWrite(log);
         }

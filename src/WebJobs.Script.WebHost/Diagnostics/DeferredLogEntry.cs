@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
-    public class DeferredLogEntry
+    public struct DeferredLogEntry
     {
         public LogLevel LogLevel { get; set; }
 
@@ -19,6 +19,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public EventId EventId { get; set; }
 
-        public IDictionary<string, object> ScopeCollection { get; set; }
+        public List<object> ScopeStorage { get; set; }
     }
 }

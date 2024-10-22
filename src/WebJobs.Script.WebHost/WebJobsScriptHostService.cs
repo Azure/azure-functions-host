@@ -355,9 +355,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 // These are not tracked by the AppInsights and OpenTelemetry logger provider as these are added in the script host.
                 var loggerProviders = ActiveHost.Services.GetServices<ILoggerProvider>();
                 var deferredLogProvider = ActiveHost.Services.GetService<DeferredLoggerProvider>();
-                if (deferredLogProvider is not null && loggerProviders is not null)
+                if (deferredLogProvider is not null)
                 {
-                    var selectedProviders = loggerProviders.Where(provider => provider is ApplicationInsightsLoggerProvider || provider is OpenTelemetryLoggerProvider);
+                    var selectedProviders = loggerProviders.Where(provider => provider is ApplicationInsightsLoggerProvider or OpenTelemetryLoggerProvider).ToArray();
                     deferredLogProvider.ProcessBufferedLogs(selectedProviders);
                 }
 
