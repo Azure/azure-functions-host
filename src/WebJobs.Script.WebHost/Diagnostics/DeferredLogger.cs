@@ -16,22 +16,25 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly Channel<DeferredLogEntry> _channel;
         private readonly string _categoryName;
         private readonly IExternalScopeProvider _scopeProvider;
+        private readonly IEnvironment _environment;
 
-        public DeferredLogger(Channel<DeferredLogEntry> channel, string categoryName, IExternalScopeProvider scopeProvider)
+        public DeferredLogger(Channel<DeferredLogEntry> channel, string categoryName, IExternalScopeProvider scopeProvider, IEnvironment environment)
         {
             _channel = channel;
             _categoryName = categoryName;
             _scopeProvider = scopeProvider;
+            _environment = environment;
         }
 
         public IDisposable BeginScope<TState>(TState state) => _scopeProvider.Push(state);
 
-        // Restrict logging to errors only
+        // Restrict logging to errors only for now, as we are seeing a lot of unnecessary logs.
+        // https://github.com/Azure/azure-functions-host/issues/10556
         public bool IsEnabled(LogLevel logLevel) => logLevel >= LogLevel.Error;
 
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
         {
-            if (!IsEnabled(logLevel))
+            if (!IsEnabled(logLevel) || _environment.IsPlaceholderModeEnabled())
             {
                 return;
             }
@@ -51,6 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 EventId = eventId
             };
 
+            // Persist the scope state so it can be reapplied in the original order when forwarding logs to the logging provider.
             _scopeProvider.ForEachScope((scope, state) =>
             {
                 state.ScopeStorage ??= new List<object>();

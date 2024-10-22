@@ -16,8 +16,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Eventing
         [Fact]
         public void CreateLogger_ReturnsDeferredLogger_WhenEnabled()
         {
+            var testEnvironment = new TestEnvironment();
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+
             // Arrange
-            var provider = new DeferredLoggerProvider();
+            var provider = new DeferredLoggerProvider(testEnvironment);
 
             // Act
             var logger = provider.CreateLogger("TestCategory");
@@ -29,8 +32,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Eventing
         [Fact]
         public async Task CreateLogger_ReturnsNullLogger_WhenDisabled()
         {
+            var testEnvironment = new TestEnvironment();
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+
             // Arrange
-            var provider = new DeferredLoggerProvider();
+            var provider = new DeferredLoggerProvider(testEnvironment);
             provider.ProcessBufferedLogs(new List<ILoggerProvider>(), true); // Disable the provider
 
             await Task.Delay(1000);
@@ -44,8 +50,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Eventing
         [Fact]
         public async Task ProcessBufferedLogs_DrainsChannelWithoutProviders()
         {
+            var testEnvironment = new TestEnvironment();
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+
             // Arrange
-            var provider = new DeferredLoggerProvider();
+            var provider = new DeferredLoggerProvider(testEnvironment);
 
             var logger = provider.CreateLogger("TestCategory");
             logger.LogInformation("Test Log Message");
@@ -63,8 +72,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Eventing
         [Fact]
         public async Task Dispose_DisablesProviderAndCompletesChannel()
         {
+            var testEnvironment = new TestEnvironment();
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+
             // Arrange
-            var provider = new DeferredLoggerProvider();
+            var provider = new DeferredLoggerProvider(testEnvironment);
             var logger = provider.CreateLogger("TestCategory");
             logger.LogInformation("Log before disposal");
 
@@ -83,8 +95,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Eventing
         [Fact]
         public void Count_ShouldReturnNumberOfBufferedLogs()
         {
+            var testEnvironment = new TestEnvironment();
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+
             // Arrange
-            var provider = new DeferredLoggerProvider();
+            var provider = new DeferredLoggerProvider(testEnvironment);
 
             var logger = provider.CreateLogger("TestCategory");
             logger.LogInformation("Test Log 1");
@@ -100,8 +115,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Eventing
         [Fact]
         public void Dispose_CanBeCalledMultipleTimesWithoutException()
         {
+            var testEnvironment = new TestEnvironment();
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+
             // Arrange
-            var provider = new DeferredLoggerProvider();
+            var provider = new DeferredLoggerProvider(testEnvironment);
 
             // Act & Assert
             provider.Dispose(); // First disposal
@@ -111,8 +129,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Eventing
         [Fact]
         public void ProcessBufferedLogs_ThrowsNoExceptionsWhenChannelIsEmpty()
         {
+            var testEnvironment = new TestEnvironment();
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+
             // Arrange
-            var provider = new DeferredLoggerProvider();
+            var provider = new DeferredLoggerProvider(testEnvironment);
             var mockLoggerProvider = new Mock<ILoggerProvider>();
 
             // Act & Assert (no exceptions should be thrown)

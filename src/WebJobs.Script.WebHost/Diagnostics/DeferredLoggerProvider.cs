@@ -21,14 +21,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         });
 
         private readonly TimeSpan _deferredLogDelay = TimeSpan.FromSeconds(10);
+        private readonly IEnvironment _environment;
         private IExternalScopeProvider _scopeProvider;
         private bool _isEnabled = true;
+
+        public DeferredLoggerProvider(IEnvironment environment)
+        {
+            _environment = environment;
+        }
 
         public int Count => _channel.Reader.Count;
 
         public ILogger CreateLogger(string categoryName)
         {
-            return _isEnabled ? new DeferredLogger(_channel, categoryName, _scopeProvider) : NullLogger.Instance;
+            return _isEnabled ? new DeferredLogger(_channel, categoryName, _scopeProvider, _environment) : NullLogger.Instance;
         }
 
         public void ProcessBufferedLogs(IReadOnlyCollection<ILoggerProvider> forwardingProviders, bool runImmediately = false)
