@@ -117,16 +117,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             {
                 string fileName = Path.Combine(tempDir.Path, "settings.txt");
 
-                IConfiguration configuraton = restrictHostLogs
-                                    ? GetConfiguration(fileName, string.Empty) // defaults to true
-                                    : GetConfiguration(fileName, $"{ScriptConstants.HostingConfigRestrictHostLogs}=0");
-
                 try
                 {
                     if (setFeatureFlag)
                     {
                         SystemEnvironment.Instance.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableHostLogs);
                     }
+
+                    IConfiguration configuraton = restrictHostLogs
+                        ? GetConfiguration(fileName, string.Empty) // defaults to true
+                        : GetConfiguration(fileName, $"{ScriptConstants.HostingConfigRestrictHostLogs}=0");
 
                     // Log environment variable
                     Console.WriteLine($"FeatureFlag: {SystemEnvironment.Instance.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags)}");
