@@ -70,12 +70,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 IConfiguration configuraton = restrictHostLogs
                                     ? GetConfiguration(fileName, string.Empty) // defaults to true
                                     : GetConfiguration(fileName, $"{ScriptConstants.HostingConfigRestrictHostLogs}=0");
-
                 try
                 {
                     if (setFeatureFlag)
                     {
-                        Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableHostLogs);
+                        SystemEnvironment.Instance.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableHostLogs);
                     }
 
                     FunctionsHostingConfigOptionsSetup setup = new (configuraton);
@@ -95,7 +94,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 finally
                 {
                     // Reset to default values
-                    Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, null);
+                    SystemEnvironment.Instance.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, null);
                     ScriptLoggingBuilderExtensions.SystemLogCategoryPrefixes = ScriptConstants.SystemLogCategoryPrefixes;
                 }
             }
