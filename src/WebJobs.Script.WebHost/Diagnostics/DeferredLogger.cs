@@ -62,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             {
                 LogLevel = logLevel,
                 Category = _categoryName,
-                Message = formattedMessage,
+                Message = formattedMessage + "------------------------",
                 Exception = exception,
                 EventId = eventId
             };
