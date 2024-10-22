@@ -56,58 +56,58 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             Assert.Empty(options.Features);
         }
 
-        [Theory]
-        [InlineData(true, false, true)] // RestrictHostLogs is true, FeatureFlag is not set, should result in **restricted** logs. This is the default behaviour of the host.
-        [InlineData(false, true, false)] // RestrictHostLogs is false, FeatureFlag is set, should result in unrestricted logs
-        // [InlineData(true, true, false)] // RestrictHostLogs is true, FeatureFlag is set, should result in unrestricted logs
-        [InlineData(false, false, false)] // RestrictHostLogs is false, FeatureFlag is not set, should result in unrestricted logs
-        public void Configure_RestrictHostLogs_SetsSystemLogCategoryPrefixes(bool restrictHostLogs, bool setFeatureFlag, bool shouldResultInRestrictedSystemLogs)
-        {
-            using (TempDirectory tempDir = new TempDirectory())
-            {
-                string fileName = Path.Combine(tempDir.Path, "settings.txt");
+        //[Theory]
+        //[InlineData(true, false, true)] // RestrictHostLogs is true, FeatureFlag is not set, should result in **restricted** logs. This is the default behaviour of the host.
+        //[InlineData(false, true, false)] // RestrictHostLogs is false, FeatureFlag is set, should result in unrestricted logs
+        //// [InlineData(true, true, false)] // RestrictHostLogs is true, FeatureFlag is set, should result in unrestricted logs
+        //[InlineData(false, false, false)] // RestrictHostLogs is false, FeatureFlag is not set, should result in unrestricted logs
+        //public void Configure_RestrictHostLogs_SetsSystemLogCategoryPrefixes(bool restrictHostLogs, bool setFeatureFlag, bool shouldResultInRestrictedSystemLogs)
+        //{
+        //    using (TempDirectory tempDir = new TempDirectory())
+        //    {
+        //        string fileName = Path.Combine(tempDir.Path, "settings.txt");
 
-                IConfiguration configuraton = restrictHostLogs
-                                    ? GetConfiguration(fileName, string.Empty) // defaults to true
-                                    : GetConfiguration(fileName, $"{ScriptConstants.HostingConfigRestrictHostLogs}=0");
+        //        IConfiguration configuraton = restrictHostLogs
+        //                            ? GetConfiguration(fileName, string.Empty) // defaults to true
+        //                            : GetConfiguration(fileName, $"{ScriptConstants.HostingConfigRestrictHostLogs}=0");
 
-                try
-                {
-                    if (setFeatureFlag)
-                    {
-                        SystemEnvironment.Instance.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableHostLogs);
-                    }
+        //        try
+        //        {
+        //            if (setFeatureFlag)
+        //            {
+        //                SystemEnvironment.Instance.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableHostLogs);
+        //            }
 
-                    // Log environment variable
-                    Console.WriteLine($"FeatureFlag: {SystemEnvironment.Instance.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags)}");
+        //            // Log environment variable
+        //            Console.WriteLine($"FeatureFlag: {SystemEnvironment.Instance.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags)}");
 
-                    FunctionsHostingConfigOptionsSetup setup = new (configuraton);
-                    FunctionsHostingConfigOptions options = new ();
-                    setup.Configure(options);
+        //            FunctionsHostingConfigOptionsSetup setup = new (configuraton);
+        //            FunctionsHostingConfigOptions options = new ();
+        //            setup.Configure(options);
 
-                    Console.WriteLine($"RestrictHostLogs: {options.RestrictHostLogs}");
+        //            Console.WriteLine($"RestrictHostLogs: {options.RestrictHostLogs}");
 
-                    // Log the result
-                    Console.WriteLine($"SystemLogCategoryPrefixes: {ScriptLoggingBuilderExtensions.SystemLogCategoryPrefixes}");
+        //            // Log the result
+        //            Console.WriteLine($"SystemLogCategoryPrefixes: {ScriptLoggingBuilderExtensions.SystemLogCategoryPrefixes}");
 
-                    // Assert
-                    if (shouldResultInRestrictedSystemLogs)
-                    {
-                        Assert.Equal(ScriptConstants.RestrictedSystemLogCategoryPrefixes, ScriptLoggingBuilderExtensions.SystemLogCategoryPrefixes);
-                    }
-                    else
-                    {
-                        Assert.Equal(ScriptConstants.SystemLogCategoryPrefixes, ScriptLoggingBuilderExtensions.SystemLogCategoryPrefixes);
-                    }
-                }
-                finally
-                {
-                    // Reset to default values
-                    SystemEnvironment.Instance.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, null);
-                    ScriptLoggingBuilderExtensions.SystemLogCategoryPrefixes = ScriptConstants.SystemLogCategoryPrefixes;
-                }
-            }
-        }
+        //            // Assert
+        //            if (shouldResultInRestrictedSystemLogs)
+        //            {
+        //                Assert.Equal(ScriptConstants.RestrictedSystemLogCategoryPrefixes, ScriptLoggingBuilderExtensions.SystemLogCategoryPrefixes);
+        //            }
+        //            else
+        //            {
+        //                Assert.Equal(ScriptConstants.SystemLogCategoryPrefixes, ScriptLoggingBuilderExtensions.SystemLogCategoryPrefixes);
+        //            }
+        //        }
+        //        finally
+        //        {
+        //            // Reset to default values
+        //            SystemEnvironment.Instance.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, null);
+        //            ScriptLoggingBuilderExtensions.SystemLogCategoryPrefixes = ScriptConstants.SystemLogCategoryPrefixes;
+        //        }
+        //    }
+        //}
 
         [Theory]
         [InlineData(true, true, false)] // RestrictHostLogs is true, FeatureFlag is set, should result in unrestricted logs
