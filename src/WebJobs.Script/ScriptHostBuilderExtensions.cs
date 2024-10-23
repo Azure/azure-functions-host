@@ -113,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 var config = configBuilder.Build();
                 var extensionBundleOptions = GetExtensionBundleOptions(config);
                 FunctionsHostingConfigOptions configOption = new FunctionsHostingConfigOptions();
-                var optionsSetup = new FunctionsHostingConfigOptionsSetup(config);
+                var optionsSetup = new FunctionsHostingConfigOptionsSetup(config, SystemEnvironment.Instance);
                 optionsSetup.Configure(configOption);
 
                 var bundleManager = new ExtensionBundleManager(extensionBundleOptions, SystemEnvironment.Instance, loggerFactory, configOption);

@@ -10,10 +10,12 @@ namespace Microsoft.Azure.WebJobs.Script.Config
     internal class FunctionsHostingConfigOptionsSetup : IConfigureOptions<FunctionsHostingConfigOptions>
     {
         private readonly IConfiguration _configuration;
+        private readonly IEnvironment _environment;
 
-        public FunctionsHostingConfigOptionsSetup(IConfiguration configuration)
+        public FunctionsHostingConfigOptionsSetup(IConfiguration configuration, IEnvironment environment)
         {
             _configuration = configuration;
+            _environment = environment;
         }
 
         public void Configure(FunctionsHostingConfigOptions options)
@@ -37,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         private void ConfigureHostLogs(FunctionsHostingConfigOptions options)
         {
             // Feature flag should take precedence over the host configuration
-            if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableHostLogs))
+            if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableHostLogs, _environment))
             {
                 return;
             }
