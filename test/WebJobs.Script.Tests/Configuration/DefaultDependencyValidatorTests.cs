@@ -36,27 +36,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         [Fact]
         public async Task Validator_InvalidServices_LogsError()
         {
-            SystemEnvironment.Instance.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableHostLogs);
-
-            LogMessage invalidServicesMessage = await RunTest(configureJobHost: s =>
+            using (new TestScopedEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableHostLogs))
             {
-                s.AddSingleton<IHostedService, MyHostedService>();
-                s.AddSingleton<IScriptEventManager, MyScriptEventManager>();
-                s.AddSingleton<IMetricsLogger>(new MyMetricsLogger());
+                LogMessage invalidServicesMessage = await RunTest(configureJobHost: s =>
+                {
+                    s.AddSingleton<IHostedService, MyHostedService>();
+                    s.AddSingleton<IScriptEventManager, MyScriptEventManager>();
+                    s.AddSingleton<IMetricsLogger>(new MyMetricsLogger());
 
-                // Try removing system logger
-                var descriptor = s.Single(p => p.ImplementationType == typeof(SystemLoggerProvider));
-                s.Remove(descriptor);
-            });
+                    // Try removing system logger
+                    var descriptor = s.Single(p => p.ImplementationType == typeof(SystemLoggerProvider));
+                    s.Remove(descriptor);
+                });
 
-            Assert.NotNull(invalidServicesMessage);
+                Assert.NotNull(invalidServicesMessage);
 
-            IEnumerable<string> messageLines = invalidServicesMessage.Exception.Message.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries).Select(p => p.Trim());
-            Assert.Equal(5, messageLines.Count());
-            Assert.Contains(messageLines, p => p.StartsWith("[Invalid]") && p.EndsWith(typeof(MyHostedService).AssemblyQualifiedName));
-            Assert.Contains(messageLines, p => p.StartsWith("[Invalid]") && p.EndsWith(typeof(MyScriptEventManager).AssemblyQualifiedName));
-            Assert.Contains(messageLines, p => p.StartsWith("[Invalid]") && p.EndsWith(typeof(MyMetricsLogger).AssemblyQualifiedName));
-            Assert.Contains(messageLines, p => p.StartsWith("[Missing]") && p.EndsWith(typeof(SystemLoggerProvider).AssemblyQualifiedName));
+                IEnumerable<string> messageLines = invalidServicesMessage.Exception.Message.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries).Select(p => p.Trim());
+                Assert.Equal(5, messageLines.Count());
+                Assert.Contains(messageLines, p => p.StartsWith("[Invalid]") && p.EndsWith(typeof(MyHostedService).AssemblyQualifiedName));
+                Assert.Contains(messageLines, p => p.StartsWith("[Invalid]") && p.EndsWith(typeof(MyScriptEventManager).AssemblyQualifiedName));
+                Assert.Contains(messageLines, p => p.StartsWith("[Invalid]") && p.EndsWith(typeof(MyMetricsLogger).AssemblyQualifiedName));
+                Assert.Contains(messageLines, p => p.StartsWith("[Missing]") && p.EndsWith(typeof(SystemLoggerProvider).AssemblyQualifiedName));
+            }
         }
 
         [Fact]
