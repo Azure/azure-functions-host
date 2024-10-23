@@ -18,8 +18,10 @@ using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Workers;
+using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -70,6 +72,7 @@ namespace Microsoft.WebJobs.Script.Tests
             AddMockedSingleton<IFunctionDataCache>(services);
             AddMockedSingleton<IAzureBlobStorageProvider>(services);
             AddMockedSingleton<IAzureTableStorageProvider>(services);
+            services.AddSingleton<IWorkerProfileManager, WorkerProfileManager>();
             services.AddSingleton<IDiagnosticEventRepository, TestDiagnosticEventRepository>();
             services.AddSingleton<IDiagnosticEventRepositoryFactory, TestDiagnosticEventRepositoryFactory>();
             services.AddSingleton<ISecretManagerProvider, TestSecretManagerProvider>();
@@ -79,6 +82,8 @@ namespace Microsoft.WebJobs.Script.Tests
             services.AddLogging();
             services.AddFunctionMetadataManager();
             services.AddHostMetrics();
+            services.AddConfiguration();
+            services.ConfigureOptions<LanguageWorkerOptionsSetup>();
 
             configureRootServices?.Invoke(services);
 
@@ -108,6 +113,13 @@ namespace Microsoft.WebJobs.Script.Tests
         {
             var mock = new Mock<T>();
             return services.AddSingleton<T>(mock.Object);
+        }
+
+        private static IServiceCollection AddConfiguration(this IServiceCollection services)
+        {
+            var builder = new ConfigurationBuilder();
+            services.AddSingleton<IConfiguration>(builder.Build());
+            return services;
         }
 
         private static IServiceCollection AddHostMetrics(this IServiceCollection services)
