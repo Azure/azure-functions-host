@@ -284,7 +284,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var serviceProviderMock = scriptHostManagerMock.As<IServiceProvider>();
             serviceProviderMock.Setup(x => x.GetService(typeof(IDrainModeManager))).Returns(drainModeManager.Object);
 
-            var result = (StatusCodeResult)await _hostController.Drain(scriptHostManagerMock.Object, default);
+            var result = (AcceptedResult)await _hostController.Drain(scriptHostManagerMock.Object, default);
             Assert.Equal(StatusCodes.Status202Accepted, result.StatusCode);
             drainModeManager.Verify(x => x.EnableDrainModeAsync(default), Times.Once());
         }
