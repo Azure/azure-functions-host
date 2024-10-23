@@ -81,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
                 if (setFeatureFlag)
                 {
-                    SystemEnvironment.Instance.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableHostLogs);
+                    environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableHostLogs);
                 }
 
                 IConfiguration configuraton = restrictHostLogs
@@ -102,39 +102,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 }
             }
         }
-
-        //[Theory]
-        //[InlineData(true, true, false)] // RestrictHostLogs is true, FeatureFlag is set, should result in unrestricted logs
-        //public void Configure_RestrictHostLogs_LILIANTEST(bool restrictHostLogs, bool setFeatureFlag, bool shouldResultInRestrictedSystemLogs)
-        //{
-        //    using (TempDirectory tempDir = new TempDirectory())
-        //    {
-        //        var environment = new TestEnvironment();
-        //        string fileName = Path.Combine(tempDir.Path, "settings.txt");
-
-        //        if (setFeatureFlag)
-        //        {
-        //            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableHostLogs);
-        //        }
-
-        //        IConfiguration configuraton = restrictHostLogs
-        //            ? GetConfiguration(fileName, string.Empty, environment) // defaults to true
-        //            : GetConfiguration(fileName, $"{ScriptConstants.HostingConfigRestrictHostLogs}=0", environment);
-
-        //        FunctionsHostingConfigOptionsSetup setup = new (configuraton, environment);
-        //        FunctionsHostingConfigOptions options = new ();
-        //        setup.Configure(options);
-
-        //        if (shouldResultInRestrictedSystemLogs)
-        //        {
-        //            Assert.Equal(ScriptConstants.RestrictedSystemLogCategoryPrefixes, ScriptLoggingBuilderExtensions.SystemLogCategoryPrefixes);
-        //        }
-        //        else
-        //        {
-        //            Assert.Equal(ScriptConstants.SystemLogCategoryPrefixes, ScriptLoggingBuilderExtensions.SystemLogCategoryPrefixes);
-        //        }
-        //    }
-        //}
 
         private IConfiguration GetConfiguration(string fileName, string fileContent, IEnvironment environment)
         {

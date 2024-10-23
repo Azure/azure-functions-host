@@ -17,7 +17,6 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         public static bool IsEnabled(string name, IEnvironment environment)
         {
             string featureFlags = environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags);
-            Console.WriteLine($"FeatureFlag:IsEnabled: {SystemEnvironment.Instance.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags)}");
             if (!string.IsNullOrEmpty(featureFlags))
             {
                 string[] flags = featureFlags.Split(',');

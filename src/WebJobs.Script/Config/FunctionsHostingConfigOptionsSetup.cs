@@ -12,7 +12,12 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         private readonly IConfiguration _configuration;
         private readonly IEnvironment _environment;
 
-        public FunctionsHostingConfigOptionsSetup(IConfiguration configuration, IEnvironment environment)
+        public FunctionsHostingConfigOptionsSetup(IConfiguration configuration)
+            : this(configuration, SystemEnvironment.Instance)
+        {
+        }
+
+        internal FunctionsHostingConfigOptionsSetup(IConfiguration configuration, IEnvironment environment)
         {
             _configuration = configuration;
             _environment = environment;
