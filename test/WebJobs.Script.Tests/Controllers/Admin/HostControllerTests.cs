@@ -276,11 +276,40 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task GetDrain_HostRunning_BeginsDrain()
+        {
+            var scriptHostManagerMock = new Mock<IScriptHostManager>(MockBehavior.Strict);
+            var drainModeManager = new Mock<IDrainModeManager>(MockBehavior.Strict);
+            drainModeManager.Setup(m => m.EnableDrainModeAsync(default)).Returns(Task.CompletedTask);
+            var serviceProviderMock = scriptHostManagerMock.As<IServiceProvider>();
+            serviceProviderMock.Setup(x => x.GetService(typeof(IDrainModeManager))).Returns(drainModeManager.Object);
+
+            var result = (StatusCodeResult)await _hostController.Drain(scriptHostManagerMock.Object, default);
+            Assert.Equal(StatusCodes.Status202Accepted, result.StatusCode);
+            drainModeManager.Verify(x => x.EnableDrainModeAsync(default), Times.Once());
+        }
+
+        [Fact]
+        public async Task GetDrain_HostRunning_ClientDisconnect_DoesNotDrain()
+        {
+            var scriptHostManagerMock = new Mock<IScriptHostManager>(MockBehavior.Strict);
+            var drainModeManager = new Mock<IDrainModeManager>(MockBehavior.Strict);
+            var serviceProviderMock = scriptHostManagerMock.As<IServiceProvider>();
+            serviceProviderMock.Setup(x => x.GetService(typeof(IDrainModeManager))).Returns(drainModeManager.Object);
+
+            using var cts = new CancellationTokenSource();
+            cts.Cancel();
+
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => _hostController.Drain(scriptHostManagerMock.Object, cts.Token));
+            drainModeManager.Verify(x => x.EnableDrainModeAsync(default), Times.Never);
+        }
+
+        [Fact]
         public async Task GetDrain_HostNotRunning_ReturnsServiceUnavailable()
         {
             var scriptHostManagerMock = new Mock<IScriptHostManager>(MockBehavior.Strict);
 
-            var result = (StatusCodeResult)await _hostController.Drain(scriptHostManagerMock.Object);
+            var result = (StatusCodeResult)await _hostController.Drain(scriptHostManagerMock.Object, default);
             Assert.Equal(StatusCodes.Status503ServiceUnavailable, result.StatusCode);
         }
 
