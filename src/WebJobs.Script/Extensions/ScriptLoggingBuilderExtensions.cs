@@ -16,17 +16,24 @@ namespace Microsoft.Extensions.Logging
     {
         private static ConcurrentDictionary<string, bool> _filteredCategoryCache = new ConcurrentDictionary<string, bool>();
 
-        internal static ImmutableArray<string> SystemLogCategoryPrefixes { get; set; } = ScriptConstants.SystemLogCategoryPrefixes;
+        private static ImmutableArray<string> _cachedPrefixes = ScriptConstants.SystemLogCategoryPrefixes;
 
-        public static ILoggingBuilder AddDefaultWebJobsFilters(this ILoggingBuilder builder)
+        // For testing only
+        internal static ImmutableArray<string> SystemLogPrefixes => _cachedPrefixes;
+
+        public static ILoggingBuilder AddDefaultWebJobsFilters(this ILoggingBuilder builder, bool restrictHostLogs = false)
         {
+            CachePrefixes(restrictHostLogs);
+
             builder.SetMinimumLevel(LogLevel.None);
             builder.AddFilter((c, l) => Filter(c, l, LogLevel.Information));
             return builder;
         }
 
-        public static ILoggingBuilder AddDefaultWebJobsFilters<T>(this ILoggingBuilder builder, LogLevel level) where T : ILoggerProvider
+        public static ILoggingBuilder AddDefaultWebJobsFilters<T>(this ILoggingBuilder builder, LogLevel level, bool restrictHostLogs = false) where T : ILoggerProvider
         {
+            CachePrefixes(restrictHostLogs);
+
             builder.AddFilter<T>(null, LogLevel.None);
             builder.AddFilter<T>((c, l) => Filter(c, l, level));
             return builder;
@@ -39,7 +46,18 @@ namespace Microsoft.Extensions.Logging
 
         private static bool IsFiltered(string category)
         {
-            return _filteredCategoryCache.GetOrAdd(category, c => SystemLogCategoryPrefixes.Any(p => category.StartsWith(p)));
+            return _filteredCategoryCache.GetOrAdd(category, c => _cachedPrefixes.Any(p => category.StartsWith(p)));
+        }
+
+        private static void CachePrefixes(bool restrictHostLogs)
+        {
+            // Once restrictHostLogs is set to true, it stays true for the rest of the application's lifetime
+            // Set _cachedPrefixes to the restricted prefixes and clear the cache
+            if (restrictHostLogs)
+            {
+                _cachedPrefixes = ScriptConstants.RestrictedSystemLogCategoryPrefixes;
+                _filteredCategoryCache.Clear();
+            }
         }
 
         public static void AddConsoleIfEnabled(this ILoggingBuilder builder, HostBuilderContext context)
