@@ -1095,29 +1095,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        private IFunctionMetadataManager GetTestFunctionMetadataManager(IOptionsMonitor<LanguageWorkerOptions> options, ICollection<FunctionMetadata> metadataColection = null, bool hasPrecompiledFunction = false, bool hasNodeFunctions = false, bool hasDotnetIsolatedFunctions = false)
+        private IFunctionMetadataManager GetTestFunctionMetadataManager(IOptionsMonitor<LanguageWorkerOptions> options, ICollection<FunctionMetadata> metadataCollection = null, bool hasPrecompiledFunction = false, bool hasNodeFunctions = false, bool hasDotnetIsolatedFunctions = false)
         {
-            var functionMetdata = new FunctionMetadata();
-            functionMetdata.Bindings.Add(new BindingMetadata() { Type = "blob" });
+            var functionMetadata = new FunctionMetadata();
+            functionMetadata.Bindings.Add(new BindingMetadata() { Type = "blob" });
 
             if (hasPrecompiledFunction)
             {
-                functionMetdata.Language = DotNetScriptTypes.DotNetAssembly;
+                functionMetadata.Language = DotNetScriptTypes.DotNetAssembly;
             }
             if (hasNodeFunctions)
             {
-                functionMetdata.Language = RpcWorkerConstants.NodeLanguageWorkerName;
+                functionMetadata.Language = RpcWorkerConstants.NodeLanguageWorkerName;
             }
 
             if (hasDotnetIsolatedFunctions)
             {
-                functionMetdata.Language = RpcWorkerConstants.DotNetIsolatedLanguageWorkerName;
+                functionMetadata.Language = RpcWorkerConstants.DotNetIsolatedLanguageWorkerName;
             }
 
-            var functionMetadataCollection = metadataColection ?? new List<FunctionMetadata>() { functionMetdata };
+            var functionMetadataCollection = metadataCollection ?? new List<FunctionMetadata>() { functionMetadata };
 
             var functionMetadataManager = new Mock<IFunctionMetadataManager>();
-            functionMetadataManager.Setup(e => e.GetFunctionMetadata(true, true, false, options.CurrentValue.WorkerConfigs)).Returns(functionMetadataCollection.ToImmutableArray());
+            functionMetadataManager.Setup(e => e.GetFunctionMetadata(true, true, false)).Returns(functionMetadataCollection.ToImmutableArray());
             return functionMetadataManager.Object;
         }
 

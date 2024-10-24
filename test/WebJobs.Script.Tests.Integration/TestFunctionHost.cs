@@ -35,6 +35,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
+using Moq;
 using Newtonsoft.Json.Linq;
 using IApplicationLifetime = Microsoft.AspNetCore.Hosting.IApplicationLifetime;
 
@@ -480,12 +481,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 WorkerConfigs = TestHelpers.GetTestWorkerConfigs()
             };
 
+            var mockOptions = new Mock<IOptionsMonitor<LanguageWorkerOptions>>();
+            mockOptions.Setup(o => o.CurrentValue).Returns(workerOptions);
+            mockOptions.Setup(o => o.OnChange(It.IsAny<Action<LanguageWorkerOptions, string>>())).Returns(Mock.Of<IDisposable>());
+
             var managerServiceProvider = manager as IServiceProvider;
 
             var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, new TestMetricsLogger(), SystemEnvironment.Instance);
             var defaultProvider = new FunctionMetadataProvider(NullLogger<FunctionMetadataProvider>.Instance, null, metadataProvider, new OptionsWrapper<FunctionsHostingConfigOptions>(new FunctionsHostingConfigOptions()), SystemEnvironment.Instance);
             var metadataManager = new FunctionMetadataManager(managerServiceProvider.GetService<IOptions<ScriptJobHostOptions>>(), defaultProvider,
-                managerServiceProvider.GetService<IOptions<HttpWorkerOptions>>(), manager, factory, environment);
+                managerServiceProvider.GetService<IOptions<HttpWorkerOptions>>(), manager, factory, environment, mockOptions.Object);
 
             return metadataManager;
         }
