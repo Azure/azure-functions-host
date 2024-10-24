@@ -20,7 +20,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebJobs.Script.WebHost", "s
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{AFB0F5F7-A612-4F4A-94DD-8B69CABF7970}"
 	ProjectSection(SolutionItems) = preProject
-		src\WebJobs.Script.WebHost\appsettings.Development.json = src\WebJobs.Script.WebHost\appsettings.Development.json
 		src\WebJobs.Script.WebHost\appsettings.json = src\WebJobs.Script.WebHost\appsettings.json
 	EndProjectSection
 EndProject

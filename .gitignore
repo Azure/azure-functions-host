@@ -65,6 +65,7 @@ BenchmarkDotNet.Artifacts/
 project.lock.json
 project.fragment.lock.json
 artifacts/
+appsettings.Development.json
 
 # Tye
 .tye/
@@ -498,3 +499,4 @@ local.settings.json
 /tools/ExtensionsMetadataGenerator/src/ExtensionsMetadataGenerator/runtimeassemblies.txt
 /tools/ExtensionsMetadataGenerator/test/ExtensionsMetadataGeneratorTests/runtimeAssemblies.txt
 BenchmarkDotNet.Artifacts/
+/src/WebJobs.Script.WebHost/host.json
