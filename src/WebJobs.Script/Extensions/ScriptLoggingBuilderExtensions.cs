@@ -15,7 +15,6 @@ namespace Microsoft.Extensions.Logging
     public static class ScriptLoggingBuilderExtensions
     {
         private static ConcurrentDictionary<string, bool> _filteredCategoryCache = new ConcurrentDictionary<string, bool>();
-
         private static ImmutableArray<string> _cachedPrefixes = ScriptConstants.SystemLogCategoryPrefixes;
 
         // For testing only
