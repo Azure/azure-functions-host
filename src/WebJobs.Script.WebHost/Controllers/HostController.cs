@@ -202,6 +202,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 await _drainSemaphore.WaitAsync(cancellation);
 
                 // Stop call to some listeners gets stuck, not waiting for the stop call to complete
+                // We do not pass in this APIs cancellation token as we do not want drain to be aborted once we have the semaphore.
                 _ = drainModeManager.EnableDrainModeAsync(CancellationToken.None)
                                     .ContinueWith(
                                         antecedent =>
@@ -259,12 +260,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [HttpPost]
         [Route("admin/host/resume")]
         [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal)]
-        public async Task<IActionResult> Resume([FromServices] IScriptHostManager scriptHostManager)
+        public async Task<IActionResult> Resume([FromServices] IScriptHostManager scriptHostManager, CancellationToken cancellation)
         {
             try
             {
-                await _resumeSemaphore.WaitAsync();
+                await _resumeSemaphore.WaitAsync(cancellation);
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogInformation("Resume request was cancelled");
+                throw;
+            }
 
+            try
+            {
                 ScriptHostState currentState = scriptHostManager.State;
 
                 _logger.LogDebug($"Received request to resume a draining host - host status: {currentState.ToString()}");
