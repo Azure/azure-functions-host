@@ -16,3 +16,4 @@
 - Update PowerShell 7.4 worker to [4.0.4026](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.4026)
 - Added support for identity-based connections to Diagnostic Events (#10438)
 - Updating Microsoft.Azure.WebJobs.Logging.ApplicationInsights to 3.0.42-12121
+- Updated retry logic in Worker HTTP proxy to allow for longer worker HTTP listener initialization times (#10566).
