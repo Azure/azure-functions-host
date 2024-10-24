@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Configuration;
@@ -28,8 +29,9 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IServiceProvider _serviceProvider;
         private readonly IFunctionMetadataProvider _functionMetadataProvider;
         private readonly IEnvironment _environment;
-        private readonly IDisposable _onChangeSubscription;
-        private readonly IOptionsMonitor<LanguageWorkerOptions> _languageOptions;
+
+        private LanguageWorkerOptions _languageOptions;
+        private IDisposable _onChangeSubscription;
         private IOptions<ScriptJobHostOptions> _scriptOptions;
         private ILogger _logger;
         private bool _isHttpWorker;
@@ -54,8 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script
             _isHttpWorker = httpWorkerOptions?.Value?.Description != null;
             _environment = environment;
 
-            _languageOptions = languageOptions;
-            _onChangeSubscription = _languageOptions.OnChange(_ => _servicesReset = true);
+            InitializeLanguageOptions(languageOptions);
 
             // Every time script host is re-initializing, we also need to re-initialize
             // services that change with the scope of the script host.
@@ -110,6 +111,17 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <inheritdoc />
         public void Dispose() => _onChangeSubscription.Dispose();
 
+        private void InitializeLanguageOptions(IOptionsMonitor<LanguageWorkerOptions> options)
+        {
+            _onChangeSubscription?.Dispose();
+            _languageOptions = options.CurrentValue;
+            _onChangeSubscription = options.OnChange(o =>
+            {
+                _languageOptions = o;
+                _servicesReset = true;
+            });
+        }
+
         private ImmutableArray<FunctionMetadata> ApplyAllowList(ImmutableArray<FunctionMetadata> metadataList)
         {
             var allowList = _scriptOptions.Value?.Functions;
@@ -132,6 +144,9 @@ namespace Microsoft.Azure.WebJobs.Script
             // Resetting the logger switches the logger scope to Script Host level,
             // also making the logs available to Application Insights
             _logger = _serviceProvider?.GetService<ILoggerFactory>().CreateLogger(LogCategories.Startup);
+
+            _onChangeSubscription.Dispose();
+            InitializeLanguageOptions(_serviceProvider.GetService<IOptionsMonitor<LanguageWorkerOptions>>());
             _servicesReset = true;
         }
 
@@ -140,7 +155,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         internal ImmutableArray<FunctionMetadata> LoadFunctionMetadata(bool forceRefresh = false, bool includeCustomProviders = true)
         {
-            var workerConfigs = _languageOptions.CurrentValue.WorkerConfigs;
+            var workerConfigs = _languageOptions.WorkerConfigs;
             _functionMetadataMap.Clear();
 
             ICollection<string> functionsAllowList = _scriptOptions?.Value?.Functions;
