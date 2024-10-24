@@ -188,7 +188,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [HttpPost]
         [Route("admin/host/drain")]
         [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal)]
-        public async Task<IActionResult> Drain([FromServices] IScriptHostManager scriptHostManager)
+        public async Task<IActionResult> Drain([FromServices] IScriptHostManager scriptHostManager, CancellationToken cancellation)
         {
             _logger.LogDebug("Received request to drain the host");
 
@@ -197,21 +197,30 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 return StatusCode(StatusCodes.Status503ServiceUnavailable);
             }
 
-            await _drainSemaphore.WaitAsync();
+            try
+            {
+                await _drainSemaphore.WaitAsync(cancellation);
 
-            // Stop call to some listeners gets stuck, not waiting for the stop call to complete
-            _ = drainModeManager.EnableDrainModeAsync(CancellationToken.None)
-                                .ContinueWith(
-                                    antecedent =>
-                                    {
-                                        if (antecedent.Status == TaskStatus.Faulted)
+                // Stop call to some listeners gets stuck, not waiting for the stop call to complete
+                // We do not pass in this APIs cancellation token as we do not want drain to be aborted once we have the semaphore.
+                _ = drainModeManager.EnableDrainModeAsync(CancellationToken.None)
+                                    .ContinueWith(
+                                        antecedent =>
                                         {
-                                            _logger.LogError(antecedent.Exception, "Something went wrong invoking drain mode");
-                                        }
+                                            if (antecedent.Status == TaskStatus.Faulted)
+                                            {
+                                                _logger.LogError(antecedent.Exception, "Something went wrong invoking drain mode");
+                                            }
 
-                                        _drainSemaphore.Release();
-                                    });
-            return Accepted();
+                                            _drainSemaphore.Release();
+                                        });
+                return Accepted();
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogInformation("Drain request was cancelled");
+                throw;
+            }
         }
 
         [HttpGet]
@@ -251,12 +260,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [HttpPost]
         [Route("admin/host/resume")]
         [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal)]
-        public async Task<IActionResult> Resume([FromServices] IScriptHostManager scriptHostManager)
+        public async Task<IActionResult> Resume([FromServices] IScriptHostManager scriptHostManager, CancellationToken cancellation)
         {
             try
             {
-                await _resumeSemaphore.WaitAsync();
+                await _resumeSemaphore.WaitAsync(cancellation);
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogInformation("Resume request was cancelled");
+                throw;
+            }
 
+            try
+            {
                 ScriptHostState currentState = scriptHostManager.State;
 
                 _logger.LogDebug($"Received request to resume a draining host - host status: {currentState.ToString()}");
