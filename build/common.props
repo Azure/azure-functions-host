@@ -3,7 +3,7 @@
   <PropertyGroup>
     <LangVersion>latest</LangVersion>
     <MajorVersion>4</MajorVersion>
-    <MinorVersion>$(MinorVersionPrefix)36</MinorVersion>
+    <MinorVersion>$(MinorVersionPrefix)37</MinorVersion>
     <PatchVersion>0</PatchVersion>
     <BuildNumber Condition="'$(BuildNumber)' == '' ">0</BuildNumber>
     <PreviewVersion></PreviewVersion>
