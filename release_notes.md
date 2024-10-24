@@ -25,3 +25,4 @@
 - Added support for identity-based connections to Diagnostic Events (#10438)
 - Update PowerShell 7.2 worker to [4.0.4025](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.4025)
 - Update PowerShell 7.4 worker to [4.0.4026](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.4026)
+- Do not unregister gRPC extension endpoints on host shutdown.
