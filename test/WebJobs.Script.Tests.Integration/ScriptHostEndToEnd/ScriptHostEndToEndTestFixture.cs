@@ -126,7 +126,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             TestHelpers.ClearFunctionLogs("ListenerStartupException");
 
             Host = new HostBuilder()
-               .ConfigureDefaultTestWebScriptHost((environment: _environment, webjobsBuilder) =>
+              .ConfigureDefaultTestWebScriptHost(webjobsBuilder =>
                {
                    webjobsBuilder.AddAzureStorage();
 
@@ -139,7 +139,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                    o.ScriptPath = _rootPath;
                    o.LogPath = TestHelpers.GetHostLogFileDirectory().Parent.FullName;
                },
-               runStartupHostedServices: true)
+               runStartupHostedServices: true, environment: _environment)
                .ConfigureServices(services =>
                {
                    services.Configure<ScriptJobHostOptions>(o =>
