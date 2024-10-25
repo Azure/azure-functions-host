@@ -22,7 +22,7 @@ namespace Microsoft.Extensions.Logging
 
         public static ILoggingBuilder AddDefaultWebJobsFilters(this ILoggingBuilder builder, bool restrictHostLogs = false)
         {
-            CachePrefixes(restrictHostLogs);
+            CacheSystemLogPrefixes(restrictHostLogs);
 
             builder.SetMinimumLevel(LogLevel.None);
             builder.AddFilter((c, l) => Filter(c, l, LogLevel.Information));
@@ -31,7 +31,7 @@ namespace Microsoft.Extensions.Logging
 
         public static ILoggingBuilder AddDefaultWebJobsFilters<T>(this ILoggingBuilder builder, LogLevel level, bool restrictHostLogs = false) where T : ILoggerProvider
         {
-            CachePrefixes(restrictHostLogs);
+            CacheSystemLogPrefixes(restrictHostLogs);
 
             builder.AddFilter<T>(null, LogLevel.None);
             builder.AddFilter<T>((c, l) => Filter(c, l, level));
@@ -48,7 +48,7 @@ namespace Microsoft.Extensions.Logging
             return _filteredCategoryCache.GetOrAdd(category, c => _cachedPrefixes.Any(p => category.StartsWith(p)));
         }
 
-        private static void CachePrefixes(bool restrictHostLogs)
+        private static void CacheSystemLogPrefixes(bool restrictHostLogs)
         {
             // Once restrictHostLogs is set to true, it stays true for the rest of the application's lifetime
             // Set _cachedPrefixes to the restricted prefixes and clear the cache

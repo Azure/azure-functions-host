@@ -268,7 +268,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        public virtual void ConfigureServices(IServiceCollection services, IEnironment enironment)
+        public virtual void ConfigureServices(IServiceCollection services)
         {
         }
 

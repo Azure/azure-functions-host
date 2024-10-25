@@ -136,7 +136,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         }
 
         [Fact]
-        public void RestrictHostLog_ReturnsExpectedValuee()
+        public void RestrictHostLogs_ReturnsExpectedValue()
         {
             FunctionsHostingConfigOptions options = new FunctionsHostingConfigOptions();
 
