@@ -77,7 +77,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 {
                     loggingBuilder.Services.AddSingleton<ILoggerFactory, ScriptLoggerFactory>();
 
-                    loggingBuilder.AddWebJobsSystem<SystemLoggerProvider>();
+                    var hostingConfigOptions = rootServiceProvider.GetService<IOptions<FunctionsHostingConfigOptions>>();
+                    loggingBuilder.AddWebJobsSystem<SystemLoggerProvider>(RestrictHostLogs(hostingConfigOptions.Value, environment));
+
                     if (environment.IsAzureMonitorEnabled())
                     {
                         loggingBuilder.Services.AddSingleton<ILoggerProvider, AzureMonitorDiagnosticLoggerProvider>();
@@ -168,6 +170,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 configureBuilder.Configure(builder);
             }
+        }
+
+        private static bool RestrictHostLogs(FunctionsHostingConfigOptions options, IEnvironment environment)
+        {
+            // Feature flag should take precedence over the host configuration
+            return !FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableHostLogs, environment) && options.RestrictHostLogs;
         }
 
         /// <summary>

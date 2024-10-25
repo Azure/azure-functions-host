@@ -39,11 +39,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly ProxyClientExecutor _proxyClient;
         private readonly bool _startHost;
         private readonly ICollection<string> _functions;
+        private readonly IEnvironment _environment;
         private readonly string _functionsWorkerLanguage;
         private readonly bool _addWorkerConcurrency;
 
         protected ScriptHostEndToEndTestFixture(string rootPath, string testId, string functionsWorkerLanguage, ProxyClientExecutor proxyClient = null,
-            bool startHost = true, ICollection<string> functions = null, bool addWorkerConcurrency = false)
+            bool startHost = true, ICollection<string> functions = null, bool addWorkerConcurrency = false, IEnvironment environment = null)
         {
             _settingsManager = ScriptSettingsManager.Instance;
             FixtureId = testId;
@@ -58,6 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _functions = functions;
             _functionsWorkerLanguage = functionsWorkerLanguage;
             _addWorkerConcurrency = addWorkerConcurrency;
+            _environment = environment ?? new TestEnvironment();
         }
 
         public TestLoggerProvider LoggerProvider { get; }
@@ -94,14 +96,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             if (!string.IsNullOrEmpty(_functionsWorkerLanguage))
             {
-                Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, _functionsWorkerLanguage);
+                _environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, _functionsWorkerLanguage);
             }
             if (_addWorkerConcurrency)
             {
-                Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerDynamicConcurrencyEnabled, "true");
+                _environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerDynamicConcurrencyEnabled, "true");
             }
 
-            Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableHostLogs);
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableHostLogs);
+
             IConfiguration configuration = TestHelpers.GetTestConfiguration();
             string connectionString = configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
             CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
@@ -123,7 +126,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             TestHelpers.ClearFunctionLogs("ListenerStartupException");
 
             Host = new HostBuilder()
-               .ConfigureDefaultTestWebScriptHost(webjobsBuilder =>
+              .ConfigureDefaultTestWebScriptHost(webjobsBuilder =>
                {
                    webjobsBuilder.AddAzureStorage();
 
@@ -136,7 +139,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                    o.ScriptPath = _rootPath;
                    o.LogPath = TestHelpers.GetHostLogFileDirectory().Parent.FullName;
                },
-               runStartupHostedServices: true)
+               runStartupHostedServices: true, environment: _environment)
                .ConfigureServices(services =>
                {
                    services.Configure<ScriptJobHostOptions>(o =>
@@ -278,7 +281,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 JobHost.Dispose();
                 Host.Dispose();
             }
-            Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, string.Empty);
+            _environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, string.Empty);
         }
 
         private class TestEntity : TableEntity
