@@ -28,6 +28,10 @@ extends:
       name: 1es-pool-azfunc
       image: 1es-windows-2022
       os: windows
+    sdl:
+      componentgovernance:
+        enabled: false
+        justificationForDisabling: Functions v3 is out of support. This pipeline is for maintenance only.
 
     stages:
     - stage: Test
