@@ -8,12 +8,12 @@ namespace Microsoft.Extensions.Logging
 {
     public static class ILoggingBuilderExtensions
     {
-        public static void AddWebJobsSystem<T>(this ILoggingBuilder builder) where T : SystemLoggerProvider
+        public static void AddWebJobsSystem<T>(this ILoggingBuilder builder, bool restrictHostLogs = false) where T : SystemLoggerProvider
         {
             builder.Services.AddSingleton<ILoggerProvider, T>();
 
             // Log all logs to SystemLogger
-            builder.AddDefaultWebJobsFilters<T>(LogLevel.Trace);
+            builder.AddDefaultWebJobsFilters<T>(LogLevel.Trace, restrictHostLogs);
         }
     }
 }

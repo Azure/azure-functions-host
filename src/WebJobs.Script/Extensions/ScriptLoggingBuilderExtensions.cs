@@ -6,7 +6,6 @@ using System.Collections.Immutable;
 using System.Linq;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Script;
-using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
@@ -16,16 +15,24 @@ namespace Microsoft.Extensions.Logging
     public static class ScriptLoggingBuilderExtensions
     {
         private static ConcurrentDictionary<string, bool> _filteredCategoryCache = new ConcurrentDictionary<string, bool>();
+        private static ImmutableArray<string> _allowedLogCategoryPrefixes = ScriptConstants.SystemLogCategoryPrefixes;
 
-        public static ILoggingBuilder AddDefaultWebJobsFilters(this ILoggingBuilder builder)
+        // For testing only
+        internal static ImmutableArray<string> AllowedSystemLogPrefixes => _allowedLogCategoryPrefixes;
+
+        public static ILoggingBuilder AddDefaultWebJobsFilters(this ILoggingBuilder builder, bool restrictHostLogs = false)
         {
+            SetSystemLogCategoryPrefixes(restrictHostLogs);
+
             builder.SetMinimumLevel(LogLevel.None);
             builder.AddFilter((c, l) => Filter(c, l, LogLevel.Information));
             return builder;
         }
 
-        public static ILoggingBuilder AddDefaultWebJobsFilters<T>(this ILoggingBuilder builder, LogLevel level) where T : ILoggerProvider
+        public static ILoggingBuilder AddDefaultWebJobsFilters<T>(this ILoggingBuilder builder, LogLevel level, bool restrictHostLogs = false) where T : ILoggerProvider
         {
+            SetSystemLogCategoryPrefixes(restrictHostLogs);
+
             builder.AddFilter<T>(null, LogLevel.None);
             builder.AddFilter<T>((c, l) => Filter(c, l, level));
             return builder;
@@ -38,11 +45,17 @@ namespace Microsoft.Extensions.Logging
 
         private static bool IsFiltered(string category)
         {
-            ImmutableArray<string> systemLogCategoryPrefixes = FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableHostLogs)
-                                                                ? ScriptConstants.SystemLogCategoryPrefixes
-                                                                : ScriptConstants.RestrictedSystemLogCategoryPrefixes;
+            return _filteredCategoryCache.GetOrAdd(category, c => _allowedLogCategoryPrefixes.Any(p => c.StartsWith(p)));
+        }
 
-            return _filteredCategoryCache.GetOrAdd(category, c => systemLogCategoryPrefixes.Any(p => category.StartsWith(p)));
+        private static void SetSystemLogCategoryPrefixes(bool restrictHostLogs)
+        {
+            // Once restrictHostLogs is set to true, it stays true for the rest of the application's lifetime
+            // Set _allowedLogCategoryPrefixes to the restricted prefixes and clear the filter cache
+            if (restrictHostLogs)
+            {
+                _allowedLogCategoryPrefixes = ScriptConstants.RestrictedSystemLogCategoryPrefixes;
+            }
         }
 
         public static void AddConsoleIfEnabled(this ILoggingBuilder builder, HostBuilderContext context)
