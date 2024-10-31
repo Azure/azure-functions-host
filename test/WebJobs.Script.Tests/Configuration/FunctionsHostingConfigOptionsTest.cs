@@ -135,14 +135,35 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             Assert.False(options.SwtIssuerEnabled);
         }
 
-        internal static IHostBuilder GetScriptHostBuilder(string fileName, string fileContent)
+        [Fact]
+        public void RestrictHostLogs_ReturnsExpectedValue()
+        {
+            FunctionsHostingConfigOptions options = new FunctionsHostingConfigOptions();
+
+            // defaults to true
+            Assert.True(options.RestrictHostLogs);
+
+            // returns true when explicitly enabled
+            options.Features[ScriptConstants.HostingConfigRestrictHostLogs] = "1";
+            Assert.True(options.RestrictHostLogs);
+
+            // returns false when disabled
+            options.Features[ScriptConstants.HostingConfigRestrictHostLogs] = "0";
+            Assert.False(options.RestrictHostLogs);
+        }
+
+        internal static IHostBuilder GetScriptHostBuilder(string fileName, string fileContent, IEnvironment environment = null)
         {
             if (!string.IsNullOrEmpty(fileContent))
             {
                 File.WriteAllText(fileName, fileContent);
             }
 
-            TestEnvironment environment = new TestEnvironment();
+            if (environment is null)
+            {
+                environment = new TestEnvironment();
+            }
+
             environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsPlatformConfigFilePath, fileName);
 
             IHost webHost = new HostBuilder()
@@ -161,7 +182,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 {
                     services.AddSingleton<TestService>();
                 })
-                .ConfigureDefaultTestWebScriptHost(null, configureRootServices: (services) =>
+                .ConfigureDefaultTestWebScriptHost(null, environment: environment, configureRootServices: (services) =>
                 {
                     services.AddSingleton(webHost.Services.GetService<IOptions<FunctionsHostingConfigOptions>>());
                     services.AddSingleton(webHost.Services.GetService<IOptionsMonitor<FunctionsHostingConfigOptions>>());
@@ -170,7 +191,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
         public class TestService
         {
-            public TestService(IOptions<Config.FunctionsHostingConfigOptions> options, IOptionsMonitor<Config.FunctionsHostingConfigOptions> monitor)
+            public TestService(IOptions<FunctionsHostingConfigOptions> options, IOptionsMonitor<FunctionsHostingConfigOptions> monitor)
             {
                 Options = options;
                 Monitor = monitor;
@@ -180,9 +201,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 });
             }
 
-            public IOptions<Config.FunctionsHostingConfigOptions> Options { get; set; }
+            public IOptions<FunctionsHostingConfigOptions> Options { get; set; }
 
-            public IOptionsMonitor<Config.FunctionsHostingConfigOptions> Monitor { get; set; }
+            public IOptionsMonitor<FunctionsHostingConfigOptions> Monitor { get; set; }
         }
     }
 }

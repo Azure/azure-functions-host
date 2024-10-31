@@ -29,13 +29,13 @@ namespace Microsoft.WebJobs.Script.Tests
 {
     public static class TestHostBuilderExtensions
     {
-        public static IHostBuilder ConfigureDefaultTestWebScriptHost(this IHostBuilder builder, Action<ScriptApplicationHostOptions> configure = null, bool runStartupHostedServices = false)
+        public static IHostBuilder ConfigureDefaultTestWebScriptHost(this IHostBuilder builder, Action<ScriptApplicationHostOptions> configure = null, bool runStartupHostedServices = false, IEnvironment environment = null)
         {
-            return builder.ConfigureDefaultTestWebScriptHost(null, configure, runStartupHostedServices);
+            return builder.ConfigureDefaultTestWebScriptHost(null, configure, runStartupHostedServices, environment: environment);
         }
 
         public static IHostBuilder ConfigureDefaultTestWebScriptHost(this IHostBuilder builder, Action<IWebJobsBuilder> configureWebJobs,
-            Action<ScriptApplicationHostOptions> configure = null, bool runStartupHostedServices = false, Action<IServiceCollection> configureRootServices = null)
+            Action<ScriptApplicationHostOptions> configure = null, bool runStartupHostedServices = false, Action<IServiceCollection> configureRootServices = null, IEnvironment environment = null)
         {
             var webHostOptions = new ScriptApplicationHostOptions()
             {
@@ -48,9 +48,18 @@ namespace Microsoft.WebJobs.Script.Tests
 
             // Register root services
             var services = new ServiceCollection();
+
+            if (environment is not null)
+            {
+                services.AddSingleton<IEnvironment>(environment);
+            }
+            else
+            {
+                AddMockedSingleton<IEnvironment>(services);
+            }
+
             AddMockedSingleton<IDebugStateProvider>(services);
             AddMockedSingleton<IScriptHostManager>(services);
-            AddMockedSingleton<IEnvironment>(services);
             AddMockedSingleton<IScriptWebHostEnvironment>(services);
             AddMockedSingleton<IEventGenerator>(services);
             AddMockedSingleton<IFunctionInvocationDispatcherFactory>(services);
