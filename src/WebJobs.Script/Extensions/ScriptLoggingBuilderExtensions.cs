@@ -14,8 +14,8 @@ namespace Microsoft.Extensions.Logging
 {
     public static class ScriptLoggingBuilderExtensions
     {
-        private static ConcurrentDictionary<string, bool> _filteredCategoryCache = new ConcurrentDictionary<string, bool>();
-        private static ImmutableArray<string> _allowedLogCategoryPrefixes = ScriptConstants.SystemLogCategoryPrefixes;
+        private static ConcurrentDictionary<string, bool> _filteredCategoryCache = new ();
+        private static ImmutableArray<string> _allowedLogCategoryPrefixes = new ();
 
         // For testing only
         internal static ImmutableArray<string> AllowedSystemLogPrefixes => _allowedLogCategoryPrefixes;
@@ -50,12 +50,7 @@ namespace Microsoft.Extensions.Logging
 
         private static void SetSystemLogCategoryPrefixes(bool restrictHostLogs)
         {
-            // Once restrictHostLogs is set to true, it stays true for the rest of the application's lifetime
-            // Set _allowedLogCategoryPrefixes to the restricted prefixes and clear the filter cache
-            if (restrictHostLogs)
-            {
-                _allowedLogCategoryPrefixes = ScriptConstants.RestrictedSystemLogCategoryPrefixes;
-            }
+            _allowedLogCategoryPrefixes = restrictHostLogs ? ScriptConstants.RestrictedSystemLogCategoryPrefixes : ScriptConstants.SystemLogCategoryPrefixes;
         }
 
         public static void AddConsoleIfEnabled(this ILoggingBuilder builder, HostBuilderContext context)

@@ -55,7 +55,7 @@ namespace Microsoft.WebJobs.Script.Tests
             }
             else
             {
-                AddMockedSingleton<IEnvironment>(services);
+                services.AddSingleton<IEnvironment>(SystemEnvironment.Instance);
             }
 
             AddMockedSingleton<IDebugStateProvider>(services);

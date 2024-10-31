@@ -81,9 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script
             // Host configuration
             builder.ConfigureLogging((context, loggingBuilder) =>
             {
-                var hostingConfigOptions = applicationOptions.RootServiceProvider.GetService<IOptions<FunctionsHostingConfigOptions>>();
-                var restrictHostLogs = RestrictHostLogs(hostingConfigOptions.Value, SystemEnvironment.Instance);
-                loggingBuilder.AddDefaultWebJobsFilters(restrictHostLogs);
+                loggingBuilder.AddDefaultWebJobsFilters();
 
                 string loggingPath = ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "Logging");
                 loggingBuilder.AddConfiguration(context.Configuration.GetSection(loggingPath));
@@ -492,12 +490,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 logger.LogDebug("Using InMemoryDistributedLockManager in Functions Host.");
                 return new InMemoryDistributedLockManager();
             }
-        }
-
-        private static bool RestrictHostLogs(FunctionsHostingConfigOptions options, IEnvironment environment)
-        {
-            // Feature flag should take precedence over the host configuration
-            return !FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableHostLogs, environment) && options.RestrictHostLogs;
         }
 
         /// <summary>
