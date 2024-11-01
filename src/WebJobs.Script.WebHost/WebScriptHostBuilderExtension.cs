@@ -79,7 +79,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     var restrictHostLogs = RestrictHostLogs(hostingConfigOptions.Value);
 
                     loggingBuilder.Services.AddSingleton<ILoggerFactory, ScriptLoggerFactory>();
-                    loggingBuilder.AddDefaultWebJobsFilters(restrictHostLogs);
                     loggingBuilder.AddWebJobsSystem<SystemLoggerProvider>(restrictHostLogs);
 
                     if (environment.IsAzureMonitorEnabled())

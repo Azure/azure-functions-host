@@ -50,7 +50,13 @@ namespace Microsoft.Extensions.Logging
 
         private static void SetSystemLogCategoryPrefixes(bool restrictHostLogs)
         {
+            var previous = _allowedLogCategoryPrefixes;
             _allowedLogCategoryPrefixes = restrictHostLogs ? ScriptConstants.RestrictedSystemLogCategoryPrefixes : ScriptConstants.SystemLogCategoryPrefixes;
+
+            if (!previous.IsDefault && !previous.SequenceEqual(_allowedLogCategoryPrefixes))
+            {
+                _filteredCategoryCache.Clear();
+            }
         }
 
         public static void AddConsoleIfEnabled(this ILoggingBuilder builder, HostBuilderContext context)
