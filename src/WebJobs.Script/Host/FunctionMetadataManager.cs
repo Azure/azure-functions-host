@@ -6,6 +6,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -34,6 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private ImmutableArray<FunctionMetadata> _functionMetadataArray;
         private Dictionary<string, ICollection<string>> _functionErrors = new Dictionary<string, ICollection<string>>();
         private ConcurrentDictionary<string, FunctionMetadata> _functionMetadataMap = new ConcurrentDictionary<string, FunctionMetadata>(StringComparer.OrdinalIgnoreCase);
+        private TimeSpan _metadataProviderTimeout;
 
         public FunctionMetadataManager(IOptions<ScriptJobHostOptions> scriptOptions, IFunctionMetadataProvider functionMetadataProvider,
             IOptions<HttpWorkerOptions> httpWorkerOptions, IScriptHostManager scriptHostManager, ILoggerFactory loggerFactory,
@@ -45,6 +47,8 @@ namespace Microsoft.Azure.WebJobs.Script
             _logger = loggerFactory.CreateLogger(LogCategories.Startup);
             _isHttpWorker = httpWorkerOptions?.Value?.Description != null;
             _environment = environment;
+
+            _metadataProviderTimeout = _environment.IsLogicApp() ? Timeout.InfiniteTimeSpan : TimeSpan.FromSeconds(DefaultMetadataProviderTimeoutInSeconds);
 
             // Every time script host is re-initializing, we also need to re-initialize
             // services that change with the scope of the script host.
@@ -225,7 +229,7 @@ namespace Microsoft.Azure.WebJobs.Script
             foreach (var functionProvider in functionProviders)
             {
                 var getFunctionMetadataFromProviderTask = functionProvider.GetFunctionMetadataAsync();
-                var delayTask = Task.Delay(TimeSpan.FromSeconds(MetadataProviderTimeoutInSeconds));
+                var delayTask = Task.Delay(_metadataProviderTimeout);
 
                 var completedTask = Task.WhenAny(getFunctionMetadataFromProviderTask, delayTask).ContinueWith(t =>
                 {
@@ -235,7 +239,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     }
 
                     // Timeout case.
-                    throw new TimeoutException($"Timeout occurred while retrieving metadata from provider '{functionProvider.GetType().FullName}'. The operation exceeded the configured timeout of {MetadataProviderTimeoutInSeconds} seconds.");
+                    throw new TimeoutException($"Timeout occurred while retrieving metadata from provider '{functionProvider.GetType().FullName}'. The operation exceeded the configured timeout of {_metadataProviderTimeout.TotalSeconds} seconds.");
                 });
 
                 functionProviderTasks.Add(completedTask);
