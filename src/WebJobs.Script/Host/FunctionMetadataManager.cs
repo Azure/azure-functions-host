@@ -62,7 +62,18 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         // Property is settable for testing purposes.
-        internal int MetadataProviderTimeoutInSeconds { get; set; } = DefaultMetadataProviderTimeoutInSeconds;
+        internal TimeSpan MetadataProviderTimeout
+        {
+            get
+            {
+                return _metadataProviderTimeout;
+            }
+
+            set
+            {
+                _metadataProviderTimeout = value;
+            }
+        }
 
         public ImmutableDictionary<string, ImmutableArray<string>> Errors { get; private set; }
 
