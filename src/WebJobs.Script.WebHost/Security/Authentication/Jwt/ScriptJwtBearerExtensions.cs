@@ -34,6 +34,12 @@ namespace Microsoft.Extensions.DependencyInjection
                 {
                     OnMessageReceived = c =>
                     {
+                        if (!c.HttpContext.Request.IsAdminRequest())
+                        {
+                            c.NoResult();
+                            return Task.CompletedTask;
+                        }
+
                         // By default, tokens are passed via the standard Authorization Bearer header. However we also support
                         // passing tokens via the x-ms-site-token header.
                         if (c.Request.Headers.TryGetValue(ScriptConstants.SiteTokenHeaderName, out StringValues values))
@@ -53,6 +59,13 @@ namespace Microsoft.Extensions.DependencyInjection
                     },
                     OnTokenValidated = c =>
                     {
+                        if (!c.HttpContext.Request.IsAdminRequest())
+                        {
+                            // An extra safe-guard. OnMessageReceived should short circuit this from ever being called here.
+                            c.Fail("Not an admin request.");
+                            return Task.CompletedTask;
+                        }
+
                         var claims = new List<Claim>
                         {
                             new Claim(SecurityConstants.AuthLevelClaimType, AuthorizationLevel.Admin.ToString())

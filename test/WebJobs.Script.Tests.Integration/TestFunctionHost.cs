@@ -352,6 +352,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         /// </summary>
         /// <returns>The messages from the WebHost LoggerProvider</returns>
         public IList<LogMessage> GetWebHostLogMessages() => _webHostLoggerProvider.GetAllLogMessages();
+        public IEnumerable<LogMessage> GetWebHostLogMessages(string category) => GetWebHostLogMessages().Where(p => p.Category == category);
 
         public string GetLog() => string.Join(Environment.NewLine, GetScriptHostLogMessages().Concat(GetWebHostLogMessages()).OrderBy(m => m.Timestamp));
 
