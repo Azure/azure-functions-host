@@ -92,6 +92,7 @@
       See https://github.com/Azure/azure-functions-host/pull/10002
     -->
     <PackageReference Include="System.IO.FileSystem.AccessControl" Version="5.0.0" />
+    <PackageReference Include="System.Memory.Data" Version="8.0.1" />
     <PackageReference Include="System.Net.NameResolution" Version="4.3.0" />
   </ItemGroup>
 

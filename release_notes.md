@@ -18,3 +18,4 @@
 - Updating Microsoft.Azure.WebJobs.Logging.ApplicationInsights to 3.0.42-12121
 - Updated retry logic in Worker HTTP proxy to allow for longer worker HTTP listener initialization times (#10566).
 - Introduced proper handling in environments where .NET in-proc is not supported.
+- Updated System.Memory.Data reference to 8.0.1
