@@ -25,6 +25,13 @@ namespace Microsoft.Extensions.DependencyInjection
 {
     public static class ScriptJwtBearerExtensions
     {
+        private static readonly string[] _validIssuers =
+        [
+            AppServiceCoreUri,
+            string.Format(ScmSiteUriFormat, ScriptSettingsManager.Instance.GetSetting(AzureWebsiteName)),
+            string.Format(SiteUriFormat, ScriptSettingsManager.Instance.GetSetting(AzureWebsiteName))
+        ];
+
         private static double _specialized = 0;
 
         public static AuthenticationBuilder AddScriptJwtBearer(this AuthenticationBuilder builder)
@@ -34,12 +41,6 @@ namespace Microsoft.Extensions.DependencyInjection
                 {
                     OnMessageReceived = c =>
                     {
-                        if (!c.HttpContext.Request.IsAdminRequest())
-                        {
-                            c.NoResult();
-                            return Task.CompletedTask;
-                        }
-
                         // By default, tokens are passed via the standard Authorization Bearer header. However we also support
                         // passing tokens via the x-ms-site-token header.
                         if (c.Request.Headers.TryGetValue(ScriptConstants.SiteTokenHeaderName, out StringValues values))
@@ -59,10 +60,10 @@ namespace Microsoft.Extensions.DependencyInjection
                     },
                     OnTokenValidated = c =>
                     {
-                        if (!c.HttpContext.Request.IsAdminRequest())
+                        if (!_validIssuers.Any(p => string.Equals(c.SecurityToken.Issuer, p, StringComparison.OrdinalIgnoreCase)))
                         {
-                            // An extra safe-guard. OnMessageReceived should short circuit this from ever being called here.
-                            c.Fail("Not an admin request.");
+                            // This is not one of our issuers. Return no-result incase a different handler can validate it.
+                            c.NoResult();
                             return Task.CompletedTask;
                         }
 
@@ -145,30 +146,11 @@ namespace Microsoft.Extensions.DependencyInjection
             {
                 result.IssuerSigningKeys = signingKeys;
                 result.AudienceValidator = AudienceValidator;
-                result.IssuerValidator = IssuerValidator;
                 result.ValidAudiences = GetValidAudiences();
-                result.ValidIssuers = new string[]
-                {
-                    AppServiceCoreUri,
-                    string.Format(ScmSiteUriFormat, ScriptSettingsManager.Instance.GetSetting(AzureWebsiteName)),
-                    string.Format(SiteUriFormat, ScriptSettingsManager.Instance.GetSetting(AzureWebsiteName))
-                };
+                result.ValidateIssuer = false; // we will check and return no-result if it's not one of our issuers.
             }
 
             return result;
-        }
-
-        private static string IssuerValidator(string issuer, SecurityToken securityToken, TokenValidationParameters validationParameters)
-        {
-            if (!validationParameters.ValidIssuers.Any(p => string.Equals(issuer, p, StringComparison.OrdinalIgnoreCase)))
-            {
-                throw new SecurityTokenInvalidIssuerException("IDX10205: Issuer validation failed.")
-                {
-                    InvalidIssuer = issuer,
-                };
-            }
-
-            return issuer;
         }
 
         private static bool AudienceValidator(IEnumerable<string> audiences, SecurityToken securityToken, TokenValidationParameters validationParameters)
