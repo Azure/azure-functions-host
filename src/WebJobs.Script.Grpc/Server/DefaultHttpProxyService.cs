@@ -81,14 +81,13 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
 
             HttpContext httpContext = httpRequest.HttpContext;
-
-            httpContext.Items.Add(ScriptConstants.HttpProxyingEnabled, bool.TrueString);
+            httpContext.Items[ScriptConstants.HttpProxyingEnabled] = bool.TrueString;
 
             // add invocation id as correlation id
             httpRequest.Headers.TryAdd(ScriptConstants.HttpProxyCorrelationHeader, context.ExecutionContext.InvocationId.ToString());
 
             var forwardingTask = _httpForwarder.SendAsync(httpContext, httpUri.ToString(), _messageInvoker, _forwarderRequestConfig).AsTask();
-            context.Properties.Add(ScriptConstants.HttpProxyTask, forwardingTask);
+            context.Properties[ScriptConstants.HttpProxyTask] = forwardingTask;
         }
     }
 }

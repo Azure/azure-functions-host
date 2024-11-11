@@ -236,7 +236,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 var completedTask = Task.WhenAny(getFunctionMetadataFromProviderTask, delayTask).ContinueWith(t =>
                 {
-                    if (t.Result == getFunctionMetadataFromProviderTask && getFunctionMetadataFromProviderTask.IsCompletedSuccessfully)
+                    if (t.Result == getFunctionMetadataFromProviderTask)
                     {
                         return getFunctionMetadataFromProviderTask.Result;
                     }
