@@ -7,6 +7,7 @@ using System.Threading;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
@@ -90,6 +91,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     loggingBuilder.AddWebJobsSystem<WebHostSystemLoggerProvider>();
                     loggingBuilder.Services.AddSingleton<DeferredLoggerProvider>();
                     loggingBuilder.Services.AddSingleton<ILoggerProvider>(s => s.GetRequiredService<DeferredLoggerProvider>());
+                    loggingBuilder.Services.AddSingleton<ISystemLoggerFactory, SystemLoggerFactory>();
                 })
                 .UseStartup<Startup>();
         }
