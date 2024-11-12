@@ -16,6 +16,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost;
@@ -120,6 +121,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                           return GetMetadataManager(montior, scriptManager, loggerFactory, environment);
                       }, ServiceLifetime.Singleton));
 
+                      services.AddSingleton<ISystemLoggerFactory, SystemLoggerFactory>();
                       services.SkipDependencyValidation();
 
                       // Allows us to configure services as the last step, thereby overriding anything
