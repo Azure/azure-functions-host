@@ -45,7 +45,7 @@ namespace Microsoft.Extensions.Logging
             builder.AddConsoleIfEnabled(context.HostingEnvironment.IsDevelopment(), context.Configuration);
         }
 
-        public static void AddConsoleIfEnabled(this ILoggingBuilder builder, bool isDevelopment, IConfiguration configuration)
+        private static void AddConsoleIfEnabled(this ILoggingBuilder builder, bool isDevelopment, IConfiguration configuration)
         {
             // console logging defaults to false, except for self host
             bool enableConsole = isDevelopment;
