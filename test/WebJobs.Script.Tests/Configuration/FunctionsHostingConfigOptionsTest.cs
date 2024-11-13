@@ -142,7 +142,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 (nameof(FunctionsHostingConfigOptions.WorkerRuntimeStrictValidationEnabled), "WORKER_RUNTIME_STRICT_VALIDATION_ENABLED=1", true),
 
                 (nameof(FunctionsHostingConfigOptions.InternalAuthApisAllowList), "InternalAuthApisAllowList=|", "|"),
-                (nameof(FunctionsHostingConfigOptions.InternalAuthApisAllowList), "InternalAuthApisAllowList=/admin/host/foo|/admin/host/bar", "/admin/host/foo|/admin/host/bar")
+                (nameof(FunctionsHostingConfigOptions.InternalAuthApisAllowList), "InternalAuthApisAllowList=/admin/host/foo|/admin/host/bar", "/admin/host/foo|/admin/host/bar"),
+
+                (nameof(FunctionsHostingConfigOptions.IsDotNetInProcDisabled), "DotNetInProcDisabled=False", false),
+                (nameof(FunctionsHostingConfigOptions.IsDotNetInProcDisabled), "DotNetInProcDisabled=True", true),
+                (nameof(FunctionsHostingConfigOptions.IsDotNetInProcDisabled), "DotNetInProcDisabled=1", true),
+                (nameof(FunctionsHostingConfigOptions.IsDotNetInProcDisabled), "DotNetInProcDisabled=0", false),
             };
 
             // use reflection to ensure that we have a test that uses every value exposed on FunctionsHostingConfigOptions

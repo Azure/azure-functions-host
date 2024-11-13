@@ -5,14 +5,18 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -21,9 +25,8 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public class FunctionMetadataManager : IFunctionMetadataManager
     {
-        private const string FunctionConfigurationErrorMessage = "Unable to determine the primary function script.Make sure atleast one script file is present.Try renaming your entry point script to 'run' or alternatively you can specify the name of the entry point script explicitly by adding a 'scriptFile' property to your function metadata.";
+        private const string FunctionConfigurationErrorMessage = "Unable to determine the primary function script. Make sure at least one script file is present. Try renaming your entry point script to 'run' or alternatively you can specify the name of the entry point script explicitly by adding a 'scriptFile' property to your function metadata.";
         private const string MetadataProviderName = "Custom";
-        private const int DefaultMetadataProviderTimeoutInSeconds = 30;
         private readonly IServiceProvider _serviceProvider;
         private IFunctionMetadataProvider _functionMetadataProvider;
         private bool _isHttpWorker;
@@ -56,9 +59,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
             };
         }
-
-        // Property is settable for testing purposes.
-        internal int MetadataProviderTimeoutInSeconds { get; set; } = DefaultMetadataProviderTimeoutInSeconds;
 
         public ImmutableDictionary<string, ImmutableArray<string>> Errors { get; private set; }
 
@@ -183,6 +183,12 @@ namespace Microsoft.Azure.WebJobs.Script
                 Errors = _functionErrors.Where(kvp => functionsAllowList.Any(functionName => functionName.Equals(kvp.Key, StringComparison.CurrentCultureIgnoreCase))).ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray());
             }
 
+            if (functionMetadataList.Count == 0 && !_environment.IsPlaceholderModeEnabled())
+            {
+                // Validate the host.json file if no functions are found.
+                ValidateHostJsonFile();
+            }
+
             return functionMetadataList.OrderBy(f => f.Name, StringComparer.OrdinalIgnoreCase).ToImmutableArray();
         }
 
@@ -221,21 +227,22 @@ namespace Microsoft.Azure.WebJobs.Script
             _logger.ReadingFunctionMetadataFromProvider(MetadataProviderName);
 
             var functionProviderTasks = new List<Task<ImmutableArray<FunctionMetadata>>>();
+            var metadataProviderTimeout = _scriptOptions.Value.MetadataProviderTimeout;
 
             foreach (var functionProvider in functionProviders)
             {
                 var getFunctionMetadataFromProviderTask = functionProvider.GetFunctionMetadataAsync();
-                var delayTask = Task.Delay(TimeSpan.FromSeconds(MetadataProviderTimeoutInSeconds));
+                var delayTask = Task.Delay(metadataProviderTimeout);
 
                 var completedTask = Task.WhenAny(getFunctionMetadataFromProviderTask, delayTask).ContinueWith(t =>
                 {
-                    if (t.Result == getFunctionMetadataFromProviderTask && getFunctionMetadataFromProviderTask.IsCompletedSuccessfully)
+                    if (t.Result == getFunctionMetadataFromProviderTask)
                     {
                         return getFunctionMetadataFromProviderTask.Result;
                     }
 
                     // Timeout case.
-                    throw new TimeoutException($"Timeout occurred while retrieving metadata from provider '{functionProvider.GetType().FullName}'. The operation exceeded the configured timeout of {MetadataProviderTimeoutInSeconds} seconds.");
+                    throw new TimeoutException($"Timeout occurred while retrieving metadata from provider '{functionProvider.GetType().FullName}'. The operation exceeded the configured timeout of {metadataProviderTimeout.TotalSeconds} seconds.");
                 });
 
                 functionProviderTasks.Add(completedTask);
@@ -283,6 +290,34 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     _functionErrors[errorKvp.Key] = errorKvp.Value.ToList();
                 }
+            }
+        }
+
+        private void ValidateHostJsonFile()
+        {
+            try
+            {
+                if (_scriptOptions.Value.RootScriptPath is not null && _scriptOptions.Value.IsDefaultHostConfig)
+                {
+                    // Search for the host.json file within nested directories to verify scenarios where it isn't located at the root. This situation often occurs when a function app has been improperly zipped.
+                    string hostFilePath = Path.Combine(_scriptOptions.Value.RootScriptPath, ScriptConstants.HostMetadataFileName);
+                    IEnumerable<string> hostJsonFiles = Directory.GetFiles(_scriptOptions.Value.RootScriptPath, ScriptConstants.HostMetadataFileName, SearchOption.AllDirectories)
+                        .Where(file => !file.Equals(hostFilePath, StringComparison.OrdinalIgnoreCase));
+
+                    if (hostJsonFiles != null && hostJsonFiles.Any())
+                    {
+                        string hostJsonFilesPath = string.Join(", ", hostJsonFiles).Replace(_scriptOptions.Value.RootScriptPath, string.Empty);
+                        _logger.HostJsonZipDeploymentIssue(hostJsonFilesPath);
+                    }
+                    else
+                    {
+                        _logger.NoHostJsonFile();
+                    }
+                }
+            }
+            catch
+            {
+                // Ignore any exceptions.
             }
         }
     }

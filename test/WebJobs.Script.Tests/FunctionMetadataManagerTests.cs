@@ -7,6 +7,7 @@ using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
@@ -17,13 +18,12 @@ using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Xunit;
-using static Microsoft.Azure.AppService.Proxy.Common.Constants.WellKnownHttpHeaders;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class FunctionMetadataManagerTests
     {
-        private const string _expectedErrorMessage = "Unable to determine the primary function script.Make sure atleast one script file is present.Try renaming your entry point script to 'run' or alternatively you can specify the name of the entry point script explicitly by adding a 'scriptFile' property to your function metadata.";
+        private const string _expectedErrorMessage = "Unable to determine the primary function script. Make sure at least one script file is present. Try renaming your entry point script to 'run' or alternatively you can specify the name of the entry point script explicitly by adding a 'scriptFile' property to your function metadata.";
         private ScriptJobHostOptions _scriptJobHostOptions = new ScriptJobHostOptions();
         private Mock<IFunctionMetadataProvider> _mockFunctionMetadataProvider;
         private FunctionMetadataManager _testFunctionMetadataManager;
@@ -224,6 +224,34 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public void FunctionMetadataManager_LoadFunctionMetadata_BadMetadataProvider_ReturnsFailedTask()
+        {
+            var functionMetadataCollection = new Collection<FunctionMetadata>();
+            var mockFunctionErrors = new Dictionary<string, ImmutableArray<string>>();
+            var mockFunctionMetadataProvider = new Mock<IFunctionMetadataProvider>();
+            var badFunctionMetadataProvider = new Mock<IFunctionProvider>();
+            var workerConfigs = TestHelpers.GetTestWorkerConfigs();
+            var testLoggerProvider = new TestLoggerProvider();
+            var loggerFactory = new LoggerFactory();
+            loggerFactory.AddProvider(testLoggerProvider);
+
+            mockFunctionMetadataProvider.Setup(m => m.GetFunctionMetadataAsync(workerConfigs, SystemEnvironment.Instance, false)).Returns(Task.FromResult(new Collection<FunctionMetadata>().ToImmutableArray()));
+            mockFunctionMetadataProvider.Setup(m => m.FunctionErrors).Returns(new Dictionary<string, ICollection<string>>().ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray()));
+
+            // A bad provider that returns a faulty task
+            var tcs = new TaskCompletionSource<ImmutableArray<FunctionMetadata>>();
+            badFunctionMetadataProvider
+                .Setup(m => m.GetFunctionMetadataAsync())
+                .Returns(Task.FromException<ImmutableArray<FunctionMetadata>>(new Exception("Simulated failure")));
+
+            FunctionMetadataManager testFunctionMetadataManager = TestFunctionMetadataManager.GetFunctionMetadataManager(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions),
+                mockFunctionMetadataProvider.Object, new List<IFunctionProvider>() { badFunctionMetadataProvider.Object }, new OptionsWrapper<HttpWorkerOptions>(_defaultHttpWorkerOptions), loggerFactory, new TestOptionsMonitor<LanguageWorkerOptions>(TestHelpers.GetTestLanguageWorkerOptions()));
+
+            var exception = Assert.Throws<AggregateException>(() => testFunctionMetadataManager.LoadFunctionMetadata());
+            Assert.Contains("Simulated failure", exception.InnerException.Message);
+        }
+
+        [Fact]
         public void FunctionMetadataManager_LoadFunctionMetadata_Throws_WhenFunctionProvidersTimesOut()
         {
             var functionMetadataCollection = new Collection<FunctionMetadata>();
@@ -256,7 +284,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 mockFunctionMetadataProvider.Object, new List<IFunctionProvider>() { goodFunctionMetadataProvider.Object, badFunctionMetadataProvider.Object }, new OptionsWrapper<HttpWorkerOptions>(_defaultHttpWorkerOptions), loggerFactory, new TestOptionsMonitor<LanguageWorkerOptions>(TestHelpers.GetTestLanguageWorkerOptions()));
 
             // Set the timeout to 1 second for the test.
-            testFunctionMetadataManager.MetadataProviderTimeoutInSeconds = 1;
+            _scriptJobHostOptions.MetadataProviderTimeout = TimeSpan.FromSeconds(1);
 
             var exception = Assert.Throws<TimeoutException>(() => testFunctionMetadataManager.LoadFunctionMetadata());
             Assert.Contains($"Timeout occurred while retrieving metadata from provider '{badFunctionMetadataProvider.Object.GetType().FullName}'. The operation exceeded the configured timeout of 1 seconds.", exception.Message);
@@ -436,6 +464,81 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(0, testFunctionMetadataManager.Errors.Count);
             Assert.Equal(1, testFunctionMetadataManager.GetFunctionMetadata(true).Length);
             Assert.Equal("newFunction", testFunctionMetadataManager.GetFunctionMetadata(true).FirstOrDefault()?.Name);
+        }
+
+        [Fact]
+        public void FunctionMetadataManager_GetsMetadata_ValidateDefaultHostJson()
+        {
+            var functionMetadataCollection1 = new Collection<FunctionMetadata>
+            {
+            };
+
+            var expectedTotalFunctionsCount = 0;
+
+            var mockFunctionMetadataProvider = new Mock<IFunctionMetadataProvider>();
+            mockFunctionMetadataProvider.Setup(m => m.GetFunctionMetadataAsync(It.IsAny<IEnumerable<RpcWorkerConfig>>(), It.IsAny<SystemEnvironment>(), It.IsAny<bool>()))
+                .Returns(Task.FromResult(new Collection<FunctionMetadata>().ToImmutableArray()));
+            mockFunctionMetadataProvider.Setup(m => m.FunctionErrors)
+                .Returns(new Dictionary<string, ICollection<string>>().ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray()));
+
+            var mockFunctionProvider = new Mock<IFunctionProvider>();
+            mockFunctionProvider.Setup(m => m.GetFunctionMetadataAsync()).ReturnsAsync(functionMetadataCollection1.ToImmutableArray());
+
+            var testLoggerProvider = new TestLoggerProvider();
+            var loggerFactory = new LoggerFactory();
+            loggerFactory.AddProvider(testLoggerProvider);
+            _scriptJobHostOptions.IsDefaultHostConfig = true;
+            FunctionMetadataManager testFunctionMetadataManager = TestFunctionMetadataManager.GetFunctionMetadataManagerWithDefaultHostConfig(
+                new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions),
+                mockFunctionMetadataProvider.Object,
+                new List<IFunctionProvider>() { mockFunctionProvider.Object },
+                new OptionsWrapper<HttpWorkerOptions>(_defaultHttpWorkerOptions),
+                loggerFactory,
+                new TestOptionsMonitor<LanguageWorkerOptions>(TestHelpers.GetTestLanguageWorkerOptions()));
+
+            var actualFunctionMetadata = testFunctionMetadataManager.LoadFunctionMetadata();
+
+            var traces = testLoggerProvider.GetAllLogMessages();
+            Assert.Equal(expectedTotalFunctionsCount, actualFunctionMetadata.Length);
+            Assert.Single(traces.Where(t => t.EventId.Name.Equals("NoHostJsonFile", StringComparison.OrdinalIgnoreCase)));
+        }
+
+        [Fact]
+        public void FunctionMetadataManager_GetsMetadata_ValidateHostJson()
+        {
+            var functionMetadataCollection1 = new Collection<FunctionMetadata>
+            {
+            };
+
+            var expectedTotalFunctionsCount = 0;
+
+            var mockFunctionMetadataProvider = new Mock<IFunctionMetadataProvider>();
+            mockFunctionMetadataProvider.Setup(m => m.GetFunctionMetadataAsync(It.IsAny<IEnumerable<RpcWorkerConfig>>(), It.IsAny<SystemEnvironment>(), It.IsAny<bool>()))
+                .Returns(Task.FromResult(new Collection<FunctionMetadata>().ToImmutableArray()));
+            mockFunctionMetadataProvider.Setup(m => m.FunctionErrors)
+                .Returns(new Dictionary<string, ICollection<string>>().ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray()));
+
+            var mockFunctionProvider = new Mock<IFunctionProvider>();
+            mockFunctionProvider.Setup(m => m.GetFunctionMetadataAsync()).ReturnsAsync(functionMetadataCollection1.ToImmutableArray());
+
+            var testLoggerProvider = new TestLoggerProvider();
+            var loggerFactory = new LoggerFactory();
+            loggerFactory.AddProvider(testLoggerProvider);
+
+            _scriptJobHostOptions.IsDefaultHostConfig = true;
+            FunctionMetadataManager testFunctionMetadataManager = TestFunctionMetadataManager.GetFunctionMetadataManager(
+                new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions),
+                mockFunctionMetadataProvider.Object,
+                new List<IFunctionProvider>() { mockFunctionProvider.Object },
+                new OptionsWrapper<HttpWorkerOptions>(_defaultHttpWorkerOptions),
+                loggerFactory,
+                new TestOptionsMonitor<LanguageWorkerOptions>(TestHelpers.GetTestLanguageWorkerOptions()));
+
+            var actualFunctionMetadata = testFunctionMetadataManager.LoadFunctionMetadata();
+
+            var traces = testLoggerProvider.GetAllLogMessages();
+            Assert.Equal(expectedTotalFunctionsCount, actualFunctionMetadata.Length);
+            Assert.Single(traces.Where(t => t.EventId.Name.Equals("NoHostJsonFile", StringComparison.OrdinalIgnoreCase)));
         }
 
         [Theory]

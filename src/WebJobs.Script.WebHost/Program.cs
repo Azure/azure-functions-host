@@ -88,6 +88,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                     loggingBuilder.AddDefaultWebJobsFilters();
                     loggingBuilder.AddWebJobsSystem<WebHostSystemLoggerProvider>();
+                    loggingBuilder.Services.AddSingleton<DeferredLoggerProvider>();
+                    loggingBuilder.Services.AddSingleton<ILoggerProvider>(s => s.GetRequiredService<DeferredLoggerProvider>());
                 })
                 .UseStartup<Startup>();
         }

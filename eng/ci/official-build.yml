@@ -32,10 +32,10 @@ resources:
     ref: refs/tags/release
 
 variables:
-  - template: /eng/ci/templates/variables/build.yml@self
-  - template: /ci/variables/cfs.yml@eng
-  - name: buildNumber
-    value: $[ counter('build', 23000) ] # 23000 selected to be ahead of current host build
+- template: /eng/ci/templates/variables/build.yml@self
+- template: /ci/variables/cfs.yml@eng
+- name: buildNumber
+  value: $[ counter('build', 23000) ] # 23000 selected to be ahead of current host build
 
 extends:
   template: v1/1ES.Official.PipelineTemplate.yml@1es

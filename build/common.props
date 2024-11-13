@@ -4,8 +4,8 @@
     <TargetFramework>netstandard2.1</TargetFramework>
     <LangVersion>latest</LangVersion>
     <MajorVersion>4</MajorVersion>
-    <MinorVersion>1036</MinorVersion>
-    <PatchVersion>2</PatchVersion>
+    <MinorVersion>1037</MinorVersion>
+    <PatchVersion>0</PatchVersion>
     <BuildNumber Condition="'$(BuildNumber)' == '' ">0</BuildNumber>
     <PreviewVersion></PreviewVersion>
 
@@ -22,7 +22,6 @@
     <CodeAnalysisRuleSet>$(MSBuildThisFileDirectory)..\src.ruleset</CodeAnalysisRuleSet>
     <NoWarn>$(NoWarn);NU1701</NoWarn>
 
-    <ContinuousIntegrationBuild Condition="'$(TF_BUILD)' == 'true'">true</ContinuousIntegrationBuild>
     <DebugType>embedded</DebugType>
     <GenerateRuntimeConfigDevFile>true</GenerateRuntimeConfigDevFile><!-- https://github.com/dotnet/runtime/issues/54684 -->
     <DisableImplicitNamespaceImports>true</DisableImplicitNamespaceImports>

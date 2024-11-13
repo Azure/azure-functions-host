@@ -183,6 +183,16 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
             new EventId(337, nameof(MinimumBundleVersionNotSatisfied)),
             "Referenced bundle {bundleId} of version {bundleVersion} does not meet the required minimum version of {minimumVersion}. Update your extension bundle reference in host.json to reference {minimumVersion2} or later.");
 
+        private static readonly Action<ILogger, string, Exception> _hostJsonZipDeploymentIssue =
+    LoggerMessage.Define<string>(LogLevel.Error,
+        new EventId(338, nameof(HostJsonZipDeploymentIssue)),
+        "No functions were found. A valid host.json file wasn't found in the package root. However, one was located at: {hostJsonFilesPath}. This state indicates that your deployment package was created incorrectly. For deployment package requirements, see https://aka.ms/deployment-zip-push.");
+
+        private static readonly Action<ILogger, Exception> _noHostJsonFile =
+    LoggerMessage.Define(LogLevel.Information,
+        new EventId(339, nameof(NoHostJsonFile)),
+        "No functions were found. This can occur before you deploy code to your function app or when the host.json file is missing from the most recent deployment. Make sure that your deployment package includes the host.json file in the root of the package. For deployment package requirements, see https://aka.ms/functions-deployment-technologies.");
+
         private static readonly Action<ILogger, string, Exception> _publishingMetrics =
             LoggerMessage.Define<string>(LogLevel.Debug, new EventId(338, nameof(PublishingMetrics)), "{metrics}");
 
@@ -366,6 +376,16 @@ Lock file hash: {currentLockFileHash}";
         public static void MinimumBundleVersionNotSatisfied(this ILogger logger, string bundleId, string bundleVersion, string minimumVersion)
         {
             _minimumBundleVersionNotSatisfied(logger, bundleId, bundleVersion, minimumVersion, minimumVersion, null);
+        }
+
+        public static void HostJsonZipDeploymentIssue(this ILogger logger, string path)
+        {
+            _hostJsonZipDeploymentIssue(logger, path, null);
+        }
+
+        public static void NoHostJsonFile(this ILogger logger)
+        {
+            _noHostJsonFile(logger, null);
         }
     }
 }
