@@ -4,3 +4,4 @@
 - My change description (#PR)
 -->
 - Introduced proper handling in environments where .NET in-proc is not supported.
+- Suppress `JwtBearerHandler` logs from customer logs (#10617)

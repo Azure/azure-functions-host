@@ -27,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security.Authentication.Jwt
             ISystemLoggerFactory loggerFactory = null)
             : base(options, (ILoggerFactory)loggerFactory ?? NullLoggerFactory.Instance, encoder, clock)
         {
-            // Note - we provide a NullLoggerFactory to suppress from customer logs.
+            // Note - ISystemLoggerFactory falls back to NullLoggerFactory to avoid needing this service in tests.
         }
     }
 }
