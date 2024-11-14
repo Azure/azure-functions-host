@@ -5,6 +5,7 @@
     <ArtifactsPath>$(MSBuildThisFileDirectory)out</ArtifactsPath>
     <ArtifactsPublishOutputName>pub</ArtifactsPublishOutputName>
     <ArtifactsPackageOutputName>pkg</ArtifactsPackageOutputName>
+    <IsPackable>false</IsPackable> <!-- default false -->
   </PropertyGroup>
 
   <!-- paths -->
