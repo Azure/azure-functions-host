@@ -1,0 +1,168 @@
+<Project>
+
+  <!--
+    Publish.SingleTFM.targets: publish steps for a single TFM.
+  -->
+
+  <Import Project="Tasks.targets" />
+
+  <PropertyGroup>
+    <PublishWebHostDependsOn>
+      ValidatePublishSettings;
+      PublishProjectReferences;
+      PublishPrivateProjectReferences;
+      RemoveUnneededRuntimes;
+      MoveSymbols;
+      DeletePrivateSymbols;
+      WriteHardLinkHashes;
+    </PublishWebHostDependsOn>
+    <PublishPropertiesToRemove>ZipAfterPublish;ZipArtifactsPath</PublishPropertiesToRemove>
+  </PropertyGroup>
+
+  <Target Name="ValidatePublishSettings">
+    <Error Condition="'$(SiteExtensionName)' == ''" Text="SiteExtensionName property must be set." />
+    <Error Condition="'@(PublishRuntimeIdentifier)' == ''" Text="PublishRuntimeIdentifier item group must be non-empty." />
+  </Target>
+
+  <!-- We set many properties and items in targets to ensure $(Version) is finalized. -->
+  <Target Name="UpdatePaths" BeforeTargets="AddRuntimesToProjects;AssignTargetPaths">
+    <PropertyGroup>
+      <SiteExtensionRelativeDir>SiteExtension/$(Version)/</SiteExtensionRelativeDir>
+      <SiteExtensionDir>$([MSBuild]::NormalizePath('$(PublishDir)$(SiteExtensionRelativeDir)'))</SiteExtensionDir>
+      <PrivateSiteExtensionRelativeDir>PrivateSiteExtension/SiteExtensions/Functions/</PrivateSiteExtensionRelativeDir>
+      <PrivateSiteExtensionDir>$([MSBuild]::NormalizePath('$(PublishDir)$(PrivateSiteExtensionRelativeDir)'))</PrivateSiteExtensionDir>
+    </PropertyGroup>
+    <ItemGroup>
+      <None Include="applicationHost.xdt" TargetPath="$(SiteExtensionRelativeDir)applicationHost.xdt" CopyToPublishDirectory="PreserveNewest" />
+      <None Include="applicationHost.xdt" TargetPath="$(PrivateSiteExtensionRelativeDir)applicationHost.xdt" CopyToPublishDirectory="PreserveNewest" />
+      <None Include="extension.xml" TargetPath="SiteExtension/extension.xml" CopyToPublishDirectory="PreserveNewest" />
+    </ItemGroup>
+  </Target>
+
+  <!-- Update files from worker pagaes to be copied into public SiteExtension. -->
+  <Target Name="UpdateWorkerPaths" DependsOnTargets="UpdatePaths" BeforeTargets="AssignTargetPaths">
+    <ItemGroup>
+      <None Condition="'%(None.TargetPath)' != '' AND $([System.String]::new('%(None.TargetPath)').StartsWith('workers'))">
+        <TargetPath>$(SiteExtensionRelativeDir)%(None.TargetPath)</TargetPath>
+      </None>
+    </ItemGroup>
+  </Target>
+
+  <Target Name="AddRuntimesToProjects" BeforeTargets="AssignProjectConfiguration">
+    <ItemGroup>
+      <_ProjectReferenceWithRuntimes Include="@(ProjectReference)">
+        <AdditionalProperties>
+          <!-- These properties will not be pass transitively and are safe for build. -->
+          RuntimeIdentifier=%(PublishRuntimeIdentifier.Identity);
+          SelfContained=%(PublishRuntimeIdentifier.SelfContained)
+        </AdditionalProperties>
+        <PublishRuntime>%(PublishRuntimeIdentifier.Identity)</PublishRuntime>
+        <PublishDir>$(SiteExtensionDir)%(PublishRuntimeIdentifier.PublishDir)/</PublishDir>
+        <PublishPrivateDir>$(PrivateSiteExtensionDir)%(PublishRuntimeIdentifier.PublishDir)/</PublishPrivateDir>
+        <PublishPrivate>%(PublishRuntimeIdentifier.PrivateExtension)</PublishPrivate>
+        <Private>false</Private> <!-- Avoids including transitive output. -->
+      </_ProjectReferenceWithRuntimes>
+      <ProjectReference Remove="@(ProjectReference)" />
+      <ProjectReference Include="@(_ProjectReferenceWithRuntimes)" />
+    </ItemGroup>
+  </Target>
+
+  <Target Name="PublishWebHost" AfterTargets="PrepareForPublish" BeforeTargets="Publish" DependsOnTargets="$(PublishWebHostDependsOn)" />
+
+  <!-- Publishes projects for the public site extension. -->
+  <Target Name="PublishProjectReferences" AfterTargets="PrepareForPublish" BeforeTargets="Publish">
+    <ItemGroup>
+      <_PublishProjectReferenceExistent Include="@(_MSBuildProjectReferenceExistent)">
+        <AdditionalProperties>%(AdditionalProperties);PublishDir=%(PublishDir);_IsPublishing=true;PublishWorkers=false</AdditionalProperties>
+      </_PublishProjectReferenceExistent>
+      <ZipArtifact Include="$(PublishDir)SiteExtension" TargetName="SiteExtension/$(SiteExtensionName).$(Version).zip" />
+    </ItemGroup>
+    <MSBuild Projects="@(_PublishProjectReferenceExistent)"
+      Targets="Publish"
+      BuildInParallel="$(BuildInParallel)"
+      Properties="NoBuild=true"
+      RemoveProperties="$(PublishPropertiesToRemove)"/>
+  </Target>
+
+  <!-- Publishes projects for the private site extension. -->
+  <Target Name="PublishPrivateProjectReferences" AfterTargets="PublishProjectReferences" BeforeTargets="Publish">
+    <ItemGroup>
+      <_PublishPrivateProjectReferenceExistent Include="@(_MSBuildProjectReferenceExistent)" Condition="%(PublishPrivate)">
+        <AdditionalProperties>%(AdditionalProperties);PublishDir=%(PublishPrivateDir);_IsPublishing=true</AdditionalProperties>
+      </_PublishPrivateProjectReferenceExistent>
+      <ZipArtifact
+        Include="$(PublishDir)PrivateSiteExtension"
+        TargetName="@(_PublishPrivateProjectReferenceExistent->'PrivateSiteExtension/$(SiteExtensionName).Private.$(Version).%(PublishRuntime).zip')" />
+    </ItemGroup>
+    <MSBuild Projects="@(_PublishPrivateProjectReferenceExistent)"
+      Targets="Publish"
+      BuildInParallel="$(BuildInParallel)"
+      Properties="NoBuild=true"
+      RemoveProperties="$(PublishPropertiesToRemove)"/>
+    <RemoveDir Directories="@(_PublishPrivateProjectReferenceExistent->'%(PublishPrivateDir)/workers/python')" />
+  </Target>
+
+  <Target Name="RemoveUnneededRuntimes">
+    <!-- These shouldn't exist since we build/publish with a windows runtime, but just in case. -->
+    <ItemGroup>
+      <_RuntimesToRemove Include="@(PublishRuntimeIdentifier->'$(SiteExtensionDir)%(PublishDir)/runtimes/linux')" />
+      <_RuntimesToRemove Include="@(PublishRuntimeIdentifier->'$(SiteExtensionDir)%(PublishDir)/runtimes/osx')" />
+      <_RuntimesToRemove Include="@(PublishRuntimeIdentifier->'$(PrivateSiteExtensionDir)%(PublishDir)/runtimes/linux')" Condition="%(PrivateExtension)" />
+      <_RuntimesToRemove Include="@(PublishRuntimeIdentifier->'$(PrivateSiteExtensionDir)%(PublishDir)/runtimes/osx')" Condition="%(PrivateExtension)" />
+    </ItemGroup>
+    <RemoveDir Directories="@(_RuntimesToRemove)" />
+  </Target>
+
+  <Target Name="EnsureWorkersFolder"
+    AfterTargets="CopyFilesToPublishDirectory" BeforeTargets="ZipPublishArtifacts" Condition="!Exists('$(SiteExtensionDir)workers')">
+    <MakeDir Directories="$(SiteExtensionDir)workers" />
+    <WriteLinesToFile
+      File="$(SiteExtensionDir)workers/this_folder_intentionally_empty.txt"
+      Lines="This build does not include workers, but the host requires this folder to contain at least one file." />
+  </Target>
+
+  <!-- Copies symbols from SiteExtension out so they can be distributed independently. -->
+  <Target Name="MoveSymbols">
+    <ItemGroup>
+      <_SymbolDirs Include="@(PublishRuntimeIdentifier->'$(SiteExtensionDir)%(PublishDir)')">
+        <Destination>$(PublishDir)Symbols/$(SiteExtensionName).Symbols.$(Version).%(Identity)</Destination>
+        <ZipArtifact>$(SiteExtensionName).Symbols.$(Version).%(Identity).zip</ZipArtifact>
+      </_SymbolDirs>
+      <_WorkerSymbols Include="$(SiteExtensionDir)workers/**/*.pdb" Destination="$(PublishDir)Symbols/$(SiteExtensionName).Symbols.$(Version).%(PublishRuntimeIdentifier.Identity)/workers" />
+      <ZipArtifact Include="@(_SymbolDirs->'%(Destination)')" TargetName="SiteExtensionSymbols/%(_SymbolDirs.ZipArtifact)" />
+    </ItemGroup>
+    <MoveSymbols Directories="@(_SymbolDirs)" Destinations="%(Destination)" />
+    <Copy SourceFiles="@(_WorkerSymbols)" DestinationFiles="%(Destination)/%(RecursiveDir)%(Filename)%(Extension)" SkipUnchangedFiles="true" />
+    <Delete Files="@(_WorkerSymbols)" />
+  </Target>
+
+  <!-- Remove all symbols (.pdb) from PrivateSiteExtension -->
+  <Target Name="DeletePrivateSymbols">
+    <ItemGroup>
+      <_PrivateSymbolsToRemove Include="$(PrivateSiteExtensionDir)/**/*.pdb" />
+    </ItemGroup>
+    <Delete Files="@(_PrivateSymbolsToRemove)" />
+  </Target>
+
+  <!-- Calculate all the file hashes for the SiteExtension -->
+  <Target Name="ComputeHardLinkHashes">
+    <ItemGroup>
+      <_FilesToHash Include="$(SiteExtensionDir)**" />
+    </ItemGroup>
+    <GetFileHash Files="@(_FilesToHash)" HashEncoding="base64">
+      <Output TaskParameter="Items" ItemName="_HashedFiles" />
+    </GetFileHash>
+  </Target>
+
+  <!-- Write calculated hashes and filepaths to hashesForHardlinks.txt -->
+  <Target Name="WriteHardLinkHashes" DependsOnTargets="ComputeHardLinkHashes" Condition="'$(ShouldWriteHardLinkHashes)' != 'false'">
+    <ItemGroup>
+      <_HashedFiles RelativePath=".$([System.IO.Path]::DirectorySeparatorChar)$([MSBuild]::MakeRelative('$(SiteExtensionDir)', '%(Identity)'))" />
+    </ItemGroup>
+    <WriteLinesToFile
+      Overwrite="true"
+      File="$(SiteExtensionDir)/hashesForHardlinks.txt"
+      Lines="@(_HashedFiles->'Hash: %(FileHash) FileName: %(RelativePath)')" />
+  </Target>
+
+</Project>

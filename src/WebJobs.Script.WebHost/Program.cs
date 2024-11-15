@@ -91,7 +91,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     loggingBuilder.Services.AddSingleton<DeferredLoggerProvider>();
                     loggingBuilder.Services.AddSingleton<ILoggerProvider>(s => s.GetRequiredService<DeferredLoggerProvider>());
                     loggingBuilder.Services.AddSingleton<ISystemLoggerFactory, SystemLoggerFactory>();
-                    loggingBuilder.AddConsoleIfEnabled(context.HostingEnvironment.IsDevelopment(), context.Configuration);
+                    if (context.HostingEnvironment.IsDevelopment())
+                    {
+                        loggingBuilder.AddConsole();
+                    }
                 })
                 .UseStartup<Startup>();
         }
