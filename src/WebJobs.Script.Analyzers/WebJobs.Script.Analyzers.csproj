@@ -1,5 +1,4 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-  <Import Project="..\..\build\common.props" />
   <PropertyGroup>
     <Product>Azure Functions SDK Analyzers</Product>
     <PackageId>Microsoft.Azure.Functions.Analyzers</PackageId>
