@@ -57,6 +57,7 @@ extends:
       - template: /eng/ci/templates/official/jobs/build-artifacts-linux.yml@self
 
     - stage: Test
+      dependsOn: ''
 
       jobs:
       - template: /eng/ci/templates/jobs/run-unit-tests.yml@self
