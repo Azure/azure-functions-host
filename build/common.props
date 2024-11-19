@@ -6,6 +6,7 @@
     <MajorVersion>4</MajorVersion>
     <MinorVersionPrefix Condition="'$(TargetFramework)' == 'net6.0'">6</MinorVersionPrefix>
     <MinorVersionPrefix Condition="'$(TargetFramework)' == 'net8.0'">8</MinorVersionPrefix>
+    <MinorVersionPrefix Condition="'$(SuppressMinorVersionPrefix)' == 'true'"></MinorVersionPrefix>
     <MinorVersion>$(MinorVersionPrefix)37</MinorVersion>
     <PatchVersion>0</PatchVersion>
     <BuildNumber Condition="'$(BuildNumber)' == '' ">0</BuildNumber>
