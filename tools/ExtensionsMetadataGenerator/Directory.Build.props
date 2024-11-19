@@ -8,6 +8,7 @@
     <SignAssembly>true</SignAssembly>
     <NugetAudit>false</NugetAudit>
     <CheckEolTargetFramework>false</CheckEolTargetFramework>
+    <DelaySign>true</DelaySign>
     <AssemblyOriginatorKeyFile>$(MSBuildThisFileDirectory)key.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
 
