@@ -499,7 +499,4 @@ local.settings.json
 /tools/ExtensionsMetadataGenerator/test/ExtensionsMetadataGeneratorTests/runtimeAssemblies.txt
 
 local.settings.json
-pp.xml
-*.binlog
-pp.xml
 BenchmarkDotNet.Artifacts/
