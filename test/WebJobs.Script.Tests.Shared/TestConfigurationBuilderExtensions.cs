@@ -3,7 +3,6 @@
 
 using System;
 using System.IO;
-using System.Linq;
 using Microsoft.Extensions.Configuration;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
