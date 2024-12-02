@@ -36,22 +36,6 @@ jobs:
   - template: /eng/ci/templates/install-dotnet.yml@self
 
   - task: DotNetCoreCLI@2
-    displayName: Restore
-    inputs:
-      command: custom
-      custom: restore
-      projects: $(project)
-      arguments: '-v m -r $(runtime) -p:PublishReadyToRun=true -bl:$(log_dir)/restore.binlog' # add PublishReadyToRun=true for https://github.com/dotnet/sdk/issues/20701
-
-  - task: DotNetCoreCLI@2
-    displayName: Build
-    inputs:
-      command: custom
-      custom: build
-      projects: $(project)
-      arguments: '$(build_args) --no-restore  -bl:$(log_dir)/build.binlog'
-
-  - task: DotNetCoreCLI@2
     displayName: Publish (net6.0)
     inputs:
       command: custom
@@ -59,7 +43,7 @@ jobs:
       publishWebProjects: false # we use our own publish logic
       zipAfterPublish: false # we use our own zip logic
       projects: $(project)
-      arguments: '$(build_args) -f net6.0 --no-build -p:ZipArtifactsPath=$(zip_artifacts_path) -bl:$(log_dir)/publish.net6.binlog'
+      arguments: '$(build_args) -f net6.0 -p:MinorVersionPrefix=6 -p:ZipArtifactsPath=$(zip_artifacts_path) -bl:$(log_dir)/publish.net6.binlog'
 
   - task: DotNetCoreCLI@2
     displayName: Publish (net8.0)
@@ -69,4 +53,4 @@ jobs:
       publishWebProjects: false # we use our own publish logic
       zipAfterPublish: false # we use our own zip logic
       projects: $(project)
-      arguments: '$(build_args) -f net8.0 --no-build -p:ZipArtifactsPath=$(zip_artifacts_path) -bl:$(log_dir)/publish.net8.binlog'
+      arguments: '$(build_args) -f net8.0 -p:MinorVersionPrefix=8 -p:ZipArtifactsPath=$(zip_artifacts_path) -bl:$(log_dir)/publish.net8.binlog'
