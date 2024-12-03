@@ -56,11 +56,10 @@ extends:
       - template: /eng/ci/templates/official/jobs/build-artifacts-windows.yml@self
       - template: /eng/ci/templates/official/jobs/build-artifacts-linux.yml@self
 
-    # TODO: re-enable
-    # - stage: Test
-    #   dependsOn: ''
+    - stage: Test
+      dependsOn: ''
 
-    #   jobs:
-    #   - template: /eng/ci/templates/jobs/run-unit-tests.yml@self
-    #   - template: /eng/ci/templates/official/jobs/run-non-e2e-tests.yml@self
-    #   - template: /eng/ci/templates/official/jobs/run-integration-tests.yml@self
+      jobs:
+      - template: /eng/ci/templates/jobs/run-unit-tests.yml@self
+      - template: /eng/ci/templates/official/jobs/run-non-e2e-tests.yml@self
+      - template: /eng/ci/templates/official/jobs/run-integration-tests.yml@self
