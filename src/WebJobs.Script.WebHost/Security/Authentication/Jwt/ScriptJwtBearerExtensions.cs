@@ -15,7 +15,10 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authentication;
+using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authentication.Jwt;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 using Microsoft.IdentityModel.Tokens;
 using static Microsoft.Azure.WebJobs.Script.EnvironmentSettingNames;
@@ -28,63 +31,68 @@ namespace Microsoft.Extensions.DependencyInjection
         private static double _specialized = 0;
 
         public static AuthenticationBuilder AddScriptJwtBearer(this AuthenticationBuilder builder)
-            => builder.AddJwtBearer(o =>
+        {
+            builder.Services.TryAddEnumerable(ServiceDescriptor.Singleton<IPostConfigureOptions<JwtBearerOptions>, JwtBearerPostConfigureOptions>());
+            return builder.AddScheme<JwtBearerOptions, ScriptJwtBearerHandler>(
+                JwtBearerDefaults.AuthenticationScheme, displayName: null, ConfigureOptions);
+        }
+
+        private static void ConfigureOptions(JwtBearerOptions options)
+        {
+            options.Events = new JwtBearerEvents()
             {
-                o.Events = new JwtBearerEvents()
+                OnMessageReceived = c =>
                 {
-                    OnMessageReceived = c =>
+                    // By default, tokens are passed via the standard Authorization Bearer header. However we also support
+                    // passing tokens via the x-ms-site-token header.
+                    if (c.Request.Headers.TryGetValue(ScriptConstants.SiteTokenHeaderName, out StringValues values))
                     {
-                        // By default, tokens are passed via the standard Authorization Bearer header. However we also support
-                        // passing tokens via the x-ms-site-token header.
-                        if (c.Request.Headers.TryGetValue(ScriptConstants.SiteTokenHeaderName, out StringValues values))
-                        {
-                            // the token we set here will be the one used - Authorization header won't be checked.
-                            c.Token = values.FirstOrDefault();
-                        }
-
-                        // Temporary: Tactical fix to address specialization issues. This should likely be moved to a token validator
-                        // TODO: DI (FACAVAL) This will be fixed once the permanent fix is in place
-                        if (_specialized == 0 && !SystemEnvironment.Instance.IsPlaceholderModeEnabled() && Interlocked.CompareExchange(ref _specialized, 1, 0) == 0)
-                        {
-                            o.TokenValidationParameters = CreateTokenValidationParameters();
-                        }
-
-                        return Task.CompletedTask;
-                    },
-                    OnTokenValidated = c =>
-                    {
-                        var claims = new List<Claim>
-                        {
-                            new Claim(SecurityConstants.AuthLevelClaimType, AuthorizationLevel.Admin.ToString())
-                        };
-                        if (!string.Equals(c.SecurityToken.Issuer, ScriptConstants.AppServiceCoreUri, StringComparison.OrdinalIgnoreCase))
-                        {
-                            claims.Add(new Claim(SecurityConstants.InvokeClaimType, "true"));
-                        }
-
-                        c.Principal.AddIdentity(new ClaimsIdentity(claims));
-
-                        c.Success();
-
-                        return Task.CompletedTask;
-                    },
-                    OnAuthenticationFailed = c =>
-                    {
-                        LogAuthenticationFailure(c);
-
-                        return Task.CompletedTask;
+                        // the token we set here will be the one used - Authorization header won't be checked.
+                        c.Token = values.FirstOrDefault();
                     }
-                };
 
-                o.TokenValidationParameters = CreateTokenValidationParameters();
+                    // Temporary: Tactical fix to address specialization issues. This should likely be moved to a token validator
+                    // TODO: DI (FACAVAL) This will be fixed once the permanent fix is in place
+                    if (_specialized == 0 && !SystemEnvironment.Instance.IsPlaceholderModeEnabled() && Interlocked.CompareExchange(ref _specialized, 1, 0) == 0)
+                    {
+                        options.TokenValidationParameters = CreateTokenValidationParameters();
+                    }
 
-                // TODO: DI (FACAVAL) Remove this once the work above is completed.
-                if (!SystemEnvironment.Instance.IsPlaceholderModeEnabled())
+                    return Task.CompletedTask;
+                },
+                OnTokenValidated = c =>
                 {
-                    // We're not in standby mode, so flag as specialized
-                    _specialized = 1;
+                    var claims = new List<Claim>
+                    {
+                        new Claim(SecurityConstants.AuthLevelClaimType, AuthorizationLevel.Admin.ToString())
+                    };
+
+                    if (!string.Equals(c.SecurityToken.Issuer, ScriptConstants.AppServiceCoreUri, StringComparison.OrdinalIgnoreCase))
+                    {
+                        claims.Add(new Claim(SecurityConstants.InvokeClaimType, "true"));
+                    }
+
+                    c.Principal.AddIdentity(new ClaimsIdentity(claims));
+                    c.Success();
+
+                    return Task.CompletedTask;
+                },
+                OnAuthenticationFailed = c =>
+                {
+                    LogAuthenticationFailure(c);
+                    return Task.CompletedTask;
                 }
-            });
+            };
+
+            options.TokenValidationParameters = CreateTokenValidationParameters();
+
+            // TODO: DI (FACAVAL) Remove this once the work above is completed.
+            if (!SystemEnvironment.Instance.IsPlaceholderModeEnabled())
+            {
+                // We're not in standby mode, so flag as specialized
+                _specialized = 1;
+            }
+        }
 
         private static IEnumerable<string> GetValidAudiences()
         {
@@ -134,12 +142,12 @@ namespace Microsoft.Extensions.DependencyInjection
                 result.AudienceValidator = AudienceValidator;
                 result.IssuerValidator = IssuerValidator;
                 result.ValidAudiences = GetValidAudiences();
-                result.ValidIssuers = new string[]
-                {
+                result.ValidIssuers =
+                [
                     AppServiceCoreUri,
                     string.Format(ScmSiteUriFormat, ScriptSettingsManager.Instance.GetSetting(AzureWebsiteName)),
                     string.Format(SiteUriFormat, ScriptSettingsManager.Instance.GetSetting(AzureWebsiteName))
-                };
+                ];
             }
 
             return result;
