@@ -147,7 +147,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             // we need to sync triggers if config changed, or the files changed
             await _functionsSyncManager.TrySyncTriggersAsync();
 
-            (var success, var functionMetadataResult) = await TryGetFunction(name, request, configChanged);
+            // Setting force refresh to false as host restart causes a refersh already
+            (var success, var functionMetadataResult) = await TryGetFunction(name, request, false);
 
             return (success, configChanged, functionMetadataResult);
         }
