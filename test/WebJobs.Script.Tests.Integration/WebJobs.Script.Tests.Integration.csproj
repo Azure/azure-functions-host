@@ -46,7 +46,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj" />
     <ProjectReference Include="..\..\src\WebJobs.Script.Grpc\WebJobs.Script.Grpc.csproj" />
-    <ProjectReference Include="..\TestFunctions\TestFunctions.csproj" ReferenceOutputAssembly="false" Private="false" />
+    <ProjectReference Include="..\TestFunctions\TestFunctions.csproj" ReferenceOutputAssembly="false" Private="true" />
     <ProjectReference Include="..\CSharpPrecompiledTestProjects\**\*.csproj" ReferenceOutputAssembly="false" Private="false" />
     <ProjectReference Include="..\DotNetIsolated*\*.csproj" ReferenceOutputAssembly="false" Private="false" />
   </ItemGroup>
