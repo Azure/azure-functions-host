@@ -92,7 +92,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         {
             get
             {
-                return GetFeatureOrDefault(ScriptConstants.HostingConfigRestrictHostLogs, "1") == "1";
+                return GetFeatureOrDefault(ScriptConstants.HostingConfigRestrictHostLogs, "0") == "1";
             }
 
             set

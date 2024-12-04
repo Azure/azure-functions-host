@@ -34,16 +34,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         }
 
         [Theory]
-        [InlineData(true, false, true)] // RestrictHostLogs is true, FeatureFlag is not set, should result in **restricted** logs. This is the default behaviour of the host.
-        [InlineData(false, true, false)] // RestrictHostLogs is false, FeatureFlag is set, should result in unrestricted logs
-        [InlineData(true, true, false)] // RestrictHostLogs is true, FeatureFlag is set, should result in unrestricted logs
-        [InlineData(false, false, false)] // RestrictHostLogs is false, FeatureFlag is not set, should result in unrestricted log
+        [InlineData(true, false, true)] // RestrictHostLogs is true, FeatureFlag is not set, should result in **restricted** logs.
+        [InlineData(false, true, false)] // RestrictHostLogs is false, FeatureFlag is set, should result in unrestricted logs.
+        [InlineData(true, true, false)] // RestrictHostLogs is true, FeatureFlag is set, should result in unrestricted logs.
+        [InlineData(false, false, false)] // RestrictHostLogs is false, FeatureFlag is not set, should result in unrestricted log. This is the default behaviour of the host.
         public async Task RestirctHostLogs_SetsCorrectSystemLogPrefix(bool restrictHostLogs, bool setFeatureFlag, bool shouldResultInRestrictedSystemLogs)
         {
             using (TempDirectory tempDir = new TempDirectory())
             {
                 string fileName = Path.Combine(tempDir.Path, "settings.txt");
-                string fileContent = restrictHostLogs ? string.Empty : $"{ScriptConstants.HostingConfigRestrictHostLogs}=false";
+                string fileContent = restrictHostLogs ? $"{ScriptConstants.HostingConfigRestrictHostLogs}=true" : string.Empty; // the default value is false
 
                 if (setFeatureFlag)
                 {
