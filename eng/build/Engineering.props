@@ -23,14 +23,6 @@
     <DebugType>embedded</DebugType>
     <GenerateRuntimeConfigDevFile>true</GenerateRuntimeConfigDevFile><!-- https://github.com/dotnet/runtime/issues/54684 -->
     <DisableImplicitNamespaceImports>true</DisableImplicitNamespaceImports>
-    <Configurations>$(Configurations);DebugPlaceholder;ReleasePlaceholder</Configurations>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DebugPlaceholder|AnyCPU'">
-    <DefineConstants>$(DefineConstants);PLACEHOLDERSIMULATION</DefineConstants>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleasePlaceholder|AnyCPU'">
-    <DefineConstants>$(DefineConstants);PLACEHOLDERSIMULATION</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>
@@ -38,5 +30,8 @@
   </ItemGroup>
 
   <Import Project="$(MSBuildThisFileDirectory)Release.props" />
+
+  <!-- Uncomment below to run with placeholder simulation enabled. -->
+  <!-- <Import Project="$(MSBuildThisFileDirectory)PlaceholderSimulation.props" /> -->
 
 </Project>

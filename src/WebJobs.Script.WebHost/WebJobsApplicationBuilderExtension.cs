@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 builder.UseMiddleware<EnvironmentReadyCheckMiddleware>();
             }
 
-#if PLACEHOLDERSIMULATION
+#if PLACEHOLDER_SIMULATION
             if (standbyOptions.InStandbyMode)
             {
                 builder.UseMiddleware<SpecializationSimulatorMiddleware>();

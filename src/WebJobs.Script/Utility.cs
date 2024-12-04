@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// Running using either "DebugPlaceholder" or "ReleasePlaceholder" configuration mode will
         /// cause the host to run in placeholder simulation mode.
         /// </summary>
-#if PLACEHOLDERSIMULATION
+#if PLACEHOLDER_SIMULATION
         public const bool IsInPlaceholderSimulationMode = true;
 #else
         public const bool IsInPlaceholderSimulationMode = false;
@@ -883,7 +883,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         /// <summary>
         /// Utility function to validate a blob URL by attempting to retrieve the account name from it.
-        /// Borrowed from https://github.com/Azure/azure-sdk-for-net/blob/e0fd1cd415d8339947b20c3565c7adc7d7f60fbe/sdk/storage/Azure.Storage.Common/src/Shared/UriExtensions.cs
+        /// Borrowed from https://github.com/Azure/azure-sdk-for-net/blob/e0fd1cd415d8339947b20c3565c7adc7d7f60fbe/sdk/storage/Azure.Storage.Common/src/Shared/UriExtensions.cs.
         /// </summary>
         private static string GetAccountNameFromDomain(string domain)
         {
