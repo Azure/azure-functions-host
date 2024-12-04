@@ -1,0 +1,3 @@
+variables:
+- name: helloHttp9
+  value: --config https://raw.githubusercontent.com/Azure/azure-functions-host/refs/heads/dev/eng/ci/benchmarkconfigs/hellohttp-net9.yml --profile windows2022azure

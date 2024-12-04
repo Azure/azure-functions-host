@@ -1,0 +1,54 @@
+imports:
+  - https://raw.githubusercontent.com/dotnet/crank/main/src/Microsoft.Crank.Jobs.Bombardier/bombardier.yml
+
+jobs:
+  server:
+    sources:
+      functionshost:
+        repository: https://github.com/Azure/azure-functions-host
+        branchOrCommit: dev
+    project: functionshost/src/WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj
+    readyStateText: "Application started."
+    environmentVariables:
+      AzureWebJobsScriptRoot: "C:\\FunctionApps\\HelloHttp9"
+      FUNCTIONS_WORKER_RUNTIME: dotnet-isolated
+  servernoproxy:
+    sources:
+      functionshost:
+        repository: https://github.com/Azure/azure-functions-host
+        branchOrCommit: dev
+    project: functionshost/src/WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj
+    readyStateText: "Application started."
+    environmentVariables:
+      AzureWebJobsScriptRoot: "C:\\FunctionApps\\HelloHttp9NoProxy"
+      FUNCTIONS_WORKER_RUNTIME: dotnet-isolated
+
+scenarios:
+  helloHttp:
+    hostruntime:
+      job: server
+    load:
+      job: bombardier
+      variables:
+        serverPort: 5000
+        path: /api/Hello
+  helloHttpnoproxy:
+    hostruntime:
+      job: servernoproxy
+    load:
+      job: bombardier
+      variables:
+        serverPort: 5000
+        path: /api/HelloHttp
+
+profiles:
+  windows2022azure:
+    variables:
+      serverAddress: localhost
+    jobs:
+      hostruntime:
+        endpoints:
+          - http://localhost:5010
+      load:
+        endpoints:
+          - http://localhost:5010

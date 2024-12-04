@@ -1,0 +1,50 @@
+# No triggers for code push to any branch.
+trigger: none
+
+# No PR triggers for now
+pr: none
+
+schedules:
+  - cron: "0 0 * * *"
+    displayName: "Nightly run"
+    always: true
+    branches:
+      include:
+      - dev
+
+resources:
+  repositories:
+  - repository: 1es
+    type: git
+    name: 1ESPipelineTemplates/1ESPipelineTemplates
+    ref: refs/tags/release
+
+variables:  
+  - template: /eng/ci/templates/variables/benchmarkrun-arguments.yml@self
+  - name: buildId
+    value: $(Build.BuildId)
+  - name: buildNumber
+    value: $(Build.BuildNumber)
+  - name: sourceVersion
+    value: $(Build.SourceVersion)
+
+extends:
+  template: v1/1ES.Unofficial.PipelineTemplate.yml@1es
+  parameters:
+    pool:
+      name: 1es-pool-azfunc
+      image: 1es-windows-2022
+      os: windows
+    stages:
+    - stage: RunBenchmarks
+      jobs: 
+      - job: HTTPBenchmarks
+        displayName: ".NET9 Isolated app load test"
+        pool: server
+        steps:
+        - template: /eng/ci/templates/steps/benchmarks/http-scenarios.yml@self
+          parameters:
+            connection: $(connection)
+            serviceBusQueueName: crank-jobs
+            serviceBusNamespace: azure-functions-host-perf
+            arguments: "$(helloHttp9) "

@@ -1,0 +1,46 @@
+# Proxy scenarios
+
+parameters:
+- name: arguments
+  type: string
+  default: ''
+- name: connection
+  type: string
+  default: ''
+- name: serviceBusQueueName
+  type: string
+  default: ''
+- name: serviceBusNamespace
+  type: string
+  default: ''
+
+# Scenarios
+- name: scenarios
+  type: object
+  default:
+  # HTTP Functions
+  - displayName: Hello Http HttpProxying
+    arguments: --scenario helloHttp --property scenario=helloHttp --description net9hellohttp 
+  - displayName: Hello Http No HttpProxying
+    arguments: --scenario helloHttpnoproxy --property scenario=helloHttpnoproxy --description net9hellohttpproxy 
+
+steps:
+  - ${{ each s in parameters.scenarios }}:
+    - task: PublishToAzureServiceBus@2
+      condition: succeededOrFailed()
+      displayName: ${{ s.displayName }}
+      timeoutInMinutes: 10
+      inputs:
+        connectedServiceName: ${{ parameters.connection }}
+        serviceBusQueueName: ${{ parameters.serviceBusQueueName }}
+        serviceBusNamespace: ${{ parameters.serviceBusNamespace }}
+        waitForCompletion: true
+        useDataContractSerializer: "false"
+        messageBody: |
+          {
+            "name": "crank",
+            "retries": 1,
+            "args": [ "${{ parameters.arguments }} ${{ s.arguments }} --load.options.reuseBuild true  --command-line-property --table HttpBenchmarks --sql SQL_CONNECTION_STRING --chart --no-metadata --no-measurements --property buildId=\"$(buildId)\" --property sourceVersion=\"$(sourceVersion)\" --property buildNumber=\"$(buildNumber)\"" ]
+          }
+
+
