@@ -31,7 +31,10 @@
 
   <Import Project="$(MSBuildThisFileDirectory)Release.props" />
 
-  <!-- Uncomment below to run with placeholder simulation enabled. -->
-  <!-- <Import Project="$(MSBuildThisFileDirectory)PlaceholderSimulation.props" /> -->
+  <!-- To use PlaceholderSimulation:
+    1. Set env variable PlaceholderSimulation=true
+    2. OR build with -p:PlaceholderSimulation=true
+  -->
+  <Import Project="$(MSBuildThisFileDirectory)PlaceholderSimulation.props" Condition="'$(PlaceholderSimulation)' == 'true'"/>
 
 </Project>
