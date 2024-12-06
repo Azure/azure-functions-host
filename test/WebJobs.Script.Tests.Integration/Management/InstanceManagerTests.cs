@@ -356,7 +356,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         {
             var environmentSettings = new Dictionary<string, string>()
             {
-                { EnvironmentSettingNames.AzureWebsiteZipDeployment, "http://invalid.com/invalid/dne" }
+                { EnvironmentSettingNames.AzureWebsiteZipDeployment, "http://invalid.test/invalid/dne" }
             };
 
             var environment = new TestEnvironment();
@@ -439,7 +439,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         {
             var environment = new Dictionary<string, string>()
             {
-                { EnvironmentSettingNames.AzureWebsiteZipDeployment, "http://microsoft.com" }
+                { EnvironmentSettingNames.AzureWebsiteZipDeployment, "https://valid-zip.test" }
             };
             var assignmentContext = new HostAssignmentContext
             {
@@ -449,7 +449,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 IsWarmupRequest = false
             };
 
-            string error = await _instanceManager.ValidateContext(assignmentContext);
+            var handlerMock = new Mock<HttpMessageHandler>();
+            handlerMock.Protected().Setup<Task<HttpResponseMessage>>("SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>()).ReturnsAsync(new HttpResponseMessage
+                {
+                    StatusCode = HttpStatusCode.OK,
+                });
+
+            var instanceManager = new InstanceManager(_optionsFactory, TestHelpers.CreateHttpClientFactory(handlerMock.Object).CreateClient(),
+                _scriptWebEnvironment, _environment, _loggerFactory.CreateLogger<InstanceManager>(),
+                new TestMetricsLogger(), null, _runFromPackageHandler, _packageDownloadHandler.Object);
+
+            string error = await instanceManager.ValidateContext(assignmentContext);
             Assert.Null(error);
 
             string[] expectedOutputLines =
@@ -539,8 +551,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         {
             var environment = new Dictionary<string, string>()
             {
-                { EnvironmentSettingNames.AzureWebsiteZipDeployment, "http://microsoft.com" },
-                { EnvironmentSettingNames.ScmRunFromPackage, "http://microsoft.com" }
+                { EnvironmentSettingNames.AzureWebsiteZipDeployment, "https://valid.test" },
+                { EnvironmentSettingNames.ScmRunFromPackage, "https://valid.tests" }
             };
             var assignmentContext = new HostAssignmentContext
             {
@@ -550,7 +562,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 IsWarmupRequest = false
             };
 
-            string error = await _instanceManager.ValidateContext(assignmentContext);
+            var handlerMock = new Mock<HttpMessageHandler>();
+            handlerMock.Protected().Setup<Task<HttpResponseMessage>>("SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>()).ReturnsAsync(new HttpResponseMessage
+                {
+                    StatusCode = HttpStatusCode.OK,
+                });
+
+            var instanceManager = new InstanceManager(_optionsFactory, TestHelpers.CreateHttpClientFactory(handlerMock.Object).CreateClient(),
+                _scriptWebEnvironment, _environment, _loggerFactory.CreateLogger<InstanceManager>(),
+                new TestMetricsLogger(), null, _runFromPackageHandler, _packageDownloadHandler.Object);
+
+            string error = await instanceManager.ValidateContext(assignmentContext);
             Assert.Null(error);
 
             string[] expectedOutputLines =
