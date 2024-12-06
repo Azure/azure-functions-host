@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, logger, _testMetricsLogger, SystemEnvironment.Instance);
             var workerConfigs = TestHelpers.GetTestWorkerConfigs();
 
-            Assert.Equal(18, metadataProvider.GetFunctionMetadataAsync(workerConfigs, SystemEnvironment.Instance, false).Result.Length);
+            Assert.Equal(18, metadataProvider.GetFunctionMetadataAsync(workerConfigs, false).Result.Length);
             var traces = testLoggerProvider.GetAllLogMessages();
             Assert.True(AreRequiredMetricsEmitted(_testMetricsLogger));
 
@@ -61,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var optionsMonitor = TestHelpers.CreateOptionsMonitor(_scriptApplicationHostOptions);
             var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, _testMetricsLogger, SystemEnvironment.Instance);
             var workerConfigs = TestHelpers.GetTestWorkerConfigs();
-            Assert.Equal(0, metadataProvider.GetFunctionMetadataAsync(workerConfigs, SystemEnvironment.Instance, false).Result.Length);
+            Assert.Equal(0, metadataProvider.GetFunctionMetadataAsync(workerConfigs, false).Result.Length);
         }
 
         [Fact]
@@ -72,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var optionsMonitor = TestHelpers.CreateOptionsMonitor(_scriptApplicationHostOptions);
             var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, _testMetricsLogger, SystemEnvironment.Instance);
             var workerConfigs = TestHelpers.GetTestWorkerConfigs();
-            var functionMetadatas = metadataProvider.GetFunctionMetadataAsync(workerConfigs, SystemEnvironment.Instance, false).Result;
+            var functionMetadatas = metadataProvider.GetFunctionMetadataAsync(workerConfigs, false).Result;
 
             Assert.Equal(2, functionMetadatas.Length);
 
