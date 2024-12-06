@@ -63,22 +63,6 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         }
 
         /// <summary>
-        /// Gets or sets a value indicating whether SWT tokens should be accepted.
-        /// </summary>
-        internal bool SwtAuthenticationEnabled
-        {
-            get
-            {
-                return GetFeatureAsBooleanOrDefault(ScriptConstants.HostingConfigSwtAuthenticationEnabled, false);
-            }
-
-            set
-            {
-                _features[ScriptConstants.HostingConfigSwtAuthenticationEnabled] = value ? "1" : "0";
-            }
-        }
-
-        /// <summary>
         /// Gets or sets a value indicating whether SWT tokens should be sent on outgoing requests.
         /// </summary>
         internal bool SwtIssuerEnabled
