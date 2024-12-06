@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.EventHubs
             _fixture = fixture;
         }
 
-        [Fact]
+        [Fact(Skip = "SAS authentication has been disabled for the namespace.")]
         public async Task EventHub()
         {
             // Event Hub needs the following environment vars:

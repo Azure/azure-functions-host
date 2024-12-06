@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             _settingsManager = ScriptSettingsManager.Instance;
         }
 
-        [Fact]
+        [Fact(Skip = "SAS authentication has been disabled for the namespace.")]
         public async Task EventHubTrigger()
         {
             // write 3 events
