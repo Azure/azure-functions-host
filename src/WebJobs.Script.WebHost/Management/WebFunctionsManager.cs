@@ -151,23 +151,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 await FileUtility.WriteAsync(dataFilePath, functionMetadata.TestData);
             }
 
-            var metadata = (await _hostFunctionMetadataProvider.GetFunctionMetadataAsync(_languageWorkerOptions.CurrentValue.WorkerConfigs, configChanged))
+            var updatedFunctionMetadata = (await _hostFunctionMetadataProvider.GetFunctionMetadataAsync(_languageWorkerOptions.CurrentValue.WorkerConfigs, configChanged))
                 .FirstOrDefault(metadata => Utility.FunctionNamesMatch(metadata.Name, name));
 
-            var success = false;
+            bool getFunctionMetadataSuccessful = false;
             FunctionMetadataResponse functionMetadataResult = null;
-            if (functionMetadata != null)
+            if (updatedFunctionMetadata != null)
             {
                 string routePrefix = await GetRoutePrefix(hostOptions.RootScriptPath);
                 var baseUrl = $"{request.Scheme}://{request.Host}";
-                functionMetadataResult = await metadata.ToFunctionMetadataResponse(hostOptions, routePrefix, baseUrl);
-                success = true;
+                functionMetadataResult = await updatedFunctionMetadata.ToFunctionMetadataResponse(hostOptions, routePrefix, baseUrl);
+                getFunctionMetadataSuccessful = true;
             }
 
             // we need to sync triggers if config changed, or the files changed
             await _functionsSyncManager.TrySyncTriggersAsync();
 
-            return (success, configChanged, functionMetadataResult);
+            return (getFunctionMetadataSuccessful, configChanged, functionMetadataResult);
         }
 
         /// <summary>
