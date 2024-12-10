@@ -50,7 +50,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public static IServiceCollection AddWebJobsScriptHostAuthentication(this IServiceCollection services)
         {
             services.AddAuthentication()
-                .AddArmToken()
                 .AddScriptAuthLevel()
                 .AddScriptJwtBearer();
 
