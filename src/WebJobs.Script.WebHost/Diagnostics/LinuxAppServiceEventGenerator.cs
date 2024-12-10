@@ -110,13 +110,28 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public override void LogAzureMonitorDiagnosticLogEvent(LogLevel level, string resourceId, string operationName, string category, string regionName, string properties)
         {
-            _writeEvent($"{ScriptConstants.LinuxAzureMonitorEventStreamName} {(int)ToEventLevel(level)},{resourceId},{operationName},{category},{regionName},{NormalizeString(properties.Replace("'", string.Empty))},{DateTime.UtcNow}");
+            var timeStr = IsAzureMonitorTimeIsoFormatEnabled() ? DateTime.UtcNow.ToString("s") : DateTime.UtcNow.ToString();
+            _writeEvent($"{ScriptConstants.LinuxAzureMonitorEventStreamName} {(int)ToEventLevel(level)},{resourceId},{operationName},{category},{regionName},{NormalizeString(properties.Replace("'", string.Empty))},{timeStr}");
         }
 
         public static void LogUnhandledException(Exception e)
         {
             // Pipe the unhandled exception to stdout as part of docker logs.
             Console.WriteLine($"Unhandled exception on {DateTime.UtcNow}: {e?.ToString()}");
+        }
+
+        private bool IsAzureMonitorTimeIsoFormatEnabled()
+        {
+            string enabledString = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureMonitorTimeIsoFormatEnabled);
+            if (bool.TryParse(enabledString, out bool result))
+            {
+                return result;
+            }
+            if (int.TryParse(enabledString, out int enabledInt))
+            {
+                return Convert.ToBoolean(enabledInt);
+            }
+            return false;
         }
     }
 }
