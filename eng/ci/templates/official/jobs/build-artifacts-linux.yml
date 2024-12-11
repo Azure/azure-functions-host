@@ -6,24 +6,24 @@ jobs:
     project: src/WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj
     configuration: release
     runtime: linux-x64
-    artifacts_path: $(Build.ArtifactStagingDirectory)
-    log_dir: $(artifacts_path)/log
-    zip_artifacts_path: $(artifacts_path)/Linux
+    drop_path: $(Build.ArtifactStagingDirectory)
+    log_path: $(drop_path)/logs
+    linux_drop_path: $(drop_path)/linux
     build_args: '-v m -c $(configuration) -r $(runtime) --self-contained true'
 
   templateContext:
-    outputParentDirectory: $(artifacts_path)
+    outputParentDirectory: $(drop_path)
     outputs:
     # TODO: onboard to Azure Artifacts Drops to allow accessing this from docker linux pipeline in msazure
     # https://eng.ms/docs/cloud-ai-platform/devdiv/one-engineering-system-1es/1es-docs/azure-artifacts/artifact-services-onboarding
     - output: pipelineArtifact
       displayName: Publish linux artifacts
-      path: $(zip_artifacts_path)
-      artifact: Linux
+      path: $(linux_drop_path)
+      artifact: drop_linux
     - output: pipelineArtifact
       displayName: Publish logs
-      path: $(log_dir)
-      artifact: Linux_Log
+      path: $(log_path)
+      artifact: logs_linux
       sbomEnabled: false
       condition: always()
 
@@ -41,7 +41,7 @@ jobs:
       command: custom
       custom: restore
       projects: $(project)
-      arguments: '-v m -r $(runtime) -p:PublishReadyToRun=true -bl:$(log_dir)/restore.binlog' # add PublishReadyToRun=true for https://github.com/dotnet/sdk/issues/20701
+      arguments: '-v m -r $(runtime) -p:PublishReadyToRun=true -bl:$(log_path)/restore.binlog' # add PublishReadyToRun=true for https://github.com/dotnet/sdk/issues/20701
 
   - task: DotNetCoreCLI@2
     displayName: Build
@@ -49,7 +49,7 @@ jobs:
       command: custom
       custom: build
       projects: $(project)
-      arguments: '$(build_args) --no-restore  -bl:$(log_dir)/build.binlog'
+      arguments: '$(build_args) --no-restore  -bl:$(log_path)/build.binlog'
 
   - task: DotNetCoreCLI@2
     displayName: Publish
@@ -59,4 +59,4 @@ jobs:
       publishWebProjects: false # we use our own publish logic
       zipAfterPublish: false # we use our own zip logic
       projects: $(project)
-      arguments: '$(build_args) --no-build -p:ZipArtifactsPath=$(zip_artifacts_path) -bl:$(log_dir)/publish.binlog'
+      arguments: '$(build_args) --no-build -bl:$(log_path)/publish.binlog -o $(linux_drop_path)/host'
