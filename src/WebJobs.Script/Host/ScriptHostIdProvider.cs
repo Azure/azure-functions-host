@@ -57,6 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 if (!string.IsNullOrEmpty(uniqueSlotName))
                 {
                     byte[] hash;
+                    // CodeQL [SM02196] The hash here is used to create a unique identifier over non-sensitive data and there is no security impact. Changing the hashing algorithm of the host ID creation would be a breaking change for applications.
                     using (MD5 md5 = MD5.Create())
                     {
                         hash = md5.ComputeHash(Encoding.UTF8.GetBytes(uniqueSlotName));
