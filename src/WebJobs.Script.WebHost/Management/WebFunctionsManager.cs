@@ -7,6 +7,8 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
+using Azure;
+using Azure.Core;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Management.Models;
@@ -151,23 +153,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 await FileUtility.WriteAsync(dataFilePath, functionMetadata.TestData);
             }
 
-            var updatedFunctionMetadata = (await _hostFunctionMetadataProvider.GetFunctionMetadataAsync(_languageWorkerOptions.CurrentValue.WorkerConfigs, configChanged))
+            // Using HostFunctionMetadataProvider instead of IFunctionMetadataManager. More details logged here https://github.com/Azure/azure-functions-host/issues/10691
+            var metadata = (await _hostFunctionMetadataProvider.GetFunctionMetadataAsync(_languageWorkerOptions.CurrentValue.WorkerConfigs, true))
                 .FirstOrDefault(metadata => Utility.FunctionNamesMatch(metadata.Name, name));
 
-            bool getFunctionMetadataSuccessful = false;
+            bool success = false;
             FunctionMetadataResponse functionMetadataResult = null;
-            if (updatedFunctionMetadata != null)
+            if (metadata != null)
             {
-                string routePrefix = await GetRoutePrefix(hostOptions.RootScriptPath);
-                var baseUrl = $"{request.Scheme}://{request.Host}";
-                functionMetadataResult = await updatedFunctionMetadata.ToFunctionMetadataResponse(hostOptions, routePrefix, baseUrl);
-                getFunctionMetadataSuccessful = true;
+                functionMetadataResult = await GetFunctionMetadataResponseAsync(metadata, hostOptions, request);
+                success = true;
             }
 
             // we need to sync triggers if config changed, or the files changed
             await _functionsSyncManager.TrySyncTriggersAsync();
 
-            return (getFunctionMetadataSuccessful, configChanged, functionMetadataResult);
+            return (success, configChanged, functionMetadataResult);
         }
 
         /// <summary>
@@ -196,9 +197,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
             if (functionMetadata != null)
             {
-                string routePrefix = await GetRoutePrefix(hostOptions.RootScriptPath);
-                var baseUrl = $"{request.Scheme}://{request.Host}";
-                return (true, await functionMetadata.ToFunctionMetadataResponse(hostOptions, routePrefix, baseUrl));
+                var functionMetadataResponse = await GetFunctionMetadataResponseAsync(functionMetadata, hostOptions, request);
+                return (true, functionMetadataResponse);
             }
             else
             {
@@ -243,6 +243,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             {
                 FileUtility.DeleteFileSafe(testDataPath);
             }
+        }
+
+        private static async Task<FunctionMetadataResponse> GetFunctionMetadataResponseAsync(FunctionMetadata functionMetadata, ScriptJobHostOptions hostOptions, HttpRequest request)
+        {
+            string routePrefix = await GetRoutePrefix(hostOptions.RootScriptPath);
+            var baseUrl = $"{request.Scheme}://{request.Host}";
+            return await functionMetadata.ToFunctionMetadataResponse(hostOptions, routePrefix, baseUrl);
         }
 
         // TODO : Due to lifetime scoping issues (this service lifetime is longer than the lifetime
