@@ -30,6 +30,7 @@ using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using static Microsoft.Azure.WebJobs.Script.Grpc.Messages.RpcLog.Types;
@@ -1068,6 +1069,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 case ParameterBindingType.Data:
                     // Data was transferred by the worker using RPC
                     return binding.Data.ToObject();
+                case ParameterBindingType.None:
+                    return null;
                 default:
                     throw new InvalidOperationException("Unknown ParameterBindingType");
             }
