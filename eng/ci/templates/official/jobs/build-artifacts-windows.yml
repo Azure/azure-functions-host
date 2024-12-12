@@ -8,13 +8,13 @@ jobs:
     os: windows
 
   variables:
-    artifacts_path: $(Build.ArtifactStagingDirectory)
-    nuget_drop_path: $(artifacts_path)/nuget
-    windows_drop_path: $(artifacts_path)/windows
-    log_path: $(artifacts_path)/log
+    drop_path: $(Build.ArtifactStagingDirectory)
+    nuget_drop_path: $(drop_path)/nuget
+    windows_drop_path: $(drop_path)/windows
+    log_path: $(drop_path)/log
 
   templateContext:
-    outputParentDirectory: $(artifacts_path)
+    outputParentDirectory: $(drop_path)
     outputs:
     - output: pipelineArtifact
       displayName: Publish site extension
@@ -95,6 +95,13 @@ jobs:
       folderPath: $(nuget_drop_path)
       pattern: '*.nupkg'
       signType: nuget
+
+  - task: CopyFiles@2
+    displayName: Stage Release Notes
+    inputs:
+      SourceFolder: $(Build.SourcesDirectory)
+      Contents: release_notes.md
+      TargetFolder: $(windows_drop_path)
 
   - task: DeleteFiles@1
     displayName: Delete CodeSignSummary files
