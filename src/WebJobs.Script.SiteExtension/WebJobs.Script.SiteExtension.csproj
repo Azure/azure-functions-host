@@ -23,6 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="$(RepoRoot)/release_notes.md" CopyToPublishDirectory="PreserveNewest" />
     <None Include="**/*.ps1" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
