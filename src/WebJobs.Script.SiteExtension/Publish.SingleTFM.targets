@@ -10,10 +10,8 @@
     <PublishWebHostDependsOn>
       ValidatePublishSettings;
       PublishProjectReferences;
-      PublishPrivateProjectReferences;
       RemoveUnneededRuntimes;
       MoveSymbols;
-      DeletePrivateSymbols;
       WriteHardLinkHashes;
     </PublishWebHostDependsOn>
     <PublishPropertiesToRemove>ZipAfterPublish;ZipArtifactsPath</PublishPropertiesToRemove>
@@ -28,9 +26,7 @@
   <Target Name="UpdatePaths" BeforeTargets="AddRuntimesToProjects;AssignTargetPaths">
     <PropertyGroup>
       <SiteExtensionRelativeDir>SiteExtension/$(Version)/</SiteExtensionRelativeDir>
-      <SiteExtensionDir>$([MSBuild]::NormalizePath('$(PublishDir)$(SiteExtensionRelativeDir)'))</SiteExtensionDir>
-      <PrivateSiteExtensionRelativeDir>PrivateSiteExtension/SiteExtensions/Functions/</PrivateSiteExtensionRelativeDir>
-      <PrivateSiteExtensionDir>$([MSBuild]::NormalizePath('$(PublishDir)$(PrivateSiteExtensionRelativeDir)'))</PrivateSiteExtensionDir>
+      <SiteExtensionDir>$([MSBuild]::NormalizePath($([System.IO.Path]::Combine($(PublishDir), $(SiteExtensionRelativeDir)))))</SiteExtensionDir>
     </PropertyGroup>
     <ItemGroup>
       <None Include="applicationHost.xdt" TargetPath="$(SiteExtensionRelativeDir)applicationHost.xdt" CopyToPublishDirectory="PreserveNewest" />
@@ -58,8 +54,6 @@
         </AdditionalProperties>
         <PublishRuntime>%(PublishRuntimeIdentifier.Identity)</PublishRuntime>
         <PublishDir>$(SiteExtensionDir)%(PublishRuntimeIdentifier.PublishDir)/</PublishDir>
-        <PublishPrivateDir>$(PrivateSiteExtensionDir)%(PublishRuntimeIdentifier.PublishDir)/</PublishPrivateDir>
-        <PublishPrivate>%(PublishRuntimeIdentifier.PrivateExtension)</PublishPrivate>
         <Private>false</Private> <!-- Avoids including transitive output. -->
       </_ProjectReferenceWithRuntimes>
       <ProjectReference Remove="@(ProjectReference)" />
@@ -84,31 +78,11 @@
       RemoveProperties="$(PublishPropertiesToRemove)"/>
   </Target>
 
-  <!-- Publishes projects for the private site extension. -->
-  <Target Name="PublishPrivateProjectReferences" AfterTargets="PublishProjectReferences" BeforeTargets="Publish">
-    <ItemGroup>
-      <_PublishPrivateProjectReferenceExistent Include="@(_MSBuildProjectReferenceExistent)" Condition="%(PublishPrivate)">
-        <AdditionalProperties>%(AdditionalProperties);PublishDir=%(PublishPrivateDir);_IsPublishing=true</AdditionalProperties>
-      </_PublishPrivateProjectReferenceExistent>
-      <ZipArtifact
-        Include="$(PublishDir)PrivateSiteExtension"
-        TargetName="@(_PublishPrivateProjectReferenceExistent->'PrivateSiteExtension/$(SiteExtensionName).Private.$(Version).%(PublishRuntime).zip')" />
-    </ItemGroup>
-    <MSBuild Projects="@(_PublishPrivateProjectReferenceExistent)"
-      Targets="Publish"
-      BuildInParallel="$(BuildInParallel)"
-      Properties="NoBuild=true"
-      RemoveProperties="$(PublishPropertiesToRemove)"/>
-    <RemoveDir Directories="@(_PublishPrivateProjectReferenceExistent->'%(PublishPrivateDir)/workers/python')" />
-  </Target>
-
   <Target Name="RemoveUnneededRuntimes">
     <!-- These shouldn't exist since we build/publish with a windows runtime, but just in case. -->
     <ItemGroup>
       <_RuntimesToRemove Include="@(PublishRuntimeIdentifier->'$(SiteExtensionDir)%(PublishDir)/runtimes/linux')" />
       <_RuntimesToRemove Include="@(PublishRuntimeIdentifier->'$(SiteExtensionDir)%(PublishDir)/runtimes/osx')" />
-      <_RuntimesToRemove Include="@(PublishRuntimeIdentifier->'$(PrivateSiteExtensionDir)%(PublishDir)/runtimes/linux')" Condition="%(PrivateExtension)" />
-      <_RuntimesToRemove Include="@(PublishRuntimeIdentifier->'$(PrivateSiteExtensionDir)%(PublishDir)/runtimes/osx')" Condition="%(PrivateExtension)" />
     </ItemGroup>
     <RemoveDir Directories="@(_RuntimesToRemove)" />
   </Target>
@@ -134,14 +108,6 @@
     <MoveSymbols Directories="@(_SymbolDirs)" Destinations="%(Destination)" />
     <Copy SourceFiles="@(_WorkerSymbols)" DestinationFiles="%(Destination)/%(RecursiveDir)%(Filename)%(Extension)" SkipUnchangedFiles="true" />
     <Delete Files="@(_WorkerSymbols)" />
-  </Target>
-
-  <!-- Remove all symbols (.pdb) from PrivateSiteExtension -->
-  <Target Name="DeletePrivateSymbols">
-    <ItemGroup>
-      <_PrivateSymbolsToRemove Include="$(PrivateSiteExtensionDir)/**/*.pdb" />
-    </ItemGroup>
-    <Delete Files="@(_PrivateSymbolsToRemove)" />
   </Target>
 
   <!-- Calculate all the file hashes for the SiteExtension -->
