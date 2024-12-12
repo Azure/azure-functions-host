@@ -22,4 +22,8 @@
     <PublishRuntimeIdentifier Include="win-x64" SelfContained="false" PublishDir="64bit" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="**/*.ps1" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

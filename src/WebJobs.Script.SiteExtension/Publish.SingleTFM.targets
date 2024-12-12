@@ -29,8 +29,11 @@
       <SiteExtensionDir>$([MSBuild]::NormalizePath($([System.IO.Path]::Combine($(PublishDir), $(SiteExtensionRelativeDir)))))</SiteExtensionDir>
     </PropertyGroup>
     <ItemGroup>
+      <!-- Copy to publish directory only, never output directory. -->
+      <None Update="@(None)" CopyToPublishDirectory="PreserveNewest" Condition="'%(None.CopyToOutputDirectory)' == 'PreserveNewest'" />
+      <None Update="@(None)" CopyToPublishDirectory="Always" Condition="'%(None.CopyToOutputDirectory)' == 'Always'" />
+      <None Update="@(None)" CopyToOutputDirectory="Never" />
       <None Include="applicationHost.xdt" TargetPath="$(SiteExtensionRelativeDir)applicationHost.xdt" CopyToPublishDirectory="PreserveNewest" />
-      <None Include="applicationHost.xdt" TargetPath="$(PrivateSiteExtensionRelativeDir)applicationHost.xdt" CopyToPublishDirectory="PreserveNewest" />
       <None Include="extension.xml" TargetPath="SiteExtension/extension.xml" CopyToPublishDirectory="PreserveNewest" />
     </ItemGroup>
   </Target>
