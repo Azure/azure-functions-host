@@ -1557,7 +1557,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             await _workerChannel.InvokeResponse(BuildSuccessfulInvocationResponseWithNullOutputBinding(invocationId.ToString()));
 
             var logs = _logger.GetLogMessages().ToArray();
-            Assert.Single(logs.Where(m => m.FormattedMessage.Contains($"InvocationResponse received for invocation: '{invocationId}'")));
+
+            Assert.Single(logs.Where(m => m.FormattedMessage.Contains($"Successfully parsed the result of the invocation with invocationId: '{invocationId}'")));
         }
 
         private static IEnumerable<FunctionMetadata> GetTestFunctionsList(string runtime, bool addWorkerProperties = false)

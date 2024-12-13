@@ -1160,6 +1160,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 Return = invokeResponse?.ReturnValue?.ToObject()
             };
 
+            _workerChannelLogger.LogDebug("Successfully parsed the result of the invocation with invocationId: '{invocationId}'", invokeResponse.InvocationId);
+
             return result;
         }
 
