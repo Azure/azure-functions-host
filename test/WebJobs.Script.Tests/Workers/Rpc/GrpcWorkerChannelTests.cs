@@ -1552,13 +1552,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             await CreateDefaultWorkerChannel();
 
             var invocationId = Guid.NewGuid();
-            ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(invocationId, new TaskCompletionSource<ScriptInvocationResult>(), logger: _logger);
+            var resultSource = new TaskCompletionSource<ScriptInvocationResult>();
+            ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(invocationId, resultSource, logger: _logger);
             await _workerChannel.SendInvocationRequest(scriptInvocationContext);
             await _workerChannel.InvokeResponse(BuildSuccessfulInvocationResponseWithNullOutputBinding(invocationId.ToString()));
 
-            var logs = _logger.GetLogMessages().ToArray();
-
-            Assert.Single(logs.Where(m => m.FormattedMessage.Contains($"Successfully parsed the result of the invocation with invocationId: '{invocationId}'")));
+            Assert.Equal(TaskStatus.RanToCompletion, resultSource.Task.Status);
         }
 
         private static IEnumerable<FunctionMetadata> GetTestFunctionsList(string runtime, bool addWorkerProperties = false)
