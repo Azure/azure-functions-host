@@ -123,13 +123,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 (nameof(FunctionsHostingConfigOptions.ShutdownWebhostWorkerChannelsOnHostShutdown), string.Empty, true), // default
 
                 // Supports True/False/1/0
-                (nameof(FunctionsHostingConfigOptions.SwtAuthenticationEnabled), "SwtAuthenticationEnabled=False", false),
-                (nameof(FunctionsHostingConfigOptions.SwtAuthenticationEnabled), "SwtAuthenticationEnabled=True", true),
-                (nameof(FunctionsHostingConfigOptions.SwtAuthenticationEnabled), "SwtAuthenticationEnabled=0", false),
-                (nameof(FunctionsHostingConfigOptions.SwtAuthenticationEnabled), "SwtAuthenticationEnabled=unparseable", false), // default
-                (nameof(FunctionsHostingConfigOptions.SwtAuthenticationEnabled), string.Empty, false), // default
-
-                // Supports True/False/1/0
                 (nameof(FunctionsHostingConfigOptions.SwtIssuerEnabled), "SwtIssuerEnabled=False", false),
                 (nameof(FunctionsHostingConfigOptions.SwtIssuerEnabled), "SwtIssuerEnabled=True", true),
                 (nameof(FunctionsHostingConfigOptions.SwtIssuerEnabled), "SwtIssuerEnabled=0", false),
@@ -248,23 +241,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                     return testService.Monitor.CurrentValue.GetFeature("feature1") == "value1_updated";
                 });
             }
-        }
-
-        [Fact]
-        public void SwtAuthenticationEnabled_ReturnsExpectedValue()
-        {
-            FunctionsHostingConfigOptions options = new FunctionsHostingConfigOptions();
-
-            // defaults to false
-            Assert.False(options.SwtAuthenticationEnabled);
-
-            // returns true when explicitly enabled
-            options.Features[ScriptConstants.HostingConfigSwtAuthenticationEnabled] = "1";
-            Assert.True(options.SwtAuthenticationEnabled);
-
-            // returns false when disabled
-            options.Features[ScriptConstants.HostingConfigSwtAuthenticationEnabled] = "0";
-            Assert.False(options.SwtAuthenticationEnabled);
         }
 
         [Fact]
