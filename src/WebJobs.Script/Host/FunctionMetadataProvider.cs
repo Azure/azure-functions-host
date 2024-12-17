@@ -32,12 +32,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public ImmutableDictionary<string, ImmutableArray<string>> FunctionErrors { get; private set; }
 
-        public async Task<ImmutableArray<FunctionMetadata>> GetFunctionMetadataAsync(IEnumerable<RpcWorkerConfig> workerConfigs, IEnvironment environment, bool forceRefresh = false)
+        public async Task<ImmutableArray<FunctionMetadata>> GetFunctionMetadataAsync(IEnumerable<RpcWorkerConfig> workerConfigs, bool forceRefresh = false)
         {
             bool workerIndexing = Utility.CanWorkerIndex(workerConfigs, _environment, _functionsHostingConfigOptions);
             if (!workerIndexing)
             {
-                return await GetMetadataFromHostProvider(workerConfigs, environment, forceRefresh);
+                return await GetMetadataFromHostProvider(workerConfigs, forceRefresh);
             }
 
             _logger.LogInformation("Worker indexing is enabled");
@@ -48,15 +48,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             if (functionMetadataResult.UseDefaultMetadataIndexing)
             {
                 _logger.LogDebug("Fallback to host indexing as worker denied indexing");
-                return await GetMetadataFromHostProvider(workerConfigs, environment, forceRefresh);
+                return await GetMetadataFromHostProvider(workerConfigs, forceRefresh);
             }
 
             return functionMetadataResult.Functions;
         }
 
-        private async Task<ImmutableArray<FunctionMetadata>> GetMetadataFromHostProvider(IEnumerable<RpcWorkerConfig> workerConfigs, IEnvironment environment, bool forceRefresh = false)
+        private async Task<ImmutableArray<FunctionMetadata>> GetMetadataFromHostProvider(IEnumerable<RpcWorkerConfig> workerConfigs,  bool forceRefresh = false)
         {
-            var functions = await _hostFunctionMetadataProvider?.GetFunctionMetadataAsync(workerConfigs, environment, forceRefresh);
+            var functions = await _hostFunctionMetadataProvider?.GetFunctionMetadataAsync(workerConfigs, forceRefresh);
             FunctionErrors = _hostFunctionMetadataProvider.FunctionErrors;
             return functions;
         }

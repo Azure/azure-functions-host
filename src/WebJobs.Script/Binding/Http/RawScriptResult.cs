@@ -79,10 +79,12 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 {
                     if (cookie.Item3 != null)
                     {
+                        // CodeQL [SM02373] This code path constructs the cookie collection based on what the out-of-process function app (where customers can set these cookies) sends to the host. Overriding this behavior would introduce a breaking change for those customers.
                         response.Cookies.Append(cookie.Item1, cookie.Item2, cookie.Item3);
                     }
                     else
                     {
+                        // CodeQL [SM02373] This code path constructs the cookie collection based on what the out-of-process function app (where customers can set these cookies) sends to the host. Overriding this behavior would introduce a breaking change for those customers.
                         response.Cookies.Append(cookie.Item1, cookie.Item2);
                     }
                 }
