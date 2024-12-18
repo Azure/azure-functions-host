@@ -43,7 +43,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class SpecializationE2ETests
     {
-        private static readonly Lazy<int> _buildDotnetIsolated60Path = new(BuildDotnetIsolated60, LazyThreadSafetyMode.ExecutionAndPublication);
         private static readonly SemaphoreSlim _pauseBeforeHostBuild = new(1, 1);
         private static readonly SemaphoreSlim _pauseAfterStandbyHostBuild = new(1, 1);
         private static readonly SemaphoreSlim _buildCount = new(2, 2);
@@ -1084,16 +1083,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        private static int BuildDotnetIsolated60()
-        {
-            var p = Process.Start("dotnet", $"build ../../../../test/DotNetIsolated60/DotNetIsolated60.sln");
-            p.WaitForExit();
-            return p.ExitCode;
-        }
-
         private IWebHostBuilder InitializeDotNetIsolatedPlaceholderBuilder(string scriptRootPath, params string[] functions)
         {
-            Assert.Equal(0, _buildDotnetIsolated60Path.Value);
             _environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "dotnet-isolated");
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteUsePlaceholderDotNetIsolated, "1");
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing);

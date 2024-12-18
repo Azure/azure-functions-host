@@ -1,0 +1,6 @@
+<Project>
+  <PropertyGroup>
+    <VersionPrefix>4.$(MinorVersionPrefix)37.0</VersionPrefix>
+    <UpdateBuildNumber>true</UpdateBuildNumber>
+  </PropertyGroup>
+</Project>

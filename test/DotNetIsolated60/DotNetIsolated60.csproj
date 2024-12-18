@@ -8,6 +8,7 @@
     <FunctionsEnableWorkerIndexing>True</FunctionsEnableWorkerIndexing>
     <FunctionsAutoRegisterGeneratedMetadataProvider>True</FunctionsAutoRegisterGeneratedMetadataProvider>
     <FunctionsEnableExecutorSourceGen>True</FunctionsEnableExecutorSourceGen>
+    <RunAnalyzers>false</RunAnalyzers>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Azure.Functions.Worker" Version="1.23.0" />

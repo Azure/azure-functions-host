@@ -1,7 +1,5 @@
 <Project Sdk="Microsoft.Build.NoTargets">
 
-  <Import Project="../../build/common.props" />
-
   <PropertyGroup>
     <!-- TFM and RId are actually used. -->
     <TargetFrameworks>net6.0;net8.0</TargetFrameworks>
@@ -21,7 +19,7 @@
   </PropertyGroup>
 
   <!-- Only .NET6 builds include workers. -->
-  <Import Project="$(TargetsRoot)Workers.props" Condition="'$(TargetFramework)' == 'net6.0'" />
+  <Import Project="$(WorkersProps)" Condition="'$(TargetFramework)' == 'net6.0'" />
 
   <ItemGroup>
     <ProjectReference Include="../WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj" ReferenceOutputAssembly="false" />
