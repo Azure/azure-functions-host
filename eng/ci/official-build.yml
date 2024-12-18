@@ -1,14 +1,10 @@
 parameters:
-- name: official # this is used for testing the official CI from non-official branches.
-  displayName: Official Build
-  type: string
-  default: default
-  values:
-  - default
-  - 'true'
-  - 'false'
-- name: runTests # only respected if official is false
-  displayName: Run Tests
+- name: forceOfficial # this is used for testing the official CI from non-official branches.
+  displayName: Use official templates for non-official branches
+  type: boolean
+  default: false
+- name: runTests
+  displayName: Run tests (ignored for official branches)
   type: boolean
   default: true
 
@@ -55,7 +51,7 @@ variables:
     value: false
 - name: '1ESTemplate'
   # force official to be true if an official branch. Otherwise respect the official parameter.
-  ${{ if or(eq(variables.OfficialBranch, true), eq(parameters.official, 'true')) }}:
+  ${{ if or(eq(variables.OfficialBranch, true), eq(parameters.forceOfficial, 'true')) }}:
     value: 'v1/1ES.Official.PipelineTemplate.yml@1es'
   # 'default'
   ${{ else }}:
