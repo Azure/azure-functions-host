@@ -7,6 +7,10 @@ parameters:
   displayName: Run tests (ignored for official branches)
   type: boolean
   default: true
+- name: signFiles
+  displayName: Sign files (ignored for official branches)
+  type: boolean
+  default: false
 
 trigger:
   batch: true
@@ -51,11 +55,12 @@ variables:
     value: false
 - name: '1ESTemplate'
   # force official to be true if an official branch. Otherwise respect the official parameter.
-  ${{ if or(eq(variables.OfficialBranch, true), eq(parameters.forceOfficial, 'true')) }}:
+  ${{ if or(eq(variables.OfficialBranch, true), eq(parameters.forceOfficial, true)) }}:
     value: 'v1/1ES.Official.PipelineTemplate.yml@1es'
-  # 'default'
   ${{ else }}:
     value: 'v1/1ES.Unofficial.PipelineTemplate.yml@1es'
+- name: SignFiles # variable for access in other templates
+  value: ${{ or(eq(variables.OfficialBranch, true), eq(parameters.signFiles, true)) }}
 
 extends:
   template: ${{ variables['1ESTemplate'] }}
@@ -77,11 +82,11 @@ extends:
       - template: /eng/ci/templates/official/jobs/build-artifacts-linux.yml@self
 
     # tests are always ran for official branches
-    - ${{ if or(eq(variables.OfficialBranch, true), eq(parameters.runTests, true)) }}:
-      - stage: Test
-        dependsOn: ''
+    - stage: Test
+      condition: ${{ or(eq(variables.OfficialBranch, true), eq(parameters.runTests, true)) }}
+      dependsOn: ''
 
-        jobs:
-        - template: /eng/ci/templates/jobs/run-unit-tests.yml@self
-        - template: /eng/ci/templates/official/jobs/run-non-e2e-tests.yml@self
-        - template: /eng/ci/templates/official/jobs/run-integration-tests.yml@self
+      jobs:
+      - template: /eng/ci/templates/jobs/run-unit-tests.yml@self
+      - template: /eng/ci/templates/official/jobs/run-non-e2e-tests.yml@self
+      - template: /eng/ci/templates/official/jobs/run-integration-tests.yml@self
