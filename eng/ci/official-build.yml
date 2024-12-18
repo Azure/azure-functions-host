@@ -55,7 +55,7 @@ variables:
     value: 'v1/1ES.Official.PipelineTemplate.yml@1es'
   # 'default'
   ${{ else }}:
-    value: 'v1/1ES.UnOfficial.PipelineTemplate.yml@1es'
+    value: 'v1/1ES.Unofficial.PipelineTemplate.yml@1es'
 
 extends:
   template: ${{ variables['1ESTemplate'] }}
