@@ -45,7 +45,7 @@ variables:
 - template: /eng/ci/templates/variables/build.yml@self
 - template: /ci/variables/cfs.yml@eng
 - name: OfficialBranch
-  ${{ if or(eq(variables['Build.SourceBranch'], 'refs/heads/dev'), startsWith(variables['Build.SourceBranch'], 'refs/heads/release/')) }}:
+  ${{ if or(eq(variables['Build.SourceBranch'], 'refs/heads/dev'), startsWith(variables['Build.SourceBranch'], 'refs/heads/release/'), startsWith(variables['Build.SourceBranch'], 'refs/heads/internal/release/')) }}:
     value: true
   ${{ else }}:
     value: false
