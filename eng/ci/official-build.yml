@@ -80,12 +80,12 @@ extends:
       - template: /eng/ci/templates/official/jobs/build-artifacts-windows.yml@self
       - template: /eng/ci/templates/official/jobs/build-artifacts-linux.yml@self
 
-    - stage: Test
-      # tests are always ran for official branches
-      condition: ${{ if or(eq(variables.OfficialBranch, true), eq(parameters.runTests, true)) }}
-      dependsOn: ''
+    # tests are always ran for official branches
+    - ${{ if or(eq(variables.OfficialBranch, true), eq(parameters.runTests, true)) }}:
+      - stage: Test
+        dependsOn: ''
 
-      jobs:
-      - template: /eng/ci/templates/jobs/run-unit-tests.yml@self
-      - template: /eng/ci/templates/official/jobs/run-non-e2e-tests.yml@self
-      - template: /eng/ci/templates/official/jobs/run-integration-tests.yml@self
+        jobs:
+        - template: /eng/ci/templates/jobs/run-unit-tests.yml@self
+        - template: /eng/ci/templates/official/jobs/run-non-e2e-tests.yml@self
+        - template: /eng/ci/templates/official/jobs/run-integration-tests.yml@self
