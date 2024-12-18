@@ -82,7 +82,7 @@ extends:
 
     - stage: Test
       # tests are always ran for official branches
-      condition: or(eq(variables.OfficialBranch, true), ${{ if eq(parameters.runTests, true) }})
+      condition: ${{ if or(eq(variables.OfficialBranch, true), eq(parameters.runTests, true)) }}
       dependsOn: ''
 
       jobs:
