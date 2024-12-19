@@ -1071,7 +1071,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 case ParameterBindingType.None:
                     return null;
                 default:
-                    throw new InvalidOperationException("Unknown ParameterBindingType");
+                    throw new InvalidOperationException($"Unknown ParameterBindingType of type {binding.RpcDataCase}");
             }
         }
 
