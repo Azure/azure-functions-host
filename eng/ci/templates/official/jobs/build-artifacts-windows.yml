@@ -46,12 +46,6 @@ jobs:
   - template: /eng/ci/templates/install-dotnet.yml@self
   - template: /eng/ci/templates/steps/build-site-ext.yml@self
 
-  # TODO: Keeping in-proc branch building OOP site extension for now, will remove eventually.
-  - template: /eng/ci/templates/steps/build-site-ext.yml@self
-    parameters:
-      extraBuildArgs: -f net6.0 -p:SuppressMinorVersionPrefix=true -p:SiteExtensionName=Functions -p:ShouldWriteHardLinkHashes=true
-      binlogPrefix: site_ext_oop
-
   - task: DotNetCoreCLI@2
     displayName: Build host packages
     inputs:
