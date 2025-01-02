@@ -20,6 +20,7 @@ scenarios:
     application:
       job: functionsServer
       environmentVariables:
+        FUNCTIONS_WORKER_RUNTIME: "{{ FunctionsWorkerRuntime }}"
         AzureWebJobsScriptRoot: "{{ FunctionAppPath }}"
         ASPNETCORE_URLS: "{{ AspNetUrls }}"
     load:

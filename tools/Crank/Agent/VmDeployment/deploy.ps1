@@ -35,19 +35,16 @@ param (
 
 $ErrorActionPreference = 'Stop'
 
-$NamePostfixes | ForEach-Object -Parallel {
-    & "$using:PSScriptRoot/deploy-vm.ps1" `
-        -SubscriptionName $using:SubscriptionName `
-        -BaseName $using:BaseName `
-        -NamePostfix $_ `
-        -OsType $using:OsType `
-        -Docker:$using:Docker `
-        -VmSize $using:VmSize `
-        -OsDiskType $using:OsDiskType `
-        -Location $using:Location `
-        -UserName $using:UserName `
-        -Verbose:$using:VerbosePreference
-}
+& "$PSScriptRoot/deploy-vm.ps1" `
+    -SubscriptionName $SubscriptionName `
+    -BaseName $BaseName `
+    -NamePostfixes $NamePostfixes `
+    -OsType $OsType `
+    -VmSize $VmSize `
+    -OsDiskType $OsDiskType `
+    -Location $Location `
+    -UserName $UserName `
+    -Verbose:$VerbosePreference
 
 # TODO: remove this warning when app deployment is automated
 $appPath = if ($OsType -eq 'Linux') { "/home/$UserName/FunctionApps" } else { 'C:\FunctionApps' }

@@ -2,7 +2,7 @@
 
 [CmdletBinding()]
 param (
-    [bool]$InstallDotNet = $true,
+    [bool]$InstallDotNet = $false,
     [bool]$InstallCrankAgent = $true,
     [string]$CrankBranch,
     [bool]$Docker = $false,
@@ -12,22 +12,6 @@ param (
 $ErrorActionPreference = 'Stop'
 
 #region Utilities
-
-function InstallDotNet {
-    Write-Verbose 'Installing dotnet...'
-    if ($IsWindows) {
-        Invoke-WebRequest 'https://raw.githubusercontent.com/dotnet/cli/master/scripts/obtain/dotnet-install.ps1' -OutFile 'dotnet-install.ps1'
-        $dotnetInstallDir = "$env:ProgramFiles\dotnet"
-        ./dotnet-install.ps1 -InstallDir $dotnetInstallDir
-        [Environment]::SetEnvironmentVariable("Path", $env:Path + ";$dotnetInstallDir\;", 'Machine')
-    } else {
-        # From https://docs.microsoft.com/dotnet/core/install/linux-ubuntu#install-the-sdk
-        sudo apt-get update
-        sudo apt-get install -y apt-transport-https
-        sudo apt-get update
-        sudo apt-get install -y dotnet-sdk-3.1
-    }
-}
 
 function BuildCrankAgent($CrankRepoPath) {
     Push-Location $CrankRepoPath
@@ -51,6 +35,9 @@ function GetDotNetToolsLocationArgs {
 }
 
 function InstallCrankAgentTool($LocalPackageSource) {
+
+    Write-Verbose 'Installing crank-agent tool...'
+
     Write-Verbose 'Stopping crank-agent...'
 
     $crankAgentProcessName = 'crank-agent'
@@ -68,7 +55,7 @@ function InstallCrankAgentTool($LocalPackageSource) {
 
     $installArgs =
         'tool', 'install', 'Microsoft.Crank.Agent',
-        '--version', '0.1.0-*'
+        '--version', '0.2.0-*'
 
     $installArgs += GetDotNetToolsLocationArgs
 
@@ -105,9 +92,8 @@ function CloneCrankRepo {
 }
 
 function InstallCrankAgent {
-    $crankRepoPath = CloneCrankRepo
-
     if ($Docker) {
+        $crankRepoPath = CloneCrankRepo
         Push-Location $crankRepoPath/docker/agent
         try {
             # Build the docker-agent image
@@ -120,18 +106,47 @@ function InstallCrankAgent {
             Pop-Location
         }
     } else {
-        if ($CrankBranch) {
-            $packagesDirectory = BuildCrankAgent -CrankRepoPath $crankRepoPath
-            InstallCrankAgentTool -LocalPackageSource $packagesDirectory
-        } else {
-            InstallCrankAgentTool
-        }
+        InstallCrankAgentTool        
     }
 
     if ($IsWindows) {
         New-NetFirewallRule -DisplayName 'Crank Agent' -Group 'Crank' -LocalPort 5010 -Protocol TCP -Direction Inbound -Action Allow | Out-Null
         New-NetFirewallRule -DisplayName 'Crank App & Load (inbound)' -Group 'Crank' -LocalPort 5000 -Protocol TCP -Direction Inbound -Action Allow | Out-Null
         New-NetFirewallRule -DisplayName 'Crank App & Load (outbound)' -Group 'Crank' -LocalPort 5000 -Protocol TCP -Direction Outbound -Action Allow | Out-Null
+    }
+}
+
+function ScheduleCrankAgentAsWindowsService {
+    param (
+        [string]$ServiceName = "CrankAgentService"
+    )
+
+    $logPath = "C:\crank-agent-logs"
+    $binPath = "`"C:\dotnet-tools\crank-agent.exe`" --service --log-path=$logPath"
+
+    try {
+        # Create the log directory if it doesn't exist
+        if (-not (Test-Path -Path $logPath)) {
+            New-Item -Path $logPath -ItemType Directory
+        }
+
+        # Disable real-time monitoring and exclude crank-agent.exe, functions host from Defender scans
+        Set-MpPreference -DisableRealtimeMonitoring $true
+        Add-MpPreference -ExclusionProcess 'crank-agent.exe'
+        Add-MpPreference -ExclusionProcess 'Microsoft.Azure.WebJobs.Script.WebHost.exe'
+
+        # Create the service
+        sc.exe create $ServiceName binpath= $binPath
+        sc.exe config $ServiceName start= auto
+
+        # Verify the service creation
+        sc.exe qc $ServiceName
+
+        # Start the service
+        sc.exe start $ServiceName
+        Write-Host "Service '$ServiceName' started successfully."
+    } catch {
+        Write-Error "An error occurred while creating, querying, or starting the service: $_"
     }
 }
 
@@ -191,7 +206,7 @@ function ScheduleCrankAgentStart {
         $scriptPath = Join-Path -Path (Split-Path $PSCommandPath -Parent) -ChildPath 'run-crank-agent.ps1'
 
         if ($IsWindows) {
-            ScheduleCrankAgentStartWindows -RunScriptPath $scriptPath -Credential $WindowsLocalAdmin
+            ScheduleCrankAgentAsWindowsService
         } else {
             ScheduleCrankAgentStartLinux -RunScriptPath $scriptPath
         }
@@ -216,7 +231,6 @@ function InstallDocker {
 Write-Verbose "WindowsLocalAdmin: '$($WindowsLocalAdmin.UserName)'"
 
 if ($Docker) { InstallDocker }
-if ($InstallDotNet) { InstallDotNet }
 if ($InstallCrankAgent) { InstallCrankAgent }
 ScheduleCrankAgentStart
 

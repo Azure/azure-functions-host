@@ -14,7 +14,10 @@ param(
     $Scenario = 'http',
 
     [string]
-    $FunctionApp = 'HelloApp',
+    $FunctionApp = 'HelloHttpNet9',
+
+    [string]
+    $FunctionsWorkerRuntime = 'dotnet-isolated',
 
     [string]
     $InvokeCrankCommand,
@@ -32,7 +35,7 @@ param(
     $Trace = $false,
 
     [int]
-    $Duration = 15,
+    $Duration = 30,
 
     [int]
     $Warmup = 15,
@@ -46,7 +49,7 @@ $ErrorActionPreference = 'Stop'
 #region Utilities
 
 function InstallCrankController {
-    dotnet tool install -g Microsoft.Crank.Controller --version "0.1.0-*"
+    dotnet tool install -g Microsoft.Crank.Controller --version "0.2.0-*"
 }
 
 function UninstallCrankController {
@@ -81,7 +84,9 @@ $homePath = if ($isLinuxApp) { "/home/$UserName/FunctionApps/$FunctionApp" } els
 $functionAppPath = if ($isLinuxApp) { "/home/$UserName/FunctionApps/$FunctionApp/site/wwwroot" } else { "C:\FunctionApps\$FunctionApp\site\wwwroot" }
 $tmpLogPath = if ($isLinuxApp) { "/tmp/functions/log" } else { 'C:\Temp\Functions\Log' }
 
-$aspNetUrls = "http://$($CrankAgentAppVm):5000"
+$crankAgentAppPrivateDnsName = $CrankAgentAppVm.Split('.')[0]
+
+$aspNetUrls = "http://$($crankAgentAppPrivateDnsName):5000"
 $profileName = "default"
 
 $patchedConfigFile = New-TemporaryFile |
@@ -91,7 +96,7 @@ try {
     # This is a temporary hack to work around a Crank issue: variables are not expanded in some contexts.
     # So, we patch the config file with the required data.
     Get-Content -Path $crankConfigPath |
-        ForEach-Object { $_ -replace 'serverUri: http://{{ CrankAgentAppVm }}', "serverUri: http://$CrankAgentAppVm" } |
+        ForEach-Object { $_ -replace 'serverUri: http://{{ CrankAgentAppVm }}', "serverUri: http://$crankAgentAppPrivateDnsName" } |
         Out-File -FilePath $patchedConfigFile.FullName
 
     $crankArgs =
@@ -104,6 +109,7 @@ try {
         '--variable', "CrankAgentAppVm=$CrankAgentAppVm",
         '--variable', "CrankAgentLoadVm=$CrankAgentLoadVm",
         '--variable', "FunctionAppPath=`"$functionAppPath`"",
+        '--variable', "FunctionsWorkerRuntime=`"$FunctionsWorkerRuntime`"",
         '--variable', "HomePath=`"$homePath`"",
         '--variable', "TempLogPath=`"$tmpLogPath`"",
         '--variable', "BranchOrCommit=$BranchOrCommit",
@@ -116,7 +122,7 @@ try {
     }
 
     if ($WriteResultsToDatabase) {
-        Set-AzContext -Subscription 'Antares-Demo' > $null
+        Set-AzContext -Subscription 'Functions Build Infra' > $null
         $sqlPassword = (Get-AzKeyVaultSecret -vaultName 'functions-crank-kv' -name 'SqlAdminPassword').SecretValueText
 
         $sqlConnectionString = "Server=tcp:functions-crank-sql.database.windows.net,1433;Initial Catalog=functions-crank-db;Persist Security Info=False;User ID=Functions;Password=$sqlPassword;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
@@ -129,6 +135,9 @@ try {
         $crankArgs += '--iterations', $Iterations
         $crankArgs += '--display-iterations'
     }
+
+    # Print the command being executed
+    Write-Host "Executing command: $InvokeCrankCommand $($crankArgs -join ' ')"
 
     & $InvokeCrankCommand $crankArgs 2>&1 | Tee-Object -Variable crankOutput
 } finally {
