@@ -3,8 +3,8 @@
 
 using System;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Diagnostics.Tracing;
+using System.Linq;
 using Azure.Monitor.OpenTelemetry.Exporter;
 using Azure.Monitor.OpenTelemetry.LiveMetrics;
 using Microsoft.Extensions.Configuration;
@@ -20,14 +20,24 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
 {
     internal static class OpenTelemetryConfigurationExtensions
     {
+        private static readonly string[] ExcludedRequestSubstrings =
+        [
+            "azure-webjobs-hosts",
+            "azureFunctionsRpcMessages"
+        ];
+
         internal static void ConfigureOpenTelemetry(this ILoggingBuilder loggingBuilder, HostBuilderContext context)
         {
-            string azMonConnectionString = GetConfigurationValue(EnvironmentSettingNames.AppInsightsConnectionString, context.Configuration);
-            bool enableOtlp = false;
-            if (!string.IsNullOrEmpty(GetConfigurationValue(EnvironmentSettingNames.OtlpEndpoint, context.Configuration)))
-            {
-                enableOtlp = true;
-            }
+            bool isPlaceholderMode = SystemEnvironment.Instance.IsPlaceholderModeEnabled();
+
+            // Initializing AppInsights and OTel services during placeholder mode as well to avoid the cost of JITting these objects during specialization.
+            // Azure Monitor Exporter requires a connection string to be initialized. Use placeholder connection string.
+            string azMonConnectionString = isPlaceholderMode
+                ? "InstrumentationKey=00000000-0000-0000-0000-000000000000;"
+                : GetConfigurationValue(EnvironmentSettingNames.AppInsightsConnectionString, context.Configuration);
+
+            bool enableOtlp = isPlaceholderMode ||
+                              !string.IsNullOrEmpty(GetConfigurationValue(EnvironmentSettingNames.OtlpEndpoint, context.Configuration));
 
             loggingBuilder
                 .AddOpenTelemetry(o =>
@@ -65,11 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
                     b.AddAspNetCoreInstrumentation();
                     b.AddHttpClientInstrumentation(o =>
                     {
-                        o.FilterHttpRequestMessage = _ =>
-                        {
-                            Activity activity = Activity.Current?.Parent;
-                            return (activity == null || !activity.Source.Name.Equals("Azure.Core.Http")) ? true : false;
-                        };
+                        o.FilterHttpRequestMessage = (httpRequestMessage) => httpRequestMessage.RequestUri?.AbsoluteUri is string uri && !ExcludedRequestSubstrings.Any(uri.Contains);
                     });
                     if (enableOtlp)
                     {

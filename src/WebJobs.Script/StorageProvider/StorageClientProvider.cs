@@ -59,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         protected virtual TClient CreateClient(IConfiguration configuration, TokenCredential tokenCredential, TClientOptions options)
-        {
+        {            
             return (TClient)_componentFactory.CreateClient(typeof(TClient), configuration, tokenCredential, options);
         }
 
@@ -76,6 +76,9 @@ namespace Microsoft.Azure.WebJobs.Script
         private TClientOptions CreateClientOptions(IConfiguration configuration)
         {
             var clientOptions = (TClientOptions)_componentFactory.CreateClientOptions(typeof(TClientOptions), null, configuration);
+
+            // Disable distributed tracing by default to reduce the noise in the traces.
+            clientOptions.Diagnostics.IsDistributedTracingEnabled = false;
             return clientOptions;
         }
     }

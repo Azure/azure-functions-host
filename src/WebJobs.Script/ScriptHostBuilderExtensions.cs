@@ -419,20 +419,9 @@ namespace Microsoft.Azure.WebJobs.Script
 
         internal static void ConfigureTelemetry(this ILoggingBuilder loggingBuilder, HostBuilderContext context)
         {
-            TelemetryMode mode;
-            var telemetryModeSection = context.Configuration.GetSection(ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, ConfigurationSectionNames.TelemetryMode));
-            if (telemetryModeSection.Exists() && Enum.TryParse(telemetryModeSection.Value, true, out TelemetryMode telemetryMode))
-            {
-                mode = telemetryMode;
-            }
-            else
-            {
-                // Default to ApplicationInsights.
-                mode = TelemetryMode.ApplicationInsights;
-            }
+            var telemetryMode = GetTelemetryMode(context);
 
-            // Use switch statement so any change to the enum results in a build error if we don't handle it.
-            switch (mode)
+            switch (telemetryMode)
             {
                 case TelemetryMode.ApplicationInsights:
                 case TelemetryMode.None:
@@ -441,16 +430,23 @@ namespace Microsoft.Azure.WebJobs.Script
                 case TelemetryMode.OpenTelemetry:
                     loggingBuilder.ConfigureOpenTelemetry(context);
                     break;
+                case TelemetryMode.Placeholder:
+                    loggingBuilder.ConfigureApplicationInsights(context);
+                    loggingBuilder.ConfigureOpenTelemetry(context);
+                    break;
             }
         }
 
         internal static void ConfigureApplicationInsights(this ILoggingBuilder builder, HostBuilderContext context)
         {
             string appInsightsInstrumentationKey = GetConfigurationValue(EnvironmentSettingNames.AppInsightsInstrumentationKey, context.Configuration);
-            string appInsightsConnectionString = GetConfigurationValue(EnvironmentSettingNames.AppInsightsConnectionString, context.Configuration);
 
-            // Initializing AppInsights services during placeholder mode as well to avoid the cost of JITting these objects during specialization
-            if (!string.IsNullOrEmpty(appInsightsInstrumentationKey) || !string.IsNullOrEmpty(appInsightsConnectionString) || SystemEnvironment.Instance.IsPlaceholderModeEnabled())
+            // Initializing AppInsights services during placeholder mode as well to avoid the cost of JITting these objects during specialization.
+            // Use placeholder connection.
+            string appInsightsConnectionString = SystemEnvironment.Instance.IsPlaceholderModeEnabled() ? "InstrumentationKey=00000000-0000-0000-0000-000000000000;"
+                : GetConfigurationValue(EnvironmentSettingNames.AppInsightsConnectionString, context.Configuration);
+
+            if (!string.IsNullOrEmpty(appInsightsInstrumentationKey) || !string.IsNullOrEmpty(appInsightsConnectionString))
             {
                 string eventLogLevel = GetConfigurationValue(EnvironmentSettingNames.AppInsightsEventListenerLogLevel, context.Configuration);
                 string authString = GetConfigurationValue(EnvironmentSettingNames.AppInsightsAuthenticationString, context.Configuration);
@@ -615,6 +611,25 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 return null;
             }
+        }
+
+        private static TelemetryMode GetTelemetryMode(HostBuilderContext context)
+        {
+            var telemetryModeSection = context.Configuration.GetSection(ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, ConfigurationSectionNames.TelemetryMode));
+
+            if (telemetryModeSection.Exists() && Enum.TryParse(telemetryModeSection.Value, true, out TelemetryMode telemetryMode))
+            {
+                return telemetryMode;
+            }
+
+            if (SystemEnvironment.Instance.IsPlaceholderModeEnabled())
+            {
+                // Initialize AppInsights SDK and OTel services during placeholder mode to avoid JIT cost during specialization.
+                return TelemetryMode.Placeholder;
+            }
+
+            // Default to ApplicationInsights.
+            return TelemetryMode.ApplicationInsights;
         }
     }
 }
