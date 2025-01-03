@@ -183,7 +183,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
                 }
                 catch (Exception ex)
                 {
-                    logger.LogError($"Failed to write certificate validation token: { ex.Message}");
+                    logger.LogError($"Failed to write certificate validation token: {ex.Message}");
                 }
             }
         }
