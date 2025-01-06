@@ -1,0 +1,33 @@
+<Project>
+
+  <!--
+    Release.targets: targets relating to the release integrity of our product.
+    - Nuget packaging targets
+    - Versioning targets
+  -->
+
+  <PropertyGroup>
+    <BeforePack>$(BeforePack);GetReleaseNotes;AddTagToReleaseNotes</BeforePack>
+  </PropertyGroup>
+
+  <!-- This target lets us define a release notes file per package. -->
+  <Target Name="GetReleaseNotes" Condition="'$(PackageReleaseNotes)' == '' and Exists('$(ReleaseNotesFile)')">
+    <PropertyGroup>
+      <PackageReleaseNotes>$([System.IO.File]::ReadAllText('$(ReleaseNotesFile)'))</PackageReleaseNotes>
+    </PropertyGroup>
+  </Target>
+
+  <Target Name="AddTagToReleaseNotes" Condition="'$(PublicRelease)' == 'true'">
+    <PropertyGroup>
+      <PublicReleaseTag Condition="'$(PublicReleaseTag)' == ''">v$(Version)</PublicReleaseTag>
+      <PackageReleaseNotes>
+See $(RepositoryUrl)/releases/tag/$(PublicReleaseTag)
+
+$(PackageReleaseNotes)
+      </PackageReleaseNotes>
+    </PropertyGroup>
+  </Target>
+
+  <Import Project="$(MSBuildThisFileDirectory)Version.targets" />
+
+</Project>

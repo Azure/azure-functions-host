@@ -1546,6 +1546,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             }
         }
 
+        [Fact]
+        public async Task NullOutputBinding_DoesNotThrow()
+        {
+            await CreateDefaultWorkerChannel();
+
+            var invocationId = Guid.NewGuid();
+            var resultSource = new TaskCompletionSource<ScriptInvocationResult>();
+            ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(invocationId, resultSource, logger: _logger);
+            await _workerChannel.SendInvocationRequest(scriptInvocationContext);
+            await _workerChannel.InvokeResponse(BuildSuccessfulInvocationResponseWithNullOutputBinding(invocationId.ToString()));
+
+            Assert.Equal(TaskStatus.RanToCompletion, resultSource.Task.Status);
+        }
+
         private static IEnumerable<FunctionMetadata> GetTestFunctionsList(string runtime, bool addWorkerProperties = false)
         {
             return GetTestFunctionsList(runtime, numberOfFunctions: 2, addWorkerProperties);
@@ -1688,6 +1702,30 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                     Status = StatusResult.Types.Status.Success
                 },
             };
+        }
+
+        private InvocationResponse BuildSuccessfulInvocationResponseWithNullOutputBinding(string invocationId)
+        {
+            StatusResult statusResult = new StatusResult()
+            {
+                Status = StatusResult.Types.Status.Success
+            };
+
+            ParameterBinding parameterBinding = new ParameterBinding()
+            {
+                Name = "output1",
+                Data = null
+            };
+
+            InvocationResponse invocationResponse = new InvocationResponse()
+            {
+                InvocationId = invocationId == null ? "TestInvocationId" : invocationId,
+                Result = statusResult
+            };
+
+            invocationResponse.OutputData.Add(parameterBinding);
+
+            return invocationResponse;
         }
 
         private static FunctionMetadata BuildFunctionMetadataForHttpTrigger(string name, string language = null)
