@@ -171,6 +171,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
 
         public void WriteCertificateValidationToken(ILogger logger)
         {
+            logger.LogError($"CertificateValidationToken from Antares: {CertificateValidationToken.Substring(0,5)}");
+
+            logger.LogError($"CertificateValidationToken path: {System.IO.Path.GetFullPath(System.IO.Directory.GetCurrentDirectory())}");
+
             if (!string.IsNullOrEmpty(CertificateValidationToken))
             {
                 try
@@ -180,6 +184,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
                         System.IO.Directory.CreateDirectory("/tmp");
                     }
                     System.IO.File.WriteAllText("/tmp/domainvalidation", CertificateValidationToken);
+
+                    logger.LogError($"CertificateValidationToken stored: {CertificateValidationToken.Substring(0, 5)}");
                 }
                 catch (Exception ex)
                 {
