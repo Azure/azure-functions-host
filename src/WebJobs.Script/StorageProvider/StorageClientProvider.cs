@@ -59,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         protected virtual TClient CreateClient(IConfiguration configuration, TokenCredential tokenCredential, TClientOptions options)
-        {            
+        {
             return (TClient)_componentFactory.CreateClient(typeof(TClient), configuration, tokenCredential, options);
         }
 
