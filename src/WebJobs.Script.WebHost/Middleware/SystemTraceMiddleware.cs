@@ -35,25 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             string userAgent = context.Request.GetHeaderValueOrDefault("User-Agent");
             _logger.ExecutingHttpRequest(requestId, context.Request.Method, userAgent, context.Request.Path);
 
-            try
-            {
-                await _next.Invoke(context);
-
-                if (context.RequestAborted.IsCancellationRequested && !context.Response.HasStarted)
-                {
-                    _logger.RequestAborted(requestId);
-                    context.Response.StatusCode = StatusCodes.Status499ClientClosedRequest;
-                }
-            }
-            catch (Exception ex) when ((ex is OperationCanceledException || ex is IOException) && context.RequestAborted.IsCancellationRequested)
-            {
-                _logger.RequestAborted(requestId);
-
-                if (!context.Response.HasStarted)
-                {
-                    context.Response.StatusCode = StatusCodes.Status499ClientClosedRequest;
-                }
-            }
+            await _next.Invoke(context);
 
             string identities = GetIdentities(context);
             _logger.ExecutedHttpRequest(requestId, identities, context.Response.StatusCode, (long)sw.GetElapsedTime().TotalMilliseconds);
