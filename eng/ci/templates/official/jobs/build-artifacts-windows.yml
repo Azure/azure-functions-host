@@ -53,12 +53,11 @@ jobs:
         **/WebJobs.Script.Grpc.csproj
 
   - task: DotNetCoreCLI@2
-    displayName: Build Abstractions and ExtensionsMetadataGenerator
+    displayName: Build Abstractions
     inputs:
       command: build
       arguments: '-c release'
       projects: |
-        **/ExtensionsMetadataGenerator.csproj
         **/WebJobs.Script.Abstractions.csproj
 
   - template: ci/sign-files.yml@eng
@@ -76,22 +75,6 @@ jobs:
       arguments: '--no-build -c release -o $(nuget_package_path)'
       projects: |
         **/WebJobs.Script.Abstractions.csproj
-
-  - template: ci/sign-files.yml@eng
-    parameters:
-      displayName: Sign ExtensionsMetadataGenerator assemblies
-      folderPath: out/bin/ExtensionsMetadataGenerator
-      pattern: Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator*.dll
-      signType: dll-strong-name
-
-  - task: DotNetCoreCLI@2
-    displayName: Pack ExtensionsMetadataGenerator
-    inputs:
-      command: custom
-      custom: pack
-      arguments: '--no-build -c release -o $(nuget_package_path)'
-      projects: |
-        **/ExtensionsMetadataGenerator.csproj
 
   - template: ci/sign-files.yml@eng
     parameters:
