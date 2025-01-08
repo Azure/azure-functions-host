@@ -28,16 +28,22 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
 
         internal static void ConfigureOpenTelemetry(this ILoggingBuilder loggingBuilder, HostBuilderContext context)
         {
+            // Initializing OTel services during placeholder mode as well to avoid the cost of JITting these objects during specialization.
             bool isPlaceholderMode = SystemEnvironment.Instance.IsPlaceholderModeEnabled();
+            bool enableOtlp = isPlaceholderMode ||
+                             !string.IsNullOrEmpty(GetConfigurationValue(EnvironmentSettingNames.OtlpEndpoint, context.Configuration));
 
-            // Initializing AppInsights and OTel services during placeholder mode as well to avoid the cost of JITting these objects during specialization.
-            // Azure Monitor Exporter requires a connection string to be initialized. Use placeholder connection string.
+            // Azure Monitor Exporter requires a connection string to be initialized. Use placeholder connection string accordingly.
             string azMonConnectionString = isPlaceholderMode
                 ? "InstrumentationKey=00000000-0000-0000-0000-000000000000;"
                 : GetConfigurationValue(EnvironmentSettingNames.AppInsightsConnectionString, context.Configuration);
+            bool enableAzureMonitor = !string.IsNullOrEmpty(azMonConnectionString);
 
-            bool enableOtlp = isPlaceholderMode ||
-                              !string.IsNullOrEmpty(GetConfigurationValue(EnvironmentSettingNames.OtlpEndpoint, context.Configuration));
+            if (!isPlaceholderMode && !enableOtlp && !enableAzureMonitor)
+            {
+                // Skip OpenTelemetry configuration if OTLP and Azure Monitor are both disabled and not in placeholder mode.
+                return;
+            }
 
             loggingBuilder
                 .AddOpenTelemetry(o =>
@@ -47,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
                     {
                         o.AddOtlpExporter();
                     }
-                    if (!string.IsNullOrEmpty(azMonConnectionString))
+                    if (enableAzureMonitor)
                     {
                         o.AddAzureMonitorLogExporter(options => options.ConnectionString = azMonConnectionString);
                     }
@@ -75,13 +81,29 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
                     b.AddAspNetCoreInstrumentation();
                     b.AddHttpClientInstrumentation(o =>
                     {
-                        o.FilterHttpRequestMessage = (httpRequestMessage) => httpRequestMessage.RequestUri?.AbsoluteUri is string uri && !ExcludedRequestSubstrings.Any(uri.Contains);
+                        o.FilterHttpRequestMessage = static (httpRequestMessage) =>
+                        {
+                            if (httpRequestMessage.RequestUri?.AbsoluteUri is not { Length: > 0 } uri)
+                            {
+                                return false;
+                            }
+
+                            foreach (string substring in ExcludedRequestSubstrings)
+                            {
+                                if (uri.IndexOf(substring, StringComparison.Ordinal) >= 0)
+                                {
+                                    return false;
+                                }
+                            }
+
+                            return true;
+                        };
                     });
                     if (enableOtlp)
                     {
                         b.AddOtlpExporter();
                     }
-                    if (!string.IsNullOrEmpty(azMonConnectionString))
+                    if (enableAzureMonitor)
                     {
                         b.AddAzureMonitorTraceExporter(options => options.ConnectionString = azMonConnectionString);
                         b.AddLiveMetrics(options => options.ConnectionString = azMonConnectionString);
