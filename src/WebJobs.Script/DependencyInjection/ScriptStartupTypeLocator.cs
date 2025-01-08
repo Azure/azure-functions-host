@@ -207,6 +207,12 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
                     if (extensionType == null)
                     {
                         _logger.ScriptStartUpUnableToLoadExtension(startupExtensionName, extensionItem.TypeName);
+
+                        // Log an error if the extension is not loaded and the extension is not a built-in extension, not modifying the existing log.
+                        _logger.ScriptStartUpUnableToLoadExtensionError(startupExtensionName, extensionItem.TypeName);
+
+                        string message = $"The extension '{startupExtensionName}' (Type: '{extensionItem.TypeName}') failed to load. Triggers associated with this extension will not function, though other triggers may still work. This issue suggests that your deployment package was built incorrectly.";
+                        DiagnosticEventLoggerExtensions.LogDiagnosticEventError(_logger, DiagnosticEventConstants.ExtensionsStartupTypesErrorCode, message, DiagnosticEventConstants.ExtensionsStartupTypesHelpLink, new Exception(message));
                         continue;
                     }
 

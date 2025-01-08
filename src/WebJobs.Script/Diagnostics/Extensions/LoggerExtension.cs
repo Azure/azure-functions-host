@@ -45,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
             LoggerMessage.Define<string, string>(LogLevel.Warning,
                 new EventId(306, nameof(ScriptStartUpUnableToLoadExtension)),
                 "Unable to load startup extension '{startupExtensionName}' (Type: '{typeName}'). The type does not exist. Please validate the type and assembly names.");
-
+        
         private static readonly Action<ILogger, string, string, string, Exception> _scriptStartUpTypeIsNotValid =
             LoggerMessage.Define<string, string, string>(LogLevel.Warning,
                 new EventId(307, nameof(ScriptStartUpTypeIsNotValid)),
@@ -193,6 +193,11 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
         new EventId(339, nameof(NoHostJsonFile)),
         "No functions were found. This can occur before you deploy code to your function app or when the host.json file is missing from the most recent deployment. Make sure that your deployment package includes the host.json file in the root of the package. For deployment package requirements, see https://aka.ms/functions-deployment-technologies.");
 
+        private static readonly Action<ILogger, string, string, Exception> _scriptStartUpUnableToLoadExtensionError =
+            LoggerMessage.Define<string, string>(LogLevel.Error,
+                new EventId(340, nameof(ScriptStartUpUnableToLoadExtensionError)),
+                "The extension '{startupExtensionName}' (Type: '{typeName}') failed to load. Triggers associated with this extension will not function, though other triggers may still work. This issue suggests that your deployment package was built incorrectly. For deployment package requirements, see https://aka.ms/functions-deployment-technologies.");
+
         private static readonly Action<ILogger, string, Exception> _publishingMetrics =
             LoggerMessage.Define<string>(LogLevel.Debug, new EventId(338, nameof(PublishingMetrics)), "{metrics}");
 
@@ -249,6 +254,11 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
         public static void ScriptStartUpUnableToLoadExtension(this ILogger logger, string startupExtensionName, string typeName)
         {
             _scriptStartUpUnableToLoadExtension(logger, startupExtensionName, typeName, null);
+        }
+
+        public static void ScriptStartUpUnableToLoadExtensionError(this ILogger logger, string startupExtensionName, string typeName)
+        {
+            _scriptStartUpUnableToLoadExtensionError(logger, startupExtensionName, typeName, null);
         }
 
         public static void ScriptStartUpTypeIsNotValid(this ILogger logger, string typeName, string startupClassName, string startupConfigurationClassName)
