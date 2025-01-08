@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
 using System.Reactive.Linq;
@@ -13,6 +14,7 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script
@@ -244,13 +246,32 @@ namespace Microsoft.Azure.WebJobs.Script
             return validatedMetadata;
         }
 
+        private static BindingMetadata GetBindingMetadataTest(string binding)
+        {
+            // Create a JsonTextReader
+            using (StringReader stringReader = new StringReader(binding))
+            using (JsonTextReader jsonTextReader = new JsonTextReader(stringReader))
+            {
+                // Configure JsonSerializer with DateParseHandling
+                JsonSerializerSettings settings = new JsonSerializerSettings
+                {
+                    DateParseHandling = DateParseHandling.None
+                };
+                JsonSerializer serializer = JsonSerializer.Create(settings);
+
+                // Parse and deserialize the JSON
+                JObject parsedBinding = serializer.Deserialize<JObject>(jsonTextReader);
+                return BindingMetadata.Create(parsedBinding);
+            }
+        }
+
         internal static FunctionMetadata ValidateBindings(IEnumerable<string> rawBindings, FunctionMetadata function)
         {
             HashSet<string> bindingNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             foreach (string binding in rawBindings)
             {
-                var functionBinding = BindingMetadata.Create(JObject.Parse(binding));
+                var functionBinding = GetBindingMetadataTest(binding);
 
                 Utility.ValidateBinding(functionBinding);
 
