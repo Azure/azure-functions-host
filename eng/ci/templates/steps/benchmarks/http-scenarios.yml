@@ -1,5 +1,3 @@
-# Proxy scenarios
-
 parameters:
 - name: arguments
   type: string
