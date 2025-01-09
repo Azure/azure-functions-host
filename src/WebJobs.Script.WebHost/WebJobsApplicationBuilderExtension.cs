@@ -37,6 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             builder.UseMiddleware<ClrOptimizationMiddleware>();
             builder.UseMiddleware<HttpRequestBodySizeMiddleware>();
             builder.UseMiddleware<SystemTraceMiddleware>();
+            builder.UseMiddleware<HandleCancellationMiddleware>();
             builder.UseMiddleware<HostnameFixupMiddleware>();
             if (environment.IsAnyLinuxConsumption() || environment.IsAnyKubernetesEnvironment())
             {

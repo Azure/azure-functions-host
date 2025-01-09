@@ -188,6 +188,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions
                 new EventId(530, nameof(LogHostInitializationSettings)),
                 "{hostInitializationSettings}");
 
+        private static readonly Action<ILogger, string, Exception> _requestAborted =
+            LoggerMessage.Define<string>(
+                LogLevel.Debug,
+                new EventId(531, nameof(RequestAborted)),
+                "The request was aborted by the client (requestId: '{mS_ActivityId}').");
+
         public static void HostStateChanged(this ILogger logger, ScriptHostState previousHostState, ScriptHostState newHostState)
         {
             var newState = newHostState.ToString();
@@ -203,6 +209,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions
         public static void ExecutedHttpRequest(this ILogger logger, string mS_ActivityId, string identities, int statusCode, long duration)
         {
             _executedHttpRequest(logger, mS_ActivityId, identities, statusCode, duration, null);
+        }
+
+        public static void RequestAborted(this ILogger logger, string mS_ActivityId)
+        {
+            _requestAborted(logger, mS_ActivityId, null);
         }
 
         public static void ScriptHostServiceInitCanceledByRuntime(this ILogger logger)

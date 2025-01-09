@@ -8,6 +8,7 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Grpc.Exceptions;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.Logging;
 using Yarp.ReverseProxy.Forwarder;
@@ -20,10 +21,12 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private readonly IHttpForwarder _httpForwarder;
         private readonly HttpMessageInvoker _messageInvoker;
         private readonly ForwarderRequestConfig _forwarderRequestConfig;
+        private readonly ILogger<DefaultHttpProxyService> _logger;
 
         public DefaultHttpProxyService(IHttpForwarder httpForwarder, ILogger<DefaultHttpProxyService> logger)
         {
             _httpForwarder = httpForwarder ?? throw new ArgumentNullException(nameof(httpForwarder));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
             _handler = new SocketsHttpHandler
             {
@@ -56,13 +59,23 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             if (httpProxyTaskResult is not ForwarderError.None)
             {
+                _logger.LogDebug($"The function invocation failed to proxy the request with ForwarderError: {httpProxyTaskResult}");
+
                 Exception forwarderException = null;
                 if (context.TryGetHttpRequest(out HttpRequest request))
                 {
                     forwarderException = request.HttpContext.GetForwarderErrorFeature()?.Exception;
                 }
 
-                throw new InvalidOperationException($"Failed to proxy request with ForwarderError: {httpProxyTaskResult}", forwarderException);
+                if (request.HttpContext.RequestAborted.IsCancellationRequested)
+                {
+                    // Client disconnected, nothing we can do here but inform
+                    _logger.LogInformation("The client disconnected while the function was processing the request.");
+                }
+                else
+                {
+                    throw new HttpForwardingException($"Failed to proxy request with ForwarderError: {httpProxyTaskResult}", forwarderException);
+                }
             }
         }
 

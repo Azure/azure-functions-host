@@ -32,6 +32,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 {
                     return await base.SendAsync(request, cancellationToken);
                 }
+                catch (TaskCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    _logger.LogDebug("Request was canceled. Stopping retries.");
+                    throw new OperationCanceledException(cancellationToken);
+                }
                 catch (HttpRequestException) when (attemptCount < _maxRetries)
                 {
                     currentDelay *= attemptCount;
