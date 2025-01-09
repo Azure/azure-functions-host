@@ -15,6 +15,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
         private readonly ILogger _logger;
         private readonly RequestDelegate _next;
 
+        /// <summary>
+        /// HTTP status code 499. This is an unofficial status code originally defined by Nginx and is commonly used
+        /// in logs when the client has disconnected.
+        /// </summary>
+        public const int Status499ClientClosedRequest = 499;
+
         public HandleCancellationMiddleware(RequestDelegate next, ILogger<HandleCancellationMiddleware> logger)
         {
             _logger = logger;
@@ -31,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
                 if (context.RequestAborted.IsCancellationRequested && !context.Response.HasStarted)
                 {
                     _logger.RequestAborted(requestId);
-                    context.Response.StatusCode = StatusCodes.Status499ClientClosedRequest;
+                    context.Response.StatusCode = Status499ClientClosedRequest;
                 }
             }
             catch (Exception ex) when ((ex is OperationCanceledException || ex is IOException) && context.RequestAborted.IsCancellationRequested)
@@ -40,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
                 if (!context.Response.HasStarted)
                 {
-                    context.Response.StatusCode = StatusCodes.Status499ClientClosedRequest;
+                    context.Response.StatusCode = Status499ClientClosedRequest;
                 }
             }
         }
