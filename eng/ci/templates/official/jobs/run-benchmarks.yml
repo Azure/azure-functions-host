@@ -1,0 +1,121 @@
+parameters:
+- name: functionAppName
+  type: string
+- name: description
+  type: string
+- name: storeResultsInDatabase
+  type: boolean
+  default: false
+- name: additionalCrankArgs
+  type: string
+  default: ''
+
+jobs:
+- job: ${{ parameters.functionAppName }}
+
+  variables:
+    runDescription: ${{ parameters.description }}
+    functionApp: ${{ parameters.functionAppName }}
+    functionAppOutputPath: $(Build.ArtifactStagingDirectory)\FunctionApps\$(functionApp)
+    benchmarkResultsJsonPath: "$(Build.ArtifactStagingDirectory)\\BenchmarkResults\\$(functionApp).json"
+    functionsWorkerRuntime: 'dotnet-isolated'
+    crankAgentUrl: "http://localhost:5010"  # Default crank agent URL.
+
+  templateContext:
+    outputParentDirectory: $(Build.ArtifactStagingDirectory)
+    outputs:
+    - output: pipelineArtifact
+      displayName: Publish benchmark results
+      path: $(benchmarkResultsJsonPath)
+      artifact: 'BenchmarkResults_$(functionApp)'
+
+  steps:
+
+  - checkout: self
+    path: sourcecode/host
+
+  - task: AzureKeyVault@2
+    condition: and(succeeded(), eq('${{ parameters.storeResultsInDatabase }}', true))
+    inputs:
+      azureSubscription:  Azure-Functions-Host-CI-internal
+      KeyVaultName: functions-perf-crank-kv
+      SecretsFilter: BenchmarkResultsSqlConnectionString
+      RunAsPreJob: false
+
+  - task: PowerShell@2
+    condition: and(succeeded(), eq('${{ parameters.storeResultsInDatabase }}', true))
+    displayName: Set environment variables
+    inputs:
+      targetType: 'inline'
+      script: |
+        $env:CRANK_SQL_CONNECTION_STRING = "$(BenchmarkResultsSqlConnectionString)"
+        Write-Host "##vso[task.setvariable variable=CRANK_SQL_CONNECTION_STRING]$env:CRANK_SQL_CONNECTION_STRING"
+
+  - template: /eng/ci/templates/install-dotnet.yml@self
+
+  - task: CopyFiles@2
+    displayName: Copy benchmark app files to temp location
+    inputs:
+      SourceFolder: '$(Build.SourcesDirectory)\tools\Crank\BenchmarkApps\DotNet'
+      Contents: '**/*'
+      TargetFolder: '$(Build.ArtifactStagingDirectory)\BenchmarkApps\DotNet'
+      CleanTargetFolder: true
+
+  - script: dotnet tool install -g Microsoft.Crank.Agent --version "0.2.0-*"
+    displayName: Install Microsoft.Crank.Agent tool
+  - task: PowerShell@2
+    displayName: Start crank-agent
+    inputs:
+      targetType: 'inline'
+      script: |
+        Start-Process powershell -ArgumentList '-NoExit', '-Command', 'crank-agent'
+
+  - task: DotNetCoreCLI@2
+    displayName: Publish $(functionApp) app
+    inputs:
+      command: publish
+      publishWebProjects: false
+      zipAfterPublish: false
+      modifyOutputPath: false
+      projects: '$(Build.ArtifactStagingDirectory)\BenchmarkApps\DotNet\$(functionApp)\HelloHttp.csproj'
+      arguments: -c Release -o $(functionAppOutputPath) -f net9.0
+      workingDirectory: $(Build.ArtifactStagingDirectory)\BenchmarkApps\DotNet\$(functionApp)
+
+  - script: dotnet tool install -g Microsoft.Crank.Controller  --version "0.2.0-*"
+    displayName: Install Microsoft.Crank.Controller 
+
+  - task: PowerShell@2
+    displayName: Run crank-controller
+    inputs:
+      targetType: 'inline'
+      script: |
+        $workerRuntime = "$(functionsWorkerRuntime)"
+        $functionAppOutputPath = "$(functionAppOutputPath)"
+        $configFilePath = ".\..\host\eng\perf\http.benchmarks.yml"
+        $hostLocation = ".\..\..\..\host"
+
+        $crankArgs = "--config  $configFilePath --scenario hellohttp --profile win2022 --load.options.reuseBuild true --description `"$(runDescription)`" --command-line-property --no-metadata --no-measurements --json $(benchmarkResultsJsonPath) --property sourceVersion=$(sourceVersion) --property buildNumber=$(buildNumber) --property buildId=$(buildId) --variable FunctionsWorkerRuntime=$workerRuntime --variable HostLocation=$hostLocation --variable FunctionAppPath=$functionAppOutputPath"
+        if ($env:CRANK_SQL_CONNECTION_STRING) {
+          $crankArgs += " --table HttpBenchmarks --sql CRANK_SQL_CONNECTION_STRING"
+        }
+        $crankArgs += " ${{ parameters.additionalCrankArgs }}"
+        $command = "crank $crankArgs"
+        Write-Host "Running command: $command"
+        Invoke-Expression $command
+
+  - task: PowerShell@2
+    displayName: Output logs
+    inputs:
+      targetType: 'inline'
+      script: |
+        $url = "$(crankAgentUrl)/jobs/1/output"
+        Write-Host "Making GET request to: $url to get logs"
+      
+        try {
+            $response = Invoke-WebRequest -Uri $url -Method GET -UseBasicParsing
+            Write-Host $response.Content
+        } catch {
+            Write-Host "Failed to call the REST API."
+            Write-Host $_.Exception.Message
+            exit 1
+        }
