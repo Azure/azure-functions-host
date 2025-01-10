@@ -7,3 +7,4 @@
 - Updated dotnet-isolated worker to 1.0.12.
   - [Corrected the path for the prelaunch app location.](https://github.com/Azure/azure-functions-dotnet-worker/pull/2897)
   - [Added net9 prelaunch app.](https://github.com/Azure/azure-functions-dotnet-worker/pull/2898)
+- Fix the accidental modification of ISO strings during function metadata binding parsing. This fixes the listener errors related to the CosmosDB trigger's `StartFromTime` parameter. (#10735)
