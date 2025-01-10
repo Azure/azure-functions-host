@@ -30,6 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IScriptHostManager _scriptHostManager;
         private string _workerRuntime;
         private ImmutableArray<FunctionMetadata> _functions;
+        private static JsonSerializerSettings _jsonSerializerSettings = new JsonSerializerSettings { DateParseHandling = DateParseHandling.None };
 
         public WorkerFunctionMetadataProvider(
             IOptionsMonitor<ScriptApplicationHostOptions> scriptOptions,
@@ -246,21 +247,15 @@ namespace Microsoft.Azure.WebJobs.Script
             return validatedMetadata;
         }
 
-        private static BindingMetadata GetBindingMetadataTest(string binding)
+        private static BindingMetadata GetBindingMetadata(string binding)
         {
-            // Create a JsonTextReader
             using (StringReader stringReader = new StringReader(binding))
             using (JsonTextReader jsonTextReader = new JsonTextReader(stringReader))
             {
-                // Configure JsonSerializer with DateParseHandling
-                JsonSerializerSettings settings = new JsonSerializerSettings
-                {
-                    DateParseHandling = DateParseHandling.None
-                };
-                JsonSerializer serializer = JsonSerializer.Create(settings);
+                JsonSerializer serializer = JsonSerializer.Create(_jsonSerializerSettings);
 
-                // Parse and deserialize the JSON
                 JObject parsedBinding = serializer.Deserialize<JObject>(jsonTextReader);
+
                 return BindingMetadata.Create(parsedBinding);
             }
         }
@@ -271,7 +266,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             foreach (string binding in rawBindings)
             {
-                var functionBinding = GetBindingMetadataTest(binding);
+                var functionBinding = GetBindingMetadata(binding);
 
                 Utility.ValidateBinding(functionBinding);
 
