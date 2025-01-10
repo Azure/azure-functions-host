@@ -61,12 +61,13 @@ jobs:
         **/ExtensionsMetadataGenerator.csproj
         **/WebJobs.Script.Abstractions.csproj
 
-  - template: ci/sign-files.yml@eng
-    parameters:
-      displayName: Sign Abstractions assemblies
-      folderPath: out/bin/WebJobs.Script.Abstractions/release
-      pattern: Microsoft.Azure.WebJobs.Script.Abstractions*.dll
-      signType: dll
+  - ${{ if eq(variables.SignFiles, true) }}:
+    - template: ci/sign-files.yml@eng
+      parameters:
+        displayName: Sign Abstractions assemblies
+        folderPath: out/bin/WebJobs.Script.Abstractions/release
+        pattern: Microsoft.Azure.WebJobs.Script.Abstractions*.dll
+        signType: dll
 
   - task: DotNetCoreCLI@2
     displayName: Pack Abstractions
@@ -77,12 +78,13 @@ jobs:
       projects: |
         **/WebJobs.Script.Abstractions.csproj
 
-  - template: ci/sign-files.yml@eng
-    parameters:
-      displayName: Sign ExtensionsMetadataGenerator assemblies
-      folderPath: out/bin/ExtensionsMetadataGenerator
-      pattern: Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator*.dll
-      signType: dll-strong-name
+  - ${{ if eq(variables.SignFiles, true) }}:
+    - template: ci/sign-files.yml@eng
+      parameters:
+        displayName: Sign ExtensionsMetadataGenerator assemblies
+        folderPath: out/bin/ExtensionsMetadataGenerator
+        pattern: Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator*.dll
+        signType: dll-strong-name
 
   - task: DotNetCoreCLI@2
     displayName: Pack ExtensionsMetadataGenerator
@@ -93,19 +95,20 @@ jobs:
       projects: |
         **/ExtensionsMetadataGenerator.csproj
 
-  - template: ci/sign-files.yml@eng
-    parameters:
-      displayName: Sign NugetPackages
-      folderPath: $(nuget_package_path)
-      pattern: '*.nupkg'
-      signType: nuget
+  - ${{ if eq(variables.SignFiles, true) }}:
+    - template: ci/sign-files.yml@eng
+      parameters:
+        displayName: Sign NugetPackages
+        folderPath: $(nuget_package_path)
+        pattern: '*.nupkg'
+        signType: nuget
 
-  - task: DeleteFiles@1
-    displayName: Delete CodeSignSummary files
-    inputs:
-      contents: '**/CodeSignSummary-*.md'
+    - task: DeleteFiles@1
+      displayName: Delete CodeSignSummary files
+      inputs:
+        contents: '**/CodeSignSummary-*.md'
 
-  - task: DeleteFiles@1
-    displayName: Delete CodeSignSummary files
-    inputs:
-      contents: '$(nuget_package_path)/**/CodeSignSummary-*.md'
+    - task: DeleteFiles@1
+      displayName: Delete CodeSignSummary files
+      inputs:
+        contents: '$(nuget_package_path)/**/CodeSignSummary-*.md'

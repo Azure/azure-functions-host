@@ -1,3 +1,17 @@
+parameters:
+- name: forceOfficial # this is used for testing the official CI from non-official branches.
+  displayName: Use official templates for non-official branches
+  type: boolean
+  default: false
+- name: runTests
+  displayName: Run tests (ignored for official branches)
+  type: boolean
+  default: true
+- name: signFiles
+  displayName: Sign files (ignored for official branches)
+  type: boolean
+  default: false
+
 trigger:
   batch: true
   branches:
@@ -34,11 +48,22 @@ resources:
 variables:
 - template: /eng/ci/templates/variables/build.yml@self
 - template: /ci/variables/cfs.yml@eng
-- name: buildNumber
-  value: $[ counter('build', 23000) ] # 23000 selected to be ahead of current host build
+- name: OfficialBranch
+  ${{ if or(eq(variables['Build.SourceBranch'], 'refs/heads/dev'), startsWith(variables['Build.SourceBranch'], 'refs/heads/release/'), startsWith(variables['Build.SourceBranch'], 'refs/heads/internal/release/')) }}:
+    value: true
+  ${{ else }}:
+    value: false
+- name: '1ESTemplate'
+  # force official to be true if an official branch. Otherwise respect the official parameter.
+  ${{ if or(eq(variables.OfficialBranch, true), eq(parameters.forceOfficial, true)) }}:
+    value: 'v1/1ES.Official.PipelineTemplate.yml@1es'
+  ${{ else }}:
+    value: 'v1/1ES.Unofficial.PipelineTemplate.yml@1es'
+- name: SignFiles # variable for access in other templates
+  value: ${{ or(eq(variables.OfficialBranch, true), eq(parameters.signFiles, true)) }}
 
 extends:
-  template: v1/1ES.Official.PipelineTemplate.yml@1es
+  template: ${{ variables['1ESTemplate'] }}
   parameters:
     pool:
       name: 1es-pool-azfunc
@@ -56,7 +81,9 @@ extends:
       - template: /eng/ci/templates/official/jobs/build-artifacts-windows.yml@self
       - template: /eng/ci/templates/official/jobs/build-artifacts-linux.yml@self
 
+    # tests are always ran for official branches
     - stage: Test
+      condition: ${{ or(eq(variables.OfficialBranch, true), eq(parameters.runTests, true)) }}
       dependsOn: ''
 
       jobs:

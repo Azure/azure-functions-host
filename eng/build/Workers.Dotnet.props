@@ -4,11 +4,28 @@
     <PackageReference Include="Microsoft.Azure.Functions.DotNetIsolatedNativeHost" Version="1.0.12" />
   </ItemGroup>
 
-  <Target Name="CleanDotnetWorkerFiles" BeforeTargets="AssignTargetPaths" Condition="$(RuntimeIdentifier.StartsWith(win))">
+  <Target Name="CleanDotnetWorkerFiles" BeforeTargets="AssignTargetPaths" Condition="'$(RuntimeIdentifier)' != ''">
     <!-- Remove unnecessary dotnet isolated files -->
+    <PropertyGroup>
+      <!-- Using Path.Combine to ensure correct dir separator for the OS. -->
+      <_DotnetWorkerBinFolder>$([System.IO.Path]::Combine('workers', 'dotnet-isolated', 'bin'))</_DotnetWorkerBinFolder>
+      <_DotnetWorkerBinFolder>$([MSBuild]::EnsureTrailingSlash($(_DotnetWorkerBinFolder)))</_DotnetWorkerBinFolder>
+      <_DotnetWorkerManifestFolder>$([System.IO.Path]::Combine('$(_DotnetWorkerBinFolder)', 'prelaunchapps', '_manifest', 'spdx_2.2'))</_DotnetWorkerManifestFolder>
+      <_DotnetWorkerManifestFolder>$([MSBuild]::EnsureTrailingSlash($(_DotnetWorkerManifestFolder)))</_DotnetWorkerManifestFolder>
+    </PropertyGroup>
+
     <ItemGroup>
-      <_DotnetWorkerFiles Include="@(None)" Condition="'%(None.DestinationSubDirectory)' == 'workers\dotnet-isolated\bin\'" />
-      <None Remove="@(_DotnetWorkerFiles)" Condition="'%(Extension)' != '.dll' AND '%(Extension)' != '.exe'" />
+      <!-- Get all files from the dotnet worker package. -->
+      <_DotnetWorkerFiles Include="@(None)" Condition="'%(None.NuGetPackageId)' == 'Microsoft.Azure.Functions.DotNetIsolatedNativeHost'" />
+      <!-- Remove 'bin/prelaunchapps/_manifest' folder for all runtimes. -->
+      <_DotnetWorkerToRemove Include="@(_DotnetWorkerFiles)" Condition="'%(DestinationSubDirectory)' == '$(_DotnetWorkerManifestFolder)'" />
+      <!-- Get files immediately under /bin -->
+      <_DotnetWorkerBinFiles Include="@(_DotnetWorkerFiles)" Condition="'%(DestinationSubDirectory)' == '$(_DotnetWorkerBinFolder)'" />
+      <!-- For Windows, remove all non .dll and .exe files -->
+      <_DotnetWorkerToRemove Include="@(_DotnetWorkerBinFiles)" Condition="$(RuntimeIdentifier.StartsWith('win')) AND '%(Extension)' != '.dll' AND '%(Extension)' != '.exe'" />
+      <!-- For Linux, remove all non no-extension and .so files -->
+      <_DotnetWorkerToRemove Include="@(_DotnetWorkerBinFiles)" Condition="$(RuntimeIdentifier.StartsWith('linux')) AND '%(Extension)' != '.so' AND '%(Extension)' != ''" />
+      <None Remove="@(_DotnetWorkerToRemove)" />
     </ItemGroup>
   </Target>
 
