@@ -8,12 +8,8 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
-using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
-using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
-using Microsoft.Extensions.Logging;
 using Moq;
-using NuGet.ContentModel;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -179,6 +175,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("Fetching metadata for workerRuntime: node", traces[0].FormattedMessage);
             Assert.Equal("Reading functions metadata (Worker)", traces[1].FormattedMessage);
             // The third log is Host is running without any initialized channels, restarting the JobHost. This is not relevant to this test.
+        }
+
+        [Fact]
+        public void ValidateFunctionMetadata_IsoStringNotAltered()
+        {
+            FunctionMetadata functionMetadata = new FunctionMetadata();
+            List<string> rawBindings = new List<string>();
+            var isoString = "2025-02-10T22:45:33Z";
+            rawBindings.Add("{\"type\": \"cosmosDBTrigger\",\"name\": \"cosmosTrigger\",\"direction\": \"in\",\"databaseName\":\"databaseName\"," +
+                "\"containerName\":\"containerNameFoo\",\"leaseContainerName\":\"leaseContanerFoo\",\"createLeaseContainerIfNotExists\":true," +
+                "\"connection\":\"CosmosConnection\",\"startFromTime\":\"" + isoString + "\",\"dataType\":\"String\"}");
+
+            var function = WorkerFunctionMetadataProvider.ValidateBindings(rawBindings, functionMetadata);
+            Assert.Equal(isoString, function.Bindings.FirstOrDefault().Raw["startFromTime"].ToString());
         }
     }
 }
