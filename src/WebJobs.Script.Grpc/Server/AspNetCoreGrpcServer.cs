@@ -48,10 +48,10 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             var addressFeature = server?.Features.Get<IServerAddressesFeature>();
             var address = addressFeature?.Addresses.SingleOrDefault();
 
-            if (!Uri.TryCreate(address, UriKind.Absolute, out Uri uri) ||
-                Uri != uri)
+            if (!Uri.TryCreate(address, UriKind.Absolute, out Uri actualUri) ||
+                Uri != actualUri)
             {
-                _logger.LogWarning($"Configured Uri ({Uri}) does not match actual Uri ({uri}).");
+                _logger.LogWarning("Configured Uri ({configuredUri}) does not match actual Uri ({actualUri}).", Uri, actualUri);
             }
 
             _logger.LogDebug($"Started {nameof(AspNetCoreGrpcServer)} on {address}.");

@@ -755,13 +755,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 hisMode = "Strict";
                 _metricsLogger.LogEvent(MetricEventNames.HISStrictModeEnabled);
-                _logger.LogDebug($"HIS Strict mode enabled.");
+                _logger.LogDebug("HIS Strict mode enabled.");
             }
             else if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagStrictHISModeWarn))
             {
                 hisMode = "Warn";
                 _metricsLogger.LogEvent(MetricEventNames.HISStrictModeWarn);
-                _logger.LogDebug($"HIS Warn mode enabled.");
+                _logger.LogDebug("HIS Warn mode enabled.");
             }
 
             logger.LogHostInitializationSettings(_originalFunctionsWorkerRuntime, functionWorkerRuntime, _originalFunctionsWorkerRuntimeVersion, functionWorkerRuntimeVersion,

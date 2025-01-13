@@ -73,7 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
                     if (_functionInvocationDispatcher is HttpFunctionInvocationDispatcher)
                     {
-                        _logger.LogDebug($"Http dynamic worker concurrency is not supported.");
+                        _logger.LogDebug("Http dynamic worker concurrency is not supported.");
                         return Task.CompletedTask;
                     }
                     if (!string.IsNullOrEmpty(_environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerProcessCountSettingName)))
@@ -82,12 +82,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                     }
                     if (_environment.IsWorkerDynamicConcurrencyEnabled())
                     {
-                        _logger.LogDebug($"Dynamic worker concurrency monitoring is starting by app setting.");
+                        _logger.LogDebug("Dynamic worker concurrency monitoring is starting by app setting.");
                         Activate();
                     }
                     else if (_functionsHostingConfigOptionsMonitor.CurrentValue != null && _functionsHostingConfigOptionsMonitor.CurrentValue.FunctionsWorkerDynamicConcurrencyEnabled)
                     {
-                        _logger.LogDebug($"Dynamic worker concurrency monitoring is starting by hosting config.");
+                        _logger.LogDebug("Dynamic worker concurrency monitoring is starting by hosting config.");
                         Activate();
 
                         _hostingConfigOnChange = _functionsHostingConfigOptionsMonitor.OnChange(async (newOptions) =>
@@ -192,7 +192,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 {
                     if (workerStatuses.Count() < _workerConcurrencyOptions.Value.MaxWorkerCount)
                     {
-                        _logger.LogInformation($"A new worker will be added, overloaded workers = {overloadedCount}, initialized workers = {workerStatuses.Count()} ");
+                        _logger.LogInformation("A new worker will be added, overloaded workers = {overloadedWorkerCount}, initialized workers = {initializedWorkerCount} ", overloadedCount, workerStatuses.Count());
                         result = true;
                     }
                 }
@@ -276,7 +276,7 @@ LatencyHistory=({formattedLatencyHistory}), AvgLatency={latencyAvg}, MaxLatency=
             long currentMemoryConsumption = workerChannelSizes.Sum() + hostProcessSize;
             if (currentMemoryConsumption + maxWorkerSize > memoryLimit * 0.8)
             {
-                _logger.LogDebug($"Starting new language worker canceled: TotalMemory={memoryLimit}, MaxWorkerSize={maxWorkerSize}, CurrentMemoryConsumption={currentMemoryConsumption}");
+                _logger.LogDebug("Starting new language worker canceled: TotalMemory={totalMemoryLimit}, MaxWorkerSize={maxWorkerSize}, CurrentMemoryConsumption={currentMemoryConsumption}", memoryLimit, maxWorkerSize, currentMemoryConsumption);
                 return false;
             }
             return true;
@@ -294,7 +294,7 @@ LatencyHistory=({formattedLatencyHistory}), AvgLatency={latencyAvg}, MaxLatency=
             var nonReadyWorkerChannels = workerChannels.Where(x => x.IsChannelReadyForInvocations() == false);
             if (nonReadyWorkerChannels.Any())
             {
-                _logger.LogDebug($"Starting new language worker canceled as there is atleast one non ready channel: TotalChannels={workerChannels.Count()}, NonReadyChannels={nonReadyWorkerChannels.Count()}");
+                _logger.LogDebug("Starting new language worker canceled as there is atleast one non ready channel: TotalChannels={totalChannelWorkerCount}, NonReadyChannels={nonReadyWorkerChannelCount}", workerChannels.Count(), nonReadyWorkerChannels.Count());
                 return false;
             }
 
@@ -302,7 +302,7 @@ LatencyHistory=({formattedLatencyHistory}), AvgLatency={latencyAvg}, MaxLatency=
             int workersCount = workerChannels.Count();
             if (workersCount >= _workerConcurrencyOptions.Value.MaxWorkerCount)
             {
-                _logger.LogDebug($"Starting new language worker canceled as the count of total channels reaches the maximum limit: TotalChannels={workersCount}, MaxWorkerCount={_workerConcurrencyOptions.Value.MaxWorkerCount}");
+                _logger.LogDebug("Starting new language worker canceled as the count of total channels reaches the maximum limit: TotalChannels={currentWorkerCount}, MaxWorkerCount={concurrencyMaxWorkerCount}", workersCount, _workerConcurrencyOptions.Value.MaxWorkerCount);
                 return false;
             }
 
@@ -311,7 +311,7 @@ LatencyHistory=({formattedLatencyHistory}), AvgLatency={latencyAvg}, MaxLatency=
 
         private async Task StopApplication()
         {
-            _logger.LogDebug($"Dynamic worker concurrency monitoring is stopping on hosting config update. Shutting down Functions Host.");
+            _logger.LogDebug("Dynamic worker concurrency monitoring is stopping on hosting config update. Shutting down Functions Host.");
             await _functionInvocationDispatcher.ShutdownAsync();
             _applicationLifetime.StopApplication();
         }

@@ -165,7 +165,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                     while (!_invokerErrors.IsEmpty)
                     {
                         _invokerErrors.TryPop(out HttpWorkerErrorEvent popped);
-                        _logger.LogDebug($"Popping out errorEvent createdAt:{popped.CreatedAt} workerId:{popped.WorkerId}");
+                        _logger.LogDebug("Popping out errorEvent createdAt:{httpWorkerErrorEventCreatedAt} workerId:{httpWorkerErrorEventWorkerId}", popped.CreatedAt, popped.WorkerId);
                     }
                 }
             }

@@ -146,7 +146,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 BinaryData data = BinaryData.FromObjectAsJson(hostIdInfo);
                 await blobClient.UploadAsync(data);
 
-                _logger.LogDebug($"Host ID record written (ID:{hostId}, HostName:{hostIdInfo.Hostname})");
+                _logger.LogDebug("Host ID record written (ID:{hostId}, HostName:{hostName})", hostId, hostIdInfo.Hostname);
             }
             catch (RequestFailedException rfex) when (rfex.Status == 409)
             {

@@ -158,7 +158,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
             string bundlePath = Path.Combine(_options.DownloadPath, version);
             if (FileUtility.FileExists(bundleMetatdataFile))
             {
-                _logger.LogInformation($"Skipping bundle download since it already exists at path {bundlePath}");
+                _logger.LogInformation("Skipping bundle download since it already exists at path {bundlePath}", bundlePath);
                 return bundlePath;
             }
 

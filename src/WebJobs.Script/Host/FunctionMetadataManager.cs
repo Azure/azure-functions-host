@@ -179,7 +179,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             if (functionsAllowList != null)
             {
-                _logger.LogInformation($"A function allow list has been specified, excluding all but the following functions: [{string.Join(", ", functionsAllowList)}]");
+                _logger.LogInformation("A function allow list has been specified, excluding all but the following functions: [{functionsAllowList}]", string.Join(", ", functionsAllowList));
                 Errors = _functionErrors.Where(kvp => functionsAllowList.Any(functionName => functionName.Equals(kvp.Key, StringComparison.CurrentCultureIgnoreCase))).ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray());
             }
 

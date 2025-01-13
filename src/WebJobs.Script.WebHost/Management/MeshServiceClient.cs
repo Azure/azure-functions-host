@@ -60,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         public async Task MountFuse(string type, string filePath, string scriptPath)
         {
-            _logger.LogDebug($"Creating {type} mount from {filePath} to {scriptPath}");
+            _logger.LogDebug("Creating {type} mount from {filePath} to {scriptPath}", type, filePath, scriptPath);
 
             await SendAsync(new[]
             {
@@ -72,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         public async Task PublishContainerActivity(IEnumerable<ContainerFunctionExecutionActivity> activities)
         {
-            _logger.LogDebug($"Publishing {activities.Count()} container activities");
+            _logger.LogDebug("Publishing {activitiesCount} container activities", activities.Count());
 
             try
             {
@@ -99,7 +99,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
             var healthEventString = Serialize(healthEvent);
 
-            _logger.LogInformation($"Posting health event {healthEventString}");
+            _logger.LogInformation("Posting health event {healthEventString}", healthEventString);
 
             var responseMessage = await SendAsync(new[]
             {
@@ -107,12 +107,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 new KeyValuePair<string, string>("healthEvent", healthEventString),
             });
 
-            _logger.LogInformation($"Posted health event status: {responseMessage.StatusCode}");
+            _logger.LogInformation("Posted health event status: {responseMessageStatusCode}", responseMessage.StatusCode);
         }
 
         public async Task CreateBindMount(string sourcePath, string targetPath)
         {
-            _logger.LogDebug($"Creating bind mount from {sourcePath} to {targetPath}");
+            _logger.LogDebug("Creating bind mount from {bindSourcePath} to {bindTargetPath}", sourcePath, targetPath);
 
             var httpResponseMessage = await SendAsync(new[]
             {
@@ -127,7 +127,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private async Task PublishActivities(IEnumerable<ContainerFunctionExecutionActivity> activities)
         {
             // Log one of the activities being published for debugging.
-            _logger.LogDebug($"Publishing function execution activity {activities.FirstOrDefault()}");
+            _logger.LogDebug("Publishing function execution activity {containerFunctionExecutionActivities}", activities.FirstOrDefault());
 
             var operation = new[]
             {
@@ -142,7 +142,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private async Task<HttpResponseMessage> SendAsync(IEnumerable<KeyValuePair<string, string>> formData)
         {
             var operationName = formData.FirstOrDefault(f => string.Equals(f.Key, Operation)).Value;
-            _logger.LogDebug($"Sending mesh request {operationName}");
+            _logger.LogDebug("Sending mesh request {operationName}", operationName);
 
             var request = new HttpRequestMessage(HttpMethod.Post, _environment.GetEnvironmentVariable(EnvironmentSettingNames.MeshInitURI))
             {
@@ -153,7 +153,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
             var res = await _client.SendAsync(request);
 
-            _logger.LogDebug($"Mesh response {res.StatusCode}");
+            _logger.LogDebug("Mesh response {statusCode}", res.StatusCode);
 
             return res;
         }

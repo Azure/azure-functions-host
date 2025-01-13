@@ -72,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         {
             Initialize();
 
-            _logger.LogInformation($"Starting metrics publisher (AlwaysReady={IsAlwaysReady}, MetricsPath='{MetricsFilePath}').");
+            _logger.LogInformation("Starting metrics publisher (AlwaysReady={isAlwaysReady}, MetricsPath='{metricsFilePath}').", IsAlwaysReady, MetricsFilePath);
 
             _metricsPublisherTimer = new Timer(OnFunctionMetricsPublishTimer, null, _initialPublishDelay, _metricPublishInterval);
             _started = true;
@@ -206,7 +206,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
             int numToDelete = files.Count - _options.MaxFileCount + 1;
             var filesToDelete = files.Take(numToDelete).ToArray();
 
-            _logger.LogDebug($"Deleting {filesToDelete.Length} metrics file(s).");
+            _logger.LogDebug("Deleting {filesToDeleteCount} metrics file(s).", filesToDelete.Length);
 
             foreach (var file in filesToDelete)
             {

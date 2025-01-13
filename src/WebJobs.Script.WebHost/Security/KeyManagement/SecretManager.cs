@@ -179,7 +179,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                     try
                     {
-                        _logger.LogDebug($"Loading secrets for function '{functionName}'");
+                        _logger.LogDebug("Loading secrets for function '{functionName}'", functionName);
 
                         FunctionSecrets secrets = await LoadFunctionSecretsAsync(functionName);
 
@@ -794,7 +794,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 if (!string.IsNullOrEmpty(functionName) && _functionSecrets.ContainsKey(functionName))
                 {
-                    _logger.LogInformation($"Function keys change detected. Clearing cache for function '{functionName}'.");
+                    _logger.LogInformation("Function keys change detected. Clearing cache for function '{functionName}'.", functionName);
                     _functionSecrets.TryRemove(functionName, out _);
                 }
                 else if (_functionSecrets.Any())

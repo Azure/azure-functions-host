@@ -61,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script
             if (_storageOptions?.CurrentValue.InternalSasBlobContainer != null)
             {
                 blobContainerClient = new BlobContainerClient(new Uri(_storageOptions.CurrentValue.InternalSasBlobContainer));
-                _logger.LogDebug($"Using storage account {blobContainerClient.AccountName} and container {blobContainerClient.Name} for hosting BlobContainerClient.");
+                _logger.LogDebug("Using storage account {blobAccountName} and container {blobContainerName} for hosting BlobContainerClient.", blobContainerClient.AccountName, blobContainerClient.Name);
                 return true;
             }
 

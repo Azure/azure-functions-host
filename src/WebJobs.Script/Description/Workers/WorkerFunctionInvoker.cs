@@ -123,7 +123,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             if (!IsDispatcherReady())
             {
-                _logger.LogTrace($"FunctionDispatcher state: {_functionDispatcher.State}");
+                _logger.LogTrace("FunctionDispatcher state: {state}", _functionDispatcher.State);
                 bool result = await Utility.DelayAsync((_functionDispatcher.ErrorEventsThreshold + 1) * (int)_workerInitializationTimeout.TotalSeconds, WorkerConstants.WorkerReadyCheckPollingIntervalMilliseconds, () =>
                 {
                     return _functionDispatcher.State != FunctionInvocationDispatcherState.Initialized;
@@ -131,7 +131,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
                 if (result)
                 {
-                    _logger.LogError($"Final functionDispatcher state: {_functionDispatcher.State}. Initialization timed out and host is shutting down");
+                    _logger.LogError("Final functionDispatcher state: {finalState}. Initialization timed out and host is shutting down", _functionDispatcher.State);
                     _applicationLifetime.StopApplication();
                 }
             }

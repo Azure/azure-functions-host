@@ -253,7 +253,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             cancellationToken.ThrowIfCancellationRequested();
 
             var placeholderModeEnabled = _environment.IsPlaceholderModeEnabled();
-            _logger.LogDebug($"Placeholder mode is enabled: {placeholderModeEnabled}");
+            _logger.LogDebug("Placeholder mode is enabled: {placeholderModeEnabled}", placeholderModeEnabled);
 
             if (placeholderModeEnabled)
             {
@@ -289,7 +289,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 // Only throw if workerConfig is null AND some functions have been found.
                 // With .NET out-of-proc, worker config comes from functions.
                 var allLanguageNamesFromWorkerConfigs = string.Join(",", _workerConfigs.Select(c => c.Description.Language));
-                _logger.LogDebug($"Languages present in WorkerConfig: {allLanguageNamesFromWorkerConfigs}");
+                _logger.LogDebug("Languages present in WorkerConfig: {allLanguageNamesFromWorkerConfigs}, allLanguageNamesFromWorkerConfigs");
 
                 throw new InvalidOperationException($"WorkerConfig for runtime: {_workerRuntime} not found");
             }
@@ -365,7 +365,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public async Task<IDictionary<string, WorkerStatus>> GetWorkerStatusesAsync()
         {
             var workerChannels = (await GetInitializedWorkerChannelsAsync()).ToArray();
-            _logger.LogDebug($"[HostMonitor] Checking worker statuses (Count={workerChannels.Length})");
+            _logger.LogDebug("[HostMonitor] Checking worker statuses (Count={currentWorkerChannelCount})", workerChannels.Length);
 
             // invoke the requests to each channel in parallel
             var workerStatuses = new Dictionary<string, WorkerStatus>(StringComparer.OrdinalIgnoreCase);
@@ -381,7 +381,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             {
                 var workerChannel = workerChannels[i];
                 var workerStatus = tasks[i].Result;
-                _logger.LogDebug($"[HostMonitor] Worker status: ID={workerChannel.Id}, Latency={Math.Round(workerStatus.Latency.TotalMilliseconds)}ms");
+                _logger.LogDebug("[HostMonitor] Worker status: ID={workerChannelId}, Latency={workerStatusLatencyMs}ms", workerChannel.Id, Math.Round(workerStatus.Latency.TotalMilliseconds));
                 workerStatuses.Add(workerChannel.Id, workerStatus);
             }
 
@@ -633,7 +633,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     while (!_languageWorkerErrors.IsEmpty)
                     {
                         _languageWorkerErrors.TryPop(out WorkerErrorEvent popped);
-                        _logger.LogDebug($"Popping out errorEvent createdAt: '{popped.CreatedAt}' workerId: '{popped.WorkerId}'");
+                        _logger.LogDebug("Popping out errorEvent createdAt: '{workerErrorEventCreatedAt}' workerId: '{workerErrorEventWorkerId}'", popped.CreatedAt, popped.WorkerId);
                     }
                 }
             }
@@ -680,7 +680,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             {
                 if (channel.IsExecutingInvocation(invocationId))
                 {
-                    _logger.LogDebug($"Restarting channel with workerId: '{channel.Id}' that is executing invocation: '{invocationId}' and timed out.");
+                    _logger.LogDebug("Restarting channel with workerId: '{restartedChannelId}' that is executing invocation: '{restartedInvocationId}' and timed out.", channel.Id, invocationId);
                     await DisposeAndRestartWorkerChannel(_workerRuntime, channel.Id);
                     return true;
                 }
@@ -703,7 +703,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         public void PreShutdown()
         {
-            _logger.LogDebug($"Preventing any new worker processes from starting during shutdown.");
+            _logger.LogDebug("Preventing any new worker processes from starting during shutdown.");
             _processStartCancellationToken.Cancel();
             if (_hostingConfigOptions.Value.ShutdownWebhostWorkerChannelsOnHostShutdown && !_scriptOptions.IsStandbyConfiguration)
             {

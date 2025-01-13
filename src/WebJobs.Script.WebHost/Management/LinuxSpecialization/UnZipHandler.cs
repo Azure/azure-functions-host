@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
         {
             using (_metricsLogger.LatencyEvent(MetricEventNames.LinuxContainerSpecializationZipExtract))
             {
-                _logger.LogDebug($"Extracting files to '{scriptPath}'");
+                _logger.LogDebug("Extracting files to '{unzipPackageScriptPath}'", scriptPath);
                 ZipFile.ExtractToDirectory(filePath, scriptPath, overwriteFiles: true);
                 _logger.LogDebug("Zip extraction complete");
             }

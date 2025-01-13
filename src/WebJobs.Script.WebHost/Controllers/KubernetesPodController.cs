@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Route("admin/pod/assign")]
         public async Task<IActionResult> Assign([FromBody] EncryptedHostAssignmentContext encryptedAssignmentContext)
         {
-            _logger.LogDebug($"Starting container assignment for host : {Request?.Host}");
+            _logger.LogDebug("Starting container assignment for host : {hostId}", Request?.Host);
             var assignmentContext = _startupContextProvider.SetContext(encryptedAssignmentContext);
 
             string error = await _instanceManager.ValidateContext(assignmentContext);

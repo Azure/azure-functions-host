@@ -276,7 +276,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             {
                 ScriptHostState currentState = scriptHostManager.State;
 
-                _logger.LogDebug($"Received request to resume a draining host - host status: {currentState.ToString()}");
+                _logger.LogDebug("Received request to resume a draining host - host status: {currentHostStatus}", currentState);
 
                 if (currentState != ScriptHostState.Running
                     || !Utility.TryGetHostService(scriptHostManager, out IDrainModeManager drainModeManager))
@@ -285,7 +285,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                     return StatusCode(StatusCodes.Status409Conflict);
                 }
 
-                _logger.LogDebug($"Drain mode enabled: {drainModeManager.IsDrainModeEnabled}");
+                _logger.LogDebug("Drain mode enabled: {isDrainModeEnabled}", drainModeManager.IsDrainModeEnabled);
 
                 if (drainModeManager.IsDrainModeEnabled)
                 {

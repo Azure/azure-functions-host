@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
                 _lastPerformanceCheck = DateTime.UtcNow;
                 if (_rejectRequests)
                 {
-                    _logger.LogWarning($"Thresholds for the following counters have been exceeded: [{string.Join(", ", exceededCounters)}]");
+                    _logger.LogWarning("Thresholds for the following counters have been exceeded: [{exceededPerformanceCounters}]", string.Join(", ", exceededCounters));
                 }
             }
 

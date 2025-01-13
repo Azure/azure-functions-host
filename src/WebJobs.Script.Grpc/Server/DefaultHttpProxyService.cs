@@ -59,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             if (httpProxyTaskResult is not ForwarderError.None)
             {
-                _logger.LogDebug($"The function invocation failed to proxy the request with ForwarderError: {httpProxyTaskResult}");
+                _logger.LogDebug("The function invocation failed to proxy the request with ForwarderError: {forwarderErrorResult}", httpProxyTaskResult);
 
                 Exception forwarderException = null;
                 if (context.TryGetHttpRequest(out HttpRequest request))

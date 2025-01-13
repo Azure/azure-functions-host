@@ -85,7 +85,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 var functionKeys = Context.Secrets.Function.ToDictionary(p => p.Name, p => p.Secrets);
 
-                _logger.LogDebug($"Loaded keys for {functionKeys.Keys.Count} functions from startup context");
+                _logger.LogDebug("Loaded keys for {functionKeysCount} functions from startup context", functionKeys.Keys.Count);
 
                 return functionKeys;
             }
@@ -105,7 +105,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 try
                 {
                     contextPath = Environment.ExpandEnvironmentVariables(contextPath);
-                    _logger.LogDebug($"Loading startup context from {contextPath}");
+                    _logger.LogDebug("Loading startup context from {azureWebsiteStartupContextPath}", contextPath);
                     string content = File.ReadAllText(contextPath);
 
                     // Context files are onetime use. We delete after reading to ensure

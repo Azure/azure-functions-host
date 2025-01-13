@@ -92,7 +92,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             var matches = regex.Matches(envExpandedString);
             foreach (Match match in matches)
             {
-                _logger.LogDebug($"Environment variable:{match.Value} is not set");
+                _logger.LogDebug("Environment variable:{matchedEnvironmentVariableValue} is not set", match.Value);
                 envExpandedString = envExpandedString.Replace(match.Value, string.Empty);
             }
             return envExpandedString;

@@ -142,13 +142,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
                         {
                             if (_lastHeartBeatTime.AddMinutes(5) < DateTime.UtcNow)
                             {
-                                _logger.LogDebug($"Current activities count = {currentActivities.Count}");
+                                _logger.LogDebug("Current activities count = {currentActivitiesCount}", currentActivities.Count);
                                 _lastHeartBeatTime = DateTime.UtcNow;
                             }
 
                             if (currentActivities.Any())
                             {
-                                _logger.LogDebug($"Flushing {currentActivities.Count} function activities");
+                                _logger.LogDebug("Flushing {currentActivitiesCount} function activities", currentActivities.Count);
                                 await _meshServiceClient.PublishContainerActivity(currentActivities);
                             }
                         }
@@ -241,7 +241,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
             {
                 if (!PublishActivity(activity))
                 {
-                    _logger.LogWarning($"Failed to add activity {activity}");
+                    _logger.LogWarning("Failed to add activity {containerFunctionExecutionActivity}", activity);
                 }
             }
         }

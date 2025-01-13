@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
                 await SpecializeMSISideCar(assignmentContext);
 
                 bool success = _instanceManager.StartAssignment(assignmentContext);
-                _logger.LogDebug($"StartAssignment invoked (Success={success})");
+                _logger.LogDebug("StartAssignment invoked (Success={startInstanceAssignmnetResult})", success);
             }
             else
             {

@@ -16,7 +16,7 @@ namespace DotNetIsolated60
         [Function("QueueFunction")]
         public void Run([QueueTrigger("myqueue-items", Connection = "AzureWebJobsStorage")] string myQueueItem)
         {
-            _logger.LogInformation($"C# Queue trigger function processed: {myQueueItem}");
+            _logger.LogInformation("C# Queue trigger function processed: {myQueueItem}", myQueueItem);
         }
     }
 }

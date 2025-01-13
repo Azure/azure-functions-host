@@ -315,7 +315,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             try
             {
                 HttpResponseMessage response = await SendPingRequestAsync(requestUri, HttpMethod.Get);
-                _logger.LogDebug($"Response code while pinging uri '{requestUri}' is '{response.StatusCode}'");
+                _logger.LogDebug("Response code while pinging uri '{pingRequestUri}' is '{pingRequeststatusCode}'", requestUri, response.StatusCode);
             }
             catch (Exception ex)
             {

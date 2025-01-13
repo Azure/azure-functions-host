@@ -122,11 +122,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
             {
                 if (certificateChain.ChainStatus.Any(s => s.Status != X509ChainStatusFlags.NoError))
                 {
-                    _logger.LogError($"Failed to build remote certificate chain for {httpRequestMessage.RequestUri} with error {certificateChain.ChainStatus.First(chain => chain.Status != X509ChainStatusFlags.NoError).Status}");
+                    _logger.LogError("Failed to build remote certificate chain for {certificateChainRequestUri} with error {certificateChainError}",
+                        httpRequestMessage.RequestUri, certificateChain.ChainStatus.First(chain => chain.Status != X509ChainStatusFlags.NoError).Status);
                 }
                 else
                 {
-                    _logger.LogError($"Failed to validate certificate for {httpRequestMessage.RequestUri} with error {sslPolicyErrors}");
+                    _logger.LogError("Failed to validate certificate for {certificateChainRequestUri} with error {sslPolicyErrors}", httpRequestMessage.RequestUri, sslPolicyErrors);
                 }
             }
             return validateCertificateResult;
@@ -157,7 +158,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 
             if (!_functionActivities.TryAdd(activity))
             {
-                _logger.LogWarning($"Buffer for function activities is full with {_functionActivities.Count} elements. Dropping current batch of function activities");
+                _logger.LogWarning("Buffer for function activities is full with {functionActivitiesCount} elements. Dropping current batch of function activities", _functionActivities.Count);
                 DrainActivities(_currentFunctionActivities, _functionActivities);
             }
         }
@@ -178,7 +179,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 
             if (!_memoryActivities.TryAdd(memoryActivity))
             {
-                _logger.LogWarning($"Buffer for holding memory activities is full with {_memoryActivities.Count} elements.Dropping current batch of memory activities");
+                _logger.LogWarning("Buffer for holding memory activities is full with {memoryActivitiesCount} elements.Dropping current batch of memory activities", _memoryActivities.Count);
                 DrainActivities(_currentMemoryActivities, _memoryActivities);
             }
         }

@@ -197,7 +197,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
 
             string scriptPath = options.ScriptPath;
-            _logger.LogInformation($"Creating StandbyMode placeholder function directory ({scriptPath})");
+            _logger.LogInformation("Creating StandbyMode placeholder function directory ({scriptPath})", scriptPath);
 
             await FileUtility.DeleteDirectoryAsync(scriptPath, true);
             FileUtility.EnsureDirectoryExists(scriptPath);

@@ -251,7 +251,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     {
                         lastHash = reader.ReadToEnd();
                     }
-                    _logger.LogDebug($"SyncTriggers hash (Last='{lastHash}', Current='{currentHash}')");
+                    _logger.LogDebug("SyncTriggers hash (Last='{blobLastHash}', Current='{blobCurrentHash}')", lastHash, currentHash);
                 }
 
                 if (string.Compare(currentHash, lastHash) != 0)
@@ -282,7 +282,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 {
                     await hashBlobClient.UploadAsync(stream, overwrite: true);
                 }
-                _logger.LogDebug($"SyncTriggers hash updated to '{hash}'");
+                _logger.LogDebug("SyncTriggers hash updated to '{blobCurrentHash}'", hash);
             }
             catch (Exception ex)
             {
@@ -403,7 +403,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             {
                 // The settriggers call to the FE enforces a max request size limit.
                 // If we're over limit, revert to the minimal triggers format.
-                _logger.LogWarning($"SyncTriggers payload of length '{json.Length}' exceeds max length of '{ScriptConstants.MaxTriggersStringLength}'. Reverting to minimal format.");
+                _logger.LogWarning("SyncTriggers payload of length '{payloadLength}' exceeds max length of '{maxPayloadLength}'. Reverting to minimal format.", json.Length, ScriptConstants.MaxTriggersStringLength);
 
                 var minimalResult = GetMinimalPayload(hostId, triggersArray, hostConfig);
                 json = JsonConvert.SerializeObject(minimalResult);
@@ -768,7 +768,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     request.Headers.Add(ScriptConstants.KubernetesManagedAppNamespace, _environment.GetEnvironmentVariable(EnvironmentSettingNames.PodNamespace));
                 }
 
-                _logger.LogDebug($"Making SyncTriggers request (RequestId={requestId}, Uri={request.RequestUri.ToString()}, Content={sanitizedContentString}).");
+                _logger.LogDebug("Making SyncTriggers request (RequestId={requestId}, Uri={requestUri}, Content={contentString}).", requestId, request.RequestUri.ToString(), sanitizedContentString);
 
                 var response = await _httpClient.SendAsync(request);
 
