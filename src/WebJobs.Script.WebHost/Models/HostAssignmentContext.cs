@@ -171,7 +171,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
 
         public void WriteCertificateValidationToken(ILogger logger)
         {
-            logger.LogError($"CertificateValidationToken from Antares: {CertificateValidationToken.Substring(0,5)}");
+            logger.LogError($"CertificateValidationToken from Antares: CertificateValidationToken");
 
             logger.LogError($"CertificateValidationToken path: {System.IO.Path.GetFullPath(System.IO.Directory.GetCurrentDirectory())}");
 
