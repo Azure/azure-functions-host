@@ -1,18 +1,15 @@
-trigger:
-  batch: true
-  branches:
-    include:
-    - shkr/crank-on-1es-pool-agent
+# No triggers for code push to any branch.
+trigger: none
 
 # No PR triggers for now
 pr: none
 
 schedules:
-  - cron: "*/15 * * * *"
+  - cron: "0 0 * * *"
     displayName: Nightly Build
     branches:
       include:
-      - shkr/crank-on-1es-pool-agent
+      - dev
     always: true
 
 resources:
