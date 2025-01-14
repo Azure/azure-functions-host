@@ -6,7 +6,4 @@ variables:
 - name: sourceVersion
   value: $(Build.SourceVersion)
 - name: storeBenchmarkResultsInDatabase
-  ${{ if eq(variables['Build.Reason'], 'Schedule') }}:
-    value: true
-  ${{ else }}:
-    value: false
+  value: ${{ eq(variables['Build.Reason'], 'Schedule') }}
