@@ -247,26 +247,13 @@ namespace Microsoft.Azure.WebJobs.Script
             return validatedMetadata;
         }
 
-        private static BindingMetadata GetBindingMetadata(string binding)
-        {
-            using (StringReader stringReader = new StringReader(binding))
-            using (JsonTextReader jsonTextReader = new JsonTextReader(stringReader))
-            {
-                JsonSerializer serializer = JsonSerializer.Create(_jsonSerializerSettings);
-
-                JObject parsedBinding = serializer.Deserialize<JObject>(jsonTextReader);
-
-                return BindingMetadata.Create(parsedBinding);
-            }
-        }
-
         internal static FunctionMetadata ValidateBindings(IEnumerable<string> rawBindings, FunctionMetadata function)
         {
             HashSet<string> bindingNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             foreach (string binding in rawBindings)
             {
-                var functionBinding = GetBindingMetadata(binding);
+                var functionBinding = CreateBindingMetadata(binding);
 
                 Utility.ValidateBinding(functionBinding);
 
@@ -298,6 +285,19 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             return function;
+        }
+
+        private static BindingMetadata CreateBindingMetadata(string binding)
+        {
+            using (StringReader stringReader = new StringReader(binding))
+            using (JsonTextReader jsonTextReader = new JsonTextReader(stringReader))
+            {
+                JsonSerializer serializer = JsonSerializer.Create(_jsonSerializerSettings);
+
+                JObject parsedBinding = serializer.Deserialize<JObject>(jsonTextReader);
+
+                return BindingMetadata.Create(parsedBinding);
+            }
         }
 
         private bool IsNullOrEmpty(IEnumerable<RawFunctionMetadata> functions)

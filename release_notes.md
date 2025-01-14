@@ -10,4 +10,5 @@
   - [Added net9 prelaunch app.](https://github.com/Azure/azure-functions-dotnet-worker/pull/2898)
 - Update the `DefaultHttpProxyService` to better handle client disconnect scenarios (#10688)
   - Replaced `InvalidOperationException` with `HttpForwardingException` when there is a ForwarderError
-- Fix the accidental modification of ISO strings during function metadata binding parsing. This fixes the listener errors related to the CosmosDB trigger's `StartFromTime` parameter. (#10735)
+- Fix modification of ISO strings during the parsing of function metadata bindings.
+  - This fixes the listener errors related to the CosmosDB trigger's `StartFromTime` parameter. (#10735)
