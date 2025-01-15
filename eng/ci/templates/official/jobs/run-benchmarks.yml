@@ -20,6 +20,8 @@ jobs:
     benchmarkResultsJsonPath: "$(Build.ArtifactStagingDirectory)/BenchmarkResults/$(buildNumber)_$(functionApp).json"
     functionsWorkerRuntime: 'dotnet-isolated'
     crankAgentUrl: "http://localhost:5010"  # Default crank agent URL.
+    configFilePath: "./eng/perf/http.benchmarks.yml"
+    hostLocation: "./../../"
 
   templateContext:
     outputParentDirectory: $(Build.ArtifactStagingDirectory)
@@ -34,7 +36,7 @@ jobs:
   - task: AzureKeyVault@2
     condition: and(succeeded(), eq('${{ parameters.storeResultsInDatabase }}', true))
     inputs:
-      azureSubscription:  Azure-Functions-Host-CI-internal
+      azureSubscription: Azure-Functions-Host-CI-internal
       KeyVaultName: functions-perf-crank-kv
       SecretsFilter: BenchmarkResultsSqlConnectionString
       RunAsPreJob: false
@@ -51,7 +53,6 @@ jobs:
       script: |
         Start-Process powershell -ArgumentList '-NoExit', '-Command', 'crank-agent'
 
-    # Moving projects to a temp location due to .NET8.X SDK specified in global.json at repo root.
   - task: CopyFiles@2
     displayName: Copy benchmark apps to temp location
     inputs:
@@ -71,18 +72,15 @@ jobs:
       arguments: -c Release -o $(functionAppOutputPath) -f net9.0
       workingDirectory: $(Build.ArtifactStagingDirectory)/PerformanceTestApps/$(functionApp)
 
-  - script: dotnet tool install -g Microsoft.Crank.Controller  --version "0.2.0-*"
-    displayName: Install Microsoft.Crank.Controller 
+  - script: dotnet tool install -g Microsoft.Crank.Controller --version "0.2.0-*"
+    displayName: Install Microsoft.Crank.Controller
 
   - task: PowerShell@2
     displayName: Run crank-controller
     inputs:
       targetType: 'inline'
       script: |
-        $configFilePath = "./eng/perf/http.benchmarks.yml"
-        $hostLocation = "./../../" 
-
-        $crankArgs = "--config  $configFilePath --scenario hellohttp --profile win2022 --load.options.reuseBuild true --description `"$(runDescription)`" --command-line-property --no-metadata --no-measurements --json $(benchmarkResultsJsonPath) --property sourceVersion=$(sourceVersion) --property buildNumber=$(buildNumber) --property buildId=$(buildId) --variable FunctionsWorkerRuntime=$(functionsWorkerRuntime) --variable HostLocation=$hostLocation --variable FunctionAppPath=$(functionAppOutputPath)"
+        $crankArgs = "--config $(configFilePath) --scenario hellohttp --profile win2022 --load.options.reuseBuild true --description `"$(runDescription)`" --command-line-property --no-metadata --no-measurements --json $(benchmarkResultsJsonPath) --property sourceVersion=$(sourceVersion) --property buildNumber=$(buildNumber) --property buildId=$(buildId) --variable FunctionsWorkerRuntime=$(functionsWorkerRuntime) --variable HostLocation=$(hostLocation) --variable FunctionAppPath=$(functionAppOutputPath)"
         $crankArgs += " ${{ parameters.additionalCrankArgs }}"
         $command = "crank $crankArgs"
 
@@ -100,12 +98,5 @@ jobs:
       script: |
         $url = "$(crankAgentUrl)/jobs/1/output"
         Write-Host "Making GET request to: $url to get logs"
-      
-        try {
-            $response = Invoke-WebRequest -Uri $url -Method GET -UseBasicParsing
-            Write-Host $response.Content
-        } catch {
-            Write-Host "Failed to call the REST API."
-            Write-Host $_.Exception.Message
-            exit 1
-        }
+        $response = Invoke-WebRequest -Uri $url -Method GET -UseBasicParsing
+        Write-Host $response.Content
