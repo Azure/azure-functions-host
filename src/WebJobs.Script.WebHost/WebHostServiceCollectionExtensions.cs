@@ -279,7 +279,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IMetricsPublisher>(s =>
             {
                 var environment = s.GetService<IEnvironment>();
-                if (environment.IsFlexConsumptionSku())
+                /*if (environment.IsFlexConsumptionSku())
                 {
                     var options = s.GetService<IOptions<FlexConsumptionMetricsPublisherOptions>>();
                     var standbyOptions = s.GetService<IOptionsMonitor<StandbyOptions>>();
@@ -303,7 +303,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     return new LinuxContainerLegionMetricsPublisher(environment, standbyOptions, logger, new FileSystem(), metricsLogger, metricsTracker);
                 }
 
-                return NullMetricsPublisher.Instance;
+                return NullMetricsPublisher.Instance;*/
+                var logger = s.GetService<ILogger<LinuxContainerLegionMetricsPublisher>>();
+                var metricsTracker = s.GetService<ILinuxConsumptionMetricsTracker>();
+                var standbyOptions = s.GetService<IOptionsMonitor<StandbyOptions>>();
+                var metricsLogger = s.GetService<IMetricsLogger>();
+                return new LinuxContainerLegionMetricsPublisher(environment, standbyOptions, logger, new FileSystem(), metricsLogger, metricsTracker);
             });
 
             services.AddSingleton<IMeshServiceClient>(s =>
