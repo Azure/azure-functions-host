@@ -37,13 +37,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             builder.UseMiddleware<ClrOptimizationMiddleware>();
             builder.UseMiddleware<HttpRequestBodySizeMiddleware>();
             builder.UseMiddleware<SystemTraceMiddleware>();
+            builder.UseMiddleware<HandleCancellationMiddleware>();
             builder.UseMiddleware<HostnameFixupMiddleware>();
             if (environment.IsAnyLinuxConsumption() || environment.IsAnyKubernetesEnvironment())
             {
                 builder.UseMiddleware<EnvironmentReadyCheckMiddleware>();
             }
 
-#if PLACEHOLDERSIMULATION
+#if PLACEHOLDER_SIMULATION
             if (standbyOptions.InStandbyMode)
             {
                 builder.UseMiddleware<SpecializationSimulatorMiddleware>();

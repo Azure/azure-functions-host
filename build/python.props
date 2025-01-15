@@ -1,6 +1,6 @@
 <Project>
   <!-- See /eng/build/Workers.Python.props -->
   <Target Name="_DoNotImport" BeforeTargets="Build">
-    <Error Text="This file should not be imported. Import '$(TargetsRoot)Workers.props'." />
+    <Error Text="This file should not be imported. Import '$(WorkersProps)'." />
   </Target>
 </Project>

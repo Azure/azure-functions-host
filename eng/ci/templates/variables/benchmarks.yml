@@ -1,0 +1,9 @@
+variables:
+- name: buildId
+  value: $(Build.BuildId)
+- name: buildNumber
+  value: $(Build.BuildNumber)
+- name: sourceVersion
+  value: $(Build.SourceVersion)
+- name: storeBenchmarkResultsInDatabase
+  value: ${{ eq(variables['Build.Reason'], 'Schedule') }}

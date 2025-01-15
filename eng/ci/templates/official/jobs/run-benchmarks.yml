@@ -1,0 +1,102 @@
+parameters:
+- name: functionAppName
+  type: string
+- name: description
+  type: string
+- name: storeResultsInDatabase
+  type: boolean
+  default: false
+- name: additionalCrankArgs
+  type: string
+  default: ''
+
+jobs:
+- job: ${{ parameters.functionAppName }}
+
+  variables:
+    runDescription: ${{ parameters.description }}
+    functionApp: ${{ parameters.functionAppName }}
+    functionAppOutputPath: $(Build.ArtifactStagingDirectory)/FunctionApps/$(functionApp)
+    benchmarkResultsJsonPath: "$(Build.ArtifactStagingDirectory)/BenchmarkResults/$(buildNumber)_$(functionApp).json"
+    functionsWorkerRuntime: 'dotnet-isolated'
+    crankAgentUrl: "http://localhost:5010"  # Default crank agent URL.
+    configFilePath: "./eng/perf/http.benchmarks.yml"
+    hostLocation: "./../../"
+
+  templateContext:
+    outputParentDirectory: $(Build.ArtifactStagingDirectory)
+    outputs:
+    - output: pipelineArtifact
+      displayName: Publish benchmark results
+      path: $(benchmarkResultsJsonPath)
+      artifact: 'BenchmarkResults_$(functionApp)'
+
+  steps:
+
+  - task: AzureKeyVault@2
+    condition: and(succeeded(), eq('${{ parameters.storeResultsInDatabase }}', true))
+    inputs:
+      azureSubscription: Azure-Functions-Host-CI-internal
+      KeyVaultName: functions-perf-crank-kv
+      SecretsFilter: BenchmarkResultsSqlConnectionString
+      RunAsPreJob: false
+
+  - template: /eng/ci/templates/install-dotnet.yml@self
+
+  - script: dotnet tool install -g Microsoft.Crank.Agent --version "0.2.0-*"
+    displayName: Install Microsoft.Crank.Agent tool
+
+  - task: PowerShell@2
+    displayName: Start crank-agent
+    inputs:
+      targetType: 'inline'
+      script: |
+        Start-Process powershell -ArgumentList '-NoExit', '-Command', 'crank-agent'
+
+  - task: CopyFiles@2
+    displayName: Copy benchmark apps to temp location
+    inputs:
+      SourceFolder: '$(Build.SourcesDirectory)/test/Performance/Apps'
+      Contents: '**/*'
+      TargetFolder: '$(Build.ArtifactStagingDirectory)/PerformanceTestApps'
+      CleanTargetFolder: true
+
+  - task: DotNetCoreCLI@2
+    displayName: Publish $(functionApp) app
+    inputs:
+      command: publish
+      publishWebProjects: false
+      zipAfterPublish: false
+      modifyOutputPath: false
+      projects: '$(Build.ArtifactStagingDirectory)/PerformanceTestApps/$(functionApp)/HelloHttp.csproj'
+      arguments: -c Release -o $(functionAppOutputPath) -f net9.0
+      workingDirectory: $(Build.ArtifactStagingDirectory)/PerformanceTestApps/$(functionApp)
+
+  - script: dotnet tool install -g Microsoft.Crank.Controller --version "0.2.0-*"
+    displayName: Install Microsoft.Crank.Controller
+
+  - task: PowerShell@2
+    displayName: Run crank-controller
+    inputs:
+      targetType: 'inline'
+      script: |
+        $crankArgs = "--config $(configFilePath) --scenario hellohttp --profile win2022 --load.options.reuseBuild true --description `"$(runDescription)`" --command-line-property --no-metadata --no-measurements --json $(benchmarkResultsJsonPath) --property sourceVersion=$(sourceVersion) --property buildNumber=$(buildNumber) --property buildId=$(buildId) --variable FunctionsWorkerRuntime=$(functionsWorkerRuntime) --variable HostLocation=$(hostLocation) --variable FunctionAppPath=$(functionAppOutputPath)"
+        $crankArgs += " ${{ parameters.additionalCrankArgs }}"
+        $command = "crank $crankArgs"
+
+        if ('${{ parameters.storeResultsInDatabase }}' -eq 'true') {
+            $command += " --table HttpBenchmarks --sql `"$(BenchmarkResultsSqlConnectionString)`""
+        }
+
+        Write-Host "Running command: $command"
+        Invoke-Expression $command
+
+  - task: PowerShell@2
+    displayName: Functions host logs
+    inputs:
+      targetType: 'inline'
+      script: |
+        $url = "$(crankAgentUrl)/jobs/1/output"
+        Write-Host "Making GET request to: $url to get logs"
+        $response = Invoke-WebRequest -Uri $url -Method GET -UseBasicParsing
+        Write-Host $response.Content

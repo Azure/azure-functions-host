@@ -1,7 +1,5 @@
 <Project Sdk="Microsoft.Build.NoTargets">
 
-  <Import Project="../../build/common.props" />
-
   <PropertyGroup>
     <!-- TFM and RId are actually used. -->
     <TargetFramework>net8.0</TargetFramework>
@@ -12,7 +10,7 @@
     <AddAdditionalExplicitAssemblyReferences>false</AddAdditionalExplicitAssemblyReferences>
   </PropertyGroup>
 
-  <Import Project="$(TargetsRoot)Workers.props" />
+  <Import Project="$(WorkersProps)" />
 
   <ItemGroup>
     <ProjectReference Include="../WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj" ReferenceOutputAssembly="false" />
