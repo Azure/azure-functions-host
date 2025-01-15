@@ -49,18 +49,15 @@ variables:
 - template: /eng/ci/templates/variables/build.yml@self
 - template: /ci/variables/cfs.yml@eng
 - name: OfficialBranch
-  ${{ if or(eq(variables['Build.SourceBranch'], 'refs/heads/dev'), startsWith(variables['Build.SourceBranch'], 'refs/heads/release/'), startsWith(variables['Build.SourceBranch'], 'refs/heads/internal/release/')) }}:
-    value: true
-  ${{ else }}:
-    value: false
+  value: ${{ or(eq(variables['Build.SourceBranch'], 'refs/heads/dev'), startsWith(variables['Build.SourceBranch'], 'refs/heads/release/'), startsWith(variables['Build.SourceBranch'], 'refs/heads/internal/release/')) }}
+- name: SignFiles # variable for access in other templates
+  value: ${{ or(eq(variables.OfficialBranch, true), eq(parameters.signFiles, true)) }}
 - name: '1ESTemplate'
   # force official to be true if an official branch. Otherwise respect the official parameter.
   ${{ if or(eq(variables.OfficialBranch, true), eq(parameters.forceOfficial, true)) }}:
     value: 'v1/1ES.Official.PipelineTemplate.yml@1es'
   ${{ else }}:
     value: 'v1/1ES.Unofficial.PipelineTemplate.yml@1es'
-- name: SignFiles # variable for access in other templates
-  value: ${{ or(eq(variables.OfficialBranch, true), eq(parameters.signFiles, true)) }}
 
 extends:
   template: ${{ variables['1ESTemplate'] }}
