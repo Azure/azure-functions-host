@@ -64,7 +64,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal static string GetDefaultWorkersDirectory(Func<string, bool> directoryExists)
         {
+#pragma warning disable SYSLIB0012 // Type or member is obsolete
             string assemblyLocalPath = Path.GetDirectoryName(new Uri(typeof(RpcWorkerConfigFactory).Assembly.CodeBase).LocalPath);
+#pragma warning restore SYSLIB0012 // Type or member is obsolete
             string workersDirPath = Path.Combine(assemblyLocalPath, RpcWorkerConstants.DefaultWorkersDirectoryName);
             if (!directoryExists(workersDirPath))
             {

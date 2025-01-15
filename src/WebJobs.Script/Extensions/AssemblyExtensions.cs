@@ -25,7 +25,9 @@ namespace Microsoft.Azure.WebJobs.Script
                 return codeBase;
             }
 
+#pragma warning disable SYSLIB0012 // Type or member is obsolete
             return assembly.CodeBase;
+#pragma warning restore SYSLIB0012 // Type or member is obsolete
         }
     }
 }

@@ -8,7 +8,6 @@ namespace Microsoft.Azure.WebJobs.Script
     /// <summary>
     /// An exception that indicates an issue initializing a ScriptHost.
     /// </summary>
-    [Serializable]
     public class HostInitializationException : Exception
     {
         public HostInitializationException() { }
@@ -16,9 +15,5 @@ namespace Microsoft.Azure.WebJobs.Script
         public HostInitializationException(string message) : base(message) { }
 
         public HostInitializationException(string message, Exception inner) : base(message, inner) { }
-
-        protected HostInitializationException(
-          System.Runtime.Serialization.SerializationInfo info,
-          System.Runtime.Serialization.StreamingContext context) : base(info, context) { }
     }
 }
