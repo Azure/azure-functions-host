@@ -291,8 +291,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     var logger = s.GetService<ILogger<LinuxContainerLegionMetricsPublisher>>();
                     var metricsTracker = s.GetService<ILinuxConsumptionMetricsTracker>();
                     var standbyOptions = s.GetService<IOptionsMonitor<StandbyOptions>>();
-                    var metricsLogger = s.GetService<IMetricsLogger>();
-                    return new LinuxContainerLegionMetricsPublisher(environment, standbyOptions, logger, new FileSystem(), metricsLogger, metricsTracker);
+                    //var metricsLogger = s.GetService<IMetricsLogger>();
+                    return new LinuxContainerLegionMetricsPublisher(environment, standbyOptions, logger, new FileSystem(), metricsTracker);
                 }
                 else if (environment.IsFlexConsumptionSku())
                 {
