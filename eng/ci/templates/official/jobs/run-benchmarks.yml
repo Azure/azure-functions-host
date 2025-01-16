@@ -16,12 +16,14 @@ jobs:
   variables:
     runDescription: ${{ parameters.description }}
     functionApp: ${{ parameters.functionAppName }}
+    benchmarkArtifactName: benchmark_results_$(functionApp)
     functionAppOutputPath: $(Build.ArtifactStagingDirectory)/FunctionApps/$(functionApp)
-    benchmarkResultsJsonPath: "$(Build.ArtifactStagingDirectory)/BenchmarkResults/$(buildNumber)_$(functionApp).json"
+    benchmarkResultsJsonPath: $(Build.ArtifactStagingDirectory)/BenchmarkResults/$(buildNumber)_$(functionApp).json
     functionsWorkerRuntime: 'dotnet-isolated'
-    crankAgentUrl: "http://localhost:5010"  # Default crank agent URL.
+    crankAgentUrl: "http://localhost:5010" # Default crank agent URL.
     configFilePath: "./eng/perf/http.benchmarks.yml"
     hostLocation: "./../../"
+    baselineBenchmarkResultFilePath: ''
 
   templateContext:
     outputParentDirectory: $(Build.ArtifactStagingDirectory)
@@ -29,7 +31,7 @@ jobs:
     - output: pipelineArtifact
       displayName: Publish benchmark results
       path: $(benchmarkResultsJsonPath)
-      artifact: 'BenchmarkResults_$(functionApp)'
+      artifact: $(benchmarkArtifactName)
 
   steps:
 
@@ -50,8 +52,7 @@ jobs:
     displayName: Start crank-agent
     inputs:
       targetType: 'inline'
-      script: |
-        Start-Process powershell -ArgumentList '-NoExit', '-Command', 'crank-agent'
+      script: Start-Process powershell -ArgumentList '-NoExit', '-Command', 'crank-agent'
 
   - task: CopyFiles@2
     displayName: Copy benchmark apps to temp location
@@ -76,11 +77,11 @@ jobs:
     displayName: Install Microsoft.Crank.Controller
 
   - task: PowerShell@2
-    displayName: Run crank-controller
+    displayName: Run Benchmark
     inputs:
       targetType: 'inline'
       script: |
-        $crankArgs = "--config $(configFilePath) --scenario hellohttp --profile win2022 --load.options.reuseBuild true --description `"$(runDescription)`" --command-line-property --no-metadata --no-measurements --json $(benchmarkResultsJsonPath) --property sourceVersion=$(sourceVersion) --property buildNumber=$(buildNumber) --property buildId=$(buildId) --variable FunctionsWorkerRuntime=$(functionsWorkerRuntime) --variable HostLocation=$(hostLocation) --variable FunctionAppPath=$(functionAppOutputPath)"
+        $crankArgs = "--config $(configFilePath) --scenario hellohttp --profile win2022 --load.options.reuseBuild true --description `"$(runDescription)`" --command-line-property --no-measurements --json $(benchmarkResultsJsonPath) --property sourceVersion=$(sourceVersion) --property buildNumber=$(buildNumber) --property buildId=$(buildId) --property sourceBranch=$(sourceBranch) --variable FunctionsWorkerRuntime=$(functionsWorkerRuntime) --variable HostLocation=$(hostLocation) --variable FunctionAppPath=$(functionAppOutputPath)"
         $crankArgs += " ${{ parameters.additionalCrankArgs }}"
         $command = "crank $crankArgs"
 
@@ -91,12 +92,55 @@ jobs:
         Write-Host "Running command: $command"
         Invoke-Expression $command
 
+  # Retrieve function host logs
   - task: PowerShell@2
-    displayName: Functions host logs
+    displayName: 'Fetch Function Host Logs'
     inputs:
       targetType: 'inline'
       script: |
         $url = "$(crankAgentUrl)/jobs/1/output"
-        Write-Host "Making GET request to: $url to get logs"
+        Write-Host "Fetching logs from: $url"
         $response = Invoke-WebRequest -Uri $url -Method GET -UseBasicParsing
         Write-Host $response.Content
+
+  # Tag the build as a baseline if it originates from the specified branch.
+  # Baseline builds serve as reference points for performance comparisons in future builds.
+  # The tag added here will help identify these builds in the pipeline.
+  - task: PowerShell@2
+    condition: and(succeeded(), eq(variables['sourceBranch'], variables['benchmarkBaselineBranch']))
+    displayName: 'Tag Build as Baseline'
+    inputs:
+      targetType: 'inline'
+      script: Write-Host "##vso[build.addbuildtag]$(benchmarkBaselineTagName)"
+
+  # Download baseline result
+  - download: BaselineResult
+    displayName: 'Download Baseline Benchmark Results'
+    artifact: '$(benchmarkArtifactName)'
+    continueOnError: true # Continue if baseline result artifact is not found
+
+  # Locate baseline benchmark result file
+  - task: PowerShell@2
+    displayName: 'Set Baseline Benchmark Result File Path'
+    inputs:
+      targetType: 'inline'
+      script: |
+        $baselineDir = "$(Pipeline.Workspace)/BaselineResult/$(benchmarkArtifactName)"
+        $fileNamePattern = "*_$(functionApp).json"
+        $baselineFile = Get-ChildItem -Path $baselineDir -Filter $fileNamePattern | Select-Object -First 1
+
+        if ($baselineFile) {
+          $baselineFilePath = $baselineFile.FullName
+          Write-Host "Found baseline benchmark result file: $baselineFilePath"
+          Write-Host "##vso[task.setvariable variable=baselineBenchmarkResultFilePath]$baselineFilePath"
+        } else {
+          Write-Host "No baseline benchmark result file found."
+        }
+
+  # Compare results with baseline
+  - task: PowerShell@2
+    condition: and(succeeded(), ne(variables['baselineBenchmarkResultFilePath'], ''))
+    displayName: 'Compare Results with Baseline'
+    inputs:
+      targetType: 'inline'
+      script: crank compare "$(baselineBenchmarkResultFilePath)" "$(benchmarkResultsJsonPath)"
