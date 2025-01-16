@@ -10,6 +10,6 @@ variables:
 - name: sourceBranch
   value: $(Build.SourceBranch)
 - name: benchmarkBaselineBranch
-  value: refs/heads/shkr/release4x
+  value: refs/heads/release/4.x
 - name: benchmarkBaselineTagName
   value: AzFunc.Perf.Baseline
