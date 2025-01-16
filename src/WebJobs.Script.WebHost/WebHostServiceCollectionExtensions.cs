@@ -5,6 +5,7 @@ using System.IO.Abstractions;
 using System.Net.Http;
 using System.Runtime.InteropServices;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Azure.Functions.Platform.Metrics.LinuxConsumption;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -256,6 +257,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private static void AddLinuxContainerServices(this IServiceCollection services)
         {
+            if (SystemEnvironment.Instance.IsV1LinuxConsumptionOnLegion())
+            {
+                services.AddLinuxConsumptionMetricsServices();
+            }
+
             services.AddSingleton<IHostedService>(s =>
             {
                 var environment = s.GetService<IEnvironment>();
@@ -280,7 +286,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IMetricsPublisher>(s =>
             {
                 var environment = s.GetService<IEnvironment>();
-                if (environment.IsFlexConsumptionSku())
+                if (environment.IsV1LinuxConsumptionOnLegion())
+                {
+                    var logger = s.GetService<ILogger<LinuxContainerLegionMetricsPublisher>>();
+                    var metricsTracker = s.GetService<ILinuxConsumptionMetricsTracker>();
+                    var standbyOptions = s.GetService<IOptionsMonitor<StandbyOptions>>();
+                    var metricsLogger = s.GetService<IMetricsLogger>();
+                    return new LinuxContainerLegionMetricsPublisher(environment, standbyOptions, logger, new FileSystem(), metricsLogger, metricsTracker);
+                }
+                else if (environment.IsFlexConsumptionSku())
                 {
                     var options = s.GetService<IOptions<FlexConsumptionMetricsPublisherOptions>>();
                     var standbyOptions = s.GetService<IOptionsMonitor<StandbyOptions>>();

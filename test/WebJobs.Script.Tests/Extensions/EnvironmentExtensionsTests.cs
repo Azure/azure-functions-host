@@ -274,6 +274,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         }
 
         [Theory]
+        [InlineData(false, null, null, false)]
+        [InlineData(false, "", "", false)]
+        [InlineData(false, ScriptConstants.DynamicSku, null, false)]
+        [InlineData(false, null, ScriptConstants.DynamicSku, false)]
+        [InlineData(true, null, null, false)]
+        [InlineData(true, "", "", false)]
+        [InlineData(true, ScriptConstants.FlexConsumptionSku, null, false)]
+        [InlineData(true, null, ScriptConstants.DynamicSku, true)]
+        [InlineData(true, ScriptConstants.DynamicSku, null, true)]
+        [Trait(TestTraits.Group, TestTraits.LinuxConsumptionMetricsTests)]
+        public void IsV1LinuxConsumptionOnLegion_ReturnsExpectedResult(bool isLinuxConsumptionOnLegion, string websiteSku, string websiteSkuName, bool expectedValue)
+        {
+            IEnvironment env = new TestEnvironment();
+
+            if (isLinuxConsumptionOnLegion)
+            {
+                env.SetEnvironmentVariable(WebsitePodName, "RandomPodName");
+                env.SetEnvironmentVariable(LegionServiceHost, "RandomLegionServiceHostName");
+            }
+
+            env.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, websiteSku);
+            env.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSkuName, websiteSkuName);
+
+            Assert.Equal(expectedValue, env.IsV1LinuxConsumptionOnLegion());
+        }
+
+        [Theory]
         [InlineData("~2", "true", true)]
         [InlineData("~2", "false", true)]
         [InlineData("~2", null, true)]

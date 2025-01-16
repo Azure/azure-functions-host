@@ -58,6 +58,8 @@ namespace Microsoft.WebJobs.Script.Tests
 
         public const string FlexConsumptionMetricsTests = "FlexConsumptionMetricsTests";
 
+        public const string LinuxConsumptionMetricsTests = "LinuxConsumptionMetricsTests";
+
         public const string HostMetricsTests = "HostMetricsTests";
 
         public const string HISSecretsTests = "HISSecretsTests";
