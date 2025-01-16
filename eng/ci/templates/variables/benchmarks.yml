@@ -13,4 +13,3 @@ variables:
   value: refs/heads/shkr/release4x
 - name: benchmarkBaselineTagName
   value: AzFunc.Perf.Baseline
-  
