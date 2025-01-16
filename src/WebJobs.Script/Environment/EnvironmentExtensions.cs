@@ -342,7 +342,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <returns><see cref="true"/> if the app is V1 Linux Consumption running on Legion; otherwise, <see cref="false"/>.</returns>
         public static bool IsV1LinuxConsumptionOnLegion(this IEnvironment environment)
         {
-            return IsLinuxConsumptionOnLegion(environment) //&& environment.WebsiteSkuIsDynamic();
+            return IsLinuxConsumptionOnLegion(environment); //&& environment.WebsiteSkuIsDynamic();
         }
 
         /// <summary>
