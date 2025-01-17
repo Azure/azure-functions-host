@@ -18,7 +18,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class WorkerFunctionMetadataProviderTests
     {
-
         private readonly WorkerFunctionMetadataProvider _workerFunctionMetadataProvider;
 
         public WorkerFunctionMetadataProviderTests()
