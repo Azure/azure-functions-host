@@ -62,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                         }
                         else
                         {
-                            response.Headers.Add(header.Key, header.Value.ToString() ?? string.Empty);
+                            response.Headers.Append(header.Key, header.Value.ToString() ?? string.Empty);
                         }
                     }
                 }
