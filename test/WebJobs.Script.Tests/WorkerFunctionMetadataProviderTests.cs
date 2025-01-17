@@ -9,6 +9,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
 
@@ -16,6 +18,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class WorkerFunctionMetadataProviderTests
     {
+
+        private readonly WorkerFunctionMetadataProvider _workerFunctionMetadataProvider;
+
+        public WorkerFunctionMetadataProviderTests()
+        {
+            var mockScriptOptions = new Mock<IOptionsMonitor<ScriptApplicationHostOptions>>();
+            var mockLogger = new Mock<ILogger<WorkerFunctionMetadataProvider>>();
+            var mockEnvironment = new Mock<IEnvironment>();
+            var mockChannelManager = new Mock<IWebHostRpcWorkerChannelManager>();
+            var mockScriptHostManager = new Mock<IScriptHostManager>();
+
+            _workerFunctionMetadataProvider = new WorkerFunctionMetadataProvider(
+             mockScriptOptions.Object,
+             mockLogger.Object,
+             mockEnvironment.Object,
+             mockChannelManager.Object,
+             mockScriptHostManager.Object);
+        }
+
         [Fact]
         public void ValidateBindings_NoBindings_Throws()
         {
@@ -24,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var ex = Assert.Throws<FormatException>(() =>
             {
-                WorkerFunctionMetadataProvider.ValidateBindings(rawBindings, functionMetadata);
+                _workerFunctionMetadataProvider.ValidateBindings(rawBindings, functionMetadata);
             });
 
             Assert.Equal("At least one binding must be declared.", ex.Message);
@@ -41,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var ex = Assert.Throws<InvalidOperationException>(() =>
             {
-                WorkerFunctionMetadataProvider.ValidateBindings(rawBindings, functionMetadata);
+                _workerFunctionMetadataProvider.ValidateBindings(rawBindings, functionMetadata);
             });
 
             Assert.Equal("Multiple bindings with name 'dupe' discovered. Binding names must be unique.", ex.Message);
@@ -56,7 +77,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var ex = Assert.Throws<InvalidOperationException>(() =>
             {
-                WorkerFunctionMetadataProvider.ValidateBindings(rawBindings, functionMetadata);
+                _workerFunctionMetadataProvider.ValidateBindings(rawBindings, functionMetadata);
             });
 
             Assert.Equal("No trigger binding specified. A function must have a trigger input binding.", ex.Message);
@@ -77,7 +98,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var ex = Assert.Throws<ArgumentException>(() =>
             {
-                WorkerFunctionMetadataProvider.ValidateBindings(rawBindings, functionMetadata);
+                _workerFunctionMetadataProvider.ValidateBindings(rawBindings, functionMetadata);
             });
 
             Assert.Equal($"The binding name {bindingName} is invalid. Please assign a valid name to the binding.", ex.Message);
@@ -104,7 +125,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             try
             {
-                WorkerFunctionMetadataProvider.ValidateBindings(rawBindings, functionMetadata);
+                _workerFunctionMetadataProvider.ValidateBindings(rawBindings, functionMetadata);
             }
             catch (ArgumentException)
             {
@@ -119,7 +140,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             logger.ClearLogMessages();
             string scriptPath = Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "sample", "node");
             var environment = SystemEnvironment.Instance;
-            WorkerFunctionMetadataProvider.ValidateFunctionAppFormat(scriptPath, logger, environment);
+            _workerFunctionMetadataProvider.ValidateFunctionAppFormat(scriptPath, logger, environment);
             var traces = logger.GetLogMessages();
             var functionLoadLogs = traces.Where(m => m.FormattedMessage.Contains("Detected mixed function app. Some functions may not be indexed"));
             Assert.True(functionLoadLogs.Any());
@@ -135,7 +156,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var ex = Assert.Throws<ArgumentException>(() =>
             {
-                WorkerFunctionMetadataProvider.ValidateBindings(rawBindings, functionMetadata);
+                _workerFunctionMetadataProvider.ValidateBindings(rawBindings, functionMetadata);
             });
 
             Assert.Equal($"{ScriptConstants.SystemReturnParameterBindingName} bindings must specify a direction of 'out'.", ex.Message);
@@ -187,7 +208,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 "\"containerName\":\"containerNameFoo\",\"leaseContainerName\":\"leaseContanerFoo\",\"createLeaseContainerIfNotExists\":true," +
                 "\"connection\":\"CosmosConnection\",\"startFromTime\":\"" + isoString + "\",\"dataType\":\"String\"}");
 
-            var function = WorkerFunctionMetadataProvider.ValidateBindings(rawBindings, functionMetadata);
+            var function = _workerFunctionMetadataProvider.ValidateBindings(rawBindings, functionMetadata);
             Assert.Equal(isoString, function.Bindings.FirstOrDefault().Raw["startFromTime"].ToString());
         }
     }

@@ -30,7 +30,6 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IScriptHostManager _scriptHostManager;
         private string _workerRuntime;
         private ImmutableArray<FunctionMetadata> _functions;
-        private static JsonSerializerSettings _jsonSerializerSettings = new JsonSerializerSettings { DateParseHandling = DateParseHandling.None };
 
         public WorkerFunctionMetadataProvider(
             IOptionsMonitor<ScriptApplicationHostOptions> scriptOptions,
@@ -149,7 +148,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return new FunctionMetadataResult(useDefaultMetadataIndexing: false, _functions);
         }
 
-        internal static void ValidateFunctionAppFormat(string scriptPath, ILogger logger, IEnvironment environment, IFileSystem fileSystem = null)
+        internal void ValidateFunctionAppFormat(string scriptPath, ILogger logger, IEnvironment environment, IFileSystem fileSystem = null)
         {
             fileSystem = fileSystem ?? FileUtility.Instance;
             bool mixedApp = false;
@@ -247,7 +246,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return validatedMetadata;
         }
 
-        internal static FunctionMetadata ValidateBindings(IEnumerable<string> rawBindings, FunctionMetadata function)
+        internal FunctionMetadata ValidateBindings(IEnumerable<string> rawBindings, FunctionMetadata function)
         {
             HashSet<string> bindingNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -287,14 +286,12 @@ namespace Microsoft.Azure.WebJobs.Script
             return function;
         }
 
-        private static BindingMetadata CreateBindingMetadata(string binding)
+        private BindingMetadata CreateBindingMetadata(string binding)
         {
             using (StringReader stringReader = new StringReader(binding))
             using (JsonTextReader jsonTextReader = new JsonTextReader(stringReader))
             {
-                JsonSerializer serializer = JsonSerializer.Create(_jsonSerializerSettings);
-
-                JObject parsedBinding = serializer.Deserialize<JObject>(jsonTextReader);
+                JObject parsedBinding = Shared.JsonNetSerializers.NoDateParsingSerializer.Deserialize<JObject>(jsonTextReader);
 
                 return BindingMetadata.Create(parsedBinding);
             }

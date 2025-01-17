@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 {
     internal static class GrpcMessageConversionExtensions
     {
-        private static readonly JsonSerializerSettings _datetimeSerializerSettings = new JsonSerializerSettings { DateParseHandling = DateParseHandling.None };
+        private static readonly JsonSerializerSettings _datetimeSerializerSettings = Shared.JsonNetSerializerSettings.NoDateParsing;
         private static readonly TypedData EmptyRpcHttp = new() { Http = new() };
 
         public static object ToObject(this TypedData typedData) =>
