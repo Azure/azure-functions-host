@@ -1,0 +1,53 @@
+# No triggers for code push to any branch.
+trigger: none
+
+# No PR triggers for now
+pr: none
+
+schedules:
+  - cron: "0 0 * * *"
+    displayName: Nightly Build
+    branches:
+      include:
+      - dev
+    always: true
+
+resources:
+  repositories:
+  - repository: 1es
+    type: git
+    name: 1ESPipelineTemplates/1ESPipelineTemplates
+    ref: refs/tags/release
+  - repository: eng
+    type: git
+    name: engineering
+    ref: refs/tags/release
+
+variables:
+  - template: /eng/ci/templates/variables/benchmarks.yml@self
+  - template: /ci/variables/cfs.yml@eng
+
+extends:
+  template: v1/1ES.Unofficial.PipelineTemplate.yml@1es
+  parameters:
+    pool:
+      name: 1es-pool-azfunc-large
+      image: 1es-windows-2022
+      os: windows
+
+    stages:
+    - stage: HttpApps
+      displayName: Run Benchmarks
+      jobs:
+      - template: /eng/ci/templates/official/jobs/run-benchmarks.yml@self
+        parameters:
+          description: .NET9 Web Application
+          functionAppName: HelloHttpNet9  # App with ASP.NET Integration
+          additionalCrankArgs: $(AdditionalCrankArguments)  # Pipeline variable to pass additional arguments to crank command.
+          storeResultsInDatabase: ${{ variables.storeBenchmarkResultsInDatabase }}
+      - template: /eng/ci/templates/official/jobs/run-benchmarks.yml@self
+        parameters:
+          description: .NET9 Worker Application
+          functionAppName: HelloHttpNet9NoProxy # App without ASP.NET Integration
+          additionalCrankArgs: $(AdditionalCrankArguments)
+          storeResultsInDatabase: ${{ variables.storeBenchmarkResultsInDatabase }}
