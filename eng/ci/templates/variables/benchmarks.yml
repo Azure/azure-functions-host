@@ -1,14 +1,6 @@
 variables:
-- name: buildId
-  value: $(Build.BuildId)
-- name: buildNumber
-  value: $(Build.BuildNumber)
-- name: sourceVersion
-  value: $(Build.SourceVersion)
 - name: storeBenchmarkResultsInDatabase
   value: ${{ eq(variables['Build.Reason'], 'Schedule') }}
-- name: sourceBranch
-  value: $(Build.SourceBranch)
 - name: benchmarkBaselineBranch
   value: refs/heads/release/4.x
 - name: benchmarkBaselineTagName
