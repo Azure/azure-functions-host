@@ -291,7 +291,7 @@ namespace Microsoft.Azure.WebJobs.Script
             using (StringReader stringReader = new StringReader(binding))
             using (JsonTextReader jsonTextReader = new JsonTextReader(stringReader))
             {
-                JObject parsedBinding = Shared.JsonNetSerializers.NoDateParsingSerializer.Deserialize<JObject>(jsonTextReader);
+                JObject parsedBinding = JsonSerializers.NoDateParsingSerializer.Deserialize<JObject>(jsonTextReader);
 
                 return BindingMetadata.Create(parsedBinding);
             }
