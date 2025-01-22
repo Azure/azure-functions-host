@@ -3,6 +3,7 @@
 <!-- Please add your release notes in the following format:
 - My change description (#PR)
 -->
+- Update Java Worker Version to [2.18.0](https://github.com/Azure/azure-functions-java-worker/releases/tag/2.18.0)
 
 - Allow for an output binding value of an invocation result to be null (#10698)
 - Updated dotnet-isolated worker to 1.0.12.
