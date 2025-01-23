@@ -58,7 +58,7 @@ $env:PATH += ";$env:ProgramFiles\PowerShell\7"
 $githubPath = 'C:\github'
 New-Item -Path $githubPath -ItemType Directory
 Set-Location -Path $githubPath
-& git clone https://github.com/Azure/azure-functions-host.git
+& git clone -b shkr/crankreturns https://github.com/Azure/azure-functions-host.git
 Set-Location -Path azure-functions-host
 
 $originalLocation = Get-Location
