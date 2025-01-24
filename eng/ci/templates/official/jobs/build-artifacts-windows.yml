@@ -11,7 +11,6 @@ jobs:
     drop_path: $(Build.ArtifactStagingDirectory)
     nuget_drop_path: $(drop_path)/nuget
     windows_drop_path: $(drop_path)/windows
-    log_path: $(drop_path)/log
 
   templateContext:
     outputParentDirectory: $(drop_path)
@@ -24,12 +23,6 @@ jobs:
       displayName: Publish nuget packages
       path: $(nuget_drop_path)
       artifact: drop_nuget
-    - output: pipelineArtifact
-      displayName: Publish logs
-      path: $(log_path)
-      artifact: logs_windows
-      sbomEnabled: false
-      condition: always()
 
   steps:
   - template: /eng/ci/templates/install-dotnet.yml@self

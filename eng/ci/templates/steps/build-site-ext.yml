@@ -14,7 +14,7 @@ steps:
     command: custom
     custom: restore
     projects: ${{ parameters.project }}
-    arguments: '-v m -p:PublishReadyToRun=true -bl:$(log_path)/site_ext.restore.binlog'
+    arguments: '-v m -p:PublishReadyToRun=true'
 
 - task: DotNetCoreCLI@2
   displayName: Build site extension
@@ -22,7 +22,7 @@ steps:
     command: custom
     custom: build
     projects: ${{ parameters.project }}
-    arguments: '--no-restore -v m -c release -bl:$(log_path)/site_ext.build.binlog'
+    arguments: '--no-restore -v m -c release'
 
 - task: DotNetCoreCLI@2
   displayName: Publish site extension
@@ -34,6 +34,6 @@ steps:
     modifyOutputPath: false
     projects: ${{ parameters.project }}
     ${{ if eq(parameters.publishDir, '') }}:
-      arguments: '--no-build -v m -c release -bl:$(log_path)/site_ext.publish.binlog'
+      arguments: '--no-build -v m -c release'
     ${{ else }}:
-      arguments: '--no-build -v m -c release -bl:$(log_path)/site_ext.publish.binlog -o ${{ parameters.publishDir }}'
+      arguments: '--no-build -v m -c release -o ${{ parameters.publishDir }}'
