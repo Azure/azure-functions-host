@@ -1,16 +1,12 @@
 # No triggers for code push to any branch.
-trigger: none
+trigger:
+  batch: true
+  branches:
+    include:
+    - shkr/vanilla_agents
 
 # No PR triggers for now
 pr: none
-
-schedules:
-  - cron: "0 0 * * *"
-    displayName: Nightly Build
-    branches:
-      include:
-      - dev
-    always: true
 
 resources:
   repositories:
@@ -41,8 +37,21 @@ extends:
       os: windows
 
     stages:
-    - stage: HttpApps
+    - stage: Setup
+      displayName: Setup & start agents
+      jobs:
+      - template: /eng/ci/templates/official/jobs/setup-benchmark-agents.yml@self
+        parameters:
+          functionAppName: HelloHttpNet9 
+          agentName: HelloHttpNet9_APP
+      - template: /eng/ci/templates/official/jobs/setup-benchmark-agents.yml@self
+        parameters:
+          agentName: HelloHttpNet9NoProxy_APP
+          functionAppName: HelloHttpNet9NoProxy 
+
+    - stage: Run
       displayName: Run Benchmarks
+      dependsOn: [] 
       jobs:
       - template: /eng/ci/templates/official/jobs/run-benchmarks.yml@self
         parameters:
@@ -50,9 +59,12 @@ extends:
           functionAppName: HelloHttpNet9  # App with ASP.NET Integration
           additionalCrankArgs: $(AdditionalCrankArguments)  # Pipeline variable to pass additional arguments to crank command.
           storeResultsInDatabase: ${{ variables.storeBenchmarkResultsInDatabase }}
+          agentName: HelloHttpNet9_APP
+
       - template: /eng/ci/templates/official/jobs/run-benchmarks.yml@self
         parameters:
           description: .NET9 Worker Application
           functionAppName: HelloHttpNet9NoProxy # App without ASP.NET Integration
           additionalCrankArgs: $(AdditionalCrankArguments)
           storeResultsInDatabase: ${{ variables.storeBenchmarkResultsInDatabase }}
+          agentName: HelloHttpNet9NoProxy_APP

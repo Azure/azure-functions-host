@@ -9,22 +9,25 @@ parameters:
 - name: additionalCrankArgs
   type: string
   default: ''
+- name: agentName
+  type: string
 
 jobs:
 - job: ${{ parameters.functionAppName }}
 
   variables:
+    agentName: ${{ parameters.agentName }}
     runDescription: ${{ parameters.description }}
     functionApp: ${{ parameters.functionAppName }}
     benchmarkArtifactName: benchmark_results_$(functionApp)
     functionAppOutputPath: $(Build.ArtifactStagingDirectory)/FunctionApps/$(functionApp)
     benchmarkResultsJsonPath: $(Build.ArtifactStagingDirectory)/BenchmarkResults/$(Build.BuildNumber)_$(functionApp).json
     functionsWorkerRuntime: 'dotnet-isolated'
-    crankAgentUrl: "http://localhost:5010" # Default crank agent URL.
     configFilePath: "./eng/perf/http.benchmarks.yml"
     hostLocation: "./../../"
     baselineBenchmarkResultFilePath: ''
     baselineBenchmarkResultsDownloadDir: $(Pipeline.Workspace)/BenchmarkBaselineResult
+    appAgentIpAddress: ''
 
   templateContext:
     inputs:
@@ -55,6 +58,9 @@ jobs:
   - script: dotnet tool install -g Microsoft.Crank.Agent --version "0.2.0-*"
     displayName: Install Microsoft.Crank.Agent tool
 
+  - script: dotnet tool install -g Microsoft.Crank.Controller --version "0.2.0-*"
+    displayName: Install Microsoft.Crank.Controller
+
   - pwsh: Start-Process powershell -ArgumentList '-NoExit', '-Command', 'crank-agent'
     displayName: 'Start crank-agent'
 
@@ -77,11 +83,35 @@ jobs:
       arguments: -c Release -o $(functionAppOutputPath) -f net9.0
       workingDirectory: $(Build.ArtifactStagingDirectory)/PerformanceTestApps/$(functionApp)
 
-  - script: dotnet tool install -g Microsoft.Crank.Controller --version "0.2.0-*"
-    displayName: Install Microsoft.Crank.Controller
+  - task: AzureCLI@2
+    displayName: Get Remote Agent IP Address
+    inputs:
+      azureSubscription: $(ServiceConnection)
+      scriptType: pscore
+      scriptLocation: inlineScript
+      inlineScript: |
+        do {
+          $Entity = az storage entity show `
+            --account-name $(StorageAccount) `
+            --auth-mode login `
+            --table-name $(BenchmarkAgentInfoTableName) `
+            --partition-key $(Build.BuildNumber) `
+            --row-key $(agentName) `
+            --select AgentIPAddress
+
+          if ($Entity) {
+            $AgentIPAddress = ($Entity | ConvertFrom-Json).AgentIPAddress
+            Write-Host "##vso[task.setvariable variable=appAgentIpAddress]$AgentIPAddress"
+            break
+          } else {
+            Write-Host "Entity not found. Retrying in 30 seconds..."
+            Start-Sleep -Seconds 30
+          }
+        } while (-not $Entity)
 
   - pwsh: |
         $crankArgs = "--config $(configFilePath) --scenario hellohttp --profile win2022 --load.options.reuseBuild true --description `"$(runDescription)`" --command-line-property --no-measurements --json $(benchmarkResultsJsonPath) --property sourceVersion=$(Build.SourceVersion) --property buildNumber=$(Build.BuildNumber) --property buildId=$(Build.BuildId) --property sourceBranch=$(Build.SourceBranch) --variable FunctionsWorkerRuntime=$(functionsWorkerRuntime) --variable HostLocation=$(hostLocation) --variable FunctionAppPath=$(functionAppOutputPath)"
+        $crankArgs += " --variable CrankAgentAppVm=$(appAgentIpAddress) --variable CrankAgentLoadVm=localhost --variable AspNetUrls=http://$(appAgentIpAddress):5000"
         $crankArgs += " ${{ parameters.additionalCrankArgs }}"
         $command = "crank $crankArgs"
 
@@ -90,12 +120,12 @@ jobs:
         }
 
         Write-Host "Running command: $command"
-        Invoke-Expression $command
+        Invoke-Expression $command -ErrorAction Stop
     displayName: 'Run Benchmark'
 
   # Retrieve function host logs
   - pwsh: |
-      $url = "$(crankAgentUrl)/jobs/1/output"
+      $url = "http://$(appAgentIpAddress):5010/jobs/1/output"
       Write-Host "Fetching logs from: $url"
       $response = Invoke-WebRequest -Uri $url -Method GET -UseBasicParsing
       Write-Host $response.Content
@@ -128,3 +158,4 @@ jobs:
       crank compare "$(baselineBenchmarkResultFilePath)" "$(benchmarkResultsJsonPath)"
     condition: and(succeeded(), ne(variables['baselineBenchmarkResultFilePath'], ''))
     displayName: 'Compare Results with Baseline'
+    
