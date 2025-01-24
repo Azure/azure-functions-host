@@ -22,3 +22,20 @@ By default the outputs will not be zipped. To the zip the final outputs, add `-p
 ## Outputs
 
 The output site extension can be found at `{repo_root}/out/pub/WebJobs.Script.SiteExtension/{config}_win`. When using `-p:ZipAfterPublish=true`, the zipped package is found at `{repo_root}/out/pkg/{config}`
+
+## Private Site Extension
+
+Private site extension (PSE) is not generated as part of building this project. To get a private site extension, navigate to the [publish output](#outputs) and run `New-PrivateSiteExtension.ps1`
+
+
+``` powershell
+# Generates a zipped x64 PSE by default
+./New-PrivateSiteExtension.ps1
+
+# To generate x86 / 32bit:
+./New-PrivateSiteExtension.ps1 -Bitness x86
+
+
+# Can skip zipping the extension:
+./New-PrivateSiteExtension.ps1 -NoZip
+```
