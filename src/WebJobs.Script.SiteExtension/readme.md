@@ -21,7 +21,7 @@ By default the outputs will not be zipped. To the zip the final outputs, add `-p
 
 ## Outputs
 
-The output site extension can be found at `{repo_root}/out/pub/WebJobs.Script.SiteExtension/{config}_win`. When using `-p:ZipAfterPublish=true`, the zipped package is found at `{repo_root}/out/pkg/{config}`
+The output site extension can be found at `{repo_root}/out/pub/WebJobs.Script.SiteExtension/{config}_{tfm}_win`. When using `-p:ZipAfterPublish=true`, the zipped package is found at `{repo_root}/out/pkg/{config}`
 
 ## Private Site Extension
 
