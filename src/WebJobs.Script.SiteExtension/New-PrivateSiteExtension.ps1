@@ -12,7 +12,7 @@
     The path to produce the private site extension to. When zipping, this is the name of the zip file. Leave null to compute this name.
 
     .PARAMETER Bitness
-    The bitness to produce the private site extension with. Default is '32bit'.
+    The bitness to produce the private site extension with. Default is '64bit'.
 
     .PARAMETER Zip
     [Switch] Include to produce site extension as a zip.
@@ -30,7 +30,7 @@
 param (
     [string] $InputPath = $null,
     [string] $OutputPath = $null,
-    [ValidateSet('x64', '64bit', 'x86', '32bit')][string] $Bitness = '32bit',
+    [ValidateSet('x64', '64bit', 'x86', '32bit')][string] $Bitness = '54bit',
     [switch] $Zip,
     [switch] $Force
 )
