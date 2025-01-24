@@ -1,4 +1,5 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -22,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 {
     internal static class GrpcMessageConversionExtensions
     {
-        private static readonly JsonSerializerSettings _datetimeSerializerSettings = JsonSerializers.NoDateParsingSettings;
+        private static readonly Newtonsoft.Json.JsonSerializerSettings _datetimeSerializerSettings = JsonSerializers.NoDateParsingSettings;
         private static readonly TypedData EmptyRpcHttp = new() { Http = new() };
 
         public static object ToObject(this TypedData typedData) =>

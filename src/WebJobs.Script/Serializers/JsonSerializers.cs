@@ -14,10 +14,5 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             DateParseHandling = DateParseHandling.None
         };
-
-        /// <summary>
-        /// JsonSerializer instance that disables date parsing.
-        /// </summary>
-        internal static readonly JsonSerializer NoDateParsingSerializer = JsonSerializer.Create(NoDateParsingSettings);
     }
 }

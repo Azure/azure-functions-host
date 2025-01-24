@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
 using System.Reactive.Linq;
@@ -252,7 +251,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
             foreach (string binding in rawBindings)
             {
-                var functionBinding = CreateBindingMetadata(binding);
+                var deserializedObj = JsonConvert.DeserializeObject<JObject>(binding, JsonSerializers.NoDateParsingSettings);
+                var functionBinding = BindingMetadata.Create(deserializedObj);
 
                 Utility.ValidateBinding(functionBinding);
 
@@ -284,17 +284,6 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             return function;
-        }
-
-        private BindingMetadata CreateBindingMetadata(string binding)
-        {
-            using (StringReader stringReader = new StringReader(binding))
-            using (JsonTextReader jsonTextReader = new JsonTextReader(stringReader))
-            {
-                JObject parsedBinding = JsonSerializers.NoDateParsingSerializer.Deserialize<JObject>(jsonTextReader);
-
-                return BindingMetadata.Create(parsedBinding);
-            }
         }
 
         private bool IsNullOrEmpty(IEnumerable<RawFunctionMetadata> functions)
