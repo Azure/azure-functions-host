@@ -22,6 +22,11 @@ resources:
     type: git
     name: engineering
     ref: refs/tags/release
+  pipelines:
+  - pipeline: BaselineResult
+    source: host.benchmarks
+    tags:
+    - AzFunc.Perf.Baseline
 
 variables:
   - template: /eng/ci/templates/variables/benchmarks.yml@self

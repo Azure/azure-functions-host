@@ -5,6 +5,8 @@ using System;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Diagnostics.Tracing;
+using Azure.Core;
+using Azure.Identity;
 using Azure.Monitor.OpenTelemetry.Exporter;
 using Azure.Monitor.OpenTelemetry.LiveMetrics;
 using Microsoft.Extensions.Configuration;
@@ -15,6 +17,7 @@ using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using AppInsightsCredentialOptions = Microsoft.Azure.WebJobs.Logging.ApplicationInsights.TokenCredentialOptions;
 
 namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
 {
@@ -23,6 +26,8 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
         internal static void ConfigureOpenTelemetry(this ILoggingBuilder loggingBuilder, HostBuilderContext context)
         {
             string azMonConnectionString = GetConfigurationValue(EnvironmentSettingNames.AppInsightsConnectionString, context.Configuration);
+            TokenCredential credential = GetTokenCredential(context.Configuration);
+
             bool enableOtlp = false;
             if (!string.IsNullOrEmpty(GetConfigurationValue(EnvironmentSettingNames.OtlpEndpoint, context.Configuration)))
             {
@@ -39,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
                     }
                     if (!string.IsNullOrEmpty(azMonConnectionString))
                     {
-                        o.AddAzureMonitorLogExporter(options => options.ConnectionString = azMonConnectionString);
+                        o.AddAzureMonitorLogExporter(options => ConfigureAzureMonitorOptions(options, azMonConnectionString, credential));
                     }
                     o.IncludeFormattedMessage = true;
                     o.IncludeScopes = false;
@@ -68,18 +73,21 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
                         o.FilterHttpRequestMessage = _ =>
                         {
                             Activity activity = Activity.Current?.Parent;
-                            return (activity == null || !activity.Source.Name.Equals("Azure.Core.Http")) ? true : false;
+                            return activity == null || !activity.Source.Name.Equals("Azure.Core.Http");
                         };
                     });
+
                     if (enableOtlp)
                     {
                         b.AddOtlpExporter();
                     }
+
                     if (!string.IsNullOrEmpty(azMonConnectionString))
                     {
-                        b.AddAzureMonitorTraceExporter(options => options.ConnectionString = azMonConnectionString);
-                        b.AddLiveMetrics(options => options.ConnectionString = azMonConnectionString);
+                        b.AddAzureMonitorTraceExporter(options => ConfigureAzureMonitorOptions(options, azMonConnectionString, credential));
+                        b.AddLiveMetrics(options => ConfigureAzureMonitorOptions(options, azMonConnectionString, credential));
                     }
+
                     b.AddProcessor(ActivitySanitizingProcessor.Instance);
                     b.AddProcessor(TraceFilterProcessor.Instance);
                 });
@@ -125,6 +133,35 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
             else
             {
                 return null;
+            }
+        }
+
+        private static TokenCredential GetTokenCredential(IConfiguration configuration)
+        {
+            if (GetConfigurationValue(EnvironmentSettingNames.AppInsightsAuthenticationString, configuration) is string authString)
+            {
+                AppInsightsCredentialOptions credOptions = AppInsightsCredentialOptions.ParseAuthenticationString(authString);
+                return new ManagedIdentityCredential(credOptions.ClientId);
+            }
+
+            return null;
+        }
+
+        private static void ConfigureAzureMonitorOptions(AzureMonitorExporterOptions options, string connectionString, TokenCredential credential)
+        {
+            options.ConnectionString = connectionString;
+            if (credential is not null)
+            {
+                options.Credential = credential;
+            }
+        }
+
+        private static void ConfigureAzureMonitorOptions(LiveMetricsExporterOptions options, string connectionString, TokenCredential credential)
+        {
+            options.ConnectionString = connectionString;
+            if (credential is not null)
+            {
+                options.Credential = credential;
             }
         }
     }

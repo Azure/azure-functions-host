@@ -1,7 +1,7 @@
 <Project>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Azure.Functions.JavaWorker" Version="2.17.0" />
+    <PackageReference Include="Microsoft.Azure.Functions.JavaWorker" Version="2.18.0" />
   </ItemGroup>
 
 </Project>
