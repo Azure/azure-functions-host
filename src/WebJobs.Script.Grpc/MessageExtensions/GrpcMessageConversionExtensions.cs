@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 {
     internal static class GrpcMessageConversionExtensions
     {
-        private static readonly Newtonsoft.Json.JsonSerializerSettings _datetimeSerializerSettings = JsonSerializers.NoDateParsingSettings;
+        private static readonly JsonSerializerSettings _datetimeSerializerSettings = JsonSerializers.NoDateParsingSettings;
         private static readonly TypedData EmptyRpcHttp = new() { Http = new() };
 
         public static object ToObject(this TypedData typedData) =>
