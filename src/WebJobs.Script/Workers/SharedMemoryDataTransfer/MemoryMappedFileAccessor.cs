@@ -16,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
     /// Encapsulates functionality for accessing <see cref="MemoryMappedFile"/>.
     /// There are platform specific implementations of this:
     /// 1) <see cref="MemoryMappedFileAccessorWindows"/>
-    /// 2) <see cref="MemoryMappedFileAccessorUnix"/>
+    /// 2) <see cref="MemoryMappedFileAccessorUnix"/>.
     /// </summary>
     public abstract class MemoryMappedFileAccessor : IMemoryMappedFileAccessor
     {

@@ -1,0 +1,130 @@
+parameters:
+- name: functionAppName
+  type: string
+- name: description
+  type: string
+- name: storeResultsInDatabase
+  type: boolean
+  default: false
+- name: additionalCrankArgs
+  type: string
+  default: ''
+
+jobs:
+- job: ${{ parameters.functionAppName }}
+
+  variables:
+    runDescription: ${{ parameters.description }}
+    functionApp: ${{ parameters.functionAppName }}
+    benchmarkArtifactName: benchmark_results_$(functionApp)
+    functionAppOutputPath: $(Build.ArtifactStagingDirectory)/FunctionApps/$(functionApp)
+    benchmarkResultsJsonPath: $(Build.ArtifactStagingDirectory)/BenchmarkResults/$(Build.BuildNumber)_$(functionApp).json
+    functionsWorkerRuntime: 'dotnet-isolated'
+    crankAgentUrl: "http://localhost:5010" # Default crank agent URL.
+    configFilePath: "./eng/perf/http.benchmarks.yml"
+    hostLocation: "./../../"
+    baselineBenchmarkResultFilePath: ''
+    baselineBenchmarkResultsDownloadDir: $(Pipeline.Workspace)/BenchmarkBaselineResult
+
+  templateContext:
+    inputs:
+    - input: pipelineArtifact
+      artifactName: $(benchmarkArtifactName)
+      pipeline: BaselineResult
+      targetPath: $(baselineBenchmarkResultsDownloadDir)
+
+    outputParentDirectory: $(Build.ArtifactStagingDirectory)
+    outputs:
+    - output: pipelineArtifact
+      displayName: Publish benchmark results
+      path: $(benchmarkResultsJsonPath)
+      artifact: $(benchmarkArtifactName)
+
+  steps:
+
+  - task: AzureKeyVault@2
+    condition: and(succeeded(), eq('${{ parameters.storeResultsInDatabase }}', true))
+    inputs:
+      azureSubscription: Azure-Functions-Host-CI-internal
+      KeyVaultName: functions-perf-crank-kv
+      SecretsFilter: BenchmarkResultsSqlConnectionString
+      RunAsPreJob: false
+
+  - template: /eng/ci/templates/install-dotnet.yml@self
+
+  - script: dotnet tool install -g Microsoft.Crank.Agent --version "0.2.0-*"
+    displayName: Install Microsoft.Crank.Agent tool
+
+  - pwsh: Start-Process powershell -ArgumentList '-NoExit', '-Command', 'crank-agent'
+    displayName: 'Start crank-agent'
+
+  - task: CopyFiles@2
+    displayName: Copy benchmark apps to temp location
+    inputs:
+      SourceFolder: '$(Build.SourcesDirectory)/test/Performance/Apps'
+      Contents: '**/*'
+      TargetFolder: '$(Build.ArtifactStagingDirectory)/PerformanceTestApps'
+      CleanTargetFolder: true
+
+  - task: DotNetCoreCLI@2
+    displayName: Publish $(functionApp) app
+    inputs:
+      command: publish
+      publishWebProjects: false
+      zipAfterPublish: false
+      modifyOutputPath: false
+      projects: '$(Build.ArtifactStagingDirectory)/PerformanceTestApps/$(functionApp)/HelloHttp.csproj'
+      arguments: -c Release -o $(functionAppOutputPath) -f net9.0
+      workingDirectory: $(Build.ArtifactStagingDirectory)/PerformanceTestApps/$(functionApp)
+
+  - script: dotnet tool install -g Microsoft.Crank.Controller --version "0.2.0-*"
+    displayName: Install Microsoft.Crank.Controller
+
+  - pwsh: |
+        $crankArgs = "--config $(configFilePath) --scenario hellohttp --profile win2022 --load.options.reuseBuild true --description `"$(runDescription)`" --command-line-property --no-measurements --json $(benchmarkResultsJsonPath) --property sourceVersion=$(Build.SourceVersion) --property buildNumber=$(Build.BuildNumber) --property buildId=$(Build.BuildId) --property sourceBranch=$(Build.SourceBranch) --variable FunctionsWorkerRuntime=$(functionsWorkerRuntime) --variable HostLocation=$(hostLocation) --variable FunctionAppPath=$(functionAppOutputPath)"
+        $crankArgs += " ${{ parameters.additionalCrankArgs }}"
+        $command = "crank $crankArgs"
+
+        if ('${{ parameters.storeResultsInDatabase }}' -eq 'true') {
+            $command += " --table HttpBenchmarks --sql `"$(BenchmarkResultsSqlConnectionString)`""
+        }
+
+        Write-Host "Running command: $command"
+        Invoke-Expression $command
+    displayName: 'Run Benchmark'
+
+  # Retrieve function host logs
+  - pwsh: |
+      $url = "$(crankAgentUrl)/jobs/1/output"
+      Write-Host "Fetching logs from: $url"
+      $response = Invoke-WebRequest -Uri $url -Method GET -UseBasicParsing
+      Write-Host $response.Content
+    displayName: 'Fetch Function Host Logs'
+
+  # Tag the build as a baseline if it originates from the specified branch.
+  # Baseline builds serve as reference points for performance comparisons in future builds.
+  # The tag added here will help identify these builds in the pipeline.
+  - pwsh: |
+      Write-Host "##vso[build.addbuildtag]$(benchmarkBaselineTagName)"
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], variables['benchmarkBaselineBranch']))
+    displayName: 'Tag Build as Baseline'
+
+  # Locate baseline benchmark result file from the downloaded baseline artifact.
+  - pwsh: |
+      $baselineDir = "$(baselineBenchmarkResultsDownloadDir)"
+      $fileNamePattern = "*_$(functionApp).json"
+      $baselineFile = Get-ChildItem -Path $baselineDir -Filter $fileNamePattern | Select-Object -First 1
+
+      if ($baselineFile) {
+        Write-Host "Found baseline benchmark result file: $($baselineFile.FullName)"
+        Write-Host "##vso[task.setvariable variable=baselineBenchmarkResultFilePath]$($baselineFile.FullName)"
+      } else {
+        Write-Host "No baseline benchmark result file found."
+      }
+    displayName: 'Set Baseline Benchmark Result File Path'
+
+  # Compare results with baseline
+  - pwsh: |
+      crank compare "$(baselineBenchmarkResultFilePath)" "$(benchmarkResultsJsonPath)"
+    condition: and(succeeded(), ne(variables['baselineBenchmarkResultFilePath'], ''))
+    displayName: 'Compare Results with Baseline'

@@ -132,7 +132,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         /// <summary>
         /// Provides a fast mechanism to compare byte arrays.
-        /// Reference: https://stackoverflow.com/a/8808245/3132415
+        /// Reference: https://stackoverflow.com/a/8808245/3132415.
         /// </summary>
         /// <param name="array1">First <see cref="byte[]"/> to compare.</param>
         /// <param name="array2">Second <see cref="byte[]"/> to compare.</param>

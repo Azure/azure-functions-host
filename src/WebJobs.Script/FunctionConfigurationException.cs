@@ -9,7 +9,6 @@ namespace Microsoft.Azure.WebJobs.Script
     /// An exception that indicates an issue with a function. These exceptions will be caught and
     /// logged, but not cause a host to restart.
     /// </summary>
-    [Serializable]
     public class FunctionConfigurationException : Exception
     {
         public FunctionConfigurationException() { }
@@ -17,9 +16,5 @@ namespace Microsoft.Azure.WebJobs.Script
         public FunctionConfigurationException(string message) : base(message) { }
 
         public FunctionConfigurationException(string message, Exception inner) : base(message, inner) { }
-
-        protected FunctionConfigurationException(
-          System.Runtime.Serialization.SerializationInfo info,
-          System.Runtime.Serialization.StreamingContext context) : base(info, context) { }
     }
 }

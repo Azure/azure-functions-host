@@ -12,13 +12,13 @@ namespace Microsoft.Azure.WebJobs.Script
     /// <summary>
     /// Defines an interface for fetching function metadata from function.json files
     /// </summary>
-    internal interface IHostFunctionMetadataProvider
+    public interface IHostFunctionMetadataProvider
     {
         ImmutableDictionary<string, ImmutableArray<string>> FunctionErrors { get; }
 
         /// <summary>
         /// Reads function metadata from function.json files present along with each function
         /// </summary>
-        Task<ImmutableArray<FunctionMetadata>> GetFunctionMetadataAsync(IEnumerable<RpcWorkerConfig> workerConfigs, IEnvironment environment, bool forceRefresh = false);
+        Task<ImmutableArray<FunctionMetadata>> GetFunctionMetadataAsync(IEnumerable<RpcWorkerConfig> workerConfigs, bool forceRefresh = false);
     }
 }
