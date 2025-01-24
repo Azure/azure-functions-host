@@ -27,6 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IEnvironment _environment;
         private readonly IWebHostRpcWorkerChannelManager _channelManager;
         private readonly IScriptHostManager _scriptHostManager;
+        private readonly JsonSerializerSettings _dateTimeSerializerSettings;
         private string _workerRuntime;
         private ImmutableArray<FunctionMetadata> _functions;
 
@@ -43,6 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script
             _channelManager = webHostRpcWorkerChannelManager;
             _scriptHostManager = scriptHostManager;
             _workerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
+            _dateTimeSerializerSettings = new JsonSerializerSettings { DateParseHandling = DateParseHandling.None };
         }
 
         public ImmutableDictionary<string, ImmutableArray<string>> FunctionErrors
@@ -251,7 +253,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             foreach (string binding in rawBindings)
             {
-                var deserializedObj = JsonConvert.DeserializeObject<JObject>(binding, JsonSerializers.NoDateParsingSettings);
+                var deserializedObj = JsonConvert.DeserializeObject<JObject>(binding, _dateTimeSerializerSettings);
                 var functionBinding = BindingMetadata.Create(deserializedObj);
 
                 Utility.ValidateBinding(functionBinding);
