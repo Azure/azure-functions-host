@@ -9,13 +9,13 @@
     The path of the published 'SiteExtension'. Leave null to scan for root in a child from here.
 
     .PARAMETER OutputPath
-    The path to produce the private site extension to. When zipping, this is the name of the zip file. Leave null to compute this name.
+    The path to produce the private site extension to (either the zip file or folder). Leave null to compute this name.
 
     .PARAMETER Bitness
     The bitness to produce the private site extension with. Default is '64bit'.
 
-    .PARAMETER Zip
-    [Switch] Include to produce site extension as a zip.
+    .PARAMETER NoZip
+    [Switch] Include to produce site extension as a folder and not a zip.
 
     .PARAMETER Force
     [Switch] Include to overwrite existing files.
@@ -31,7 +31,7 @@ param (
     [string] $InputPath = $null,
     [string] $OutputPath = $null,
     [ValidateSet('x64', '64bit', 'x86', '32bit')][string] $Bitness = '54bit',
-    [switch] $Zip,
+    [switch] $NoZip,
     [switch] $Force
 )
 
@@ -117,14 +117,14 @@ function Write-Folder ($outputPath)
     Copy-Item "$inputPath/workers/" -Destination "$workerDest/" -Container -Recurse | Out-Null
 }
 
-if ($Zip) {
+if ($NoZip) {
+    Write-Folder $OutputPath
+} else {
     if (-not $OutputPath.EndsWith(".zip")) {
         $OutputPath = "$OutputPath.zip"
     }
 
     Write-Zip $OutputPath
-} else {
-    Write-Folder $OutputPath
 }
 
 Write-Host "Published private site extension to $OutputPath"
