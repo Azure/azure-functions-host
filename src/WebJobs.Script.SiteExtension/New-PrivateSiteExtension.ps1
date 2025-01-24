@@ -30,7 +30,7 @@
 param (
     [string] $InputPath = $null,
     [string] $OutputPath = $null,
-    [ValidateSet('x64', '64bit', 'x86', '32bit')][string] $Bitness = '54bit',
+    [ValidateSet('x64', '64bit', 'x86', '32bit')][string] $Bitness = '64bit',
     [switch] $NoZip,
     [switch] $Force
 )
