@@ -68,7 +68,7 @@ jobs:
   - template: ci/sign-files.yml@eng
     parameters:
       displayName: Sign NugetPackages
-      folderPath: $(nuget_package_path)
+      folderPath: $(nuget_drop_path)
       pattern: '*.nupkg'
       signType: nuget
 
@@ -80,4 +80,4 @@ jobs:
   - task: DeleteFiles@1
     displayName: Delete CodeSignSummary files
     inputs:
-      contents: '$(nuget_package_path)/**/CodeSignSummary-*.md'
+      contents: '$(nuget_drop_path)/**/CodeSignSummary-*.md'
