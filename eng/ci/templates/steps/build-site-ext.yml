@@ -25,9 +25,9 @@ steps:
     modifyOutputPath: false
     projects: ${{ parameters.project }}
     ${{ if eq(parameters.publishDir, '') }}:
-      arguments: '-v m -c release --no-restore -f net6.0 -p:MinorVersionPrefix=8'
+      arguments: '-v m -c release --no-restore -f net6.0 -p:MinorVersionPrefix=6'
     ${{ else }}:
-      arguments: '-v m -c release --no-restore -f net6.0 -p:MinorVersionPrefix=6 -o ${{ parameters.publishDir }}'
+      arguments: '-v m -c release --no-restore -f net6.0 -p:MinorVersionPrefix=6 -o ${{ parameters.publishDir }}/net6'
 
 - task: DotNetCoreCLI@2
   displayName: Publish site extension (net8)
@@ -41,4 +41,4 @@ steps:
     ${{ if eq(parameters.publishDir, '') }}:
       arguments: '-v m -c release --no-restore -f net8.0 -p:MinorVersionPrefix=8'
     ${{ else }}:
-      arguments: '-v m -c release --no-restore -f net8.0 -p:MinorVersionPrefix=8 -o ${{ parameters.publishDir }}'
+      arguments: '-v m -c release --no-restore -f net8.0 -p:MinorVersionPrefix=8 -o ${{ parameters.publishDir }}/net8'
