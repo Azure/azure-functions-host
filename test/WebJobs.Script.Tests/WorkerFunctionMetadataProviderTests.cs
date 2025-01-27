@@ -69,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Theory]
         [InlineData(null)]
         [InlineData("")]
-        [InlineData("_binding")]
+        [InlineData("__binding__")]
         [InlineData("binding-test")]
         [InlineData("binding name")]
         public void ValidateBindings_InvalidName_Throws(string bindingName)
@@ -88,6 +88,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
+        [InlineData("binding_name")]
+        [InlineData("_")]
+        [InlineData("_binding")]
         [InlineData("bindingName")]
         [InlineData("binding1")]
         [InlineData(ScriptConstants.SystemReturnParameterBindingName)]
