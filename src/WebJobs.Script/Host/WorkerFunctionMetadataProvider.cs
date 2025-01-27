@@ -13,6 +13,7 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script
@@ -26,6 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IEnvironment _environment;
         private readonly IWebHostRpcWorkerChannelManager _channelManager;
         private readonly IScriptHostManager _scriptHostManager;
+        private readonly JsonSerializerSettings _dateTimeSerializerSettings;
         private string _workerRuntime;
         private ImmutableArray<FunctionMetadata> _functions;
 
@@ -42,6 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script
             _channelManager = webHostRpcWorkerChannelManager;
             _scriptHostManager = scriptHostManager;
             _workerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
+            _dateTimeSerializerSettings = new JsonSerializerSettings { DateParseHandling = DateParseHandling.None };
         }
 
         public ImmutableDictionary<string, ImmutableArray<string>> FunctionErrors
@@ -146,7 +149,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return new FunctionMetadataResult(useDefaultMetadataIndexing: false, _functions);
         }
 
-        internal static void ValidateFunctionAppFormat(string scriptPath, ILogger logger, IEnvironment environment, IFileSystem fileSystem = null)
+        internal void ValidateFunctionAppFormat(string scriptPath, ILogger logger, IEnvironment environment, IFileSystem fileSystem = null)
         {
             fileSystem = fileSystem ?? FileUtility.Instance;
             bool mixedApp = false;
@@ -244,13 +247,14 @@ namespace Microsoft.Azure.WebJobs.Script
             return validatedMetadata;
         }
 
-        internal static FunctionMetadata ValidateBindings(IEnumerable<string> rawBindings, FunctionMetadata function)
+        internal FunctionMetadata ValidateBindings(IEnumerable<string> rawBindings, FunctionMetadata function)
         {
             HashSet<string> bindingNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             foreach (string binding in rawBindings)
             {
-                var functionBinding = BindingMetadata.Create(JObject.Parse(binding));
+                var deserializedObj = JsonConvert.DeserializeObject<JObject>(binding, _dateTimeSerializerSettings);
+                var functionBinding = BindingMetadata.Create(deserializedObj);
 
                 Utility.ValidateBinding(functionBinding);
 

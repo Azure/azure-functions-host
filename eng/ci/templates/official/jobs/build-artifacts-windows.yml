@@ -8,45 +8,34 @@ jobs:
     os: windows
 
   variables:
-    nuget_package_path: $(Build.ArtifactStagingDirectory)/NugetPackages
-    log_dir: $(Build.ArtifactStagingDirectory)/log
+    drop_path: $(Build.ArtifactStagingDirectory)
+    nuget_drop_path: $(drop_path)/nuget
+    windows_drop_path: $(drop_path)/windows
 
   templateContext:
-    outputParentDirectory: $(Build.ArtifactStagingDirectory)
+    outputParentDirectory: $(drop_path)
     outputs:
     - output: pipelineArtifact
       displayName: Publish site extension
-      path: $(Build.ArtifactStagingDirectory)/SiteExtension
-      artifact: SiteExtension
-    - output: pipelineArtifact
-      displayName: Publish private site extension
-      path: $(Build.ArtifactStagingDirectory)/PrivateSiteExtension
-      artifact: PrivateSiteExtension
-    - output: pipelineArtifact
-      displayName: Publish site extension symbols
-      path: $(Build.ArtifactStagingDirectory)/SiteExtensionSymbols
-      artifact: Symbols
+      path: $(windows_drop_path)
+      artifact: drop_windows
     - output: pipelineArtifact
       displayName: Publish nuget packages
-      path: $(Build.ArtifactStagingDirectory)/NugetPackages
-      artifact: NugetPackages
-    - output: pipelineArtifact
-      displayName: Publish logs
-      path: $(log_dir)
-      artifact: Windows_Log
-      sbomEnabled: false
-      condition: always()
+      path: $(nuget_drop_path)
+      artifact: drop_nuget
 
   steps:
   - template: /eng/ci/templates/install-dotnet.yml@self
   - template: /eng/ci/templates/steps/build-site-ext.yml@self
+    parameters:
+      publishDir: $(windows_drop_path)
 
   - task: DotNetCoreCLI@2
     displayName: Build host packages
     inputs:
       command: custom
       custom: pack
-      arguments: -c release -o $(nuget_package_path)
+      arguments: -c release -o $(nuget_drop_path)
       projects: |
         **/WebJobs.Script.csproj
         **/WebJobs.Script.WebHost.csproj
@@ -74,7 +63,7 @@ jobs:
     inputs:
       command: custom
       custom: pack
-      arguments: '--no-build -c release -o $(nuget_package_path)'
+      arguments: '--no-build -c release -o $(nuget_drop_path)'
       projects: |
         **/WebJobs.Script.Abstractions.csproj
 
@@ -91,7 +80,7 @@ jobs:
     inputs:
       command: custom
       custom: pack
-      arguments: '--no-build -c release -o $(nuget_package_path)'
+      arguments: '--no-build -c release -o $(nuget_drop_path)'
       projects: |
         **/ExtensionsMetadataGenerator.csproj
 

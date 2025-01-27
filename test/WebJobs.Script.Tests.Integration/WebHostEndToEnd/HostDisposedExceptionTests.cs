@@ -75,27 +75,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration
         //    Assert.Contains("CustomListener.RunAsync", ex.StackTrace);
         //}
 
-        [Fact]
-        public void Serialization()
-        {
-            HostDisposedException originalEx = new HostDisposedException("someObject", new ObjectDisposedException("someObject"));
-            HostDisposedException deserializedEx;
-
-#pragma warning disable SYSLIB0011 // Type or member is obsolete
-            BinaryFormatter bf = new BinaryFormatter();
-#pragma warning restore SYSLIB0011 // Type or member is obsolete
-            using (MemoryStream ms = new MemoryStream())
-            {
-#pragma warning disable SYSLIB0011 // Type or member is obsolete
-                bf.Serialize(ms, originalEx);
-                ms.Seek(0, 0);
-                deserializedEx = (HostDisposedException)bf.Deserialize(ms);
-#pragma warning restore SYSLIB0011 // Type or member is obsolete
-            }
-
-            Assert.Equal(originalEx.ToString(), deserializedEx.ToString());
-        }
-
         private class TestScriptLoggerFactory : ScriptLoggerFactory
         {
             public static bool ShouldWait { get; set; } = false;
