@@ -9,7 +9,6 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc.ModelBinding.Metadata;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Azure.WebJobs.Script.Extensions;
@@ -185,12 +184,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             HashSet<string> names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var binding in functionMetadata.Bindings)
             {
-                Utility.ValidateBinding(binding);
-
-                if (binding.Type == null)
-                {
-                    throw new ArgumentException($"Binding '{binding.Name}' is invalid. Bindings must specify a Type.");
-                }
+                ValidateBinding(binding);
 
                 // Ensure no duplicate binding names
                 if (names.Contains(binding.Name))
@@ -215,6 +209,16 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             if (triggerMetadata == null)
             {
                 throw new InvalidOperationException("No trigger binding specified. A function must have a trigger input binding.");
+            }
+        }
+
+        protected internal virtual void ValidateBinding(BindingMetadata bindingMetadata)
+        {
+            Utility.ValidateBinding(bindingMetadata);
+
+            if (bindingMetadata.Type == null)
+            {
+                throw new ArgumentException($"Binding '{bindingMetadata.Name}' is invalid. Bindings must specify a Type.");
             }
         }
 

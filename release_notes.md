@@ -10,3 +10,4 @@
   - [Added net9 prelaunch app.](https://github.com/Azure/azure-functions-dotnet-worker/pull/2898)
 - Update the `DefaultHttpProxyService` to better handle client disconnect scenarios (#10688)
   - Replaced `InvalidOperationException` with `HttpForwardingException` when there is a ForwarderError
+- Allow for binding names to use snake case (#10764). Examples include `_`, `binding_name`, and `_binding`.
