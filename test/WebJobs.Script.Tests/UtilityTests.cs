@@ -557,6 +557,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData("_binding")]
         [InlineData("binding_")]
         [InlineData("_binding_")]
+        [InlineData("_another_binding_test_")]
         [InlineData("long_binding_name_that_is_valid")]
         [InlineData("binding_name")]
         [InlineData("_")]
