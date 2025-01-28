@@ -8,6 +8,7 @@ using System.Diagnostics.Metrics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
@@ -206,7 +207,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Theory]
         [InlineData(null)]
         [InlineData("")]
-        [InlineData("_binding")]
+        [InlineData("__")]
+        [InlineData("__binding")]
+        [InlineData("binding__")]
+        [InlineData("bind__ing")]
+        [InlineData("__binding__")]
         [InlineData("binding-test")]
         [InlineData("binding name")]
         public void ValidateBinding_InvalidName_Throws(string bindingName)
@@ -225,6 +230,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
+        [InlineData("_binding")]
+        [InlineData("binding_")]
+        [InlineData("_binding_")]
+        [InlineData("long_binding_name_that_is_valid")]
+        [InlineData("binding_name")]
+        [InlineData("_")]
         [InlineData("bindingName")]
         [InlineData("binding1")]
         [InlineData(ScriptConstants.SystemReturnParameterBindingName)]

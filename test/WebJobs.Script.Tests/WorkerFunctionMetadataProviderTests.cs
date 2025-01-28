@@ -86,6 +86,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData(null)]
         [InlineData("")]
         [InlineData("__")]
+        [InlineData("__binding")]
+        [InlineData("binding__")]
         [InlineData("bind__ing")]
         [InlineData("__binding__")]
         [InlineData("binding-test")]
@@ -106,9 +108,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
+        [InlineData("_binding")]
+        [InlineData("binding_")]
+        [InlineData("_binding_")]
+        [InlineData("long_binding_name_that_is_valid")]
         [InlineData("binding_name")]
         [InlineData("_")]
-        [InlineData("_binding_)")]
         [InlineData("bindingName")]
         [InlineData("binding1")]
         [InlineData(ScriptConstants.SystemReturnParameterBindingName)]
