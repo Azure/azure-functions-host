@@ -120,7 +120,7 @@ jobs:
         }
 
         Write-Host "Running command: $command"
-        Invoke-Expression $command -ErrorAction Stop
+        Invoke-Expression $command
     displayName: 'Run Benchmark'
 
   # Retrieve function host logs

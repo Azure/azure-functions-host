@@ -51,7 +51,7 @@ extends:
 
     - stage: Run
       displayName: Run Benchmarks
-      dependsOn: [] 
+      dependsOn: [] # Force this stage to run independently and in parallel with other stages.
       jobs:
       - template: /eng/ci/templates/official/jobs/run-benchmarks.yml@self
         parameters:
@@ -60,7 +60,6 @@ extends:
           additionalCrankArgs: $(AdditionalCrankArguments)  # Pipeline variable to pass additional arguments to crank command.
           storeResultsInDatabase: ${{ variables.storeBenchmarkResultsInDatabase }}
           agentName: HelloHttpNet9_APP
-
       - template: /eng/ci/templates/official/jobs/run-benchmarks.yml@self
         parameters:
           description: .NET9 Worker Application
