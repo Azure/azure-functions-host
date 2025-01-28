@@ -12,6 +12,7 @@ jobs:
     environmentVariables:
       FUNCTIONS_WORKER_RUNTIME: '{{FunctionsWorkerRuntime}}'
       AzureWebJobsScriptRoot: '{{FunctionAppPath}}'
+      ASPNETCORE_URLS: '{{ AspNetUrls }}'
 
 scenarios:
   hellohttp:
