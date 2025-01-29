@@ -1,7 +1,9 @@
 # No triggers for code push to any branch.
 trigger: none
+
 # No PR triggers for now
 pr: none
+
 schedules:
   - cron: "0 0 * * *"
     displayName: Nightly Build
@@ -9,6 +11,7 @@ schedules:
       include:
       - dev
     always: true
+
 resources:
   repositories:
   - repository: 1es
