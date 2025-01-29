@@ -59,10 +59,10 @@ jobs:
     displayName: Install Microsoft.Crank.Agent tool
 
   - script: dotnet tool install -g Microsoft.Crank.Controller --version "0.2.0-*"
-    displayName: Install Microsoft.Crank.Controller
+    displayName: Install Microsoft.Crank.Controller tool
 
   - pwsh: Start-Process powershell -ArgumentList '-NoExit', '-Command', 'crank-agent'
-    displayName: 'Start crank-agent'
+    displayName: Start crank-agent
 
   - task: CopyFiles@2
     displayName: Copy benchmark apps to temp location
@@ -90,6 +90,9 @@ jobs:
       scriptType: pscore
       scriptLocation: inlineScript
       inlineScript: |
+        $maxAttempts = 60
+        $attempt = 0
+
         do {
           $Entity = az storage entity show `
             --account-name $(StorageAccount) `
@@ -106,6 +109,12 @@ jobs:
           } else {
             Write-Host "Entity not found. Retrying in 30 seconds..."
             Start-Sleep -Seconds 30
+            $attempt++
+          }
+
+          if ($attempt -ge $maxAttempts) {
+            Write-Host "Maximum attempts reached. Exiting..."
+            exit 1
           }
         } while (-not $Entity)
 
@@ -158,4 +167,3 @@ jobs:
       crank compare "$(baselineBenchmarkResultFilePath)" "$(benchmarkResultsJsonPath)"
     condition: and(succeeded(), ne(variables['baselineBenchmarkResultFilePath'], ''))
     displayName: 'Compare Results with Baseline'
-    

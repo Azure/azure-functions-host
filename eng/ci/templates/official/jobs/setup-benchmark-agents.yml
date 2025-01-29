@@ -16,7 +16,7 @@ jobs:
   - template: /eng/ci/templates/install-dotnet.yml@self
 
   - script: dotnet tool install -g Microsoft.Crank.Agent --version "0.2.0-*"
-    displayName: Install crank agent
+    displayName: Install Microsoft.Crank.Agent tool
 
   - pwsh: Start-Process powershell -ArgumentList '-NoExit', '-Command', 'crank-agent'
     displayName: Start crank agent
@@ -74,7 +74,10 @@ jobs:
   - pwsh: |
       $url = "http://localhost:5010/jobs/all"
       Write-Host "Calling $url to check benchmark job status"
-      while ($true) {
+      $maxAttempts = 60
+      $attempt = 0
+
+      while ($attempt -lt $maxAttempts) {
           $response = Invoke-WebRequest -Uri $url -Method Get -ErrorAction Stop
           $data = $response.Content | ConvertFrom-Json
           $completedJobCount = ($data | Where-Object { $_.state -eq "Deleted" }).Count 
@@ -86,11 +89,16 @@ jobs:
 
           Write-Host "No completed jobs found. Polling again in 30 seconds..."
           Start-Sleep -Seconds 30
+          $attempt++
       }
+
+      Write-Host "Maximum attempts reached. Exiting..."
+      exit 1
     displayName: Wait for job completion
 
   - task: AzureCLI@2
     displayName: Clean up storage
+    condition: always()
     inputs:
       azureSubscription: $(ServiceConnection)
       scriptType: 'pscore'
