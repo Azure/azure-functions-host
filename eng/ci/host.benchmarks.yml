@@ -1,16 +1,13 @@
 # No triggers for code push to any branch.
-trigger: none
+trigger:
+  batch: true
+  branches:
+    include:
+    - shkr/vanilla_agents
 
 # No PR triggers for now
 pr: none
 
-schedules:
-  - cron: "0 0 * * *"
-    displayName: Nightly Build
-    branches:
-      include:
-      - dev
-    always: true
 
 resources:
   repositories:
@@ -36,8 +33,8 @@ extends:
   template: v1/1ES.Unofficial.PipelineTemplate.yml@1es
   parameters:
     pool:
-      name: 1es-pool-azfunc-large
-      image: 1es-windows-2022
+      name: 1es-pool-azfunc-benchmarking-large
+      image: 1es-windows-2022-benchmark-runner-vanilla
       os: windows
 
     stages:
