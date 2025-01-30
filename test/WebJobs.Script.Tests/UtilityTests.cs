@@ -548,7 +548,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Utility.ValidateBinding(bindingMetadata);
             });
 
-            Assert.Equal($"The binding name {bindingName} is invalid. Please assign a valid name to the binding.", ex.Message);
+            Assert.Equal($"The binding name {bindingName} is invalid. Please assign a valid name to the binding. See https://aka.ms/azure-functions-binding-name-rules for more details.", ex.Message);
         }
 
         [Theory]
