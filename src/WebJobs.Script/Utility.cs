@@ -590,7 +590,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             if (bindingMetadata.Name == null || !BindingNameValidationRegex.IsMatch(bindingMetadata.Name))
             {
-                throw new ArgumentException($"The binding name {bindingMetadata.Name} is invalid. Please assign a valid name to the binding.");
+                throw new ArgumentException($"The binding name {bindingMetadata.Name} is invalid. Please assign a valid name to the binding. See https://aka.ms/azure-functions-binding-name-rules for more details.");
             }
 
             if (bindingMetadata.IsReturn && bindingMetadata.Direction != BindingDirection.Out)
