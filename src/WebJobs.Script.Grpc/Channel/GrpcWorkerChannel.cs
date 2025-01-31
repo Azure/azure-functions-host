@@ -1721,13 +1721,13 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             if (isOtelEnabled)
             {
+                string triggerType = OpenTelemetryConstants.ResolveTriggerType(context.FunctionMetadata?.Trigger?.Type);
                 Activity.Current?.AddTag(ResourceSemanticConventions.FaaSName, context.FunctionMetadata.Name);
-                Activity.Current?.AddTag(ResourceSemanticConventions.FaaSTrigger, OpenTelemetryConstants.ResolveTriggerType(context.FunctionMetadata?.Trigger?.Type));
-                if (context.FunctionMetadata?.Trigger?.Raw != null && context.FunctionMetadata.Trigger.Type == "httpTrigger" && context.FunctionMetadata.Trigger.Raw.TryGetValue("route", StringComparison.OrdinalIgnoreCase, out var value))
+                Activity.Current?.AddTag(ResourceSemanticConventions.FaaSTrigger, triggerType);
+                if (Activity.Current is not null && triggerType == "http" && OpenTelemetryConstants.TryResolveHttpTriggerRoute(context.FunctionMetadata.Trigger, out string httpRoute))
                 {
-                    string routeValue = value.ToString();
-                    Activity.Current.DisplayName = $"{Activity.Current.DisplayName} {routeValue}";
-                    Activity.Current?.AddTag(ResourceSemanticConventions.HttpRoute, routeValue);
+                    Activity.Current.DisplayName = $"{Activity.Current.DisplayName} {httpRoute}";
+                    Activity.Current.AddTag(ResourceSemanticConventions.HttpRoute, httpRoute);
                 }
             }
         }

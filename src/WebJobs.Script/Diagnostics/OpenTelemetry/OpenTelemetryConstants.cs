@@ -1,5 +1,8 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
+using System;
+
+using Microsoft.Azure.WebJobs.Script.Description;
 
 namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
 {
@@ -23,6 +26,18 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
                 default:
                     return trigger;
             }
+        }
+
+        internal static bool TryResolveHttpTriggerRoute(BindingMetadata? bindingMetadata, out string httpRoute)
+        {
+            if (bindingMetadata is not null && bindingMetadata?.Raw is not null && bindingMetadata.Raw.TryGetValue("route", StringComparison.OrdinalIgnoreCase, out var value))
+            {
+                httpRoute = value.ToString();
+                return true;
+            }
+
+            httpRoute = null;
+            return false;
         }
     }
 }
