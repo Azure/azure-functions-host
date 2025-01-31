@@ -30,6 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
         // Http
         internal const string QueryUrl = "url.query";
         internal const string FullUrl = "url.full";
+        internal const string HttpRoute = "http.route";
 
         // AI
         internal const string AISDKPrefix = "ai.sdk.prefix";

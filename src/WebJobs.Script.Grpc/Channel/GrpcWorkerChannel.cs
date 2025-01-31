@@ -1723,6 +1723,12 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             {
                 Activity.Current?.AddTag(ResourceSemanticConventions.FaaSName, context.FunctionMetadata.Name);
                 Activity.Current?.AddTag(ResourceSemanticConventions.FaaSTrigger, OpenTelemetryConstants.ResolveTriggerType(context.FunctionMetadata?.Trigger?.Type));
+                if (context.FunctionMetadata?.Trigger?.Raw != null && context.FunctionMetadata.Trigger.Type == "httpTrigger" && context.FunctionMetadata.Trigger.Raw.TryGetValue("route", StringComparison.OrdinalIgnoreCase, out var value))
+                {
+                    string routeValue = value.ToString();
+                    Activity.Current.DisplayName = $"{Activity.Current.DisplayName} {routeValue}";
+                    Activity.Current?.AddTag(ResourceSemanticConventions.HttpRoute, routeValue);
+                }
             }
         }
 
