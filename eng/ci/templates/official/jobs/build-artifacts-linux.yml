@@ -24,7 +24,12 @@ jobs:
     os: linux
 
   steps:
-  - template: /eng/ci/templates/install-dotnet.yml@self
+  # TODO: revert to global.json when Windows is unblocked from moving forward.
+  - task: UseDotNet@2
+    displayName: Install .NET 8
+    inputs:
+      packageType: sdk
+      version: 8.x
 
   - task: DotNetCoreCLI@2
     displayName: Restore
