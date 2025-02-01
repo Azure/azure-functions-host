@@ -5,10 +5,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
-using System.IO.Pipes;
 using System.Linq;
 using System.Net.Http;
-using System.Resources;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
@@ -27,6 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
         private readonly FunctionsHostingConfigOptions _configOption;
         private readonly ILogger _logger;
         private readonly string _cdnUri;
+        private readonly string _platformReleaseChannel;
         private string _extensionBundleVersion;
 
         public ExtensionBundleManager(ExtensionBundleOptions options, IEnvironment environment, ILoggerFactory loggerFactory, FunctionsHostingConfigOptions configOption)
@@ -36,6 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
             _cdnUri = _environment.GetEnvironmentVariable(EnvironmentSettingNames.ExtensionBundleSourceUri) ?? ScriptConstants.ExtensionBundleDefaultSourceUri;
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _configOption = configOption ?? throw new ArgumentNullException(nameof(configOption));
+            _platformReleaseChannel = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel);
         }
 
         public async Task<ExtensionBundleDetails> GetExtensionBundleDetails()
@@ -250,7 +250,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
             return matchingBundleVersion;
         }
 
-        internal static string FindBestVersionMatch(VersionRange versionRange, IEnumerable<string> versions, string bundleId, FunctionsHostingConfigOptions configOption)
+        internal string FindBestVersionMatch(VersionRange versionRange, IEnumerable<string> versions, string bundleId, FunctionsHostingConfigOptions configOption)
         {
             var bundleVersions = versions.Select(p =>
             {
@@ -263,7 +263,21 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
                 return version;
             }).Where(v => v != null);
 
-            var matchingVersion = bundleVersions.OrderByDescending(version => version.Version).FirstOrDefault();
+            var latestBundlVersion = bundleVersions.OrderByDescending(version => version.Version).FirstOrDefault();
+            var matchingVersion = latestBundlVersion;
+
+            if (string.Equals(_platformReleaseChannel, "Standard", StringComparison.Ordinal) || string.Equals(_platformReleaseChannel, "Extended", StringComparison.Ordinal))
+            {
+                matchingVersion = bundleVersions.OrderByDescending(version => version.Version).ElementAt(1); // if n is latest, should get version n-1
+            }
+            else if (string.Equals(_platformReleaseChannel, string.Empty) || string.Equals(_platformReleaseChannel, "Latest", StringComparison.Ordinal))
+            {
+                // no - op, latest version should be used.
+            }
+            else
+            {
+                _logger.LogInformation("Platform Release Channel of type {platformReleaseChannelName} is not recognized. The latest bundle version, {latestBundleVersion} will be used.", _platformReleaseChannel);
+            }
 
             if (bundleId != ScriptConstants.DefaultExtensionBundleId)
             {
