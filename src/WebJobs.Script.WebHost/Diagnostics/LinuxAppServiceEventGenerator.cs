@@ -2,7 +2,9 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using Azure.Monitor.OpenTelemetry.AspNetCore;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -13,6 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly Action<string> _writeEvent;
         private readonly HostNameProvider _hostNameProvider;
         private readonly IOptions<FunctionsHostingConfigOptions> _functionsHostingConfigOptions;
+        private readonly IOptions<Configuration.AzureMonitorOptions> _azureMonitorOptions;
         private ILinuxAppServiceFileLogger _functionsExecutionEventsCategoryLogger;
         private ILinuxAppServiceFileLogger _functionsLogsCategoryLogger;
         private ILinuxAppServiceFileLogger _functionsMetricsCategoryLogger;
@@ -22,11 +25,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             ILinuxAppServiceFileLoggerFactory loggerFactory,
             HostNameProvider hostNameProvider,
             IOptions<FunctionsHostingConfigOptions> functionsHostingConfigOptions,
+            IOptions<Configuration.AzureMonitorOptions> azureMonitorOptions,
             Action<string> writeEvent = null)
         {
             _writeEvent = writeEvent ?? WriteEvent;
             _hostNameProvider = hostNameProvider ?? throw new ArgumentNullException(nameof(hostNameProvider));
             _functionsHostingConfigOptions = functionsHostingConfigOptions;
+            _azureMonitorOptions = azureMonitorOptions;
             _functionsExecutionEventsCategoryLogger = loggerFactory.Create(FunctionsExecutionEventsCategory, backoffEnabled: !_functionsHostingConfigOptions.Value.DisableLinuxAppServiceLogBackoff);
             _functionsLogsCategoryLogger = loggerFactory.Create(FunctionsLogsCategory, backoffEnabled: false);
             _functionsMetricsCategoryLogger = loggerFactory.Create(FunctionsMetricsCategory, false);
@@ -110,7 +115,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public override void LogAzureMonitorDiagnosticLogEvent(LogLevel level, string resourceId, string operationName, string category, string regionName, string properties)
         {
-            var timeStr = IsAzureMonitorTimeIsoFormatEnabled() ? DateTime.UtcNow.ToString("s") : DateTime.UtcNow.ToString();
+            var timeStr = _azureMonitorOptions.Value.IsAzureMonitorTimeIsoFormatEnabled ? DateTime.UtcNow.ToString("s") : DateTime.UtcNow.ToString();
             _writeEvent($"{ScriptConstants.LinuxAzureMonitorEventStreamName} {(int)ToEventLevel(level)},{resourceId},{operationName},{category},{regionName},{NormalizeString(properties.Replace("'", string.Empty))},{timeStr}");
         }
 
@@ -118,20 +123,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         {
             // Pipe the unhandled exception to stdout as part of docker logs.
             Console.WriteLine($"Unhandled exception on {DateTime.UtcNow}: {e?.ToString()}");
-        }
-
-        private bool IsAzureMonitorTimeIsoFormatEnabled()
-        {
-            string enabledString = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureMonitorTimeIsoFormatEnabled);
-            if (bool.TryParse(enabledString, out bool result))
-            {
-                return result;
-            }
-            if (int.TryParse(enabledString, out int enabledInt))
-            {
-                return Convert.ToBoolean(enabledInt);
-            }
-            return false;
         }
     }
 }
