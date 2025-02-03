@@ -107,7 +107,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 {
                     var hostNameProvider = p.GetService<HostNameProvider>();
                     IOptions<FunctionsHostingConfigOptions> functionsHostingConfigOptions = p.GetService<IOptions<FunctionsHostingConfigOptions>>();
-                    return new LinuxAppServiceEventGenerator(new LinuxAppServiceFileLoggerFactory(), hostNameProvider, functionsHostingConfigOptions);
+                    IOptions<AzureMonitorOptions> azureMonitorOptions = p.GetService<IOptions<AzureMonitorOptions>>();
+                    return new LinuxAppServiceEventGenerator(new LinuxAppServiceFileLoggerFactory(), hostNameProvider, functionsHostingConfigOptions, azureMonitorOptions);
                 }
                 else if (environment.IsAnyKubernetesEnvironment())
                 {
