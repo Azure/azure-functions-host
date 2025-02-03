@@ -63,7 +63,7 @@ jobs:
       zipAfterPublish: false
       modifyOutputPath: false
       projects: '$(Build.ArtifactStagingDirectory)/PerformanceTestApps/$(functionApp)/HelloHttp.csproj'
-      arguments: -c Release -o $(functionAppOutputPath) -f net9.0 -v n
+      arguments: -c Release -o $(functionAppOutputPath) -f net9.0
       workingDirectory: $(Build.ArtifactStagingDirectory)/PerformanceTestApps/$(functionApp)
 
   - script: |
