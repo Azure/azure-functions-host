@@ -269,9 +269,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
                 _metricsLogger = metricsLogger;
             }
 
+            #pragma warning disable CS0067
             public event EventHandler HostInitializing;
 
             public event EventHandler<ActiveHostChangedEventArgs> ActiveHostChanged;
+            #pragma warning restore CS0067
 
             public ScriptHostState State => throw new NotImplementedException();
 
