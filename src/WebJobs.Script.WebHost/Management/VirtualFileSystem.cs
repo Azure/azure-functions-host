@@ -176,7 +176,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, ex.Message);
-                    var conflictDirectoryResponse = CreateResponse(HttpStatusCode.Conflict, ex);
+                    var conflictDirectoryResponse = CreateResponse(HttpStatusCode.Conflict, "An error occurred");
                     return Task.FromResult(conflictDirectoryResponse);
                 }
 
@@ -251,7 +251,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             catch (Exception e)
             {
                 _logger.LogError(e, e.Message);
-                HttpResponseMessage errorResponse = CreateResponse(HttpStatusCode.InternalServerError, e.Message);
+                HttpResponseMessage errorResponse = CreateResponse(HttpStatusCode.InternalServerError, "An error occurred");
                 return Task.FromResult(errorResponse);
             }
         }
@@ -323,7 +323,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             {
                 // Could not read the file
                 _logger.LogError(ex, "Unable to read file: " + ex.Message);
-                var errorResponse = CreateResponse(HttpStatusCode.NotFound, ex);
+                var errorResponse = CreateResponse(HttpStatusCode.NotFound, "An error occurred. Unable to read file.");
                 if (fileStream != null)
                 {
                     fileStream.Close();
@@ -402,7 +402,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     catch (Exception ex)
                     {
                         _logger.LogError(ex, ex.Message);
-                        var conflictResponse = CreateResponse(HttpStatusCode.Conflict, ex);
+                        var conflictResponse = CreateResponse(HttpStatusCode.Conflict, "An error occurred");
                         return conflictResponse;
                     }
                 }
@@ -418,7 +418,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             catch (Exception ex)
             {
                 _logger.LogError(ex, ex.Message);
-                var errorResponse = CreateResponse(HttpStatusCode.Conflict, ex);
+                var errorResponse = CreateResponse(HttpStatusCode.Conflict, "An error occurred");
                 return errorResponse;
             }
         }
