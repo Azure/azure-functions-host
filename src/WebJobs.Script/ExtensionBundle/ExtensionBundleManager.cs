@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
             _cdnUri = _environment.GetEnvironmentVariable(EnvironmentSettingNames.ExtensionBundleSourceUri) ?? ScriptConstants.ExtensionBundleDefaultSourceUri;
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _configOption = configOption ?? throw new ArgumentNullException(nameof(configOption));
-            _platformReleaseChannel = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel);
+            _platformReleaseChannel = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel) ?? ScriptConstants.LatestPlatformChannelName;
         }
 
         public async Task<ExtensionBundleDetails> GetExtensionBundleDetails()
