@@ -269,14 +269,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
                 _metricsLogger = metricsLogger;
             }
 
-            public ScriptHostState State => throw new NotImplementedException();
-
-            public Exception LastError => throw new NotImplementedException();
-
             public event EventHandler HostInitializing;
 
             public event EventHandler<ActiveHostChangedEventArgs> ActiveHostChanged;
 
+            public ScriptHostState State => throw new NotImplementedException();
+
+            public Exception LastError => throw new NotImplementedException();
 
             public object GetService(Type serviceType)
             {
