@@ -14,3 +14,4 @@
 - Fix modification of ISO strings during the parsing of function metadata bindings.
   - This fixes the listener errors related to the CosmosDB trigger's `StartFromTime` parameter. (#10735)
 - Updated `WebJobs.Script` to target .NET 8 (instead of .NET Standard 2.1)
+- Fixed standby paths in ScriptApplicationHostOptions to ensure proper Linux path separators (#10795)
