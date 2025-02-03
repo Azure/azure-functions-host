@@ -259,5 +259,10 @@ namespace Microsoft.Azure.WebJobs.Script
         public static readonly string CancellationTokenRegistration = "CancellationTokenRegistration";
 
         internal const string MasterKeyName = "_master";
+
+        // Antares Platform Channel Names
+        public static readonly string LatestPlatformChannelName = "Latest";
+        public static readonly string StandardPlatformChannelName = "Standard";
+        public static readonly string ExtendedPlatformChannelName = "Extended";
     }
 }

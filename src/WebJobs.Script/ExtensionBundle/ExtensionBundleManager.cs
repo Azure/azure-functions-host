@@ -266,17 +266,17 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
             var latestBundleVersion = bundleVersions.OrderByDescending(version => version.Version).FirstOrDefault();
             var matchingVersion = latestBundleVersion;
 
-            if (string.Equals(_platformReleaseChannel, "Standard", StringComparison.Ordinal) || string.Equals(_platformReleaseChannel, "Extended", StringComparison.Ordinal))
+            if (string.Equals(_platformReleaseChannel, ScriptConstants.StandardPlatformChannelName, StringComparison.Ordinal) || string.Equals(_platformReleaseChannel, ScriptConstants.ExtendedPlatformChannelName, StringComparison.Ordinal))
             {
                 matchingVersion = bundleVersions.OrderByDescending(version => version.Version).ElementAt(1); // if n is latest, should get version n-1
             }
-            else if (string.Equals(_platformReleaseChannel, string.Empty) || string.Equals(_platformReleaseChannel, "Latest", StringComparison.Ordinal))
+            else if (string.Equals(_platformReleaseChannel, string.Empty) || string.Equals(_platformReleaseChannel, ScriptConstants.LatestPlatformChannelName, StringComparison.Ordinal))
             {
                 // no - op, latest version should be used.
             }
             else
             {
-                _logger.LogInformation("Platform Release Channel of type {platformReleaseChannelName} is not recognized. The latest bundle version, {latestBundleVersion} will be used.", _platformReleaseChannel);
+                _logger.LogInformation("Platform Release Channel of type {platformReleaseChannelName} is not recognized. The latest bundle version, {latestBundleVersion} will be used.", _platformReleaseChannel, latestBundleVersion);
             }
 
             if (bundleId != ScriptConstants.DefaultExtensionBundleId)
