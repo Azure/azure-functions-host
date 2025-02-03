@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         private readonly IDisposable _standbyOptionsOnChangeSubscription;
         private readonly IEnvironment _environment;
         private readonly ILogger _logger;
-        //private readonly IMetricsLogger _metricsLogger;
+        private readonly IMetricsLogger _metricsLogger;
         private readonly string _containerName;
 
         private TimeSpan _metricPublishInterval;
@@ -32,13 +32,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         private Timer _metricsPublisherTimer;
         private bool _initialized = false;
 
-        public LinuxContainerLegionMetricsPublisher(IEnvironment environment, IOptionsMonitor<StandbyOptions> standbyOptions, ILogger<LinuxContainerLegionMetricsPublisher> logger, IFileSystem fileSystem, ILinuxConsumptionMetricsTracker metricsTracker, int? metricsPublishIntervalMS = null)
+        public LinuxContainerLegionMetricsPublisher(IEnvironment environment, IOptionsMonitor<StandbyOptions> standbyOptions, ILogger<LinuxContainerLegionMetricsPublisher> logger, IFileSystem fileSystem, ILinuxConsumptionMetricsTracker metricsTracker, IScriptHostManager scriptHostManager, int? metricsPublishIntervalMS = null)
         {
             _standbyOptions = standbyOptions ?? throw new ArgumentNullException(nameof(standbyOptions));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _metricsTracker = metricsTracker ?? throw new ArgumentNullException(nameof(metricsTracker));
-            //_metricsLogger = metricsLogger ?? throw new ArgumentNullException(nameof(metricsLogger));
+            if (scriptHostManager == null || !Utility.TryGetHostService<IMetricsLogger>(scriptHostManager, out _metricsLogger))
+            {
+                throw new InvalidOperationException("Unable to get IMetricsLogger Service.");
+            }
             _containerName = _environment.GetEnvironmentVariable(EnvironmentSettingNames.ContainerName);
             _metricPublishInterval = TimeSpan.FromMilliseconds(metricsPublishIntervalMS ?? 30 * 1000);
 
@@ -50,6 +53,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 
             _processMonitorTimer = new Timer(OnProcessMonitorTimer, null, Timeout.Infinite, Timeout.Infinite);
             _metricsPublisherTimer = new Timer(OnFunctionMetricsPublishTimer, null, Timeout.Infinite, Timeout.Infinite);
+
+            _metricsTracker.OnDiagnosticEvent += OnMetricsDiagnosticEvent;
 
             if (_standbyOptions.CurrentValue.InStandbyMode)
             {
@@ -198,6 +203,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
             }
         }
 
+        private void OnMetricsDiagnosticEvent(object sender, DiagnosticEventArgs e)
+        {
+            _metricsLogger.LogEvent(e.EventName);
+        }
+
         public void OnFunctionStarted(string functionName, string invocationId)
         {
             // nothing to do
@@ -215,6 +225,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 
             _metricsPublisherTimer?.Dispose();
             _metricsPublisherTimer = null;
+
+            _metricsTracker.OnDiagnosticEvent -= OnMetricsDiagnosticEvent;
         }
 
         internal class Metrics

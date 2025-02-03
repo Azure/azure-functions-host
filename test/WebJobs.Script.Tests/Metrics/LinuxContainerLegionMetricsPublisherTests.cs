@@ -6,13 +6,16 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.Functions.Platform.Metrics.LinuxConsumption;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Metrics;
 using Microsoft.WebJobs.Script.Tests;
 using Newtonsoft.Json;
 using Xunit;
+using static Microsoft.Azure.WebJobs.Script.Tests.TestHelpers;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
 {
@@ -27,6 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
         private readonly Random _random = new Random();
         private readonly TestLogger<LinuxContainerLegionMetricsPublisher> _logger;
         private readonly TestMetricsLogger _testMetricsLogger;
+        private readonly IScriptHostManager _scriptHostManager;
 
         private StandbyOptions _standbyOptions;
         private TestOptionsMonitor<StandbyOptions> _standbyOptionsMonitor;
@@ -37,6 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             _environment = new TestEnvironment();
             _logger = new TestLogger<LinuxContainerLegionMetricsPublisher>();
             _testMetricsLogger = new TestMetricsLogger();
+            _scriptHostManager = new TestScriptHostManager(_testMetricsLogger);
 
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsMetricsPublishPath, _metricsFilePath);
 
@@ -49,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             _standbyOptions = new StandbyOptions { InStandbyMode = inStandbyMode };
             _standbyOptionsMonitor = new TestOptionsMonitor<StandbyOptions>(_standbyOptions);
 
-            return new LinuxContainerLegionMetricsPublisher(_environment, _standbyOptionsMonitor, _logger, new FileSystem(), _testMetricsLogger, _testMetricsTracker, metricsPublishInterval);
+            return new LinuxContainerLegionMetricsPublisher(_environment, _standbyOptionsMonitor, _logger, new FileSystem(), _testMetricsTracker, _scriptHostManager, metricsPublishInterval);
         }
 
         [Fact]
@@ -252,6 +257,40 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             public void LogEvent(string eventName)
             {
                 OnDiagnosticEvent?.Invoke(this, new DiagnosticEventArgs(eventName));
+            }
+        }
+
+        private class TestScriptHostManager : IServiceProvider, IScriptHostManager
+        {
+            private readonly IMetricsLogger _metricsLogger;
+
+            public TestScriptHostManager(IMetricsLogger metricsLogger)
+            {
+                _metricsLogger = metricsLogger;
+            }
+
+            public ScriptHostState State => throw new NotImplementedException();
+
+            public Exception LastError => throw new NotImplementedException();
+
+            public event EventHandler HostInitializing;
+
+            public event EventHandler<ActiveHostChangedEventArgs> ActiveHostChanged;
+
+
+            public object GetService(Type serviceType)
+            {
+                if (serviceType == typeof(IMetricsLogger))
+                {
+                    return _metricsLogger;
+                }
+
+                throw new NotImplementedException();
+            }
+
+            public Task RestartHostAsync(CancellationToken cancellationToken = default)
+            {
+                throw new NotImplementedException();
             }
         }
     }
