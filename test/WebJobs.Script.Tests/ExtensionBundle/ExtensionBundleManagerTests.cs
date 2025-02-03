@@ -9,20 +9,13 @@ using System.IO.Compression;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
-using System.Reflection;
 using System.Runtime.InteropServices;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 using Moq;
-using Newtonsoft.Json;
 using NuGet.Versioning;
 using Xunit;
 using static Microsoft.Azure.WebJobs.Script.EnvironmentSettingNames;
@@ -407,7 +400,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
                 }
             }
 
-            var resolvedVersion = ExtensionBundleManager.FindBestVersionMatch(range, new List<string>()
+            var options = GetTestExtensionBundleOptions(BundleId, versionRange);
+            var manager = GetExtensionBundleManager(options, GetTestAppServiceEnvironment());
+
+            var resolvedVersion = manager.FindBestVersionMatch(range, new List<string>()
             { "3.7.0", "3.10.0", "3.11.0", "3.15.0", "3.14.0", "2.16.0", "3.13.0", "3.12.0", "3.9.1", "2.12.1", "2.18.0", "3.16.0", "2.19.0", "3.17.0", "4.0.2", "2.20.0", "3.18.0", "4.1.0", "4.2.0", "2.21.0", "3.19.0", "3.19.2", "4.3.0", "3.20.0" },
             ScriptConstants.DefaultExtensionBundleId, hostingConfiguration);
 
@@ -420,9 +416,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
             return new ExtensionBundleManager(bundleOptions, environment, MockNullLoggerFactory.CreateLoggerFactory(), new FunctionsHostingConfigOptions());
         }
 
-        private TestEnvironment GetTestAppServiceEnvironment()
+        private TestEnvironment GetTestAppServiceEnvironment(string platformReleaseChannel = "Latest")
         {
             var environment = new TestEnvironment();
+            environment.SetEnvironmentVariable(AntaresPlatformReleaseChannel, platformReleaseChannel);
             environment.SetEnvironmentVariable(AzureWebsiteInstanceId, Guid.NewGuid().ToString("N"));
             string downloadPath = string.Empty;
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))

@@ -263,8 +263,8 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
                 return version;
             }).Where(v => v != null);
 
-            var latestBundlVersion = bundleVersions.OrderByDescending(version => version.Version).FirstOrDefault();
-            var matchingVersion = latestBundlVersion;
+            var latestBundleVersion = bundleVersions.OrderByDescending(version => version.Version).FirstOrDefault();
+            var matchingVersion = latestBundleVersion;
 
             if (string.Equals(_platformReleaseChannel, "Standard", StringComparison.Ordinal) || string.Equals(_platformReleaseChannel, "Extended", StringComparison.Ordinal))
             {
