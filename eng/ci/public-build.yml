@@ -63,5 +63,4 @@ extends:
     stages:
     - stage: Test
       jobs:
-      - template: /eng/ci/templates/jobs/initialize-pipeline.yml@self
       - template: /eng/ci/templates/jobs/run-unit-tests.yml@self

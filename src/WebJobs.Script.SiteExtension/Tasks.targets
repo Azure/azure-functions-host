@@ -97,4 +97,46 @@ for (int i = 0; i < Directories.Length; i++)
     </Task>
   </UsingTask>
 
+  <!-- Not using built in 'GetFileHash' task as it errors out with long paths. -->
+  <UsingTask TaskName="GetFileHash_Custom" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <Files ParameterType="Microsoft.Build.Framework.ITaskItem[]" Required="true" />
+      <Items ParameterType="Microsoft.Build.Framework.ITaskItem[]" Output="true" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System"/>
+      <Using Namespace="System.IO"/>
+      <Using Namespace="System.Security.Cryptography"/>
+      <Using Namespace="System.Threading.Tasks"/>
+      <Code Type="Fragment" Language="cs">
+<![CDATA[
+  Parallel.For(0, Files.Length, i =>
+  {
+    try
+    {
+      var file = Files[i];
+      using (var stream = File.OpenRead(file.ItemSpec))
+      using (var algorithm = SHA256.Create())
+      {
+        byte[] hash = algorithm.ComputeHash(stream);
+        file.SetMetadata("FileHash", Convert.ToBase64String(hash));
+      }
+    }
+    catch (Exception ex)
+    {
+      Log.LogErrorFromException(ex);
+    }
+  });
+
+  Items = Files;
+
+  if (Log.HasLoggedErrors)
+  {
+    return false;
+  }
+]]>
+      </Code>
+    </Task>
+  </UsingTask>
+
 </Project>

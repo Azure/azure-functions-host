@@ -1068,8 +1068,10 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 case ParameterBindingType.Data:
                     // Data was transferred by the worker using RPC
                     return binding.Data.ToObject();
+                case ParameterBindingType.None:
+                    return null;
                 default:
-                    throw new InvalidOperationException("Unknown ParameterBindingType");
+                    throw new InvalidOperationException($"Unknown ParameterBindingType of type {binding.RpcDataCase}");
             }
         }
 

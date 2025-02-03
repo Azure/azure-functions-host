@@ -1,0 +1,36 @@
+<Project>
+
+  <!--
+    Import the first 'Directory.Version.props' seen from project being built up.
+    This allows each directory cone to set its own versioning at the time this file needs it set.
+  -->
+  <Import Project="$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildProjectDirectory), Directory.Version.props))/Directory.Version.props"
+    Condition="'$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildProjectDirectory), Directory.Version.props))' != ''" />
+
+  <PropertyGroup>
+    <VersionPrefix Condition="'$(VersionPrefix)' == ''">1.0.0</VersionPrefix>
+    <_BuildNumber>$([System.DateTime]::Now.ToString(yyyyMMdd))</_BuildNumber>
+    <_BuildNumberYY>$(_BuildNumber.Substring(2, 2))</_BuildNumberYY>
+    <_BuildNumberMM>$(_BuildNumber.Substring(4, 2))</_BuildNumberMM>
+    <_BuildNumberDD>$(_BuildNumber.Substring(6, 2))</_BuildNumberDD>
+
+    <!-- The build number should be < 65,535 (Windows limitation). We convert into a short date to accommodate that. -->
+    <!-- SHORT_DATE := yy * 1000 + MM * 50 + dd -->
+    <BuildNumber>$([MSBuild]::Add($([MSBuild]::Add($([MSBuild]::Multiply($(_BuildNumberYY), 1000)), $([MSBuild]::Multiply($(_BuildNumberMM), 50)))), $(_BuildNumberDD)))</BuildNumber>
+    <BuildCounter Condition="'$(BUILD_COUNTER)' != ''">$(BUILD_COUNTER)</BuildCounter>
+    <BuildCounter Condition="'$(BuildCounter)' == ''">0</BuildCounter>
+
+    <!-- Major.Minor.Patch -> Major.Minor.0.0 -->
+    <AssemblyVersion>$(VersionPrefix.Substring(0, $(VersionPrefix.LastIndexOf('.')))).0.0</AssemblyVersion>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(CI)' != 'true'">
+    <!-- Constant file version for local dev. -->
+    <FileVersion>42.42.42.4242</FileVersion>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(CI)' == 'true'">
+    <FileVersion>$(VersionPrefix).$(BuildNumber)</FileVersion>
+  </PropertyGroup>
+
+</Project>
