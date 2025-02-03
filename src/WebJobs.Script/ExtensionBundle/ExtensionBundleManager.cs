@@ -274,7 +274,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
                 }
                 else
                 {
-                    // keep the latest version, log a warning
+                    // keep the latest version, log a notice
                     _logger.LogInformation("Unable to retrieve the 2nd latest extension bundle version. The latest bundle version, {latestBundleVersion}, will be used instead.", latestBundleVersion);
                 }
             }
