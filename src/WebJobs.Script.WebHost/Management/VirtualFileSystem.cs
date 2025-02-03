@@ -312,7 +312,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 // The range request had no overlap with the current extend of the resource so generate a 416 (Requested Range Not Satisfiable)
                 // including a Content-Range header with the current size.
                 _logger.LogWarning(invalidByteRangeException.Message);
-                var invalidByteRangeResponse = CreateResponse(HttpStatusCode.RequestedRangeNotSatisfiable, invalidByteRangeException);
+                var invalidByteRangeResponse = CreateResponse(HttpStatusCode.RequestedRangeNotSatisfiable, "Requested Range Not Satisfiable");
                 if (fileStream != null)
                 {
                     fileStream.Close();
