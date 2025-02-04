@@ -6,16 +6,16 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
 {
-    public class AzureMonitorOptionsSetup : IConfigureOptions<AzureMonitorOptions>
+    public class AzureMonitorLoggingOptionsSetup : IConfigureOptions<AzureMonitorLoggingOptions>
     {
         private readonly IEnvironment _env;
 
-        public AzureMonitorOptionsSetup(IEnvironment env)
+        public AzureMonitorLoggingOptionsSetup(IEnvironment env)
         {
             _env = env;
         }
 
-        public void Configure(AzureMonitorOptions options)
+        public void Configure(AzureMonitorLoggingOptions options)
         {
             options.IsAzureMonitorTimeIsoFormatEnabled = IsAzureMonitorTimeIsoFormatEnabled();
         }

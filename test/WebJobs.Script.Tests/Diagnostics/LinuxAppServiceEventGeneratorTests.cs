@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         private readonly LinuxAppServiceEventGenerator _generator;
         private readonly List<string> _events;
         private IOptions<FunctionsHostingConfigOptions> _functionsHostingConfigOptions;
-        private IOptions<AzureMonitorOptions> _azureMonitorOptions;
+        private IOptions<AzureMonitorLoggingOptions> _azureMonitorOptions;
 
         public LinuxAppServiceEventGeneratorTests()
         {
@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             var loggerFactoryMock = new MockLinuxAppServiceFileLoggerFactory();
 
             _functionsHostingConfigOptions = Options.Create(new FunctionsHostingConfigOptions());
-            _azureMonitorOptions = Options.Create(new AzureMonitorOptions());
+            _azureMonitorOptions = Options.Create(new AzureMonitorLoggingOptions());
 
             var environmentMock = new Mock<IEnvironment>();
             environmentMock.Setup(f => f.GetEnvironmentVariable(It.Is<string>(v => v == "WEBSITE_HOSTNAME")))
@@ -146,7 +146,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         }
 
         [Theory]
-        [MemberData(nameof(LinuxEventGeneratorTestData.GetAzureMonitorEvents), MemberType = typeof(LinuxEventGeneratorTestData))]
+        [MemberData(nameof(LinuxEventGeneratorTestData.GetAzureMonitorEventsForLinuxAppServiceEventGenerator), MemberType = typeof(LinuxEventGeneratorTestData))]
         public void ParseAzureMonitoringEvents(LogLevel level, string resourceId, string operationName, string category, string regionName, string properties, bool isAzureMonitorTimeIsoFormatEnabled)
         {
             _azureMonitorOptions.Value.IsAzureMonitorTimeIsoFormatEnabled = isAzureMonitorTimeIsoFormatEnabled;
