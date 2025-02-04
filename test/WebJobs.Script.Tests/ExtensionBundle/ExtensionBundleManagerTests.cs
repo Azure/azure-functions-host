@@ -415,6 +415,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
         [InlineData(ScriptConstants.ExtendedPlatformChannelName, "[4.*, 5.0.0)", "4.2.0", "4.2.0")]
         [InlineData(ScriptConstants.StandardPlatformChannelName, "[4.*, 5.0.0)", "4.3.0", "4.2.0")]
         [InlineData(ScriptConstants.ExtendedPlatformChannelName, "[4.*, 5.0.0)", "4.3.0", "4.2.0")]
+        [InlineData(ScriptConstants.StandardPlatformChannelName, "[4.*, 5.0.0)", "4.1.0", "4.1.0")]
+        [InlineData(ScriptConstants.ExtendedPlatformChannelName, "[4.*, 5.0.0)", "4.1.0", "4.1.0")]
         [InlineData(ScriptConstants.LatestPlatformChannelName, "[4.*, 5.0.0)", null, "4.3.0")]
         [InlineData(ScriptConstants.StandardPlatformChannelName, "[4.*, 5.0.0)", null, "4.2.0")]
         [InlineData(ScriptConstants.ExtendedPlatformChannelName, "[4.*, 5.0.0)", null, "4.2.0")]

@@ -32,9 +32,9 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
         {
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _logger = loggerFactory.CreateLogger<ExtensionBundleManager>() ?? throw new ArgumentNullException(nameof(loggerFactory));
-            _cdnUri = _environment.GetEnvironmentVariable(EnvironmentSettingNames.ExtensionBundleSourceUri) ?? ScriptConstants.ExtensionBundleDefaultSourceUri;
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _configOption = configOption ?? throw new ArgumentNullException(nameof(configOption));
+            _cdnUri = _environment.GetEnvironmentVariable(EnvironmentSettingNames.ExtensionBundleSourceUri) ?? ScriptConstants.ExtensionBundleDefaultSourceUri;
             _platformReleaseChannel = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel) ?? ScriptConstants.LatestPlatformChannelName;
         }
 
@@ -264,28 +264,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
             }).Where(v => v != null);
 
             var latestBundleVersion = bundleVersions.OrderByDescending(version => version.Version).FirstOrDefault();
-            var matchingVersion = latestBundleVersion;
-
-            if (string.Equals(_platformReleaseChannel, ScriptConstants.StandardPlatformChannelName, StringComparison.Ordinal) || string.Equals(_platformReleaseChannel, ScriptConstants.ExtendedPlatformChannelName, StringComparison.Ordinal))
-            {
-                if (bundleVersions.Count() > 1)
-                {
-                    matchingVersion = bundleVersions.OrderByDescending(version => version.Version).ElementAt(1); // if n is latest, should get version n-1
-                }
-                else
-                {
-                    // keep the latest version, log a notice
-                    _logger.LogInformation("Unable to apply plaform release channel configuration {platformReleaseChannelName}. Only one matching bundle version is available. {latestBundleVersion} will be used", _platformReleaseChannel, latestBundleVersion);
-                }
-            }
-            else if (string.Equals(_platformReleaseChannel, string.Empty) || string.Equals(_platformReleaseChannel, ScriptConstants.LatestPlatformChannelName, StringComparison.Ordinal))
-            {
-                // no - op, latest version should be used.
-            }
-            else
-            {
-                _logger.LogInformation("Platform Release Channel of type {platformReleaseChannelName} is not recognized. The latest extension bundle version, {latestBundleVersion}, will be used.", _platformReleaseChannel, latestBundleVersion);
-            }
+            var matchingVersion = ResolvePlatformReleaseChannelVersion(bundleVersions, latestBundleVersion);
 
             if (bundleId != ScriptConstants.DefaultExtensionBundleId)
             {
@@ -313,6 +292,38 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
             }
 
             return matchingVersion?.ToString();
+        }
+
+        private NuGetVersion ResolvePlatformReleaseChannelVersion(IEnumerable<NuGetVersion> bundleVersions, NuGetVersion currentMatchingVersion)
+        {
+            bool isStandardOrExtendedChannel = string.Equals(_platformReleaseChannel, ScriptConstants.StandardPlatformChannelName, StringComparison.Ordinal) ||
+                                   string.Equals(_platformReleaseChannel, ScriptConstants.ExtendedPlatformChannelName, StringComparison.Ordinal);
+
+            bool isLatestOrEmptyChannel = string.Equals(_platformReleaseChannel, string.Empty, StringComparison.Ordinal) ||
+                                          string.Equals(_platformReleaseChannel, ScriptConstants.LatestPlatformChannelName, StringComparison.Ordinal);
+
+            if (isStandardOrExtendedChannel)
+            {
+                if (bundleVersions.Count() > 1)
+                {
+                   return bundleVersions.OrderByDescending(version => version.Version).ElementAt(1); // if n is latest, should get version n-1
+                }
+                else
+                {
+                    // keep the latest version, log a notice
+                    _logger.LogInformation("Unable to apply plaform release channel configuration {platformReleaseChannelName}. Only one matching bundle version is available. {latestBundleVersion} will be used", _platformReleaseChannel, currentMatchingVersion);
+                }
+            }
+            else if (isLatestOrEmptyChannel)
+            {
+                // no - op, latest version should be used.
+            }
+            else
+            {
+                _logger.LogInformation("Platform Release Channel of type {platformReleaseChannelName} is not recognized. The latest extension bundle version, {latestBundleVersion}, will be used.", _platformReleaseChannel, currentMatchingVersion);
+            }
+
+            return currentMatchingVersion;
         }
 
         public async Task<string> GetExtensionBundleBinPathAsync()
