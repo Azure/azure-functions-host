@@ -153,10 +153,12 @@ jobs:
           if ($baselineFile) {
               Write-Host "Found baseline benchmark result file: $($baselineFile.FullName)"
               Write-Host "##vso[task.setvariable variable=baselineBenchmarkResultFilePath]$($baselineFile.FullName)"
+          } else {
+              Write-Host "No baseline benchmark result file matching the pattern '$fileNamePattern' found in directory '$baselineDir'."
           }
+      } else {
+          Write-Host "The specified directory '$baselineDir' does not exist."
       }
-
-      Write-Host "No baseline benchmark result file found."
     displayName: 'Set Baseline Benchmark Result File Path'
 
   # Compare results with baseline
