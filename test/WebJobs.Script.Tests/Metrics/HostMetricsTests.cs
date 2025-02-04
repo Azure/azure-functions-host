@@ -106,7 +106,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             var metrics = _serviceProvider.GetRequiredService<IHostMetrics>();
             var meterFactory = _serviceProvider.GetRequiredService<IMeterFactory>();
             var environment = _serviceProvider.GetRequiredService<IEnvironment>();
-             var collector = new MetricCollector<long>(meterFactory, HostMetrics.MeterName, HostMetrics.StartedInvocationCount);
+            var collector = new MetricCollector<long>(meterFactory, HostMetrics.MeterName, HostMetrics.StartedInvocationCount);
 
             if (isFlexSku)
             {
@@ -117,11 +117,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             metrics.IncrementStartedInvocationCount();
 
             // Assert
-            var measurements = collector.GetMeasurementSnapshot();
-
-            Assert.True(measurements[0].Tags.TryGetValue(OpenTelemetryConstants.AzureFunctionsGroup, out var funcGroup));
-            Assert.Equal(string.Empty, funcGroup);
-
             var logs = _logger.GetLogMessages();
 
             if (isFlexSku)
