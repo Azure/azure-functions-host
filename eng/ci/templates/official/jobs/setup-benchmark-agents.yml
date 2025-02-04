@@ -4,6 +4,9 @@ parameters:
 - name: os
   type: string
   default: Windows
+  values:
+    - Windows
+    - Linux
  
 jobs:
 - job: ${{ parameters.functionAppName }}_${{ parameters.os }}
@@ -38,14 +41,13 @@ jobs:
   - script: dotnet tool install -g Microsoft.Crank.Agent --version "0.2.0-*"
     displayName: Install Microsoft.Crank.Agent tool
 
-  - pwsh: Start-Process powershell -ArgumentList '-NoExit', '-Command', 'crank-agent'
-    displayName: Start crank-agent(Windows)
-    condition: eq(variables['Agent.OS'], 'Windows_NT')
-
-  - script: |
-      nohup crank-agent &
-    displayName: Start crank-agent(Linux)
-    condition: eq(variables['Agent.OS'], 'Linux')
+  - ${{ if eq(parameters.os, 'Windows') }}:
+    - pwsh: Start-Process powershell -ArgumentList '-NoExit', '-Command', 'crank-agent'
+      displayName: Start crank-agent(Windows)
+  - ${{ else }}:
+    - script: |
+        nohup crank-agent &
+      displayName: Start crank-agent(Linux)
 
   - task: CopyFiles@2
     displayName: Copy benchmark apps to temp location
@@ -66,11 +68,11 @@ jobs:
       arguments: -c Release -o $(functionAppOutputPath) -f net9.0
       workingDirectory: $(Build.ArtifactStagingDirectory)/PerformanceTestApps/$(functionApp)
 
-  - script: |
-      netsh advfirewall firewall add rule name="Open Port 5000" dir=in action=allow protocol=TCP localport=5000
-      netsh advfirewall firewall add rule name="Open Port 5010" dir=in action=allow protocol=TCP localport=5010
-    displayName: Open port 5000 and 5010
-    condition: eq(variables['Agent.OS'], 'Windows_NT')
+  - ${{ if eq(parameters.os, 'Windows') }}:
+    - script: |
+        netsh advfirewall firewall add rule name="Open Port 5000" dir=in action=allow protocol=TCP localport=5000
+        netsh advfirewall firewall add rule name="Open Port 5010" dir=in action=allow protocol=TCP localport=5010
+      displayName: Open port 5000 and 5010
 
   - pwsh: |
       $HostName = [System.Net.Dns]::GetHostName()
@@ -98,14 +100,9 @@ jobs:
       $attempt = 0
 
       while ($attempt -lt $maxAttempts) {
-          if ($IsWindows) {
-              $response = Invoke-WebRequest -Uri $url -Method Get -ErrorAction Stop
-              $data = $response.Content | ConvertFrom-Json
-              $completedJobCount = ($data | Where-Object { $_.state -eq "Deleted" }).Count
-          } else {
-              $response = curl -s -X GET $url
-              $completedJobCount = ($response | jq '[.[] | select(.state=="Deleted")] | length')
-          }
+          $response = Invoke-WebRequest -Uri $url -Method Get -ErrorAction Stop
+          $data = $response.Content | ConvertFrom-Json
+          $completedJobCount = ($data | Where-Object { $_.state -eq "Deleted" }).Count
 
           if ($completedJobCount -gt 0) {
               Write-Host "Found at least 1 job with 'state' = 'Deleted'. Exiting task."
