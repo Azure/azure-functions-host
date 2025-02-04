@@ -72,6 +72,7 @@ if ($JitFile)
     $JitFile | ForEach-Object {
         $file = $_
         $destinations | ForEach-Object {
+            Write-Host "Copying JIT trace file $file to $($_.Directory)"
             Copy-Item -Path $file -Destination $_.Directory -Force
         }
     }
