@@ -43,11 +43,11 @@ jobs:
 
   - ${{ if eq(parameters.os, 'Windows') }}:
     - pwsh: Start-Process powershell -ArgumentList '-NoExit', '-Command', 'crank-agent'
-      displayName: Start crank-agent(Windows)
+      displayName: Start crank-agent
   - ${{ else }}:
     - script: |
         nohup crank-agent &
-      displayName: Start crank-agent(Linux)
+      displayName: Start crank-agent
 
   - task: CopyFiles@2
     displayName: Copy benchmark apps to temp location

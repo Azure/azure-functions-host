@@ -72,11 +72,11 @@ jobs:
 
   - ${{ if eq(parameters.os, 'Windows') }}:
     - pwsh: Start-Process powershell -ArgumentList '-NoExit', '-Command', 'crank-agent'
-      displayName: Start crank-agent(W)
+      displayName: Start crank-agent
   - ${{ else }}:
     - script: |
         nohup crank-agent &
-      displayName: Start crank-agent(L)
+      displayName: Start crank-agent
 
   - task: AzureCLI@2
     displayName: Get Remote Agent IP Address
