@@ -216,6 +216,11 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string LogicAppDefaultExtensionBundleVersion = "[1.*, 2.0.0)";
         public const string DefaultExtensionBundleVersion = "[4.*, 5.0.0)";
 
+        // Antares Platform Channel Names, used in extension bundle resolution
+        public const string LatestPlatformChannelName = "Latest";
+        public const string StandardPlatformChannelName = "Standard";
+        public const string ExtendedPlatformChannelName = "Extended";
+
         public const string AzureMonitorTraceCategory = "FunctionAppLogs";
 
         public const string KubernetesManagedAppName = "K8SE_APP_NAME";
@@ -259,10 +264,5 @@ namespace Microsoft.Azure.WebJobs.Script
         public static readonly string CancellationTokenRegistration = "CancellationTokenRegistration";
 
         internal const string MasterKeyName = "_master";
-
-        // Antares Platform Channel Names
-        public static readonly string LatestPlatformChannelName = "Latest";
-        public static readonly string StandardPlatformChannelName = "Standard";
-        public static readonly string ExtendedPlatformChannelName = "Extended";
     }
 }

@@ -275,7 +275,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
                 else
                 {
                     // keep the latest version, log a notice
-                    _logger.LogInformation("Unable to retrieve the 2nd latest extension bundle version. The latest bundle version, {latestBundleVersion}, will be used instead.", latestBundleVersion);
+                    _logger.LogInformation("Unable to apply plaform release channel configuration {platformReleaseChannelName}. Only one matching bundle version is available. {latestBundleVersion} will be used", _platformReleaseChannel, latestBundleVersion);
                 }
             }
             else if (string.Equals(_platformReleaseChannel, string.Empty) || string.Equals(_platformReleaseChannel, ScriptConstants.LatestPlatformChannelName, StringComparison.Ordinal))

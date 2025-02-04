@@ -15,6 +15,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
+using Microsoft.Extensions.Logging;
 using Moq;
 using NuGet.Versioning;
 using Xunit;
@@ -403,20 +404,114 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
             var options = GetTestExtensionBundleOptions(BundleId, versionRange);
             var manager = GetExtensionBundleManager(options, GetTestAppServiceEnvironment());
 
-            var resolvedVersion = manager.FindBestVersionMatch(range, new List<string>()
-            { "3.7.0", "3.10.0", "3.11.0", "3.15.0", "3.14.0", "2.16.0", "3.13.0", "3.12.0", "3.9.1", "2.12.1", "2.18.0", "3.16.0", "2.19.0", "3.17.0", "4.0.2", "2.20.0", "3.18.0", "4.1.0", "4.2.0", "2.21.0", "3.19.0", "3.19.2", "4.3.0", "3.20.0" },
-            ScriptConstants.DefaultExtensionBundleId, hostingConfiguration);
+            var resolvedVersion = manager.FindBestVersionMatch(range, GetLargeVersionsList(), ScriptConstants.DefaultExtensionBundleId, hostingConfiguration);
 
             Assert.Equal(expectedVersion, resolvedVersion);
         }
 
-        private ExtensionBundleManager GetExtensionBundleManager(ExtensionBundleOptions bundleOptions, TestEnvironment environment = null)
+        [Theory]
+        [InlineData(ScriptConstants.LatestPlatformChannelName, "[4.*, 5.0.0)", "4.2.0", "4.2.0")]
+        [InlineData(ScriptConstants.StandardPlatformChannelName, "[4.*, 5.0.0)", "4.2.0", "4.2.0")]
+        [InlineData(ScriptConstants.ExtendedPlatformChannelName, "[4.*, 5.0.0)", "4.2.0", "4.2.0")]
+        [InlineData(ScriptConstants.StandardPlatformChannelName, "[4.*, 5.0.0)", "4.3.0", "4.2.0")]
+        [InlineData(ScriptConstants.ExtendedPlatformChannelName, "[4.*, 5.0.0)", "4.3.0", "4.2.0")]
+        [InlineData(ScriptConstants.LatestPlatformChannelName, "[4.*, 5.0.0)", null, "4.3.0")]
+        [InlineData(ScriptConstants.StandardPlatformChannelName, "[4.*, 5.0.0)", null, "4.2.0")]
+        [InlineData(ScriptConstants.ExtendedPlatformChannelName, "[4.*, 5.0.0)", null, "4.2.0")]
+        public void WhenPlatformReleaseChannelSet_ExpectedVersionChosen(string platformReleaseChannelName, string versionRange, string hostConfigMaxVersion, string expectedVersion)
         {
-            environment = environment ?? new TestEnvironment();
-            return new ExtensionBundleManager(bundleOptions, environment, MockNullLoggerFactory.CreateLoggerFactory(), new FunctionsHostingConfigOptions());
+            var range = VersionRange.Parse(versionRange);
+            var hostingConfiguration = new FunctionsHostingConfigOptions();
+
+            if (!string.IsNullOrEmpty(hostConfigMaxVersion))
+            {
+                if (range.MinVersion.Major == 3)
+                {
+                    hostingConfiguration.Features.Add(ScriptConstants.MaximumBundleV3Version, hostConfigMaxVersion);
+                }
+
+                if (range.MinVersion.Major == 4)
+                {
+                    hostingConfiguration.Features.Add(ScriptConstants.MaximumBundleV4Version, hostConfigMaxVersion);
+                }
+            }
+
+            var options = GetTestExtensionBundleOptions(BundleId, versionRange);
+            var testEnvironment = GetTestAppServiceEnvironment(platformReleaseChannelName);
+            var manager = GetExtensionBundleManager(options, testEnvironment);
+
+            var versions = GetLargeVersionsList();
+
+            var resolvedVersion = manager.FindBestVersionMatch(range, versions, ScriptConstants.DefaultExtensionBundleId, hostingConfiguration);
+
+            Assert.Equal(expectedVersion, resolvedVersion);
         }
 
-        private TestEnvironment GetTestAppServiceEnvironment(string platformReleaseChannel = "Latest")
+        [Theory]
+        [InlineData(ScriptConstants.ExtendedPlatformChannelName)]
+        [InlineData(ScriptConstants.StandardPlatformChannelName)]
+        public void StandardExtendedReleaseChannel_OneBundleVersion_Handled(string platformReleaseChannelName)
+        {
+            // these release channels take version n-1 (where n is the latest)
+            // if there is only one bundle version, latest should be chosen and information logged
+
+            var versions = new List<string>() { "4.20.0" };
+            var versionRange = "[4.*, 5.0.0)";
+            var expected = "4.20.0";
+
+            var loggedString = $"Unable to apply plaform release channel configuration {platformReleaseChannelName}. Only one matching bundle version is available. 4.20.0 will be used";
+            var mockLogger = GetVerifiableMockLogger(loggedString);
+            var mockLoggerFactory = new Mock<ILoggerFactory>();
+            mockLoggerFactory.Setup(f => f.CreateLogger(It.IsAny<string>())).Returns(() => mockLogger.Object);
+
+            var options = GetTestExtensionBundleOptions(BundleId, versionRange);
+            var testEnvironment = GetTestAppServiceEnvironment(platformReleaseChannelName);
+            var manager = GetExtensionBundleManager(options, testEnvironment, mockLoggerFactory);
+
+            var resolvedVersion = manager.FindBestVersionMatch(VersionRange.Parse(versionRange), versions, ScriptConstants.DefaultExtensionBundleId, new FunctionsHostingConfigOptions());
+
+            Assert.Equal(expected, resolvedVersion);
+            mockLogger.Verify();
+        }
+
+        [Fact]
+        public void UnknownReleaseChannel_ExpectedVersionChosen()
+        {
+            var versions = new List<string>() { "4.20.0" };
+            var versionRange = "[4.*, 5.0.0)";
+            var expected = "4.20.0";
+
+            var incorrectChannelName = "someIncorrectReleaseChannelName";
+            var loggedString = $"Platform Release Channel of type {incorrectChannelName} is not recognized. The latest extension bundle version, 4.20.0, will be used.";
+            var mockLogger = GetVerifiableMockLogger(loggedString);
+            var mockLoggerFactory = new Mock<ILoggerFactory>();
+            mockLoggerFactory.Setup(f => f.CreateLogger(It.IsAny<string>())).Returns(() => mockLogger.Object);
+
+            var options = GetTestExtensionBundleOptions(BundleId, versionRange);
+            var testEnvironment = GetTestAppServiceEnvironment(incorrectChannelName);
+            var manager = GetExtensionBundleManager(options, testEnvironment, mockLoggerFactory);
+
+            var resolvedVersion = manager.FindBestVersionMatch(VersionRange.Parse(versionRange), versions, ScriptConstants.DefaultExtensionBundleId, new FunctionsHostingConfigOptions());
+
+            Assert.Equal(expected, resolvedVersion); // unknown release channel should default to latest and log information
+            mockLogger.Verify();
+        }
+
+        private ExtensionBundleManager GetExtensionBundleManager(ExtensionBundleOptions bundleOptions, TestEnvironment environment = null, Mock<ILoggerFactory> mockLoggerFactory = null)
+        {
+            environment = environment ?? new TestEnvironment();
+
+            if (mockLoggerFactory is null)
+            {
+                return new ExtensionBundleManager(bundleOptions, environment, MockNullLoggerFactory.CreateLoggerFactory(), new FunctionsHostingConfigOptions());
+            }
+            else
+            {
+                return new ExtensionBundleManager(bundleOptions, environment, mockLoggerFactory.Object, new FunctionsHostingConfigOptions());
+            }
+        }
+
+        private TestEnvironment GetTestAppServiceEnvironment(string platformReleaseChannel = null)
         {
             var environment = new TestEnvironment();
             environment.SetEnvironmentVariable(AntaresPlatformReleaseChannel, platformReleaseChannel);
@@ -468,6 +563,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
         public void Dispose()
         {
             FileUtility.Instance = null;
+        }
+
+        private IList<string> GetLargeVersionsList()
+        {
+            return new List<string>()
+            { "3.7.0", "3.10.0", "3.11.0", "3.15.0", "3.14.0", "2.16.0", "3.13.0", "3.12.0", "3.9.1", "2.12.1", "2.18.0", "3.16.0", "2.19.0", "3.17.0", "4.0.2", "2.20.0", "3.18.0", "4.1.0", "4.2.0", "2.21.0", "3.19.0", "3.19.2", "4.3.0", "3.20.0" };
+        }
+
+        private Mock<ILogger> GetVerifiableMockLogger(string stringToVerify)
+        {
+            var mockLogger = new Mock<ILogger>();
+            mockLogger
+                .Setup(x => x.Log(
+                    LogLevel.Information,
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>((v, t) => v.ToString().Contains(stringToVerify)),
+                    It.IsAny<Exception>(),
+                    It.IsAny<Func<It.IsAnyType, Exception, string>>()))
+                .Verifiable();
+            return mockLogger;
         }
 
         private class MockHttpHandler : HttpClientHandler
