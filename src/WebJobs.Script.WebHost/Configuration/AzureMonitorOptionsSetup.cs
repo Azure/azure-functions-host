@@ -17,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
 
         public void Configure(AzureMonitorOptions options)
         {
-            var isAzureMonitorTimeIsoFormatEnabled = IsAzureMonitorTimeIsoFormatEnabled();
+            options.IsAzureMonitorTimeIsoFormatEnabled = IsAzureMonitorTimeIsoFormatEnabled();
         }
 
         private bool IsAzureMonitorTimeIsoFormatEnabled()
