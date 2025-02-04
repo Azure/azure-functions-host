@@ -1,0 +1,111 @@
+parameters:
+- name: functionAppName
+  type: string
+- name: agentName
+  type: string
+jobs:
+- job: ${{ parameters.functionAppName }}
+
+  variables:
+    agentName: ${{ parameters.agentName }}
+    functionApp: ${{ parameters.functionAppName }}
+    functionAppOutputPath: $(Build.ArtifactStagingDirectory)/FunctionApps/$(functionApp)
+
+  steps:
+
+  - template: /eng/ci/templates/install-dotnet.yml@self
+
+  - script: dotnet tool install -g Microsoft.Crank.Agent --version "0.2.0-*"
+    displayName: Install Microsoft.Crank.Agent tool
+
+  - pwsh: Start-Process powershell -ArgumentList '-NoExit', '-Command', 'crank-agent'
+    displayName: Start crank agent
+
+  - pwsh: |
+      dotnet --info
+    displayName: Print .NET info
+
+  - task: CopyFiles@2
+    displayName: Copy benchmark apps to temp location
+    inputs:
+      SourceFolder: '$(Build.SourcesDirectory)/test/Performance/Apps'
+      Contents: '**/*'
+      TargetFolder: '$(Build.ArtifactStagingDirectory)/PerformanceTestApps'
+      CleanTargetFolder: true
+
+  - task: DotNetCoreCLI@2
+    displayName: Publish benchmark app
+    inputs:
+      command: publish
+      publishWebProjects: false
+      zipAfterPublish: false
+      modifyOutputPath: false
+      projects: '$(Build.ArtifactStagingDirectory)/PerformanceTestApps/$(functionApp)/HelloHttp.csproj'
+      arguments: -c Release -o $(functionAppOutputPath) -f net9.0 -v n
+      workingDirectory: $(Build.ArtifactStagingDirectory)/PerformanceTestApps/$(functionApp)
+
+  - script: |
+      netsh advfirewall firewall add rule name="Open Port 5000" dir=in action=allow protocol=TCP localport=5000
+      netsh advfirewall firewall add rule name="Open Port 5010" dir=in action=allow protocol=TCP localport=5010
+    displayName: Open port 5000 and 5010
+
+  - task: PowerShell@2
+    displayName: Get Agent IP Address
+    inputs:
+      targetType: 'inline'
+      script: |
+        $ipAddress = (Test-Connection -ComputerName (hostname) -Count 1).IPv4Address.IPAddressToString
+        Write-Host "IP Address: $ipAddress"
+        Write-Host "##vso[task.setvariable variable=agentIp]$ipAddress"
+
+  - task: AzureCLI@2
+    displayName: Persist Agent IP Address
+    inputs:
+      azureSubscription: $(ServiceConnection)
+      scriptType: 'pscore'
+      scriptLocation: 'inlineScript'
+      inlineScript: |
+        az storage entity insert `
+          --auth-mode login `
+          --account-name $(StorageAccount) `
+          --table-name $(BenchmarkAgentInfoTableName) `
+          --entity PartitionKey=$(Build.BuildNumber) RowKey=$(agentName) AgentName=$(agentName) AgentIPAddress=$(agentIp)
+
+  - pwsh: |
+      $url = "http://localhost:5010/jobs/all"
+      Write-Host "Calling $url to check benchmark job status"
+      $maxAttempts = 60
+      $attempt = 0
+
+      while ($attempt -lt $maxAttempts) {
+          $response = Invoke-WebRequest -Uri $url -Method Get -ErrorAction Stop
+          $data = $response.Content | ConvertFrom-Json
+          $completedJobCount = ($data | Where-Object { $_.state -eq "Deleted" }).Count 
+
+          if ($completedJobCount -gt 0) { 
+              Write-Host "Found at least 1 job with 'state' = 'Deleted'. Exiting task."
+              exit 0
+          }
+
+          Write-Host "No completed jobs found. Polling again in 30 seconds..."
+          Start-Sleep -Seconds 30
+          $attempt++
+      }
+
+      Write-Host "Maximum attempts reached. Exiting..."
+      exit 1
+    displayName: Wait for job completion
+
+  - task: AzureCLI@2
+    displayName: Clean up storage
+    condition: always()
+    inputs:
+      azureSubscription: $(ServiceConnection)
+      scriptType: 'pscore'
+      scriptLocation: 'inlineScript'
+      inlineScript: |
+        az storage entity delete `
+          --auth-mode login `
+          --account-name $(StorageAccount) `
+          --table-name $(BenchmarkAgentInfoTableName) `
+          --partition-key $(Build.BuildNumber) --row-key=$(agentName)

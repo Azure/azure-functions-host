@@ -464,8 +464,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         /// <summary>
         /// Indicates whether this is a conditional range request containing an
-        /// If-Range header with a matching etag and a Range header indicating the
-        /// desired ranges
+        /// If-Range header with a matching etag and a Range header indicating the desired ranges.
         /// </summary>
         protected bool IsRangeRequest(HttpRequest request, Net.Http.Headers.EntityTagHeaderValue currentEtag)
         {
@@ -531,7 +530,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         }
 
         /// <summary>
-        /// Create unique etag based on the last modified UTC time
+        /// Create unique etag based on the last modified UTC time.
         /// </summary>
         private static Microsoft.Net.Http.Headers.EntityTagHeaderValue CreateEntityTag(FileSystemInfoBase sysInfo)
         {
@@ -641,10 +640,52 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         protected HttpResponseMessage CreateResponse(HttpStatusCode statusCode, object payload = null)
         {
             var response = new HttpResponseMessage(statusCode);
-            if (payload != null)
+            try
             {
-                var content = payload is string ? payload as string : JsonConvert.SerializeObject(payload);
-                response.Content = new StringContent(content, Encoding.UTF8, "application/json");
+                if (payload != null)
+                {
+                    // Use safe serialization settings
+                    var jsonSerializerSettings = new JsonSerializerSettings
+                    {
+                        NullValueHandling = NullValueHandling.Ignore,
+                        DefaultValueHandling = DefaultValueHandling.Include,
+                        Formatting = Formatting.None
+                    };
+
+                    // Check if the payload is a string or an exception
+                    payload = payload switch
+                    {
+                        string str => str,
+                        Exception ex => ex.Message,
+                        _ => payload
+                    };
+
+                    // Sanitize the payload if it's an object
+                    var content = payload switch
+                    {
+                        string str => str,
+                        _ => JsonConvert.SerializeObject(payload, jsonSerializerSettings)
+                    };
+                    response.Content = new StringContent(content, Encoding.UTF8, "application/json");
+                }
+            }
+            catch (JsonSerializationException je)
+            {
+                // Return a generic error message to avoid exposing sensitive details
+                _logger.LogError(je, je.Message);
+                response = new HttpResponseMessage(HttpStatusCode.InternalServerError)
+                {
+                    Content = new StringContent("An error occurred while processing the response payload.", Encoding.UTF8, "text/plain")
+                };
+            }
+            catch (Exception ex)
+            {
+                // Return a generic error message to avoid exposing sensitive details
+                _logger.LogError(ex, ex.Message);
+                response = new HttpResponseMessage(HttpStatusCode.InternalServerError)
+                {
+                    Content = new StringContent("An unexpected error occurred.", Encoding.UTF8, "text/plain")
+                };
             }
             return response;
         }

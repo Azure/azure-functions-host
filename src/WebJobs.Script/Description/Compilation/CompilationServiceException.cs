@@ -11,7 +11,6 @@ using Microsoft.CodeAnalysis.Scripting;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
-    [Serializable]
     public sealed class CompilationServiceException : Exception
     {
         public CompilationServiceException()
@@ -23,10 +22,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         }
 
         public CompilationServiceException(string message, Exception innerException) : base(message, innerException)
-        {
-        }
-
-        private CompilationServiceException(SerializationInfo info, StreamingContext context) : base(info, context)
         {
         }
     }

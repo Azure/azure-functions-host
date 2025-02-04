@@ -1,0 +1,73 @@
+# No triggers for code push to any branch.
+trigger: none
+
+# No PR triggers for now
+pr: none
+
+schedules:
+  - cron: "0 0 * * *"
+    displayName: Nightly Build
+    branches:
+      include:
+      - dev
+    always: true
+
+resources:
+  repositories:
+  - repository: 1es
+    type: git
+    name: 1ESPipelineTemplates/1ESPipelineTemplates
+    ref: refs/tags/release
+  - repository: eng
+    type: git
+    name: engineering
+    ref: refs/tags/release
+  pipelines:
+  - pipeline: BaselineResult
+    source: host.benchmarks
+    tags:
+    - AzFunc.Perf.Baseline
+
+variables:
+  - template: /eng/ci/templates/variables/benchmarks.yml@self
+  - template: /ci/variables/cfs.yml@eng
+
+extends:
+  template: v1/1ES.Unofficial.PipelineTemplate.yml@1es
+  parameters:
+    pool:
+      name: 1es-pool-azfunc-benchmarking-large
+      image: 1es-windows-2022-benchmark-runner-vanilla
+      os: windows
+
+    stages:
+    - stage: Setup
+      displayName: Setup & start agents
+      jobs:
+      - template: /eng/ci/templates/official/jobs/setup-benchmark-agents.yml@self
+        parameters:
+          functionAppName: HelloHttpNet9 
+          agentName: HelloHttpNet9_APP
+      - template: /eng/ci/templates/official/jobs/setup-benchmark-agents.yml@self
+        parameters:
+          agentName: HelloHttpNet9NoProxy_APP
+          functionAppName: HelloHttpNet9NoProxy 
+
+    - stage: Run
+      displayName: Run Benchmarks
+      dependsOn: [] # Force this stage to run independently and in parallel with other stages.
+      jobs:
+      - template: /eng/ci/templates/official/jobs/run-benchmarks.yml@self
+        parameters:
+          description: .NET9 Web Application
+          functionAppName: HelloHttpNet9  # App with ASP.NET Integration
+          additionalCrankArgs: $(AdditionalCrankArguments)  # Pipeline variable to pass additional arguments to crank command.
+          storeResultsInDatabase: ${{ variables.storeBenchmarkResultsInDatabase }}
+          agentName: HelloHttpNet9_APP
+      - template: /eng/ci/templates/official/jobs/run-benchmarks.yml@self
+        parameters:
+          description: .NET9 Worker Application
+          functionAppName: HelloHttpNet9NoProxy # App without ASP.NET Integration
+          additionalCrankArgs: $(AdditionalCrankArguments)
+          storeResultsInDatabase: ${{ variables.storeBenchmarkResultsInDatabase }}
+          agentName: HelloHttpNet9NoProxy_APP

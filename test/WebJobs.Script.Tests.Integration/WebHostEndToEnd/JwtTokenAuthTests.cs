@@ -173,8 +173,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             var response = await _fixture.Host.HttpClient.SendAsync(request);
             response.EnsureSuccessStatusCode();
 
-            var validationErrors = _fixture.Host.GetScriptHostLogMessages().Where(p => p.Category == ScriptConstants.LogCategoryHostAuthentication).ToArray();
+            var validationErrors = _fixture.Host.GetScriptHostLogMessages(ScriptConstants.LogCategoryHostAuthentication);
             Assert.Empty(validationErrors);
+
+            const string jwtCategory = "Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerHandler";
+            var authErrors = _fixture.Host.GetScriptHostLogMessages(jwtCategory)
+                .Concat(_fixture.Host.GetWebHostLogMessages(jwtCategory))
+                .Where(p => p.Level == LogLevel.Error || p.Exception is not null);
+            Assert.Empty(authErrors);
         }
 
         public class TestFixture : EndToEndTestFixture
