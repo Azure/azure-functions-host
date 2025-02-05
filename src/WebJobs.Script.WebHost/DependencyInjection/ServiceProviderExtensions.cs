@@ -155,7 +155,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
                                   {string.Join(",\n\t", instancesArray.Select(i => i?.GetType()?.ToString() ?? "null"))}
                                 """;
 
-
                 throw new InvalidOperationException(message);
             }
         }
