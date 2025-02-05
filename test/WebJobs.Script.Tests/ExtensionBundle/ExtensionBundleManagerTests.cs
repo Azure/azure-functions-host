@@ -454,8 +454,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
         [InlineData(ScriptConstants.StandardPlatformChannelNameUpper)]
         public void StandardExtendedReleaseChannel_OneBundleVersionOnDisk_Handled(string platformReleaseChannelName)
         {
-            // these release channels take version n-1 (where n is the latest)
-            // if there is only one bundle version available on disk, latest should be chosen and information logged
+            // these release channels take the version prior to the latest version
+            // however, if there is only one bundle version available on disk, that bundle should be chosen and information logged
 
             var versions = new List<string>() { "4.20.0" }; // only one bundle version available on disk
             var versionRange = "[4.*, 5.0.0)";

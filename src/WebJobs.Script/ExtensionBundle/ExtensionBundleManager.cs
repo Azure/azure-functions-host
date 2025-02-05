@@ -252,7 +252,18 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
 
         internal string FindBestVersionMatch(VersionRange versionRange, IEnumerable<string> versions, string bundleId, FunctionsHostingConfigOptions configOption)
         {
-            var matchingVersion = ResolvePlatformReleaseChannelVersion(versionRange, versions);
+            var bundleVersions = versions.Select(p =>
+            {
+                var dirName = Path.GetFileName(p);
+                NuGetVersion.TryParse(dirName, out NuGetVersion version);
+                if (version != null)
+                {
+                    version = versionRange.Satisfies(version) ? version : null;
+                }
+                return version;
+            }).Where(v => v != null).OrderByDescending(version => version.Version).ToList();
+
+            var matchingVersion = ResolvePlatformReleaseChannelVersion(bundleVersions);
 
             if (bundleId != ScriptConstants.DefaultExtensionBundleId)
             {
@@ -282,32 +293,18 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
             return matchingVersion?.ToString();
         }
 
-        private NuGetVersion ResolvePlatformReleaseChannelVersion(VersionRange versionRange, IEnumerable<string> versions)
+        private NuGetVersion ResolvePlatformReleaseChannelVersion(IList<NuGetVersion> orderedByDescBundles) => _platformReleaseChannel switch
         {
-            var bundleVersions = versions.Select(p =>
-            {
-                var dirName = Path.GetFileName(p);
-                NuGetVersion.TryParse(dirName, out NuGetVersion version);
-                if (version != null)
-                {
-                    version = versionRange.Satisfies(version) ? version : null;
-                }
-                return version;
-            }).Where(v => v != null).OrderByDescending(version => version.Version).ToList();
-
-            return _platformReleaseChannel.ToUpperInvariant() switch
-            {
-                ScriptConstants.StandardPlatformChannelNameUpper or ScriptConstants.ExtendedPlatformChannelNameUpper => GetStandardOrExtendedBundleVersion(bundleVersions),
-                ScriptConstants.LatestPlatformChannelNameUpper or "" => GetLatestBundleVersion(bundleVersions),
-                _ => HandleUnknownPlatformReleaseChannelName(bundleVersions)
-            };
-        }
+            ScriptConstants.StandardPlatformChannelNameUpper or ScriptConstants.ExtendedPlatformChannelNameUpper => GetStandardOrExtendedBundleVersion(orderedByDescBundles),
+            ScriptConstants.LatestPlatformChannelNameUpper or "" => GetLatestBundleVersion(orderedByDescBundles),
+            _ => HandleUnknownPlatformReleaseChannelName(orderedByDescBundles)
+        };
 
         private NuGetVersion GetStandardOrExtendedBundleVersion(IList<NuGetVersion> orderedByDescBundlesList)
         {
             if (orderedByDescBundlesList.Count > 1)
             {
-                return orderedByDescBundlesList[1]; // if n is latest, should get version n-1 as this is how the platform release channel defines these channel names (resolve to version prior to latest)
+                return orderedByDescBundlesList[1]; // These channels should resolve to the version prior to latest. This list is in descending order, which makes latest [0], and prior-to-latest [1].
             }
 
             // keep the latest version, log a notice
