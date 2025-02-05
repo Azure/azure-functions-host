@@ -2,8 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.ComponentModel;
-using System.Diagnostics;
 using System.Diagnostics.Tracing;
 using Azure.Core;
 using Azure.Identity;
@@ -23,12 +21,6 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
 {
     internal static class OpenTelemetryConfigurationExtensions
     {
-        private static readonly string[] ExcludedRequestSubstrings =
-        [
-            "azure-webjobs-hosts",
-            "azureFunctionsRpcMessages"
-        ];
-
         internal static void ConfigureOpenTelemetry(this ILoggingBuilder loggingBuilder, HostBuilderContext context, TelemetryMode telemetryMode)
         {
             var connectionString = GetConfigurationValue(EnvironmentSettingNames.AppInsightsConnectionString, context.Configuration);
@@ -86,27 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
                 .WithTracing(builder =>
                 {
                     builder.AddSource("Azure.*")
-                           .AddAspNetCoreInstrumentation()
-                           .AddHttpClientInstrumentation(o =>
-                           {
-                               o.FilterHttpRequestMessage = static (httpRequestMessage) =>
-                               {
-                                   if (httpRequestMessage.RequestUri?.AbsoluteUri is not { Length: > 0 } uri)
-                                   {
-                                       return false;
-                                   }
-
-                                   foreach (string substring in ExcludedRequestSubstrings)
-                                   {
-                                       if (uri.IndexOf(substring, StringComparison.Ordinal) >= 0)
-                                       {
-                                           return false;
-                                       }
-                                   }
-
-                                   return true;
-                               };
-                           });
+                           .AddAspNetCoreInstrumentation();
 
                     if (enableOtlp)
                     {
@@ -119,8 +91,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
                         builder.AddLiveMetrics(opt => ConfigureAzureMonitorOptions(opt, azMonConnectionString, credential));
                     }
 
-                    builder.AddProcessor(ActivitySanitizingProcessor.Instance)
-                           .AddProcessor(TraceFilterProcessor.Instance);
+                    builder.AddProcessor(ActivitySanitizingProcessor.Instance);
                 });
         }
 
