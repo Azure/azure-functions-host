@@ -17,9 +17,8 @@
   <PropertyGroup Condition="'$(TargetFramework)' == 'net8.0'">
     <SiteExtensionName>FunctionsInProc8</SiteExtensionName>
   </PropertyGroup>
-
-  <!-- Only .NET6 builds include workers. -->
-  <Import Project="$(WorkersProps)" Condition="'$(TargetFramework)' == 'net6.0'" />
+  
+  <Import Project="$(WorkersProps)" />
 
   <ItemGroup>
     <ProjectReference Include="../WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj" ReferenceOutputAssembly="false" />
