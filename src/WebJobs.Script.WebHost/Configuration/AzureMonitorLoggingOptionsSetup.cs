@@ -1,37 +1,24 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
 {
     public class AzureMonitorLoggingOptionsSetup : IConfigureOptions<AzureMonitorLoggingOptions>
     {
-        private readonly IEnvironment _env;
+        private readonly IConfiguration _configuration;
 
-        public AzureMonitorLoggingOptionsSetup(IEnvironment env)
+        public AzureMonitorLoggingOptionsSetup(IConfiguration configuration)
         {
-            _env = env;
+            _configuration = configuration;
         }
 
         public void Configure(AzureMonitorLoggingOptions options)
         {
-            options.IsAzureMonitorTimeIsoFormatEnabled = IsAzureMonitorTimeIsoFormatEnabled();
-        }
-
-        private bool IsAzureMonitorTimeIsoFormatEnabled()
-        {
-            string enabledString = _env.GetEnvironmentVariable(EnvironmentSettingNames.AzureMonitorTimeIsoFormatEnabled);
-            if (bool.TryParse(enabledString, out bool result))
-            {
-                return result;
-            }
-            if (int.TryParse(enabledString, out int enabledInt))
-            {
-                return Convert.ToBoolean(enabledInt);
-            }
-            return false;
+            var isAzureMonitorTimeIsoFormatEnabled = _configuration.GetValue<bool?>(EnvironmentSettingNames.AzureMonitorTimeIsoFormatEnabled);
+            options.IsAzureMonitorTimeIsoFormatEnabled = isAzureMonitorTimeIsoFormatEnabled ?? false;
         }
     }
 }

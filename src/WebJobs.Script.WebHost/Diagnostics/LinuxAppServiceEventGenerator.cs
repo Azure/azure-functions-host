@@ -115,8 +115,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public override void LogAzureMonitorDiagnosticLogEvent(LogLevel level, string resourceId, string operationName, string category, string regionName, string properties)
         {
-            var timeStr = _azureMonitorLoggingOptions.Value.IsAzureMonitorTimeIsoFormatEnabled ? DateTime.UtcNow.ToString("s") : DateTime.UtcNow.ToString();
-            _writeEvent($"{ScriptConstants.LinuxAzureMonitorEventStreamName} {(int)ToEventLevel(level)},{resourceId},{operationName},{category},{regionName},{NormalizeString(properties.Replace("'", string.Empty))},{timeStr}");
+            _writeEvent($"{ScriptConstants.LinuxAzureMonitorEventStreamName} {(int)ToEventLevel(level)},{resourceId},{operationName},{category},{regionName},{NormalizeString(properties.Replace("'", string.Empty))},{_azureMonitorLoggingOptions.Value.GetUtcDateTime()}");
         }
 
         public static void LogUnhandledException(Exception e)
