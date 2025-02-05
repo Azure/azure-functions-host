@@ -31,16 +31,13 @@
     <None Remove="PreJIT\linux.coldstart.jittrace" />
     <None Remove="Resources\app_offline.htm" />
     <None Remove="Resources\Functions\WarmUp\run.csx" />
-    <None Remove="PreJIT\coldstart.jittrace" />
+    <None Update="PreJIT\.jitmarker" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="applicationHost.xdt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="PreJIT\coldstart.jittrace">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="PreJIT\linux.coldstart.jittrace">
+    <Content Include="PreJIT\*.jittrace">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
