@@ -1293,10 +1293,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     }
                 }, (context, rpcLog, _isWorkerApplicationInsightsLoggingEnabled));
             }
-            else
-            {
-                Logger.IgnoringRpcLog(_workerChannelLogger, rpcLog.InvocationId);
-            }
         }
 
         internal void SystemLog(GrpcEvent msg)
