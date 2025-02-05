@@ -146,15 +146,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
         {
             if (servicesArray.Length != instancesArray.Length)
             {
-                var messageBuilder = new StringBuilder()
-                    .AppendLine($"Mismatch detected for type {serviceType}:")
-                    .AppendLine($"services.Count = {servicesArray.Length}, instances.Count = {instancesArray.Length}")
-                    .Append("Services:\n\t")
-                    .Append(string.Join(",\n\t", servicesArray.Select(s => s.ToString())))
-                    .Append("\nInstances:\n\t")
-                    .AppendLine(string.Join(",\n\t", instancesArray.Select(i => i?.GetType()?.ToString() ?? "null")));
-                Console.WriteLine(messageBuilder.ToString());
-                throw new InvalidOperationException(messageBuilder.ToString());
+                var message = $"""
+                                Mismatch detected for type {serviceType}:
+                                services.Count = {servicesArray.Length}, instances.Count = {instancesArray.Length}
+                                Services:
+                                  {string.Join(",\n\t", servicesArray.Select(s => s.ToString()))}
+                                Instances:
+                                  {string.Join(",\n\t", instancesArray.Select(i => i?.GetType()?.ToString() ?? "null"))}
+                                """;
+
+
+                throw new InvalidOperationException(message);
             }
         }
     }
