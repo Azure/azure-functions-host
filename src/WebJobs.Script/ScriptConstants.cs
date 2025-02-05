@@ -217,9 +217,9 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string DefaultExtensionBundleVersion = "[4.*, 5.0.0)";
 
         // Antares Platform Channel Names, used in extension bundle resolution
-        public const string LatestPlatformChannelName = "Latest";
-        public const string StandardPlatformChannelName = "Standard";
-        public const string ExtendedPlatformChannelName = "Extended";
+        public const string LatestPlatformChannelNameUpper = "LATEST";
+        public const string StandardPlatformChannelNameUpper = "STANDARD";
+        public const string ExtendedPlatformChannelNameUpper = "EXTENDED";
 
         public const string AzureMonitorTraceCategory = "FunctionAppLogs";
 

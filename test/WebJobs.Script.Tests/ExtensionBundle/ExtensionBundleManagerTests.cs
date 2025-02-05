@@ -410,16 +410,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
         }
 
         [Theory]
-        [InlineData(ScriptConstants.LatestPlatformChannelName, "[4.*, 5.0.0)", "4.2.0", "4.2.0")]
-        [InlineData(ScriptConstants.StandardPlatformChannelName, "[4.*, 5.0.0)", "4.2.0", "4.2.0")]
-        [InlineData(ScriptConstants.ExtendedPlatformChannelName, "[4.*, 5.0.0)", "4.2.0", "4.2.0")]
-        [InlineData(ScriptConstants.StandardPlatformChannelName, "[4.*, 5.0.0)", "4.3.0", "4.2.0")]
-        [InlineData(ScriptConstants.ExtendedPlatformChannelName, "[4.*, 5.0.0)", "4.3.0", "4.2.0")]
-        [InlineData(ScriptConstants.StandardPlatformChannelName, "[4.*, 5.0.0)", "4.1.0", "4.1.0")]
-        [InlineData(ScriptConstants.ExtendedPlatformChannelName, "[4.*, 5.0.0)", "4.1.0", "4.1.0")]
-        [InlineData(ScriptConstants.LatestPlatformChannelName, "[4.*, 5.0.0)", null, "4.3.0")]
-        [InlineData(ScriptConstants.StandardPlatformChannelName, "[4.*, 5.0.0)", null, "4.2.0")]
-        [InlineData(ScriptConstants.ExtendedPlatformChannelName, "[4.*, 5.0.0)", null, "4.2.0")]
+        [InlineData(ScriptConstants.LatestPlatformChannelNameUpper, "[4.*, 5.0.0)", "4.2.0", "4.2.0")]
+        [InlineData(ScriptConstants.StandardPlatformChannelNameUpper, "[4.*, 5.0.0)", "4.2.0", "4.2.0")]
+        [InlineData(ScriptConstants.ExtendedPlatformChannelNameUpper, "[4.*, 5.0.0)", "4.2.0", "4.2.0")]
+        [InlineData(ScriptConstants.StandardPlatformChannelNameUpper, "[4.*, 5.0.0)", "4.3.0", "4.2.0")]
+        [InlineData(ScriptConstants.ExtendedPlatformChannelNameUpper, "[4.*, 5.0.0)", "4.3.0", "4.2.0")]
+        [InlineData(ScriptConstants.StandardPlatformChannelNameUpper, "[4.*, 5.0.0)", "4.1.0", "4.1.0")]
+        [InlineData(ScriptConstants.ExtendedPlatformChannelNameUpper, "[4.*, 5.0.0)", "4.1.0", "4.1.0")]
+        [InlineData(ScriptConstants.LatestPlatformChannelNameUpper, "[4.*, 5.0.0)", null, "4.3.0")]
+        [InlineData(ScriptConstants.StandardPlatformChannelNameUpper, "[4.*, 5.0.0)", null, "4.2.0")]
+        [InlineData(ScriptConstants.ExtendedPlatformChannelNameUpper, "[4.*, 5.0.0)", null, "4.2.0")]
         public void WhenPlatformReleaseChannelSet_ExpectedVersionChosen(string platformReleaseChannelName, string versionRange, string hostConfigMaxVersion, string expectedVersion)
         {
             var range = VersionRange.Parse(versionRange);
@@ -450,18 +450,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
         }
 
         [Theory]
-        [InlineData(ScriptConstants.ExtendedPlatformChannelName)]
-        [InlineData(ScriptConstants.StandardPlatformChannelName)]
-        public void StandardExtendedReleaseChannel_OneBundleVersion_Handled(string platformReleaseChannelName)
+        [InlineData(ScriptConstants.ExtendedPlatformChannelNameUpper)]
+        [InlineData(ScriptConstants.StandardPlatformChannelNameUpper)]
+        public void StandardExtendedReleaseChannel_OneBundleVersionOnDisk_Handled(string platformReleaseChannelName)
         {
             // these release channels take version n-1 (where n is the latest)
-            // if there is only one bundle version, latest should be chosen and information logged
+            // if there is only one bundle version available on disk, latest should be chosen and information logged
 
-            var versions = new List<string>() { "4.20.0" };
+            var versions = new List<string>() { "4.20.0" }; // only one bundle version available on disk
             var versionRange = "[4.*, 5.0.0)";
             var expected = "4.20.0";
 
-            var loggedString = $"Unable to apply plaform release channel configuration {platformReleaseChannelName}. Only one matching bundle version is available. 4.20.0 will be used";
+            var loggedString = $"Unable to apply platform release channel configuration {platformReleaseChannelName}. Only one matching bundle version is available. {expected} will be used";
             var mockLogger = GetVerifiableMockLogger(loggedString);
             var mockLoggerFactory = new Mock<ILoggerFactory>();
             mockLoggerFactory.Setup(f => f.CreateLogger(It.IsAny<string>())).Returns(() => mockLogger.Object);
@@ -484,7 +484,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
             var expected = "4.20.0";
 
             var incorrectChannelName = "someIncorrectReleaseChannelName";
-            var loggedString = $"Platform Release Channel of type {incorrectChannelName} is not recognized. The latest extension bundle version, 4.20.0, will be used.";
+            var loggedString = $"Unknown platform release channel name {incorrectChannelName}. The latest bundle version, {expected}, will be used.";
             var mockLogger = GetVerifiableMockLogger(loggedString);
             var mockLoggerFactory = new Mock<ILoggerFactory>();
             mockLoggerFactory.Setup(f => f.CreateLogger(It.IsAny<string>())).Returns(() => mockLogger.Object);

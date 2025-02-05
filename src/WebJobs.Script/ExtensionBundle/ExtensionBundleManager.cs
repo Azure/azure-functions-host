@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _configOption = configOption ?? throw new ArgumentNullException(nameof(configOption));
             _cdnUri = _environment.GetEnvironmentVariable(EnvironmentSettingNames.ExtensionBundleSourceUri) ?? ScriptConstants.ExtensionBundleDefaultSourceUri;
-            _platformReleaseChannel = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel) ?? ScriptConstants.LatestPlatformChannelName;
+            _platformReleaseChannel = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel) ?? ScriptConstants.LatestPlatformChannelNameUpper;
         }
 
         public async Task<ExtensionBundleDetails> GetExtensionBundleDetails()
@@ -252,19 +252,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
 
         internal string FindBestVersionMatch(VersionRange versionRange, IEnumerable<string> versions, string bundleId, FunctionsHostingConfigOptions configOption)
         {
-            var bundleVersions = versions.Select(p =>
-            {
-                var dirName = Path.GetFileName(p);
-                NuGetVersion.TryParse(dirName, out NuGetVersion version);
-                if (version != null)
-                {
-                    version = versionRange.Satisfies(version) ? version : null;
-                }
-                return version;
-            }).Where(v => v != null);
-
-            var latestBundleVersion = bundleVersions.OrderByDescending(version => version.Version).FirstOrDefault();
-            var matchingVersion = ResolvePlatformReleaseChannelVersion(bundleVersions, latestBundleVersion);
+            var matchingVersion = ResolvePlatformReleaseChannelVersion(versionRange, versions);
 
             if (bundleId != ScriptConstants.DefaultExtensionBundleId)
             {
@@ -294,36 +282,52 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
             return matchingVersion?.ToString();
         }
 
-        private NuGetVersion ResolvePlatformReleaseChannelVersion(IEnumerable<NuGetVersion> bundleVersions, NuGetVersion currentMatchingVersion)
+        private NuGetVersion ResolvePlatformReleaseChannelVersion(VersionRange versionRange, IEnumerable<string> versions)
         {
-            bool isStandardOrExtendedChannel = string.Equals(_platformReleaseChannel, ScriptConstants.StandardPlatformChannelName, StringComparison.Ordinal) ||
-                                   string.Equals(_platformReleaseChannel, ScriptConstants.ExtendedPlatformChannelName, StringComparison.Ordinal);
-
-            bool isLatestOrEmptyChannel = string.Equals(_platformReleaseChannel, string.Empty, StringComparison.Ordinal) ||
-                                          string.Equals(_platformReleaseChannel, ScriptConstants.LatestPlatformChannelName, StringComparison.Ordinal);
-
-            if (isStandardOrExtendedChannel)
+            var bundleVersions = versions.Select(p =>
             {
-                if (bundleVersions.Count() > 1)
+                var dirName = Path.GetFileName(p);
+                NuGetVersion.TryParse(dirName, out NuGetVersion version);
+                if (version != null)
                 {
-                   return bundleVersions.OrderByDescending(version => version.Version).ElementAt(1); // if n is latest, should get version n-1
+                    version = versionRange.Satisfies(version) ? version : null;
                 }
-                else
-                {
-                    // keep the latest version, log a notice
-                    _logger.LogInformation("Unable to apply plaform release channel configuration {platformReleaseChannelName}. Only one matching bundle version is available. {latestBundleVersion} will be used", _platformReleaseChannel, currentMatchingVersion);
-                }
-            }
-            else if (isLatestOrEmptyChannel)
+                return version;
+            }).Where(v => v != null).OrderByDescending(version => version.Version).ToList();
+
+            return _platformReleaseChannel.ToUpperInvariant() switch
             {
-                // no - op, latest version should be used.
+                ScriptConstants.StandardPlatformChannelNameUpper or ScriptConstants.ExtendedPlatformChannelNameUpper => GetStandardOrExtendedBundleVersion(bundleVersions),
+                ScriptConstants.LatestPlatformChannelNameUpper or "" => GetLatestBundleVersion(bundleVersions),
+                _ => HandleUnknownPlatformReleaseChannelName(bundleVersions)
+            };
+        }
+
+        private NuGetVersion GetStandardOrExtendedBundleVersion(IList<NuGetVersion> orderedByDescBundlesList)
+        {
+            if (orderedByDescBundlesList.Count() > 1)
+            {
+                return orderedByDescBundlesList.ElementAt(1); // if n is latest, should get version n-1 as this is how the platform release channel defines these channel names (resolve to version prior to latest)
             }
             else
             {
-                _logger.LogInformation("Platform Release Channel of type {platformReleaseChannelName} is not recognized. The latest extension bundle version, {latestBundleVersion}, will be used.", _platformReleaseChannel, currentMatchingVersion);
+                // keep the latest version, log a notice
+                var latest = orderedByDescBundlesList.FirstOrDefault();
+                _logger.LogInformation("Unable to apply platform release channel configuration {platformReleaseChannelName}. Only one matching bundle version is available. {latestBundleVersion} will be used", _platformReleaseChannel, latest);
+                return latest;
             }
+        }
 
-            return currentMatchingVersion;
+        private NuGetVersion GetLatestBundleVersion(IList<NuGetVersion> orderedByDescBundlesList)
+        {
+            return orderedByDescBundlesList.FirstOrDefault();
+        }
+
+        private NuGetVersion HandleUnknownPlatformReleaseChannelName(IList<NuGetVersion> orderedByDescBundlesList)
+        {
+            var latest = GetLatestBundleVersion(orderedByDescBundlesList);
+            _logger.LogInformation("Unknown platform release channel name {platformReleaseChannelName}. The latest bundle version, {latestBundleVersion}, will be used.", _platformReleaseChannel, latest);
+            return latest;
         }
 
         public async Task<string> GetExtensionBundleBinPathAsync()
