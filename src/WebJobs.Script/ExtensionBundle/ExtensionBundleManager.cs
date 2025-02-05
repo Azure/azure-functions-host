@@ -305,20 +305,18 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
 
         private NuGetVersion GetStandardOrExtendedBundleVersion(IList<NuGetVersion> orderedByDescBundlesList)
         {
-            if (orderedByDescBundlesList.Count() > 1)
+            if (orderedByDescBundlesList.Count > 1)
             {
-                return orderedByDescBundlesList.ElementAt(1); // if n is latest, should get version n-1 as this is how the platform release channel defines these channel names (resolve to version prior to latest)
+                return orderedByDescBundlesList[1]; // if n is latest, should get version n-1 as this is how the platform release channel defines these channel names (resolve to version prior to latest)
             }
-            else
-            {
-                // keep the latest version, log a notice
-                var latest = orderedByDescBundlesList.FirstOrDefault();
-                _logger.LogInformation("Unable to apply platform release channel configuration {platformReleaseChannelName}. Only one matching bundle version is available. {latestBundleVersion} will be used", _platformReleaseChannel, latest);
-                return latest;
-            }
+
+            // keep the latest version, log a notice
+            var latest = orderedByDescBundlesList.FirstOrDefault();
+            _logger.LogInformation("Unable to apply platform release channel configuration {platformReleaseChannelName}. Only one matching bundle version is available. {latestBundleVersion} will be used", _platformReleaseChannel, latest);
+            return latest;
         }
 
-        private NuGetVersion GetLatestBundleVersion(IList<NuGetVersion> orderedByDescBundlesList)
+        private static NuGetVersion GetLatestBundleVersion(IList<NuGetVersion> orderedByDescBundlesList)
         {
             return orderedByDescBundlesList.FirstOrDefault();
         }
