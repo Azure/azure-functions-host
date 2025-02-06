@@ -14,4 +14,5 @@
 - Fix modification of ISO strings during the parsing of function metadata bindings.
   - This fixes the listener errors related to the CosmosDB trigger's `StartFromTime` parameter. (#10735)
 - Updated `WebJobs.Script` to target .NET 8 (instead of .NET Standard 2.1)
+- Allow for binding names to use snake case (#10764). Examples include `_`, `binding_name`, and `_binding`.
 - Add support for the release channel setting `WEBSITE_PlatformReleaseChannel` and use this value in extension bundles resolution.

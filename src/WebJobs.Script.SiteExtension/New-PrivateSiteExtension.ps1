@@ -21,10 +21,10 @@
     [Switch] Include to overwrite existing files.
 
     .INPUTS
-    None. You can't pipe objects to Update-Month.ps1.
+    None. You can't pipe objects to New-PrivateSiteExtension.ps1.
 
     .OUTPUTS
-    None. Update-Month.ps1 doesn't generate any output.
+    None. New-PrivateSiteExtension.ps1 doesn't generate any output.
 #>
 
 param (

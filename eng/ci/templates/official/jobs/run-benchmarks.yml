@@ -3,23 +3,32 @@ parameters:
   type: string
 - name: description
   type: string
-- name: storeResultsInDatabase
-  type: boolean
-  default: false
-- name: additionalCrankArgs
+- name: os
   type: string
-  default: ''
-- name: agentName
-  type: string
+  default: Windows
+  values:
+    - Windows
+    - Linux
 
 jobs:
-- job: ${{ parameters.functionAppName }}
+- job: ${{ parameters.functionAppName }}_${{ parameters.os }}
 
+  ${{ if eq(parameters.os, 'Linux') }}:
+    pool:
+      name: 1es-pool-azfunc-benchmarking-large
+      image: 1es-ubuntu-22.04-benchmark-runner-vanilla
+      os: linux 
+  ${{ else }}:
+    pool:
+      name: 1es-pool-azfunc-benchmarking-large
+      image: 1es-windows-2022-benchmark-runner-vanilla
+      os: windows
+  
   variables:
-    agentName: ${{ parameters.agentName }}
+    agentId: ${{ parameters.functionAppName }}${{ parameters.os }}
     runDescription: ${{ parameters.description }}
     functionApp: ${{ parameters.functionAppName }}
-    benchmarkArtifactName: benchmark_results_$(functionApp)
+    benchmarkArtifactName: benchmark_results_$(Agent.OS)_$(functionApp)
     functionAppOutputPath: $(Build.ArtifactStagingDirectory)/FunctionApps/$(functionApp)
     benchmarkResultsJsonPath: $(Build.ArtifactStagingDirectory)/BenchmarkResults/$(Build.BuildNumber)_$(functionApp).json
     functionsWorkerRuntime: 'dotnet-isolated'
@@ -27,7 +36,7 @@ jobs:
     hostLocation: "./../../"
     baselineBenchmarkResultFilePath: ''
     baselineBenchmarkResultsDownloadDir: $(Pipeline.Workspace)/BenchmarkBaselineResult
-    appAgentIpAddress: ''
+    appAgentHostName: ''
 
   templateContext:
     inputs:
@@ -46,7 +55,7 @@ jobs:
   steps:
 
   - task: AzureKeyVault@2
-    condition: and(succeeded(), eq('${{ parameters.storeResultsInDatabase }}', true))
+    condition: and(succeeded(), eq(variables['storeBenchmarkResultsInDatabase'], true))
     inputs:
       azureSubscription: Azure-Functions-Host-CI-internal
       KeyVaultName: functions-perf-crank-kv
@@ -61,27 +70,13 @@ jobs:
   - script: dotnet tool install -g Microsoft.Crank.Controller --version "0.2.0-*"
     displayName: Install Microsoft.Crank.Controller tool
 
-  - pwsh: Start-Process powershell -ArgumentList '-NoExit', '-Command', 'crank-agent'
-    displayName: Start crank-agent
-
-  - task: CopyFiles@2
-    displayName: Copy benchmark apps to temp location
-    inputs:
-      SourceFolder: '$(Build.SourcesDirectory)/test/Performance/Apps'
-      Contents: '**/*'
-      TargetFolder: '$(Build.ArtifactStagingDirectory)/PerformanceTestApps'
-      CleanTargetFolder: true
-
-  - task: DotNetCoreCLI@2
-    displayName: Publish $(functionApp) app
-    inputs:
-      command: publish
-      publishWebProjects: false
-      zipAfterPublish: false
-      modifyOutputPath: false
-      projects: '$(Build.ArtifactStagingDirectory)/PerformanceTestApps/$(functionApp)/HelloHttp.csproj'
-      arguments: -c Release -o $(functionAppOutputPath) -f net9.0
-      workingDirectory: $(Build.ArtifactStagingDirectory)/PerformanceTestApps/$(functionApp)
+  - ${{ if eq(parameters.os, 'Windows') }}:
+    - pwsh: Start-Process powershell -ArgumentList '-NoExit', '-Command', 'crank-agent'
+      displayName: Start crank-agent
+  - ${{ else }}:
+    - script: |
+        nohup crank-agent &
+      displayName: Start crank-agent
 
   - task: AzureCLI@2
     displayName: Get Remote Agent IP Address
@@ -99,12 +94,12 @@ jobs:
             --auth-mode login `
             --table-name $(BenchmarkAgentInfoTableName) `
             --partition-key $(Build.BuildNumber) `
-            --row-key $(agentName) `
-            --select AgentIPAddress
+            --row-key $(agentId) `
+            --select HostName
 
           if ($Entity) {
-            $AgentIPAddress = ($Entity | ConvertFrom-Json).AgentIPAddress
-            Write-Host "##vso[task.setvariable variable=appAgentIpAddress]$AgentIPAddress"
+            $HostName = ($Entity | ConvertFrom-Json).HostName
+            Write-Host "##vso[task.setvariable variable=appAgentHostName]$HostName"
             break
           } else {
             Write-Host "Entity not found. Retrying in 30 seconds..."
@@ -120,25 +115,24 @@ jobs:
 
   - pwsh: |
         $crankArgs = "--config $(configFilePath) --scenario hellohttp --profile win2022 --load.options.reuseBuild true --description `"$(runDescription)`" --command-line-property --no-measurements --json $(benchmarkResultsJsonPath) --property sourceVersion=$(Build.SourceVersion) --property buildNumber=$(Build.BuildNumber) --property buildId=$(Build.BuildId) --property sourceBranch=$(Build.SourceBranch) --variable FunctionsWorkerRuntime=$(functionsWorkerRuntime) --variable HostLocation=$(hostLocation) --variable FunctionAppPath=$(functionAppOutputPath)"
-        $crankArgs += " --variable CrankAgentAppVm=$(appAgentIpAddress) --variable CrankAgentLoadVm=localhost --variable AspNetUrls=http://$(appAgentIpAddress):5000"
-        $crankArgs += " ${{ parameters.additionalCrankArgs }}"
+        $crankArgs += " --variable CrankAgentAppVm=$(appAgentHostName) --variable CrankAgentLoadVm=localhost --variable AspNetUrls=http://$(appAgentHostName):5000"
+        $crankArgs += " $(AdditionalCrankArguments)"
         $command = "crank $crankArgs"
 
-        if ('${{ parameters.storeResultsInDatabase }}' -eq 'true') {
+        if ('${{ variables['storeBenchmarkResultsInDatabase'] }}' -eq 'true') {
             $command += " --table HttpBenchmarks --sql `"$(BenchmarkResultsSqlConnectionString)`""
         }
 
         Write-Host "Running command: $command"
         Invoke-Expression $command
-    displayName: 'Run Benchmark'
+    displayName: Run Benchmark
 
-  # Retrieve function host logs
   - pwsh: |
-      $url = "http://$(appAgentIpAddress):5010/jobs/1/output"
+      $url = "http://$(appAgentHostName):5010/jobs/1/output"
       Write-Host "Fetching logs from: $url"
       $response = Invoke-WebRequest -Uri $url -Method GET -UseBasicParsing
       Write-Host $response.Content
-    displayName: 'Fetch Function Host Logs'
+    displayName: Fetch Function Host Logs
 
   # Tag the build as a baseline if it originates from the specified branch.
   # Baseline builds serve as reference points for performance comparisons in future builds.
@@ -152,13 +146,18 @@ jobs:
   - pwsh: |
       $baselineDir = "$(baselineBenchmarkResultsDownloadDir)"
       $fileNamePattern = "*_$(functionApp).json"
-      $baselineFile = Get-ChildItem -Path $baselineDir -Filter $fileNamePattern | Select-Object -First 1
 
-      if ($baselineFile) {
-        Write-Host "Found baseline benchmark result file: $($baselineFile.FullName)"
-        Write-Host "##vso[task.setvariable variable=baselineBenchmarkResultFilePath]$($baselineFile.FullName)"
+      if (Test-Path $baselineDir -PathType Container) {
+          $baselineFile = Get-ChildItem -Path $baselineDir -Filter $fileNamePattern | Select-Object -First 1
+
+          if ($baselineFile) {
+              Write-Host "Found baseline benchmark result file: $($baselineFile.FullName)"
+              Write-Host "##vso[task.setvariable variable=baselineBenchmarkResultFilePath]$($baselineFile.FullName)"
+          } else {
+              Write-Host "No baseline benchmark result file matching the pattern '$fileNamePattern' found in directory '$baselineDir'."
+          }
       } else {
-        Write-Host "No baseline benchmark result file found."
+          Write-Host "The specified directory '$baselineDir' does not exist."
       }
     displayName: 'Set Baseline Benchmark Result File Path'
 

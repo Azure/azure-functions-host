@@ -1,13 +1,29 @@
 parameters:
 - name: functionAppName
   type: string
-- name: agentName
+- name: os
   type: string
+  default: Windows
+  values:
+    - Windows
+    - Linux
+ 
 jobs:
-- job: ${{ parameters.functionAppName }}
+- job: ${{ parameters.functionAppName }}_${{ parameters.os }}
+
+  ${{ if eq(parameters.os, 'Linux') }}:
+    pool:
+      name: 1es-pool-azfunc-benchmarking-large
+      image: 1es-ubuntu-22.04-benchmark-runner-vanilla
+      os: linux 
+  ${{ else }}:
+    pool:
+      name: 1es-pool-azfunc-benchmarking-large
+      image: 1es-windows-2022-benchmark-runner-vanilla
+      os: windows
 
   variables:
-    agentName: ${{ parameters.agentName }}
+    agentId: ${{ parameters.functionAppName }}${{ parameters.os }}
     functionApp: ${{ parameters.functionAppName }}
     functionAppOutputPath: $(Build.ArtifactStagingDirectory)/FunctionApps/$(functionApp)
 
@@ -15,15 +31,23 @@ jobs:
 
   - template: /eng/ci/templates/install-dotnet.yml@self
 
+  - ${{ if eq(parameters.os, 'Linux') }}:
+    # Adds the Ubuntu 20.04 security repository to Ubuntu 22.04 and installs libssl1.1, which is unavailable by default.
+    - script: |
+        echo "deb http://security.ubuntu.com/ubuntu focal-security main" | sudo tee /etc/apt/sources.list.d/focal-security.list
+        sudo apt update && sudo apt install -y libssl1.1
+      displayName: "Install libssl1.1 on Ubuntu 22.04"
+
   - script: dotnet tool install -g Microsoft.Crank.Agent --version "0.2.0-*"
     displayName: Install Microsoft.Crank.Agent tool
 
-  - pwsh: Start-Process powershell -ArgumentList '-NoExit', '-Command', 'crank-agent'
-    displayName: Start crank agent
-
-  - pwsh: |
-      dotnet --info
-    displayName: Print .NET info
+  - ${{ if eq(parameters.os, 'Windows') }}:
+    - pwsh: Start-Process powershell -ArgumentList '-NoExit', '-Command', 'crank-agent'
+      displayName: Start crank-agent
+  - ${{ else }}:
+    - script: |
+        nohup crank-agent &
+      displayName: Start crank-agent
 
   - task: CopyFiles@2
     displayName: Copy benchmark apps to temp location
@@ -41,22 +65,20 @@ jobs:
       zipAfterPublish: false
       modifyOutputPath: false
       projects: '$(Build.ArtifactStagingDirectory)/PerformanceTestApps/$(functionApp)/HelloHttp.csproj'
-      arguments: -c Release -o $(functionAppOutputPath) -f net9.0 -v n
+      arguments: -c Release -o $(functionAppOutputPath) -f net9.0
       workingDirectory: $(Build.ArtifactStagingDirectory)/PerformanceTestApps/$(functionApp)
 
-  - script: |
-      netsh advfirewall firewall add rule name="Open Port 5000" dir=in action=allow protocol=TCP localport=5000
-      netsh advfirewall firewall add rule name="Open Port 5010" dir=in action=allow protocol=TCP localport=5010
-    displayName: Open port 5000 and 5010
+  - ${{ if eq(parameters.os, 'Windows') }}:
+    - script: |
+        netsh advfirewall firewall add rule name="Open Port 5000" dir=in action=allow protocol=TCP localport=5000
+        netsh advfirewall firewall add rule name="Open Port 5010" dir=in action=allow protocol=TCP localport=5010
+      displayName: Open port 5000 and 5010
 
-  - task: PowerShell@2
-    displayName: Get Agent IP Address
-    inputs:
-      targetType: 'inline'
-      script: |
-        $ipAddress = (Test-Connection -ComputerName (hostname) -Count 1).IPv4Address.IPAddressToString
-        Write-Host "IP Address: $ipAddress"
-        Write-Host "##vso[task.setvariable variable=agentIp]$ipAddress"
+  - pwsh: |
+      $HostName = [System.Net.Dns]::GetHostName()
+      Write-Host "##vso[task.setvariable variable=machineHostName]$HostName"
+      Write-Host "HostName: $HostName"
+    displayName: Get Machine Info
 
   - task: AzureCLI@2
     displayName: Persist Agent IP Address
@@ -69,7 +91,7 @@ jobs:
           --auth-mode login `
           --account-name $(StorageAccount) `
           --table-name $(BenchmarkAgentInfoTableName) `
-          --entity PartitionKey=$(Build.BuildNumber) RowKey=$(agentName) AgentName=$(agentName) AgentIPAddress=$(agentIp)
+          --entity PartitionKey=$(Build.BuildNumber) RowKey=$(agentId) AgentId=$(agentId) HostName=$(machineHostName)
 
   - pwsh: |
       $url = "http://localhost:5010/jobs/all"
@@ -80,9 +102,9 @@ jobs:
       while ($attempt -lt $maxAttempts) {
           $response = Invoke-WebRequest -Uri $url -Method Get -ErrorAction Stop
           $data = $response.Content | ConvertFrom-Json
-          $completedJobCount = ($data | Where-Object { $_.state -eq "Deleted" }).Count 
+          $completedJobCount = ($data | Where-Object { $_.state -eq "Deleted" }).Count
 
-          if ($completedJobCount -gt 0) { 
+          if ($completedJobCount -gt 0) {
               Write-Host "Found at least 1 job with 'state' = 'Deleted'. Exiting task."
               exit 0
           }
@@ -108,4 +130,4 @@ jobs:
           --auth-mode login `
           --account-name $(StorageAccount) `
           --table-name $(BenchmarkAgentInfoTableName) `
-          --partition-key $(Build.BuildNumber) --row-key=$(agentName)
+          --partition-key $(Build.BuildNumber) --row-key=$(agentId)
