@@ -14,6 +14,7 @@ using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.ApplicationInsights.Extensibility.Implementation.ApplicationId;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -21,6 +22,7 @@ using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
+using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -351,6 +353,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 }
 
                 ActiveHost = localHost;
+
+                // Forward initial startup logs to AppInsights/OpenTelemetry.
+                // These are not tracked by the AppInsights and OpenTelemetry logger provider as these are added in the script host.
+                var loggerProviders = ActiveHost.Services.GetServices<ILoggerProvider>();
+                var deferredLogProvider = ActiveHost.Services.GetService<DeferredLoggerProvider>();
+                if (deferredLogProvider is not null)
+                {
+                    var selectedProviders = loggerProviders.Where(provider => provider is ApplicationInsightsLoggerProvider or OpenTelemetryLoggerProvider).ToArray();
+                    deferredLogProvider.ProcessBufferedLogs(selectedProviders);
+                }
+
+                _hostBuiltChangeTokenSourceForLanguageWorkerOptions.TriggerChange();
 
                 var scriptHost = (ScriptHost)ActiveHost.Services.GetService<ScriptHost>();
                 if (scriptHost != null)
