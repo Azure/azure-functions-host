@@ -47,12 +47,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         {
             string workerRuntime = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
 
-            // Parsing worker.latestConfiguration.json should always be done in case of multi language worker
+            // Parsing worker.config.json should always be done in case of multi language worker
             if (!string.IsNullOrEmpty(workerRuntime) &&
                 workerRuntime.Equals(RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase) &&
                 !_environment.IsMultiLanguageRuntimeEnvironment())
             {
-                // Skip parsing worker.latestConfiguration.json files for dotnet in-proc apps
+                // Skip parsing worker.config.json files for dotnet in-proc apps
                 options.WorkerConfigs = new List<RpcWorkerConfig>();
                 return;
             }
@@ -77,6 +77,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         }
     }
 
+    /// <summary>
+    /// This implementation of IPostConfigureOptions validates that LanguageWorkerOptions are not configured within the JobHost scope.
+    /// LanguageWorkerOptions should be forwarded from the parent scope.
+    /// Triggers a debug failure and logs a message if unexpected configuration is detected.
+    /// </summary>
     internal class JobHostLanguageWorkerOptionsSetup : IPostConfigureOptions<LanguageWorkerOptions>
     {
         private readonly ILoggerFactory _loggerFactory;
@@ -88,8 +93,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         public void PostConfigure(string name, LanguageWorkerOptions options)
         {
-            var message = $"Call to configure {nameof(LanguageWorkerOptions)} from the JobHost scope. " +
-                $"If using {nameof(IOptions<LanguageWorkerOptions>)}, please use {nameof(IOptionsMonitor<LanguageWorkerOptions>)} instead.";
+            var message = "Unexpected configuration of LanguageWorkerOptions from the JobHost scope. LanguageWorkerOptions should be forwarded from the parent scope with no additional configuration.";
             Debug.Fail(message);
 
             var logger = _loggerFactory.CreateLogger("Host.LanguageWorkerConfig");
