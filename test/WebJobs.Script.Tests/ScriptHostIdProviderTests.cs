@@ -23,10 +23,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly Mock<IConfiguration> _mockConfiguration;
         private readonly HostIdValidator _hostIdValidator;
         private readonly TestEnvironment _environment;
+        private readonly ScriptApplicationHostOptions _scriptApplicationHostOptions;
 
         public ScriptHostIdProviderTests()
         {
-            var options = new ScriptApplicationHostOptions();
+            _scriptApplicationHostOptions = new ScriptApplicationHostOptions();
             _environment = new TestEnvironment();
 
             _mockConfiguration = new Mock<IConfiguration>(MockBehavior.Strict);
@@ -39,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var mockStorageProvider = new Mock<IAzureBlobStorageProvider>(MockBehavior.Strict);
             var mockApplicationLifetime = new Mock<IApplicationLifetime>(MockBehavior.Strict);
             _hostIdValidator = new HostIdValidator(_environment, mockStorageProvider.Object, mockApplicationLifetime.Object, hostNameProvider, logger);
-            _provider = new ScriptHostIdProvider(_mockConfiguration.Object, _environment, new TestOptionsMonitor<ScriptApplicationHostOptions>(options), _hostIdValidator);
+            _provider = new ScriptHostIdProvider(_mockConfiguration.Object, _environment, new TestOptionsMonitor<ScriptApplicationHostOptions>(_scriptApplicationHostOptions), _hostIdValidator);
         }
 
         [Fact]
@@ -53,10 +54,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
-        [InlineData("TEST-FUNCTIONS--", "123123", "test-functions", false)]
-        [InlineData("TEST-FUNCTIONS-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", "123123", "test-functions-xxxxxxxxxxxxxxxxx", true)]
-        public async Task GetHostIdAsync_AzureHost_ReturnsExpectedResult(string siteName, string azureWebsiteInstanceId, string expected, bool validationExpected)
+        [InlineData("TEST-FUNCTIONS--", "123123", "test-functions", false, false)]
+        [InlineData("TEST-FUNCTIONS-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", "123123", "test-functions-xxxxxxxxxxxxxxxxx", true, false)]
+        [InlineData("functionsv4x86inproc8placeholdertemplatesite", "123123", "functionsv4x86inproc8placeholder", false, true)]
+        public async Task GetHostIdAsync_AzureHost_ReturnsExpectedResult(string siteName, string azureWebsiteInstanceId, string expected, bool validationExpected, bool inPlaceholderMode)
         {
+            _scriptApplicationHostOptions.IsStandbyConfiguration = inPlaceholderMode;
+
             _mockConfiguration.SetupGet(p => p[ConfigurationSectionNames.HostIdPath]).Returns((string)null);
 
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId, azureWebsiteInstanceId);

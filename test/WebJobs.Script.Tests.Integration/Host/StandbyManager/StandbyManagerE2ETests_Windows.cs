@@ -11,12 +11,15 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Storage.Blobs;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.WebJobs.Script.Tests;
 using Xunit;
+using static Microsoft.Azure.WebJobs.Script.HostIdValidator;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -28,6 +31,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public StandbyManagerE2ETests_Windows()
         {
+            Utility.ColdStartDelayMS = 1000;
+
             _settings = new Dictionary<string, string>()
             {
                 { EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1" },
@@ -67,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(environment.IsContainerReady());
 
             // wait for shutdown to be triggered
-            var applicationLifetime = host.Services.GetServices<IApplicationLifetime>().Single();
+            var applicationLifetime = host.Services.GetServices<Microsoft.AspNetCore.Hosting.IApplicationLifetime>().Single();
             await TestHelpers.RunWithTimeoutAsync(() => applicationLifetime.ApplicationStopping.WaitHandle.WaitOneAsync(), TimeSpan.FromSeconds(30));
 
             // ensure the host was specialized and the expected error was logged
@@ -134,6 +139,105 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // Verify that the internal cache has reset
             Assert.NotSame(GetCachedTimeZoneInfo(), _originalTimeZoneInfoCache);
+        }
+
+        [Fact]
+        public async Task StandbyModeE2E_Dotnet_HostIdValidator_DoesNotRunInPlaceholderMode()
+        {
+            _settings.Add(EnvironmentSettingNames.AzureWebsiteInstanceId, Guid.NewGuid().ToString());
+
+            string siteName = "areallylongnamethatexceedsthemaxhostidlength";
+            string expectedHostId = siteName.Substring(0, 32);
+            string expectedHostName = $"{siteName}.azurewebsites.net";
+
+            string placeholderSiteName = "functionsv4x86inproc8placeholdertemplatesite";
+            string placeholderHostId = placeholderSiteName.Substring(0, 32);
+            string placeholderHostName = $"{placeholderSiteName}.azurewebsites.net";
+
+            var environment = new TestEnvironment(_settings);
+            await InitializeTestHostAsync("Windows", environment, placeholderSiteName);
+
+            // Directly configure a bad placeholder mode host ID record.
+            // Before the fix for this bug, such records were being generated
+            // as part of a specialization race condition.
+            var serviceProvider = _httpServer.Host.Services;
+            var blobStorageProvider = serviceProvider.GetService<IAzureBlobStorageProvider>();
+            Assert.True(blobStorageProvider.TryCreateHostingBlobContainerClient(out var blobContainerClient));
+            var hostIdInfo = new HostIdValidator.HostIdInfo { Hostname = expectedHostName };
+            string blobPath = string.Format(BlobPathFormat, placeholderHostId);
+            BlobClient blobClient = blobContainerClient.GetBlobClient(blobPath);
+            BinaryData data = BinaryData.FromObjectAsJson(hostIdInfo);
+            await blobClient.UploadAsync(data, overwrite: true);
+
+            await VerifyWarmupSucceeds();
+            await VerifyWarmupSucceeds(restart: true);
+
+            // before specialization, the hostname will contain the placeholder site name
+            var hostNameProvider = serviceProvider.GetService<HostNameProvider>();
+            Assert.Equal(placeholderHostName, hostNameProvider.Value);
+
+            // allow time for any scheduled host ID check to happen
+            await Task.Delay(Utility.ColdStartDelayMS);
+
+            // now specialize the host
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
+            environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "dotnet");
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName, siteName);
+
+            Assert.False(environment.IsPlaceholderModeEnabled());
+            Assert.True(environment.IsContainerReady());
+
+            // give time for the specialization to happen
+            string[] logLines = null;
+            LogMessage[] errors = null;
+            await TestHelpers.Await(() =>
+            {
+                errors = _loggerProvider.GetAllLogMessages().Where(p => p.Level == Microsoft.Extensions.Logging.LogLevel.Error && p.EventId.Id != 302).ToArray();
+                if (errors.Any())
+                {
+                    // one or more unexpected errors
+                    return true;
+                }
+
+                // wait for the trace indicating that the host has been specialized
+                logLines = _loggerProvider.GetAllLogMessages().Where(p => p.FormattedMessage != null).Select(p => p.FormattedMessage).ToArray();
+
+                return logLines.Contains("Generating 0 job function(s)") && logLines.Contains("Stopping JobHost");
+            }, userMessageCallback: () => string.Join(Environment.NewLine, _loggerProvider.GetAllLogMessages().Select(p => $"[{p.Timestamp.ToString("HH:mm:ss.fff")}] {p.FormattedMessage}")));
+
+            Assert.Empty(errors);
+
+            var logs = _loggerProvider.GetAllLogMessages().ToArray();
+
+            // after specialization, the hostname changes
+            Assert.Equal(expectedHostName, hostNameProvider.Value);
+
+            // verify the rest of the expected logs
+            logLines = logs.Where(p => p.FormattedMessage != null).Select(p => p.FormattedMessage).ToArray();
+            Assert.True(logLines.Count(p => p.Contains("Stopping JobHost")) >= 1);
+            Assert.Equal(1, logLines.Count(p => p.Contains("Creating StandbyMode placeholder function directory")));
+            Assert.Equal(1, logLines.Count(p => p.Contains("StandbyMode placeholder function directory created")));
+            Assert.Equal(2, logLines.Count(p => p.Contains("Host is in standby mode")));
+            Assert.Equal(2, logLines.Count(p => p.Contains("Executed 'Functions.WarmUp' (Succeeded")));
+            Assert.Equal(1, logLines.Count(p => p.Contains("Starting host specialization")));
+            Assert.Equal(1, logLines.Count(p => p.Contains("Starting language worker channel specialization")));
+            Assert.Equal(6, logLines.Count(p => p.Contains($"Loading functions metadata")));
+            Assert.Equal(4, logLines.Count(p => p.Contains($"1 functions loaded")));
+            Assert.Equal(2, logLines.Count(p => p.Contains($"0 functions loaded")));
+            Assert.Contains("Generating 0 job function(s)", logLines);
+
+            // we expect to see host startup logs for both the placeholder site as well as the
+            // specialized site
+            Assert.Equal(2, logLines.Count(p => p.Contains($"Starting Host (HostId={placeholderHostId}")));
+            Assert.Equal(1, logLines.Count(p => p.Contains($"Starting Host (HostId={expectedHostId}")));
+
+            // allow time for any scheduled host ID check to happen
+            await Task.Delay(Utility.ColdStartDelayMS);
+
+            // Don't expect any errors (other than bundle download errors)
+            errors = _loggerProvider.GetAllLogMessages().Where(p => p.Level == Microsoft.Extensions.Logging.LogLevel.Error && p.EventId.Id != 302).ToArray();
+            Assert.Empty(errors);
         }
 
         [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/7805")]

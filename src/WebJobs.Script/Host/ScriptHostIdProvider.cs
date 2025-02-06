@@ -37,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 // if the user hasn't configured an explicit ID, we generate the default ID.
                 HostIdResult result = GetDefaultHostId(_environment, _options.CurrentValue);
                 hostId = result.HostId;
-                if (result.IsTruncated && !result.IsLocal)
+                if (result.IsTruncated && !result.IsLocal && !_options.CurrentValue.IsStandbyConfiguration)
                 {
                     _hostIdValidator.ScheduleValidation(hostId);
                 }
