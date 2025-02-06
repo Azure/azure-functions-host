@@ -56,14 +56,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
         private async Task<IEnumerable<int>> WaitAndGetAllNodeProcesses(int expectedProcessCount)
         {
-            IEnumerable<int> nodeProcessesBeforeHostRestart = Process.GetProcessesByName("node").Select(p => p.Id);
+            var nodeProcessesBeforeHostRestart = Process.GetProcessesByName("node");
             while (nodeProcessesBeforeHostRestart.Count() < expectedProcessCount)
             {
                 await Task.Delay(TimeSpan.FromSeconds(5));
-                nodeProcessesBeforeHostRestart = Process.GetProcessesByName("node").Select(p => p.Id);
+                nodeProcessesBeforeHostRestart = Process.GetProcessesByName("node");
             }
 
-            return nodeProcessesBeforeHostRestart;
+            foreach (var p in nodeProcessesBeforeHostRestart)
+            {
+                Console.WriteLine($"node {p.Id}: {p.StartInfo.Arguments}");
+            }
+
+            return nodeProcessesBeforeHostRestart.Select(p => p.Id);
         }
 
         [Fact]
@@ -96,14 +101,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 Assert.Equal(HttpStatusCode.InternalServerError, timeoutResult.StatusCode);  // Confirm response code after timeout (10 seconds)
             }
 
-            IEnumerable<int> nodeProcessesAfter = Process.GetProcessesByName("node").Select(p => p.Id);
+            var nodeProcessesAfter = Process.GetProcessesByName("node");
+
+            foreach (var p in nodeProcessesAfter)
+            {
+                Console.WriteLine($"node {p.Id}: {p.StartInfo.Arguments}");
+            }
 
             // Confirm count remains the same
             Assert.Equal(nodeProcessesBeforeHostRestart.Count(), nodeProcessesAfter.Count());
 
-
             // Confirm all processes are different
-            Assert.Equal(3, nodeProcessesAfter.Except(nodeProcessesBeforeHostRestart).Count());
+            Assert.Equal(3, nodeProcessesAfter.Select(p => p.Id).Except(nodeProcessesBeforeHostRestart).Count());
 
             // Confirm host instance ids are the same
             Assert.Equal(oldHostInstanceId, await _fixture.GetActiveHostInstanceIdAsync());
