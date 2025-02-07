@@ -853,7 +853,7 @@
       "Microsoft.Azure.Functions.NodeJsWorker/3.10.1": {},
       "Microsoft.Azure.Functions.PowerShellWorker.PS7.0/4.0.3148": {},
       "Microsoft.Azure.Functions.PowerShellWorker.PS7.2/4.0.4025": {},
-      "Microsoft.Azure.Functions.PowerShellWorker.PS7.4/4.0.4026": {},
+      "Microsoft.Azure.Functions.PowerShellWorker.PS7.4/4.0.4134": {},
       "Microsoft.Azure.Functions.PythonWorker/4.34.0": {},
       "Microsoft.Azure.KeyVault.Core/2.0.4": {
         "dependencies": {

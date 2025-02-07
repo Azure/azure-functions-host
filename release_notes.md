@@ -16,3 +16,4 @@
 - Updated `WebJobs.Script` to target .NET 8 (instead of .NET Standard 2.1)
 - Allow for binding names to use snake case (#10764). Examples include `_`, `binding_name`, and `_binding`.
 - Add support for the release channel setting `WEBSITE_PlatformReleaseChannel` and use this value in extension bundles resolution.
+- Update PowerShell 7.4 worker to [4.0.4134](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.4134)
