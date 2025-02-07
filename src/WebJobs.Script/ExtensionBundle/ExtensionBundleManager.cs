@@ -8,6 +8,7 @@ using System.IO.Compression;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
+using Grpc.Net.Client.Balancer;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
@@ -300,11 +301,15 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
             _ => HandleUnknownPlatformReleaseChannelName(orderedByDescBundles)
         };
 
+        // Standard: Resolves to the version prior to the latest(n-1), if that version is available.
+        // Extended: Resolves to the version two releases prior to the latest(n-2), if that version is available.
+        // However, Functions and Rapid Update should treat Standard and Extended the same, resolving to n-1.
         private NuGetVersion GetStandardOrExtendedBundleVersion(IList<NuGetVersion> orderedByDescBundlesList)
         {
             if (orderedByDescBundlesList.Count > 1)
             {
-                return orderedByDescBundlesList[1]; // These channels should resolve to the version prior to latest. This list is in descending order, which makes latest [0], and prior-to-latest [1].
+                // These channels should resolve to the version prior to latest. This list is in descending order, which makes latest [0], and prior-to-latest [1].
+                return orderedByDescBundlesList[1];
             }
 
             // keep the latest version, log a notice
