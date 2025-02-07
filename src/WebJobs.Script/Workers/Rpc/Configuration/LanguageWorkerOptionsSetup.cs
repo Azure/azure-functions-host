@@ -96,7 +96,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             var message = "Unexpected configuration of LanguageWorkerOptions from the JobHost scope. LanguageWorkerOptions should be forwarded from the parent scope with no additional configuration.";
             Debug.Fail(message);
 
-            var logger = _loggerFactory.CreateLogger("Host.LanguageWorkerConfig");
+            var logger = _loggerFactory.CreateLogger<JobHostLanguageWorkerOptionsSetup>();
             logger.LogInformation(message);
         }
     }
