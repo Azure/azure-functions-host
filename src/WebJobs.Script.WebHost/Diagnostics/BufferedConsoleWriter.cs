@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Channels;
@@ -50,6 +51,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _exceptionhandler = exceptionHandler;
         }
 
+        public TextWriter Writer { get; init; } = Console.Out;
+
+        /// <summary>
+        /// Primarily for testing. Do not call in production.
+        /// </summary>
+        /// <remarks>
+        /// Not called 'FlushAsync' because this does stop processing messages.
+        /// </remarks>
+        /// <returns>A task that completes when all buffered messages are drained.</returns>
+        public Task CompleteAsync()
+        {
+            _consoleBuffer.Writer.TryComplete();
+            return _consoleBufferReadLoop;
+        }
+
         public void WriteHandler(string evt)
         {
             _writeEvent(evt);
@@ -65,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 // If the wait failed, write to the console. Otherwise, try the writing again - if that fails, write to the console.
                 if (waitFailed || !_consoleBuffer.Writer.TryWrite(evt))
                 {
-                    Console.WriteLine(evt);
+                    Writer.WriteLine(evt);
                 }
             }
         }
@@ -108,12 +124,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                             }
 
                             _writeResetEvent.Set();
-                            Console.Write(builder.ToString());
+                            Writer.Write(builder.ToString());
                             builder.Clear();
                         }
                         else
                         {
-                            Console.WriteLine(line1);
+                            Writer.WriteLine(line1);
                         }
                     }
                 }
@@ -126,7 +142,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             finally
             {
                 // if this has failed for any reason, fall everything back to console
-                _writeEvent = Console.WriteLine;
+                _writeEvent = Writer.WriteLine;
                 _consoleBuffer.Writer.TryComplete();
             }
         }
