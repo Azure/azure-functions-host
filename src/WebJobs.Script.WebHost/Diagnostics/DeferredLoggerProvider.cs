@@ -75,14 +75,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                                     try
                                     {
                                         // Create a scope for each object in ScopeObject
-                                        if (log.ScopeStorage?.Count > 0)
+                                        scopes ??= new List<IDisposable>();
+                                        foreach (var scope in log.ScopeStorage)
                                         {
-                                            scopes ??= new List<IDisposable>();
-                                            foreach (var scope in log.ScopeStorage)
-                                            {
-                                                // Create and store each scope
-                                                scopes.Add(logger.BeginScope(scope));
-                                            }
+                                            // Create and store each scope
+                                            scopes.Add(logger.BeginScope(scope));
                                         }
 
                                         // Log the message

@@ -68,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             };
 
             // Persist the scope state so it can be reapplied in the original order when forwarding logs to the logging provider.
-            _scopeProvider.ForEachScope((scope, state) =>
+            _scopeProvider?.ForEachScope((scope, state) =>
             {
                 state.ScopeStorage ??= new List<object>();
                 state.ScopeStorage.Add(scope);
