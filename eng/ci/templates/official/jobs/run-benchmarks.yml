@@ -119,7 +119,7 @@ jobs:
         $crankArgs += " $(AdditionalCrankArguments)"
         $command = "crank $crankArgs"
 
-        if ('${{ variables['storeBenchmarkResultsInDatabase'] }}' -eq 'true') {
+        if ('$(storeBenchmarkResultsInDatabase)' -eq 'true') {
             $command += " --table HttpBenchmarks --sql `"$(BenchmarkResultsSqlConnectionString)`""
         }
 
