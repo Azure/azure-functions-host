@@ -77,8 +77,9 @@ namespace Microsoft.Azure.WebJobs.Script.Metrics
                 {
                     _cachedFunctionGroupTag = functionGroupTag;
                 }
-                else
+                else if (_environment.IsFlexConsumptionSku())
                 {
+                    // FunctionGroup is only used in Flex Consumption and would not be set in other SKUs.
                     _logger.LogDebug("Unable to resolve {tagName}, {funcGroup} is null or empty.", nameof(FunctionGroupTag), EnvironmentSettingNames.FunctionsTargetGroup);
                 }
 

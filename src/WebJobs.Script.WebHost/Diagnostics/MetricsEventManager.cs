@@ -4,10 +4,8 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Threading;
-using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -29,6 +27,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly int _functionActivityFlushIntervalSeconds;
         private readonly Timer _metricsFlushTimer;
         private readonly ILogger<MetricsEventManager> _logger;
+        private readonly object _lock = new();
+
         private bool _disposed;
         private AppServiceOptions _appServiceOptions;
 
@@ -215,13 +215,24 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         private void FlushMetrics()
         {
-            if (QueuedEvents.Count == 0)
+            if (QueuedEvents.IsEmpty)
             {
                 return;
             }
 
-            SystemMetricEvent[] eventsToFlush = QueuedEvents.Values.ToArray();
-            QueuedEvents.Clear();
+            SystemMetricEvent[] eventsToFlush;
+
+            // Prevent flushes from multiple threads (mostly from testing).
+            lock (_lock)
+            {
+                if (QueuedEvents.IsEmpty)
+                {
+                    return;
+                }
+
+                eventsToFlush = QueuedEvents.Values.ToArray();
+                QueuedEvents.Clear();
+            }
 
             // Use the same timestamp for all events. Since these are
             // aggregated events, individual timestamps for when the events were

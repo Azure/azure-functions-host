@@ -15,3 +15,7 @@
   - This fixes the listener errors related to the CosmosDB trigger's `StartFromTime` parameter. (#10735)
 - Updated `WebJobs.Script` to target .NET 8 (instead of .NET Standard 2.1)
 - Extending Log Forwarding to AppInsights and OTel for Enhanced Troubleshooting
+- Allow for binding names to use snake case (#10764). Examples include `_`, `binding_name`, and `_binding`.
+- Add support for the release channel setting `WEBSITE_PlatformReleaseChannel` and use this value in extension bundles resolution.
+- Update PowerShell 7.4 worker to [4.0.4134](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.4134)
+- Update Python Worker Version to [4.35.0](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.35.0)
