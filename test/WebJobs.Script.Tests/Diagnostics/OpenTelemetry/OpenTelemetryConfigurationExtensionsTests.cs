@@ -306,18 +306,76 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.OpenTelemetry
             resolvedClient.GetType().Name.Should().Be("ManagedIdentityClient");
         }
 
+        [Fact]
+        public void OpenTelemetryBuilder_InPlaceholderMode()
+        {
+            IHost host;
+            using (new TestScopedEnvironmentVariable(new Dictionary<string, string> { { EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1" } }))
+            {
+                host = new HostBuilder()
+                    .ConfigureLogging((context, builder) =>
+                    {
+                        builder.ConfigureOpenTelemetry(context, TelemetryMode.Placeholder);
+                    })
+                    .ConfigureServices(s =>
+                    {
+                        s.AddSingleton<IEnvironment>(SystemEnvironment.Instance);
+                    })
+                    .Build();
+            }
+
+            var a = host.Services.GetServices<object>();
+
+            var tracerProvider = host.Services.GetService<TracerProvider>();
+            Assert.NotNull(tracerProvider);
+
+            var loggerProvider = host.Services.GetService<ILoggerProvider>();
+            Assert.NotNull(loggerProvider);
+
+            var openTelemetryLoggerOptions = host.Services.GetService<IOptions<OpenTelemetryLoggerOptions>>();
+            Assert.NotNull(openTelemetryLoggerOptions);
+            Assert.True(openTelemetryLoggerOptions.Value.IncludeFormattedMessage);
+        }
+
+        [Fact]
+        public void OpenTelemetryBuilder_NotInPlaceholderMode()
+        {
+            IHost host;
+            using (new TestScopedEnvironmentVariable(new Dictionary<string, string> { { EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0" } }))
+            {
+                host = new HostBuilder()
+                    .ConfigureLogging((context, builder) =>
+                    {
+                        builder.ConfigureOpenTelemetry(context, TelemetryMode.OpenTelemetry);
+                    })
+                    .ConfigureServices(s =>
+                    {
+                        s.AddSingleton<IEnvironment>(SystemEnvironment.Instance);
+                    })
+                    .Build();
+            }
+
+            var a = host.Services.GetServices<object>();
+
+            var tracerProvider = host.Services.GetService<TracerProvider>();
+            Assert.Null(tracerProvider);
+
+            var loggerProvider = host.Services.GetService<ILoggerProvider>();
+            Assert.Null(loggerProvider);
+        }
+
         // The OpenTelemetryEventListener is fine because it's a no-op if there are no otel events to listen to
         private bool HasOtelServices(IServiceCollection sc) => sc.Any(sd => sd.ServiceType != typeof(OpenTelemetryEventListener) && sd.ServiceType.FullName.Contains("OpenTelemetry"));
 
         private static IDisposable SetupDefaultEnvironmentVariables()
         {
             return new TestScopedEnvironmentVariable(new Dictionary<string, string>
-        {
-            { "WEBSITE_SITE_NAME", "appName" },
-            { "WEBSITE_RESOURCE_GROUP", "rg" },
-            { "WEBSITE_OWNER_NAME", "AAAAA-AAAAA-AAAAA-AAA+appName-EastUSwebspace" },
-            { "REGION_NAME", "EastUS" }
-        });
+            {
+                { "WEBSITE_SITE_NAME", "appName" },
+                { "WEBSITE_RESOURCE_GROUP", "rg" },
+                { "WEBSITE_OWNER_NAME", "AAAAA-AAAAA-AAAAA-AAA+appName-EastUSwebspace" },
+                { "REGION_NAME", "EastUS" }
+            });
         }
 
         private static List<ServiceDescriptor> GetTracerProviderDescriptors(IServiceCollection services)

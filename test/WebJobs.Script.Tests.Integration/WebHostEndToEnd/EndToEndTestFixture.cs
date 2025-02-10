@@ -83,7 +83,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public TestEventGenerator EventGenerator { get; private set; } = new TestEventGenerator();
 
-        public string HostInstanceId => Host.JobHostServices.GetService<IOptions<ScriptJobHostOptions>>().Value.InstanceId;
+        public async Task<string> GetActiveHostInstanceIdAsync()
+        {
+            // During restarts the ActiveHost can be null. Wait to see if it recovers.
+            await TestHelpers.Await(() => Host.JobHostServices is not null,
+                userMessageCallback: () => $"Timed out waiting for JobHostServices to be available. Logs:{Environment.NewLine}{Host.GetLog()}.");
+
+            return Host.JobHostServices.GetService<IOptions<ScriptJobHostOptions>>().Value.InstanceId;
+        }
 
         public string MasterKey { get; private set; }
 

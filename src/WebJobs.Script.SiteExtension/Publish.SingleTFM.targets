@@ -136,7 +136,7 @@
     <WriteLinesToFile
       Overwrite="true"
       File="$(SiteExtensionDir)hashesForHardlinks.txt"
-      Lines="@(_HashedFiles->'Hash: %(FileHash) FileName: %(RelativePath)')" />
+      Lines="@(_HashedFiles->'Hash:%(FileHash) FileName:%(RelativePath)')" />
   </Target>
 
   <Target Name="WriteReleaseJson">
