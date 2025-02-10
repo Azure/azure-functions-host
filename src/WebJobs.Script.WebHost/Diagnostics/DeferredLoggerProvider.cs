@@ -59,6 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                         {
                             // Drain the channel
                         }
+                        return;
                     }
 
                     while (await _channel.Reader.WaitToReadAsync())
