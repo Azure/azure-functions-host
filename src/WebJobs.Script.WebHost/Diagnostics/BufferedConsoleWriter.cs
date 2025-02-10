@@ -53,19 +53,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public TextWriter Writer { get; init; } = Console.Out;
 
-        /// <summary>
-        /// Primarily for testing. Do not call in production.
-        /// </summary>
-        /// <remarks>
-        /// Not called 'FlushAsync' because this does stop processing messages.
-        /// </remarks>
-        /// <returns>A task that completes when all buffered messages are drained.</returns>
-        public Task CompleteAsync()
-        {
-            _consoleBuffer.Writer.TryComplete();
-            return _consoleBufferReadLoop;
-        }
-
         public void WriteHandler(string evt)
         {
             _writeEvent(evt);
@@ -162,6 +149,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             }
 
             GC.SuppressFinalize(this);
+        }
+
+        /// <summary>
+        /// Primarily for testing. Do not call in production.
+        /// </summary>
+        /// <remarks>
+        /// Not called 'FlushAsync' because this does stop processing messages.
+        /// </remarks>
+        /// <returns>A task that completes when all buffered messages are drained.</returns>
+        internal Task CompleteAsync()
+        {
+            _consoleBuffer.Writer.TryComplete();
+            return _consoleBufferReadLoop;
         }
     }
 }

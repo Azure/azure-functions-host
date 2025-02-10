@@ -176,6 +176,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 eventTimestamp: DateTime.UtcNow);
         }
 
+        public void Dispose()
+        {
+            _consoleWriter?.Dispose();
+        }
+
         /// <summary>
         /// Primarily for testing. Do not call in production.
         /// </summary>
@@ -183,14 +188,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         /// Not called 'FlushAsync' because this does stop processing messages.
         /// </remarks>
         /// <returns>A task that completes when all buffered messages are drained.</returns>
-        public Task CompleteAsync()
+        internal Task CompleteAsync()
         {
             return _consoleWriter is { } writer ? writer.CompleteAsync() : Task.CompletedTask;
-        }
-
-        public void Dispose()
-        {
-            _consoleWriter?.Dispose();
         }
     }
 }
