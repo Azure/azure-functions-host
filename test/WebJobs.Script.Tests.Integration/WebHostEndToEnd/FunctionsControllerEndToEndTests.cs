@@ -1,10 +1,10 @@
-using Microsoft.Azure.WebJobs.Script.WebHost.Models;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
-using Microsoft.WebJobs.Script.Tests;
 using System;
 using System.IO;
 using System.Net;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.WebHost.Models;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.WebJobs.Script.Tests;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
@@ -17,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         public async Task FunctionsController_GetAllFunctions_ReturnsOk()
         {
             // Capture original instance ID
-            var originalInstanceId = this.HostInstanceId;
+            var originalInstanceId = await GetActiveHostInstanceIdAsync();
 
             // Validate ability to call HttpTrigger without issues
             var response = await SamplesTestHelpers.InvokeHttpTrigger(this, "HttpTrigger");
@@ -32,14 +32,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
             // Validate the instance ID is still the same
-            Assert.Equal(originalInstanceId, this.HostInstanceId);
+            Assert.Equal(originalInstanceId, await GetActiveHostInstanceIdAsync());
         }
 
         [Fact]
         public async Task FunctionsController_GetSpecificFunction_ReturnsOk()
         {
             // Capture original instance ID
-            var originalInstanceId = this.HostInstanceId;
+            var originalInstanceId = await GetActiveHostInstanceIdAsync();
 
             // Validate ability to call HttpTrigger without issues
             var response = await SamplesTestHelpers.InvokeHttpTrigger(this, "HttpTrigger");
@@ -55,14 +55,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
             // Validate the instance ID is still the same
-            Assert.Equal(originalInstanceId, this.HostInstanceId);
+            Assert.Equal(originalInstanceId, await GetActiveHostInstanceIdAsync());
         }
 
         [Fact]
         public async Task FunctionsController_GetSpecificFunctionStatus_ReturnsOk()
         {
             // Capture original instance ID
-            var originalInstanceId = this.HostInstanceId;
+            var originalInstanceId = await GetActiveHostInstanceIdAsync();
 
             // Validate ability to call HttpTrigger without issues
             var response = await SamplesTestHelpers.InvokeHttpTrigger(this, "HttpTrigger");
@@ -77,14 +77,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
             // Validate the instance ID is still the same
-            Assert.Equal(originalInstanceId, this.HostInstanceId);
+            Assert.Equal(originalInstanceId, await GetActiveHostInstanceIdAsync());
         }
 
         [Fact]
         public async Task FunctionsController_CreateUpdate_NoFileChange_ReturnsCreated_NoRestart()
         {
             // Capture original instance ID
-            var originalInstanceId = this.HostInstanceId;
+            var originalInstanceId = await GetActiveHostInstanceIdAsync();
 
             // Validate ability to call HttpTrigger without issues
             var response = await SamplesTestHelpers.InvokeHttpTrigger(this, "HttpTrigger");
@@ -99,14 +99,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
             // Validate the instance ID is still the same
-            Assert.Equal(originalInstanceId, this.HostInstanceId);
+            Assert.Equal(originalInstanceId, await GetActiveHostInstanceIdAsync());
         }
 
         [Fact]
         public async Task FunctionsController_CreateUpdate_FileChange_ReturnsCreated_RestartsJobHost()
         {
             // Capture pre-restart instance ID
-            var originalInstanceId = this.HostInstanceId;
+            var originalInstanceId = await GetActiveHostInstanceIdAsync();
 
             // Validate ability to call HttpTrigger without issues
             var response = await SamplesTestHelpers.InvokeHttpTrigger(this, "HttpTrigger");
@@ -125,7 +125,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
             // Validate the instance ID has changed
-            Assert.NotEqual(originalInstanceId, this.HostInstanceId);
+            Assert.NotEqual(originalInstanceId, await GetActiveHostInstanceIdAsync());
 
             // Reset config
             response = await SamplesTestHelpers.InvokeEndpointPut(this, "admin/functions/HttpTrigger", TestData());

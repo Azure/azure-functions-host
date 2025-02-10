@@ -5,11 +5,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
-using System.IO.Pipes;
 using System.Linq;
 using System.Net.Http;
-using System.Resources;
 using System.Threading.Tasks;
+using Grpc.Net.Client.Balancer;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
@@ -27,15 +26,17 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
         private readonly FunctionsHostingConfigOptions _configOption;
         private readonly ILogger _logger;
         private readonly string _cdnUri;
+        private readonly string _platformReleaseChannel;
         private string _extensionBundleVersion;
 
         public ExtensionBundleManager(ExtensionBundleOptions options, IEnvironment environment, ILoggerFactory loggerFactory, FunctionsHostingConfigOptions configOption)
         {
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _logger = loggerFactory.CreateLogger<ExtensionBundleManager>() ?? throw new ArgumentNullException(nameof(loggerFactory));
-            _cdnUri = _environment.GetEnvironmentVariable(EnvironmentSettingNames.ExtensionBundleSourceUri) ?? ScriptConstants.ExtensionBundleDefaultSourceUri;
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _configOption = configOption ?? throw new ArgumentNullException(nameof(configOption));
+            _cdnUri = _environment.GetEnvironmentVariable(EnvironmentSettingNames.ExtensionBundleSourceUri) ?? ScriptConstants.ExtensionBundleDefaultSourceUri;
+            _platformReleaseChannel = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel) ?? ScriptConstants.LatestPlatformChannelNameUpper;
         }
 
         public async Task<ExtensionBundleDetails> GetExtensionBundleDetails()
@@ -250,7 +251,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
             return matchingBundleVersion;
         }
 
-        internal static string FindBestVersionMatch(VersionRange versionRange, IEnumerable<string> versions, string bundleId, FunctionsHostingConfigOptions configOption)
+        internal string FindBestVersionMatch(VersionRange versionRange, IEnumerable<string> versions, string bundleId, FunctionsHostingConfigOptions configOption)
         {
             var bundleVersions = versions.Select(p =>
             {
@@ -261,9 +262,9 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
                     version = versionRange.Satisfies(version) ? version : null;
                 }
                 return version;
-            }).Where(v => v != null);
+            }).Where(v => v != null).OrderByDescending(version => version.Version).ToList();
 
-            var matchingVersion = bundleVersions.OrderByDescending(version => version.Version).FirstOrDefault();
+            var matchingVersion = ResolvePlatformReleaseChannelVersion(bundleVersions);
 
             if (bundleId != ScriptConstants.DefaultExtensionBundleId)
             {
@@ -291,6 +292,42 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
             }
 
             return matchingVersion?.ToString();
+        }
+
+        private NuGetVersion ResolvePlatformReleaseChannelVersion(IList<NuGetVersion> orderedByDescBundles) => _platformReleaseChannel switch
+        {
+            ScriptConstants.StandardPlatformChannelNameUpper or ScriptConstants.ExtendedPlatformChannelNameUpper => GetStandardOrExtendedBundleVersion(orderedByDescBundles),
+            ScriptConstants.LatestPlatformChannelNameUpper or "" => GetLatestBundleVersion(orderedByDescBundles),
+            _ => HandleUnknownPlatformReleaseChannelName(orderedByDescBundles)
+        };
+
+        // Standard: Resolves to the version prior to the latest(n-1), if that version is available.
+        // Extended: Resolves to the version two releases prior to the latest(n-2), if that version is available.
+        // However, Functions and Rapid Update should treat Standard and Extended the same, resolving to n-1.
+        private NuGetVersion GetStandardOrExtendedBundleVersion(IList<NuGetVersion> orderedByDescBundlesList)
+        {
+            if (orderedByDescBundlesList.Count > 1)
+            {
+                // These channels should resolve to the version prior to latest. This list is in descending order, which makes latest [0], and prior-to-latest [1].
+                return orderedByDescBundlesList[1];
+            }
+
+            // keep the latest version, log a notice
+            var latest = orderedByDescBundlesList.FirstOrDefault();
+            _logger.LogInformation("Unable to apply platform release channel configuration {platformReleaseChannelName}. Only one matching bundle version is available. {latestBundleVersion} will be used", _platformReleaseChannel, latest);
+            return latest;
+        }
+
+        private static NuGetVersion GetLatestBundleVersion(IList<NuGetVersion> orderedByDescBundlesList)
+        {
+            return orderedByDescBundlesList.FirstOrDefault();
+        }
+
+        private NuGetVersion HandleUnknownPlatformReleaseChannelName(IList<NuGetVersion> orderedByDescBundlesList)
+        {
+            var latest = GetLatestBundleVersion(orderedByDescBundlesList);
+            _logger.LogInformation("Unknown platform release channel name {platformReleaseChannelName}. The latest bundle version, {latestBundleVersion}, will be used.", _platformReleaseChannel, latest);
+            return latest;
         }
 
         public async Task<string> GetExtensionBundleBinPathAsync()

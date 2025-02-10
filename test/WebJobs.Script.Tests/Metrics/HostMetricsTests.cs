@@ -3,10 +3,12 @@
 
 using System;
 using System.Diagnostics.Metrics;
+using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry;
 using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.Metrics.Testing;
+using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
 using Xunit;
 
@@ -16,6 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
     public class HostMetricsTests
     {
         private readonly IServiceProvider _serviceProvider;
+        private TestLogger<HostMetrics> _logger;
 
         public HostMetricsTests()
         {
@@ -23,7 +26,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             serviceCollection.AddMetrics();
             serviceCollection.AddFakeLogging();
             serviceCollection.AddSingleton<IEnvironment>(new TestEnvironment());
-            serviceCollection.AddSingleton<IHostMetrics, HostMetrics>();
+
+            _logger = new TestLogger<HostMetrics>();
+
+            // Register HostMetrics with Scoped lifetime and provide the logger
+            serviceCollection.AddScoped<IHostMetrics>(provider =>
+            {
+                return new HostMetrics(provider.GetRequiredService<IMeterFactory>(), provider.GetRequiredService<IEnvironment>(), _logger);
+            });
+
             _serviceProvider = serviceCollection.BuildServiceProvider();
         }
 
@@ -84,6 +95,40 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             measurements = collector.GetMeasurementSnapshot();
             Assert.True(measurements[1].Tags.TryGetValue(OpenTelemetryConstants.AzureFunctionsGroup, out funcGroup));
             Assert.Equal("function:test", funcGroup);
+        }
+
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public void FunctionGroupTag_IsNullOrEmpty_UnableToResolveDebugLog_OnlyOnFlex(bool isFlexSku)
+        {
+            // Arrange
+            var metrics = _serviceProvider.GetRequiredService<IHostMetrics>();
+            var meterFactory = _serviceProvider.GetRequiredService<IMeterFactory>();
+            var environment = _serviceProvider.GetRequiredService<IEnvironment>();
+            var collector = new MetricCollector<long>(meterFactory, HostMetrics.MeterName, HostMetrics.StartedInvocationCount);
+
+            if (isFlexSku)
+            {
+                environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, ScriptConstants.FlexConsumptionSku);
+            }
+
+            // Act
+            metrics.IncrementStartedInvocationCount();
+
+            // Assert
+            var logs = _logger.GetLogMessages();
+
+            if (isFlexSku)
+            {
+                var log = logs.Single();
+                Assert.Equal(LogLevel.Debug, log.Level);
+                Assert.Equal($"Unable to resolve FunctionGroupTag, {EnvironmentSettingNames.FunctionsTargetGroup} is null or empty.", log.FormattedMessage);
+            }
+            else
+            {
+                Assert.Empty(logs);
+            }
         }
     }
 }

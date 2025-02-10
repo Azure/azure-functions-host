@@ -85,7 +85,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Theory]
         [InlineData(null)]
         [InlineData("")]
-        [InlineData("_binding")]
         [InlineData("binding-test")]
         [InlineData("binding name")]
         public void ValidateBindings_InvalidName_Throws(string bindingName)
@@ -100,10 +99,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 _workerFunctionMetadataProvider.ValidateBindings(rawBindings, functionMetadata);
             });
 
-            Assert.Equal($"The binding name {bindingName} is invalid. Please assign a valid name to the binding.", ex.Message);
+            Assert.Equal($"The binding name {bindingName} is invalid. Please assign a valid name to the binding. See https://aka.ms/azure-functions-binding-name-rules for more details.", ex.Message);
         }
 
         [Theory]
+        [InlineData("__")]
+        [InlineData("__binding")]
+        [InlineData("binding__")]
+        [InlineData("bind__ing")]
+        [InlineData("__binding__")]
+        [InlineData("_binding")]
+        [InlineData("binding_")]
+        [InlineData("_binding_")]
+        [InlineData("_another_binding_test_")]
+        [InlineData("long_binding_name_that_is_valid")]
+        [InlineData("binding_name")]
+        [InlineData("_")]
         [InlineData("bindingName")]
         [InlineData("binding1")]
         [InlineData(ScriptConstants.SystemReturnParameterBindingName)]

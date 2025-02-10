@@ -46,6 +46,7 @@ jobs:
     inputs:
       azureSubscription: Azure-Functions-Host-CI-internal
       azurePowerShellVersion: 'LatestVersion'
+      pwsh: true
       ScriptPath: eng/script/checkout-secrets.ps1
 
   - task: AzureKeyVault@1
@@ -201,5 +202,6 @@ jobs:
     inputs:
       azureSubscription: Azure-Functions-Host-CI-internal
       azurePowerShellVersion: 'LatestVersion'
+      pwsh: true
       ScriptPath: eng/script/checkin-secrets.ps1
       ScriptArguments: '-leaseBlob $(LeaseBlob) -leaseToken $(LeaseToken)'
