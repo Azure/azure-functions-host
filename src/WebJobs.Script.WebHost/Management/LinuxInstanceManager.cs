@@ -3,19 +3,11 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net.Http;
-using System.Text;
 using System.Threading.Tasks;
-using Microsoft.Azure.Storage;
-using Microsoft.Azure.Storage.File;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
-using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
-using Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 {
@@ -44,7 +36,56 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         public abstract Task<string> SpecializeMSISidecar(HostAssignmentContext context);
 
-        public bool StartAssignment(HostAssignmentContext context)
+        public Task<bool> StartAssignment(HostAssignmentContext context)
+        {
+            if (context.IsWarmupRequest)
+            {
+                // Based on profiling download code jit-ing holds up cold start.
+                // Pre-jit to avoid paying the cost later.
+                return Task.Run(async () =>
+                {
+                    await DownloadWarmupAsync(context.GetRunFromPkgContext());
+                    return true;
+                });
+            }
+            else if (_assignmentContext == null)
+            {
+                lock (_assignmentLock)
+                {
+                    if (_assignmentContext != null)
+                    {
+                        return Task.FromResult(_assignmentContext.Equals(context));
+                    }
+                    _assignmentContext = context;
+                }
+
+                _logger.LogInformation($"Starting Assignment. Cloud Name: {_environment.GetCloudName()}");
+
+                // set a flag which will cause any incoming http requests to buffer
+                // until specialization is complete
+                // the host is guaranteed not to receive any requests until AFTER assign
+                // has been initiated, so setting this flag here is sufficient to ensure
+                // that any subsequent incoming requests while the assign is in progress
+                // will be delayed until complete
+                _webHostEnvironment.DelayRequests();
+
+                // start the specialization process in the background
+                return Task.Run(async () =>
+                {
+                    await AssignAsync(context);
+                    return true;
+                });
+            }
+            else
+            {
+                // No lock needed here since _assignmentContext is not null when we are here
+                return Task.FromResult(_assignmentContext.Equals(context));
+            }
+        }
+
+        public abstract Task<string> ValidateContext(HostAssignmentContext assignmentContext);
+
+        public bool ValidateEnvironment(HostAssignmentContext context)
         {
             if (!_webHostEnvironment.InStandbyMode)
             {
@@ -62,47 +103,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 return false;
             }
 
-            if (context.IsWarmupRequest)
-            {
-                // Based on profiling download code jit-ing holds up cold start.
-                // Pre-jit to avoid paying the cost later.
-                Task.Run(async () => await DownloadWarmupAsync(context.GetRunFromPkgContext()));
-                return true;
-            }
-            else if (_assignmentContext == null)
-            {
-                lock (_assignmentLock)
-                {
-                    if (_assignmentContext != null)
-                    {
-                        return _assignmentContext.Equals(context);
-                    }
-                    _assignmentContext = context;
-                }
-
-                _logger.LogInformation($"Starting Assignment. Cloud Name: {_environment.GetCloudName()}");
-
-                // set a flag which will cause any incoming http requests to buffer
-                // until specialization is complete
-                // the host is guaranteed not to receive any requests until AFTER assign
-                // has been initiated, so setting this flag here is sufficient to ensure
-                // that any subsequent incoming requests while the assign is in progress
-                // will be delayed until complete
-                _webHostEnvironment.DelayRequests();
-
-                // start the specialization process in the background
-                Task.Run(async () => await AssignAsync(context));
-
-                return true;
-            }
-            else
-            {
-                // No lock needed here since _assignmentContext is not null when we are here
-                return _assignmentContext.Equals(context);
-            }
+            return true;
         }
-
-        public abstract Task<string> ValidateContext(HostAssignmentContext assignmentContext);
 
         private async Task AssignAsync(HostAssignmentContext assignmentContext)
         {
