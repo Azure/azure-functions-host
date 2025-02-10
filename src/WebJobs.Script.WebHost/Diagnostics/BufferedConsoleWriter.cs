@@ -111,12 +111,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                             }
 
                             _writeResetEvent.Set();
-                            Writer.Write(builder.ToString());
+                            await Writer.WriteAsync(builder.ToString());
                             builder.Clear();
                         }
                         else
                         {
-                            Writer.WriteLine(line1);
+                            await Writer.WriteLineAsync(line1);
                         }
                     }
                 }
