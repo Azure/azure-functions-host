@@ -2,13 +2,14 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
-    internal class LinuxContainerEventGenerator : LinuxEventGenerator, IDisposable
+    internal sealed class LinuxContainerEventGenerator : LinuxEventGenerator, IDisposable
     {
         private const int MaxDetailsLength = 10000;
         private static readonly Lazy<LinuxContainerEventGenerator> _Lazy = new Lazy<LinuxContainerEventGenerator>(() => new LinuxContainerEventGenerator(SystemEnvironment.Instance, Console.WriteLine));
@@ -18,7 +19,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private string _containerName;
         private string _stampName;
         private string _tenantId;
-        private bool _disposed;
 
         public LinuxContainerEventGenerator(IEnvironment environment, IOptions<ConsoleLoggingOptions> consoleLoggingOptions)
         {
@@ -28,11 +28,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             }
             else if (!consoleLoggingOptions.Value.BufferEnabled)
             {
-                _writeEvent = Console.WriteLine;
+                _writeEvent = consoleLoggingOptions.Value.Writer.WriteLine;
             }
             else
             {
-                _consoleWriter = new BufferedConsoleWriter(consoleLoggingOptions.Value.BufferSize, LogUnhandledException);
+                _consoleWriter = new BufferedConsoleWriter(consoleLoggingOptions.Value.BufferSize, LogUnhandledException)
+                {
+                    Writer = consoleLoggingOptions.Value.Writer
+                };
+
                 _writeEvent = _consoleWriter.WriteHandler;
             }
 
@@ -171,22 +175,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 eventTimestamp: DateTime.UtcNow);
         }
 
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!_disposed)
-            {
-                if (disposing)
-                {
-                    _consoleWriter?.Dispose();
-                }
-                _disposed = true;
-            }
-        }
-
         public void Dispose()
         {
-            Dispose(disposing: true);
-            GC.SuppressFinalize(this);
+            _consoleWriter?.Dispose();
+        }
+
+        /// <summary>
+        /// Primarily for testing. Do not call in production.
+        /// </summary>
+        /// <remarks>
+        /// Not called 'FlushAsync' because this does stop processing messages.
+        /// </remarks>
+        /// <returns>A task that completes when all buffered messages are drained.</returns>
+        internal Task CompleteAsync()
+        {
+            return _consoleWriter is { } writer ? writer.CompleteAsync() : Task.CompletedTask;
         }
     }
 }
