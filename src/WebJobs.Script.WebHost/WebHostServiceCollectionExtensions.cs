@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.IO.Abstractions;
 using System.Net.Http;
 using System.Runtime.InteropServices;
@@ -26,6 +27,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
 using Microsoft.Azure.WebJobs.Script.WebHost.Standby;
 using Microsoft.Azure.WebJobs.Script.WebHost.Storage;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.FunctionDataCache;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
@@ -280,7 +282,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IMetricsPublisher>(s =>
             {
                 var environment = s.GetService<IEnvironment>();
-                if (environment.IsFlexConsumptionSku())
+                /*if (environment.IsFlexConsumptionSku())
                 {
                     var options = s.GetService<IOptions<FlexConsumptionMetricsPublisherOptions>>();
                     var standbyOptions = s.GetService<IOptionsMonitor<StandbyOptions>>();
@@ -294,10 +296,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     var standbyOptions = s.GetService<IOptionsMonitor<StandbyOptions>>();
                     var hostNameProvider = s.GetService<HostNameProvider>();
                     var hostingConfigOptions = s.GetService<IOptions<FunctionsHostingConfigOptions>>();
-                    return new LinuxContainerMetricsPublisher(environment, standbyOptions, logger, hostNameProvider, hostingConfigOptions);
+                    var functionInvocationDispatcher = s.GetService<IFunctionInvocationDispatcherFactory>().GetFunctionDispatcher();
+                    return new LinuxContainerMetricsPublisher(environment, standbyOptions, logger, hostNameProvider, hostingConfigOptions, functionInvocationDispatcher);
                 }
 
-                return NullMetricsPublisher.Instance;
+                return NullMetricsPublisher.Instance;*/
+
+                var logger = s.GetService<ILogger<LinuxContainerMetricsPublisher>>();
+                var standbyOptions = s.GetService<IOptionsMonitor<StandbyOptions>>();
+                var hostNameProvider = s.GetService<HostNameProvider>();
+                var hostingConfigOptions = s.GetService<IOptions<FunctionsHostingConfigOptions>>();
+                var functionInvocationDispatcher = s.GetService<IFunctionInvocationDispatcherFactory>().GetFunctionDispatcher();
+                return new LinuxContainerMetricsPublisher(environment, standbyOptions, logger, hostNameProvider, hostingConfigOptions, functionInvocationDispatcher);
+
             });
 
             services.AddSingleton<IMeshServiceClient>(s =>

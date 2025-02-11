@@ -14,6 +14,8 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security;
+using Microsoft.Azure.WebJobs.Script.Workers;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -40,6 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         private readonly string _requestUri;
         private readonly IEnvironment _environment;
         private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions;
+        private IFunctionInvocationDispatcher _functionInvocationDispatcher;
 
         // Buffer for all memory activities for this container.
         private BlockingCollection<MemoryActivity> _memoryActivities;
@@ -65,11 +68,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         private string _stampName;
         private bool _initialized = false;
 
-        public LinuxContainerMetricsPublisher(IEnvironment environment, IOptionsMonitor<StandbyOptions> standbyOptions, ILogger<LinuxContainerMetricsPublisher> logger, HostNameProvider hostNameProvider, IOptions<FunctionsHostingConfigOptions> functionsHostingConfigOptions, HttpClient httpClient = null)
+        public LinuxContainerMetricsPublisher(IEnvironment environment, IOptionsMonitor<StandbyOptions> standbyOptions, ILogger<LinuxContainerMetricsPublisher> logger, HostNameProvider hostNameProvider, IOptions<FunctionsHostingConfigOptions> functionsHostingConfigOptions, IFunctionInvocationDispatcher functionInvocationDispatcher, HttpClient httpClient = null)
         {
             _standbyOptions = standbyOptions ?? throw new ArgumentNullException(nameof(standbyOptions));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _functionInvocationDispatcher = functionInvocationDispatcher ?? throw new ArgumentNullException(nameof(functionInvocationDispatcher));
             _hostNameProvider = hostNameProvider ?? throw new ArgumentNullException(nameof(hostNameProvider));
             _memoryActivities = new BlockingCollection<MemoryActivity>(new ConcurrentQueue<MemoryActivity>(), boundedCapacity: _maxBufferSize);
             _functionActivities = new BlockingCollection<FunctionActivity>(new ConcurrentQueue<FunctionActivity>(), boundedCapacity: _maxBufferSize);
@@ -83,7 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 
             _containerName = _environment.GetEnvironmentVariable(EnvironmentSettingNames.ContainerName);
 
-            _httpClient = (httpClient != null) ? httpClient : CreateMetricsPublisherHttpClient();
+            //_httpClient = (httpClient != null) ? httpClient : CreateMetricsPublisherHttpClient();
             if (_standbyOptions.CurrentValue.InStandbyMode)
             {
                 _standbyOptionsOnChangeSubscription = _standbyOptions.OnChange(o => OnStandbyOptionsChange());
@@ -261,14 +265,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
             _logger.LogInformation(string.Format("Starting metrics publisher for container : {0}. Publishing endpoint is {1}", _containerName, _requestUri));
         }
 
-        private void OnProcessMonitorTimer(object state)
+        private async void OnProcessMonitorTimer(object state)
         {
             try
             {
                 _process.Refresh();
                 var commitSizeBytes = _process.WorkingSet64;
+                if (_functionInvocationDispatcher is RpcFunctionInvocationDispatcher rpcDispatcher)
+                {
+                    var allWorkerChannels = await rpcDispatcher.GetAllWorkerChannelsAsync();
+                    commitSizeBytes += allWorkerChannels.Select(x => x.WorkerProcess.Process.PrivateMemorySize64).Sum();
+                }
+
                 if (commitSizeBytes != 0)
                 {
+                    _logger.LogInformation($"Memory usage for container {_containerName} is {commitSizeBytes} bytes");
                     AddMemoryActivity(DateTime.UtcNow, commitSizeBytes);
                 }
             }
