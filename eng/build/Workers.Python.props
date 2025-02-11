@@ -2,14 +2,7 @@
 
   <ItemGroup>
     <!-- Python worker does not ship with the host for windows. -->
-    <PackageReference Include="Microsoft.Azure.Functions.PythonWorker" Version="4.34.0" Condition="!$(RuntimeIdentifier.StartsWith('win'))" />
+    <PackageReference Include="Microsoft.Azure.Functions.PythonWorker" Version="4.35.0" Condition="!$(RuntimeIdentifier.StartsWith('win'))" />
   </ItemGroup>
-
-  <!-- PythonWorker package injects its content files through custom targets. -->
-  <Target Name="SuppressPythonWorker" AfterTargets="Initialize" BeforeTargets="CopyOnPublish" Condition="$(RuntimeIdentifier.StartsWith('win'))">
-    <ItemGroup>
-      <SourceFiles Remove="@(SourceFiles)" />
-    </ItemGroup>
-  </Target>
 
 </Project>
