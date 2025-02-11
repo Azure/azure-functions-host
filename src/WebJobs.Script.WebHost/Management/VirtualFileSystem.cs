@@ -666,6 +666,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                         string str => str,
                         _ => JsonConvert.SerializeObject(payload, jsonSerializerSettings)
                     };
+
+                    // CodeQL [SM00431] The content of the response is already not containing exception details like stack trace
                     response.Content = new StringContent(content, Encoding.UTF8, "application/json");
                 }
             }
