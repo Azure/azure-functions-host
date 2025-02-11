@@ -217,8 +217,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.ConfigureOptions<ExtensionRequirementOptionsSetup>();
 
             // Refresh LanguageWorkerOptions when HostBuiltChangeTokenSource is triggered.
-            services.AddSingleton<HostBuiltChangeTokenSource<LanguageWorkerOptions>>();
-            services.AddSingleton<IOptionsChangeTokenSource<LanguageWorkerOptions>>(s => s.GetRequiredService<HostBuiltChangeTokenSource<LanguageWorkerOptions>>());
+            services.ConfigureOptionsWithChangeTokenSource<LanguageWorkerOptions, LanguageWorkerOptionsSetup, HostBuiltChangeTokenSource<LanguageWorkerOptions>>();
 
             services.TryAddSingleton<IDependencyValidator, DependencyValidator>();
             services.TryAddSingleton<IJobHostMiddlewarePipeline>(s => DefaultMiddlewarePipeline.Empty);
