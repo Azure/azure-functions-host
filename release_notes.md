@@ -10,4 +10,5 @@
   - Replaced `InvalidOperationException` with `HttpForwardingException` when there is a ForwarderError
 - [In-proc] Codeql : Fix to remove exception details from the response (#10751)
 - Update PowerShell 7.4 worker to [4.0.4134](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.4134)
+- Update Python Worker Version to [4.35.0](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.35.0)
 - Add support for new FeatureFlag `EnableAzureMonitorTimeIsoFormat` to enable iso time format for azmon logs for Linux Dedicated/EP Skus. (part of #7864)
