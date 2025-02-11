@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
                 var assignmentContext = _startupContextProvider.SetContext(encryptedAssignmentContext);
                 await SpecializeMSISideCar(assignmentContext);
 
-                if (_instanceManager.ValidateEnvironment(assignmentContext))
+                if (_instanceManager.IsValidEnvironment(assignmentContext))
                 {
                     bool success = await _instanceManager.StartAssignment(assignmentContext);
                     _logger.LogDebug("StartAssignment invoked (Success={success})", success);

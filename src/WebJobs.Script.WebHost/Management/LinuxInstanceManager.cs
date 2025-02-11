@@ -48,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     return true;
                 });
             }
-            else if (_assignmentContext == null)
+            else if (_assignmentContext is null)
             {
                 lock (_assignmentLock)
                 {
@@ -85,7 +85,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         public abstract Task<string> ValidateContext(HostAssignmentContext assignmentContext);
 
-        public bool ValidateEnvironment(HostAssignmentContext context)
+        public bool IsValidEnvironment(HostAssignmentContext context)
         {
             if (!_webHostEnvironment.InStandbyMode)
             {
