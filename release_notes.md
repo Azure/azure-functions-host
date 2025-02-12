@@ -3,6 +3,8 @@
 <!-- Please add your release notes in the following format:
 - My change description (#PR)
 -->
+- Setting force refersh to false for CreateOrUpdate call (#10668)
+- Using hostMetadataProvider for CreateOrUpdate call in FunctionController (#10678)
 - Add support for managed identity when using open telemetry + azure monitor (#10615)
 - Update Java Worker Version to [2.18.0](https://github.com/Azure/azure-functions-java-worker/releases/tag/2.18.0)
 - Allow for an output binding value of an invocation result to be null (#10698)
