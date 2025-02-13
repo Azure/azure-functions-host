@@ -57,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, error);
             }
 
-            var succeeded = _instanceManager.StartAssignment(assignmentContext);
+            var succeeded = await _instanceManager.StartAssignment(assignmentContext);
 
             return succeeded
                 ? Accepted()

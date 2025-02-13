@@ -96,7 +96,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 },
                 IsWarmupRequest = false
             };
-            bool result = _instanceManager.StartAssignment(context);
+            bool result = await _instanceManager.StartAssignment(context);
             Assert.True(result);
             Assert.True(_scriptWebEnvironment.InStandbyMode);
 
@@ -122,7 +122,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             // calling again should return false, since we have 
             // already marked the container as specialized.
             _loggerProvider.ClearAllLogMessages();
-            result = _instanceManager.StartAssignment(context);
+            result = await _instanceManager.StartAssignment(context);
             Assert.False(result);
 
             logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
@@ -147,7 +147,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             _meshServiceClientMock.Setup(c => c.NotifyHealthEvent(ContainerHealthEventType.Fatal,
                 It.Is<Type>(t => t == typeof(LegionInstanceManager)), "Assign failed")).Returns(Task.CompletedTask);
 
-            bool result = _instanceManager.StartAssignment(context);
+            bool result = await _instanceManager.StartAssignment(context);
             Assert.True(result);
             Assert.True(_scriptWebEnvironment.InStandbyMode);
 
@@ -170,7 +170,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 Environment = new Dictionary<string, string>(),
                 IsWarmupRequest = false
             };
-            bool result = _instanceManager.StartAssignment(context);
+            bool result = await _instanceManager.StartAssignment(context);
             Assert.True(result);
             Assert.True(_scriptWebEnvironment.InStandbyMode);
 
@@ -184,7 +184,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         }
 
         [Fact]
-        public async void StartAssignment_Does_Not_Assign_Settings_For_Warmup_Request()
+        public async Task StartAssignment_Does_Not_Assign_Settings_For_Warmup_Request()
         {
 
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
@@ -193,7 +193,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 Environment = new Dictionary<string, string>(),
                 IsWarmupRequest = true
             };
-            bool result = _instanceManager.StartAssignment(context);
+            bool result = await _instanceManager.StartAssignment(context);
 
             Assert.True(result);
             await TestHelpers.Await(() => _scriptWebEnvironment.InStandbyMode, timeout: 5000);
@@ -203,7 +203,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         }
 
         [Fact]
-        public void StartAssignment_ReturnsTrue_ForPinnedContainers()
+        public async Task StartAssignment_ReturnsTrue_ForPinnedContainers()
         {
             Assert.False(SystemEnvironment.Instance.IsPlaceholderModeEnabled());
 
@@ -213,19 +213,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 { EnvironmentSettingNames.ContainerStartContext, "startContext" }
             };
             context.IsWarmupRequest = false;
-            bool result = _instanceManager.StartAssignment(context);
+            bool result = await _instanceManager.StartAssignment(context);
             Assert.True(result);
         }
 
         [Fact]
-        public void StartAssignment_ReturnsFalse_ForNonPinnedContainersInStandbyMode()
+        public async Task StartAssignment_ReturnsFalse_ForNonPinnedContainersInStandbyMode()
         {
             Assert.False(SystemEnvironment.Instance.IsPlaceholderModeEnabled());
 
             var context = new HostAssignmentContext();
             context.Environment = new Dictionary<string, string>();
             context.IsWarmupRequest = false;
-            bool result = _instanceManager.StartAssignment(context);
+            bool result = await _instanceManager.StartAssignment(context);
             Assert.False(result);
         }
 
