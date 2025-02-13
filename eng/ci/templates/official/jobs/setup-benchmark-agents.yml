@@ -1,0 +1,133 @@
+parameters:
+- name: functionAppName
+  type: string
+- name: os
+  type: string
+  default: Windows
+  values:
+    - Windows
+    - Linux
+ 
+jobs:
+- job: ${{ parameters.functionAppName }}_${{ parameters.os }}
+
+  ${{ if eq(parameters.os, 'Linux') }}:
+    pool:
+      name: 1es-pool-azfunc-benchmarking-large
+      image: 1es-ubuntu-22.04-benchmark-runner-vanilla
+      os: linux 
+  ${{ else }}:
+    pool:
+      name: 1es-pool-azfunc-benchmarking-large
+      image: 1es-windows-2022-benchmark-runner-vanilla
+      os: windows
+
+  variables:
+    agentId: ${{ parameters.functionAppName }}${{ parameters.os }}
+    functionApp: ${{ parameters.functionAppName }}
+    functionAppOutputPath: $(Build.ArtifactStagingDirectory)/FunctionApps/$(functionApp)
+
+  steps:
+
+  - template: /eng/ci/templates/install-dotnet.yml@self
+
+  - ${{ if eq(parameters.os, 'Linux') }}:
+    # Adds the Ubuntu 20.04 security repository to Ubuntu 22.04 and installs libssl1.1, which is unavailable by default.
+    - script: |
+        echo "deb http://security.ubuntu.com/ubuntu focal-security main" | sudo tee /etc/apt/sources.list.d/focal-security.list
+        sudo apt update && sudo apt install -y libssl1.1
+      displayName: "Install libssl1.1 on Ubuntu 22.04"
+
+  - script: dotnet tool install -g Microsoft.Crank.Agent --version "0.2.0-*"
+    displayName: Install Microsoft.Crank.Agent tool
+
+  - ${{ if eq(parameters.os, 'Windows') }}:
+    - pwsh: Start-Process powershell -ArgumentList '-NoExit', '-Command', 'crank-agent'
+      displayName: Start crank-agent
+  - ${{ else }}:
+    - script: |
+        nohup crank-agent &
+      displayName: Start crank-agent
+
+  - task: CopyFiles@2
+    displayName: Copy benchmark apps to temp location
+    inputs:
+      SourceFolder: '$(Build.SourcesDirectory)/test/Performance/Apps'
+      Contents: '**/*'
+      TargetFolder: '$(Build.ArtifactStagingDirectory)/PerformanceTestApps'
+      CleanTargetFolder: true
+
+  - task: DotNetCoreCLI@2
+    displayName: Publish benchmark app
+    inputs:
+      command: publish
+      publishWebProjects: false
+      zipAfterPublish: false
+      modifyOutputPath: false
+      projects: '$(Build.ArtifactStagingDirectory)/PerformanceTestApps/$(functionApp)/HelloHttp.csproj'
+      arguments: -c Release -o $(functionAppOutputPath) -f net9.0
+      workingDirectory: $(Build.ArtifactStagingDirectory)/PerformanceTestApps/$(functionApp)
+
+  - ${{ if eq(parameters.os, 'Windows') }}:
+    - script: |
+        netsh advfirewall firewall add rule name="Open Port 5000" dir=in action=allow protocol=TCP localport=5000
+        netsh advfirewall firewall add rule name="Open Port 5010" dir=in action=allow protocol=TCP localport=5010
+      displayName: Open port 5000 and 5010
+
+  - pwsh: |
+      $HostName = [System.Net.Dns]::GetHostName()
+      Write-Host "##vso[task.setvariable variable=machineHostName]$HostName"
+      Write-Host "HostName: $HostName"
+    displayName: Get Machine Info
+
+  - task: AzureCLI@2
+    displayName: Persist Agent IP Address
+    inputs:
+      azureSubscription: $(ServiceConnection)
+      scriptType: 'pscore'
+      scriptLocation: 'inlineScript'
+      inlineScript: |
+        az storage entity insert `
+          --auth-mode login `
+          --account-name $(StorageAccount) `
+          --table-name $(BenchmarkAgentInfoTableName) `
+          --entity PartitionKey=$(Build.BuildNumber) RowKey=$(agentId) AgentId=$(agentId) HostName=$(machineHostName)
+
+  - pwsh: |
+      $url = "http://localhost:5010/jobs/all"
+      Write-Host "Calling $url to check benchmark job status"
+      $maxAttempts = 60
+      $attempt = 0
+
+      while ($attempt -lt $maxAttempts) {
+          $response = Invoke-WebRequest -Uri $url -Method Get -ErrorAction Stop
+          $data = $response.Content | ConvertFrom-Json
+          $completedJobCount = ($data | Where-Object { $_.state -eq "Deleted" }).Count
+
+          if ($completedJobCount -gt 0) {
+              Write-Host "Found at least 1 job with 'state' = 'Deleted'. Exiting task."
+              exit 0
+          }
+
+          Write-Host "No completed jobs found. Polling again in 30 seconds..."
+          Start-Sleep -Seconds 30
+          $attempt++
+      }
+
+      Write-Host "Maximum attempts reached. Exiting..."
+      exit 1
+    displayName: Wait for job completion
+
+  - task: AzureCLI@2
+    displayName: Clean up storage
+    condition: always()
+    inputs:
+      azureSubscription: $(ServiceConnection)
+      scriptType: 'pscore'
+      scriptLocation: 'inlineScript'
+      inlineScript: |
+        az storage entity delete `
+          --auth-mode login `
+          --account-name $(StorageAccount) `
+          --table-name $(BenchmarkAgentInfoTableName) `
+          --partition-key $(Build.BuildNumber) --row-key=$(agentId)

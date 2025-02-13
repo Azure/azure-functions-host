@@ -2,6 +2,9 @@ parameters:
 - name: project
   type: string
   default: src/WebJobs.Script.SiteExtension/WebJobs.Script.SiteExtension.csproj
+- name: publishDir
+  type: string
+  default: ''
 
 steps:
 # Restore must be a separate step so we can pass in 'PublishReadyToRun=true'
@@ -11,7 +14,7 @@ steps:
     command: custom
     custom: restore
     projects: ${{ parameters.project }}
-    arguments: '-v m -p:PublishReadyToRun=true -bl:$(log_dir)/site_ext.restore.binlog'
+    arguments: '-v m -p:PublishReadyToRun=true'
 
 - task: DotNetCoreCLI@2
   displayName: Build site extension
@@ -19,7 +22,7 @@ steps:
     command: custom
     custom: build
     projects: ${{ parameters.project }}
-    arguments: '--no-restore -v m -c release -bl:$(log_dir)/site_ext.build.binlog'
+    arguments: '--no-restore -v m -c release'
 
 - task: DotNetCoreCLI@2
   displayName: Publish site extension
@@ -28,5 +31,9 @@ steps:
     custom: publish
     publishWebProjects: false # we use our own publish logic
     zipAfterPublish: false # we use our own zip logic
+    modifyOutputPath: false
     projects: ${{ parameters.project }}
-    arguments: '--no-build -v m -c release -p:ZipArtifactsPath=$(Build.ArtifactStagingDirectory) -bl:$(log_dir)/site_ext.publish.binlog'
+    ${{ if eq(parameters.publishDir, '') }}:
+      arguments: '--no-build -v m -c release'
+    ${{ else }}:
+      arguments: '--no-build -v m -c release -o ${{ parameters.publishDir }}'

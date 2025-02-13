@@ -2,8 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.ComponentModel;
-using System.Diagnostics;
 using System.Diagnostics.Tracing;
 using Azure.Core;
 using Azure.Identity;
@@ -23,15 +21,29 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
 {
     internal static class OpenTelemetryConfigurationExtensions
     {
-        internal static void ConfigureOpenTelemetry(this ILoggingBuilder loggingBuilder, HostBuilderContext context)
+        internal static void ConfigureOpenTelemetry(this ILoggingBuilder loggingBuilder, HostBuilderContext context, TelemetryMode telemetryMode)
         {
-            string azMonConnectionString = GetConfigurationValue(EnvironmentSettingNames.AppInsightsConnectionString, context.Configuration);
-            TokenCredential credential = GetTokenCredential(context.Configuration);
-
-            bool enableOtlp = false;
-            if (!string.IsNullOrEmpty(GetConfigurationValue(EnvironmentSettingNames.OtlpEndpoint, context.Configuration)))
+            var connectionString = GetConfigurationValue(EnvironmentSettingNames.AppInsightsConnectionString, context.Configuration);
+            var (azMonConnectionString, credential, enableOtlp, enableAzureMonitor) = telemetryMode switch
             {
-                enableOtlp = true;
+                // Initializing OTel services during placeholder mode as well to avoid the cost of JITting these objects during specialization.
+                // Azure Monitor Exporter requires a connection string to be initialized. Use placeholder connection string if in placeholder mode.
+                TelemetryMode.Placeholder => (
+                    "InstrumentationKey=00000000-0000-0000-0000-000000000000;",
+                    null,
+                    true,
+                    true),
+                _ => (
+                    connectionString,
+                    GetTokenCredential(context.Configuration),
+                    !string.IsNullOrEmpty(GetConfigurationValue(EnvironmentSettingNames.OtlpEndpoint, context.Configuration)),
+                    !string.IsNullOrEmpty(connectionString))
+            };
+
+            // If neither OTLP nor Azure Monitor is enabled, don't configure OpenTelemetry.
+            if (!enableOtlp && !enableAzureMonitor)
+            {
+                return;
             }
 
             loggingBuilder
@@ -42,13 +54,50 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
                     {
                         o.AddOtlpExporter();
                     }
-                    if (!string.IsNullOrEmpty(azMonConnectionString))
+                    if (enableAzureMonitor)
                     {
                         o.AddAzureMonitorLogExporter(options => ConfigureAzureMonitorOptions(options, azMonConnectionString, credential));
                     }
                     o.IncludeFormattedMessage = true;
                     o.IncludeScopes = false;
                 })
+                .AddDefaultOpenTelemetryFilters();
+
+            // Azure SDK instrumentation is experimental.
+            AppContext.SetSwitch("Azure.Experimental.EnableActivitySource", true);
+
+            ConfigureTracing(loggingBuilder, enableOtlp, enableAzureMonitor, azMonConnectionString, credential);
+
+            ConfigureEventLogLevel(loggingBuilder, context.Configuration);
+        }
+
+        private static void ConfigureTracing(ILoggingBuilder loggingBuilder, bool enableOtlp, bool enableAzureMonitor, string azMonConnectionString, TokenCredential credential)
+        {
+            loggingBuilder.Services.AddOpenTelemetry()
+                .ConfigureResource(r => ConfigureResource(r))
+                .WithTracing(builder =>
+                {
+                    builder.AddSource("Azure.*")
+                           .AddAspNetCoreInstrumentation();
+
+                    if (enableOtlp)
+                    {
+                        builder.AddOtlpExporter();
+                    }
+
+                    if (enableAzureMonitor)
+                    {
+                        builder.AddAzureMonitorTraceExporter(opt => ConfigureAzureMonitorOptions(opt, azMonConnectionString, credential));
+                        builder.AddLiveMetrics(opt => ConfigureAzureMonitorOptions(opt, azMonConnectionString, credential));
+                    }
+
+                    builder.AddProcessor(ActivitySanitizingProcessor.Instance);
+                });
+        }
+
+        private static ILoggingBuilder AddDefaultOpenTelemetryFilters(this ILoggingBuilder loggingBuilder)
+        {
+            return loggingBuilder
                 // These are messages piped back to the host from the worker - we don't handle these anymore if the worker has OpenTelemetry enabled.
                 // Instead, we expect the user's own code to be logging these where they want them to go.
                 .AddFilter<OpenTelemetryLoggerProvider>("Function.*", _ => !ScriptHost.WorkerOpenTelemetryEnabled)
@@ -58,66 +107,22 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
                 .AddFilter<OpenTelemetryLoggerProvider>("Host.Aggregator", _ => !ScriptHost.WorkerOpenTelemetryEnabled)
                 // Ignoring all Microsoft.Azure.WebJobs.* logs like /getScriptTag and /lock.
                 .AddFilter<OpenTelemetryLoggerProvider>("Microsoft.Azure.WebJobs.*", _ => !ScriptHost.WorkerOpenTelemetryEnabled);
+        }
 
-            // Azure SDK instrumentation is experimental.
-            AppContext.SetSwitch("Azure.Experimental.EnableActivitySource", true);
+        private static void ConfigureEventLogLevel(ILoggingBuilder loggingBuilder, IConfiguration configuration)
+        {
+            string eventLogLevel = GetConfigurationValue(EnvironmentSettingNames.OpenTelemetryEventListenerLogLevel, configuration);
+            EventLevel level = !string.IsNullOrEmpty(eventLogLevel) &&
+                               Enum.TryParse(eventLogLevel, ignoreCase: true, out EventLevel parsedLevel)
+                               ? parsedLevel
+                               : EventLevel.Warning;
 
-            loggingBuilder.Services.AddOpenTelemetry()
-                .ConfigureResource(r => ConfigureResource(r))
-                .WithTracing(b =>
-                {
-                    b.AddSource("Azure.*");
-                    b.AddAspNetCoreInstrumentation();
-                    b.AddHttpClientInstrumentation(o =>
-                    {
-                        o.FilterHttpRequestMessage = _ =>
-                        {
-                            Activity activity = Activity.Current?.Parent;
-                            return activity == null || !activity.Source.Name.Equals("Azure.Core.Http");
-                        };
-                    });
+            loggingBuilder.Services.AddHostedService(_ => new OpenTelemetryEventListenerService(level));
+        }
 
-                    if (enableOtlp)
-                    {
-                        b.AddOtlpExporter();
-                    }
-
-                    if (!string.IsNullOrEmpty(azMonConnectionString))
-                    {
-                        b.AddAzureMonitorTraceExporter(options => ConfigureAzureMonitorOptions(options, azMonConnectionString, credential));
-                        b.AddLiveMetrics(options => ConfigureAzureMonitorOptions(options, azMonConnectionString, credential));
-                    }
-
-                    b.AddProcessor(ActivitySanitizingProcessor.Instance);
-                    b.AddProcessor(TraceFilterProcessor.Instance);
-                });
-
-            string eventLogLevel = GetConfigurationValue(EnvironmentSettingNames.OpenTelemetryEventListenerLogLevel, context.Configuration);
-            if (!string.IsNullOrEmpty(eventLogLevel))
-            {
-                if (Enum.TryParse(eventLogLevel, ignoreCase: true, out EventLevel level))
-                {
-                    loggingBuilder.Services.AddHostedService(service => new OpenTelemetryEventListenerService(level));
-                }
-                else
-                {
-                    throw new InvalidEnumArgumentException($"Invalid '{EnvironmentSettingNames.OpenTelemetryEventListenerLogLevel}' of '{eventLogLevel}'.");
-                }
-            }
-            else
-            {
-                // Log all warnings and above by default.
-                loggingBuilder.Services.AddHostedService(service => new OpenTelemetryEventListenerService(EventLevel.Warning));
-            }
-
-            static ResourceBuilder ConfigureResource(ResourceBuilder r)
-            {
-                r.AddDetector(new FunctionsResourceDetector());
-
-                // Set the AI SDK to a key so we know all the telemetry came from the Functions Host
-                // NOTE: This ties to \azure-sdk-for-net\sdk\monitor\Azure.Monitor.OpenTelemetry.Exporter\src\Internals\ResourceExtensions.cs :: AiSdkPrefixKey used in CreateAzureMonitorResource()
-                return r;
-            }
+        private static ResourceBuilder ConfigureResource(ResourceBuilder builder)
+        {
+            return builder.AddDetector(new FunctionsResourceDetector());
         }
 
         private static string GetConfigurationValue(string key, IConfiguration configuration = null)

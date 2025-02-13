@@ -48,53 +48,60 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     await Task.Delay(_deferredLogDelay);
                 }
 
-                // Disable the channel and let the consumer know that there won't be any more logs.
-                _isEnabled = false;
-                _channel.Writer.TryComplete();
-
                 try
                 {
                     if (forwardingProviders is null || forwardingProviders.Count == 0)
                     {
-                        // No providers, just drain the messages without logging
+                        // No providers, just drain the messages without logging and disable the channel.
+                        _isEnabled = false;
+                        _channel.Writer.TryComplete();
                         while (_channel.Reader.TryRead(out _))
                         {
                             // Drain the channel
                         }
+                        return;
                     }
 
-                    await foreach (var log in _channel.Reader.ReadAllAsync())
+                    while (await _channel.Reader.WaitToReadAsync())
                     {
-                        foreach (var forwardingProvider in forwardingProviders)
+                        while (_channel.Reader.TryRead(out var log))
                         {
-                            var logger = forwardingProvider.CreateLogger(log.Category);
-                            List<IDisposable> scopes = null;
-
-                            try
+                            foreach (var forwardingProvider in forwardingProviders)
                             {
-                                // Create a scope for each object in ScopeObject
+                                var logger = forwardingProvider.CreateLogger(log.Category);
+                                List<IDisposable> scopes = null;
+
                                 if (log.ScopeStorage?.Count > 0)
                                 {
-                                    scopes ??= new List<IDisposable>();
-                                    foreach (var scope in log.ScopeStorage)
+                                    try
                                     {
-                                        // Create and store each scope
-                                        scopes.Add(logger.BeginScope(scope));
+                                        // Create a scope for each object in ScopeObject
+                                        scopes ??= new List<IDisposable>();
+                                        foreach (var scope in log.ScopeStorage)
+                                        {
+                                            // Create and store each scope
+                                            scopes.Add(logger.BeginScope(scope));
+                                        }
+
+                                        // Log the message
+                                        logger.Log(log.LogLevel, log.EventId, log.Exception, log.Message);
+                                    }
+                                    finally
+                                    {
+                                        if (scopes is not null)
+                                        {
+                                            // Dispose all scopes in reverse order to properly unwind them
+                                            for (int i = scopes.Count - 1; i >= 0; i--)
+                                            {
+                                                scopes[i].Dispose();
+                                            }
+                                        }
                                     }
                                 }
-
-                                // Log the message
-                                logger.Log(log.LogLevel, log.EventId, log.Exception, log.Message);
-                            }
-                            finally
-                            {
-                                if (scopes is not null)
+                                else
                                 {
-                                    // Dispose all scopes in reverse order to properly unwind them
-                                    for (int i = scopes.Count - 1; i >= 0; i--)
-                                    {
-                                        scopes[i].Dispose();
-                                    }
+                                    // No scopes, avoid try-finally block
+                                    logger.Log(log.LogLevel, log.EventId, log.Exception, log.Message);
                                 }
                             }
                         }

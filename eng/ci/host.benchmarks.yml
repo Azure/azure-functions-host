@@ -36,23 +36,54 @@ extends:
   template: v1/1ES.Unofficial.PipelineTemplate.yml@1es
   parameters:
     pool:
-      name: 1es-pool-azfunc-large
-      image: 1es-windows-2022
+      name: 1es-pool-azfunc-benchmarking-large
+      image: 1es-windows-2022-benchmark-runner-vanilla
       os: windows
 
     stages:
-    - stage: HttpApps
-      displayName: Run Benchmarks
+    - stage: Setup
+      displayName: Setup & start agents
       jobs:
+      # WINDOWS
+      - template: /eng/ci/templates/official/jobs/setup-benchmark-agents.yml@self
+        parameters:
+          functionAppName: HelloHttpNet9
+      - template: /eng/ci/templates/official/jobs/setup-benchmark-agents.yml@self
+        parameters:
+          functionAppName: HelloHttpNet9NoProxy
+
+      # LINUX
+      - template: /eng/ci/templates/official/jobs/setup-benchmark-agents.yml@self
+        parameters:
+          functionAppName: HelloHttpNet9 
+          os: Linux
+      - template: /eng/ci/templates/official/jobs/setup-benchmark-agents.yml@self
+        parameters:
+          functionAppName: HelloHttpNet9NoProxy
+          os: Linux
+
+    - stage: Run
+      displayName: Run Benchmarks
+      dependsOn: [] # Force this stage to run independently and in parallel with other stages.
+      jobs:
+      # WINDOWS
       - template: /eng/ci/templates/official/jobs/run-benchmarks.yml@self
         parameters:
           description: .NET9 Web Application
           functionAppName: HelloHttpNet9  # App with ASP.NET Integration
-          additionalCrankArgs: $(AdditionalCrankArguments)  # Pipeline variable to pass additional arguments to crank command.
-          storeResultsInDatabase: ${{ variables.storeBenchmarkResultsInDatabase }}
       - template: /eng/ci/templates/official/jobs/run-benchmarks.yml@self
         parameters:
           description: .NET9 Worker Application
           functionAppName: HelloHttpNet9NoProxy # App without ASP.NET Integration
-          additionalCrankArgs: $(AdditionalCrankArguments)
-          storeResultsInDatabase: ${{ variables.storeBenchmarkResultsInDatabase }}
+
+      # LINUX
+      - template: /eng/ci/templates/official/jobs/run-benchmarks.yml@self
+        parameters:
+          description: .NET9 Web Application
+          functionAppName: HelloHttpNet9  
+          os: Linux
+      - template: /eng/ci/templates/official/jobs/run-benchmarks.yml@self
+        parameters:
+          description: .NET9 Worker Application
+          functionAppName: HelloHttpNet9NoProxy 
+          os: Linux

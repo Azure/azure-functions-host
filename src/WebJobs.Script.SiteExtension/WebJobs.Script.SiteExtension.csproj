@@ -18,8 +18,13 @@
 
   <ItemGroup>
     <!-- This item group controls what runtimes we will publish for public & private site extension -->
-    <PublishRuntimeIdentifier Include="win-x86" SelfContained="false" PublishDir="32bit" PrivateExtension="true" />
-    <PublishRuntimeIdentifier Include="win-x64" SelfContained="false" PublishDir="64bit" PrivateExtension="false" />
+    <PublishRuntimeIdentifier Include="win-x86" SelfContained="false" PublishDir="32bit" />
+    <PublishRuntimeIdentifier Include="win-x64" SelfContained="false" PublishDir="64bit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="$(RepoRoot)/release_notes.md" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="**/*.ps1" Exclude="New-ReleaseJson.ps1" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
