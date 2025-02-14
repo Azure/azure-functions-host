@@ -24,12 +24,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         private readonly Mock<IScriptEventManager> _eventManager = new Mock<IScriptEventManager>();
         private readonly TestLogger _logger = new TestLogger("test");
         private readonly IOptions<FunctionsHostingConfigOptions> _functionsHostingConfigOptions;
-        private readonly Mock<IProcessRegistry> processRegistry = new Mock<IProcessRegistry>();
-        private readonly TestRpcServer rpcServer = new TestRpcServer();
-        private readonly Mock<IWorkerConsoleLogSource> languageWorkerConsoleLogSource = new Mock<IWorkerConsoleLogSource>();
-        private readonly TestEnvironment testEnv = new TestEnvironment();
-        private readonly Mock<IServiceProvider> serviceProviderMock = new Mock<IServiceProvider>(MockBehavior.Strict);
-        private readonly TestOptionsMonitor<ScriptApplicationHostOptions> scriptApplicationHostOptions = new TestOptionsMonitor<ScriptApplicationHostOptions>();
+        private readonly Mock<IProcessRegistry> _processRegistry = new Mock<IProcessRegistry>();
+        private readonly TestRpcServer _rpcServer = new TestRpcServer();
+        private readonly Mock<IWorkerConsoleLogSource> _languageWorkerConsoleLogSource = new Mock<IWorkerConsoleLogSource>();
+        private readonly TestEnvironment _testEnv = new TestEnvironment();
+        private readonly Mock<IServiceProvider> _serviceProviderMock = new Mock<IServiceProvider>(MockBehavior.Strict);
+        private readonly TestOptionsMonitor<ScriptApplicationHostOptions> _scriptApplicationHostOptions = new TestOptionsMonitor<ScriptApplicationHostOptions>();
         private Mock<IHostProcessMonitor> _hostProcessMonitorMock = new Mock<IHostProcessMonitor>(MockBehavior.Strict);
 
         public RpcWorkerProcessTests()
@@ -37,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var scriptHostManagerMock = new Mock<IScriptHostManager>(MockBehavior.Strict);
             var scriptHostServiceProviderMock = scriptHostManagerMock.As<IServiceProvider>();
             scriptHostServiceProviderMock.Setup(p => p.GetService(typeof(IHostProcessMonitor))).Returns(() => _hostProcessMonitorMock.Object);
-            serviceProviderMock.Setup(p => p.GetService(typeof(IScriptHostManager))).Returns(scriptHostManagerMock.Object);
+            _serviceProviderMock.Setup(p => p.GetService(typeof(IScriptHostManager))).Returns(scriptHostManagerMock.Object);
             _functionsHostingConfigOptions = Options.Create(new FunctionsHostingConfigOptions());
         }
 
@@ -46,18 +46,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             return new RpcWorkerProcess("node",
                 "testworkerId",
                 "testrootPath",
-                rpcServer.Uri,
+                _rpcServer.Uri,
                 workerConfig,
                 _eventManager.Object,
                 _workerProcessFactory.Object,
-                processRegistry.Object,
+                _processRegistry.Object,
                 _logger,
-                languageWorkerConsoleLogSource.Object,
+                _languageWorkerConsoleLogSource.Object,
                 new TestMetricsLogger(),
-                serviceProviderMock.Object,
+                _serviceProviderMock.Object,
                 _functionsHostingConfigOptions,
-                testEnv,
-                scriptApplicationHostOptions,
+                _testEnv,
+                _scriptApplicationHostOptions,
                 new LoggerFactory());
         }
 
