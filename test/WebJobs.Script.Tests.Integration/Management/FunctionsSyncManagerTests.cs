@@ -312,7 +312,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         }
 
         [Fact]
-        public async Task TrySyncTriggers_ManagedAppEnv_withNo_AzureWebJobsStorage_ReturnsTrue()
+        public async Task TrySyncTriggers_ManagedAppEnv_WithNo_AzureWebJobsStorage_ReturnsTrue()
         {
             using (var env = new TestScopedEnvironmentVariable(_vars))
             {
