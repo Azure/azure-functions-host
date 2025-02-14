@@ -21,13 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
     [Trait(TestTraits.Group, TestTraits.SamplesEndToEnd)]
     public class SamplesEndToEndTests_Node_MultipleProcesses : IAsyncLifetime
     {
-        private readonly MultipleProcessesTestFixture _fixture;
-
-        public SamplesEndToEndTests_Node_MultipleProcesses()
-        {
-            // We want a new fixture for each test
-            _fixture = new MultipleProcessesTestFixture();
-        }
+        private readonly MultipleProcessesTestFixture _fixture = new();
 
         [Fact]
         public async Task NodeProcess_Different_AfterHostRestart()
