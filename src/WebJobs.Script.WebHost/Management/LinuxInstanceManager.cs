@@ -38,6 +38,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         public Task<bool> StartAssignment(HostAssignmentContext context)
         {
+            if (!IsValidEnvironment(context))
+            {
+                return Task.FromResult(false);
+            }
+
             if (context.IsWarmupRequest)
             {
                 // Based on profiling download code jit-ing holds up cold start.
@@ -85,7 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         public abstract Task<string> ValidateContext(HostAssignmentContext assignmentContext);
 
-        public bool IsValidEnvironment(HostAssignmentContext context)
+        private bool IsValidEnvironment(HostAssignmentContext context)
         {
             if (!_webHostEnvironment.InStandbyMode)
             {
