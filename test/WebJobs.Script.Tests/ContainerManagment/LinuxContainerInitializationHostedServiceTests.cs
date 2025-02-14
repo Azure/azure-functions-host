@@ -35,7 +35,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ContainerManagment
         {
             TaskCompletionSource<bool> tcs = new();
             _mockInstanceManager.Setup(m => m.StartAssignment(It.IsAny<HostAssignmentContext>())).Returns(tcs.Task);
-            _mockInstanceManager.Setup(m => m.IsValidEnvironment(It.IsAny<HostAssignmentContext>())).Returns(true);
 
             var assignmentContext = new HostAssignmentContext();
             _mockStartupContextProvider.Setup(p => p.SetContext(It.IsAny<EncryptedHostAssignmentContext>())).Returns(assignmentContext);
