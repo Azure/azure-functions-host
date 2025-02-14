@@ -36,22 +36,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         public abstract Task<string> SpecializeMSISidecar(HostAssignmentContext context);
 
-        public Task<bool> StartAssignment(HostAssignmentContext context)
+        public async Task<bool> StartAssignment(HostAssignmentContext context)
         {
             if (!IsValidEnvironment(context))
             {
-                return Task.FromResult(false);
+                return false;
             }
 
             if (context.IsWarmupRequest)
             {
                 // Based on profiling download code jit-ing holds up cold start.
                 // Pre-jit to avoid paying the cost later.
-                return Task.Run(async () =>
-                {
-                    await DownloadWarmupAsync(context.GetRunFromPkgContext());
-                    return true;
-                });
+                await DownloadWarmupAsync(context.GetRunFromPkgContext());
+                return true;
             }
             else if (_assignmentContext is null)
             {
@@ -59,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 {
                     if (_assignmentContext != null)
                     {
-                        return Task.FromResult(_assignmentContext.Equals(context));
+                        return _assignmentContext.Equals(context);
                     }
                     _assignmentContext = context;
                 }
@@ -75,16 +72,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 _webHostEnvironment.DelayRequests();
 
                 // start the specialization process in the background
-                return Task.Run(async () =>
-                {
-                    await AssignAsync(context);
-                    return true;
-                });
+                await AssignAsync(context);
+                return true;
             }
             else
             {
                 // No lock needed here since _assignmentContext is not null when we are here
-                return Task.FromResult(_assignmentContext.Equals(context));
+                return _assignmentContext.Equals(context);
             }
         }
 
