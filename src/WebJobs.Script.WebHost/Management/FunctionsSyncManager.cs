@@ -135,7 +135,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
                 bool shouldSyncTriggers = true;
                 string newHash = null;
-                if (isBackgroundSync && !_environment.IsKubernetesManagedHosting() && hashBlobClient != null)
+                if (isBackgroundSync && hashBlobClient != null && !_environment.IsKubernetesManagedHosting())
                 {
                     newHash = await CheckHashAsync(hashBlobClient, payload.Content);
                     shouldSyncTriggers = newHash != null;
