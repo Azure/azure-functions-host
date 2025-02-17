@@ -261,12 +261,10 @@ namespace Microsoft.Azure.WebJobs.Script
                 // Ensure no duplicate binding names exist
                 if (bindingNames.Contains(functionBinding.Name))
                 {
-                    throw new InvalidOperationException(string.Format("Multiple bindings with name '{0}' discovered. Binding names must be unique.", functionBinding.Name));
+                    throw new InvalidOperationException($"{nameof(WorkerFunctionDescriptorProvider)}: Multiple bindings with name '{functionBinding.Name}' discovered. Binding names must be unique.");
                 }
-                else
-                {
-                    bindingNames.Add(functionBinding.Name);
-                }
+
+                bindingNames.Add(functionBinding.Name);
 
                 // add binding to function.Bindings once validation is complete
                 function.Bindings.Add(functionBinding);

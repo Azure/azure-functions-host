@@ -29,6 +29,12 @@ jobs:
       targetType: inline
       script: 'Install-Module -Name Az.Storage -RequiredVersion 1.11.0 -Scope CurrentUser -Force -AllowClobber'
 
+  - task: DotNetCoreCLI@2
+    displayName: Build Integration.csproj
+    inputs:
+      command: build
+      projects: $(IntegrationProject)
+
   - task: AzurePowerShell@5
     displayName: Checkout secrets
     inputs:
@@ -61,12 +67,6 @@ jobs:
   - bash: |
       az login --service-principal -u $(ARM_CLIENT_ID) --tenant $(ARM_TENANT_ID) --allow-no-subscriptions --federated-token $(ARM_ID_TOKEN)
     displayName: 'Login to Azure'
-
-  - task: DotNetCoreCLI@2
-    displayName: Build Integration.csproj
-    inputs:
-      command: build
-      projects: $(IntegrationProject)
 
   - task: DotNetCoreCLI@2
     displayName: Non-E2E integration tests

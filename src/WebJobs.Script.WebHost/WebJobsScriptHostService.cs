@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
@@ -22,6 +21,7 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.Scale;
+using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Workers;
@@ -61,6 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly bool _originalStandbyModeValue;
         private readonly string _originalFunctionsWorkerRuntime;
         private readonly string _originalFunctionsWorkerRuntimeVersion;
+        private readonly IOptionsChangeTokenSource<LanguageWorkerOptions> _languageWorkerOptionsChangeTokenSource;
         private IScriptEventManager _eventManager;
 
         private IHost _host;
@@ -79,7 +80,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             IScriptWebHostEnvironment scriptWebHostEnvironment, IEnvironment environment,
             HostPerformanceManager hostPerformanceManager, IOptions<HostHealthMonitorOptions> healthMonitorOptions,
             IMetricsLogger metricsLogger, IApplicationLifetime applicationLifetime, IConfiguration config, IScriptEventManager eventManager, IHostMetrics hostMetrics,
-            IOptions<FunctionsHostingConfigOptions> hostingConfigOptions)
+            IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
+            IOptionsChangeTokenSource<LanguageWorkerOptions> languageWorkerOptionsChangeTokenSource)
         {
             ArgumentNullException.ThrowIfNull(loggerFactory);
 
@@ -90,6 +92,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             RegisterApplicationLifetimeEvents();
 
             _metricsLogger = metricsLogger;
+            _languageWorkerOptionsChangeTokenSource = languageWorkerOptionsChangeTokenSource ?? throw new ArgumentNullException(nameof(languageWorkerOptionsChangeTokenSource));
             _applicationHostOptions = applicationHostOptions ?? throw new ArgumentNullException(nameof(applicationHostOptions));
             _scriptWebHostEnvironment = scriptWebHostEnvironment ?? throw new ArgumentNullException(nameof(scriptWebHostEnvironment));
             _scriptHostBuilder = scriptHostBuilder ?? throw new ArgumentNullException(nameof(scriptHostBuilder));
@@ -362,6 +365,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         var selectedProviders = loggerProviders.Where(provider => provider is ApplicationInsightsLoggerProvider or OpenTelemetryLoggerProvider).ToArray();
                         deferredLogProvider.ProcessBufferedLogs(selectedProviders);
                     }
+                }
+
+                if (_languageWorkerOptionsChangeTokenSource is HostBuiltChangeTokenSource<LanguageWorkerOptions> { } hostBuiltChangeTokenSource)
+                {
+                    hostBuiltChangeTokenSource.TriggerChange();
                 }
 
                 var scriptHost = (ScriptHost)ActiveHost.Services.GetService<ScriptHost>();
