@@ -585,10 +585,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     {
                         // This can be disposed at any time.
                     }
-                    finally
-                    {
-                        EndStartupOperation(startupOperation);
-                    }
                 }
 
                 try
@@ -1022,6 +1018,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
+        /// <summary>
+        /// Creates a new startup operation and adds it to the list of active operations. This operation should be completed by
+        /// calling <see cref="EndStartupOperation(ScriptHostStartupOperation)"/>."/>.
+        /// </summary>
+        /// <param name="parentToken">A CancellationToken to link to this operation. It can be canceled via the <see cref="ScriptHostStartupOperation.CancellationTokenSource"/> property.</param>
+        /// <param name="parentId">The Id of the parent operation if this one is being created due to a startup exception.</param>
+        /// <returns>The operation.</returns>
         private ScriptHostStartupOperation BeginStartupOperation(CancellationToken parentToken, Guid? parentId = null)
         {
             var operation = new ScriptHostStartupOperation(parentToken, parentId);
@@ -1030,6 +1033,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return operation;
         }
 
+        /// <summary>
+        /// Removes the startup operation from the list of active operations and disposes of it.
+        /// </summary>
+        /// <param name="operation">The operation to complete.</param>
         private void EndStartupOperation(ScriptHostStartupOperation operation)
         {
             if (_activeStartupOperations.TryRemove(operation, out _))
