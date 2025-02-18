@@ -54,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 
             _logger.LogDebug($"Deleting {filesToDelete.Length} metrics file(s).");
 
-            foreach (var file in filesToDelete)
+            Parallel.ForEach(filesToDelete, file =>
             {
                 try
                 {
@@ -65,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
                     // best effort
                     _logger.LogError(ex, $"Error deleting metrics file '{file.FullName}'.");
                 }
-            }
+            });
 
             files = metricsDirectoryInfo.GetFiles().OrderBy(p => p.CreationTime).ToList();
 
@@ -93,10 +93,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
                     fileName = $"{Guid.NewGuid().ToString().ToLower()}.json";
                     string filePath = Path.Combine(MetricsFilePath, fileName);
 
-                    using (var streamWriter = _fileSystem.File.CreateText(filePath))
-                    {
-                        await streamWriter.WriteAsync(metricsContent);
-                    }
+                    using var streamWriter = _fileSystem.File.CreateText(filePath);
+                    await streamWriter.WriteAsync(metricsContent);
                 }
             }
             catch (Exception ex) when (!ex.IsFatal())

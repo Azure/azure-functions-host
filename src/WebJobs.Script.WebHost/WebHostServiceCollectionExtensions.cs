@@ -214,6 +214,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.ConfigureOptionsWithChangeTokenSource<AppServiceOptions, AppServiceOptionsSetup, SpecializationChangeTokenSource<AppServiceOptions>>();
             services.ConfigureOptionsWithChangeTokenSource<HttpBodyControlOptions, HttpBodyControlOptionsSetup, SpecializationChangeTokenSource<HttpBodyControlOptions>>();
             services.ConfigureOptions<FlexConsumptionMetricsPublisherOptionsSetup>();
+            services.ConfigureOptions<LinuxConsumptionLegionMetricsPublisherOptionsSetup>();
             services.ConfigureOptions<ConsoleLoggingOptionsSetup>();
             services.AddHostingConfigOptions(configuration);
             services.ConfigureOptions<ExtensionRequirementOptionsSetup>();
@@ -257,7 +258,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private static void AddLinuxContainerServices(this IServiceCollection services)
         {
-            if (SystemEnvironment.Instance.IsV1LinuxConsumptionOnLegion())
+            if (SystemEnvironment.Instance.IsLinuxConsumptionOnLegion())
             {
                 services.AddLinuxConsumptionMetricsServices();
             }
@@ -286,13 +287,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IMetricsPublisher>(s =>
             {
                 var environment = s.GetService<IEnvironment>();
-                if (environment.IsV1LinuxConsumptionOnLegion())
+                if (environment.IsLinuxConsumptionOnLegion())
                 {
+                    var options = s.GetService<IOptions<LinuxConsumptionLegionMetricsPublisherOptions>>();
                     var logger = s.GetService<ILogger<LinuxContainerLegionMetricsPublisher>>();
                     var metricsTracker = s.GetService<ILinuxConsumptionMetricsTracker>();
                     var standbyOptions = s.GetService<IOptionsMonitor<StandbyOptions>>();
                     var scriptHostManager = s.GetService<IScriptHostManager>();
-                    return new LinuxContainerLegionMetricsPublisher(environment, standbyOptions, logger, new FileSystem(), metricsTracker, scriptHostManager);
+                    return new LinuxContainerLegionMetricsPublisher(environment, standbyOptions, options, logger, new FileSystem(), metricsTracker, scriptHostManager);
                 }
                 else if (environment.IsFlexConsumptionSku())
                 {

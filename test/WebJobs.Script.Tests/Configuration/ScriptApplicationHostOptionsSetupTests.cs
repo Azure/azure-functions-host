@@ -106,6 +106,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         {
             var environment = new TestEnvironment();
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, ScriptConstants.FlexConsumptionSku);
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, "test-container");
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.LegionServiceHost, "legion-service-host");
 
             ScriptApplicationHostOptions options = new ScriptApplicationHostOptions();
             ConfiguredOptions(options, inStandbyMode: false, environment);

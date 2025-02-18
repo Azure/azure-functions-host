@@ -11,7 +11,9 @@ using System.Threading.Tasks;
 using Microsoft.Azure.Functions.Platform.Metrics.LinuxConsumption;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.Metrics;
+using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Newtonsoft.Json;
 using Xunit;
@@ -32,6 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
         private readonly TestMetricsLogger _testMetricsLogger;
         private readonly IScriptHostManager _scriptHostManager;
 
+        private IOptions<LinuxConsumptionLegionMetricsPublisherOptions> _options;
         private StandbyOptions _standbyOptions;
         private TestOptionsMonitor<StandbyOptions> _standbyOptionsMonitor;
 
@@ -49,12 +52,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             _testMetricsTracker = new TestMetricsTracker();
         }
 
-        private LinuxContainerLegionMetricsPublisher CreatePublisher(bool inStandbyMode = false, int? metricsPublishInterval = null)
+        private LinuxContainerLegionMetricsPublisher CreatePublisher(int? metricsPublishInterval = null, bool inStandbyMode = false)
         {
             _standbyOptions = new StandbyOptions { InStandbyMode = inStandbyMode };
             _standbyOptionsMonitor = new TestOptionsMonitor<StandbyOptions>(_standbyOptions);
+            _options = Options.Create(new LinuxConsumptionLegionMetricsPublisherOptions
+            {
+                ContainerName = "testcontainer",
+                MetricsFilePath = _metricsFilePath
+            });
 
-            return new LinuxContainerLegionMetricsPublisher(_environment, _standbyOptionsMonitor, _logger, new FileSystem(), _testMetricsTracker, _scriptHostManager, metricsPublishInterval);
+            return new LinuxContainerLegionMetricsPublisher(_environment, _standbyOptionsMonitor, _options, _logger, new FileSystem(), _testMetricsTracker, _scriptHostManager);
         }
 
         [Fact]
@@ -98,7 +106,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
 
             var metricsPublisher = CreatePublisher(inStandbyMode: true);
 
-            await metricsPublisher.OnPublishMetrics();
+            await metricsPublisher.OnPublishMetricsAsync();
 
             FileInfo[] metricsFiles = GetMetricsFilesSafe(_metricsFilePath);
             Assert.Equal(1, metricsFiles.Length);

@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.Functions.Platform.Metrics.LinuxConsumption;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -32,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         private Timer _metricsPublisherTimer;
         private bool _initialized = false;
 
-        public LinuxContainerLegionMetricsPublisher(IEnvironment environment, IOptionsMonitor<StandbyOptions> standbyOptions, ILogger<LinuxContainerLegionMetricsPublisher> logger, IFileSystem fileSystem, ILinuxConsumptionMetricsTracker metricsTracker, IScriptHostManager scriptHostManager, int? metricsPublishIntervalMS = null)
+        public LinuxContainerLegionMetricsPublisher(IEnvironment environment, IOptionsMonitor<StandbyOptions> standbyOptions, IOptions<LinuxConsumptionLegionMetricsPublisherOptions> options, ILogger<LinuxContainerLegionMetricsPublisher> logger, IFileSystem fileSystem, ILinuxConsumptionMetricsTracker metricsTracker, IScriptHostManager scriptHostManager, int? metricsPublishIntervalMS = null)
         {
             _standbyOptions = standbyOptions ?? throw new ArgumentNullException(nameof(standbyOptions));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
@@ -42,14 +43,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
             {
                 throw new InvalidOperationException("Unable to get IMetricsLogger Service.");
             }
-            _containerName = _environment.GetEnvironmentVariable(EnvironmentSettingNames.ContainerName);
-            _metricPublishInterval = TimeSpan.FromMilliseconds(metricsPublishIntervalMS ?? 30 * 1000);
 
-            // Default this to 15 minutes worth of files
+            _containerName = options.Value.ContainerName;
+
+            _metricPublishInterval = TimeSpan.FromMilliseconds(metricsPublishIntervalMS ?? options.Value.MetricsPublishIntervalMS);
             int maxFileCount = 15 * (int)Math.Ceiling(1.0 * 60 / _metricPublishInterval.TotalSeconds);
-            string metricsFilePath = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsMetricsPublishPath);
 
-            _metricsFileManager = new LegionMetricsFileManager(metricsFilePath, fileSystem, logger, maxFileCount);
+            _metricsFileManager = new LegionMetricsFileManager(options.Value.MetricsFilePath, fileSystem, logger, maxFileCount);
 
             _processMonitorTimer = new Timer(OnProcessMonitorTimer, null, Timeout.Infinite, Timeout.Infinite);
             _metricsPublisherTimer = new Timer(OnFunctionMetricsPublishTimer, null, Timeout.Infinite, Timeout.Infinite);
@@ -58,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 
             if (_standbyOptions.CurrentValue.InStandbyMode)
             {
-                _standbyOptionsOnChangeSubscription = _standbyOptions.OnChange(o => OnStandbyOptionsChange());
+                _standbyOptionsOnChangeSubscription = _standbyOptions.OnChange(o => OnStandbyOptionsChange(o));
             }
             else
             {
@@ -80,12 +80,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
             SetTimerInterval(_processMonitorTimer, _timerStartDelay);
             SetTimerInterval(_metricsPublisherTimer, _metricPublishInterval);
 
-            _logger.LogInformation(string.Format("Starting metrics publisher for container : {0}.", _containerName));
+            _logger.LogInformation("Starting metrics publisher for container : {ContainerName}.", _containerName);
         }
 
-        private void OnStandbyOptionsChange()
+        private void OnStandbyOptionsChange(StandbyOptions standbyOptions)
         {
-            if (!_standbyOptions.CurrentValue.InStandbyMode)
+            if (!standbyOptions.InStandbyMode)
             {
                 Start();
             }
@@ -134,10 +134,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 
         private async void OnFunctionMetricsPublishTimer(object state)
         {
-            await OnPublishMetrics();
+            await OnPublishMetricsAsync();
         }
 
-        internal async Task OnPublishMetrics()
+        internal async Task OnPublishMetricsAsync()
         {
             try
             {

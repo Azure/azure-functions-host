@@ -297,7 +297,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             env.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, websiteSku);
             env.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSkuName, websiteSkuName);
 
-            Assert.Equal(expectedValue, env.IsV1LinuxConsumptionOnLegion());
+            Assert.Equal(expectedValue, env.IsLinuxConsumptionOnLegion());
         }
 
         [Theory]
