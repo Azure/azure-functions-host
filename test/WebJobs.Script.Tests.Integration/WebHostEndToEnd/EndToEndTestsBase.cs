@@ -8,8 +8,7 @@ using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 using Azure.Data.Tables;
-using Microsoft.Azure.Documents;
-using Microsoft.Azure.Documents.Client;
+using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Storage.Blob;
 using Microsoft.Azure.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host;
@@ -317,44 +316,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             return item;
         }
 
-        protected async Task<Document> WaitForDocumentAsync(string itemId, string textToMatch = null)
+        protected async Task<ItemResponse<dynamic>> WaitForDocumentAsync(string itemId, string textToMatch = null)
         {
-            var docUri = UriFactory.CreateDocumentUri("ItemDb", "ItemCollection", itemId);
-
-            // We know the tests are using the default connection string.
             var connectionString = _configuration.GetConnectionString("CosmosDB");
-            var builder = new DbConnectionStringBuilder
-            {
-                ConnectionString = connectionString
-            };
-            var serviceUri = new Uri(builder["AccountEndpoint"].ToString());
-            var client = new DocumentClient(serviceUri, builder["AccountKey"].ToString());
+            var client = new CosmosClient(connectionString);
 
-            Document doc = null;
+            var database = client.GetDatabase("ItemDb");
+            var container = database.GetContainer("ItemCollection");
+
+            ItemResponse<dynamic> itemResponse = null;
             await TestHelpers.Await(async () =>
             {
-                bool result = false;
-
                 try
                 {
-                    var response = await client.ReadDocumentAsync(docUri);
-                    doc = response.Resource;
+                    itemResponse = await container.ReadItemAsync<dynamic>(itemId, new PartitionKey(itemId));
+
+                    if (textToMatch != null)
+                    {
+                        return itemResponse.Resource.text == textToMatch;
+                    }
+                    return true;
                 }
-                catch (DocumentClientException ex) when (ex.Error.Code == "NotFound")
+                catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
                 {
                     return false;
                 }
-
-                if (textToMatch != null)
-                {
-                    result = doc.GetPropertyValue<string>("text") == textToMatch;
-                }
-                else
-                {
-                    result = true;
-                }
-
-                return result;
             },
             userMessageCallback: () =>
             {
@@ -363,7 +349,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 return s.Length < 4096 ? s : s.Substring(s.Length - 4096);
             });
 
-            return doc;
+            return itemResponse;
         }
 
         protected static bool VerifyNotificationHubExceptionMessage(Exception exception)

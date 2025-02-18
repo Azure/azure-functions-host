@@ -4,8 +4,7 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Azure.Documents;
-using Microsoft.Azure.Documents.Client;
+using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Storage.Queue;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Extensions.Configuration;
@@ -18,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
         EndToEndTestsBase<TTestFixture> where TTestFixture : CosmosDBTestFixture, new()
     {
         public CosmosDBEndToEndTestsBase(TTestFixture fixture) : base(fixture)
-        {
+        {   
         }
 
         protected async Task CosmosDBTriggerToBlobTest()
@@ -29,19 +28,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
             // Waiting for the Processor to acquire leases
             await Task.Delay(10000);
 
-            await Fixture.InitializeDocumentClient();
+            //await Fixture.InitializeDocumentClient();
+            await Fixture.InitializeCosmosClient();
+
             bool collectionsCreated = await Fixture.CreateDocumentCollections();
+
             var resultBlob = Fixture.TestOutputContainer.GetBlockBlobReference("cosmosdbtriggere2e-completed");
             await resultBlob.DeleteIfExistsAsync();
 
+            //string id = Guid.NewGuid().ToString();
+            //Document documentToTest = new Document()
+            //{
+            //    Id = id
+            //};
+            //await Fixture.DocumentClient.CreateDocumentAsync(UriFactory.CreateDocumentCollectionUri("ItemDb", "ItemCollection"), documentToTest);
+
             string id = Guid.NewGuid().ToString();
-
-            Document documentToTest = new Document()
-            {
-                Id = id
-            };
-
-            await Fixture.DocumentClient.CreateDocumentAsync(UriFactory.CreateDocumentCollectionUri("ItemDb", "ItemCollection"), documentToTest);
+            var container = Fixture.CosmosClient.GetContainer("ItemDb", "ItemCollection");
+            await container.CreateItemAsync(new { id }, new PartitionKey(id));
 
             // now wait for function to be invoked
             string result = await TestHelpers.WaitForBlobAndGetStringAsync(resultBlob,
@@ -64,9 +68,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
 
             await Fixture.Host.BeginFunctionAsync("CosmosDBOut", id);
 
-            Document doc = await WaitForDocumentAsync(id);
+            //Document doc = await WaitForDocumentAsync(id);
+            ItemResponse<dynamic> itemResponse = await WaitForDocumentAsync(id);
+            dynamic item = itemResponse.Resource;
 
-            Assert.Equal(doc.Id, id);
+            //Assert.Equal(doc.Id, id);
+            Assert.Equal(id, item.id.ToString());
 
             // Now add that Id to a Queue, in an object to test binding
             var queue = await Fixture.GetNewQueue("documentdb-input");
@@ -74,10 +81,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
             await queue.AddMessageAsync(new CloudQueueMessage(messageContent));
 
             // And wait for the text to be updated
-            Document updatedDoc = await WaitForDocumentAsync(id, "This was updated!");
+            //Document updatedDoc = await WaitForDocumentAsync(id, "This was updated!");
 
-            Assert.Equal(updatedDoc.Id, doc.Id);
-            Assert.NotEqual(doc.ETag, updatedDoc.ETag);
+            //Assert.Equal(updatedDoc.Id, doc.Id);
+            //Assert.NotEqual(doc.ETag, updatedDoc.ETag);
+            ItemResponse<dynamic> updatedItemResponse = await WaitForDocumentAsync(id, "This was updated!");
+            dynamic updatedItem = updatedItemResponse.Resource;
+
+            Assert.Equal(id, updatedItem.id.ToString());
+            Assert.NotEqual(itemResponse.ETag, updatedItemResponse.ETag);
         }
     }
 
@@ -88,7 +100,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
         {
         }
 
-        public DocumentClient DocumentClient { get; private set; }
+        //public DocumentClient DocumentClient { get; private set; }
+        public CosmosClient CosmosClient { get; private set; }
 
         protected override ExtensionPackageReference[] GetExtensionsToInstall()
         {
@@ -115,59 +128,94 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
             });
         }
 
-        public async Task InitializeDocumentClient()
+        //public async Task InitializeDocumentClient()
+        //{
+        //    if (DocumentClient == null)
+        //    {
+        //        var builder = new System.Data.Common.DbConnectionStringBuilder
+        //        {
+        //            ConnectionString = TestHelpers.GetTestConfiguration().GetConnectionString("CosmosDB")
+        //        };
+
+        //        var serviceUri = new Uri(builder["AccountEndpoint"].ToString());
+
+        //        DocumentClient = new DocumentClient(serviceUri, builder["AccountKey"].ToString());
+        //        await DocumentClient.OpenAsync();
+        //    }
+        //}
+
+        public async Task InitializeCosmosClient()
         {
-            if (DocumentClient == null)
+            if (CosmosClient == null)
             {
-                var builder = new System.Data.Common.DbConnectionStringBuilder
-                {
-                    ConnectionString = TestHelpers.GetTestConfiguration().GetConnectionString("CosmosDB")
-                };
-
-                var serviceUri = new Uri(builder["AccountEndpoint"].ToString());
-
-                DocumentClient = new DocumentClient(serviceUri, builder["AccountKey"].ToString());
-                await DocumentClient.OpenAsync();
+                var connectionString = TestHelpers.GetTestConfiguration().GetConnectionString("CosmosDB");
+                CosmosClient = new CosmosClient(connectionString);
             }
         }
+
+        //public async Task<bool> CreateDocumentCollections()
+        //{
+        //    bool willCreateCollection = false;
+        //    Database db = new Database() { Id = "ItemDb" };
+        //    await DocumentClient.CreateDatabaseIfNotExistsAsync(db);
+        //    Uri dbUri = UriFactory.CreateDatabaseUri(db.Id);
+
+        //    DocumentCollection collection = new DocumentCollection() { Id = "ItemCollection" };
+        //    willCreateCollection = !DocumentClient.CreateDocumentCollectionQuery(dbUri).Where(x => x.Id == collection.Id).ToList().Any();
+        //    await DocumentClient.CreateDocumentCollectionIfNotExistsAsync(dbUri, collection,
+        //        new RequestOptions()
+        //        {
+        //            OfferThroughput = 400
+        //        });
+
+        //    Documents.DocumentCollection leasesCollection = new Documents.DocumentCollection() { Id = "leases" };
+        //    await DocumentClient.CreateDocumentCollectionIfNotExistsAsync(dbUri, leasesCollection,
+        //        new RequestOptions()
+        //        {
+        //            OfferThroughput = 400
+        //        });
+
+        //    return willCreateCollection;
+        //}
 
         public async Task<bool> CreateDocumentCollections()
         {
             bool willCreateCollection = false;
-            Database db = new Database() { Id = "ItemDb" };
-            await DocumentClient.CreateDatabaseIfNotExistsAsync(db);
-            Uri dbUri = UriFactory.CreateDatabaseUri(db.Id);
+            Database database = await CosmosClient.CreateDatabaseIfNotExistsAsync("ItemDb");
 
-            DocumentCollection collection = new DocumentCollection() { Id = "ItemCollection" };
-            willCreateCollection = !DocumentClient.CreateDocumentCollectionQuery(dbUri).Where(x => x.Id == collection.Id).ToList().Any();
-            await DocumentClient.CreateDocumentCollectionIfNotExistsAsync(dbUri, collection,
-                new RequestOptions()
-                {
-                    OfferThroughput = 400
-                });
+            ContainerProperties itemCollectionProperties = new ContainerProperties("ItemCollection", "/id");
+            ContainerResponse itemCollectionResponse = await database.CreateContainerIfNotExistsAsync(
+                itemCollectionProperties,
+                throughput: 400);
+            willCreateCollection = itemCollectionResponse.StatusCode == System.Net.HttpStatusCode.Created;
 
-            Documents.DocumentCollection leasesCollection = new Documents.DocumentCollection() { Id = "leases" };
-            await DocumentClient.CreateDocumentCollectionIfNotExistsAsync(dbUri, leasesCollection,
-                new RequestOptions()
-                {
-                    OfferThroughput = 400
-                });
+            ContainerProperties leasesCollectionProperties = new ContainerProperties("leases", "/id");
+            await database.CreateContainerIfNotExistsAsync(
+                leasesCollectionProperties,
+                throughput: 400);
 
             return willCreateCollection;
         }
 
+        //public async Task DeleteDocumentCollections()
+        //{
+        //    Uri collectionsUri = UriFactory.CreateDocumentCollectionUri("ItemDb", "ItemCollection");
+        //    Uri leasesCollectionsUri = UriFactory.CreateDocumentCollectionUri("ItemDb", "leases");
+        //    await DocumentClient.DeleteDocumentCollectionAsync(collectionsUri);
+        //    await DocumentClient.DeleteDocumentCollectionAsync(leasesCollectionsUri);
+        //}
+
         public async Task DeleteDocumentCollections()
         {
-            Uri collectionsUri = UriFactory.CreateDocumentCollectionUri("ItemDb", "ItemCollection");
-            Uri leasesCollectionsUri = UriFactory.CreateDocumentCollectionUri("ItemDb", "leases");
-            await DocumentClient.DeleteDocumentCollectionAsync(collectionsUri);
-            await DocumentClient.DeleteDocumentCollectionAsync(leasesCollectionsUri);
+            Database database = CosmosClient.GetDatabase("ItemDb");
+            await database.GetContainer("ItemCollection").DeleteContainerAsync();
+            await database.GetContainer("leases").DeleteContainerAsync();
         }
 
         public override async Task DisposeAsync()
         {
             await base.DisposeAsync();
-            DocumentClient?.Dispose();
+            CosmosClient?.Dispose();
         }
     }
 }

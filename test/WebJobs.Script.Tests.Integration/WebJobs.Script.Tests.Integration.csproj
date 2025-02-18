@@ -29,7 +29,7 @@
     <PackageReference Include="Microsoft.AspNet.WebApi.Client" Version="5.2.8" />
     <PackageReference Include="Microsoft.AspNet.WebApi.Core" Version="5.2.6" NoWarn="NU1701" />
     <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="8.0.1" />
-    <PackageReference Include="Microsoft.Azure.DocumentDB.Core" Version="2.11.2" />
+    <PackageReference Include="Microsoft.Azure.Cosmos" Version="3.39.1" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Storage" Version="4.0.5-11874" />
     <PackageReference Include="Microsoft.Azure.Mobile.Client" Version="4.0.2" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="8.0.0" />
