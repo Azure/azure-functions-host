@@ -150,7 +150,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions
                 new EventId(522, nameof(CancelingStartupOperationForRestart)),
                 "Canceling startup operation '{operationId}' to unblock restart.");
 
-        // EventId 523 and 524 are defined in ScriptHostStartupOperation.
+        private static readonly Action<ILogger, Guid, Guid?, Exception> _startupOperationCreated =
+            LoggerMessage.Define<Guid, Guid?>(
+                LogLevel.Debug,
+                new EventId(524, nameof(StartupOperationCreated)),
+                "Startup operation '{operationId}' with parent id '{parentOperationId}' created.");
+
+        private static readonly Action<ILogger, Guid, Exception> _startupOperationCompleted =
+            LoggerMessage.Define<Guid>(
+                LogLevel.Debug,
+                new EventId(523, nameof(StartupOperationCompleted)),
+                "Startup operation '{operationId}' completed.");
 
         private static readonly Action<ILogger, Guid, string, Exception> _startupOperationStartingHost =
             LoggerMessage.Define<Guid, string>(
@@ -329,6 +339,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions
         public static void CancelingStartupOperationForRestart(this ILogger logger, Guid operationId)
         {
             _cancelingStartupOperationForRestart(logger, operationId, null);
+        }
+
+        public static void StartupOperationCreated(this ILogger logger, Guid operationId, Guid? parentOperationId)
+        {
+            _startupOperationCreated(logger, operationId, parentOperationId, null);
+        }
+
+        public static void StartupOperationCompleted(this ILogger logger, Guid operationId)
+        {
+            _startupOperationCompleted(logger, operationId, null);
         }
 
         public static void StartupOperationStartingHost(this ILogger logger, Guid operationId, string hostInstanceId)

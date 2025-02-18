@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
@@ -62,8 +63,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly string _originalFunctionsWorkerRuntime;
         private readonly string _originalFunctionsWorkerRuntimeVersion;
         private readonly IOptionsChangeTokenSource<LanguageWorkerOptions> _languageWorkerOptionsChangeTokenSource;
-        private IScriptEventManager _eventManager;
 
+        // we're only using this dictionary's keys so it acts as a "ConcurrentHashSet"
+        private readonly ConcurrentDictionary<ScriptHostStartupOperation, byte> _activeStartupOperations = new();
+
+        private IScriptEventManager _eventManager;
         private IHost _host;
         private ScriptHostState _state;
         private CancellationTokenSource _startupLoopTokenSource;
@@ -285,7 +289,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             JobHostStartupMode startupMode = JobHostStartupMode.Normal, Guid? parentOperationId = null)
         {
             // Add this to the list of trackable startup operations. Restarts can use this to cancel any ongoing or pending operations.
-            var activeOperation = ScriptHostStartupOperation.Create(cancellationToken, _logger, parentOperationId);
+            var activeOperation = BeginStartupOperation(cancellationToken, parentOperationId);
 
             using (_metricsLogger.LatencyEvent(MetricEventNames.ScriptHostManagerStartService))
             {
@@ -570,7 +574,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                 // If anything is mid-startup, cancel it.
                 _startupLoopTokenSource?.Cancel();
-                foreach (var startupOperation in ScriptHostStartupOperation.ActiveOperations)
+                foreach (var startupOperation in _activeStartupOperations.Keys)
                 {
                     _logger.CancelingStartupOperationForRestart(startupOperation.Id);
                     try
@@ -580,6 +584,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     catch (ObjectDisposedException)
                     {
                         // This can be disposed at any time.
+                    }
+                    finally
+                    {
+                        EndStartupOperation(startupOperation);
                     }
                 }
 
@@ -599,7 +607,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     var previousHost = ActiveHost;
                     ActiveHost = null;
 
-                    using (var activeOperation = ScriptHostStartupOperation.Create(cancellationToken, _logger))
+                    var activeOperation = BeginStartupOperation(cancellationToken);
+
+                    try
                     {
                         Task startTask, stopTask;
 
@@ -620,6 +630,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         }
 
                         await startTask;
+                    }
+                    finally
+                    {
+                        EndStartupOperation(activeOperation);
                     }
 
                     _logger.Restarted();
@@ -1006,6 +1020,24 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 logger.LogDebug(@"Disposing {providerName} ...", logProvider);
                 logProvider.Dispose();
             }
+        }
+
+        private ScriptHostStartupOperation BeginStartupOperation(CancellationToken parentToken, Guid? parentId = null)
+        {
+            var operation = new ScriptHostStartupOperation(parentToken, parentId);
+            _activeStartupOperations.TryAdd(operation, byte.MinValue);
+            _logger.StartupOperationCreated(operation.Id, operation.ParentId);
+            return operation;
+        }
+
+        private void EndStartupOperation(ScriptHostStartupOperation operation)
+        {
+            if (_activeStartupOperations.TryRemove(operation, out _))
+            {
+                operation.Dispose();
+            }
+
+            _logger.StartupOperationCompleted(operation.Id);
         }
 
         protected virtual void Dispose(bool disposing)
