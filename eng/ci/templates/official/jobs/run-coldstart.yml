@@ -1,0 +1,129 @@
+parameters:
+- name: description
+  type: string
+- name: functionAppName
+  type: string
+- name: instanceId
+  type: string
+- name: os
+  type: string
+  default: Windows
+  values:
+    - Windows
+    - Linux
+
+jobs:
+- job: ${{ parameters.functionAppName }}_${{ parameters.instanceId }}
+  displayName: ${{ parameters.description }} ${{ parameters.instanceId }}
+  pool:
+    name: 1es-pool-azfunc-benchmarking-large
+    ${{ if eq(parameters.os, 'Linux') }}:
+      image: 1es-ubuntu-22.04-benchmark-runner-vanilla-sd4
+      os: linux 
+    ${{ else }}:
+      image: 1es-windows-2022-benchmark-runner-vanilla-sd4
+      os: windows
+
+  variables:
+    functionAppOutputPath: $(Build.ArtifactStagingDirectory)/Published/${{ parameters.functionAppName }}
+    hostOutputPath: $(Build.ArtifactStagingDirectory)/Published/HostRuntime
+    hostAssemblyPath: $(hostOutputPath)/Microsoft.Azure.WebJobs.Script.WebHost.dll
+    logsDirectory: $(Build.ArtifactStagingDirectory)/Logs
+    stdOutLogsFilePath: $(logsDirectory)/std_out_logs.txt
+    stdErrorLogsFilePath: $(logsDirectory)/std_error_logs.txt    
+    FUNCTIONS_WORKER_RUNTIME: 'dotnet-isolated'
+    FUNCTIONS_WORKER_RUNTIME_VERSION: '9.0'
+    AzureWebJobsScriptRoot: '$(functionAppOutputPath)'
+
+  steps:
+  - template: /eng/ci/templates/install-dotnet.yml@self
+
+  - task: CopyFiles@2
+    displayName: Copy benchmark apps to temp location
+    inputs:
+      SourceFolder: '$(Build.SourcesDirectory)/test/Performance/Apps'
+      Contents: '**/*'
+      TargetFolder: '$(Build.ArtifactStagingDirectory)/PerformanceTestApps'
+      CleanTargetFolder: true
+
+  - task: DotNetCoreCLI@2
+    displayName: Publish benchmark app
+    inputs:
+      command: publish
+      publishWebProjects: false
+      zipAfterPublish: false
+      modifyOutputPath: false
+      projects: '$(Build.ArtifactStagingDirectory)/PerformanceTestApps/${{ parameters.functionAppName }}/HelloHttp.csproj'
+      arguments: -c Release -o $(functionAppOutputPath) -f net9.0 
+      workingDirectory: $(Build.ArtifactStagingDirectory)/PerformanceTestApps/${{ parameters.functionAppName }}
+
+  - task: DotNetCoreCLI@2
+    displayName: Publish host
+    inputs:
+      command: publish
+      publishWebProjects: false
+      zipAfterPublish: false
+      modifyOutputPath: false
+      projects: '$(Build.SourcesDirectory)/src/WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj'
+      arguments: -c Release -o $(hostOutputPath) -f net8.0 -p:PlaceholderSimulation=true 
+      workingDirectory: $(Build.SourcesDirectory)/src/WebJobs.Script.WebHost
+
+  - pwsh: |
+      Write-Host "Creating log directory: $(logsDirectory)"
+      New-Item -ItemType Directory -Path $(logsDirectory)
+    displayName: Create log directory
+
+  - ${{ if eq(parameters.os, 'Windows') }}:
+    - pwsh: |
+        $errorLogFilePath = "$(Build.ArtifactStagingDirectory)/Logs/std_err_logs.txt"
+        Start-Process -FilePath "powershell.exe" -ArgumentList "-Command", "dotnet $(hostAssemblyPath)" -RedirectStandardOutput $(stdOutLogsFilePath) -RedirectStandardError $(stdErrorLogsFilePath) -PassThru
+      displayName: Start host in placeholder mode
+  - ${{ else }}:
+    - script: |
+        # In Azure DevOps, when variables convert into environment variables, variable names become uppercase, and periods turn into underscores.
+        # This works for windows when getting the env variable value, but fails on linux. So we need to pass the variable value using correct case.
+        # https://learn.microsoft.com/en-us/azure/devops/pipelines/process/variables?view=azure-devops&tabs=yaml%2Cbatch#environment-variables
+        export AzureWebJobsScriptRoot="$(functionAppOutputPath)"
+        nohup dotnet $(hostAssemblyPath) > $(stdOutLogsFilePath) 2> $(stdErrorLogsFilePath) &
+      displayName: Start host in placeholder mode
+
+  - pwsh: |     
+      $url = "http://localhost:5000/api/warmup"
+      Write-Host "Checking if host is ready at $url..."
+      $maxAttempts = 10
+
+      for ($attempt = 0; $attempt -lt $maxAttempts; $attempt++) {
+          try {
+              $response = Invoke-RestMethod -Uri $url -Method Get -TimeoutSec 5 -ErrorAction Stop
+              Write-Host "Response: $response"
+              break
+          } catch {
+              Write-Host "Attempt $($attempt+1) failed: $_.Exception.Message. Retrying in 10 seconds..."
+              Start-Sleep -Seconds 10
+          }
+      }
+
+    displayName: Wait until host is warmed up
+
+  - pwsh: |
+      $helloUrl = "http://localhost:5000/api/hello?forcespecialization=1"
+      Write-Host "Calling $helloUrl"
+
+      $duration = Measure-Command {
+          $response = Invoke-WebRequest -Uri $helloUrl -Method Get -ErrorAction Stop
+      }
+
+      Write-Host "Response: $($response)"
+      Write-Host "Cold start latency: $($duration.TotalMilliseconds) ms"
+      Write-Host "##vso[task.setvariable variable=coldStartLatency;isOutput=true]$($duration.TotalMilliseconds)"
+    displayName: Record cold start latency
+    name: Record
+
+  - pwsh: |
+      Write-Host "Logs:"
+      Get-Content $(stdOutLogsFilePath)
+      Write-Host "----"
+      Write-Host "Error logs:"
+      Get-Content $(stdErrorLogsFilePath)
+    displayName: Print logs
+    condition: always()
