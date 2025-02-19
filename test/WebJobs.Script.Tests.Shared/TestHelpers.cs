@@ -356,6 +356,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
         }
 
+        public static IList<RpcWorkerConfig> GetTestWorkerConfigsWithExecutableWorkingDirectory()
+        {
+            return new List<RpcWorkerConfig>()
+            {
+                new RpcWorkerConfig
+                {
+                    Description = new RpcWorkerDescription
+                    {
+                        Extensions = new List<string>()
+                        {
+                            { ".jar" }
+                        },
+                        Language = "java",
+                        WorkerDirectory = "testDir",
+                        ExecutableWorkingDirectory = "executableDirectory"
+                    }
+                },
+            };
+        }
+
         public static string CreateOfflineFile()
         {
             // create a test offline file
