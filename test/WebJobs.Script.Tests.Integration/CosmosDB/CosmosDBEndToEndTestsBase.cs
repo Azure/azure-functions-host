@@ -46,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
 
             string id = Guid.NewGuid().ToString();
             var container = Fixture.CosmosClient.GetContainer("ItemDb", "ItemCollection");
-            await container.CreateItemAsync(new { id }, new PartitionKey(id));
+            await container.CreateItemAsync(new { id });
 
             // now wait for function to be invoked
             string result = await TestHelpers.WaitForBlobAndGetStringAsync(resultBlob,
