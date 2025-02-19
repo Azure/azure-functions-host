@@ -299,9 +299,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             }
         }
 
-        [Fact]
-        public async Task TrySyncTriggers_ManagedAppEnv_WithNo_AzureWebJobsStorage_ReturnsTrue()
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async Task TrySyncTriggers_ManagedAppEnv_WithNo_AzureWebJobsStorage_ReturnsTrue(bool cacheEnabled)
         {
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteArmCacheEnabled)).Returns(cacheEnabled ? "1" : "0");
+
             using (var env = new TestScopedEnvironmentVariable(_vars))
             {
                 _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.ManagedEnvironment)).Returns("true");
@@ -311,6 +315,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 _mockEnvironment.Setup(p => p.GetEnvironmentVariable("CONTAINER_APP_REVISION")).Returns("appname--r1");
                 var result = await _functionsSyncManager.TrySyncTriggersAsync(isBackgroundSync: true);
                 Assert.True(result.Success);
+                if (cacheEnabled)
+                {
+                    VerifyResultWithCacheOn(durableVersion: "V1");
+                }
+                else
+                {
+                    VerifyResultWithCacheOff(durableVersion: "V1");
+                }
             }
         }
 
