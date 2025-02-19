@@ -263,7 +263,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 shouldInvokeMethod ? Times.Once() : Times.Never());
             instanceManager.Verify(i => i.SpecializeMSISidecar(It.IsAny<HostAssignmentContext>()),
                 shouldInvokeMethod ? Times.Once() : Times.Never());
-            instanceManager.Verify(i => i.AssignInstanceAsync(It.IsAny<HostAssignmentContext>()),
+            instanceManager.Verify(i => i.StartAssignment(It.IsAny<HostAssignmentContext>()),
                 shouldInvokeMethod ? Times.Once() : Times.Never());
         }
     }

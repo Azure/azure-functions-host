@@ -66,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         }
 
         [Fact]
-        public void StartAssignment_AppliesAssignmentContext()
+        public async Task StartAssignment_AppliesAssignmentContextAsync()
         {
             var envValue = new
             {
@@ -96,10 +96,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 IsWarmupRequest = false
             };
 
+            bool result = _instanceManager.StartAssignment(context);
+            Assert.True(result);
             Assert.True(_scriptWebEnvironment.InStandbyMode);
 
-            var result = _instanceManager.StartAssignment(context);
-            Assert.True(result);
+            // specialization is done in the background
+            await Task.Delay(500);
 
             Assert.False(_scriptWebEnvironment.InStandbyMode);
 
@@ -306,9 +308,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 IsScmRunFromPackage = false
             };
             var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(options);
-
-            _meshServiceClientMock.Setup(m => m.NotifyHealthEvent(ContainerHealthEventType.Fatal, It.IsAny<Type>(), It.IsAny<string>()))
-                .Returns(Task.CompletedTask);
 
             var instanceManager = new AtlasInstanceManager(optionsFactory, _httpClientFactory, _scriptWebEnvironment,
                 _environment, _loggerFactory.CreateLogger<AtlasInstanceManager>(), new TestMetricsLogger(),
@@ -1040,9 +1039,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions() { ScriptPath = scriptPath });
 
-            _meshServiceClientMock.Setup(m => m.NotifyHealthEvent(ContainerHealthEventType.Fatal, It.IsAny<Type>(), It.IsAny<string>()))
-                .Returns(Task.CompletedTask);
-
             var instanceManager = new AtlasInstanceManager(optionsFactory, _httpClientFactory, _scriptWebEnvironment, _environment,
                 _loggerFactory.CreateLogger<AtlasInstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object,
                 runFromPackageHandler.Object, _packageDownloadHandler.Object);
@@ -1390,9 +1386,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                     true)).ReturnsAsync(true);
 
             runFromPackageHandler.Setup(r => r.MountAzureFileShare(context)).ReturnsAsync(true);
-
-            _meshServiceClientMock.Setup(m => m.NotifyHealthEvent(ContainerHealthEventType.Fatal, It.IsAny<Type>(), It.IsAny<string>()))
-                .Returns(Task.CompletedTask);
 
             var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions() { ScriptPath = scriptPath });
 
