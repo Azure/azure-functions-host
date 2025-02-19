@@ -19,20 +19,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 {
     [Trait(TestTraits.Category, TestTraits.EndToEnd)]
     [Trait(TestTraits.Group, TestTraits.SamplesEndToEnd)]
-    public class SamplesEndToEndTests_Node_MultipleProcesses : IAsyncDisposable
+    public class SamplesEndToEndTests_Node_MultipleProcesses : IAsyncLifetime
     {
-        private readonly MultiplepleProcessesTestFixture _fixture;
-
-        public SamplesEndToEndTests_Node_MultipleProcesses()
-        {
-            // We want a new fixture for each test
-            _fixture = new MultiplepleProcessesTestFixture();
-        }
+        private readonly MultipleProcessesTestFixture _fixture = new();
 
         [Fact]
         public async Task NodeProcess_Different_AfterHostRestart()
         {
-            await _fixture.InitializeAsync();
             await WaitForWebHostChannelCountAsync(3);
 
             await SamplesTestHelpers.InvokeAndValidateHttpTrigger(_fixture, "HttpTrigger");
@@ -56,8 +49,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         [Fact]
         public async Task NodeProcessCount_RemainsSame_AfterMultipleTimeouts()
         {
-            await _fixture.InitializeAsync();
-
             // Wait for all the 3 process to start
             List<Task<HttpResponseMessage>> timeoutTasks = new List<Task<HttpResponseMessage>>();
             await WaitForWebHostChannelCountAsync(3);
@@ -129,16 +120,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             return webHostPids.Concat(jobHostPids);
         }
 
-        public async ValueTask DisposeAsync()
-        {
-            await _fixture.DisposeAsync();
-        }
+        public Task InitializeAsync() => _fixture.InitializeAsync();
 
-        public class MultiplepleProcessesTestFixture : EndToEndTestFixture
+        Task IAsyncLifetime.DisposeAsync() => _fixture?.DisposeAsync();
+
+        private class MultipleProcessesTestFixture : EndToEndTestFixture
         {
-            public MultiplepleProcessesTestFixture()
+            public MultipleProcessesTestFixture()
                 : base(Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "sample", "node"), "samples", RpcWorkerConstants.NodeLanguageWorkerName, 3)
             {
+            }
+
+            protected override Task CreateTestStorageEntities()
+            {
+                // not needed
+                return Task.CompletedTask;
             }
 
             public override void ConfigureScriptHost(IWebJobsBuilder webJobsBuilder)
@@ -156,8 +152,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 webJobsBuilder.Services.AddOptions<LanguageWorkerOptions>()
                     .PostConfigure(o =>
                     {
-                        var nodeConfig = o.WorkerConfigs.Single(c => c.Description.Language == "node");
-                        nodeConfig.CountOptions.ProcessStartupInterval = TimeSpan.FromSeconds(3);
+                        var nodeConfig = o.WorkerConfigs.SingleOrDefault(c => c.Description.Language == "node");
+                        if (nodeConfig is not null)
+                        {
+                            nodeConfig.CountOptions.ProcessStartupInterval = TimeSpan.FromSeconds(3);
+                        }
                     });
             }
         }

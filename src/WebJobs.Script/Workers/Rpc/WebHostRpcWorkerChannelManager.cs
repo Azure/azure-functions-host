@@ -44,6 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                                               IMetricsLogger metricsLogger,
                                               IConfiguration config,
                                               IWorkerProfileManager workerProfileManager,
+                                              IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions,
                                               IOptions<FunctionsHostingConfigOptions> hostingConfigOptions)
         {
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
@@ -56,6 +57,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _logger = loggerFactory.CreateLogger<WebHostRpcWorkerChannelManager>();
             _applicationHostOptions = applicationHostOptions;
             _hostingConfigOptions = hostingConfigOptions;
+
+            languageWorkerOptions.OnChange(async languageWorkerOptions =>
+            {
+                IRpcWorkerChannel rpcWorkerChannel = await GetChannelAsync(_workerRuntime);
+                if (rpcWorkerChannel != null && !UsePlaceholderChannel(rpcWorkerChannel))
+                {
+                    _logger.LogInformation("Language worker options changed, and the placeholder worker channel is invalid for other reasons (e.g., worker configuration changes). Shutting down the channel.");
+                    await ShutdownChannelIfExistsAsync(_workerRuntime, rpcWorkerChannel.Id);
+                }
+            });
 
             _shutdownStandbyWorkerChannels = ScheduleShutdownStandbyChannels;
             _shutdownStandbyWorkerChannels = _shutdownStandbyWorkerChannels.Debounce(milliseconds: 5000);

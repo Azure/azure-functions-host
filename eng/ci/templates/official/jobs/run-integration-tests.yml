@@ -41,6 +41,12 @@ jobs:
       command: ci
       workingDir: sample/CustomHandlerRetry
 
+  - task: DotNetCoreCLI@2
+    displayName: Build Integration.csproj
+    inputs:
+      command: build
+      projects: $(IntegrationProject)
+
   - task: AzurePowerShell@5
     displayName: Checkout secrets
     inputs:
@@ -72,12 +78,6 @@ jobs:
       CosmosDbSecretMap: $(CosmosDb)
       AzureWebJobsEventHubSenderSecretMap: $(EventHub)
       AzureWebJobsEventHubReceiverSecretMap: $(EventHub)
-
-  - task: DotNetCoreCLI@2
-    displayName: Build Integration.csproj
-    inputs:
-      command: build
-      projects: $(IntegrationProject)
 
   - task: DotNetCoreCLI@2
     displayName: C# end to end tests
