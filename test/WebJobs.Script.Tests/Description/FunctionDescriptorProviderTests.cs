@@ -80,7 +80,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 _provider.ValidateFunction(functionMetadata);
             });
 
-            Assert.Equal("Multiple bindings with name 'dupe' discovered. Binding names must be unique.", ex.Message);
+            Assert.Equal($"{nameof(FunctionDescriptorProvider)}: Multiple bindings with name 'dupe' discovered. Binding names must be unique.", ex.Message);
         }
 
         [Fact]

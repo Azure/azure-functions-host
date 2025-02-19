@@ -54,14 +54,6 @@ jobs:
 
   steps:
 
-  - task: AzureKeyVault@2
-    condition: and(succeeded(), eq(variables['storeBenchmarkResultsInDatabase'], true))
-    inputs:
-      azureSubscription: Azure-Functions-Host-CI-internal
-      KeyVaultName: functions-perf-crank-kv
-      SecretsFilter: BenchmarkResultsSqlConnectionString
-      RunAsPreJob: false
-
   - template: /eng/ci/templates/install-dotnet.yml@self
 
   - script: dotnet tool install -g Microsoft.Crank.Agent --version "0.2.0-*"
@@ -113,12 +105,16 @@ jobs:
           }
         } while (-not $Entity)
 
-  - pwsh: |
+  - task: AzureCLI@2
+    inputs:
+      azureSubscription: $(ServiceConnection)
+      scriptType: pscore
+      scriptLocation: inlineScript
+      inlineScript: |
         $crankArgs = "--config $(configFilePath) --scenario hellohttp --profile win2022 --load.options.reuseBuild true --description `"$(runDescription)`" --command-line-property --no-measurements --json $(benchmarkResultsJsonPath) --property sourceVersion=$(Build.SourceVersion) --property buildNumber=$(Build.BuildNumber) --property buildId=$(Build.BuildId) --property sourceBranch=$(Build.SourceBranch) --variable FunctionsWorkerRuntime=$(functionsWorkerRuntime) --variable HostLocation=$(hostLocation) --variable FunctionAppPath=$(functionAppOutputPath)"
         $crankArgs += " --variable CrankAgentAppVm=$(appAgentHostName) --variable CrankAgentLoadVm=localhost --variable AspNetUrls=http://$(appAgentHostName):5000"
         $crankArgs += " $(AdditionalCrankArguments)"
         $command = "crank $crankArgs"
-
         if ('$(storeBenchmarkResultsInDatabase)' -eq 'true') {
             $command += " --table HttpBenchmarks --sql `"$(BenchmarkResultsSqlConnectionString)`""
         }

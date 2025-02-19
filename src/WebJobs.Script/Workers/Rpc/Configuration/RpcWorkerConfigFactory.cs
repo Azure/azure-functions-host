@@ -162,6 +162,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     if (ShouldAddWorkerConfig(workerDescription.Language))
                     {
                         workerDescription.FormatWorkerPathIfNeeded(_systemRuntimeInformation, _environment, _logger);
+                        workerDescription.FormatWorkingDirectoryIfNeeded();
                         workerDescription.FormatArgumentsIfNeeded(_logger);
                         workerDescription.ThrowIfFileNotExists(workerDescription.DefaultWorkerPath, nameof(workerDescription.DefaultWorkerPath));
                         workerDescription.ExpandEnvironmentVariables();

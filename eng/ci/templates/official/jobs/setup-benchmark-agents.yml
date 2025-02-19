@@ -31,13 +31,6 @@ jobs:
 
   - template: /eng/ci/templates/install-dotnet.yml@self
 
-  - ${{ if eq(parameters.os, 'Linux') }}:
-    # Adds the Ubuntu 20.04 security repository to Ubuntu 22.04 and installs libssl1.1, which is unavailable by default.
-    - script: |
-        echo "deb http://security.ubuntu.com/ubuntu focal-security main" | sudo tee /etc/apt/sources.list.d/focal-security.list
-        sudo apt update && sudo apt install -y libssl1.1
-      displayName: "Install libssl1.1 on Ubuntu 22.04"
-
   - script: dotnet tool install -g Microsoft.Crank.Agent --version "0.2.0-*"
     displayName: Install Microsoft.Crank.Agent tool
 
