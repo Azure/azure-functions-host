@@ -338,6 +338,30 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             }
         }
 
+        [Theory]
+        [InlineData(false)]
+        public async Task TrySyncTriggers_KubernetesManagedEnv_WithNo_AzureWebJobsStorage_ReturnsTrue(bool cacheEnabled)
+        {
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteArmCacheEnabled)).Returns(cacheEnabled ? "1" : "0");
+
+            using (var env = new TestScopedEnvironmentVariable(_vars))
+            {
+                _mockEnvironment.Setup(p => p.GetEnvironmentVariable("FUNCTIONS_API_SERVER")).Returns("https://appname.azurewebsites.net");
+                _mockEnvironment.Setup(p => p.GetEnvironmentVariable("KUBERNETES_SERVICE_HOST")).Returns("kubhost");
+                _mockEnvironment.Setup(p => p.GetEnvironmentVariable("POD_NAMESPACE")).Returns("podns");
+                var result = await _functionsSyncManager.TrySyncTriggersAsync(isBackgroundSync: true);
+                Assert.True(result.Success);
+                if (cacheEnabled)
+                {
+                    VerifyResultWithCacheOn(durableVersion: "V1");
+                }
+                else
+                {
+                    VerifyResultWithCacheOff(durableVersion: "V1");
+                }
+            }
+        }
+
         [Fact]
         public void ArmCacheEnabled_VerifyDefault()
         {
