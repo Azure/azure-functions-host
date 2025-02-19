@@ -66,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         }
 
         [Fact]
-        public async Task StartAssignment_AppliesAssignmentContext()
+        public void StartAssignment_AppliesAssignmentContext()
         {
             var envValue = new
             {
@@ -95,12 +95,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 },
                 IsWarmupRequest = false
             };
-            bool result = await _instanceManager.StartAssignment(context);
-            Assert.True(result);
+
             Assert.True(_scriptWebEnvironment.InStandbyMode);
 
-            // specialization is done in the background
-            await Task.Delay(500);
+            var result = _instanceManager.StartAssignment(context);
+            Assert.True(result);
+
+            Assert.False(_scriptWebEnvironment.InStandbyMode);
 
             var value = _environment.GetEnvironmentVariable(envValue.Name);
             Assert.Equal(value, envValue.Value);
@@ -122,7 +123,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             // calling again should return false, since we have 
             // already marked the container as specialized.
             _loggerProvider.ClearAllLogMessages();
-            result = await _instanceManager.StartAssignment(context);
+            result = _instanceManager.StartAssignment(context);
             Assert.False(result);
 
             logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
@@ -147,7 +148,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             _meshServiceClientMock.Setup(c => c.NotifyHealthEvent(ContainerHealthEventType.Fatal,
                 It.Is<Type>(t => t == typeof(AtlasInstanceManager)), "Assign failed")).Returns(Task.CompletedTask);
 
-            bool result = await _instanceManager.StartAssignment(context);
+            bool result = _instanceManager.StartAssignment(context);
             Assert.True(result);
             Assert.True(_scriptWebEnvironment.InStandbyMode);
 
@@ -170,7 +171,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 Environment = new Dictionary<string, string>(),
                 IsWarmupRequest = false
             };
-            bool result = await _instanceManager.StartAssignment(context);
+            bool result = _instanceManager.StartAssignment(context);
             Assert.True(result);
             Assert.True(_scriptWebEnvironment.InStandbyMode);
 
@@ -219,7 +220,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 _environment, _loggerFactory.CreateLogger<AtlasInstanceManager>(), new TestMetricsLogger(),
                 _meshServiceClientMock.Object, _runFromPackageHandler, _packageDownloadHandler.Object);
 
-            bool result = await instanceManager.StartAssignment(context);
+            bool result = instanceManager.StartAssignment(context);
             Assert.True(result);
 
             await TestHelpers.Await(() => !_scriptWebEnvironment.InStandbyMode, timeout: 5000);
@@ -274,7 +275,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 },
                 IsWarmupRequest = true
             };
-            bool result = await _instanceManager.StartAssignment(context);
+            bool result = _instanceManager.StartAssignment(context);
             Assert.True(result);
 
             var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
@@ -289,6 +290,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Uri sasUri = await TestHelpers.CreateBlobSas(connectionString, string.Empty, "scm-run-from-pkg-test", "Empty.zip");
 
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+
             var context = new HostAssignmentContext
             {
                 Environment = new Dictionary<string, string>()
@@ -297,17 +299,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 },
                 IsWarmupRequest = false
             };
+
             var options = new ScriptApplicationHostOptions()
             {
                 ScriptPath = Path.GetTempPath(),
                 IsScmRunFromPackage = false
             };
             var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(options);
+
+            _meshServiceClientMock.Setup(m => m.NotifyHealthEvent(ContainerHealthEventType.Fatal, It.IsAny<Type>(), It.IsAny<string>()))
+                .Returns(Task.CompletedTask);
+
             var instanceManager = new AtlasInstanceManager(optionsFactory, _httpClientFactory, _scriptWebEnvironment,
                 _environment, _loggerFactory.CreateLogger<AtlasInstanceManager>(), new TestMetricsLogger(),
                 _meshServiceClientMock.Object, _runFromPackageHandler, _packageDownloadHandler.Object);
 
-            bool result = await instanceManager.StartAssignment(context);
+            bool result = instanceManager.StartAssignment(context);
             Assert.True(result);
 
             await TestHelpers.Await(() => !_scriptWebEnvironment.InStandbyMode, timeout: 4000);
@@ -324,7 +331,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         }
 
         [Fact]
-        public async Task StartAssignment_ReturnsTrue_ForPinnedContainers()
+        public void StartAssignment_ReturnsTrue_ForPinnedContainers()
         {
             Assert.False(SystemEnvironment.Instance.IsPlaceholderModeEnabled());
 
@@ -334,19 +341,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 { EnvironmentSettingNames.ContainerStartContext, "startContext" }
             };
             context.IsWarmupRequest = false;
-            bool result = await _instanceManager.StartAssignment(context);
+            bool result = _instanceManager.StartAssignment(context);
             Assert.True(result);
         }
 
         [Fact]
-        public async Task StartAssignment_ReturnsFalse_ForNonPinnedContainersInStandbyMode()
+        public void StartAssignment_ReturnsFalse_ForNonPinnedContainersInStandbyMode()
         {
             Assert.False(SystemEnvironment.Instance.IsPlaceholderModeEnabled());
 
             var context = new HostAssignmentContext();
             context.Environment = new Dictionary<string, string>();
             context.IsWarmupRequest = false;
-            bool result = await _instanceManager.StartAssignment(context);
+            bool result = _instanceManager.StartAssignment(context);
             Assert.False(result);
         }
 
@@ -927,7 +934,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 _loggerFactory.CreateLogger<AtlasInstanceManager>(), new TestMetricsLogger(), meshInitServiceClient.Object,
                 _runFromPackageHandler, _packageDownloadHandler.Object);
 
-            await instanceManager.StartAssignment(hostAssignmentContext);
+            instanceManager.StartAssignment(hostAssignmentContext);
 
             await TestHelpers.Await(() => !_scriptWebEnvironment.InStandbyMode, timeout: 5000);
 
@@ -980,7 +987,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 _loggerFactory.CreateLogger<AtlasInstanceManager>(), new TestMetricsLogger(), meshInitServiceClient.Object,
                 _runFromPackageHandler, _packageDownloadHandler.Object);
 
-            await instanceManager.StartAssignment(hostAssignmentContext);
+            instanceManager.StartAssignment(hostAssignmentContext);
 
             await Task.Delay(TimeSpan.FromSeconds(0.5));
 
@@ -1033,11 +1040,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions() { ScriptPath = scriptPath });
 
+            _meshServiceClientMock.Setup(m => m.NotifyHealthEvent(ContainerHealthEventType.Fatal, It.IsAny<Type>(), It.IsAny<string>()))
+                .Returns(Task.CompletedTask);
+
             var instanceManager = new AtlasInstanceManager(optionsFactory, _httpClientFactory, _scriptWebEnvironment, _environment,
                 _loggerFactory.CreateLogger<AtlasInstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object,
                 runFromPackageHandler.Object, _packageDownloadHandler.Object);
 
-            bool result = await instanceManager.StartAssignment(context);
+            bool result = instanceManager.StartAssignment(context);
             Assert.True(result);
 
             await TestHelpers.Await(() => !_scriptWebEnvironment.InStandbyMode, timeout: 5000);
@@ -1103,7 +1113,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 _loggerFactory.CreateLogger<AtlasInstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object,
                 runFromPackageHandler.Object, _packageDownloadHandler.Object);
 
-            bool result = await instanceManager.StartAssignment(context);
+            bool result = instanceManager.StartAssignment(context);
             Assert.True(result);
 
             await TestHelpers.Await(() => !_scriptWebEnvironment.InStandbyMode, timeout: 5000);
@@ -1158,7 +1168,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 _loggerFactory.CreateLogger<AtlasInstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object,
                 runFromPackageHandler.Object, _packageDownloadHandler.Object);
 
-            bool result = await instanceManager.StartAssignment(context);
+            bool result = instanceManager.StartAssignment(context);
             Assert.True(result);
 
             await TestHelpers.Await(() => !_scriptWebEnvironment.InStandbyMode, timeout: 5000);
@@ -1214,7 +1224,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 _loggerFactory.CreateLogger<AtlasInstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object,
                 runFromPackageHandler.Object, _packageDownloadHandler.Object);
 
-            bool result = await instanceManager.StartAssignment(context);
+            bool result = instanceManager.StartAssignment(context);
             Assert.True(result);
 
             await TestHelpers.Await(() => !_scriptWebEnvironment.InStandbyMode, timeout: 5000);
@@ -1265,7 +1275,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 _loggerFactory.CreateLogger<AtlasInstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object,
                 runFromPackageHandler.Object, _packageDownloadHandler.Object);
 
-            bool result = await instanceManager.StartAssignment(context);
+            bool result = instanceManager.StartAssignment(context);
             Assert.True(result);
 
             await TestHelpers.Await(() => !_scriptWebEnvironment.InStandbyMode, timeout: 5000);
@@ -1319,7 +1329,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 _loggerFactory.CreateLogger<AtlasInstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object,
                 runFromPackageHandler.Object, _packageDownloadHandler.Object);
 
-            bool result = await instanceManager.StartAssignment(context);
+            bool result = instanceManager.StartAssignment(context);
             Assert.True(result);
 
             await TestHelpers.Await(() => !_scriptWebEnvironment.InStandbyMode, timeout: 5000);
@@ -1344,7 +1354,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         [Theory]
         [InlineData(true)]
         [InlineData(false)]
-        public async void Mounts_Azure_Files_When_If_RunFromPkg_Is_One(bool runFromLocalZip)
+        public async Task Mounts_Azure_Files_When_If_RunFromPkg_Is_One(bool runFromLocalZip)
         {
             const string url = "http://url";
             const string connectionString = "AzureFiles-ConnectionString";
@@ -1381,13 +1391,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             runFromPackageHandler.Setup(r => r.MountAzureFileShare(context)).ReturnsAsync(true);
 
+            _meshServiceClientMock.Setup(m => m.NotifyHealthEvent(ContainerHealthEventType.Fatal, It.IsAny<Type>(), It.IsAny<string>()))
+                .Returns(Task.CompletedTask);
+
             var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions() { ScriptPath = scriptPath });
 
             var instanceManager = new AtlasInstanceManager(optionsFactory, _httpClientFactory, _scriptWebEnvironment, _environment,
                 _loggerFactory.CreateLogger<AtlasInstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object,
                 runFromPackageHandler.Object, _packageDownloadHandler.Object);
 
-            bool result = await instanceManager.StartAssignment(context);
+            bool result = instanceManager.StartAssignment(context);
             Assert.True(result);
 
             await TestHelpers.Await(() => !_scriptWebEnvironment.InStandbyMode, timeout: 5000);

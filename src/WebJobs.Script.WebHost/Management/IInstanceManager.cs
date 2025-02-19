@@ -13,7 +13,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         Task<string> ValidateContext(HostAssignmentContext assignmentContext);
 
-        Task<bool> StartAssignment(HostAssignmentContext assignmentContext);
+        /// <summary>
+        /// AssignInstanceAsync will asynchronously assign an instance.
+        /// </summary>
+        /// <param name="assignmentContext">Takes in a <see cref="HostAssignmentContext"/> and asynchronously uses this context to assign an instance.</param>
+        /// <returns>Returns true if assiging an instance succeeds, false otherwise.</returns>
+        Task<bool> AssignInstanceAsync(HostAssignmentContext assignmentContext);
+
+        /// <summary>
+        /// StartAssinment will validate the current environment and assign an instance in a "fire and forget" pattern. Should be used synchronously.
+        /// </summary>
+        /// <param name="assignmentContext">Takes in a <see cref="HostAssignmentContext"/>, validates the current environment, and assigns an instance in a "fire and forget" pattern.</param>
+        /// <returns>Returns true if environment validation succeeds, false otherwise.</returns>
+        bool StartAssignment(HostAssignmentContext assignmentContext);
 
         Task<string> SpecializeMSISidecar(HostAssignmentContext assignmentContext);
     }

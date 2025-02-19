@@ -36,13 +36,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         public abstract Task<string> SpecializeMSISidecar(HostAssignmentContext context);
 
-        public async Task<bool> StartAssignment(HostAssignmentContext context)
+        private async Task<bool> AssignInstanceAsyncCore(HostAssignmentContext context)
         {
-            if (!IsValidEnvironment(context))
-            {
-                return false;
-            }
-
             if (context.IsWarmupRequest)
             {
                 // Based on profiling download code jit-ing holds up cold start.
@@ -80,6 +75,35 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 // No lock needed here since _assignmentContext is not null when we are here
                 return _assignmentContext.Equals(context);
             }
+        }
+
+        public async Task<bool> AssignInstanceAsync(HostAssignmentContext context)
+        {
+            if (!IsValidEnvironment(context))
+            {
+                return false;
+            }
+
+            await AssignInstanceAsyncCore(context);
+
+            return true;
+        }
+
+        public bool StartAssignment(HostAssignmentContext context)
+        {
+            if (!IsValidEnvironment(context))
+            {
+                return false;
+            }
+
+            if (_assignmentContext != null)
+            {
+                return _assignmentContext.Equals(context);
+            }
+
+            _ = AssignInstanceAsyncCore(context);
+
+            return true;
         }
 
         public abstract Task<string> ValidateContext(HostAssignmentContext assignmentContext);

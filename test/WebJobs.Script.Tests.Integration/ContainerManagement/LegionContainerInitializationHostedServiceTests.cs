@@ -104,7 +104,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ContainerManagement
                 m.SpecializeMSISidecar(It.Is<HostAssignmentContext>(context =>
                     hostAssignmentContext.Equals(context) && !context.IsWarmupRequest))).Returns(Task.FromResult(string.Empty));
 
-            _instanceManagerMock.Setup(manager => manager.StartAssignment(It.Is<HostAssignmentContext>(context => hostAssignmentContext.Equals(context) && !context.IsWarmupRequest))).Returns(Task.FromResult(true));
+            _instanceManagerMock.Setup(manager => manager.StartAssignment(It.Is<HostAssignmentContext>(context => hostAssignmentContext.Equals(context) && !context.IsWarmupRequest))).Returns(true);
 
             var initializationHostService = new LegionContainerInitializationHostedService(_environment, _instanceManagerMock.Object, NullLogger<LegionContainerInitializationHostedService>.Instance, _startupContextProvider);
             await initializationHostService.StartAsync(CancellationToken.None);

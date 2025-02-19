@@ -34,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ContainerManagment
         public async Task StartAssignmentIsAwaitedTest()
         {
             TaskCompletionSource<bool> tcs = new();
-            _mockInstanceManager.Setup(m => m.StartAssignment(It.IsAny<HostAssignmentContext>())).Returns(tcs.Task);
+            _mockInstanceManager.Setup(m => m.AssignInstanceAsync(It.IsAny<HostAssignmentContext>())).Returns(tcs.Task);
 
             var assignmentContext = new HostAssignmentContext();
             _mockStartupContextProvider.Setup(p => p.SetContext(It.IsAny<EncryptedHostAssignmentContext>())).Returns(assignmentContext);
