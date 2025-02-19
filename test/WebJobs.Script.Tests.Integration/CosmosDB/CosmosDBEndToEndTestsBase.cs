@@ -9,6 +9,7 @@ using Microsoft.Azure.Storage.Queue;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
@@ -17,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
         EndToEndTestsBase<TTestFixture> where TTestFixture : CosmosDBTestFixture, new()
     {
         public CosmosDBEndToEndTestsBase(TTestFixture fixture) : base(fixture)
-        {   
+        {
         }
 
         protected async Task CosmosDBTriggerToBlobTest()
@@ -29,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
             await Task.Delay(10000);
 
             //await Fixture.InitializeDocumentClient();
-            await Fixture.InitializeCosmosClient();
+            Fixture.InitializeCosmosClient();
 
             bool collectionsCreated = await Fixture.CreateDocumentCollections();
 
@@ -67,13 +68,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
             string id = Guid.NewGuid().ToString();
 
             await Fixture.Host.BeginFunctionAsync("CosmosDBOut", id);
-
+           
             //Document doc = await WaitForDocumentAsync(id);
-            ItemResponse<dynamic> itemResponse = await WaitForDocumentAsync(id);
-            dynamic item = itemResponse.Resource;
+            ItemResponse<JObject> itemResponse = await WaitForDocumentAsync(id);
+            JObject item = itemResponse.Resource;
 
             //Assert.Equal(doc.Id, id);
-            Assert.Equal(id, item.id.ToString());
+            Assert.Equal(id, item["id"]?.ToString());
 
             // Now add that Id to a Queue, in an object to test binding
             var queue = await Fixture.GetNewQueue("documentdb-input");
@@ -85,10 +86,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
 
             //Assert.Equal(updatedDoc.Id, doc.Id);
             //Assert.NotEqual(doc.ETag, updatedDoc.ETag);
-            ItemResponse<dynamic> updatedItemResponse = await WaitForDocumentAsync(id, "This was updated!");
+            ItemResponse<JObject> updatedItemResponse = await WaitForDocumentAsync(id, "This was updated!");
             dynamic updatedItem = updatedItemResponse.Resource;
 
-            Assert.Equal(id, updatedItem.id.ToString());
+            Assert.Equal(id, updatedItem["id"]?.ToString());
             Assert.NotEqual(itemResponse.ETag, updatedItemResponse.ETag);
         }
     }
@@ -144,7 +145,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
         //    }
         //}
 
-        public async Task InitializeCosmosClient()
+        public void InitializeCosmosClient()
         {
             if (CosmosClient == null)
             {

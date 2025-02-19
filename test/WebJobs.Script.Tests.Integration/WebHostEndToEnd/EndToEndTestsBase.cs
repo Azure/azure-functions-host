@@ -316,7 +316,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             return item;
         }
 
-        protected async Task<ItemResponse<dynamic>> WaitForDocumentAsync(string itemId, string textToMatch = null)
+        protected async Task<ItemResponse<JObject>> WaitForDocumentAsync(string itemId, string textToMatch = null)
         {
             var connectionString = _configuration.GetConnectionString("CosmosDB");
             var client = new CosmosClient(connectionString);
@@ -324,16 +324,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var database = client.GetDatabase("ItemDb");
             var container = database.GetContainer("ItemCollection");
 
-            ItemResponse<dynamic> itemResponse = null;
+            ItemResponse<JObject> itemResponse = null;
             await TestHelpers.Await(async () =>
             {
                 try
                 {
-                    itemResponse = await container.ReadItemAsync<dynamic>(itemId, new PartitionKey(itemId));
+                    itemResponse = await container.ReadItemAsync<JObject>(itemId, new PartitionKey(itemId));
 
                     if (textToMatch != null)
                     {
-                        return itemResponse.Resource.text == textToMatch;
+                        return itemResponse.Resource["text"]?.ToString() == textToMatch;
                     }
                     return true;
                 }
