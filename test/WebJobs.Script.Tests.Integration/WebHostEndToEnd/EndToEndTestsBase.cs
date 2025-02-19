@@ -330,7 +330,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 try
                 {
                     itemResponse = await container.ReadItemAsync<JObject>(itemId, new PartitionKey(itemId));
-
+                    Console.WriteLine("------------------------------------" + itemResponse.Resource.ToString());
                     if (textToMatch != null)
                     {
                         return itemResponse.Resource["text"]?.ToString() == textToMatch;

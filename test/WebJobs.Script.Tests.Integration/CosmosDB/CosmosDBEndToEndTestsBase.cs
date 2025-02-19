@@ -23,6 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
 
         protected async Task CosmosDBTriggerToBlobTest()
         {
+            Console.WriteLine("--------------------------------------------");
             // CosmosDB tests need the following connection string:
             // "ConnectionStrings:CosmosDB" -- the connection string to the account
 
