@@ -68,7 +68,7 @@
     <PackageReference Include="Microsoft.Azure.Functions.PowerShellWorker.PS7.4" Version="4.0.4026" />
     <!-- /Workers -->
 
-    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions" Version="5.1.0-12151" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions" Version="5.2.0-12235" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Http" Version="3.2.0" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Timers.Storage" Version="1.0.0-beta.1" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Script.Abstractions" Version="1.0.4-preview" />
