@@ -66,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         }
 
         [Fact]
-        public async Task StartAssignment_AppliesAssignmentContext()
+          public async Task StartAssignment_AppliesAssignmentContext()
         {
             var envValue = new
             {
@@ -101,7 +101,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             await TestHelpers.Await(() => !_scriptWebEnvironment.InStandbyMode, timeout: 5000);
 
-            Assert.True(!_scriptWebEnvironment.InStandbyMode);
+            Assert.False(_scriptWebEnvironment.InStandbyMode);
 
             var value = _environment.GetEnvironmentVariable(envValue.Name);
             Assert.Equal(value, envValue.Value);
@@ -1407,6 +1407,96 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                     .Verify(r => r.ApplyRunFromPackageContext(It.Is<RunFromPackageContext>(c => MatchesRunFromPackageContext(c, url)), scriptPath, false,
                         true), Times.Once);
             }
+        }
+
+        [Fact]
+        public async Task AssignInstanceAsync_AppliesAssignmentContext()
+        {
+            var envValue = new
+            {
+                Name = Path.GetTempFileName().Replace(".", string.Empty),
+                Value = Guid.NewGuid().ToString()
+            };
+            var allowedOrigins = new string[]
+            {
+                "https://functions.azure.com",
+                "https://functions-staging.azure.com",
+                "https://functions-next.azure.com"
+            };
+            var supportCredentials = true;
+
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+            var context = new HostAssignmentContext
+            {
+                Environment = new Dictionary<string, string>
+                {
+                    { envValue.Name, envValue.Value }
+                },
+                CorsSettings = new CorsSettings
+                {
+                    AllowedOrigins = allowedOrigins,
+                    SupportCredentials = supportCredentials,
+                },
+                IsWarmupRequest = false
+            };
+
+            bool result = await _instanceManager.AssignInstanceAsync(context);
+            Assert.True(result);
+            Assert.False(_scriptWebEnvironment.InStandbyMode);
+
+            var value = _environment.GetEnvironmentVariable(envValue.Name);
+            Assert.Equal(value, envValue.Value);
+
+            var supportCredentialsValue = _environment.GetEnvironmentVariable(EnvironmentSettingNames.CorsSupportCredentials);
+            Assert.Equal(supportCredentialsValue, supportCredentials.ToString());
+
+            var allowedOriginsValue = _environment.GetEnvironmentVariable(EnvironmentSettingNames.CorsAllowedOrigins);
+            Assert.Equal(allowedOriginsValue, JsonConvert.SerializeObject(allowedOrigins));
+
+            // verify logs
+            var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
+            Assert.Collection(logs,
+                p => Assert.StartsWith("Starting Assignment", p),
+                p => Assert.StartsWith("Applying 1 app setting(s)", p),
+                p => Assert.Equal("AzureFilesConnectionString IsNullOrEmpty: True. AzureFilesContentShare: IsNullOrEmpty True", p),
+                p => Assert.StartsWith("Triggering specialization", p));
+
+            // calling again should return false, since we have 
+            // already marked the container as specialized.
+            _loggerProvider.ClearAllLogMessages();
+            result = await _instanceManager.AssignInstanceAsync(context);
+            Assert.False(result);
+
+            logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
+            Assert.Collection(logs,
+                p => Assert.StartsWith("Assign called while host is not in placeholder mode and start context is not present.", p));
+        }
+
+        [Fact]
+        public async Task AssignInstanceAsync_Does_Not_Assign_Settings_For_Warmup_Request()
+        {
+            var contentRoot = Path.Combine(Path.GetTempPath(), @"FunctionsTest");
+            var zipFilePath = Path.Combine(contentRoot, "content.zip");
+            await TestHelpers.CreateContentZip(contentRoot, zipFilePath, Path.Combine(@"TestScripts", "DotNet"));
+
+            IConfiguration configuration = TestHelpers.GetTestConfiguration();
+            string connectionString = configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
+            Uri sasUri = await TestHelpers.CreateBlobSas(connectionString, zipFilePath, "scm-run-from-pkg-test", "NonEmpty.zip");
+
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+            var context = new HostAssignmentContext
+            {
+                Environment = new Dictionary<string, string>()
+                {
+                    { EnvironmentSettingNames.ScmRunFromPackage, sasUri.ToString() }
+                },
+                IsWarmupRequest = true
+            };
+            bool result = await _instanceManager.AssignInstanceAsync(context);
+            Assert.True(result);
+
+            var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
+            Assert.False(logs.Any(l => l.StartsWith("Starting Assignment.")));
         }
 
         private static bool MatchesRunFromPackageContext(RunFromPackageContext r, string expectedUrl)
