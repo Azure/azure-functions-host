@@ -329,9 +329,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 try
                 {
-                    itemResponse = await container.ReadItemAsync<JObject>(itemId, new PartitionKey(itemId));
-                    Console.WriteLine("------------------------------------" + itemResponse.Resource.ToString());
-                    st = itemResponse.Resource.ToString();
+                    itemResponse = await container.ReadItemAsync<JObject>(itemId, PartitionKey.None);
+
                     if (textToMatch != null)
                     {
                         return itemResponse.Resource["text"]?.ToString() == textToMatch;
@@ -346,9 +345,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             userMessageCallback: () =>
             {
                 // AppVeyor only shows 4096 chars
-                var s = st + string.Join(Environment.NewLine, Fixture.Host.GetScriptHostLogMessages());
-                return s;
-                //return s.Length < 4096 ? s : s.Substring(s.Length - 4096);
+                var s = string.Join(Environment.NewLine, Fixture.Host.GetScriptHostLogMessages());
+                return s.Length < 4096 ? s : s.Substring(s.Length - 4096);
             });
 
             return itemResponse;
