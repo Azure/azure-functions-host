@@ -1,0 +1,62 @@
+<Project>
+
+  <!-- Common NuGet settings -->
+  <PropertyGroup>
+    <Authors>Microsoft</Authors>
+    <Company>Microsoft</Company>
+    <Product>Azure WebJobs SDK Script Runtime</Product>
+    <Copyright>© Microsoft Corporation. All rights reserved.</Copyright>
+    <PackageProjectUrl>http://go.microsoft.com/fwlink/?LinkID=320972</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Azure/azure-functions-host</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
+    <PackageProjectUrl>$(RepositoryUrl)</PackageProjectUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+  </PropertyGroup>
+
+  <!-- Package details files -->
+  <PropertyGroup>
+    <!--
+      For Icon, Readme, and ReleaseNotes there are two properties each:
+      First is the representation on disk: IconFile, ReadmeFile, and ReleaseNotesFile.
+      Second is the representation in the nupkg: PackageIcon, PackageReadmeFile, PackageReleaseNotes
+      This is why there are seemingly redundant properties below, they represent a different stage in
+      the contents of this property during the packaging process.
+      -->
+    <IconFile Condition="'$(IconFile)' == ''">$(EngResourceRoot)icon.png</IconFile>
+    <PackageIcon Condition="'$(PackageIcon)' == ''">icon.png</PackageIcon>
+    <ReadmeFile Condition="'$(ReadmeFile)' == ''">README.md</ReadmeFile>
+    <PackageReadmeFile Condition="'$(PackageReadmeFile)' == '' AND Exists('$(ReadmeFile)')">$(ReadmeFile)</PackageReadmeFile>
+    <ReleaseNotesFile Condition="'$(ReleaseNotesFile)' == ''">release_notes.md</ReleaseNotesFile>
+    <!-- PackageReleaseNotes: see Release.targets -->
+  </PropertyGroup>
+
+  <!-- Continuous Integration -->
+  <PropertyGroup>
+    <CI>false</CI>
+    <CI Condition="'$(TF_BUILD)' == 'true'">true</CI>
+    <ContinuousIntegrationBuild>$(CI)</ContinuousIntegrationBuild>
+    <TreatWarningsAsErrors Condition="'$(CI)' == 'true'">true</TreatWarningsAsErrors>
+
+    <BuildReason>dev</BuildReason>
+    <BuildReason Condition="'$(BUILD_REASON)' != ''">ci</BuildReason>
+    <BuildReason Condition="'$(BUILD_REASON)' == 'PullRequest'">pr</BuildReason>
+
+    <!-- Only set public release if this is a release tag or a release branch -->
+    <!-- tag must be either 'v{Version}' or {name}-v{Version} for a match -->
+    <!-- release branch must be refs/heads/release/* -->
+    <PublicReleaseTag Condition="$([System.Text.RegularExpressions.Regex]::IsMatch($(BUILD_SOURCEBRANCH), `refs/tags/(?:.*-)?v.*`))">$(BUILD_SOURCEBRANCHNAME)</PublicReleaseTag>
+    <PublicRelease>false</PublicRelease>
+    <PublicRelease Condition="'$(PublicReleaseTag)' != ''">true</PublicRelease>
+    <PublicRelease Condition="'$(BUILD_SOURCEBRANCH)' != '' AND $(BUILD_SOURCEBRANCH.StartsWith('refs/heads/release/'))">true</PublicRelease>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="$(IconFile)" Pack="true" PackagePath="/" />
+    <Content Include="$(ReadmeFile)" Pack="true" PackagePath="/" Condition="Exists('$(ReadmeFile)')" />
+  </ItemGroup>
+
+  <Import Project="$(MSBuildThisFileDirectory)Version.props" />
+
+</Project>

@@ -1,0 +1,142 @@
+<Project>
+
+  <UsingTask TaskName="MoveSymbols" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <Directories ParameterType="System.String[]" Required="true" />
+      <Destinations ParameterType="System.String[]" Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System"/>
+      <Using Namespace="System.IO"/>
+      <Code Type="Fragment" Language="cs">
+<![CDATA[
+if (Directories.Length != Destinations.Length)
+{
+  Log.LogError("Directories and Destinations must have the same length.");
+  return false;
+}
+
+for (int i = 0; i < Directories.Length; i++)
+{
+  string directory = Directories[i];
+  string destination = Destinations[i];
+
+  if (!Directory.Exists(directory))
+  {
+    Log.LogError($"directory directory {directory} does not exist.");
+    return false;
+  }
+
+  Log.LogMessage(MessageImportance.Low, $"Moving symbols from {directory} to {destination}");
+  if (!Directory.Exists(destination))
+  {
+    Directory.CreateDirectory(destination);
+  }
+
+  foreach (string file in Directory.EnumerateFiles(directory, "*.pdb", SearchOption.AllDirectories))
+  {
+    string relative = file.Substring(directory.Length + 1);
+    string target = Path.Combine(destination, relative);
+
+    if (File.Exists(target))
+    {
+      File.Delete(target);
+    }
+
+    string dir = Path.GetDirectoryName(target);
+    if (!Directory.Exists(dir))
+    {
+      Directory.CreateDirectory(dir);
+    }
+
+    File.Move(file, target);
+  }
+}
+]]>
+      </Code>
+    </Task>
+  </UsingTask>
+
+  <UsingTask TaskName="MoveDir" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <Directories ParameterType="System.String[]" Required="true" />
+      <Destinations ParameterType="System.String[]" Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System"/>
+      <Using Namespace="System.IO"/>
+      <Code Type="Fragment" Language="cs">
+<![CDATA[
+if (Directories.Length != Destinations.Length)
+{
+  Log.LogError("Directories and Destinations must have the same length.");
+  return false;
+}
+
+for (int i = 0; i < Directories.Length; i++)
+{
+  string directory = Directories[i];
+  string destination = Destinations[i];
+
+  if (!Directory.Exists(directory))
+  {
+    Log.LogError($"Directory '{directory}' does not exist.");
+    return false;
+  }
+
+  if (Directory.Exists(destination))
+  {
+    Log.LogError($"Destination directory '{destination}' already exists.");
+    return false;
+  }
+
+  Directory.Move(directory, destination);
+}
+]]>
+      </Code>
+    </Task>
+  </UsingTask>
+
+  <!-- Not using built in 'GetFileHash' task as it errors out with long paths. -->
+  <UsingTask TaskName="GetFileHash_Custom" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <Files ParameterType="Microsoft.Build.Framework.ITaskItem[]" Required="true" />
+      <Items ParameterType="Microsoft.Build.Framework.ITaskItem[]" Output="true" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System"/>
+      <Using Namespace="System.IO"/>
+      <Using Namespace="System.Security.Cryptography"/>
+      <Using Namespace="System.Threading.Tasks"/>
+      <Code Type="Fragment" Language="cs">
+<![CDATA[
+  Parallel.For(0, Files.Length, i =>
+  {
+    try
+    {
+      var file = Files[i];
+      using (var stream = File.OpenRead(file.ItemSpec))
+      using (var algorithm = SHA256.Create())
+      {
+        byte[] hash = algorithm.ComputeHash(stream);
+        file.SetMetadata("FileHash", Convert.ToBase64String(hash));
+      }
+    }
+    catch (Exception ex)
+    {
+      Log.LogErrorFromException(ex);
+    }
+  });
+
+  Items = Files;
+
+  if (Log.HasLoggedErrors)
+  {
+    return false;
+  }
+]]>
+      </Code>
+    </Task>
+  </UsingTask>
+
+</Project>

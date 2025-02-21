@@ -59,10 +59,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             long size = contentSize + SharedMemoryConstants.HeaderTotalBytes;
             Assert.True(_mapAccessor.TryCreate(mapName, size, out MemoryMappedFile mmf));
 
-            SharedMemoryMap sharedMemoryMap = new SharedMemoryMap(_loggerFactory, _mapAccessor, mapName, mmf);
+            using SharedMemoryMap sharedMemoryMap = new SharedMemoryMap(_loggerFactory, _mapAccessor, mapName, mmf);
             Assert.NotNull(sharedMemoryMap);
-
-            sharedMemoryMap.Dispose();
         }
 
         /// <summary>
@@ -111,13 +109,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
         public async Task PutBytes_VerifySuccess(int contentSize)
         {
             string mapName = Guid.NewGuid().ToString();
-            SharedMemoryMap sharedMemoryMap = Create(mapName, contentSize);
+            using SharedMemoryMap sharedMemoryMap = Create(mapName, contentSize);
             byte[] content = TestUtils.GetRandomBytesInArray(contentSize);
 
             long bytesWritten = await sharedMemoryMap.PutBytesAsync(content);
             Assert.Equal(contentSize, bytesWritten);
-
-            sharedMemoryMap.Dispose();
         }
 
         /// <summary>
@@ -132,7 +128,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
         public async Task PutStream_LargeData_VerifySuccess(long contentSize)
         {
             string mapName = Guid.NewGuid().ToString();
-            SharedMemoryMap sharedMemoryMap = Create(mapName, contentSize);
+            using SharedMemoryMap sharedMemoryMap = Create(mapName, contentSize);
 
             // Since the size of memory being requested can be greater than 2GB, a 32 bit
             // integer type can't hold that. So we use an IntPtr to store the size, which
@@ -144,7 +140,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             IntPtr memIntPtr = Marshal.AllocHGlobal(sizePtr);
 
             // Generate content to put into the shared memory map
-            Stream content = TestUtils.GetRandomContentInStream(contentSize, memIntPtr);
+            using Stream content = TestUtils.GetRandomContentInStream(contentSize, memIntPtr);
 
             // Put content into the shared memory map
             long bytesWritten = await sharedMemoryMap.PutStreamAsync(content);
@@ -152,11 +148,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
 
             // Free the block of unmanaged memory
             Marshal.FreeHGlobal(memIntPtr);
-
-            content.Close();
-            content.Dispose();
-
-            sharedMemoryMap.Dispose();
         }
 
         /// <summary>
@@ -175,15 +166,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
         public async Task GetBytes_VerifyContentMatches(int contentSize)
         {
             string mapName = Guid.NewGuid().ToString();
-            SharedMemoryMap sharedMemoryMap = Create(mapName, contentSize);
+            using SharedMemoryMap sharedMemoryMap = Create(mapName, contentSize);
             byte[] content = TestUtils.GetRandomBytesInArray(contentSize);
 
             await sharedMemoryMap.PutBytesAsync(content);
 
             byte[] readContent = await sharedMemoryMap.GetBytesAsync();
             Assert.True(TestUtils.UnsafeCompare(content, readContent));
-
-            sharedMemoryMap.Dispose();
         }
 
         /// <summary>
@@ -203,14 +192,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
         public async Task GetStream_VerifyContentMatches(int contentSize)
         {
             string mapName = Guid.NewGuid().ToString();
-            SharedMemoryMap sharedMemoryMap = Create(mapName, contentSize);
+            using SharedMemoryMap sharedMemoryMap = Create(mapName, contentSize);
             byte[] content = TestUtils.GetRandomBytesInArray(contentSize);
 
             long bytesWritten = await sharedMemoryMap.PutBytesAsync(content);
             Assert.Equal(contentSize, bytesWritten);
 
-            Stream readContent = await sharedMemoryMap.GetStreamAsync();
-
+            using Stream readContent = await sharedMemoryMap.GetStreamAsync();
             static IEnumerable<byte> StreamToEnumerable(Stream stream)
             {
                 for (int i = stream.ReadByte(); i != -1; i = stream.ReadByte())
@@ -221,8 +209,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
 
             var readContentEnumerable = StreamToEnumerable(readContent);
             Assert.True(content.SequenceEqual(readContentEnumerable));
-
-            sharedMemoryMap.Dispose();
         }
 
         /// <summary>
@@ -233,16 +219,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
         public async Task GetStream_EmptyContent_VerifyContentMatches()
         {
             string mapName = Guid.NewGuid().ToString();
-            SharedMemoryMap sharedMemoryMap = Create(mapName, 0);
+            using SharedMemoryMap sharedMemoryMap = Create(mapName, 0);
             byte[] content = TestUtils.GetRandomBytesInArray(0);
 
             long bytesWritten = await sharedMemoryMap.PutBytesAsync(content);
             Assert.Equal(0, bytesWritten);
 
-            Stream readStream = await sharedMemoryMap.GetStreamAsync();
+            using Stream readStream = await sharedMemoryMap.GetStreamAsync();
             Assert.Null(readStream);
-
-            sharedMemoryMap.Dispose();
         }
 
         /// <summary>
@@ -257,7 +241,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
         public async Task GetStream_LargeData_VerifyContentMatches(long contentSize)
         {
             string mapName = Guid.NewGuid().ToString();
-            SharedMemoryMap sharedMemoryMap = Create(mapName, contentSize);
+            using SharedMemoryMap sharedMemoryMap = Create(mapName, contentSize);
 
             // Since the size of memory being requested can be greater than 2GB, a 32 bit
             // integer type can't hold that. So we use an IntPtr to store the size, which
@@ -269,24 +253,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             IntPtr memIntPtr = Marshal.AllocHGlobal(sizePtr);
 
             // Generate content to put into the shared memory map
-            Stream content = TestUtils.GetRandomContentInStream(contentSize, memIntPtr);
+            using Stream content = TestUtils.GetRandomContentInStream(contentSize, memIntPtr);
 
             // Put content into the shared memory map
             await sharedMemoryMap.PutStreamAsync(content);
 
             // Get content from the shared memory map
-            Stream readContent = await sharedMemoryMap.GetStreamAsync();
+            using Stream readContent = await sharedMemoryMap.GetStreamAsync();
 
             // Check if the read stream contains the same content that was written
             Assert.True(await TestUtils.StreamEqualsAsync(content, readContent));
 
             // Free the block of unmanaged memory
             Marshal.FreeHGlobal(memIntPtr);
-
-            content.Close();
-            content.Dispose();
-
-            sharedMemoryMap.Dispose();
         }
 
         /// <summary>
@@ -305,13 +284,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
         public async Task GetContentLength_VerifyContentLengthMatches(int contentSize)
         {
             string mapName = Guid.NewGuid().ToString();
-            SharedMemoryMap sharedMemoryMap = Create(mapName, contentSize);
+            using SharedMemoryMap sharedMemoryMap = Create(mapName, contentSize);
             byte[] content = TestUtils.GetRandomBytesInArray(contentSize);
 
             await sharedMemoryMap.PutBytesAsync(content);
             Assert.Equal(contentSize, await sharedMemoryMap.GetContentLengthAsync());
-
-            sharedMemoryMap.Dispose();
         }
 
         /// <summary>
@@ -326,7 +303,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
         public async Task GetContentLength_LargeData_VerifyContentLengthMatches(long contentSize)
         {
             string mapName = Guid.NewGuid().ToString();
-            SharedMemoryMap sharedMemoryMap = Create(mapName, contentSize);
+            using SharedMemoryMap sharedMemoryMap = Create(mapName, contentSize);
 
             // Since the size of memory being requested can be greater than 2GB, a 32 bit
             // integer type can't hold that. So we use an IntPtr to store the size, which
@@ -338,14 +315,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             IntPtr memIntPtr = Marshal.AllocHGlobal(sizePtr);
 
             // Generate content to put into the shared memory map
-            Stream content = TestUtils.GetRandomContentInStream(contentSize, memIntPtr);
+            using Stream content = TestUtils.GetRandomContentInStream(contentSize, memIntPtr);
 
             // Put content into the shared memory map
             await sharedMemoryMap.PutStreamAsync(content);
-
             Assert.Equal(contentSize, await sharedMemoryMap.GetContentLengthAsync());
-
-            sharedMemoryMap.Dispose();
         }
 
         [Fact]
@@ -353,10 +327,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
         {
             long contentSize = 1024;
             string mapName = Guid.NewGuid().ToString();
-            SharedMemoryMap sharedMemoryMap = Create(mapName, contentSize);
+            using SharedMemoryMap sharedMemoryMap = Create(mapName, contentSize);
 
             sharedMemoryMap.Dispose(deleteFile: true);
-
             Assert.Null(Open(mapName));
         }
 

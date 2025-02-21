@@ -123,13 +123,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 (nameof(FunctionsHostingConfigOptions.ShutdownWebhostWorkerChannelsOnHostShutdown), string.Empty, true), // default
 
                 // Supports True/False/1/0
-                (nameof(FunctionsHostingConfigOptions.SwtAuthenticationEnabled), "SwtAuthenticationEnabled=False", false),
-                (nameof(FunctionsHostingConfigOptions.SwtAuthenticationEnabled), "SwtAuthenticationEnabled=True", true),
-                (nameof(FunctionsHostingConfigOptions.SwtAuthenticationEnabled), "SwtAuthenticationEnabled=0", false),
-                (nameof(FunctionsHostingConfigOptions.SwtAuthenticationEnabled), "SwtAuthenticationEnabled=unparseable", false), // default
-                (nameof(FunctionsHostingConfigOptions.SwtAuthenticationEnabled), string.Empty, false), // default
-
-                // Supports True/False/1/0
                 (nameof(FunctionsHostingConfigOptions.SwtIssuerEnabled), "SwtIssuerEnabled=False", false),
                 (nameof(FunctionsHostingConfigOptions.SwtIssuerEnabled), "SwtIssuerEnabled=True", true),
                 (nameof(FunctionsHostingConfigOptions.SwtIssuerEnabled), "SwtIssuerEnabled=0", false),
@@ -142,7 +135,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 (nameof(FunctionsHostingConfigOptions.WorkerRuntimeStrictValidationEnabled), "WORKER_RUNTIME_STRICT_VALIDATION_ENABLED=1", true),
 
                 (nameof(FunctionsHostingConfigOptions.InternalAuthApisAllowList), "InternalAuthApisAllowList=|", "|"),
-                (nameof(FunctionsHostingConfigOptions.InternalAuthApisAllowList), "InternalAuthApisAllowList=/admin/host/foo|/admin/host/bar", "/admin/host/foo|/admin/host/bar")
+                (nameof(FunctionsHostingConfigOptions.InternalAuthApisAllowList), "InternalAuthApisAllowList=/admin/host/foo|/admin/host/bar", "/admin/host/foo|/admin/host/bar"),
+
+                (nameof(FunctionsHostingConfigOptions.IsDotNetInProcDisabled), "DotNetInProcDisabled=False", false),
+                (nameof(FunctionsHostingConfigOptions.IsDotNetInProcDisabled), "DotNetInProcDisabled=True", true),
+                (nameof(FunctionsHostingConfigOptions.IsDotNetInProcDisabled), "DotNetInProcDisabled=1", true),
+                (nameof(FunctionsHostingConfigOptions.IsDotNetInProcDisabled), "DotNetInProcDisabled=0", false),
             };
 
             // use reflection to ensure that we have a test that uses every value exposed on FunctionsHostingConfigOptions
@@ -248,23 +246,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                     return testService.Monitor.CurrentValue.GetFeature("feature1") == "value1_updated";
                 });
             }
-        }
-
-        [Fact]
-        public void SwtAuthenticationEnabled_ReturnsExpectedValue()
-        {
-            FunctionsHostingConfigOptions options = new FunctionsHostingConfigOptions();
-
-            // defaults to false
-            Assert.False(options.SwtAuthenticationEnabled);
-
-            // returns true when explicitly enabled
-            options.Features[ScriptConstants.HostingConfigSwtAuthenticationEnabled] = "1";
-            Assert.True(options.SwtAuthenticationEnabled);
-
-            // returns false when disabled
-            options.Features[ScriptConstants.HostingConfigSwtAuthenticationEnabled] = "0";
-            Assert.False(options.SwtAuthenticationEnabled);
         }
 
         [Fact]

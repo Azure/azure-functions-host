@@ -3,7 +3,6 @@
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
     <IsTestProject>true</IsTestProject>
-    <IsPackable>false</IsPackable>
     <AssemblyName>Microsoft.Azure.WebJobs.Script.Tests.Abstractions</AssemblyName>
     <RootNamespace>Microsoft.Azure.WebJobs.Script.Tests.Abstractions</RootNamespace>
   </PropertyGroup>

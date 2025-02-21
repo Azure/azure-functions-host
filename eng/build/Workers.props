@@ -1,0 +1,21 @@
+<Project>
+
+  <!-- Individual workers are in their own props file. -->
+  <Import Project="$(MSBuildThisFileDirectory)Workers.*.props" />
+
+  <!-- Remove all worker items from the ReadyToRun publish list -->
+  <Target Name="ExcludeWorkers" AfterTargets="ComputeFilesToPublish" BeforeTargets="ResolveReadyToRunCompilers" Condition="'$(PublishReadyToRun)' == 'true'">
+    <ItemGroup>
+      <_WorkerPublishFiles Include="@(ResolvedFileToPublish)" Condition="$([System.String]::new('%(ResolvedFileToPublish.TargetPath)').StartsWith('workers'))" />
+      <ResolvedFileToPublish Remove="@(_WorkerPublishFiles)" />
+    </ItemGroup>
+  </Target>
+
+  <!-- Add all worker items back to the publish list -->
+  <Target Name="ReAddWorkersToPublish" AfterTargets="CreateReadyToRunImages" BeforeTargets="CopyFilesToPublishDirectory" Condition="'$(PublishWorkers)' != 'false'">
+    <ItemGroup>
+      <ResolvedFileToPublish Include="@(_WorkerPublishFiles)" />
+    </ItemGroup>
+  </Target>
+
+</Project>

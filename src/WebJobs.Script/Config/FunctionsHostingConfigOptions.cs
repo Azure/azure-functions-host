@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 
 namespace Microsoft.Azure.WebJobs.Script.Config
@@ -59,22 +60,6 @@ namespace Microsoft.Azure.WebJobs.Script.Config
             set
             {
                 _features[RpcWorkerConstants.ShutdownWebhostWorkerChannelsOnHostShutdown] = value ? "1" : "0";
-            }
-        }
-
-        /// <summary>
-        /// Gets or sets a value indicating whether SWT tokens should be accepted.
-        /// </summary>
-        internal bool SwtAuthenticationEnabled
-        {
-            get
-            {
-                return GetFeatureAsBooleanOrDefault(ScriptConstants.HostingConfigSwtAuthenticationEnabled, false);
-            }
-
-            set
-            {
-                _features[ScriptConstants.HostingConfigSwtAuthenticationEnabled] = value ? "1" : "0";
             }
         }
 
@@ -209,6 +194,14 @@ namespace Microsoft.Azure.WebJobs.Script.Config
             get
             {
                 return GetFeatureAsBooleanOrDefault(RpcWorkerConstants.WorkerRuntimeStrictValidationEnabled, false);
+            }
+        }
+
+        internal bool IsDotNetInProcDisabled
+        {
+            get
+            {
+                return GetFeatureAsBooleanOrDefault(ScriptConstants.HostingConfigDotNetInProcDisabled, false);
             }
         }
 

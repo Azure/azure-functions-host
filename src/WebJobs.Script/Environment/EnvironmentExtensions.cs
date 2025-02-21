@@ -115,6 +115,12 @@ namespace Microsoft.Azure.WebJobs.Script
                    !string.IsNullOrEmpty(environment.GetEnvironmentVariable(AzureFilesContentShare));
         }
 
+        public static bool IsDotNetInProcSupported(this IEnvironment environment)
+        {
+            return !IsFlexConsumptionSku(environment)
+                   && !string.Equals(environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsDisableInProc), "1", StringComparison.OrdinalIgnoreCase);
+        }
+
         public static string GetAzureWebsiteHomePath(this IEnvironment environment)
         {
             return environment.GetEnvironmentVariable(AzureWebsiteHomePath);

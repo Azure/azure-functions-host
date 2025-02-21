@@ -37,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 // if the user hasn't configured an explicit ID, we generate the default ID.
                 HostIdResult result = GetDefaultHostId(_environment, _options.CurrentValue);
                 hostId = result.HostId;
-                if (result.IsTruncated && !result.IsLocal)
+                if (result.IsTruncated && !result.IsLocal && !_options.CurrentValue.IsStandbyConfiguration)
                 {
                     _hostIdValidator.ScheduleValidation(hostId);
                 }
@@ -57,6 +57,8 @@ namespace Microsoft.Azure.WebJobs.Script
                 if (!string.IsNullOrEmpty(uniqueSlotName))
                 {
                     byte[] hash;
+                    // The Functions Host uses a Host ID to uniquely identify a particular Function App. By default, the ID is auto-generated from the Function App name, by taking the first 32 characters.
+                    // CodeQL [SM02196] The hash here is used to create a unique identifier over non-sensitive data and there is no security impact. Changing the hashing algorithm of the host ID creation would be a breaking change for applications.
                     using (MD5 md5 = MD5.Create())
                     {
                         hash = md5.ComputeHash(Encoding.UTF8.GetBytes(uniqueSlotName));

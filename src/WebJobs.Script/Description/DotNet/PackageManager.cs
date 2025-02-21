@@ -125,6 +125,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 return string.Empty;
             }
 
+            // CodeQL [SM02196] The hash here is used to create a unique identifier over non-sensitive data and there is no security impact. Changing the hashing algorithm of the file path hash would be a breaking change for applications.
             using (var md5 = MD5.Create())
             {
                 using (var stream = File.OpenRead(lockFilePath))

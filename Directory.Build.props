@@ -5,19 +5,17 @@
     <ArtifactsPath>$(MSBuildThisFileDirectory)out</ArtifactsPath>
     <ArtifactsPublishOutputName>pub</ArtifactsPublishOutputName>
     <ArtifactsPackageOutputName>pkg</ArtifactsPackageOutputName>
+    <IsPackable>false</IsPackable> <!-- default false -->
   </PropertyGroup>
 
   <!-- paths -->
   <PropertyGroup>
     <RepoRoot>$(MSBuildThisFileDirectory)</RepoRoot>
     <EngRoot>$(RepoRoot)eng/</EngRoot>
+    <EngBuildRoot>$(EngRoot)build/</EngBuildRoot>
+    <EngResourceRoot>$(EngRoot)res/</EngResourceRoot>
   </PropertyGroup>
 
-  <PropertyGroup>
-    <!-- Nuget audit as warnings only, even in TreatWarningsAsErrors. -->
-    <WarningsNotAsErrors>NU1901;NU1902;NU1903;NU1904</WarningsNotAsErrors>
-    <NuGetAuditLevel>moderate</NuGetAuditLevel> <!-- warn on moderate severity only. -->
-    <NuGetAuditMode>all</NuGetAuditMode> <!-- audit transitive dependencies. -->
-  </PropertyGroup>
+  <Import Project="$(EngBuildRoot)Engineering.props" />
 
 </Project>

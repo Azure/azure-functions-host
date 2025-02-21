@@ -163,7 +163,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             ImmutableArray<FunctionMetadata> immutableFunctionMetadata;
 
-            immutableFunctionMetadata = _functionMetadataProvider.GetFunctionMetadataAsync(workerConfigs, _environment, forceRefresh).GetAwaiter().GetResult();
+            immutableFunctionMetadata = _functionMetadataProvider.GetFunctionMetadataAsync(workerConfigs, forceRefresh).GetAwaiter().GetResult();
 
             var functionMetadataList = new List<FunctionMetadata>();
             _functionErrors = new Dictionary<string, ICollection<string>>();
@@ -254,7 +254,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 var completedTask = Task.WhenAny(getFunctionMetadataFromProviderTask, delayTask).ContinueWith(t =>
                 {
-                    if (t.Result == getFunctionMetadataFromProviderTask && getFunctionMetadataFromProviderTask.IsCompletedSuccessfully)
+                    if (t.Result == getFunctionMetadataFromProviderTask)
                     {
                         return getFunctionMetadataFromProviderTask.Result;
                     }

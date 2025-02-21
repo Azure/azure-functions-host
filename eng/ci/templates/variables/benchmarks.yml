@@ -1,0 +1,7 @@
+variables:
+- name: storeBenchmarkResultsInDatabase
+  value: ${{ eq(variables['Build.Reason'], 'Schedule') }}
+- name: benchmarkBaselineBranch
+  value: refs/heads/release/4.x
+- name: benchmarkBaselineTagName
+  value: AzFunc.Perf.Baseline

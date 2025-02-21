@@ -56,11 +56,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
                 // to be used by the placeholder site.
                 // Important that we use paths that are different than the configured paths
                 // to ensure that placeholder files are isolated
-                string tempRoot = Path.GetTempPath();
+                var tempRoot = Path.GetTempPath();
+                var standbyFunctionsPath = Path.Combine(tempRoot, "functions", "standby");
 
-                options.LogPath = Path.Combine(tempRoot, @"functions\standby\logs");
-                options.ScriptPath = Path.Combine(tempRoot, @"functions\standby\wwwroot");
-                options.SecretsPath = Path.Combine(tempRoot, @"functions\standby\secrets");
+                options.LogPath = Path.Combine(standbyFunctionsPath, "logs");
+                options.ScriptPath = Path.Combine(standbyFunctionsPath, "wwwroot");
+                options.SecretsPath = Path.Combine(standbyFunctionsPath, "secrets");
                 options.IsSelfHost = options.IsSelfHost;
                 options.IsStandbyConfiguration = true;
             }

@@ -521,7 +521,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             channelFactory ??= _rpcWorkerChannelFactory;
             config ??= _emptyConfig;
             return new WebHostRpcWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, channelFactory,
-                _optionsMonitor, metrics, config, _workerProfileManager, new OptionsWrapper<FunctionsHostingConfigOptions>(new FunctionsHostingConfigOptions()));
+                _optionsMonitor, metrics, config, _workerProfileManager, new TestOptionsMonitor<LanguageWorkerOptions>(TestHelpers.GetTestLanguageWorkerOptions()), new OptionsWrapper<FunctionsHostingConfigOptions>(new FunctionsHostingConfigOptions()));
         }
 
         private bool AreRequiredMetricsEmitted(TestMetricsLogger metricsLogger)

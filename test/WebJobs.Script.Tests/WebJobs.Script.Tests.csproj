@@ -1,25 +1,11 @@
-<Project Sdk="Microsoft.NET.Sdk">
-  <Import Project="..\..\build\common.props" />
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <IsTestProject>true</IsTestProject>
-    <IsPackable>false</IsPackable>
     <AssemblyName>Microsoft.Azure.WebJobs.Script.Tests</AssemblyName>
     <RootNamespace>Microsoft.Azure.WebJobs.Script.Tests</RootNamespace>
     <LangVersion>preview</LangVersion>
-    <Configurations>$(Configurations);DebugPlaceholder;ReleasePlaceholder</Configurations>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU' Or '$(Configuration)|$(Platform)'=='DebugPlaceholder|AnyCPU'">
-    <DefineConstants>TRACE;DEBUG;NETCOREAPP2_0;SCRIPT_TEST</DefineConstants>
-    <StyleCopTreatErrorsAsWarnings>false</StyleCopTreatErrorsAsWarnings>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <WarningsAsErrors />
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU' Or '$(Configuration)|$(Platform)'=='ReleasePlaceholder|AnyCPU'">
-    <StyleCopTreatErrorsAsWarnings>false</StyleCopTreatErrorsAsWarnings>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <WarningsAsErrors />
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
@@ -44,7 +30,7 @@
     <PackageReference Include="FluentAssertions" Version="5.9.0" />
     <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.Testing" Version="8.1.0" />
-    <PackageReference Include="Microsoft.Azure.Functions.PythonWorker" Version="4.34.0" />
+    <PackageReference Include="Microsoft.Azure.Functions.PythonWorker" Version="4.35.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.9.4" />
     <PackageReference Include="Moq" Version="4.18.4" />
     <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.435">
@@ -98,7 +84,6 @@
     <EmbeddedResource Update="Resources\FileProvisioning\PowerShell\profile.ps1" CopyToOutputDirectory="Never" />
   </ItemGroup>
 
-  <Import Project="..\..\build\GrpcTestFix.targets" />
   <Import Project="..\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems" Label="Shared" />
 
 </Project>

@@ -2,6 +2,8 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Host.Scale;
@@ -18,55 +20,51 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 {
     public class RpcWorkerProcessTests
     {
-        private readonly Mock<IWorkerProcessFactory> _workerProcessFactory;
-        private RpcWorkerProcess _rpcWorkerProcess;
-        private Mock<IScriptEventManager> _eventManager;
-        private Mock<IHostProcessMonitor> _hostProcessMonitorMock;
-        private TestLogger _logger = new TestLogger("test");
-        private IOptions<FunctionsHostingConfigOptions> _functionsHostingConfigOptions;
+        private readonly Mock<IWorkerProcessFactory> _workerProcessFactory = new Mock<IWorkerProcessFactory>();
+        private readonly Mock<IScriptEventManager> _eventManager = new Mock<IScriptEventManager>();
+        private readonly TestLogger _logger = new TestLogger("test");
+        private readonly IOptions<FunctionsHostingConfigOptions> _functionsHostingConfigOptions;
+        private readonly Mock<IProcessRegistry> _processRegistry = new Mock<IProcessRegistry>();
+        private readonly TestRpcServer _rpcServer = new TestRpcServer();
+        private readonly Mock<IWorkerConsoleLogSource> _languageWorkerConsoleLogSource = new Mock<IWorkerConsoleLogSource>();
+        private readonly TestEnvironment _testEnv = new TestEnvironment();
+        private readonly Mock<IServiceProvider> _serviceProviderMock = new Mock<IServiceProvider>(MockBehavior.Strict);
+        private readonly TestOptionsMonitor<ScriptApplicationHostOptions> _scriptApplicationHostOptions = new TestOptionsMonitor<ScriptApplicationHostOptions>();
+        private Mock<IHostProcessMonitor> _hostProcessMonitorMock = new Mock<IHostProcessMonitor>(MockBehavior.Strict);
 
         public RpcWorkerProcessTests()
         {
-            _eventManager = new Mock<IScriptEventManager>();
-            _workerProcessFactory = new Mock<IWorkerProcessFactory>();
-            var processRegistry = new Mock<IProcessRegistry>();
-            var rpcServer = new TestRpcServer();
-            var languageWorkerConsoleLogSource = new Mock<IWorkerConsoleLogSource>();
-            var testEnv = new TestEnvironment();
-            var testWorkerConfigs = TestHelpers.GetTestWorkerConfigs();
-
-            _hostProcessMonitorMock = new Mock<IHostProcessMonitor>(MockBehavior.Strict);
             var scriptHostManagerMock = new Mock<IScriptHostManager>(MockBehavior.Strict);
             var scriptHostServiceProviderMock = scriptHostManagerMock.As<IServiceProvider>();
             scriptHostServiceProviderMock.Setup(p => p.GetService(typeof(IHostProcessMonitor))).Returns(() => _hostProcessMonitorMock.Object);
-
-            var serviceProviderMock = new Mock<IServiceProvider>(MockBehavior.Strict);
-            serviceProviderMock.Setup(p => p.GetService(typeof(IScriptHostManager))).Returns(scriptHostManagerMock.Object);
-
+            _serviceProviderMock.Setup(p => p.GetService(typeof(IScriptHostManager))).Returns(scriptHostManagerMock.Object);
             _functionsHostingConfigOptions = Options.Create(new FunctionsHostingConfigOptions());
-            var scriptApplicationHostOptions = new TestOptionsMonitor<ScriptApplicationHostOptions>();
+        }
 
-            _rpcWorkerProcess = new RpcWorkerProcess("node",
+        private RpcWorkerProcess GetRpcWorkerConfigProcess(RpcWorkerConfig workerConfig)
+        {
+            return new RpcWorkerProcess("node",
                 "testworkerId",
                 "testrootPath",
-                rpcServer.Uri,
-                testWorkerConfigs.ElementAt(0),
+                _rpcServer.Uri,
+                workerConfig,
                 _eventManager.Object,
                 _workerProcessFactory.Object,
-                processRegistry.Object,
+                _processRegistry.Object,
                 _logger,
-                languageWorkerConsoleLogSource.Object,
+                _languageWorkerConsoleLogSource.Object,
                 new TestMetricsLogger(),
-                serviceProviderMock.Object,
+                _serviceProviderMock.Object,
                 _functionsHostingConfigOptions,
-                testEnv,
-                scriptApplicationHostOptions,
+                _testEnv,
+                _scriptApplicationHostOptions,
                 new LoggerFactory());
         }
 
         [Fact]
         public void Constructor_RegistersHostStartedEvent()
         {
+            GetRpcWorkerConfigProcess(TestHelpers.GetTestWorkerConfigs().ElementAt(0));
             Func<IObserver<ScriptEvent>, bool> validate = p =>
             {
                 // validate the internal reactive ISink<HostStartEvent> implementation that
@@ -81,87 +79,93 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public void OnHostStart_RegistersProcessWithMonitor()
         {
+            var rpcWorkerProcess = GetRpcWorkerConfigProcess(TestHelpers.GetTestWorkerConfigs().ElementAt(0));
             Process process = Process.GetCurrentProcess();
-            _rpcWorkerProcess.Process = process;
+            rpcWorkerProcess.Process = process;
 
             _hostProcessMonitorMock.Setup(p => p.RegisterChildProcess(process));
 
             HostStartEvent evt = new HostStartEvent();
-            _rpcWorkerProcess.OnHostStart(evt);
+            rpcWorkerProcess.OnHostStart(evt);
             _hostProcessMonitorMock.Verify(p => p.RegisterChildProcess(process), Times.Once);
         }
 
         [Fact]
         public void RegisterWithProcessMonitor_Succeeds()
         {
+            var rpcWorkerProcess = GetRpcWorkerConfigProcess(TestHelpers.GetTestWorkerConfigs().ElementAt(0));
             Process process = Process.GetCurrentProcess();
-            _rpcWorkerProcess.Process = process;
+            rpcWorkerProcess.Process = process;
 
             _hostProcessMonitorMock.Setup(p => p.RegisterChildProcess(process));
 
-            _rpcWorkerProcess.RegisterWithProcessMonitor();
+            rpcWorkerProcess.RegisterWithProcessMonitor();
             _hostProcessMonitorMock.Verify(p => p.RegisterChildProcess(process), Times.Once);
 
             // registration is skipped if attempted again for the same monitor
-            _rpcWorkerProcess.RegisterWithProcessMonitor();
+            rpcWorkerProcess.RegisterWithProcessMonitor();
             _hostProcessMonitorMock.Verify(p => p.RegisterChildProcess(process), Times.Once);
 
             // if the monitor changes (e.g. due to a host restart)
             // registration is performed
             _hostProcessMonitorMock = new Mock<IHostProcessMonitor>(MockBehavior.Strict);
             _hostProcessMonitorMock.Setup(p => p.RegisterChildProcess(process));
-            _rpcWorkerProcess.RegisterWithProcessMonitor();
+            rpcWorkerProcess.RegisterWithProcessMonitor();
             _hostProcessMonitorMock.Verify(p => p.RegisterChildProcess(process), Times.Once);
         }
 
         [Fact]
         public void UnregisterFromProcessMonitor_Succeeds()
         {
+            var rpcWorkerProcess = GetRpcWorkerConfigProcess(TestHelpers.GetTestWorkerConfigs().ElementAt(0));
             Process process = Process.GetCurrentProcess();
-            _rpcWorkerProcess.Process = process;
+            rpcWorkerProcess.Process = process;
 
             _hostProcessMonitorMock.Setup(p => p.RegisterChildProcess(process));
             _hostProcessMonitorMock.Setup(p => p.UnregisterChildProcess(process));
 
             // not yet registered so noop
-            _rpcWorkerProcess.UnregisterFromProcessMonitor();
+            rpcWorkerProcess.UnregisterFromProcessMonitor();
             _hostProcessMonitorMock.Verify(p => p.UnregisterChildProcess(process), Times.Never);
 
-            _rpcWorkerProcess.RegisterWithProcessMonitor();
-            _rpcWorkerProcess.UnregisterFromProcessMonitor();
+            rpcWorkerProcess.RegisterWithProcessMonitor();
+            rpcWorkerProcess.UnregisterFromProcessMonitor();
             _hostProcessMonitorMock.Verify(p => p.UnregisterChildProcess(process), Times.Once);
 
             // attempting to unregister again is a noop
-            _rpcWorkerProcess.UnregisterFromProcessMonitor();
+            rpcWorkerProcess.UnregisterFromProcessMonitor();
             _hostProcessMonitorMock.Verify(p => p.UnregisterChildProcess(process), Times.Once);
         }
 
         [Fact]
         public void ErrorMessageQueue_Empty()
         {
-            Assert.Empty(_rpcWorkerProcess.ProcessStdErrDataQueue);
+            var rpcWorkerProcess = GetRpcWorkerConfigProcess(TestHelpers.GetTestWorkerConfigs().ElementAt(0));
+            Assert.Empty(rpcWorkerProcess.ProcessStdErrDataQueue);
         }
 
         [Fact]
         public void ErrorMessageQueue_Enqueue_Success()
         {
-            WorkerProcessUtilities.AddStdErrMessage(_rpcWorkerProcess.ProcessStdErrDataQueue, "Error1");
-            WorkerProcessUtilities.AddStdErrMessage(_rpcWorkerProcess.ProcessStdErrDataQueue, "Error2");
+            var rpcWorkerProcess = GetRpcWorkerConfigProcess(TestHelpers.GetTestWorkerConfigs().ElementAt(0));
+            WorkerProcessUtilities.AddStdErrMessage(rpcWorkerProcess.ProcessStdErrDataQueue, "Error1");
+            WorkerProcessUtilities.AddStdErrMessage(rpcWorkerProcess.ProcessStdErrDataQueue, "Error2");
 
-            Assert.True(_rpcWorkerProcess.ProcessStdErrDataQueue.Count == 2);
-            string exceptionMessage = string.Join(",", _rpcWorkerProcess.ProcessStdErrDataQueue.Where(s => !string.IsNullOrEmpty(s)));
+            Assert.True(rpcWorkerProcess.ProcessStdErrDataQueue.Count == 2);
+            string exceptionMessage = string.Join(",", rpcWorkerProcess.ProcessStdErrDataQueue.Where(s => !string.IsNullOrEmpty(s)));
             Assert.Equal("Error1,Error2", exceptionMessage);
         }
 
         [Fact]
         public void ErrorMessageQueue_Full_Enqueue_Success()
         {
-            WorkerProcessUtilities.AddStdErrMessage(_rpcWorkerProcess.ProcessStdErrDataQueue, "Error1");
-            WorkerProcessUtilities.AddStdErrMessage(_rpcWorkerProcess.ProcessStdErrDataQueue, "Error2");
-            WorkerProcessUtilities.AddStdErrMessage(_rpcWorkerProcess.ProcessStdErrDataQueue, "Error3");
-            WorkerProcessUtilities.AddStdErrMessage(_rpcWorkerProcess.ProcessStdErrDataQueue, "Error4");
-            Assert.True(_rpcWorkerProcess.ProcessStdErrDataQueue.Count == 3);
-            string exceptionMessage = string.Join(",", _rpcWorkerProcess.ProcessStdErrDataQueue.Where(s => !string.IsNullOrEmpty(s)));
+            var rpcWorkerProcess = GetRpcWorkerConfigProcess(TestHelpers.GetTestWorkerConfigs().ElementAt(0));
+            WorkerProcessUtilities.AddStdErrMessage(rpcWorkerProcess.ProcessStdErrDataQueue, "Error1");
+            WorkerProcessUtilities.AddStdErrMessage(rpcWorkerProcess.ProcessStdErrDataQueue, "Error2");
+            WorkerProcessUtilities.AddStdErrMessage(rpcWorkerProcess.ProcessStdErrDataQueue, "Error3");
+            WorkerProcessUtilities.AddStdErrMessage(rpcWorkerProcess.ProcessStdErrDataQueue, "Error4");
+            Assert.True(rpcWorkerProcess.ProcessStdErrDataQueue.Count == 3);
+            string exceptionMessage = string.Join(",", rpcWorkerProcess.ProcessStdErrDataQueue.Where(s => !string.IsNullOrEmpty(s)));
             Assert.Equal("Error2,Error3,Error4", exceptionMessage);
         }
 
@@ -187,7 +191,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public void HandleWorkerProcessExitError_PublishesWorkerRestartEvent_OnIntentionalRestartExitCode()
         {
-            _rpcWorkerProcess.HandleWorkerProcessRestart();
+            var rpcWorkerProcess = GetRpcWorkerConfigProcess(TestHelpers.GetTestWorkerConfigs().ElementAt(0));
+            rpcWorkerProcess.HandleWorkerProcessRestart();
 
             _eventManager.Verify(_ => _.Publish(It.IsAny<WorkerRestartEvent>()), Times.Once());
             _eventManager.Verify(_ => _.Publish(It.IsAny<WorkerErrorEvent>()), Times.Never());
@@ -196,6 +201,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public void WorkerProcess_Dispose()
         {
+            var rpcWorkerProcess = GetRpcWorkerConfigProcess(TestHelpers.GetTestWorkerConfigs().ElementAt(0));
             Process process = new Process();
             ProcessStartInfo startInfo = new ProcessStartInfo();
             startInfo.WindowStyle = ProcessWindowStyle.Hidden;
@@ -204,8 +210,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             process.StartInfo = startInfo;
             process.Start();
 
-            _rpcWorkerProcess.Process = process;
-            _rpcWorkerProcess.Dispose();
+            rpcWorkerProcess.Process = process;
+            rpcWorkerProcess.Dispose();
             var traces = _logger.GetLogMessages();
             var disposeLogs = traces.Where(m => string.Equals(m.FormattedMessage, "Worker process has not exited despite waiting for 1000 ms"));
             Assert.False(disposeLogs.Any());
@@ -214,15 +220,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public void CreateWorkerProcess_AddsHostingConfiguration()
         {
+            var rpcWorkerProcess = GetRpcWorkerConfigProcess(TestHelpers.GetTestWorkerConfigs().ElementAt(0));
             _functionsHostingConfigOptions.Value.Features["feature1"] = "1";
-            var process = _rpcWorkerProcess.CreateWorkerProcess();
+            var process = rpcWorkerProcess.CreateWorkerProcess();
 
             _workerProcessFactory.Verify(x => x.CreateWorkerProcess(It.Is<WorkerContext>(c => c.EnvironmentVariables["feature1"] == "1")));
         }
 
         [Fact]
+        public void CreateWorkerProcess_AddsExecutableWorkingDirectory()
+        {
+            var rpcWorkerProcess = GetRpcWorkerConfigProcess(TestHelpers.GetTestWorkerConfigsWithExecutableWorkingDirectory().First());
+            var process = rpcWorkerProcess.CreateWorkerProcess();
+
+            _workerProcessFactory.Verify(x => x.CreateWorkerProcess(It.Is<WorkerContext>(c => c.WorkingDirectory == "executableDirectory")));
+        }
+
+        [Fact]
         public void WorkerProcess_WaitForExit_AfterExit_DoesNotThrow()
         {
+            var rpcWorkerProcess = GetRpcWorkerConfigProcess(TestHelpers.GetTestWorkerConfigsWithExecutableWorkingDirectory().ElementAt(0));
             Process process = new Process();
             ProcessStartInfo startInfo = new ProcessStartInfo();
             startInfo.WindowStyle = ProcessWindowStyle.Hidden;
@@ -231,10 +248,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             process.StartInfo = startInfo;
             process.Start();
 
-            _rpcWorkerProcess.Process = process;
-            _rpcWorkerProcess.Dispose();
+            rpcWorkerProcess.Process = process;
+            rpcWorkerProcess.Dispose();
 
-            _rpcWorkerProcess.WaitForProcessExitInMilliSeconds(1);
+            rpcWorkerProcess.WaitForProcessExitInMilliSeconds(1);
 
             var traces = _logger.GetLogMessages();
             string msg = traces.Single().FormattedMessage;
