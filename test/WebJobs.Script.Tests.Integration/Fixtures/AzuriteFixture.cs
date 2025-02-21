@@ -11,7 +11,6 @@ using System.Threading;
 using Xunit.Sdk;
 using System.Collections.Generic;
 using System.Linq;
-using Microsoft.VisualStudio.TestPlatform.ObjectModel.Client.Payloads;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Fixtures
 {
@@ -91,20 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Fixtures
 
         public Task DisposeAsync()
         {
-            Process p = Interlocked.Exchange(ref _process, null);
-            if (p is not null)
-            {
-                try
-                {
-                    p.Kill();
-                    p.Dispose();
-                }
-                catch
-                {
-                    // ignore
-                }
-            }
-
+            _process?.Dispose();
             return Task.CompletedTask;
         }
 
@@ -133,7 +119,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Fixtures
             {
                 FileName = process,
                 Arguments = arguments,
-                UseShellExecute = false,
+                UseShellExecute = false, // we need stdio, cannot set to true.
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 CreateNoWindow = true,
@@ -155,6 +141,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Fixtures
 
         private void GetAzuriteCommand(out string process, out string arguments)
         {
+            // Azurite is not an executable itself, but a node module. However, it installs helper scripts on the path.
+            // We will use cmd or bash to run the helper script.
             string azurite = $"azurite --silent --inMemoryPersistence --blobPort {_blobPort} --queuePort {_queuePort} --tablePort {_tablePort}";
             if (OperatingSystem.IsWindows())
             {
