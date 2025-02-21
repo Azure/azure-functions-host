@@ -94,7 +94,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Fixtures
             _process?.CancelErrorRead();
             _process?.Kill();
             _process?.Dispose();
-            return Task.CompletedTask;
+            return _process.WaitForExitAsync();
         }
 
         private static int GetFreeTcpPort()
