@@ -90,6 +90,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Fixtures
 
         public Task DisposeAsync()
         {
+            _process?.CancelOutputRead();
+            _process?.CancelErrorRead();
+            _process?.Kill();
             _process?.Dispose();
             return Task.CompletedTask;
         }
@@ -152,7 +155,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Fixtures
             else
             {
                 process = "bash";
-                arguments = $"-c '{azurite}'";
+                arguments = $"-c {azurite}";
             }
         }
 
