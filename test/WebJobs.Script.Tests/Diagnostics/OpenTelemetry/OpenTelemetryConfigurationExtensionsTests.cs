@@ -5,6 +5,9 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Reflection;
+using Azure.Identity;
+using Azure.Monitor.OpenTelemetry.Exporter;
 using FluentAssertions;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
@@ -231,18 +234,189 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.OpenTelemetry
             Assert.Equal(4, resource.Attributes.Count());
         }
 
+        [Fact]
+        public void ConfigureTelemetry_Should_UseOpenTelemetryWhenModeSetAndAppInsightsAuthStringClientIdPresent()
+        {
+            // Arrange
+            var clientId = Guid.NewGuid();
+            IServiceCollection serviceCollection = default;
+
+            var hostBuilder = new HostBuilder()
+                .ConfigureAppConfiguration(config =>
+                {
+                    config.AddInMemoryCollection(new Dictionary<string, string>
+                    {
+                        { "APPLICATIONINSIGHTS_AUTHENTICATION_STRING", $"Authorization=AAD;ClientId={clientId}" },
+                        { "APPLICATIONINSIGHTS_CONNECTION_STRING", "InstrumentationKey=key" },
+                        { ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "telemetryMode"), TelemetryMode.OpenTelemetry.ToString() }
+                    });
+                })
+                .ConfigureDefaultTestWebScriptHost()
+                .ConfigureLogging((context, loggingBuilder) => loggingBuilder.ConfigureTelemetry(context))
+                .ConfigureServices(services => serviceCollection = services);
+
+            using var host = hostBuilder.Build();
+
+            // Act
+            var tracerProviderDescriptors = GetTracerProviderDescriptors(serviceCollection);
+            var resolvedClient = ExtractClientFromDescriptors(tracerProviderDescriptors);
+
+            // Extract the clientId from the client object
+            var clientIdValue = resolvedClient?.GetType().GetProperty("ClientId", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(resolvedClient)?.ToString();
+
+            // Assert
+            serviceCollection.Should().NotBeNullOrEmpty();
+            clientIdValue.Should().Be(clientId.ToString());
+            resolvedClient.GetType().Name.Should().Be("ManagedIdentityClient");
+        }
+
+        [Fact]
+        public void ConfigureTelemetry_Should_UseOpenTelemetryWhenModeSetAndAppInsightsAuthStringPresent()
+        {
+            // Arrange
+            IServiceCollection serviceCollection = default;
+
+            var hostBuilder = new HostBuilder()
+                .ConfigureAppConfiguration(config =>
+                {
+                    config.AddInMemoryCollection(new Dictionary<string, string>
+                    {
+                        { "APPLICATIONINSIGHTS_AUTHENTICATION_STRING", $"Authorization=AAD" },
+                        { "APPLICATIONINSIGHTS_CONNECTION_STRING", "InstrumentationKey=key" },
+                        { ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "telemetryMode"), TelemetryMode.OpenTelemetry.ToString() }
+                    });
+                })
+                .ConfigureDefaultTestWebScriptHost()
+                .ConfigureLogging((context, loggingBuilder) => loggingBuilder.ConfigureTelemetry(context))
+                .ConfigureServices(services => serviceCollection = services);
+
+            using var host = hostBuilder.Build();
+
+            // Act
+            var tracerProviderDescriptors = GetTracerProviderDescriptors(serviceCollection);
+            var resolvedClient = ExtractClientFromDescriptors(tracerProviderDescriptors);
+
+            // Extract the clientId from the client object
+            var clientIdValue = resolvedClient?.GetType().GetProperty("ClientId", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(resolvedClient)?.ToString();
+
+            // Assert
+            serviceCollection.Should().NotBeNullOrEmpty();
+            // No clientId should be present as it was not provided
+            clientIdValue.Should().BeNull();
+            resolvedClient.GetType().Name.Should().Be("ManagedIdentityClient");
+        }
+
+        [Fact]
+        public void OpenTelemetryBuilder_InPlaceholderMode()
+        {
+            IHost host;
+            using (new TestScopedEnvironmentVariable(new Dictionary<string, string> { { EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1" } }))
+            {
+                host = new HostBuilder()
+                    .ConfigureLogging((context, builder) =>
+                    {
+                        builder.ConfigureOpenTelemetry(context, TelemetryMode.Placeholder);
+                    })
+                    .ConfigureServices(s =>
+                    {
+                        s.AddSingleton<IEnvironment>(SystemEnvironment.Instance);
+                    })
+                    .Build();
+            }
+
+            var a = host.Services.GetServices<object>();
+
+            var tracerProvider = host.Services.GetService<TracerProvider>();
+            Assert.NotNull(tracerProvider);
+
+            var loggerProvider = host.Services.GetService<ILoggerProvider>();
+            Assert.NotNull(loggerProvider);
+
+            var openTelemetryLoggerOptions = host.Services.GetService<IOptions<OpenTelemetryLoggerOptions>>();
+            Assert.NotNull(openTelemetryLoggerOptions);
+            Assert.True(openTelemetryLoggerOptions.Value.IncludeFormattedMessage);
+        }
+
+        [Fact]
+        public void OpenTelemetryBuilder_NotInPlaceholderMode()
+        {
+            IHost host;
+            using (new TestScopedEnvironmentVariable(new Dictionary<string, string> { { EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0" } }))
+            {
+                host = new HostBuilder()
+                    .ConfigureLogging((context, builder) =>
+                    {
+                        builder.ConfigureOpenTelemetry(context, TelemetryMode.OpenTelemetry);
+                    })
+                    .ConfigureServices(s =>
+                    {
+                        s.AddSingleton<IEnvironment>(SystemEnvironment.Instance);
+                    })
+                    .Build();
+            }
+
+            var a = host.Services.GetServices<object>();
+
+            var tracerProvider = host.Services.GetService<TracerProvider>();
+            Assert.Null(tracerProvider);
+
+            var loggerProvider = host.Services.GetService<ILoggerProvider>();
+            Assert.Null(loggerProvider);
+        }
+
         // The OpenTelemetryEventListener is fine because it's a no-op if there are no otel events to listen to
         private bool HasOtelServices(IServiceCollection sc) => sc.Any(sd => sd.ServiceType != typeof(OpenTelemetryEventListener) && sd.ServiceType.FullName.Contains("OpenTelemetry"));
 
         private static IDisposable SetupDefaultEnvironmentVariables()
         {
             return new TestScopedEnvironmentVariable(new Dictionary<string, string>
+            {
+                { "WEBSITE_SITE_NAME", "appName" },
+                { "WEBSITE_RESOURCE_GROUP", "rg" },
+                { "WEBSITE_OWNER_NAME", "AAAAA-AAAAA-AAAAA-AAA+appName-EastUSwebspace" },
+                { "REGION_NAME", "EastUS" }
+            });
+        }
+
+        private static List<ServiceDescriptor> GetTracerProviderDescriptors(IServiceCollection services)
         {
-            { "WEBSITE_SITE_NAME", "appName" },
-            { "WEBSITE_RESOURCE_GROUP", "rg" },
-            { "WEBSITE_OWNER_NAME", "AAAAA-AAAAA-AAAAA-AAA+appName-EastUSwebspace" },
-            { "REGION_NAME", "EastUS" }
-        });
+            return services
+                .Where(descriptor =>
+                    descriptor.Lifetime == ServiceLifetime.Singleton &&
+                    descriptor.ServiceType.Name == "IConfigureTracerProviderBuilder" &&
+                    descriptor.ImplementationInstance?.GetType().Name == "ConfigureTracerProviderBuilderCallbackWrapper")
+                .ToList();
+        }
+
+        private static object ExtractClientFromDescriptors(List<ServiceDescriptor> descriptors)
+        {
+            foreach (var descriptor in descriptors)
+            {
+                var implementation = descriptor.ImplementationInstance;
+                if (implementation is null)
+                {
+                    continue;
+                }
+
+                // Reflection starts here
+                var configureField = implementation.GetType().GetField("configure", BindingFlags.Instance | BindingFlags.NonPublic);
+                if (configureField?.GetValue(implementation) is Action<IServiceProvider, TracerProviderBuilder> configureDelegate)
+                {
+                    var targetType = configureDelegate.Target.GetType();
+                    var configureDelegateTarget = targetType.GetField("configure", BindingFlags.Instance | BindingFlags.Public);
+
+                    if (configureDelegateTarget?.GetValue(configureDelegate.Target) is Action<AzureMonitorExporterOptions> exporterOptionsDelegate)
+                    {
+                        var credentialField = exporterOptionsDelegate.Target.GetType().GetField("credential", BindingFlags.Instance | BindingFlags.Public);
+                        if (credentialField?.GetValue(exporterOptionsDelegate.Target) is ManagedIdentityCredential managedIdentityCredential)
+                        {
+                            var clientProperty = managedIdentityCredential.GetType().GetProperty("Client", BindingFlags.Instance | BindingFlags.NonPublic);
+                            return clientProperty?.GetValue(managedIdentityCredential);
+                        }
+                    }
+                }
+            }
+            return null;
         }
     }
 }

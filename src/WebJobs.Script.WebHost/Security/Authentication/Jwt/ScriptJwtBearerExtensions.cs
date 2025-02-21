@@ -135,6 +135,9 @@ namespace Microsoft.Extensions.DependencyInjection
         public static TokenValidationParameters CreateTokenValidationParameters()
         {
             var signingKeys = SecretsUtility.GetTokenIssuerSigningKeys();
+
+            // There are two separate CodeQL alerts for the same issue. The double comment on same line is intentional.
+            // CodeQL [SM04555] this handler does not verify AAD tokens. It verifies tokens issued by the platform. // CodeQL [SM04554] this handler does not verify AAD tokens. It verifies tokens issued by the platform.
             var result = new TokenValidationParameters();
             if (signingKeys.Length > 0)
             {

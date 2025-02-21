@@ -22,8 +22,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="PreJIT\*.jittrace" />
-    <None Remove="Resources\**" />
+    <None Update="PreJIT\.jitmarker" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

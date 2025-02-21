@@ -1,0 +1,39 @@
+imports:
+  - https://raw.githubusercontent.com/dotnet/crank/main/src/Microsoft.Crank.Jobs.Bombardier/bombardier.yml
+
+jobs:
+
+  server:
+    sources:
+      functionshost:
+        localFolder: '{{HostLocation}}'
+    project: functionshost/src/WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj
+    readyStateText: 'Application started.'
+    environmentVariables:
+      FUNCTIONS_WORKER_RUNTIME: '{{FunctionsWorkerRuntime}}'
+      AzureWebJobsScriptRoot: '{{FunctionAppPath}}'
+      ASPNETCORE_URLS: '{{ AspNetUrls }}'
+
+scenarios:
+  hellohttp:
+    hostruntime:
+      job: server
+        
+    load:
+      job: bombardier
+      variables:
+        serverPort: 5000
+        path: /api/hello
+
+profiles:
+  win2022:
+    variables:
+      serverUri: http://{{ CrankAgentAppVm }}
+      serverPort: 5000
+    jobs: 
+      hostruntime:
+        endpoints: 
+          - http://{{ CrankAgentAppVm }}:5010
+      load:
+        endpoints: 
+          - http://{{ CrankAgentLoadVm }}:5010

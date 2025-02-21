@@ -146,6 +146,9 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AntaresPlatformVersionWindows = "WEBSITE_PLATFORM_VERSION";
         public const string AntaresPlatformVersionLinux = "PLATFORM_VERSION";
 
+        // Antares Release Channel / RU Feed Settings
+        public const string AntaresPlatformReleaseChannel = "WEBSITE_PlatformReleaseChannel";
+
         // Machine identifier
         public const string AntaresComputerName = "COMPUTERNAME";
 

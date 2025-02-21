@@ -28,8 +28,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         private static readonly string TestImageLocation = "Workers\\Rpc\\Resources\\functions.png";
 
         [Theory]
-        [InlineData("application/x-www-form-urlencoded’", "say=Hi&to=Mom", true)]
-        [InlineData("application/x-www-form-urlencoded’", "say=Hi&to=Mom", false)]
+        [InlineData("application/x-www-form-urlencoded", "say=Hi&to=Mom", true)]
+        [InlineData("application/x-www-form-urlencoded", "say=Hi&to=Mom", false)]
         public async Task HttpObjects_StringBody(string expectedContentType, object body, bool rcpHttpBodyOnly)
         {
             var logger = MockNullLoggerFactory.CreateLogger();

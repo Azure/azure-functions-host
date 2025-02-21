@@ -116,14 +116,6 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        internal void ValidateName(string name, bool isProxy = false)
-        {
-            if (!Utility.IsValidFunctionName(name))
-            {
-                throw new InvalidOperationException(string.Format("'{0}' is not a valid {1} name.", name, isProxy ? "proxy" : "function"));
-            }
-        }
-
         internal static FunctionMetadata ParseFunctionMetadata(string functionName, JObject configMetadata, string scriptDirectory, IFileSystem fileSystem,
             IEnumerable<RpcWorkerConfig> workerConfigs, string functionsWorkerRuntime)
         {
