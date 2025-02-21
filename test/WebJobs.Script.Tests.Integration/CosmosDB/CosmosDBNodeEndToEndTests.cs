@@ -20,11 +20,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
             return CosmosDBTriggerToBlobTest();
         }
 
-        //[Fact]
-        //public Task CosmosDB()
-        //{
-        //    return CosmosDBTest();
-        //}
+        [Fact]
+        public Task CosmosDB()
+        {
+            return CosmosDBTest();
+        }
 
         public class TestFixture : CosmosDBTestFixture
         {

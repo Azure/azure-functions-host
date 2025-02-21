@@ -29,11 +29,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
             // Waiting for the Processor to acquire leases
             await Task.Delay(10000);
 
-            //await Fixture.InitializeDocumentClient();
             Fixture.InitializeCosmosClient();
 
             bool collectionsCreated = await Fixture.CreateDocumentCollections();
-
             var resultBlob = Fixture.TestOutputContainer.GetBlockBlobReference("cosmosdbtriggere2e-completed");
             await resultBlob.DeleteIfExistsAsync();
 
@@ -51,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
                 await Fixture.DeleteDocumentCollections();
             }
 
-            Assert.False(string.IsNullOrEmpty(result));
+            Assert.False(string.IsNullOrEmpty(result));            
         }
 
         protected async Task CosmosDBTest()
@@ -111,7 +109,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
                     "CosmosDBOut"
                 };
             });
-        }        
+        }  
 
         public void InitializeCosmosClient()
         {
@@ -121,19 +119,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
                 CosmosClient = new CosmosClient(connectionString);
             }
         }
-        
+
         public async Task<bool> CreateDocumentCollections()
         {
             bool willCreateCollection = false;
             Database database = await CosmosClient.CreateDatabaseIfNotExistsAsync("ItemDb");
 
-            ContainerProperties itemCollectionProperties = new ContainerProperties("ItemCollection", "/_partitionKey");
+            ContainerProperties itemCollectionProperties = new ContainerProperties("ItemCollection", "/id");
             ContainerResponse itemCollectionResponse = await database.CreateContainerIfNotExistsAsync(
                 itemCollectionProperties,
                 throughput: 400);
             willCreateCollection = itemCollectionResponse.StatusCode == System.Net.HttpStatusCode.Created;
 
-            ContainerProperties leasesCollectionProperties = new ContainerProperties("leases", "/_partitionKey");
+            ContainerProperties leasesCollectionProperties = new ContainerProperties("leases", "/id");
             await database.CreateContainerIfNotExistsAsync(
                 leasesCollectionProperties,
                 throughput: 400);
