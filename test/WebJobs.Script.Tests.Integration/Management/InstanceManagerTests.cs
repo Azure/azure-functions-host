@@ -1492,6 +1492,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 },
                 IsWarmupRequest = true
             };
+
+            _packageDownloadHandler.Setup(p => p.Download(It.IsAny<RunFromPackageContext>()))
+                .ReturnsAsync(zipFilePath);
+
             bool result = await _instanceManager.AssignInstanceAsync(context);
             Assert.True(result);
 
