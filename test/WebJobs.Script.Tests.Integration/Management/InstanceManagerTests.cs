@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             _loggerFactory.AddProvider(_loggerProvider);
 
             _environment = new TestEnvironmentEx();
-            _scriptWebEnvironment = new ScriptWebHostEnvironment(_environment); // maybe mock this and track when a task is complete and finish test?
+            _scriptWebEnvironment = new ScriptWebHostEnvironment(_environment);
             _meshServiceClientMock = new Mock<IMeshServiceClient>(MockBehavior.Strict);
             _packageDownloadHandler = new Mock<IPackageDownloadHandler>(MockBehavior.Strict);
 
@@ -288,7 +288,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Uri sasUri = await TestHelpers.CreateBlobSas(connectionString, string.Empty, "scm-run-from-pkg-test", "Empty.zip");
 
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
-
             var context = new HostAssignmentContext
             {
                 Environment = new Dictionary<string, string>()
@@ -297,14 +296,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 },
                 IsWarmupRequest = false
             };
-
             var options = new ScriptApplicationHostOptions()
             {
                 ScriptPath = Path.GetTempPath(),
                 IsScmRunFromPackage = false
             };
             var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(options);
-
             var instanceManager = new AtlasInstanceManager(optionsFactory, _httpClientFactory, _scriptWebEnvironment,
                 _environment, _loggerFactory.CreateLogger<AtlasInstanceManager>(), new TestMetricsLogger(),
                 _meshServiceClientMock.Object, _runFromPackageHandler, _packageDownloadHandler.Object);
