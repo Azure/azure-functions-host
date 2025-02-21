@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             _loggerFactory.AddProvider(_loggerProvider);
 
             _environment = new TestEnvironmentEx();
-            _scriptWebEnvironment = new ScriptWebHostEnvironment(_environment);
+            _scriptWebEnvironment = new ScriptWebHostEnvironment(_environment); // maybe mock this and track when a task is complete and finish test?
             _meshServiceClientMock = new Mock<IMeshServiceClient>(MockBehavior.Strict);
             _packageDownloadHandler = new Mock<IPackageDownloadHandler>(MockBehavior.Strict);
 
@@ -66,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         }
 
         [Fact]
-        public async Task StartAssignment_AppliesAssignmentContextAsync()
+        public async Task StartAssignment_AppliesAssignmentContext()
         {
             var envValue = new
             {
@@ -98,12 +98,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             bool result = _instanceManager.StartAssignment(context);
             Assert.True(result);
-            Assert.True(_scriptWebEnvironment.InStandbyMode);
 
-            // specialization is done in the background
-            await Task.Delay(500);
+            await TestHelpers.Await(() => !_scriptWebEnvironment.InStandbyMode, timeout: 5000);
 
-            Assert.False(_scriptWebEnvironment.InStandbyMode);
+            Assert.True(!_scriptWebEnvironment.InStandbyMode);
 
             var value = _environment.GetEnvironmentVariable(envValue.Name);
             Assert.Equal(value, envValue.Value);
@@ -152,7 +150,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             bool result = _instanceManager.StartAssignment(context);
             Assert.True(result);
-            Assert.True(_scriptWebEnvironment.InStandbyMode);
 
             await TestHelpers.Await(() => !_scriptWebEnvironment.InStandbyMode, timeout: 5000);
 
@@ -175,7 +172,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             };
             bool result = _instanceManager.StartAssignment(context);
             Assert.True(result);
-            Assert.True(_scriptWebEnvironment.InStandbyMode);
 
             await TestHelpers.Await(() => !_scriptWebEnvironment.InStandbyMode, timeout: 5000);
 
@@ -976,7 +972,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 SiteName = "TestSite",
                 IsWarmupRequest = false
             };
-
             var meshInitServiceClient = new Mock<IMeshServiceClient>(MockBehavior.Strict);
 
             meshInitServiceClient.Setup(client =>

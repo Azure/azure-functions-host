@@ -98,7 +98,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ContainerManagement
                 m.SpecializeMSISidecar(It.Is<HostAssignmentContext>(context =>
                     hostAssignmentContext.Equals(context) && !context.IsWarmupRequest))).Returns(Task.FromResult(string.Empty));
 
-            _instanceManagerMock.Setup(manager => manager.StartAssignment(It.Is<HostAssignmentContext>(context => hostAssignmentContext.Equals(context) && !context.IsWarmupRequest))).Returns(true);
+            _instanceManagerMock.Setup(manager => manager.AssignInstanceAsync(It.Is<HostAssignmentContext>(context => hostAssignmentContext.Equals(context) && !context.IsWarmupRequest))).Returns(Task.FromResult(true));
 
             var initializationHostService = new AtlasContainerInitializationHostedService(_environment, _instanceManagerMock.Object, NullLogger<AtlasContainerInitializationHostedService>.Instance, _startupContextProvider);
             await initializationHostService.StartAsync(CancellationToken.None);
@@ -107,7 +107,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ContainerManagement
                 m.SpecializeMSISidecar(It.Is<HostAssignmentContext>(context =>
                     hostAssignmentContext.Equals(context) && !context.IsWarmupRequest)), Times.Once);
 
-            _instanceManagerMock.Verify(manager => manager.StartAssignment(It.Is<HostAssignmentContext>(context => hostAssignmentContext.Equals(context) && !context.IsWarmupRequest)), Times.Once);
+            _instanceManagerMock.Verify(manager => manager.AssignInstanceAsync(It.Is<HostAssignmentContext>(context => hostAssignmentContext.Equals(context) && !context.IsWarmupRequest)), Times.Once);
 
             var hostSecrets = _startupContextProvider.GetHostSecretsOrNull();
             Assert.Equal("test-key", hostSecrets.MasterKey);
@@ -155,7 +155,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ContainerManagement
                 m.SpecializeMSISidecar(It.Is<HostAssignmentContext>(context =>
                     hostAssignmentContext.Equals(context) && !context.IsWarmupRequest))).Returns(Task.FromResult("msi-specialization-error"));
 
-            _instanceManagerMock.Setup(manager => manager.StartAssignment(It.Is<HostAssignmentContext>(context => hostAssignmentContext.Equals(context) && !context.IsWarmupRequest))).Returns(true);
+            _instanceManagerMock.Setup(manager => manager.AssignInstanceAsync(It.Is<HostAssignmentContext>(context => hostAssignmentContext.Equals(context) && !context.IsWarmupRequest))).Returns(Task.FromResult(true));
 
             var initializationHostService = new AtlasContainerInitializationHostedService(_environment, _instanceManagerMock.Object, NullLogger<AtlasContainerInitializationHostedService>.Instance, _startupContextProvider);
             await initializationHostService.StartAsync(CancellationToken.None);
@@ -164,7 +164,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ContainerManagement
                 m.SpecializeMSISidecar(It.Is<HostAssignmentContext>(context =>
                     hostAssignmentContext.Equals(context) && !context.IsWarmupRequest)), Times.Once);
 
-            _instanceManagerMock.Verify(manager => manager.StartAssignment(It.Is<HostAssignmentContext>(context => hostAssignmentContext.Equals(context) && !context.IsWarmupRequest)), Times.Once);
+            _instanceManagerMock.Verify(manager => manager.AssignInstanceAsync(It.Is<HostAssignmentContext>(context => hostAssignmentContext.Equals(context) && !context.IsWarmupRequest)), Times.Once);
 
             var hostSecrets = _startupContextProvider.GetHostSecretsOrNull();
             Assert.Equal("test-key", hostSecrets.MasterKey);

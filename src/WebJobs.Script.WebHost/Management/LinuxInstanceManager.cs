@@ -38,43 +38,27 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         private async Task<bool> AssignInstanceAsyncCore(HostAssignmentContext context)
         {
-            if (context.IsWarmupRequest)
-            {
-                // Based on profiling download code jit-ing holds up cold start.
-                // Pre-jit to avoid paying the cost later.
-                await DownloadWarmupAsync(context.GetRunFromPkgContext());
-                return true;
-            }
-            else if (_assignmentContext is null)
-            {
-                lock (_assignmentLock)
-                {
-                    if (_assignmentContext != null)
-                    {
-                        return _assignmentContext.Equals(context);
-                    }
-                    _assignmentContext = context;
-                }
+            _logger.LogInformation($"Starting Assignment. Cloud Name: {_environment.GetCloudName()}");
 
-                _logger.LogInformation($"Starting Assignment. Cloud Name: {_environment.GetCloudName()}");
+            // set a flag which will cause any incoming http requests to buffer
+            // until specialization is complete
+            // the host is guaranteed not to receive any requests until AFTER assign
+            // has been initiated, so setting this flag here is sufficient to ensure
+            // that any subsequent incoming requests while the assign is in progress
+            // will be delayed until complete
+            _webHostEnvironment.DelayRequests();
 
-                // set a flag which will cause any incoming http requests to buffer
-                // until specialization is complete
-                // the host is guaranteed not to receive any requests until AFTER assign
-                // has been initiated, so setting this flag here is sufficient to ensure
-                // that any subsequent incoming requests while the assign is in progress
-                // will be delayed until complete
-                _webHostEnvironment.DelayRequests();
+            // start the specialization process in the background
+            await AssignAsync(context);
+            return true;
+        }
 
-                // start the specialization process in the background
-                await AssignAsync(context);
-                return true;
-            }
-            else
-            {
-                // No lock needed here since _assignmentContext is not null when we are here
-                return _assignmentContext.Equals(context);
-            }
+        public async Task<bool> HandleWarmupRequestAsync(HostAssignmentContext context)
+        {
+            // Based on profiling download code jit-ing holds up cold start.
+            // Pre-jit to avoid paying the cost later.
+            await DownloadWarmupAsync(context.GetRunFromPkgContext());
+            return true;
         }
 
         public async Task<bool> AssignInstanceAsync(HostAssignmentContext context)
@@ -82,6 +66,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             if (!IsValidEnvironment(context))
             {
                 return false;
+            }
+
+            if (context.IsWarmupRequest)
+            {
+                return await HandleWarmupRequestAsync(context);
+            }
+
+            lock (_assignmentLock)
+            {
+                if (_assignmentContext != null)
+                {
+                    return _assignmentContext.Equals(context);
+                }
+                _assignmentContext = context;
             }
 
             await AssignInstanceAsyncCore(context);
@@ -96,9 +94,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 return false;
             }
 
-            if (_assignmentContext != null)
+            if (context.IsWarmupRequest)
             {
-                return _assignmentContext.Equals(context);
+                _ = HandleWarmupRequestAsync(context);
+                return true;
+            }
+
+            lock (_assignmentLock)
+            {
+                if (_assignmentContext != null)
+                {
+                    return _assignmentContext.Equals(context);
+                }
+                _assignmentContext = context;
             }
 
             _ = AssignInstanceAsyncCore(context);
