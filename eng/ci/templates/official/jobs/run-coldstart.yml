@@ -18,10 +18,10 @@ jobs:
   pool:
     name: 1es-pool-azfunc-benchmarking-large
     ${{ if eq(parameters.os, 'Linux') }}:
-      image: 1es-ubuntu-22.04-benchmark-runner-vanilla-sd4
+      image: 1es-ubuntu-22.04-benchmark-runner-vanilla-sd2
       os: linux 
     ${{ else }}:
-      image: 1es-windows-2022-benchmark-runner-vanilla-sd4
+      image: 1es-windows-2022-benchmark-runner-vanilla-sd2
       os: windows
 
   variables:
