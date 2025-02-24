@@ -88,13 +88,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Fixtures
             }
         }
 
-        public Task DisposeAsync()
+        public async Task DisposeAsync()
         {
-            _process?.CancelOutputRead();
-            _process?.CancelErrorRead();
-            _process?.Kill();
-            _process?.Dispose();
-            return _process.WaitForExitAsync();
+            if (Interlocked.Exchange(ref _process, null) is { } p)
+            {
+                if (!p.HasExited)
+                {
+                    p.Kill(entireProcessTree: true);
+                }
+
+                using CancellationTokenSource cts = new(TimeSpan.FromSeconds(5));
+                await p.WaitForExitAsync(cts.Token);
+
+                p.Dispose();
+            }
         }
 
         private static int GetFreeTcpPort()
