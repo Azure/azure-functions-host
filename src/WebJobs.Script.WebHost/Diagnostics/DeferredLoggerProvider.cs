@@ -37,10 +37,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             return _isEnabled ? new DeferredLogger(_channel, categoryName, _scopeProvider, _environment) : NullLogger.Instance;
         }
 
-        public void ProcessBufferedLogs(IReadOnlyCollection<ILoggerProvider> forwardingProviders, bool runImmediately = false)
+        public Task ProcessBufferedLogsAsync(IReadOnlyCollection<ILoggerProvider> forwardingProviders, bool runImmediately = false)
         {
             // Forward all buffered logs to the new provider
-            Task.Run(async () =>
+            return Task.Run(async () =>
             {
                 if (!runImmediately)
                 {

@@ -40,9 +40,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Eventing
 
             // Arrange
             var provider = new DeferredLoggerProvider(testEnvironment);
-            provider.ProcessBufferedLogs(new List<ILoggerProvider>(), true); // Disable the provider
+            await provider.ProcessBufferedLogsAsync(new List<ILoggerProvider>(), true); // Disable the provider
 
-            await Task.Delay(1000);
             // Act
             var logger = provider.CreateLogger("TestCategory");
 
@@ -63,10 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Eventing
             logger.LogInformation("Test Log Message");
 
             // Act
-            provider.ProcessBufferedLogs(new List<ILoggerProvider>(), true); // Process immediately
-
-            // Wait for forwarding task to complete
-            await Task.Delay(100); // Small delay to ensure the logs are processed
+            await provider.ProcessBufferedLogsAsync(new List<ILoggerProvider>(), true); // Process immediately
 
             // Assert
             Assert.Equal(0, provider.Count); // Ensure channel is drained
@@ -84,11 +80,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Eventing
             logger.LogInformation("Log before disposal");
 
             // Act
-            provider.ProcessBufferedLogs(new List<ILoggerProvider>(), true); // Process immediately
+            await provider.ProcessBufferedLogsAsync(new List<ILoggerProvider>(), true); // Process immediately
             provider.Dispose();
-
-            // Wait a short period to ensure the channel is completed
-            await Task.Delay(100);
 
             // Assert
             Assert.False(provider.CreateLogger("TestCategory") is DeferredLogger);
@@ -130,7 +123,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Eventing
         }
 
         [Fact]
-        public void ProcessBufferedLogs_ThrowsNoExceptionsWhenChannelIsEmpty()
+        public async Task ProcessBufferedLogs_ThrowsNoExceptionsWhenChannelIsEmpty()
         {
             var testEnvironment = new TestEnvironment();
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
@@ -140,7 +133,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Eventing
             var mockLoggerProvider = new Mock<ILoggerProvider>();
 
             // Act & Assert (no exceptions should be thrown)
-            provider.ProcessBufferedLogs(new[] { mockLoggerProvider.Object }, true);
+            var exception = await Record.ExceptionAsync(() => provider.ProcessBufferedLogsAsync(new[] { mockLoggerProvider.Object }, true));
+            Assert.Null(exception);
         }
 
         [Fact]
@@ -163,10 +157,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Eventing
             testLoggerProvider.SetScopeProvider(new LoggerExternalScopeProvider());
 
             // Act
-            provider.ProcessBufferedLogs(new List<ILoggerProvider>() { testLoggerProvider }, true); // Process immediately
+            await provider.ProcessBufferedLogsAsync(new List<ILoggerProvider>() { testLoggerProvider }, true); // Process immediately
 
-            // Wait a short period to ensure the channel is completed
-            await Task.Delay(100);
             Assert.Equal(0, provider.Count); // Ensure channel is drained
 
             // Assert that the log was forwarded to the testLoggerProvider
