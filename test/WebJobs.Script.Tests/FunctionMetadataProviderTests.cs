@@ -54,10 +54,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             FunctionMetadataResult result = new FunctionMetadataResult(true, functionMetadataCollection.ToImmutableArray());
             _workerFunctionMetadataProvider.Setup(m => m.GetFunctionMetadataAsync(workerConfigs, false)).Returns(Task.FromResult(result));
-            _hostFunctionMetadataProvider.Setup(m => m.GetFunctionMetadataAsync(workerConfigs, environment, false)).Returns(Task.FromResult(functionMetadataCollection.ToImmutableArray()));
+            _hostFunctionMetadataProvider.Setup(m => m.GetFunctionMetadataAsync(workerConfigs, false)).Returns(Task.FromResult(functionMetadataCollection.ToImmutableArray()));
 
             // Act
-            var functions = defaultProvider.GetFunctionMetadataAsync(workerConfigs, environment, false).GetAwaiter().GetResult();
+            var functions = defaultProvider.GetFunctionMetadataAsync(workerConfigs, false).GetAwaiter().GetResult();
 
             // Assert
             Assert.Equal(1, functions.Length);
@@ -93,10 +93,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var defaultProvider = new FunctionMetadataProvider(_logger, workerMetadataProvider.Object, _hostFunctionMetadataProvider.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(new FunctionsHostingConfigOptions()), SystemEnvironment.Instance);
 
             FunctionMetadataResult result = new FunctionMetadataResult(true, functionMetadataCollection.ToImmutableArray());
-            _hostFunctionMetadataProvider.Setup(m => m.GetFunctionMetadataAsync(workerConfigs, environment, false)).Returns(Task.FromResult(functionMetadataCollection.ToImmutableArray()));
+            _hostFunctionMetadataProvider.Setup(m => m.GetFunctionMetadataAsync(workerConfigs, false)).Returns(Task.FromResult(functionMetadataCollection.ToImmutableArray()));
 
             // Act
-            var functions = defaultProvider.GetFunctionMetadataAsync(workerConfigs, environment, false).GetAwaiter().GetResult();
+            var functions = defaultProvider.GetFunctionMetadataAsync(workerConfigs, false).GetAwaiter().GetResult();
 
             // Assert
             Assert.Equal(1, functions.Length);

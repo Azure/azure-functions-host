@@ -4,7 +4,7 @@ jobs:
 
   pool:
     name: 1es-pool-azfunc
-    image: 1es-windows-2022 
+    image: 1es-windows-2022
     os: windows
 
   variables:
@@ -29,6 +29,10 @@ jobs:
       jdkArchitectureOption: x64
       jdkSourceOption: PreInstalled
 
+  - script: |
+      npm install -g azurite
+    displayName: Install Azurite
+
   - task: PowerShell@2
     displayName: Install Az.Storage Powershell module
     inputs:
@@ -41,12 +45,19 @@ jobs:
       command: ci
       workingDir: sample/CustomHandlerRetry
 
+  - task: DotNetCoreCLI@2
+    displayName: Build Integration.csproj
+    inputs:
+      command: build
+      projects: $(IntegrationProject)
+
   - task: AzurePowerShell@5
     displayName: Checkout secrets
     inputs:
       azureSubscription: Azure-Functions-Host-CI-internal
       azurePowerShellVersion: 'LatestVersion'
-      ScriptPath: build/checkout-secrets.ps1
+      pwsh: true
+      ScriptPath: eng/script/checkout-secrets.ps1
 
   - task: AzureKeyVault@1
     inputs:
@@ -71,12 +82,6 @@ jobs:
       CosmosDbSecretMap: $(CosmosDb)
       AzureWebJobsEventHubSenderSecretMap: $(EventHub)
       AzureWebJobsEventHubReceiverSecretMap: $(EventHub)
-
-  - task: DotNetCoreCLI@2
-    displayName: Build Integration.csproj
-    inputs:
-      command: build
-      projects: $(IntegrationProject)
 
   - task: DotNetCoreCLI@2
     displayName: C# end to end tests
@@ -201,5 +206,6 @@ jobs:
     inputs:
       azureSubscription: Azure-Functions-Host-CI-internal
       azurePowerShellVersion: 'LatestVersion'
-      ScriptPath: build/checkin-secrets.ps1
+      pwsh: true
+      ScriptPath: eng/script/checkin-secrets.ps1
       ScriptArguments: '-leaseBlob $(LeaseBlob) -leaseToken $(LeaseToken)'

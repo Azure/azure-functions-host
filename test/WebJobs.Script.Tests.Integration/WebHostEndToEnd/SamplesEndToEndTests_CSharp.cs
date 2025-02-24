@@ -50,63 +50,45 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         [Fact]
         public async Task HostAdminApis_ValidAdminToken_Succeeds()
         {
-            // verify with SWT
+            // token specified as bearer token
             string uri = "admin/host/status";
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
-            string token = SimpleWebTokenHelper.CreateToken(DateTime.UtcNow.AddMinutes(1));
-            request.Headers.Add(ScriptConstants.SiteRestrictedTokenHeaderName, token);
+            string token = _fixture.Host.GenerateAdminJwtToken();
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
             HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-            // verify with JWT
+            // token specified via x-ms-site-token header
             request = new HttpRequestMessage(HttpMethod.Get, uri);
-            token = _fixture.Host.GenerateAdminJwtToken();
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            request.Headers.Add(ScriptConstants.SiteTokenHeaderName, token);
             response = await _fixture.Host.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         }
 
         [Fact]
-        public async Task HostAdminApis_IgnoresSwtTokenWhenDisabled()
+        public async Task HostAdminApis_IgnoresSwtTokens()
         {
-            // expect success when enabled
+            // expect unauthorized if an swt is passed
             string uri = "admin/host/status";
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
             string swtToken = SimpleWebTokenHelper.CreateToken(DateTime.UtcNow.AddMinutes(1));
             request.Headers.Add(ScriptConstants.SiteRestrictedTokenHeaderName, swtToken);
             HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+
+            // expect success when both a jwt and an swt are sent
+            request = new HttpRequestMessage(HttpMethod.Get, uri);
+            var jwtToken = _fixture.Host.GenerateAdminJwtToken();
+            request.Headers.Add(ScriptConstants.SiteRestrictedTokenHeaderName, swtToken);
+            request.Headers.Add(ScriptConstants.SiteTokenHeaderName, jwtToken);
+            response = await _fixture.Host.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-            var hostingConfigOptions = _fixture.Host.WebHostServices.GetService<IOptions<FunctionsHostingConfigOptions>>();
-
-            try
-            {
-                // now disable and expect failure
-                hostingConfigOptions.Value.SwtAuthenticationEnabled = false;
-
-                request = new HttpRequestMessage(HttpMethod.Get, uri);
-                request.Headers.Add(ScriptConstants.SiteRestrictedTokenHeaderName, swtToken);
-                response = await _fixture.Host.HttpClient.SendAsync(request);
-                Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-
-                // expect success when both a jwt and an swt are sent
-                request = new HttpRequestMessage(HttpMethod.Get, uri);
-                var jwtToken = _fixture.Host.GenerateAdminJwtToken();
-                request.Headers.Add(ScriptConstants.SiteRestrictedTokenHeaderName, swtToken);
-                request.Headers.Add(ScriptConstants.SiteTokenHeaderName, jwtToken);
-                response = await _fixture.Host.HttpClient.SendAsync(request);
-                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-
-                // expect success when only a jwt is sent
-                request = new HttpRequestMessage(HttpMethod.Get, uri);
-                request.Headers.Add(ScriptConstants.SiteTokenHeaderName, jwtToken);
-                response = await _fixture.Host.HttpClient.SendAsync(request);
-                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            }
-            finally
-            {
-                hostingConfigOptions.Value.SwtAuthenticationEnabled = true;
-            }
+            // expect success when only a jwt is sent
+            request = new HttpRequestMessage(HttpMethod.Get, uri);
+            request.Headers.Add(ScriptConstants.SiteTokenHeaderName, jwtToken);
+            response = await _fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         }
 
         [Fact]
@@ -132,24 +114,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             response = await _fixture.Host.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-            // verify that even though a site token grants admin level access to
-            // host APIs, it can't be used to invoke user functions
-            using (new TestScopedEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey, TestHelpers.GenerateKeyHexString()))
-            {
-                string token = SimpleWebTokenHelper.CreateToken(DateTime.UtcNow.AddMinutes(2));
+            // Verify that even though a platform issued site token grants admin level access to
+            // host APIs, it can't be used to invoke user functions.
+            string token = _fixture.Host.GenerateAdminJwtToken(issuer: ScriptConstants.AppServiceCoreUri);
 
-                // verify the token is valid by invoking an admin API
-                request = new HttpRequestMessage(HttpMethod.Get, "admin/host/status");
-                request.Headers.Add(ScriptConstants.SiteRestrictedTokenHeaderName, token);
-                response = await _fixture.Host.HttpClient.SendAsync(request);
-                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            // verify the token is valid by invoking an admin API
+            request = new HttpRequestMessage(HttpMethod.Get, "admin/host/status");
+            request.Headers.Add(ScriptConstants.SiteTokenHeaderName, token);
+            response = await _fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-                // verify it can't be used to invoke user functions
-                request = new HttpRequestMessage(HttpMethod.Get, uri);
-                request.Headers.Add(ScriptConstants.SiteRestrictedTokenHeaderName, token);
-                response = await _fixture.Host.HttpClient.SendAsync(request);
-                Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-            }
+            // verify it can't be used to invoke user functions
+            request = new HttpRequestMessage(HttpMethod.Get, uri);
+            request.Headers.Add(ScriptConstants.SiteTokenHeaderName, token);
+            response = await _fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         }
 
         [Fact]
@@ -168,38 +147,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             response = await _fixture.Host.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-            // verify that even though a site token grants admin level access to
-            // host APIs, it can't be used to invoke user functions
-            using (new TestScopedEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey, TestHelpers.GenerateKeyHexString()))
-            {
-                string swtToken = SimpleWebTokenHelper.CreateToken(DateTime.UtcNow.AddMinutes(2));
+            // Verify that even though a platform issued site token grants admin level access to
+            // host APIs, it can't be used to invoke user functions.
+            string token = _fixture.Host.GenerateAdminJwtToken(issuer: ScriptConstants.AppServiceCoreUri);
 
-                // verify the token is valid by invoking an admin API
-                request = new HttpRequestMessage(HttpMethod.Get, "admin/host/status");
-                request.Headers.Add(ScriptConstants.SiteRestrictedTokenHeaderName, swtToken);
-                response = await _fixture.Host.HttpClient.SendAsync(request);
-                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-
-                // verify it can't be used to invoke non-anonymous user functions
-                request = new HttpRequestMessage(HttpMethod.Get, uri);
-                request.Headers.Add(ScriptConstants.SiteRestrictedTokenHeaderName, swtToken);
-                response = await _fixture.Host.HttpClient.SendAsync(request);
-                Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-            }
-
-            // verify non-platform JWT token can be used to invoke non-anonymous user functions
-            string jwtToken = _fixture.Host.GenerateAdminJwtToken();
-            request = new HttpRequestMessage(HttpMethod.Get, uri);
-            request.Headers.Add(ScriptConstants.SiteTokenHeaderName, jwtToken);
+            // verify the token is valid by invoking an admin API
+            request = new HttpRequestMessage(HttpMethod.Get, "admin/host/status");
+            request.Headers.Add(ScriptConstants.SiteTokenHeaderName, token);
             response = await _fixture.Host.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
             // verify platform JWT token can't be used to invoke non-anonymous user functions
-            jwtToken = _fixture.Host.GenerateAdminJwtToken(issuer: ScriptConstants.AppServiceCoreUri);
             request = new HttpRequestMessage(HttpMethod.Get, uri);
-            request.Headers.Add(ScriptConstants.SiteTokenHeaderName, jwtToken);
+            request.Headers.Add(ScriptConstants.SiteTokenHeaderName, token);
             response = await _fixture.Host.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+
+            // verify non-platform JWT token CAN be used to invoke non-anonymous user functions
+            token = _fixture.Host.GenerateAdminJwtToken();
+            request = new HttpRequestMessage(HttpMethod.Get, uri);
+            request.Headers.Add(ScriptConstants.SiteTokenHeaderName, token);
+            response = await _fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         }
 
         [Fact]
@@ -208,15 +177,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             string functionName = "HttpTrigger";
 
             // jwt token with site issuer
-            var response = await AdminInvokeFunctionAdminToken(functionName, true);
+            var response = await AdminInvokeFunctionAdminToken(functionName);
             Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
 
             // jwt token with platform issuer
-            response = await AdminInvokeFunctionAdminToken(functionName, true, issuer: ScriptConstants.AppServiceCoreUri);
-            Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
-
-            // swt token
-            response = await AdminInvokeFunctionAdminToken(functionName, false);
+            response = await AdminInvokeFunctionAdminToken(functionName, issuer: ScriptConstants.AppServiceCoreUri);
             Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
         }
 
@@ -1082,9 +1047,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             return await _fixture.Host.HttpClient.SendAsync(request);
         }
 
-        private async Task<HttpResponseMessage> AdminInvokeFunctionAdminToken(string functionName, bool jwt, string input = null, string issuer = null)
+        private async Task<HttpResponseMessage> AdminInvokeFunctionAdminToken(string functionName, string input = null, string issuer = null)
         {
-            
             string uri = $"admin/functions/{functionName}";
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
             JObject jo = new JObject
@@ -1094,16 +1058,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             request.Content = new StringContent(jo.ToString());
             request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
 
-            if (jwt)
-            {
-                string jwtToken = _fixture.Host.GenerateAdminJwtToken(issuer: issuer);
-                request.Headers.Add(ScriptConstants.SiteTokenHeaderName, jwtToken);
-            }
-            else
-            {
-                string swtToken = SimpleWebTokenHelper.CreateToken(DateTime.UtcNow.AddMinutes(2));
-                request.Headers.Add(ScriptConstants.SiteRestrictedTokenHeaderName, swtToken);
-            }
+            string jwtToken = _fixture.Host.GenerateAdminJwtToken(issuer: issuer);
+            request.Headers.Add(ScriptConstants.SiteTokenHeaderName, jwtToken);
 
             return await _fixture.Host.HttpClient.SendAsync(request);
         }
@@ -1417,10 +1373,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             public override void ConfigureWebHost(IServiceCollection services)
             {
                 base.ConfigureWebHost(services);
-
-                // SWT auth is disabled by default so we must enable to test
-                services.AddOptions<FunctionsHostingConfigOptions>()
-                    .Configure(o => o.SwtAuthenticationEnabled = true);
 
                 // The legacy http tests use sync IO so explicitly allow this
                 var environment = new TestEnvironment();

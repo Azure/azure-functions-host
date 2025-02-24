@@ -6,6 +6,7 @@ using System.Linq;
 using Microsoft.ApplicationInsights.DependencyCollector;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
+using Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
@@ -24,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 host = new HostBuilder()
                     .ConfigureLogging((context, builder) =>
                     {
-                        builder.ConfigureApplicationInsights(context);
+                        builder.ConfigureApplicationInsights(context, TelemetryMode.Placeholder);
                     })
                     .ConfigureServices(s =>
                     {

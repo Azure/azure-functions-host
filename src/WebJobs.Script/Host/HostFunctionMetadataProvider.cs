@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public ImmutableDictionary<string, ImmutableArray<string>> FunctionErrors
            => _functionErrors.ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray());
 
-        public async Task<ImmutableArray<FunctionMetadata>> GetFunctionMetadataAsync(IEnumerable<RpcWorkerConfig> workerConfigs, IEnvironment environment, bool forceRefresh)
+        public async Task<ImmutableArray<FunctionMetadata>> GetFunctionMetadataAsync(IEnumerable<RpcWorkerConfig> workerConfigs, bool forceRefresh)
         {
             _functions = default(ImmutableArray<FunctionMetadata>);
 
@@ -113,14 +113,6 @@ namespace Microsoft.Azure.WebJobs.Script
                     Utility.AddFunctionError(_functionErrors, functionName, Utility.FlattenException(ex, includeSource: false), isFunctionShortName: true);
                 }
                 return null;
-            }
-        }
-
-        internal void ValidateName(string name, bool isProxy = false)
-        {
-            if (!Utility.IsValidFunctionName(name))
-            {
-                throw new InvalidOperationException(string.Format("'{0}' is not a valid {1} name.", name, isProxy ? "proxy" : "function"));
             }
         }
 

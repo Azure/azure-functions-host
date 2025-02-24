@@ -1,0 +1,16 @@
+<Project>
+
+  <Import Project="$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildThisFileDirectory)../, $(_DirectoryBuildPropsFile)))/$(_DirectoryBuildPropsFile)"
+    Condition=" '$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildThisFileDirectory)../, $(_DirectoryBuildPropsFile)))' != '' " />
+
+  <PropertyGroup>
+    <Description>Azure Functions extensions metadata generator</Description>
+    <SignAssembly>true</SignAssembly>
+    <NugetAudit>false</NugetAudit>
+    <CheckEolTargetFramework>false</CheckEolTargetFramework>
+    <DelaySign>true</DelaySign>
+    <AssemblyOriginatorKeyFile>$(MSBuildThisFileDirectory)key.snk</AssemblyOriginatorKeyFile>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+</Project>

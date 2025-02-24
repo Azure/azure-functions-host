@@ -1,0 +1,41 @@
+<Project>
+
+  <!-- Additional paths -->
+  <PropertyGroup>
+    <WorkersProps>$(EngBuildRoot)Workers.props</WorkersProps>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <!-- Nuget audit as warnings only, even in TreatWarningsAsErrors. -->
+    <!-- Except for in CI, critical will fail the build. -->
+    <WarningsNotAsErrors>$(WarningsNotAsErrors)NU1901;NU1902;NU1903;</WarningsNotAsErrors>
+    <WarningsNotAsErrors Condition="'$(CI)' == 'false'">$(WarningsNotAsErrors)NU1904;</WarningsNotAsErrors>
+    <WarningsAsErrors Condition="'$(CI)' == 'true'">$(WarningsAsErrors)NU1904;</WarningsAsErrors>
+    <NuGetAuditLevel>moderate</NuGetAuditLevel> <!-- warn on moderate severity only. -->
+    <NuGetAuditMode>all</NuGetAuditMode> <!-- audit transitive dependencies. -->
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <AssemblyOriginatorKeyFile>$(EngResourceRoot)key.snk</AssemblyOriginatorKeyFile>
+    <CodeAnalysisRuleSet>$(RepoRoot)src.ruleset</CodeAnalysisRuleSet>
+    <NoWarn>$(NoWarn);NU1701;NU5104</NoWarn>
+    <DebugType>embedded</DebugType>
+    <GenerateRuntimeConfigDevFile>true</GenerateRuntimeConfigDevFile><!-- https://github.com/dotnet/runtime/issues/54684 -->
+    <DisableImplicitNamespaceImports>true</DisableImplicitNamespaceImports>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AdditionalFiles Include="$(RepoRoot)stylecop.json" Link="stylecop.json" />
+  </ItemGroup>
+
+  <Import Project="$(MSBuildThisFileDirectory)Release.props" />
+
+  <!-- To use PlaceholderSimulation:
+    1. Set env variable PlaceholderSimulation=true
+    2. OR build with -p:PlaceholderSimulation=true
+  -->
+  <Import Project="$(MSBuildThisFileDirectory)PlaceholderSimulation.props" Condition="'$(PlaceholderSimulation)' == 'true'"/>
+
+</Project>

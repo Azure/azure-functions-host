@@ -1,0 +1,23 @@
+<Project>
+
+  <!-- Local build versioning. By default we keep it simple. -->
+  <PropertyGroup Condition="'$(CI)' != 'true'">
+    <VersionSuffix Condition="'$(VersionSuffix)' != ''">$(VersionSuffix).$(BuildReason)</VersionSuffix>
+    <VersionSuffix Condition="'$(VersionSuffix)' == ''">$(BuildReason)</VersionSuffix>
+    <Version>$(VersionPrefix)-$(VersionSuffix)</Version>
+  </PropertyGroup>
+
+  <!-- CI versioning steps -->
+  <PropertyGroup Condition="'$(CI)' == 'true' AND '$(PublicRelease)' != 'true'">
+    <VersionSuffix Condition="'$(VersionSuffix)' != ''">$(VersionSuffix).$(BuildReason).$(BuildNumber).$(BuildCounter)</VersionSuffix>
+    <VersionSuffix Condition="'$(VersionSuffix)' == ''">$(BuildReason).$(BuildNumber).$(BuildCounter)</VersionSuffix>
+    <Version>$(VersionPrefix)-$(VersionSuffix)</Version>
+  </PropertyGroup>
+
+  <!-- When building in Azure pipelines, update the build number. -->
+  <!-- Specifically use '$(TF_BUILD)' and not '$(CI)' to ensure we are in Azure pipelines. -->
+  <Target Name="UpdateAzDoBuildNumber" Condition="'$(TF_BUILD)' == 'true' AND '$(UpdateBuildNumber)' == 'true'" BeforeTargets="BeforeBuild">
+    <Message Importance="high" Text="##vso[build.updatebuildnumber]$(Version)" />
+  </Target>
+
+</Project>

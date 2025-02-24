@@ -1,8 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk" InitialTargets="UpdateRuntimeAssemblies">
-  <Import Project="..\..\build\metadatagenerator.props" />
 
   <PropertyGroup>
-    <Version>4.0.2</Version>
     <OutputType>Library</OutputType>
     <TargetFrameworks>netstandard2.0;net46</TargetFrameworks>
     <AssemblyName>Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator</AssemblyName>
@@ -74,28 +72,17 @@
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="runtimeassemblies.txt">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </EmbeddedResource>
+    <EmbeddedResource Include="runtimeassemblies.txt" CopyToOutputDirectory="Never" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Build.Framework" Version="15.3.409">
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
-    <PackageReference Include="Microsoft.Build.Utilities.Core" Version="15.3.409">
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
-    <PackageReference Include="StyleCop.Analyzers" Version="1.0.2">
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
+    <PackageReference Include="Microsoft.Build.Framework" Version="15.3.409" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.Build.Utilities.Core" Version="15.3.409" PrivateAssets="all" />
+    <PackageReference Include="StyleCop.Analyzers" Version="1.0.2" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
-    <PackageReference Include="System.Runtime.Loader">
-      <Version>4.3.0</Version>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
+    <PackageReference Include="System.Runtime.Loader" Version="4.3.0" PrivateAssets="all" />
   </ItemGroup>
 
   <Target Name="RemoveFrameworkDependencies" AfterTargets="_WalkEachTargetPerFramework">
