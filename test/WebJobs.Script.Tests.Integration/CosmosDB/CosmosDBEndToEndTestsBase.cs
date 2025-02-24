@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
                 await Fixture.DeleteDocumentCollections();
             }
 
-            Assert.False(string.IsNullOrEmpty(result));            
+            Assert.False(string.IsNullOrEmpty(result));
         }
 
         protected async Task CosmosDBTest()
@@ -109,7 +109,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
                     "CosmosDBOut"
                 };
             });
-        }  
+        }
 
         public void InitializeCosmosClient()
         {
