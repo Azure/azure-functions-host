@@ -4,7 +4,7 @@ jobs:
 
   pool:
     name: 1es-pool-azfunc
-    image: 1es-windows-2022 
+    image: 1es-windows-2022
     os: windows
 
   variables:
@@ -28,6 +28,10 @@ jobs:
       versionSpec: '11'
       jdkArchitectureOption: x64
       jdkSourceOption: PreInstalled
+
+  - script: |
+      npm install -g azurite
+    displayName: Install Azurite
 
   - task: PowerShell@2
     displayName: Install Az.Storage Powershell module

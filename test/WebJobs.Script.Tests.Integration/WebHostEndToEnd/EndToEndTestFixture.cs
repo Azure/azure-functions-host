@@ -101,7 +101,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             return null;
         }
 
-        public async Task InitializeAsync()
+        public virtual async Task InitializeAsync()
         {
             string nowString = DateTime.UtcNow.ToString("yyMMdd-HHmmss");
             string GetDestPath(int counter)
