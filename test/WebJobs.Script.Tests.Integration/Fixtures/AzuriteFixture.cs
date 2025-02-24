@@ -162,7 +162,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Fixtures
             else
             {
                 process = "bash";
-                arguments = $"-c {azurite}";
+                arguments = $"-c \"{azurite}\"";
             }
         }
 
