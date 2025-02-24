@@ -60,7 +60,7 @@ jobs:
             sourceVersion = $env:BUILD_SOURCEVERSION
             buildId = $env:BUILD_BUILDID
             buildNumber = $env:BUILD_BUILDNUMBER 
-            os = $env:AGENT_OS
+            os = $env:OS
             processorCount = $env:NUMBER_OF_PROCESSORS
         } | ConvertTo-Json -Depth 2
 
