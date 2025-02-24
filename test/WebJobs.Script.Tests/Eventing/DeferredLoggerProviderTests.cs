@@ -33,14 +33,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Eventing
         }
 
         [Fact]
-        public async Task CreateLogger_ReturnsNullLogger_WhenDisabled()
+        public void CreateLogger_ReturnsNullLogger_WhenDisabled()
         {
             var testEnvironment = new TestEnvironment();
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
 
             // Arrange
             var provider = new DeferredLoggerProvider(testEnvironment);
-            await provider.ProcessBufferedLogsAsync(new List<ILoggerProvider>(), true); // Disable the provider
+            _ = provider.ProcessBufferedLogsAsync(new List<ILoggerProvider>(), true);
+
+            provider.Dispose();
 
             // Act
             var logger = provider.CreateLogger("TestCategory");
@@ -61,6 +63,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Eventing
             var logger = provider.CreateLogger("TestCategory");
             logger.LogInformation("Test Log Message");
 
+            // Close the channel so that ProcessBufferedLogsAsync can complete
+            provider.Dispose();
+
             // Act
             await provider.ProcessBufferedLogsAsync(new List<ILoggerProvider>(), true); // Process immediately
 
@@ -79,9 +84,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Eventing
             var logger = provider.CreateLogger("TestCategory");
             logger.LogInformation("Log before disposal");
 
+            // Close the channel so that ProcessBufferedLogsAsync can complete
+            provider.Dispose();
+
             // Act
             await provider.ProcessBufferedLogsAsync(new List<ILoggerProvider>(), true); // Process immediately
-            provider.Dispose();
 
             // Assert
             Assert.False(provider.CreateLogger("TestCategory") is DeferredLogger);
@@ -132,6 +139,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Eventing
             var provider = new DeferredLoggerProvider(testEnvironment);
             var mockLoggerProvider = new Mock<ILoggerProvider>();
 
+            // Close the channel so that ProcessBufferedLogsAsync can complete
+            provider.Dispose();
+
             // Act & Assert (no exceptions should be thrown)
             var exception = await Record.ExceptionAsync(() => provider.ProcessBufferedLogsAsync(new[] { mockLoggerProvider.Object }, true));
             Assert.Null(exception);
@@ -156,6 +166,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Eventing
             TestLoggerProvider testLoggerProvider = new TestLoggerProvider();
             testLoggerProvider.SetScopeProvider(new LoggerExternalScopeProvider());
 
+            // Close the channel so that ProcessBufferedLogsAsync can complete
+            provider.Dispose();
+
             // Act
             await provider.ProcessBufferedLogsAsync(new List<ILoggerProvider>() { testLoggerProvider }, true); // Process immediately
 
@@ -164,6 +177,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Eventing
             // Assert that the log was forwarded to the testLoggerProvider
             Assert.Equal(1, testLoggerProvider.GetAllLogMessages().Count);
             Assert.Equal(Assert.Single(testLoggerProvider.GetAllLogMessages()).FormattedMessage, "Error Log");
+        }
+
+        [Fact]
+        public void Dispose_DoNotDisablesProvider()
+        {
+            var testEnvironment = new TestEnvironment();
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+
+            // Arrange
+            var provider = new DeferredLoggerProvider(testEnvironment);
+            var logger = provider.CreateLogger("TestCategory");
+            logger.LogError("Error Log");
+
+            // Create an instance of IOptionsMonitor<OpenTelemetryLoggerOptions>
+            var optionsMonitor = Mock.Of<IOptionsMonitor<OpenTelemetryLoggerOptions>>();
+
+            // Pass the optionsMonitor to the OpenTelemetryLoggerProvider constructor
+            //OpenTelemetryLoggerProvider openTelemetryLoggerProvider = new(optionsMonitor);
+            TestLoggerProvider testLoggerProvider = new TestLoggerProvider();
+            testLoggerProvider.SetScopeProvider(new LoggerExternalScopeProvider());
+
+            // Act
+            _ = provider.ProcessBufferedLogsAsync(new List<ILoggerProvider>() { testLoggerProvider }, true); // Process immediately
 
             // Ensure that the LoggerProvider is not disabled and still returns DeferredLogger
             Assert.True(provider.CreateLogger("TestCategory") is DeferredLogger);
