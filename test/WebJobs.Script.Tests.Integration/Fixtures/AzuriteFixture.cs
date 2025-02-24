@@ -14,7 +14,7 @@ using System.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Fixtures
 {
-    public class AzuriteFixture(IMessageSink sink) : IAsyncLifetime
+    public class AzuriteFixture(IMessageSink sink = null) : IAsyncLifetime
     {
         public const string HostName = "127.0.0.1";
 
@@ -171,7 +171,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Fixtures
             if (e.Data is not null)
             {
                 tcs.TrySetResult();
-                sink.OnMessage(new DiagnosticMessage($"[azurite] {e.Data}"));
+                sink?.OnMessage(new DiagnosticMessage($"[azurite] {e.Data}"));
             }
         }
 
@@ -182,7 +182,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Fixtures
                 return;
             }
 
-            sink.OnMessage(new DiagnosticMessage($"[error][azurite] {e.Data}"));
+            sink?.OnMessage(new DiagnosticMessage($"[error][azurite] {e.Data}"));
             try
             {
                 throw new InvalidOperationException(e.Data);
