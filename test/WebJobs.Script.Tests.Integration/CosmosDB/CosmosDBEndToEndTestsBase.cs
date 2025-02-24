@@ -125,13 +125,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
             bool willCreateCollection = false;
             Database database = await CosmosClient.CreateDatabaseIfNotExistsAsync("ItemDb");
 
-            ContainerProperties itemCollectionProperties = new ContainerProperties("ItemCollection", "/id");
+            ContainerProperties itemCollectionProperties = new ContainerProperties("ItemCollection", "/_partitionKey");
             ContainerResponse itemCollectionResponse = await database.CreateContainerIfNotExistsAsync(
                 itemCollectionProperties,
                 throughput: 400);
             willCreateCollection = itemCollectionResponse.StatusCode == System.Net.HttpStatusCode.Created;
 
-            ContainerProperties leasesCollectionProperties = new ContainerProperties("leases", "/id");
+            ContainerProperties leasesCollectionProperties = new ContainerProperties("leases", "/_partitionKey");
             await database.CreateContainerIfNotExistsAsync(
                 leasesCollectionProperties,
                 throughput: 400);
