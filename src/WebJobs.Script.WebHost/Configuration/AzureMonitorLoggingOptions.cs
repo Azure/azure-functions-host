@@ -5,7 +5,7 @@ using System;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
 {
-    public class AzureMonitorLoggingOptions
+    internal sealed class AzureMonitorLoggingOptions
     {
         public bool IsAzureMonitorTimeIsoFormatEnabled { get; set; }
 
