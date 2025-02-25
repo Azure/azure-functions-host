@@ -17,7 +17,7 @@ jobs:
   displayName: ${{ parameters.description }}(${{ parameters.os }})
 
   pool:
-    name: 1es-pool-azfunc-benchmarking-large
+    name: 1es-pool-azfunc-benchmarking
     image: 1es-windows-2022-benchmark-runner-vanilla
     os: windows
 
@@ -32,7 +32,7 @@ jobs:
     outputParentDirectory: $(Build.ArtifactStagingDirectory)
     outputs:
     - output: pipelineArtifact
-      displayName: Publish coldstart results
+      displayName: Publish ColdStart results
       path: $(resultsJsonPath)
       artifact: $(artifactName)
 

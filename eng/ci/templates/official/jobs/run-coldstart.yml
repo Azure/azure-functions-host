@@ -11,10 +11,10 @@ parameters:
   values:
     - Windows
     - Linux
-- name: collectPerfviewProfileOnWindows
+- name: collectPerfViewProfileOnWindows
   type: boolean
   default: false
-- name: perfviewCollectArguments
+- name: perfViewCollectArguments
   type: string
   default: ''
 
@@ -22,12 +22,12 @@ jobs:
 - job: ${{ parameters.functionAppName }}_${{ parameters.instanceId }}
   displayName: ${{ parameters.description }} ${{ parameters.instanceId }}
   pool:
-    name: 1es-pool-azfunc-benchmarking-large
+    name: 1es-pool-azfunc-benchmarking
     ${{ if eq(parameters.os, 'Linux') }}:
-      image: 1es-ubuntu-22.04-benchmark-runner-vanilla-sd2
+      image: 1es-ubuntu-22.04-benchmark-runner-vanilla
       os: linux 
     ${{ else }}:
-      image: 1es-windows-2022-benchmark-runner-vanilla-sd2
+      image: 1es-windows-2022-benchmark-runner-vanilla
       os: windows
 
   variables:
@@ -36,25 +36,24 @@ jobs:
     hostAssemblyPath: $(hostOutputPath)/Microsoft.Azure.WebJobs.Script.WebHost.dll
     logsDirectory: $(Build.ArtifactStagingDirectory)/Logs
     stdOutLogsFilePath: $(logsDirectory)/std_out_logs.txt
-    stdErrorLogsFilePath: $(logsDirectory)/std_error_logs.txt    
+    stdErrorLogsFilePath: $(logsDirectory)/std_error_logs.txt
     FUNCTIONS_WORKER_RUNTIME: 'dotnet-isolated'
     FUNCTIONS_WORKER_RUNTIME_VERSION: '9.0'
     AzureWebJobsScriptRoot: '$(functionAppOutputPath)'
-    perfviewPath: C:\.tools\perfview\perfview.exe 
+    perfViewPath: C:\.tools\perfview\perfview.exe 
     traceDirectory: $(Build.ArtifactStagingDirectory)/out
     traceFileName: PerfViewData_$(Build.BuildNumber)_${{ parameters.functionAppName }}.etl
     traceFilePath: $(traceDirectory)/$(traceFileName)
     traceLogPath: $(logsDirectory)/logs.log
 
-  ${{ if and(eq(parameters.collectPerfviewProfileOnWindows, true), eq(parameters.instanceId, '1')) }}: # profile collection is only on the first instance
+  ${{ if and(eq(parameters.collectPerfViewProfileOnWindows, true), eq(parameters.instanceId, '1')) }}: # profile collection is only on the first instance
     templateContext:
       outputParentDirectory: $(System.DefaultWorkingDirectory)/out
       outputs:
         - output: pipelineArtifact
-          displayName: Publish perfview profile
+          displayName: Publish PerfView profile
           path: $(traceFilePath).zip
           artifact: PerfViewData_${{ parameters.functionAppName }}
-          condition: eq(variables['CollectPerfviewProfile'], 'true')
 
   steps:
   - template: /eng/ci/templates/install-dotnet.yml@self
@@ -129,19 +128,20 @@ jobs:
 
     displayName: Wait until host is warmed up
 
-  - ${{ if and(eq(parameters.collectPerfviewProfileOnWindows, true), eq(parameters.instanceId, '1')) }}: # collect profile only on the first instance
+  - ${{ if and(eq(parameters.collectPerfViewProfileOnWindows, true), eq(parameters.instanceId, '1')) }}: # collect profile only on the first instance
     - pwsh: |
         New-Item -ItemType Directory -Path $(traceDirectory)
-        if (Test-Path $(perfviewPath)) {
-            $collectArguments = ${env:PerfviewCollectArguments}
-            Write-Host "perfview.exe found. Executing with arguments '$collectArguments'"
-            Start-Process -FilePath $(perfviewPath) -ArgumentList "collect $collectArguments /LogFile:$(traceLogPath) /DataFile:$(traceFilePath)" -NoNewWindow
+        if (Test-Path $(perfViewPath)) {
+            $collectArguments = ${env:COLLECT_ARGUMENTS}
+            Write-Host "PerfView.exe found. Executing with arguments '$collectArguments'"
+            Start-Process -FilePath $(perfViewPath) -ArgumentList "collect $collectArguments /LogFile:$(traceLogPath) /DataFile:$(traceFilePath)" -NoNewWindow
         } else {
-            Write-Host "perfview.exe not found in $(perfviewPath)"
+            Write-Host "PerfView.exe not found in $(perfViewPath)"
             exit 1
         }
-      displayName: Start Perfview
-      condition: eq(variables['CollectPerfviewProfile'], 'true')
+      displayName: Start PerfView
+      env:
+        COLLECT_ARGUMENTS: ${{ parameters.perfViewCollectArguments }}
 
   - pwsh: |
       $helloUrl = "http://localhost:5000/api/hello?forcespecialization=1"
@@ -157,10 +157,10 @@ jobs:
     displayName: Record cold start latency
     name: Record
 
-  - ${{ if and(eq(parameters.collectPerfviewProfileOnWindows, true), eq(parameters.instanceId, '1')) }}:
+  - ${{ if and(eq(parameters.collectPerfViewProfileOnWindows, true), eq(parameters.instanceId, '1')) }}:
     - pwsh: |
-        Write-Host "Stopping Perfview..."
-        & $(perfviewPath) stop
+        Write-Host "Stopping PerfView..."
+        & $(perfViewPath) stop
 
         # Wait for the zip file to be created
         $maxAttempts = 10
@@ -178,16 +178,15 @@ jobs:
             }
         }
 
-        $perfviewProcess = Get-Process -Name "perfview" -ErrorAction SilentlyContinue
-        if ($perfviewProcess) {
-            Write-Host "Killing Perfview process..."
-            $perfviewProcess | Stop-Process -Force
+        $perfViewProcess = Get-Process -Name "PerfView" -ErrorAction SilentlyContinue
+        if ($perfViewProcess) {
+            Write-Host "Killing PerfView process..."
+            $perfViewProcess | Stop-Process -Force
         }
 
         Write-Host "PerfView logs:"
         Get-Content $(traceLogPath)
       displayName: Stop PerfView
-      condition: eq(variables['CollectPerfviewProfile'], 'true')
 
   - ${{ if eq(parameters.os, 'Windows') }}:
     - pwsh: |
