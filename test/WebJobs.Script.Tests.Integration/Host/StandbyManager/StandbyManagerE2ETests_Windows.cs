@@ -14,8 +14,10 @@ using System.Threading.Tasks;
 using Azure.Storage.Blobs;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Host.Storage;
+using Microsoft.Azure.WebJobs.Script.Tests.Integration.Fixtures;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.WebJobs.Script.Tests;
 using Xunit;
@@ -25,14 +27,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     [Trait(TestTraits.Category, TestTraits.EndToEnd)]
     [Trait(TestTraits.Group, TestTraits.StandbyModeTestsWindows)]
-    public class StandbyManagerE2ETests_Windows : StandbyManagerE2ETestBase
+    public class StandbyManagerE2ETests_Windows : StandbyManagerE2ETestBase, IClassFixture<AzuriteFixture>
     {
+        private readonly AzuriteFixture _azurite;
         private static IDictionary<string, string> _settings;
 
-        public StandbyManagerE2ETests_Windows()
+        public StandbyManagerE2ETests_Windows(AzuriteFixture azurite)
         {
             Utility.ColdStartDelayMS = 1000;
 
+            _azurite = azurite;
             _settings = new Dictionary<string, string>()
             {
                 { EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1" },
@@ -195,9 +199,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var serviceProvider = _httpServer.Host.Services;
             var blobStorageProvider = serviceProvider.GetService<IAzureBlobStorageProvider>();
             Assert.True(blobStorageProvider.TryCreateHostingBlobContainerClient(out var blobContainerClient));
-            var hostIdInfo = new HostIdValidator.HostIdInfo { Hostname = expectedHostName };
+            await blobContainerClient.CreateIfNotExistsAsync();
             string blobPath = string.Format(BlobPathFormat, placeholderHostId);
             BlobClient blobClient = blobContainerClient.GetBlobClient(blobPath);
+            var hostIdInfo = new HostIdValidator.HostIdInfo { Hostname = expectedHostName };
             BinaryData data = BinaryData.FromObjectAsJson(hostIdInfo);
             await blobClient.UploadAsync(data, overwrite: true);
 
@@ -337,6 +342,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             _settings.Add(EnvironmentSettingNames.AzureWebsiteInstanceId, Guid.NewGuid().ToString());
             await Verify_StandbyModeE2E_Node();
+        }
+
+        protected override void ConfigureScriptHostConfiguration(IConfigurationBuilder builder)
+        {
+            builder.AddInMemoryCollection([ KeyValuePair.Create("AzureWebJobsStorage", _azurite.GetConnectionString()) ]);
+            base.ConfigureScriptHostConfiguration(builder);
         }
 
         private async Task Verify_StandbyModeE2E_Java()

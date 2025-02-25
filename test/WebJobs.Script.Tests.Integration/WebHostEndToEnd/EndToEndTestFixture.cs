@@ -13,6 +13,7 @@ using Azure.Data.Tables;
 using Microsoft.Azure.Storage.Blob;
 using Microsoft.Azure.Storage.Queue;
 using Microsoft.Azure.WebJobs.Script.BindingExtensions;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Models;
@@ -174,6 +175,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 configureWebHostServices: s =>
                 {
                     s.AddSingleton<IEventGenerator>(_ => EventGenerator);
+
+                    // Flow this env variable to out of proc workers.
+                    s.Configure<FunctionsHostingConfigOptions>(o => o.Features["AzureWebJobsStorage"] = azuriteConnectionString);
                     ConfigureWebHost(s);
                 },
                 configureWebHostAppConfiguration: configBuilder =>
