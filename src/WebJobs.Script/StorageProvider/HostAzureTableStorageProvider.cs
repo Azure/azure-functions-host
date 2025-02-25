@@ -22,10 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _tableServiceClientProvider = new TableServiceClientProvider(componentFactory, logForwarder);
 
-            if (configuration == null)
-            {
-                throw new ArgumentNullException(nameof(configuration));
-            }
+            ArgumentNullException.ThrowIfNull(configuration);
 
             if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagDisableMergedWebHostScriptHostConfiguration))
             {
@@ -33,10 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
             else
             {
-                if (scriptHostManager == null)
-                {
-                    throw new ArgumentNullException(nameof(scriptHostManager));
-                }
+                ArgumentNullException.ThrowIfNull(scriptHostManager);
 
                 _configuration = new ConfigurationBuilder()
                     .Add(new ActiveHostConfigurationSource(scriptHostManager))
