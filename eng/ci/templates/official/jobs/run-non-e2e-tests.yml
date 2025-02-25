@@ -80,8 +80,6 @@ jobs:
       arguments: '--filter "Category!=E2E"'
       projects: $(IntegrationProject)
     env:
-      AzureWebJobsStorage: $(Storage)
-      AzureWebJobsSecondaryStorage: $(SecondaryStorage)
       ConnectionStrings__CosmosDB: $(CosmosDB)
       AzureWebJobsEventHubSender: $(EventHub)
       AzureWebJobsEventHubReceiver: $(EventHub)
