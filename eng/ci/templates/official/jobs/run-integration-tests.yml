@@ -41,11 +41,18 @@ jobs:
       command: ci
       workingDir: sample/CustomHandlerRetry
 
+  - task: DotNetCoreCLI@2
+    displayName: Build Integration.csproj
+    inputs:
+      command: build
+      projects: $(IntegrationProject)
+
   - task: AzurePowerShell@5
     displayName: Checkout secrets
     inputs:
       azureSubscription: Azure-Functions-Host-CI-internal
       azurePowerShellVersion: 'LatestVersion'
+      pwsh: true
       ScriptPath: eng/script/checkout-secrets.ps1
 
   - task: AzureKeyVault@1
@@ -71,12 +78,6 @@ jobs:
       CosmosDbSecretMap: $(CosmosDb)
       AzureWebJobsEventHubSenderSecretMap: $(EventHub)
       AzureWebJobsEventHubReceiverSecretMap: $(EventHub)
-
-  - task: DotNetCoreCLI@2
-    displayName: Build Integration.csproj
-    inputs:
-      command: build
-      projects: $(IntegrationProject)
 
   - task: DotNetCoreCLI@2
     displayName: C# end to end tests
@@ -200,5 +201,6 @@ jobs:
     inputs:
       azureSubscription: Azure-Functions-Host-CI-internal
       azurePowerShellVersion: 'LatestVersion'
+      pwsh: true
       ScriptPath: eng/script/checkin-secrets.ps1
       ScriptArguments: '-leaseBlob $(LeaseBlob) -leaseToken $(LeaseToken)'
