@@ -19,10 +19,11 @@
     <LangVersion>latest</LangVersion>
     <AssemblyOriginatorKeyFile>$(EngResourceRoot)key.snk</AssemblyOriginatorKeyFile>
     <CodeAnalysisRuleSet>$(RepoRoot)src.ruleset</CodeAnalysisRuleSet>
-    <NoWarn>$(NoWarn);NU1701</NoWarn>
+    <NoWarn>$(NoWarn);NU1701;NU5104</NoWarn>
     <DebugType>embedded</DebugType>
     <GenerateRuntimeConfigDevFile>true</GenerateRuntimeConfigDevFile><!-- https://github.com/dotnet/runtime/issues/54684 -->
     <DisableImplicitNamespaceImports>true</DisableImplicitNamespaceImports>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
