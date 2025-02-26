@@ -35,10 +35,10 @@ namespace Microsoft.Azure.WebJobs.Script.FileProvisioning.PowerShell
         }
 
         /// <summary>
-        /// Adds the required files to the function app
+        /// Adds the required files to the function app.
         /// </summary>
-        /// <param name="scriptRootPath">The root path of the function app</param>
-        /// <returns>An empty completed task <see cref="Task"/></returns>
+        /// <param name="scriptRootPath">The root path of the function app.</param>
+        /// <returns>An empty completed task <see cref="Task"/>.</returns>
         public Task ProvisionFiles(string scriptRootPath)
         {
             if (string.IsNullOrWhiteSpace(scriptRootPath))

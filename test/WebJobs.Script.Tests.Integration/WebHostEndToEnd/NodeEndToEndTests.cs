@@ -15,9 +15,11 @@ using System.Web.Http;
 using Microsoft.Azure.Storage.Blob;
 using Microsoft.Azure.Storage.Queue;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Tests.Integration.Fixtures;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -25,17 +27,15 @@ using Microsoft.WebJobs.Script.Tests;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 {
     [Trait(TestTraits.Category, TestTraits.EndToEnd)]
     [Trait(TestTraits.Group, nameof(NodeEndToEndTests))]
-    public class NodeEndToEndTests : EndToEndTestsBase<NodeEndToEndTests.TestFixture>
+    public class NodeEndToEndTests(NodeEndToEndTests.TestFixture fixture)
+        : EndToEndTestsBase<NodeEndToEndTests.TestFixture>(fixture)
     {
-        public NodeEndToEndTests(TestFixture fixture) : base(fixture)
-        {
-        }
-
         [Fact]
         public async Task BlobTriggerToBlobTest()
         {
@@ -885,13 +885,34 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         
 #endif
 
-        public class TestFixture : EndToEndTestFixture
+        public class TestFixture(IMessageSink sink)
+            : EndToEndTestFixture(rootPath, "node", RpcWorkerConstants.NodeLanguageWorkerName)
         {
             private static readonly string rootPath = Path.Combine("TestScripts", "Node");
+            private readonly AzuriteFixture _azurite = new(sink);
 
-            public TestFixture()
-                : base(rootPath, "node", RpcWorkerConstants.NodeLanguageWorkerName)
+            public override async Task InitializeAsync()
             {
+                await _azurite.InitializeAsync();
+                await base.InitializeAsync();
+            }
+
+            public override async Task DisposeAsync()
+            {
+                await base.DisposeAsync();
+                await _azurite.DisposeAsync();
+            }
+
+            public override void ConfigureScriptHost(IConfigurationBuilder configBuilder)
+            {
+                string connectionString = _azurite.GetConnectionString();
+                configBuilder.AddInMemoryCollection(new Dictionary<string, string>
+                {
+                    { "AzureWebJobsStorage", connectionString },
+                    { "ConnectionStrings:AzureWebJobsStorage", connectionString },
+                });
+
+                base.ConfigureScriptHost(configBuilder);
             }
 
             public override void ConfigureScriptHost(IWebJobsBuilder webJobsBuilder)

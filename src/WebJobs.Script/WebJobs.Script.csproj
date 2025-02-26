@@ -1,11 +1,12 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
+
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <PackageId>Microsoft.Azure.WebJobs.Script</PackageId>
     <AssemblyName>Microsoft.Azure.WebJobs.Script</AssemblyName>
     <RootNamespace>Microsoft.Azure.WebJobs.Script</RootNamespace>
-    <NoWarn>NU5104</NoWarn>
   </PropertyGroup>
+
   <ItemGroup>
     <None Remove="FileProvisioning\PowerShell\profile.ps1" />
     <None Remove="FileProvisioning\PowerShell\requirements.psd1" />
@@ -13,20 +14,16 @@
     <None Remove="runtimeassemblies.json" />
     <None Remove="runtimes.json" />
   </ItemGroup>
+
   <ItemGroup>
-    <EmbeddedResource Include="extensionrequirements.json">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </EmbeddedResource>
+    <EmbeddedResource Include="extensionrequirements.json" CopyToOutputDirectory="Never" />
     <EmbeddedResource Include="FileProvisioning\PowerShell\profile.ps1" />
     <EmbeddedResource Include="FileProvisioning\PowerShell\requirements.psd1" />
-    <EmbeddedResource Include="runtimeassemblies-relaxed.json">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="runtimeassemblies.json">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </EmbeddedResource>
+    <EmbeddedResource Include="runtimeassemblies-relaxed.json" CopyToOutputDirectory="Never" />
+    <EmbeddedResource Include="runtimeassemblies.json" CopyToOutputDirectory="Never" />
     <EmbeddedResource Include="runtimes.json" />
   </ItemGroup>
+
   <ItemGroup>
     <!-- Dependencies needed for Storage Providers -->
     <PackageReference Include="Azure.Core" Version="1.38.0" />
