@@ -159,7 +159,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
             }
             public override void Load()
             {
-                Data = _data;
+                // _data might be already case-insensitive but we want to ensure it's case-sensitive
+                Data = new Dictionary<string, string>(_data, StringComparer.Ordinal);
             }
         }
     }
