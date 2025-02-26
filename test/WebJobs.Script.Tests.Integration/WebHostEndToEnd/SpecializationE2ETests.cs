@@ -850,8 +850,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             using var testServer = new TestServer(builder);
 
             var client = testServer.CreateClient();
+            client.DefaultRequestHeaders.Add("Accept-Encoding", acceptEncodingRequestHeaderValue);
             var response = await client.GetAsync("api/warmup");
             response.EnsureSuccessStatusCode();
+            response.Content.Headers.TryGetValues("Content-Encoding", out var value);
+            Assert.Null(value);
 
             // Validate that the channel is set up with native worker
             var webChannelManager = testServer.Services.GetService<IWebHostRpcWorkerChannelManager>();
@@ -864,11 +867,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags , ScriptConstants.FeatureFlagEnableResponseCompression);
 
-            client.DefaultRequestHeaders.Add("Accept-Encoding", acceptEncodingRequestHeaderValue);
-
             response = await client.GetAsync("api/HttpRequestDataFunction");
             response.EnsureSuccessStatusCode();
-            response.Content.Headers.TryGetValues("Content-Encoding", out var value);
+            response.Content.Headers.TryGetValues("Content-Encoding", out value);
             Assert.Equal(expectedContentEncodingResponseHeaderValue, value?.First());
         }
 

@@ -35,8 +35,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             HttpBodyControlOptions httpBodyControlOptions = httpBodyControlOptionsMonitor.CurrentValue;
             httpBodyControlOptionsMonitor.OnChange(newOptions => httpBodyControlOptions = newOptions);
 
-            ResponseCompressionOptions responseCompressionOptions = responseCompressionOptionsMonitor.CurrentValue;
-            responseCompressionOptionsMonitor.OnChange(newOptions => responseCompressionOptions = newOptions);
 
             // Ensure the ClrOptimizationMiddleware is registered before all middleware
             builder.UseMiddleware<ClrOptimizationMiddleware>();
@@ -62,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
 
             // Enable response compression only after PlaceholderSpecializationMiddleware, as it requires customer opt-in feature flag value.
-            builder.UseWhen(_ => responseCompressionOptions.EnableResponseCompression, config =>
+            builder.UseWhen(_ => responseCompressionOptionsMonitor.CurrentValue.EnableResponseCompression, config =>
             {
                 config.UseResponseCompression();
             });
