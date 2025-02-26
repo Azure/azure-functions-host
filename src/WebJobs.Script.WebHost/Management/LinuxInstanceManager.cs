@@ -36,41 +36,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         public abstract Task<string> SpecializeMSISidecar(HostAssignmentContext context);
 
-        private async Task<bool> AssignInstanceAsyncCore(HostAssignmentContext context)
-        {
-            _logger.LogInformation($"Starting Assignment. Cloud Name: {_environment.GetCloudName()}");
-
-            // set a flag which will cause any incoming http requests to buffer
-            // until specialization is complete
-            // the host is guaranteed not to receive any requests until AFTER assign
-            // has been initiated, so setting this flag here is sufficient to ensure
-            // that any subsequent incoming requests while the assign is in progress
-            // will be delayed until complete
-            _webHostEnvironment.DelayRequests();
-
-            // start the specialization process in the background
-            await AssignAsync(context);
-            return true;
-        }
-
-        public async Task<bool> HandleWarmupRequestAsync(HostAssignmentContext context)
-        {
-            // Based on profiling download code jit-ing holds up cold start.
-            // Pre-jit to avoid paying the cost later.
-            await DownloadWarmupAsync(context.GetRunFromPkgContext());
-            return true;
-        }
-
         public async Task<bool> AssignInstanceAsync(HostAssignmentContext context)
         {
             if (!IsValidEnvironment(context))
             {
                 return false;
-            }
-
-            if (context.IsWarmupRequest)
-            {
-                return await HandleWarmupRequestAsync(context);
             }
 
             lock (_assignmentLock)
@@ -82,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 _assignmentContext = context;
             }
 
-            await AssignInstanceAsyncCore(context);
+            await AssignAsync(context);
 
             return true;
         }
@@ -94,12 +64,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 return false;
             }
 
-            if (context.IsWarmupRequest)
-            {
-                _ = HandleWarmupRequestAsync(context);
-                return true;
-            }
-
             lock (_assignmentLock)
             {
                 if (_assignmentContext != null)
@@ -109,7 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 _assignmentContext = context;
             }
 
-            _ = AssignInstanceAsyncCore(context);
+            _ = AssignAsync(context);
 
             return true;
         }
@@ -139,8 +103,33 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         private async Task AssignAsync(HostAssignmentContext assignmentContext)
         {
+            if (assignmentContext.IsWarmupRequest)
+            {
+                try
+                {
+                    await DownloadWarmupAsync(assignmentContext.GetRunFromPkgContext());
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Warmup download failed");
+                    await _meshServiceClient.NotifyHealthEvent(ContainerHealthEventType.Warning, GetType(), "Warmup download failed");
+                    throw;
+                }
+                return;
+            }
+
             try
             {
+                _logger.LogInformation($"Starting Assignment. Cloud Name: {_environment.GetCloudName()}");
+
+                // set a flag which will cause any incoming http requests to buffer
+                // until specialization is complete
+                // the host is guaranteed not to receive any requests until AFTER assign
+                // has been initiated, so setting this flag here is sufficient to ensure
+                // that any subsequent incoming requests while the assign is in progress
+                // will be delayed until complete
+                _webHostEnvironment.DelayRequests();
+
                 // first make all environment and file system changes required for
                 // the host to be specialized
                 _logger.LogInformation("Applying {environmentCount} app setting(s)", assignmentContext.Environment.Count);
