@@ -23,6 +23,10 @@ jobs:
       jdkArchitectureOption: x64
       jdkSourceOption: PreInstalled
 
+  - script: |
+      npm install -g azurite
+    displayName: Install Azurite
+
   - task: PowerShell@2
     displayName: Install Az.Storage Powershell module
     inputs:

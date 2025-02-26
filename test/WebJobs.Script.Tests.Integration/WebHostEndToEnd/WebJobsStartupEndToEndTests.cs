@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
                 var response = await client.GetAsync($"api/Function1");
 
                 // The function does all the validation internally.
-                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                Assert.True(HttpStatusCode.OK == response.StatusCode, $"{response.StatusCode}: {await response.Content.ReadAsStringAsync()}");
             }
             finally
             {
@@ -59,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
                 var response = await client.GetAsync($"api/Function1");
 
                 // The function does all the validation internally.
-                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                Assert.True(HttpStatusCode.OK == response.StatusCode, $"{response.StatusCode}: {await response.Content.ReadAsStringAsync()}");
 
                 const string expectedLogEntry =
                     "The 'FUNCTIONS_WORKER_RUNTIME' is set to 'dotnet-isolated', " +

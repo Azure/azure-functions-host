@@ -71,8 +71,6 @@ jobs:
     inputs:
       targetType: inline
       script: |
-        Write-Host "##vso[task.setvariable variable=AzureWebJobsStorage]$env:AzureWebJobsStorageSecretMap"
-        Write-Host "##vso[task.setvariable variable=AzureWebJobsSeconaryStorage]$env:AzureWebJobsSecondaryStorageSecretMap"
         Write-Host "##vso[task.setvariable variable=ConnectionStrings__CosmosDB]$env:CosmosDbSecretMap"
         Write-Host "##vso[task.setvariable variable=AzureWebJobsEventHubSender]$env:AzureWebJobsEventHubSenderSecretMap"
         Write-Host "##vso[task.setvariable variable=AzureWebJobsEventHubReceiver]$env:AzureWebJobsEventHubReceiverSecretMap"
