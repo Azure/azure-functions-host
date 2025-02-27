@@ -19,18 +19,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 {
     public class FunctionsHostingConfigOptionsTest
     {
-        public static IEnumerable<object[]> AllProperties
-        {
-            get
-            {
-                var props = typeof(FunctionsHostingConfigOptions).GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-                    .Where(p => p.Name != nameof(FunctionsHostingConfigOptions.Features));
-                foreach (var prop in props)
-                {
-                    yield return new object[] { prop };
-                }
-            }
-        }
+        public static IEnumerable<PropertyInfo> AllProperties => typeof(FunctionsHostingConfigOptions)
+            .GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            .Where(p => p.Name != nameof(FunctionsHostingConfigOptions.Features));
+
+        public static IEnumerable<object[]> AllPropertiesInput => AllProperties.Select(x => new object[] { x });
 
         public static IEnumerable<object[]> PropertyValues
         {
@@ -39,46 +32,50 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 // Note: For legacy purposes (we used to call Configuration.Bind() on this object), some properties whose ScmHostingConfig key and
                 //       property name match exactly need to support "True/False".
                 //       It is recommended that new properties only look at "1/0" for their setting.
-                yield return new object[] { nameof(FunctionsHostingConfigOptions.DisableLinuxAppServiceExecutionDetails), "DisableLinuxExecutionDetails=1", true };
-                yield return new object[] { nameof(FunctionsHostingConfigOptions.DisableLinuxAppServiceLogBackoff), "DisableLinuxLogBackoff=1", true };
+#pragma warning disable SA1010 // Opening square brackets should be spaced correctly
+#pragma warning disable SA1011 // Closing square brackets should be spaced correctly
+                yield return [ nameof(FunctionsHostingConfigOptions.DisableLinuxAppServiceExecutionDetails), "DisableLinuxExecutionDetails=1", true ];
+                yield return [ nameof(FunctionsHostingConfigOptions.DisableLinuxAppServiceLogBackoff), "DisableLinuxLogBackoff=1", true ];
 
                 // Supports True/False/1/0
-                yield return new object[] { nameof(FunctionsHostingConfigOptions.EnableOrderedInvocationMessages), "EnableOrderedInvocationMessages=True", true };
-                yield return new object[] { nameof(FunctionsHostingConfigOptions.EnableOrderedInvocationMessages), "EnableOrderedInvocationMessages=1", true };
-                yield return new object[] { nameof(FunctionsHostingConfigOptions.EnableOrderedInvocationMessages), "EnableOrderedInvocationMessages=unparseable", true }; // default
-                yield return new object[] { nameof(FunctionsHostingConfigOptions.EnableOrderedInvocationMessages), string.Empty, true }; // default
+                yield return [ nameof(FunctionsHostingConfigOptions.EnableOrderedInvocationMessages), "EnableOrderedInvocationMessages=True", true ];
+                yield return [ nameof(FunctionsHostingConfigOptions.EnableOrderedInvocationMessages), "EnableOrderedInvocationMessages=1", true ];
+                yield return [ nameof(FunctionsHostingConfigOptions.EnableOrderedInvocationMessages), "EnableOrderedInvocationMessages=unparseable", true ]; // default
+                yield return [ nameof(FunctionsHostingConfigOptions.EnableOrderedInvocationMessages), string.Empty, true ]; // default
 
-                yield return new object[] { nameof(FunctionsHostingConfigOptions.FunctionsWorkerDynamicConcurrencyEnabled), "FUNCTIONS_WORKER_DYNAMIC_CONCURRENCY_ENABLED=1", true };
-                yield return new object[] { nameof(FunctionsHostingConfigOptions.MaximumBundleV3Version), "FunctionRuntimeV4MaxBundleV3Version=teststring", "teststring" };
-                yield return new object[] { nameof(FunctionsHostingConfigOptions.MaximumBundleV4Version), "FunctionRuntimeV4MaxBundleV4Version=teststring", "teststring" };
-                yield return new object[] { nameof(FunctionsHostingConfigOptions.RevertWorkerShutdownBehavior), "REVERT_WORKER_SHUTDOWN_BEHAVIOR=1", true };
-
-                // Supports True/False/1/0
-                yield return new object[] { nameof(FunctionsHostingConfigOptions.ShutdownWebhostWorkerChannelsOnHostShutdown), "ShutdownWebhostWorkerChannelsOnHostShutdown=False", false };
-                yield return new object[] { nameof(FunctionsHostingConfigOptions.ShutdownWebhostWorkerChannelsOnHostShutdown), "ShutdownWebhostWorkerChannelsOnHostShutdown=True", true };
-                yield return new object[] { nameof(FunctionsHostingConfigOptions.ShutdownWebhostWorkerChannelsOnHostShutdown), "ShutdownWebhostWorkerChannelsOnHostShutdown=1", true };
-                yield return new object[] { nameof(FunctionsHostingConfigOptions.ShutdownWebhostWorkerChannelsOnHostShutdown), "ShutdownWebhostWorkerChannelsOnHostShutdown=unparseable", true }; // default
-                yield return new object[] { nameof(FunctionsHostingConfigOptions.ShutdownWebhostWorkerChannelsOnHostShutdown), string.Empty, true }; // default
+                yield return [ nameof(FunctionsHostingConfigOptions.FunctionsWorkerDynamicConcurrencyEnabled), "FUNCTIONS_WORKER_DYNAMIC_CONCURRENCY_ENABLED=1", true ];
+                yield return [ nameof(FunctionsHostingConfigOptions.MaximumBundleV3Version), "FunctionRuntimeV4MaxBundleV3Version=teststring", "teststring" ];
+                yield return [ nameof(FunctionsHostingConfigOptions.MaximumBundleV4Version), "FunctionRuntimeV4MaxBundleV4Version=teststring", "teststring" ];
+                yield return [ nameof(FunctionsHostingConfigOptions.RevertWorkerShutdownBehavior), "REVERT_WORKER_SHUTDOWN_BEHAVIOR=1", true ];
 
                 // Supports True/False/1/0
-                yield return new object[] { nameof(FunctionsHostingConfigOptions.SwtIssuerEnabled), "SwtIssuerEnabled=False", false };
-                yield return new object[] { nameof(FunctionsHostingConfigOptions.SwtIssuerEnabled), "SwtIssuerEnabled=True", true };
-                yield return new object[] { nameof(FunctionsHostingConfigOptions.SwtIssuerEnabled), "SwtIssuerEnabled=0", false };
-                yield return new object[] { nameof(FunctionsHostingConfigOptions.SwtIssuerEnabled), "SwtIssuerEnabled=unparseable", true }; //default
-                yield return new object[] { nameof(FunctionsHostingConfigOptions.SwtIssuerEnabled), string.Empty, true }; // default
+                yield return [ nameof(FunctionsHostingConfigOptions.ShutdownWebhostWorkerChannelsOnHostShutdown), "ShutdownWebhostWorkerChannelsOnHostShutdown=False", false ];
+                yield return [ nameof(FunctionsHostingConfigOptions.ShutdownWebhostWorkerChannelsOnHostShutdown), "ShutdownWebhostWorkerChannelsOnHostShutdown=True", true ];
+                yield return [ nameof(FunctionsHostingConfigOptions.ShutdownWebhostWorkerChannelsOnHostShutdown), "ShutdownWebhostWorkerChannelsOnHostShutdown=1", true ];
+                yield return [ nameof(FunctionsHostingConfigOptions.ShutdownWebhostWorkerChannelsOnHostShutdown), "ShutdownWebhostWorkerChannelsOnHostShutdown=unparseable", true ]; // default
+                yield return [ nameof(FunctionsHostingConfigOptions.ShutdownWebhostWorkerChannelsOnHostShutdown), string.Empty, true ]; // default
 
-                yield return new object[] { nameof(FunctionsHostingConfigOptions.ThrowOnMissingFunctionsWorkerRuntime), "THROW_ON_MISSING_FUNCTIONS_WORKER_RUNTIME=1", true };
-                yield return new object[] { nameof(FunctionsHostingConfigOptions.WorkerIndexingDisabledApps), "WORKER_INDEXING_DISABLED_APPS=teststring", "teststring" };
-                yield return new object[] { nameof(FunctionsHostingConfigOptions.WorkerIndexingEnabled), "WORKER_INDEXING_ENABLED=1", true };
-                yield return new object[] { nameof(FunctionsHostingConfigOptions.WorkerRuntimeStrictValidationEnabled), "WORKER_RUNTIME_STRICT_VALIDATION_ENABLED=1", true };
+                // Supports True/False/1/0
+                yield return [ nameof(FunctionsHostingConfigOptions.SwtIssuerEnabled), "SwtIssuerEnabled=False", false ];
+                yield return [ nameof(FunctionsHostingConfigOptions.SwtIssuerEnabled), "SwtIssuerEnabled=True", true ];
+                yield return [ nameof(FunctionsHostingConfigOptions.SwtIssuerEnabled), "SwtIssuerEnabled=0", false ];
+                yield return [ nameof(FunctionsHostingConfigOptions.SwtIssuerEnabled), "SwtIssuerEnabled=unparseable", true ]; //default
+                yield return [ nameof(FunctionsHostingConfigOptions.SwtIssuerEnabled), string.Empty, true ]; // default
 
-                yield return new object[] { nameof(FunctionsHostingConfigOptions.InternalAuthApisAllowList), "InternalAuthApisAllowList=|", "|" };
-                yield return new object[] { nameof(FunctionsHostingConfigOptions.InternalAuthApisAllowList), "InternalAuthApisAllowList=/admin/host/foo|/admin/host/bar", "/admin/host/foo|/admin/host/bar" };
+                yield return [ nameof(FunctionsHostingConfigOptions.ThrowOnMissingFunctionsWorkerRuntime), "THROW_ON_MISSING_FUNCTIONS_WORKER_RUNTIME=1", true ];
+                yield return [ nameof(FunctionsHostingConfigOptions.WorkerIndexingDisabledApps), "WORKER_INDEXING_DISABLED_APPS=teststring", "teststring" ];
+                yield return [ nameof(FunctionsHostingConfigOptions.WorkerIndexingEnabled), "WORKER_INDEXING_ENABLED=1", true ];
+                yield return [ nameof(FunctionsHostingConfigOptions.WorkerRuntimeStrictValidationEnabled), "WORKER_RUNTIME_STRICT_VALIDATION_ENABLED=1", true ];
 
-                yield return new object[] { nameof(FunctionsHostingConfigOptions.IsDotNetInProcDisabled), "DotNetInProcDisabled=False", false };
-                yield return new object[] { nameof(FunctionsHostingConfigOptions.IsDotNetInProcDisabled), "DotNetInProcDisabled=True", true };
-                yield return new object[] { nameof(FunctionsHostingConfigOptions.IsDotNetInProcDisabled), "DotNetInProcDisabled=1", true };
-                yield return new object[] { nameof(FunctionsHostingConfigOptions.IsDotNetInProcDisabled), "DotNetInProcDisabled=0", false };
+                yield return [ nameof(FunctionsHostingConfigOptions.InternalAuthApisAllowList), "InternalAuthApisAllowList=|", "|" ];
+                yield return [ nameof(FunctionsHostingConfigOptions.InternalAuthApisAllowList), "InternalAuthApisAllowList=/admin/host/foo|/admin/host/bar", "/admin/host/foo|/admin/host/bar" ];
+
+                yield return [ nameof(FunctionsHostingConfigOptions.IsDotNetInProcDisabled), "DotNetInProcDisabled=False", false ];
+                yield return [ nameof(FunctionsHostingConfigOptions.IsDotNetInProcDisabled), "DotNetInProcDisabled=True", true ];
+                yield return [ nameof(FunctionsHostingConfigOptions.IsDotNetInProcDisabled), "DotNetInProcDisabled=1", true ];
+                yield return [ nameof(FunctionsHostingConfigOptions.IsDotNetInProcDisabled), "DotNetInProcDisabled=0", false ];
+#pragma warning restore SA1011 // Closing square brackets should be spaced correctly
+#pragma warning restore SA1010 // Opening square brackets should be spaced correctly
             }
         }
 
@@ -96,7 +93,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         }
 
         [Fact]
-        public void Inject_Succeded()
+        public void Inject_Succeeded()
         {
             using TempDirectory tempDir = new();
             IHost host = GetScriptHostBuilder(Path.Combine(tempDir.Path, "settings.txt"), $"feature1=value1,feature2=value2").Build();
@@ -128,10 +125,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         }
 
         [Theory]
-        [MemberData(nameof(AllProperties))]
+        [MemberData(nameof(AllPropertiesInput))]
         public void Property_ValidateAccess(PropertyInfo prop)
         {
-            // make sure all props are internal to prevent inadverntent binding in the future
+            // make sure all props are internal to prevent inadvertent binding in the future
             Assert.False(
                 prop.GetGetMethod() is not null || prop.GetSetMethod() is not null,
                 $"{prop.Name} is public. All properties on this object should be internal.");
@@ -148,7 +145,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             IHost host = GetScriptHostBuilder(Path.Combine(tempDir.Path, "settings.txt"), configValue).Build();
             var testService = host.Services.GetService<TestService>();
 
-            var prop = AllProperties.Select(x => x[0] as PropertyInfo).Single(p => p.Name == propertyName);
+            var prop = AllProperties.Single(p => string.Equals(p.Name, propertyName, StringComparison.Ordinal));
             var actual = prop.GetValue(testService.Options.Value);
             try
             {
