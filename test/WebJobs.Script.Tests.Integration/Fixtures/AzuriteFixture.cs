@@ -106,16 +106,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Fixtures
 
         private static int GetFreeTcpPort()
         {
-            using TcpListener listener = new(IPAddress.Loopback, 0);
-            listener.Start();
-
+            TcpListener listener = new(IPAddress.Loopback, 0);
             try
             {
+                listener.Start();
                 return ((IPEndPoint)listener.LocalEndpoint).Port;
             }
             finally
             {
                 listener.Stop();
+
+#if NET8_0_OR_GREATER
+                listener.Dispose();
+#endif
             }
         }
 
