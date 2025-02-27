@@ -105,16 +105,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         {
             if (assignmentContext.IsWarmupRequest)
             {
-                try
-                {
-                    await DownloadWarmupAsync(assignmentContext.GetRunFromPkgContext());
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Warmup download failed");
-                    await _meshServiceClient.NotifyHealthEvent(ContainerHealthEventType.Warning, GetType(), "Warmup download failed");
-                    throw;
-                }
+                await HandleWarmupRequestAsync(assignmentContext);
                 return;
             }
 
@@ -153,6 +144,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
                 _webHostEnvironment.ResumeRequests();
             }
+        }
+
+        private async Task HandleWarmupRequestAsync(HostAssignmentContext assignmentContext)
+        {
+            try
+            {
+                await DownloadWarmupAsync(assignmentContext.GetRunFromPkgContext());
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Warmup download failed");
+                await _meshServiceClient.NotifyHealthEvent(ContainerHealthEventType.Warning, GetType(), "Warmup download failed");
+                throw;
+            }
+            return;
         }
 
         protected abstract Task ApplyContextAsync(HostAssignmentContext assignmentContext);

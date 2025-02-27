@@ -12,7 +12,6 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Tests.Integration.Fixtures;
 using Microsoft.Azure.WebJobs.Script.WebHost;
-using Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
@@ -1460,10 +1459,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var contentRoot = Path.Combine(Path.GetTempPath(), @"FunctionsTest");
             var zipFilePath = Path.Combine(contentRoot, "content.zip");
             await TestHelpers.CreateContentZip(contentRoot, zipFilePath, Path.Combine(@"TestScripts", "DotNet"));
-
-            IConfiguration configuration = TestHelpers.GetTestConfiguration();
-            string connectionString = configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
-            Uri sasUri = await TestHelpers.CreateBlobSas(connectionString, zipFilePath, "scm-run-from-pkg-test", "NonEmpty.zip");
+            Uri sasUri = await TestHelpers.CreateBlobSas(_azurite.GetConnectionString(), zipFilePath, "scm-run-from-pkg-test", "NonEmpty.zip");
 
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
             var context = new HostAssignmentContext

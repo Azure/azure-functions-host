@@ -14,17 +14,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         Task<string> ValidateContext(HostAssignmentContext assignmentContext);
 
         /// <summary>
-        /// AssignInstanceAsync will asynchronously assign an instance.
+        /// Asynchronously assigns a host instance.
         /// </summary>
-        /// <param name="assignmentContext">Takes in a <see cref="HostAssignmentContext"/> which will be applied to an assigned instance.</param>
-        /// <returns>Returns true if assiging an instance succeeds, false otherwise.</returns>
+        /// <param name="assignmentContext">The <see cref="HostAssignmentContext"/> that will be applied to the instance being assigned to the application.</param>
+        /// <returns><see langword="true"/> if environment validation succeeds; otherwise <see langword="false"/>.</returns>
         Task<bool> AssignInstanceAsync(HostAssignmentContext assignmentContext);
 
         /// <summary>
-        /// StartAssinment will validate the current environment then assign an instance in a "fire and forget" pattern. Should be used synchronously.
+        /// Validates the assignment context and begins the assignment process in a "fire and forget" pattern.
         /// </summary>
-        /// <param name="assignmentContext">Takes in a <see cref="HostAssignmentContext"/> which will be applied to an assigned instance</param>
-        /// <returns>Returns true if environment validation succeeds, false otherwise.</returns>
+        /// <param name="assignmentContext">The <see cref="HostAssignmentContext"/> that will be applied to the instance being assigned to the application.</param>
+        /// <returns><see langword="true"/> if environment validation succeeds; otherwise <see langword="false"/>.</returns>
         bool StartAssignment(HostAssignmentContext assignmentContext);
 
         Task<string> SpecializeMSISidecar(HostAssignmentContext assignmentContext);
