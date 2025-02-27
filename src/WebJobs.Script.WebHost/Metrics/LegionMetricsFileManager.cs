@@ -73,6 +73,42 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
             return files.Count < _maxFileCount;
         }
 
+        public async Task PublsihMetricsAsync(PublishMetrics metrics)
+        {
+            string fileName = string.Empty;
+
+            try
+            {
+                bool metricsPublishEnabled = !string.IsNullOrEmpty(MetricsFilePath);
+                if (metricsPublishEnabled && !PrepareDirectoryForFile())
+                {
+                    return;
+                }
+
+                var settings = new JsonSerializerSettings
+                {
+                    NullValueHandling = NullValueHandling.Ignore
+                };
+
+                string metricsContent = JsonConvert.SerializeObject(metrics, settings);
+                _logger.PublishingMetrics(metricsContent);
+
+                if (metricsPublishEnabled)
+                {
+                    fileName = $"{Guid.NewGuid().ToString().ToLower()}.json";
+                    string filePath = Path.Combine(MetricsFilePath, fileName);
+
+                    using var streamWriter = _fileSystem.File.CreateText(filePath);
+                    await streamWriter.WriteAsync(metricsContent);
+                }
+            }
+            catch (Exception ex) when (!ex.IsFatal())
+            {
+                // TODO: consider using a retry strategy here
+                _logger.LogError(ex, $"Error writing metrics file '{fileName}'.");
+            }
+        }
+
         public async Task PublishMetricsAsync(object metrics)
         {
             string fileName = string.Empty;

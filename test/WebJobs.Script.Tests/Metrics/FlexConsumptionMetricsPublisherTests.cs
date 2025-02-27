@@ -109,7 +109,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
 
             FileInfo[] files = GetMetricsFilesSafe(_metricsFilePath);
 
-            FlexConsumptionMetricsPublisher.Metrics metrics = null;
+            PublishMetrics metrics = null;
             FileInfo metricsFile = null;
             if (!isAlwaysReadyInstance)
             {
@@ -208,7 +208,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             log = logs[2];
             Assert.Equal(LogLevel.Debug, log.Level);
             Assert.Equal("PublishingMetrics", log.EventId.Name);
-            var metrics = JsonConvert.DeserializeObject<FlexConsumptionMetricsPublisher.Metrics>(log.FormattedMessage);
+            var metrics = JsonConvert.DeserializeObject<PublishMetrics>(log.FormattedMessage);
             ValidateTotalTime(metrics.TotalTimeMS, delay);
             Assert.Equal(5678, metrics.ExecutionTimeMS);
             Assert.Equal(123, metrics.ExecutionCount);
@@ -567,7 +567,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             }
         }
 
-        private static async Task<FlexConsumptionMetricsPublisher.Metrics> ReadMetricsAsync(string metricsFilePath, bool deleteFile = false)
+        private static async Task<PublishMetrics> ReadMetricsAsync(string metricsFilePath, bool deleteFile = false)
         {
             string content = await File.ReadAllTextAsync(metricsFilePath);
 
@@ -576,7 +576,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
                 File.Delete(metricsFilePath);
             }
 
-            return JsonConvert.DeserializeObject<FlexConsumptionMetricsPublisher.Metrics>(content);
+            return JsonConvert.DeserializeObject<PublishMetrics>(content);
         }
 
         private static FileInfo[] GetMetricsFilesSafe(string path)

@@ -143,7 +143,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
             {
                 if (_metricsTracker.TryGetMetrics(out LinuxConsumptionMetrics trackedMetrics))
                 {
-                    var metricsToPublish = new Metrics
+                    var metricsToPublish = new PublishMetrics
                     {
                         FunctionActivity = trackedMetrics.FunctionActivity,
                         ExecutionCount = trackedMetrics.FunctionExecutionCount,
@@ -227,25 +227,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
             _metricsPublisherTimer = null;
 
             _metricsTracker.OnDiagnosticEvent -= OnMetricsDiagnosticEvent;
-        }
-
-        internal class Metrics
-        {
-            /// <summary>
-            /// Gets or sets a measure of the function activity for the interval.
-            /// </summary>
-            public long FunctionActivity { get; set; }
-
-            /// <summary>
-            /// Gets or sets the total execution duration for all functions during this interval.
-            /// </summary>
-            public long ExecutionTimeMS { get; set; }
-
-            /// <summary>
-            /// Gets or sets the total number of functions invocations that
-            /// completed during the interval.
-            /// </summary>
-            public long ExecutionCount { get; set; }
         }
     }
 }

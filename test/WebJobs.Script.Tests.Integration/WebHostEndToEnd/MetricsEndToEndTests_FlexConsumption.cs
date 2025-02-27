@@ -238,10 +238,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         }
 
-        private static async Task<FlexConsumptionMetricsPublisher.Metrics> ReadMetricsAsync(string metricsFilePath)
+        private static async Task<PublishMetrics> ReadMetricsAsync(string metricsFilePath)
         {
             string content = await File.ReadAllTextAsync(metricsFilePath);
-            return JsonConvert.DeserializeObject<FlexConsumptionMetricsPublisher.Metrics>(content);
+            return JsonConvert.DeserializeObject<PublishMetrics>(content);
         }
 
         private static void ValidateTotalTime(long value, FlexConsumptionMetricsPublisherOptions options)

@@ -220,10 +220,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             }
         }
 
-        private static async Task<LinuxContainerLegionMetricsPublisher.Metrics> ReadMetricsAsync(string metricsFilePath)
+        private static async Task<PublishMetrics> ReadMetricsAsync(string metricsFilePath)
         {
             string content = await File.ReadAllTextAsync(metricsFilePath);
-            return JsonConvert.DeserializeObject<LinuxContainerLegionMetricsPublisher.Metrics>(content);
+            return JsonConvert.DeserializeObject<PublishMetrics>(content);
         }
 
         private static FileInfo[] GetMetricsFilesSafe(string path)
