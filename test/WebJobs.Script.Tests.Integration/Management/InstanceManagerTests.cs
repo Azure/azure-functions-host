@@ -1518,6 +1518,151 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.True(_scriptWebEnvironment.InStandbyMode);
         }
 
+        [Fact]
+        public async Task AssignInstanceAsync_Failure_ExitsPlaceholderMode()
+        {
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+            var context = new HostAssignmentContext
+            {
+                Environment = new Dictionary<string, string>
+                {
+                    // force the assignment to fail
+                    { "throw", "test" }
+                },
+                IsWarmupRequest = false
+            };
+
+            _meshServiceClientMock.Setup(c => c.NotifyHealthEvent(ContainerHealthEventType.Fatal,
+                It.Is<Type>(t => t == typeof(AtlasInstanceManager)), "Assign failed")).Returns(Task.CompletedTask);
+
+            // Verify the exception is thrown and caught
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            {
+                await _instanceManager.AssignInstanceAsync(context);
+            });
+
+            var error = _loggerProvider.GetAllLogMessages().First(p => p.Level == LogLevel.Error);
+            Assert.Equal("Assign failed", error.FormattedMessage);
+            Assert.Equal("Kaboom!", error.Exception.Message);
+
+            _meshServiceClientMock.Verify(c => c.NotifyHealthEvent(ContainerHealthEventType.Fatal,
+                It.Is<Type>(t => t == typeof(AtlasInstanceManager)), "Assign failed"), Times.Once);
+        }
+
+        [Fact]
+        public async Task AssignInstanceAsync_Succeeds_With_No_RunFromPackage_AppSetting()
+        {
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+            var context = new HostAssignmentContext
+            {
+                Environment = new Dictionary<string, string>(),
+                IsWarmupRequest = false
+            };
+            
+            await _instanceManager.AssignInstanceAsync(context);
+
+            Assert.False(_scriptWebEnvironment.InStandbyMode);
+
+            var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
+            Assert.Collection(logs,
+                p => Assert.StartsWith("Starting Assignment", p),
+                p => Assert.StartsWith("Applying 0 app setting(s)", p),
+                p => Assert.Equal("AzureFilesConnectionString IsNullOrEmpty: True. AzureFilesContentShare: IsNullOrEmpty True", p),
+                p => Assert.StartsWith("Triggering specialization", p));
+        }
+
+        [Fact]
+        public async Task AssignInstanceAsync_Succeeds_With_NonEmpty_ScmRunFromPackage_Blob()
+        {
+            var contentRoot = Path.Combine(Path.GetTempPath(), @"FunctionsTest");
+            var zipFilePath = Path.Combine(contentRoot, "content.zip");
+            await TestHelpers.CreateContentZip(contentRoot, zipFilePath, Path.Combine(@"TestScripts", "DotNet"));
+            Uri sasUri = await TestHelpers.CreateBlobSas(_azurite.GetConnectionString(), zipFilePath, "scm-run-from-pkg-test", "NonEmpty.zip");
+
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+            var context = new HostAssignmentContext
+            {
+                Environment = new Dictionary<string, string>()
+                {
+                    { EnvironmentSettingNames.ScmRunFromPackage, sasUri.ToString() }
+                },
+                IsWarmupRequest = false
+            };
+            var options = new ScriptApplicationHostOptions()
+            {
+                ScriptPath = Path.GetTempPath(),
+                IsScmRunFromPackage = true
+            };
+            var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(options);
+
+            _packageDownloadHandler.Setup(p => p.Download(It.IsAny<RunFromPackageContext>()))
+                .ReturnsAsync(string.Empty);
+
+            var instanceManager = new AtlasInstanceManager(optionsFactory, _httpClientFactory, _scriptWebEnvironment,
+                _environment, _loggerFactory.CreateLogger<AtlasInstanceManager>(), new TestMetricsLogger(),
+                _meshServiceClientMock.Object, _runFromPackageHandler, _packageDownloadHandler.Object);
+
+            await instanceManager.AssignInstanceAsync(context);
+
+            Assert.False(_scriptWebEnvironment.InStandbyMode);
+
+            var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
+
+            if (logs.Length == 10)
+            {
+                Assert.Collection(logs,
+                    p => Assert.StartsWith("Starting Assignment", p),
+                    p => Assert.StartsWith("Applying 1 app setting(s)", p),
+                    p => Assert.EndsWith("points to an existing blob: True", p),
+                    p => Assert.StartsWith("Unsquashing remote zip", p),
+                    p => Assert.StartsWith("Running: ", p),
+                    p => Assert.StartsWith("Output:", p),
+                    p => Assert.True(true), // this line varies depending on whether WSL is on the machine; just ignore it
+                    p => Assert.StartsWith("exitCode:", p),
+                    p => Assert.StartsWith("Executed: ", p),
+                    p => Assert.StartsWith("Triggering specialization", p));
+            }
+            else
+            {
+                Assert.Collection(logs,
+                    p => Assert.StartsWith("Starting Assignment", p),
+                    p => Assert.StartsWith("Applying 1 app setting(s)", p),
+                    p => Assert.EndsWith("points to an existing blob: True", p),
+                    p => Assert.StartsWith("Unsquashing remote zip", p),
+                    p => Assert.StartsWith("Running: ", p),
+                    p => Assert.StartsWith("Error running bash", p),
+                    p => Assert.StartsWith("Executed: ", p),
+                    p => Assert.StartsWith("Triggering specialization", p));
+            }
+        }
+
+        [Fact]
+        public async Task AssignInstanceAsync_ForPinnedContainers()
+        {
+            Assert.False(SystemEnvironment.Instance.IsPlaceholderModeEnabled());
+
+            var context = new HostAssignmentContext();
+            context.Environment = new Dictionary<string, string>()
+            {
+                { EnvironmentSettingNames.ContainerStartContext, "startContext" }
+            };
+            context.IsWarmupRequest = false;
+            var result = await _instanceManager.AssignInstanceAsync(context);
+            Assert.True(result);
+        }
+
+        [Fact]
+        public async Task AssignInstanceAsync_ReturnsFalse_ForNonPinnedContainersInStandbyMode()
+        {
+            Assert.False(SystemEnvironment.Instance.IsPlaceholderModeEnabled());
+
+            var context = new HostAssignmentContext();
+            context.Environment = new Dictionary<string, string>();
+            context.IsWarmupRequest = false;
+            bool result = await _instanceManager.AssignInstanceAsync(context);
+            Assert.False(result);
+        }
+
         private static bool MatchesRunFromPackageContext(RunFromPackageContext r, string expectedUrl)
         {
             return string.Equals(r.Url, expectedUrl, StringComparison.OrdinalIgnoreCase);
