@@ -42,6 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         public async Task ManualTrigger_Invoke_Succeeds()
         {
             CloudBlobContainer outputContainer = _fixture.BlobClient.GetContainerReference("samples-output");
+            await outputContainer.CreateIfNotExistsAsync();
             string inId = Guid.NewGuid().ToString();
             string outId = Guid.NewGuid().ToString();
             CloudBlockBlob statusBlob = outputContainer.GetBlockBlobReference(inId);

@@ -49,7 +49,7 @@
     <PublicReleaseTag Condition="$([System.Text.RegularExpressions.Regex]::IsMatch($(BUILD_SOURCEBRANCH), `refs/tags/(?:.*-)?v.*`))">$(BUILD_SOURCEBRANCHNAME)</PublicReleaseTag>
     <PublicRelease>false</PublicRelease>
     <PublicRelease Condition="'$(PublicReleaseTag)' != ''">true</PublicRelease>
-    <PublicRelease Condition="'$(BUILD_SOURCEBRANCH)' != '' AND $(BUILD_SOURCEBRANCH.StartsWith('/refs/heads/release/'))">true</PublicRelease>
+    <PublicRelease Condition="'$(BUILD_SOURCEBRANCH)' != '' AND $(BUILD_SOURCEBRANCH.StartsWith('refs/heads/release/'))">true</PublicRelease>
   </PropertyGroup>
 
   <ItemGroup>

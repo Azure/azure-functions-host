@@ -9,7 +9,6 @@ using System.Globalization;
 using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
-using System.Net;
 using System.Net.Http.Headers;
 using System.Reflection;
 using System.Text;
@@ -57,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script
 #endif
 
         private static readonly Regex FunctionNameValidationRegex = new Regex(@"^[a-z][a-z0-9_\-]{0,127}$(?<!^host$)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
-        private static readonly Regex BindingNameValidationRegex = new Regex(string.Format("^([a-zA-Z][a-zA-Z0-9]{{0,127}}|{0})$", Regex.Escape(ScriptConstants.SystemReturnParameterBindingName)));
+        private static readonly Regex BindingNameValidationRegex = new Regex(string.Format("^([a-zA-Z_][a-zA-Z0-9_]{{0,127}}|{0})$", Regex.Escape(ScriptConstants.SystemReturnParameterBindingName)));
 
         private static readonly string UTF8ByteOrderMark = Encoding.UTF8.GetString(Encoding.UTF8.GetPreamble());
         private static readonly FilteredExpandoObjectConverter _filteredExpandoObjectConverter = new FilteredExpandoObjectConverter();
@@ -591,7 +590,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             if (bindingMetadata.Name == null || !BindingNameValidationRegex.IsMatch(bindingMetadata.Name))
             {
-                throw new ArgumentException($"The binding name {bindingMetadata.Name} is invalid. Please assign a valid name to the binding.");
+                throw new ArgumentException($"The binding name {bindingMetadata.Name} is invalid. Please assign a valid name to the binding. See https://aka.ms/azure-functions-binding-name-rules for more details.");
             }
 
             if (bindingMetadata.IsReturn && bindingMetadata.Direction != BindingDirection.Out)

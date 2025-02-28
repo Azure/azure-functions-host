@@ -23,18 +23,29 @@ jobs:
       jdkArchitectureOption: x64
       jdkSourceOption: PreInstalled
 
+  - script: |
+      npm install -g azurite
+    displayName: Install Azurite
+
   - task: PowerShell@2
     displayName: Install Az.Storage Powershell module
     inputs:
       targetType: inline
       script: 'Install-Module -Name Az.Storage -RequiredVersion 1.11.0 -Scope CurrentUser -Force -AllowClobber'
 
+  - task: DotNetCoreCLI@2
+    displayName: Build Integration.csproj
+    inputs:
+      command: build
+      projects: $(IntegrationProject)
+
   - task: AzurePowerShell@5
     displayName: Checkout secrets
     inputs:
       azureSubscription: Azure-Functions-Host-CI-internal
       azurePowerShellVersion: 'LatestVersion'
-      ScriptPath: build/checkout-secrets.ps1
+      pwsh: true
+      ScriptPath: eng/script/checkout-secrets.ps1
 
   - task: AzureKeyVault@1
     inputs:
@@ -62,12 +73,6 @@ jobs:
     displayName: 'Login to Azure'
 
   - task: DotNetCoreCLI@2
-    displayName: Build Integration.csproj
-    inputs:
-      command: build
-      projects: $(IntegrationProject)
-
-  - task: DotNetCoreCLI@2
     displayName: Non-E2E integration tests
     inputs:
       command: test
@@ -91,5 +96,6 @@ jobs:
     inputs:
       azureSubscription: Azure-Functions-Host-CI-internal
       azurePowerShellVersion: 'LatestVersion'
-      ScriptPath: build/checkin-secrets.ps1
+      pwsh: true
+      ScriptPath: eng/script/checkin-secrets.ps1
       ScriptArguments: '-leaseBlob $(LeaseBlob) -leaseToken $(LeaseToken)'

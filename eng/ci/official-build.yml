@@ -70,6 +70,8 @@ extends:
       codeql:
         # Move codeql for source languages to source analysis stage
         runSourceLanguagesInSourceAnalysis: true
+      spotBugs:
+        enabled: false # Explicitly disabling as our JavaWorker package causes this to light up and subsequently fail.
 
     stages:
     - stage: Build

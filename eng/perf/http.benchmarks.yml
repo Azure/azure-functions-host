@@ -12,6 +12,7 @@ jobs:
     environmentVariables:
       FUNCTIONS_WORKER_RUNTIME: '{{FunctionsWorkerRuntime}}'
       AzureWebJobsScriptRoot: '{{FunctionAppPath}}'
+      ASPNETCORE_URLS: '{{ AspNetUrls }}'
 
 scenarios:
   hellohttp:
@@ -27,11 +28,12 @@ scenarios:
 profiles:
   win2022:
     variables:
-      serverAddress: localhost
+      serverUri: http://{{ CrankAgentAppVm }}
+      serverPort: 5000
     jobs: 
       hostruntime:
         endpoints: 
-          - http://localhost:5010
+          - http://{{ CrankAgentAppVm }}:5010
       load:
         endpoints: 
-          - http://localhost:5010
+          - http://{{ CrankAgentLoadVm }}:5010

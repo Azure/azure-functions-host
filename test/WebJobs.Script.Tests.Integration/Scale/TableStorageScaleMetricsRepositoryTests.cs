@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale
             _loggerProvider = new TestLoggerProvider();
             ILoggerFactory loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(_loggerProvider);
-            _azureTableStorageProvider = TestHelpers.GetAzureTableStorageProvider(configuration, new TestEnvironment());
+            _azureTableStorageProvider = TestHelpers.GetAzureTableStorageProvider(configuration, environment: new TestEnvironment());
             // Allow for up to 30 seconds of creation retries for tests due to slow table deletes
             _repository = new TableStorageScaleMetricsRepository(_hostIdProviderMock.Object, new OptionsWrapper<ScaleOptions>(_scaleOptions), loggerFactory, _azureTableStorageProvider, 60);
 

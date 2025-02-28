@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -98,11 +99,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
                 else if (services.All(s => s.Lifetime == ServiceLifetime.Singleton))
                 {
                     // We can resolve them from the main container.
-                    var instances = serviceProvider.GetServices(services.Key);
+                    // Materialize services and instances to arrays once.
+                    var servicesArray = services.ToArray();
+                    var instancesArray = serviceProvider.GetServices(services.Key)?.ToArray() ?? Array.Empty<object>();
 
-                    for (var i = 0; i < services.Count(); i++)
+                    // Validate counts
+                    ValidateServiceAndInstanceCounts(servicesArray, instancesArray, services.Key);
+
+                    for (var i = 0; i < servicesArray.Length; i++)
                     {
-                        clonedCollection.CloneSingleton(services.ElementAt(i), instances.ElementAt(i));
+                        clonedCollection.CloneSingleton(servicesArray[i], instancesArray[i]);
                     }
                 }
 
@@ -112,24 +118,45 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
                     // We need a service scope to resolve them.
                     using var scope = serviceProvider.CreateScope();
 
-                    var instances = scope.ServiceProvider.GetServices(services.Key);
+                    // Materialize services and instances to arrays once.
+                    var servicesArray = services.ToArray();
+                    var instancesArray = scope.ServiceProvider.GetServices(services.Key)?.ToArray() ?? Array.Empty<object>();
+
+                    ValidateServiceAndInstanceCounts(servicesArray, instancesArray, services.Key);
 
                     // Then we only keep singleton instances.
-                    for (var i = 0; i < services.Count(); i++)
+                    for (var i = 0; i < servicesArray.Length; i++)
                     {
-                        if (services.ElementAt(i).Lifetime == ServiceLifetime.Singleton)
+                        if (servicesArray[i].Lifetime == ServiceLifetime.Singleton)
                         {
-                            clonedCollection.CloneSingleton(services.ElementAt(i), instances.ElementAt(i));
+                            clonedCollection.CloneSingleton(servicesArray[i], instancesArray[i]);
                         }
                         else
                         {
-                            clonedCollection.Add(services.ElementAt(i));
+                            clonedCollection.Add(servicesArray[i]);
                         }
                     }
                 }
             }
 
             return clonedCollection;
+        }
+
+        private static void ValidateServiceAndInstanceCounts<TService, TInstance>(TService[] servicesArray, TInstance[] instancesArray, Type serviceType)
+        {
+            if (servicesArray.Length != instancesArray.Length)
+            {
+                var message = $"""
+                                Mismatch detected for type {serviceType}:
+                                services.Count = {servicesArray.Length}, instances.Count = {instancesArray.Length}
+                                Services:
+                                  {string.Join(",\n\t", servicesArray.Select(s => s.ToString()))}
+                                Instances:
+                                  {string.Join(",\n\t", instancesArray.Select(i => i?.GetType()?.ToString() ?? "null"))}
+                                """;
+
+                throw new InvalidOperationException(message);
+            }
         }
     }
 

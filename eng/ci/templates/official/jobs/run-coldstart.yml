@@ -1,0 +1,224 @@
+parameters:
+- name: description
+  type: string
+- name: functionAppName
+  type: string
+- name: instanceId
+  type: string
+- name: os
+  type: string
+  default: Windows
+  values:
+    - Windows
+    - Linux
+- name: collectPerfViewProfileOnWindows
+  type: boolean
+  default: false
+- name: perfViewCollectArguments
+  type: string
+  default: ''
+
+jobs:
+- job: ${{ parameters.functionAppName }}_${{ parameters.instanceId }}
+  displayName: ${{ parameters.description }} ${{ parameters.instanceId }}
+  pool:
+    name: 1es-pool-azfunc-benchmarking
+    ${{ if eq(parameters.os, 'Linux') }}:
+      image: 1es-ubuntu-22.04-benchmark-runner-vanilla
+      os: linux 
+    ${{ else }}:
+      image: 1es-windows-2022-benchmark-runner-vanilla
+      os: windows
+
+  variables:
+    functionAppOutputPath: $(Build.BinariesDirectory)/Published/${{ parameters.functionAppName }}
+    hostOutputPath: $(Build.BinariesDirectory)/Published/HostRuntime
+    hostAssemblyPath: $(hostOutputPath)/Microsoft.Azure.WebJobs.Script.WebHost.dll
+    logsDirectory: $(Build.ArtifactStagingDirectory)/Logs
+    stdOutLogsFilePath: $(logsDirectory)/std_out_logs.txt
+    stdErrorLogsFilePath: $(logsDirectory)/std_error_logs.txt
+    FUNCTIONS_WORKER_RUNTIME: 'dotnet-isolated'
+    FUNCTIONS_WORKER_RUNTIME_VERSION: '9.0'
+    AzureWebJobsScriptRoot: '$(functionAppOutputPath)'
+    perfViewPath: C:\.tools\perfview\perfview.exe 
+    traceDirectory: $(Build.ArtifactStagingDirectory)/out
+    traceFileName: PerfViewData_$(Build.BuildNumber)_${{ parameters.functionAppName }}.etl
+    traceFilePath: $(traceDirectory)/$(traceFileName)
+    traceLogPath: $(logsDirectory)/logs.log
+
+  ${{ if and(eq(parameters.collectPerfViewProfileOnWindows, true), eq(parameters.instanceId, '1')) }}: # profile collection is only on the first instance
+    templateContext:
+      outputParentDirectory: $(System.DefaultWorkingDirectory)/out
+      outputs:
+        - output: pipelineArtifact
+          displayName: Publish PerfView profile
+          path: $(traceFilePath).zip
+          artifact: PerfViewData_${{ parameters.functionAppName }}
+
+  steps:
+  - template: /eng/ci/templates/install-dotnet.yml@self
+
+  - task: CopyFiles@2
+    displayName: Copy benchmark apps to temp location
+    inputs:
+      SourceFolder: '$(Build.SourcesDirectory)/test/Performance/Apps'
+      Contents: '**/*'
+      TargetFolder: '$(Build.ArtifactStagingDirectory)/PerformanceTestApps'
+      CleanTargetFolder: true
+
+  - task: DotNetCoreCLI@2
+    displayName: Publish benchmark app
+    inputs:
+      command: publish
+      publishWebProjects: false
+      zipAfterPublish: false
+      modifyOutputPath: false
+      projects: '$(Build.ArtifactStagingDirectory)/PerformanceTestApps/${{ parameters.functionAppName }}/HelloHttp.csproj'
+      arguments: -c Release -o $(functionAppOutputPath) -f net9.0 
+      workingDirectory: $(Build.ArtifactStagingDirectory)/PerformanceTestApps/${{ parameters.functionAppName }}
+
+  - task: DotNetCoreCLI@2
+    displayName: Publish host
+    inputs:
+      command: publish
+      publishWebProjects: false
+      zipAfterPublish: false
+      modifyOutputPath: false
+      projects: '$(Build.SourcesDirectory)/src/WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj'
+      arguments: -c Release -o $(hostOutputPath) -f net8.0 -p:PlaceholderSimulation=true 
+      workingDirectory: $(Build.SourcesDirectory)/src/WebJobs.Script.WebHost
+
+  - pwsh: |
+      Write-Host "Creating log directory: $(logsDirectory)"
+      New-Item -ItemType Directory -Path $(logsDirectory)
+    displayName: Create log directory
+
+  - ${{ if eq(parameters.os, 'Windows') }}:
+    - pwsh: |
+        $errorLogFilePath = "$(Build.ArtifactStagingDirectory)/Logs/std_err_logs.txt"
+        $process = Start-Process -FilePath "$(hostOutputPath)/Microsoft.Azure.WebJobs.Script.WebHost.exe" -RedirectStandardOutput $(stdOutLogsFilePath) -RedirectStandardError $(stdErrorLogsFilePath) -PassThru
+        Write-Host "Started process ID: $($process.Id)"
+        echo $process.Id > $(Build.ArtifactStagingDirectory)/hostProcessId.txt
+      displayName: Start host in placeholder mode
+  - ${{ else }}:
+    - script: |
+        # In Azure DevOps, when variables convert into environment variables, variable names become uppercase, and periods turn into underscores.
+        # This works for windows when getting the env variable value, but fails on linux. So we need to pass the variable value using correct case.
+        # https://learn.microsoft.com/en-us/azure/devops/pipelines/process/variables?view=azure-devops&tabs=yaml%2Cbatch#environment-variables
+        export AzureWebJobsScriptRoot="$(functionAppOutputPath)"
+        nohup dotnet $(hostAssemblyPath) > $(stdOutLogsFilePath) 2> $(stdErrorLogsFilePath) &
+        echo $! > $(Build.ArtifactStagingDirectory)/hostProcessId.txt
+      displayName: Start host in placeholder mode
+
+  - pwsh: |     
+      $url = "http://localhost:5000/api/warmup"
+      Write-Host "Checking if host is ready at $url..."
+      $maxAttempts = 10
+
+      for ($attempt = 0; $attempt -lt $maxAttempts; $attempt++) {
+          try {
+              $response = Invoke-RestMethod -Uri $url -Method Get -TimeoutSec 5 -ErrorAction Stop
+              Write-Host "Response: $response"
+              break
+          } catch {
+              Write-Host "Attempt $($attempt+1) failed: $_.Exception.Message. Retrying in 10 seconds..."
+              Start-Sleep -Seconds 10
+          }
+      }
+
+    displayName: Wait until host is warmed up
+
+  - ${{ if and(eq(parameters.collectPerfViewProfileOnWindows, true), eq(parameters.instanceId, '1')) }}: # collect profile only on the first instance
+    - pwsh: |
+        New-Item -ItemType Directory -Path $(traceDirectory)
+        if (Test-Path $(perfViewPath)) {
+            $collectArguments = ${env:COLLECT_ARGUMENTS}
+            Write-Host "PerfView.exe found. Executing with arguments '$collectArguments'"
+            Start-Process -FilePath $(perfViewPath) -ArgumentList "collect $collectArguments /LogFile:$(traceLogPath) /DataFile:$(traceFilePath)" -NoNewWindow
+        } else {
+            Write-Host "PerfView.exe not found in $(perfViewPath)"
+            exit 1
+        }
+      displayName: Start PerfView
+      env:
+        COLLECT_ARGUMENTS: ${{ parameters.perfViewCollectArguments }}
+
+  - pwsh: |
+      $helloUrl = "http://localhost:5000/api/hello?forcespecialization=1"
+      Write-Host "Calling $helloUrl"
+
+      $duration = Measure-Command {
+          $response = Invoke-WebRequest -Uri $helloUrl -Method Get -ErrorAction Stop
+      }
+
+      Write-Host "Response: $($response)"
+      Write-Host "Cold start latency: $($duration.TotalMilliseconds) ms"
+      Write-Host "##vso[task.setvariable variable=coldStartLatency;isOutput=true]$($duration.TotalMilliseconds)"
+    displayName: Record cold start latency
+    name: Record
+
+  - ${{ if and(eq(parameters.collectPerfViewProfileOnWindows, true), eq(parameters.instanceId, '1')) }}:
+    - pwsh: |
+        Write-Host "Stopping PerfView..."
+        & $(perfViewPath) stop
+
+        # Wait for the zip file to be created
+        $maxAttempts = 10
+        $attempt = 0
+
+        while ($attempt -lt $maxAttempts) {
+            $files = Get-ChildItem -Path $(traceDirectory)
+            $fileCount = $files.Count
+            if ($fileCount -eq 1 -and $files[0].Name -eq '$(traceFileName).zip') {
+                break
+            } else {
+                Write-Host "Expected zip file not found. Rechecking again in 15 seconds..."
+                Start-Sleep -Seconds 15
+                $attempt++
+            }
+        }
+
+        $perfViewProcess = Get-Process -Name "PerfView" -ErrorAction SilentlyContinue
+        if ($perfViewProcess) {
+            Write-Host "Killing PerfView process..."
+            $perfViewProcess | Stop-Process -Force
+        }
+
+        Write-Host "PerfView logs:"
+        Get-Content $(traceLogPath)
+      displayName: Stop PerfView
+
+  - ${{ if eq(parameters.os, 'Windows') }}:
+    - pwsh: |
+        $processIdFile = "$(Build.ArtifactStagingDirectory)/hostProcessId.txt"
+        if (Test-Path $processIdFile) {
+            $processId = Get-Content $processIdFile
+            Write-Host "Stop functions host process with process ID: $processId"
+            Stop-Process -Id $processId -Force
+        } else {
+            Write-Host "Process ID file not found."
+        }
+      displayName: Stop host process
+      condition: always()
+
+  - ${{ if eq(parameters.os, 'Linux') }}:
+    - script: |
+        processIdFile="$(Build.ArtifactStagingDirectory)/hostProcessId.txt"
+        if [ -f "$processIdFile" ]; then
+            processId=$(cat $processIdFile)
+            echo "Sending SIGTERM to functions host process process ID: $processId"
+            kill -SIGTERM $processId
+        else
+            echo "Process ID file not found."
+        fi
+      displayName: Stop host process
+      condition: always()
+
+  - pwsh: |
+      Write-Host "Logs:"
+      Get-Content $(stdOutLogsFilePath)
+      Write-Host "----"
+      Write-Host "Error logs:"
+      Get-Content $(stdErrorLogsFilePath)
+    displayName: Print logs
+    condition: always()

@@ -9,8 +9,8 @@ using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using Castle.Core.Logging;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Tests.Integration.Fixtures;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization;
@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 {
     [Trait(TestTraits.Category, TestTraits.EndToEnd)]
     [Trait(TestTraits.Group, TestTraits.ContainerInstanceTests)]
-    public class InstanceManagerTests : IDisposable
+    public class InstanceManagerTests : IDisposable, IClassFixture<AzuriteFixture>
     {
         private readonly TestLoggerProvider _loggerProvider;
         private readonly TestEnvironmentEx _environment;
@@ -41,9 +41,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         private readonly TestOptionsFactory<ScriptApplicationHostOptions> _optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions() { ScriptPath = Path.GetTempPath() });
         private readonly IRunFromPackageHandler _runFromPackageHandler;
         private readonly Mock<IPackageDownloadHandler> _packageDownloadHandler;
+        private readonly AzuriteFixture _azurite;
 
-        public InstanceManagerTests()
+        public InstanceManagerTests(AzuriteFixture azurite)
         {
+            _azurite = azurite;
             _httpClientFactory = TestHelpers.CreateHttpClientFactory();
 
             _loggerProvider = new TestLoggerProvider();
@@ -191,11 +193,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var contentRoot = Path.Combine(Path.GetTempPath(), @"FunctionsTest");
             var zipFilePath = Path.Combine(contentRoot, "content.zip");
             await TestHelpers.CreateContentZip(contentRoot, zipFilePath, Path.Combine(@"TestScripts", "DotNet"));
-
-            IConfiguration configuration = TestHelpers.GetTestConfiguration();
-            string connectionString = configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
-
-            Uri sasUri = await TestHelpers.CreateBlobSas(connectionString, zipFilePath, "scm-run-from-pkg-test", "NonEmpty.zip");
+            Uri sasUri = await TestHelpers.CreateBlobSas(_azurite.GetConnectionString(), zipFilePath, "scm-run-from-pkg-test", "NonEmpty.zip");
 
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
             var context = new HostAssignmentContext
@@ -261,10 +259,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var contentRoot = Path.Combine(Path.GetTempPath(), @"FunctionsTest");
             var zipFilePath = Path.Combine(contentRoot, "content.zip");
             await TestHelpers.CreateContentZip(contentRoot, zipFilePath, Path.Combine(@"TestScripts", "DotNet"));
-
-            IConfiguration configuration = TestHelpers.GetTestConfiguration();
-            string connectionString = configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
-            Uri sasUri = await TestHelpers.CreateBlobSas(connectionString, zipFilePath, "scm-run-from-pkg-test", "NonEmpty.zip");
+            Uri sasUri = await TestHelpers.CreateBlobSas(_azurite.GetConnectionString(), zipFilePath, "scm-run-from-pkg-test", "NonEmpty.zip");
 
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
             var context = new HostAssignmentContext
@@ -285,9 +280,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         [Fact]
         public async void StartAssignment_Succeeds_With_Empty_ScmRunFromPackage_Blob()
         {
-            IConfiguration configuration = TestHelpers.GetTestConfiguration();
-            string connectionString = configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
-            Uri sasUri = await TestHelpers.CreateBlobSas(connectionString, string.Empty, "scm-run-from-pkg-test", "Empty.zip");
+            Uri sasUri = await TestHelpers.CreateBlobSas(_azurite.GetConnectionString(), string.Empty, "scm-run-from-pkg-test", "Empty.zip");
 
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
             var context = new HostAssignmentContext

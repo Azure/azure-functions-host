@@ -2,17 +2,12 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
-using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
-using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.WebJobs.Script.Tests;
@@ -61,10 +56,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
         public class TestFixture : EndToEndTestFixture
         {
-            static TestFixture()
-            {
-            }
-
             public TestFixture()
                 : base(Path.Combine(Environment.CurrentDirectory, "..", "..", "..", "..", "sample", "java"), "samples", RpcWorkerConstants.JavaLanguageWorkerName)
             {

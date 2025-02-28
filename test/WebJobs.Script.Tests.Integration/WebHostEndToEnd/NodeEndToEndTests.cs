@@ -15,9 +15,11 @@ using System.Web.Http;
 using Microsoft.Azure.Storage.Blob;
 using Microsoft.Azure.Storage.Queue;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Tests.Integration.Fixtures;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -25,17 +27,15 @@ using Microsoft.WebJobs.Script.Tests;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 {
     [Trait(TestTraits.Category, TestTraits.EndToEnd)]
     [Trait(TestTraits.Group, nameof(NodeEndToEndTests))]
-    public class NodeEndToEndTests : EndToEndTestsBase<NodeEndToEndTests.TestFixture>
+    public class NodeEndToEndTests(NodeEndToEndTests.TestFixture fixture)
+        : EndToEndTestsBase<NodeEndToEndTests.TestFixture>(fixture)
     {
-        public NodeEndToEndTests(TestFixture fixture) : base(fixture)
-        {
-        }
-
         [Fact]
         public async Task BlobTriggerToBlobTest()
         {
@@ -885,14 +885,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         
 #endif
 
-        public class TestFixture : EndToEndTestFixture
+        public class TestFixture()
+            : EndToEndTestFixture(rootPath, "node", RpcWorkerConstants.NodeLanguageWorkerName)
         {
             private static readonly string rootPath = Path.Combine("TestScripts", "Node");
-
-            public TestFixture()
-                : base(rootPath, "node", RpcWorkerConstants.NodeLanguageWorkerName)
-            {
-            }
 
             public override void ConfigureScriptHost(IWebJobsBuilder webJobsBuilder)
             {
@@ -901,8 +897,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 webJobsBuilder.AddAzureStorage()
                     .Services.Configure<ScriptJobHostOptions>(o =>
                     {
-                        o.Functions = new[]
-                        {
+                        o.Functions =
+                        [
                             "BlobTriggerToBlob",
                             "HttpTrigger",
                             "HttpTrigger-Scenarios",
@@ -921,7 +917,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                             "TableOut",
                             "TimerTrigger",
                             "Scenarios"
-                        };
+                        ];
                     });
             }
         }

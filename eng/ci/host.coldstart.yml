@@ -1,0 +1,121 @@
+# No triggers for code push to any branch.
+trigger: none
+
+# No PR triggers for now
+pr: none
+
+schedules:
+  - cron: "0 5 * * *"
+    displayName: Nightly Build
+    branches:
+      include:
+      - dev
+    always: true
+
+parameters:
+- name: collectPerfViewProfileOnWindows
+  displayName: Collect PerfView Profile (on Windows)
+  type: boolean
+  default: false
+- name: perfViewCollectArguments
+  displayName: PerfView profile collection arguments (Valid only if "Collect PerfView Profile" is true))
+  type: string
+  default: '/NoGui /AcceptEula /NoV2Rundown /NoNGenRundown /NoClrRundown /BufferSizeMB=64 /CircularMB=64 /ThreadTime /Providers=a7044dd6-c8ef-4980-858c-942d972b6250'
+
+resources:
+  repositories:
+  - repository: 1es
+    type: git
+    name: 1ESPipelineTemplates/1ESPipelineTemplates
+    ref: refs/tags/release
+  - repository: eng
+    type: git
+    name: engineering
+    ref: refs/tags/release
+
+variables:
+  - template: /eng/ci/templates/variables/coldstart.yml@self
+  - template: /ci/variables/cfs.yml@eng
+
+extends:
+  template: v1/1ES.Unofficial.PipelineTemplate.yml@1es
+  parameters:
+    pool:
+      name: 1es-pool-azfunc-benchmarking
+      image: 1es-windows-2022-benchmark-runner-vanilla
+      os: windows
+
+    stages:
+    - stage: RunWindows
+      displayName: Record latency(Windows)
+      jobs:
+      - ${{ each appId in split(variables.runInstances, ',') }}:
+        - template: /eng/ci/templates/official/jobs/run-coldstart.yml@self
+          parameters:
+            description: .NET9 Web Application
+            functionAppName: HelloHttpNet9
+            instanceId: ${{ appId }} 
+            collectPerfViewProfileOnWindows: ${{ parameters.collectPerfViewProfileOnWindows }}
+            perfViewCollectArguments: ${{ parameters.perfViewCollectArguments }}
+        - template: /eng/ci/templates/official/jobs/run-coldstart.yml@self
+          parameters:
+            description: .NET9 Worker Application
+            functionAppName: HelloHttpNet9NoProxy
+            instanceId: ${{ appId }}
+            collectPerfViewProfileOnWindows: ${{ parameters.collectPerfViewProfileOnWindows }}
+            perfViewCollectArguments: ${{ parameters.perfViewCollectArguments }}
+
+    - stage: CalculateWindows
+      displayName: Process results(Windows)
+      dependsOn: RunWindows
+      jobs:
+      - template: /eng/ci/templates/official/jobs/process-coldstart.yml@self
+        parameters:
+          functionAppName: HelloHttpNet9
+          description: .NET9 Web Application
+          runInstances: 
+            items: ${{ split(variables.runInstances, ',') }}
+      - template: /eng/ci/templates/official/jobs/process-coldstart.yml@self
+        parameters:
+          functionAppName: HelloHttpNet9NoProxy
+          description: .NET9 Worker Application
+          runInstances: 
+            items: ${{ split(variables.runInstances, ',') }}
+
+# # LINUX
+    - stage: RunLinux
+      dependsOn: []
+      displayName:  Record latency(Linux)
+      jobs:
+      - ${{ each appId in split(variables.runInstances, ',') }}:
+        - template: /eng/ci/templates/official/jobs/run-coldstart.yml@self
+          parameters:
+            description: .NET9 Web Application
+            functionAppName: HelloHttpNet9
+            instanceId: ${{ appId }}
+            os: Linux
+        - template: /eng/ci/templates/official/jobs/run-coldstart.yml@self
+          parameters:
+            description: .NET9 Worker Application
+            functionAppName: HelloHttpNet9NoProxy
+            instanceId: ${{ appId }}
+            os: Linux
+  
+    - stage: CalculateLinux
+      displayName:  Process results(Linux)
+      dependsOn: RunLinux
+      jobs:
+      - template: /eng/ci/templates/official/jobs/process-coldstart.yml@self
+        parameters:
+          functionAppName: HelloHttpNet9
+          description: .NET9 Web Application
+          os: Linux
+          runInstances: 
+            items: ${{ split(variables.runInstances, ',') }}
+      - template: /eng/ci/templates/official/jobs/process-coldstart.yml@self
+        parameters:
+          functionAppName: HelloHttpNet9NoProxy
+          description: .NET9 Worker Application
+          os: Linux
+          runInstances: 
+            items: ${{ split(variables.runInstances, ',') }}
