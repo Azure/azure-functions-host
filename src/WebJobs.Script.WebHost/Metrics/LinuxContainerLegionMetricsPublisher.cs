@@ -14,7 +14,7 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 {
-    public class LinuxContainerLegionMetricsPublisher : IMetricsPublisher, IDisposable
+    public sealed class LinuxContainerLegionMetricsPublisher : IMetricsPublisher, IDisposable
     {
         private readonly ILinuxConsumptionMetricsTracker _metricsTracker;
         private readonly LegionMetricsFileManager _metricsFileManager;

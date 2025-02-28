@@ -7,7 +7,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
 {
     public class LinuxConsumptionLegionMetricsPublisherOptionsSetup : IConfigureOptions<LinuxConsumptionLegionMetricsPublisherOptions>
     {
-        private IEnvironment _environment;
+        private readonly IEnvironment _environment;
 
         public LinuxConsumptionLegionMetricsPublisherOptionsSetup(IEnvironment environment)
         {

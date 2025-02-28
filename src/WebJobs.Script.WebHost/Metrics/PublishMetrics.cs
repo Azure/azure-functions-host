@@ -5,7 +5,7 @@ using System;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 {
-    public class PublishMetrics
+    public sealed class PublishMetrics
     {
         /// <summary>
         /// Gets or sets a measure of the function activity for the interval.

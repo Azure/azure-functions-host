@@ -3,7 +3,7 @@
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
 {
-    public class LinuxConsumptionLegionMetricsPublisherOptions
+    public sealed class LinuxConsumptionLegionMetricsPublisherOptions
     {
         internal const int DefaultMetricsPublishIntervalMS = 30 * 1000;
 
