@@ -96,7 +96,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 .ConfigureLogging(b =>
                 {
                     _webHostLoggerProvider = new(_webHostInstanceId);
-                    b.Services.AddProvider(_webHostLoggerProvider);
+                    b.AddProvider(_webHostLoggerProvider);
 
                     b.AddFilter<TestLoggerProvider>(null, LogLevel.Trace)
                      .AddFilter<TestLoggerProvider>("Microsoft.AspNet", LogLevel.Warning)
