@@ -1,9 +1,13 @@
 <Project>
 
-  <ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'net6.0'" >
+    <!-- End of life workers. Only include them for 4.6xx host. -->
     <PackageReference Include="Microsoft.Azure.Functions.PowerShellWorker.PS7.0" Version="4.0.3148" />
     <PackageReference Include="Microsoft.Azure.Functions.PowerShellWorker.PS7.2" Version="4.0.4025" />
-    <PackageReference Include="Microsoft.Azure.Functions.PowerShellWorker.PS7.4" Version="4.0.4134" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Azure.Functions.PowerShellWorker.PS7.4" Version="4.0.4175" />
   </ItemGroup>
 
   <Target Name="RemovePowershellWorkerRuntimes" BeforeTargets="AssignTargetPaths" Condition="$(RuntimeIdentifier.StartsWith(win))">
