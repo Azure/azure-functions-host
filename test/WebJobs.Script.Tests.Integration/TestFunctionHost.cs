@@ -95,7 +95,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var builder = new WebHostBuilder()
                 .ConfigureLogging(b =>
                 {
-                    b.Services.AddSingleton<ILoggerProvider, TestLoggerProvider>(_ =>
+                    _webHostLoggerProvider = new(_webHostInstanceId);
+                    b.Services.AddProvider(_webHostLoggerProvider);
                     {
                         _webHostLoggerProvider = new TestLoggerProvider(_webHostInstanceId);
                         return _webHostLoggerProvider;
