@@ -170,17 +170,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ContainerManagement
             var secrets = new FunctionAppSecrets
             {
                 Host = new FunctionAppSecrets.HostSecrets
-                {
-                    Master = "test-key",
-                    Function = new Dictionary<string, string>
-                {
-                    { "host-function-key-1", "test-key" }
-                },
-                    System = new Dictionary<string, string>
-                {
-                    { "host-system-key-1", "test-key" }
-                }
-                }
+                    {
+                        Master = "test-key",
+                        Function = new Dictionary<string, string> {{ "host-function-key-1", "test-key" }},
+                        System = new Dictionary<string, string> {{ "host-system-key-1", "test-key" }}
+                    }
             };
             hostAssignmentContext.Secrets = secrets;
             hostAssignmentContext.MSIContext = new MSIContext();

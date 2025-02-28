@@ -43,6 +43,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 return false;
             }
 
+            if (context.IsWarmupRequest)
+            {
+                await HandleWarmupRequestAsync(context);
+                return true;
+            }
+
             lock (_assignmentLock)
             {
                 if (_assignmentContext != null)
@@ -62,6 +68,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             if (!IsValidEnvironment(context))
             {
                 return false;
+            }
+
+            if (context.IsWarmupRequest)
+            {
+                Task.Run(async () => await HandleWarmupRequestAsync(context));
+                return true;
             }
 
             lock (_assignmentLock)
@@ -103,12 +115,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         private async Task AssignAsync(HostAssignmentContext assignmentContext)
         {
-            if (assignmentContext.IsWarmupRequest)
-            {
-                await HandleWarmupRequestAsync(assignmentContext);
-                return;
-            }
-
             try
             {
                 _logger.LogInformation($"Starting Assignment. Cloud Name: {_environment.GetCloudName()}");
