@@ -21,6 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private readonly IEnvironment _environment;
         private readonly HttpClient _client;
         private readonly IScriptWebHostEnvironment _webHostEnvironment;
+        private Task _assignment;
 
         private HostAssignmentContext _assignmentContext;
 
@@ -51,15 +52,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
             lock (_assignmentLock)
             {
-                if (_assignmentContext != null)
+                if (_assignmentContext == null)
                 {
-                    return _assignmentContext.Equals(context);
+                    _assignmentContext = context;
+                    _assignment = AssignAsync(context);
                 }
-                _assignmentContext = context;
+                else if (!_assignmentContext.Equals(context))
+                {
+                    return false;
+                }
             }
 
-            await AssignAsync(context);
-
+            await _assignment;
             return true;
         }
 
@@ -115,6 +119,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         private async Task AssignAsync(HostAssignmentContext assignmentContext)
         {
+            await Task.Yield();
+
             try
             {
                 _logger.LogInformation($"Starting Assignment. Cloud Name: {_environment.GetCloudName()}");
