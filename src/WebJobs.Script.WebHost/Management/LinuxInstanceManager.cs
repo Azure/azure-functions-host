@@ -119,7 +119,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         private async Task AssignAsync(HostAssignmentContext assignmentContext)
         {
-            await Task.Yield();
+            await Task.Yield(); // This may be called from within a lock. This will force the lock to be released.
 
             try
             {
