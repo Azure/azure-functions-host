@@ -57,7 +57,7 @@ jobs:
 
   ${{ if and(eq(parameters.collectPerfViewProfileOnWindows, true), eq(parameters.instanceId, '1')) }}: # profile collection is only on the first instance
     templateContext:
-      outputParentDirectory: $(System.DefaultWorkingDirectory)/out
+      outputParentDirectory: $(traceDirectory)
       outputs:
         - output: pipelineArtifact
           displayName: Publish PerfView profile
@@ -208,9 +208,6 @@ jobs:
 
         # Upload analysis result
         Write-Host "##vso[task.addattachment type=Distributedtask.Core.Summary;name=$env:OS $env:FUNCTION_APP_NAME;]$(traceAnalysisResultMarkdownFilePath)"
-
-        # Cleanup unneeded files
-        Get-ChildItem $(traceDirectory) | Where-Object { $_.Name -notin @('$(traceFileZipName)', 'results') } | Remove-Item -Force -Recurse
       displayName: Analyze profile
       env:
         FUNCTION_APP_NAME: ${{ parameters.functionAppName }}
