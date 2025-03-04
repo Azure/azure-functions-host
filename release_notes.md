@@ -7,3 +7,4 @@
 - Support `LOGIC_APPS_POWERSHELL_VERSION` when resolving powershell's `worker.config.json` for logic-app apps only. (#11105)
 - Update Python Worker Version to [4.38.0](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.38.0)
 - Add JitTrace files for v4.40 (#11118)
+- Allow sync trigger to happen in managed environment when `AzureWebJobsStorage` is not set (#10767)
