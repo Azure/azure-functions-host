@@ -41,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         private readonly ScriptApplicationHostOptions _hostOptions;
         private readonly FunctionsSyncManager _functionsSyncManager;
         private readonly Dictionary<string, string> _vars;
-        private readonly StringBuilder _contentBuilder;
+        private readonly ThreadLocal<StringBuilder> _contentBuilder;
         private readonly MockHttpHandler _mockHttpHandler;
         private readonly TestLoggerProvider _loggerProvider;
         private readonly Mock<IScriptWebHostEnvironment> _mockWebHostEnvironment;
@@ -91,8 +91,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             _loggerProvider = new TestLoggerProvider();
             var loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(_loggerProvider);
-            _contentBuilder = new StringBuilder();
-            _mockHttpHandler = new MockHttpHandler(_contentBuilder);
+            _contentBuilder = new ThreadLocal<StringBuilder>(() => new StringBuilder());
+            _mockHttpHandler = new MockHttpHandler(_contentBuilder.Value);
             var httpClientFactory = TestHelpers.CreateHttpClientFactory(_mockHttpHandler);
             var factory = new TestOptionsFactory<ScriptApplicationHostOptions>(_hostOptions);
             var tokenSource = new TestChangeTokenSource<ScriptApplicationHostOptions>();
@@ -500,7 +500,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             {
                 var syncResult = await _functionsSyncManager.TrySyncTriggersAsync(isBackgroundSync: true);
                 Assert.Equal(0, _mockHttpHandler.RequestCount);
-                Assert.Equal(0, _contentBuilder.Length);
+                Assert.Equal(0, _contentBuilder.Value.Length);
                 Assert.True(syncResult.Success);
                 Assert.Null(syncResult.Error);
 
@@ -555,7 +555,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 _mockHttpHandler.Reset();
                 syncResult = await _functionsSyncManager.TrySyncTriggersAsync(isBackgroundSync: true);
                 Assert.Equal(0, _mockHttpHandler.RequestCount);
-                Assert.Equal(0, _contentBuilder.Length);
+                Assert.Equal(0, _contentBuilder.Value.Length);
                 Assert.True(syncResult.Success);
                 Assert.Null(syncResult.Error);
 
@@ -1159,6 +1159,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Environment.SetEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey, string.Empty);
             Environment.SetEnvironmentVariable("WEBSITE_SITE_NAME", string.Empty);
             FileUtility.DeleteFileSafe(_testHostConfigFilePath);
+            _contentBuilder.Dispose();
         }
 
         private class MockHttpHandler : HttpClientHandler
