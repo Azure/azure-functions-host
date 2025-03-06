@@ -124,7 +124,7 @@ jobs:
       displayName: Start host in placeholder mode
 
   - pwsh: |     
-      $url = "http://localhost:5000/api/warmup"
+      $url = "http://localhost:5000" # In placeholder simulation mode, calling homepage triggers warmup.
       Write-Host "Checking if host is ready at $url..."
       $maxAttempts = 10
 
