@@ -316,6 +316,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         [Fact(Skip = "flaky test")]
         public async Task TrySyncTriggers_ManagedAppEnv_WithNo_AzureWebJobsStorage_ReturnsTrue()
         {
+            _vars.Add("AzureWebJobsStorage", null);
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteArmCacheEnabled)).Returns("0");
             using (var env = new TestScopedEnvironmentVariable(_vars))
             {
@@ -325,7 +326,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 _mockEnvironment.Setup(p => p.GetEnvironmentVariable("CONTAINER_APP_NAMESPACE")).Returns("appns");
                 _mockEnvironment.Setup(p => p.GetEnvironmentVariable("CONTAINER_APP_REVISION")).Returns("appname--r1");
 
-                var result = await _functionsSyncManager.TrySyncTriggersAsync(isBackgroundSync: false);
+                _scriptHostManager.OnActiveHostChanged();
+                var result = await _functionsSyncManager.TrySyncTriggersAsync(isBackgroundSync: true);
                 Assert.True(result.Success);
                 VerifyResultWithCacheOff(durableVersion: "V1");
             }
@@ -334,6 +336,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         [Fact(Skip = "flaky test")]
         public async Task TrySyncTriggers_KubernetesManagedEnv_WithNo_AzureWebJobsStorage_ReturnsTrue()
         {
+            _vars.Add("AzureWebJobsStorage", null);
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteArmCacheEnabled)).Returns("0");
             using (var env = new TestScopedEnvironmentVariable(_vars))
             {
@@ -341,7 +344,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 _mockEnvironment.Setup(p => p.GetEnvironmentVariable("KUBERNETES_SERVICE_HOST")).Returns("kubhost");
                 _mockEnvironment.Setup(p => p.GetEnvironmentVariable("POD_NAMESPACE")).Returns("podns");
 
-                var result = await _functionsSyncManager.TrySyncTriggersAsync(isBackgroundSync: false);
+                _scriptHostManager.OnActiveHostChanged();
+                var result = await _functionsSyncManager.TrySyncTriggersAsync(isBackgroundSync: true);
                 Assert.True(result.Success);
                 VerifyResultWithCacheOff(durableVersion: "V1");
             }
