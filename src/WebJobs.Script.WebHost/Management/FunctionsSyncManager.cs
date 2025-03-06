@@ -114,6 +114,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 PrepareSyncTriggers();
 
                 var hashBlobClient = await GetHashBlobAsync();
+
+                if (_environment.IsAnyKubernetesEnvironment())
+                {
+                    hashBlobClient = null;
+                }
+
                 if (isBackgroundSync && hashBlobClient == null && !_environment.IsAnyKubernetesEnvironment())
                 {
                     // short circuit before doing any work in background sync
