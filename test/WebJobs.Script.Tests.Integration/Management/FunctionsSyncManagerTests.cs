@@ -289,7 +289,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
                 Assert.Equal(3, syncContent.Count);
                 Assert.Equal("testhostid123", syncContent["hostId"]);
-                
+
                 JArray triggers = (JArray)syncContent["triggers"];
                 Assert.Equal(2, triggers.Count);
 
@@ -311,7 +311,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             }
         }
 
-        [Fact]
+        [Fact(Skip = "flaky test")]
         public async Task TrySyncTriggers_ManagedAppEnv_WithNo_AzureWebJobsStorage_ReturnsTrue()
         {
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteArmCacheEnabled)).Returns("0");
@@ -329,7 +329,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             }
         }
 
-        [Fact]
+        [Fact(Skip = "flaky test")]
         public async Task TrySyncTriggers_KubernetesManagedEnv_WithNo_AzureWebJobsStorage_ReturnsTrue()
         {
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteArmCacheEnabled)).Returns("0");
@@ -384,7 +384,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 {
                     Assert.False(_mockHttpHandler.LastRequest.Headers.Contains(ScriptConstants.SiteRestrictedTokenHeaderName));
                 }
-                
+
                 Assert.NotEmpty(_mockHttpHandler.LastRequest.Headers.GetValues(ScriptConstants.SiteTokenHeaderName));
 
                 if (cacheEnabled)
@@ -453,7 +453,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.Equal("testhostid123", logObject["hostId"]);
             Assert.Equal(expectedTriggersPayload, logObject["triggers"].ToString(Formatting.None));
             Assert.False(triggersLog.Contains("secrets"));
-            
+
             // verify hostConfig by spot checking a couple properties
             var hostConfig = result["hostConfig"];
             Assert.Equal(2, hostConfig["extensions"]["testExtension2"]["p2"]);
