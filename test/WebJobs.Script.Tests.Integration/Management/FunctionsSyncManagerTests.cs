@@ -324,6 +324,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 _mockEnvironment.Setup(p => p.GetEnvironmentVariable("CONTAINER_APP_NAME")).Returns("appname");
                 _mockEnvironment.Setup(p => p.GetEnvironmentVariable("CONTAINER_APP_NAMESPACE")).Returns("appns");
                 _mockEnvironment.Setup(p => p.GetEnvironmentVariable("CONTAINER_APP_REVISION")).Returns("appname--r1");
+
                 var result = await _functionsSyncManager.TrySyncTriggersAsync(isBackgroundSync: false);
                 Assert.True(result.Success);
                 VerifyResultWithCacheOff(durableVersion: "V1");
