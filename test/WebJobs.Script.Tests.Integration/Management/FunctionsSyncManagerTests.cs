@@ -315,6 +315,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         public async Task TrySyncTriggers_ManagedAppEnv_WithNo_AzureWebJobsStorage_ReturnsTrue()
         {
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteArmCacheEnabled)).Returns("0");
+            _vars.Add("AzureWebJobsStorage", null);
 
             using (var env = new TestScopedEnvironmentVariable(_vars))
             {
@@ -323,8 +324,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 _mockEnvironment.Setup(p => p.GetEnvironmentVariable("CONTAINER_APP_NAME")).Returns("appname");
                 _mockEnvironment.Setup(p => p.GetEnvironmentVariable("CONTAINER_APP_NAMESPACE")).Returns("appns");
                 _mockEnvironment.Setup(p => p.GetEnvironmentVariable("CONTAINER_APP_REVISION")).Returns("appname--r1");
-                _mockEnvironment.Setup(p => p.GetEnvironmentVariable("AzureWebJobsStorage")).Returns(string.Empty);
-                var result = await _functionsSyncManager.TrySyncTriggersAsync(isBackgroundSync: false);
+                var result = await _functionsSyncManager.TrySyncTriggersAsync(isBackgroundSync: true);
                 Assert.True(result.Success);
                 VerifyResultWithCacheOff(durableVersion: "V1");
             }
@@ -334,13 +334,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         public async Task TrySyncTriggers_KubernetesManagedEnv_WithNo_AzureWebJobsStorage_ReturnsTrue()
         {
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteArmCacheEnabled)).Returns("0");
+            _vars.Add("AzureWebJobsStorage", null);
 
             using (var env = new TestScopedEnvironmentVariable(_vars))
             {
                 _mockEnvironment.Setup(p => p.GetEnvironmentVariable("FUNCTIONS_API_SERVER")).Returns("https://appname.azurewebsites.net");
                 _mockEnvironment.Setup(p => p.GetEnvironmentVariable("KUBERNETES_SERVICE_HOST")).Returns("kubhost");
                 _mockEnvironment.Setup(p => p.GetEnvironmentVariable("POD_NAMESPACE")).Returns("podns");
-                _mockEnvironment.Setup(p => p.GetEnvironmentVariable("AzureWebJobsStorage")).Returns(string.Empty);
                 var result = await _functionsSyncManager.TrySyncTriggersAsync(isBackgroundSync: true);
                 Assert.True(result.Success);
                 VerifyResultWithCacheOff(durableVersion: "V1");
