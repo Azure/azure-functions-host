@@ -311,7 +311,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             }
         }
 
-        [Fact(Skip = "flaky test")]
+        [Fact]
         public async Task TrySyncTriggers_ManagedAppEnv_WithNo_AzureWebJobsStorage_ReturnsTrue()
         {
             _vars.Add("AzureWebJobsStorage", null);
@@ -331,7 +331,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             }
         }
 
-        [Fact(Skip = "flaky test")]
+        [Fact]
         public async Task TrySyncTriggers_KubernetesManagedEnv_WithNo_AzureWebJobsStorage_ReturnsTrue()
         {
             _vars.Add("AzureWebJobsStorage", null);
