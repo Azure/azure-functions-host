@@ -11,8 +11,10 @@ using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Storage.Blobs;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Scale;
+using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
@@ -315,7 +317,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         public async Task TrySyncTriggers_ManagedAppEnv_WithNo_AzureWebJobsStorage_ReturnsTrue()
         {
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteArmCacheEnabled)).Returns("0");
-            _vars.Add("AzureWebJobsStorage", null);
+            var azureBlobStorageProviderMock = new Mock<IAzureBlobStorageProvider>(MockBehavior.Strict);
+            azureBlobStorageProviderMock
+                .Setup(p => p.TryCreateBlobServiceClientFromConnection(It.IsAny<string>(), out It.Ref<BlobServiceClient>.IsAny))
+                .Callback((string connectionString, out BlobServiceClient blobClient) =>
+                {
+                    blobClient = new BlobServiceClient("any");
+                })
+                .Returns(false);
+
 
             using (var env = new TestScopedEnvironmentVariable(_vars))
             {
@@ -334,13 +344,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         public async Task TrySyncTriggers_KubernetesManagedEnv_WithNo_AzureWebJobsStorage_ReturnsTrue()
         {
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteArmCacheEnabled)).Returns("0");
-            _vars.Add("AzureWebJobsStorage", null);
+            var azureBlobStorageProviderMock = new Mock<IAzureBlobStorageProvider>(MockBehavior.Strict);
+            azureBlobStorageProviderMock
+                .Setup(p => p.TryCreateBlobServiceClientFromConnection(It.IsAny<string>(), out It.Ref<BlobServiceClient>.IsAny))
+                .Callback((string connectionString, out BlobServiceClient blobClient) =>
+                {
+                    blobClient = new BlobServiceClient("any");
+                })
+                .Returns(false);
 
             using (var env = new TestScopedEnvironmentVariable(_vars))
             {
                 _mockEnvironment.Setup(p => p.GetEnvironmentVariable("FUNCTIONS_API_SERVER")).Returns("https://appname.azurewebsites.net");
                 _mockEnvironment.Setup(p => p.GetEnvironmentVariable("KUBERNETES_SERVICE_HOST")).Returns("kubhost");
                 _mockEnvironment.Setup(p => p.GetEnvironmentVariable("POD_NAMESPACE")).Returns("podns");
+
                 var result = await _functionsSyncManager.TrySyncTriggersAsync(isBackgroundSync: true);
                 Assert.True(result.Success);
                 VerifyResultWithCacheOff(durableVersion: "V1");
