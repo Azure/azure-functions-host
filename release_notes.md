@@ -9,3 +9,4 @@
 - Allow sync trigger to happen in managed environment when `AzureWebJobsStorage` is not set (#10767)
 - Fixing default DateTime bug with TimeZones in TimerTrigger (#10906)
 - Adjusting the logic to determine the warmup call in placeholder simulation mode to align with the production flow (#10918)
+- Fixing invalid DateTimes in status blobs when invoking via portal (#10916)
