@@ -8,7 +8,6 @@ using System.IO.Compression;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
-using Grpc.Net.Client.Balancer;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
@@ -264,6 +263,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
                 return version;
             }).Where(v => v != null).OrderByDescending(version => version.Version).ToList();
 
+            _logger.LogInformation("Platform release channel is set to: {platformReleaseChannelVersion}. Attempting to resolve bundle version for {bundleId} using the platform release channel configuration.", _platformReleaseChannel, bundleId);
             var matchingVersion = ResolvePlatformReleaseChannelVersion(bundleVersions);
 
             if (bundleId != ScriptConstants.DefaultExtensionBundleId)
@@ -294,7 +294,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
             return matchingVersion?.ToString();
         }
 
-        private NuGetVersion ResolvePlatformReleaseChannelVersion(IList<NuGetVersion> orderedByDescBundles) => _platformReleaseChannel switch
+        private NuGetVersion ResolvePlatformReleaseChannelVersion(IList<NuGetVersion> orderedByDescBundles) => _platformReleaseChannel.ToUpper() switch
         {
             ScriptConstants.StandardPlatformChannelNameUpper or ScriptConstants.ExtendedPlatformChannelNameUpper => GetStandardOrExtendedBundleVersion(orderedByDescBundles),
             ScriptConstants.LatestPlatformChannelNameUpper or "" => GetLatestBundleVersion(orderedByDescBundles),
@@ -308,8 +308,11 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
         {
             if (orderedByDescBundlesList.Count > 1)
             {
+                var previous = orderedByDescBundlesList[1];
+                _logger.LogInformation("Applying platform release channel configuration {platformReleaseChannelName}. Bundle version {previous} will be used", _platformReleaseChannel, previous);
+
                 // These channels should resolve to the version prior to latest. This list is in descending order, which makes latest [0], and prior-to-latest [1].
-                return orderedByDescBundlesList[1];
+                return previous;
             }
 
             // keep the latest version, log a notice
@@ -318,9 +321,11 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
             return latest;
         }
 
-        private static NuGetVersion GetLatestBundleVersion(IList<NuGetVersion> orderedByDescBundlesList)
+        private NuGetVersion GetLatestBundleVersion(IList<NuGetVersion> orderedByDescBundlesList)
         {
-            return orderedByDescBundlesList.FirstOrDefault();
+            var latest = orderedByDescBundlesList.FirstOrDefault();
+            _logger.LogInformation("Applying platform release channel configuration {platformReleaseChannelName}. Bundle version {latest} will be used", _platformReleaseChannel, latest);
+            return latest;
         }
 
         private NuGetVersion HandleUnknownPlatformReleaseChannelName(IList<NuGetVersion> orderedByDescBundlesList)

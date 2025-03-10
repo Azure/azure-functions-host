@@ -418,8 +418,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
         [InlineData(ScriptConstants.StandardPlatformChannelNameUpper, "[4.*, 5.0.0)", "4.1.0", "4.1.0")]
         [InlineData(ScriptConstants.ExtendedPlatformChannelNameUpper, "[4.*, 5.0.0)", "4.1.0", "4.1.0")]
         [InlineData(ScriptConstants.LatestPlatformChannelNameUpper, "[4.*, 5.0.0)", null, "4.3.0")]
+        [InlineData("latest", "[4.*, 5.0.0)", null, "4.3.0")]
         [InlineData(ScriptConstants.StandardPlatformChannelNameUpper, "[4.*, 5.0.0)", null, "4.2.0")]
+        [InlineData("standard", "[4.*, 5.0.0)", null, "4.2.0")]
         [InlineData(ScriptConstants.ExtendedPlatformChannelNameUpper, "[4.*, 5.0.0)", null, "4.2.0")]
+        [InlineData("extended", "[4.*, 5.0.0)", null, "4.2.0")]
         public void WhenPlatformReleaseChannelSet_ExpectedVersionChosen(string platformReleaseChannelName, string versionRange, string hostConfigMaxVersion, string expectedVersion)
         {
             var range = VersionRange.Parse(versionRange);
