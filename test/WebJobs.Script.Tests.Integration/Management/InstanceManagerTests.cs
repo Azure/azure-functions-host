@@ -9,7 +9,6 @@ using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using Castle.Core.Logging;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
@@ -974,8 +973,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var meshInitServiceClient = new Mock<IMeshServiceClient>(MockBehavior.Strict);
 
+            bool called = false;
             meshInitServiceClient.Setup(client =>
-                client.MountCifs(Utility.BuildStorageConnectionString(account1, accessKey1, CloudConstants.AzureStorageSuffix), share1, targetPath1)).Returns(Task.FromResult(true));
+                client.MountCifs(Utility.BuildStorageConnectionString(account1, accessKey1, CloudConstants.AzureStorageSuffix), share1, targetPath1))
+                .Returns(Task.FromResult(true))
+                .Callback(() => called = true);
 
             var instanceManager = new AtlasInstanceManager(_optionsFactory, _httpClientFactory, _scriptWebEnvironment, _environment,
                 _loggerFactory.CreateLogger<AtlasInstanceManager>(), new TestMetricsLogger(), meshInitServiceClient.Object,
@@ -983,7 +985,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             instanceManager.StartAssignment(hostAssignmentContext);
 
-            await Task.Delay(TimeSpan.FromSeconds(0.5));
+            await TestHelpers.Await(() => called);
 
             meshInitServiceClient.Verify(
                 client => client.MountCifs(Utility.BuildStorageConnectionString(account1, accessKey1, CloudConstants.AzureStorageSuffix), share1,
