@@ -263,7 +263,6 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
                 return version;
             }).Where(v => v != null).OrderByDescending(version => version.Version).ToList();
 
-            _logger.LogInformation("Platform release channel is set to: {platformReleaseChannelVersion}. Attempting to resolve bundle version for {bundleId} using the platform release channel configuration.", _platformReleaseChannel, bundleId);
             var matchingVersion = ResolvePlatformReleaseChannelVersion(bundleVersions);
 
             if (bundleId != ScriptConstants.DefaultExtensionBundleId)
@@ -306,17 +305,18 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
         // However, Functions and Rapid Update should treat Standard and Extended the same, resolving to n-1.
         private NuGetVersion GetStandardOrExtendedBundleVersion(IList<NuGetVersion> orderedByDescBundlesList)
         {
+            var latest = orderedByDescBundlesList.FirstOrDefault();
+
             if (orderedByDescBundlesList.Count > 1)
             {
                 var previous = orderedByDescBundlesList[1];
-                _logger.LogInformation("Applying platform release channel configuration {platformReleaseChannelName}. Bundle version {previous} will be used", _platformReleaseChannel, previous);
+                _logger.LogInformation("Applying platform release channel configuration {platformReleaseChannelName}. Previous bundle version {previous} will be used instead of latest version {latest}.", _platformReleaseChannel, previous, latest);
 
                 // These channels should resolve to the version prior to latest. This list is in descending order, which makes latest [0], and prior-to-latest [1].
                 return previous;
             }
 
             // keep the latest version, log a notice
-            var latest = orderedByDescBundlesList.FirstOrDefault();
             _logger.LogInformation("Unable to apply platform release channel configuration {platformReleaseChannelName}. Only one matching bundle version is available. {latestBundleVersion} will be used", _platformReleaseChannel, latest);
             return latest;
         }
