@@ -5,3 +5,4 @@
 -->
 
 - Add support for the release channel setting `WEBSITE_PlatformReleaseChannel` and use this value in extension bundles resolution.
+- Bug fix for platform release channel bundles resolution casing issue and additional logging (#10921)
