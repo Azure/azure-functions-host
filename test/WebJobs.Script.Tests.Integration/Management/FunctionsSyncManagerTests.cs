@@ -289,7 +289,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
                 Assert.Equal(3, syncContent.Count);
                 Assert.Equal("testhostid123", syncContent["hostId"]);
-                
+
                 JArray triggers = (JArray)syncContent["triggers"];
                 Assert.Equal(2, triggers.Count);
 
@@ -308,6 +308,40 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 Assert.False(result.Success);
                 var expectedMessage = "Invalid environment for SyncTriggers operation.";
                 Assert.Equal(expectedMessage, result.Error);
+            }
+        }
+
+        [Fact(Skip = "flaky test")]
+        public async Task TrySyncTriggers_ManagedAppEnv_WithNo_AzureWebJobsStorage_ReturnsTrue()
+        {
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteArmCacheEnabled)).Returns("0");
+
+            using (var env = new TestScopedEnvironmentVariable(_vars))
+            {
+                _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.ManagedEnvironment)).Returns("true");
+                _mockEnvironment.Setup(p => p.GetEnvironmentVariable("FUNCTIONS_API_SERVER")).Returns("https://appname.azurewebsites.net");
+                _mockEnvironment.Setup(p => p.GetEnvironmentVariable("CONTAINER_APP_NAME")).Returns("appname");
+                _mockEnvironment.Setup(p => p.GetEnvironmentVariable("CONTAINER_APP_NAMESPACE")).Returns("appns");
+                _mockEnvironment.Setup(p => p.GetEnvironmentVariable("CONTAINER_APP_REVISION")).Returns("appname--r1");
+                var result = await _functionsSyncManager.TrySyncTriggersAsync(isBackgroundSync: true);
+                Assert.True(result.Success);
+                VerifyResultWithCacheOff(durableVersion: "V1");
+            }
+        }
+
+        [Fact(Skip = "flaky test")]
+        public async Task TrySyncTriggers_KubernetesManagedEnv_WithNo_AzureWebJobsStorage_ReturnsTrue()
+        {
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteArmCacheEnabled)).Returns("0");
+
+            using (var env = new TestScopedEnvironmentVariable(_vars))
+            {
+                _mockEnvironment.Setup(p => p.GetEnvironmentVariable("FUNCTIONS_API_SERVER")).Returns("https://appname.azurewebsites.net");
+                _mockEnvironment.Setup(p => p.GetEnvironmentVariable("KUBERNETES_SERVICE_HOST")).Returns("kubhost");
+                _mockEnvironment.Setup(p => p.GetEnvironmentVariable("POD_NAMESPACE")).Returns("podns");
+                var result = await _functionsSyncManager.TrySyncTriggersAsync(isBackgroundSync: true);
+                Assert.True(result.Success);
+                VerifyResultWithCacheOff(durableVersion: "V1");
             }
         }
 
@@ -350,7 +384,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 {
                     Assert.False(_mockHttpHandler.LastRequest.Headers.Contains(ScriptConstants.SiteRestrictedTokenHeaderName));
                 }
-                
+
                 Assert.NotEmpty(_mockHttpHandler.LastRequest.Headers.GetValues(ScriptConstants.SiteTokenHeaderName));
 
                 if (cacheEnabled)
@@ -419,7 +453,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.Equal("testhostid123", logObject["hostId"]);
             Assert.Equal(expectedTriggersPayload, logObject["triggers"].ToString(Formatting.None));
             Assert.False(triggersLog.Contains("secrets"));
-            
+
             // verify hostConfig by spot checking a couple properties
             var hostConfig = result["hostConfig"];
             Assert.Equal(2, hostConfig["extensions"]["testExtension2"]["p2"]);

@@ -2,7 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
@@ -22,6 +22,7 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.Scale;
+using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Workers;
@@ -61,8 +62,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly bool _originalStandbyModeValue;
         private readonly string _originalFunctionsWorkerRuntime;
         private readonly string _originalFunctionsWorkerRuntimeVersion;
-        private IScriptEventManager _eventManager;
+        private readonly IOptionsChangeTokenSource<LanguageWorkerOptions> _languageWorkerOptionsChangeTokenSource;
 
+        // we're only using this dictionary's keys so it acts as a "ConcurrentHashSet"
+        private readonly ConcurrentDictionary<ScriptHostStartupOperation, byte> _activeStartupOperations = new();
+
+        private IScriptEventManager _eventManager;
         private IHost _host;
         private ScriptHostState _state;
         private CancellationTokenSource _startupLoopTokenSource;
@@ -79,7 +84,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             IScriptWebHostEnvironment scriptWebHostEnvironment, IEnvironment environment,
             HostPerformanceManager hostPerformanceManager, IOptions<HostHealthMonitorOptions> healthMonitorOptions,
             IMetricsLogger metricsLogger, IApplicationLifetime applicationLifetime, IConfiguration config, IScriptEventManager eventManager, IHostMetrics hostMetrics,
-            IOptions<FunctionsHostingConfigOptions> hostingConfigOptions)
+            IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
+            IOptionsChangeTokenSource<LanguageWorkerOptions> languageWorkerOptionsChangeTokenSource)
         {
             ArgumentNullException.ThrowIfNull(loggerFactory);
 
@@ -90,6 +96,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             RegisterApplicationLifetimeEvents();
 
             _metricsLogger = metricsLogger;
+            _languageWorkerOptionsChangeTokenSource = languageWorkerOptionsChangeTokenSource ?? throw new ArgumentNullException(nameof(languageWorkerOptionsChangeTokenSource));
             _applicationHostOptions = applicationHostOptions ?? throw new ArgumentNullException(nameof(applicationHostOptions));
             _scriptWebHostEnvironment = scriptWebHostEnvironment ?? throw new ArgumentNullException(nameof(scriptWebHostEnvironment));
             _scriptHostBuilder = scriptHostBuilder ?? throw new ArgumentNullException(nameof(scriptHostBuilder));
@@ -282,7 +289,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             JobHostStartupMode startupMode = JobHostStartupMode.Normal, Guid? parentOperationId = null)
         {
             // Add this to the list of trackable startup operations. Restarts can use this to cancel any ongoing or pending operations.
-            var activeOperation = ScriptHostStartupOperation.Create(cancellationToken, _logger, parentOperationId);
+            var activeOperation = BeginStartupOperation(cancellationToken, parentOperationId);
 
             using (_metricsLogger.LatencyEvent(MetricEventNames.ScriptHostManagerStartService))
             {
@@ -351,14 +358,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                 ActiveHost = localHost;
 
-                // Forward initial startup logs to AppInsights/OpenTelemetry.
-                // These are not tracked by the AppInsights and OpenTelemetry logger provider as these are added in the script host.
-                var loggerProviders = ActiveHost.Services.GetServices<ILoggerProvider>();
-                var deferredLogProvider = ActiveHost.Services.GetService<DeferredLoggerProvider>();
-                if (deferredLogProvider is not null)
+                if (!FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagDisableWebHostLogForwarding, _environment))
                 {
-                    var selectedProviders = loggerProviders.Where(provider => provider is ApplicationInsightsLoggerProvider or OpenTelemetryLoggerProvider).ToArray();
-                    deferredLogProvider.ProcessBufferedLogs(selectedProviders);
+                    // Forward logs to AppInsights/OpenTelemetry.
+                    // These are not tracked by the AppInsights and OpenTelemetry logger provider as these are added in the script host.
+                    var loggerProviders = ActiveHost.Services.GetServices<ILoggerProvider>();
+                    var deferredLogProvider = ActiveHost.Services.GetService<DeferredLoggerProvider>();
+                    if (deferredLogProvider is not null)
+                    {
+                        var selectedProviders = loggerProviders.Where(provider => provider is ApplicationInsightsLoggerProvider or OpenTelemetryLoggerProvider).ToArray();
+                        deferredLogProvider.ProcessBufferedLogs(selectedProviders);
+                    }
+                }
+
+                if (_languageWorkerOptionsChangeTokenSource is HostBuiltChangeTokenSource<LanguageWorkerOptions> { } hostBuiltChangeTokenSource)
+                {
+                    hostBuiltChangeTokenSource.TriggerChange();
                 }
 
                 var scriptHost = (ScriptHost)ActiveHost.Services.GetService<ScriptHost>();
@@ -559,7 +574,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                 // If anything is mid-startup, cancel it.
                 _startupLoopTokenSource?.Cancel();
-                foreach (var startupOperation in ScriptHostStartupOperation.ActiveOperations)
+                foreach (var startupOperation in _activeStartupOperations.Keys)
                 {
                     _logger.CancelingStartupOperationForRestart(startupOperation.Id);
                     try
@@ -588,7 +603,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     var previousHost = ActiveHost;
                     ActiveHost = null;
 
-                    using (var activeOperation = ScriptHostStartupOperation.Create(cancellationToken, _logger))
+                    var activeOperation = BeginStartupOperation(cancellationToken);
+
+                    try
                     {
                         Task startTask, stopTask;
 
@@ -609,6 +626,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         }
 
                         await startTask;
+                    }
+                    finally
+                    {
+                        EndStartupOperation(activeOperation);
                     }
 
                     _logger.Restarted();
@@ -995,6 +1016,35 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 logger.LogDebug(@"Disposing {providerName} ...", logProvider);
                 logProvider.Dispose();
             }
+        }
+
+        /// <summary>
+        /// Creates a new startup operation and adds it to the list of active operations. This operation should be completed by
+        /// calling <see cref="EndStartupOperation(ScriptHostStartupOperation)"/>."/>.
+        /// </summary>
+        /// <param name="parentToken">A CancellationToken to link to this operation. It can be canceled via the <see cref="ScriptHostStartupOperation.CancellationTokenSource"/> property.</param>
+        /// <param name="parentId">The Id of the parent operation if this one is being created due to a startup exception.</param>
+        /// <returns>The operation.</returns>
+        private ScriptHostStartupOperation BeginStartupOperation(CancellationToken parentToken, Guid? parentId = null)
+        {
+            var operation = new ScriptHostStartupOperation(parentToken, parentId);
+            _activeStartupOperations.TryAdd(operation, byte.MinValue);
+            _logger.StartupOperationCreated(operation.Id, operation.ParentId);
+            return operation;
+        }
+
+        /// <summary>
+        /// Removes the startup operation from the list of active operations and disposes of it.
+        /// </summary>
+        /// <param name="operation">The operation to complete.</param>
+        private void EndStartupOperation(ScriptHostStartupOperation operation)
+        {
+            if (_activeStartupOperations.TryRemove(operation, out _))
+            {
+                operation.Dispose();
+            }
+
+            _logger.StartupOperationCompleted(operation.Id);
         }
 
         protected virtual void Dispose(bool disposing)

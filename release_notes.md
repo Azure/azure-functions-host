@@ -3,15 +3,11 @@
 <!-- Please add your release notes in the following format:
 - My change description (#PR)
 -->
-- Add support for managed identity when using open telemetry + azure monitor (#10615)
-- Update Java Worker Version to [2.18.0](https://github.com/Azure/azure-functions-java-worker/releases/tag/2.18.0)
-- Allow for an output binding value of an invocation result to be null (#10698)
-- Updated dotnet-isolated worker to 1.0.12.
-  - [Corrected the path for the prelaunch app location.](https://github.com/Azure/azure-functions-dotnet-worker/pull/2897)
-  - [Added net9 prelaunch app.](https://github.com/Azure/azure-functions-dotnet-worker/pull/2898)
-- Update the `DefaultHttpProxyService` to better handle client disconnect scenarios (#10688)
-  - Replaced `InvalidOperationException` with `HttpForwardingException` when there is a ForwarderError
-- Fix modification of ISO strings during the parsing of function metadata bindings.
-  - This fixes the listener errors related to the CosmosDB trigger's `StartFromTime` parameter. (#10735)
-- Updated `WebJobs.Script` to target .NET 8 (instead of .NET Standard 2.1)
+- Update Java Worker Version to [2.18.1](https://github.com/Azure/azure-functions-java-worker/releases/tag/2.18.1)
+- Introduced support for response compression, which can be enabled through explicit opt-in (#10870)
+- Add support for new FeatureFlag `EnableAzureMonitorTimeIsoFormat` to enable iso time format for azmon logs for Linux Dedicated/EP Skus. (#10684)
+- Allow sync trigger to happen in managed environment when `AzureWebJobsStorage` is not set (#10767)
+- Fixing default DateTime bug with TimeZones in TimerTrigger (#10906)
+- Adjusting the logic to determine the warmup call in placeholder simulation mode to align with the production flow (#10918)
+- Fixing invalid DateTimes in status blobs when invoking via portal (#10916)
 - Add the HTTP Trigger Route to the root span name and the `http.route` Activity tag for HTTP Triggers when open telemetry is enabled (#10783)

@@ -5,12 +5,9 @@ using System;
 using System.IO;
 using System.Net;
 using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.WebJobs.Script.Tests;
-using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
@@ -19,13 +16,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
     [Trait(TestTraits.Group, TestTraits.SamplesEndToEnd)]
     public class SamplesEndToEndTests_CustomHandlerRetry : IClassFixture<SamplesEndToEndTests_CustomHandlerRetry.TestFixture>
     {
-        private readonly ScriptSettingsManager _settingsManager;
         private TestFixture _fixture;
 
         public SamplesEndToEndTests_CustomHandlerRetry(TestFixture fixture)
         {
             _fixture = fixture;
-            _settingsManager = ScriptSettingsManager.Instance;
         }
 
         [Fact]
@@ -46,18 +41,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
 
         public class TestFixture : EndToEndTestFixture
         {
-            static TestFixture()
-            {
-            }
-
             public TestFixture()
                 : base(Path.Combine(Environment.CurrentDirectory, "..", "..", "..", "..", "sample", "CustomHandlerRetry"), "samples", RpcWorkerConstants.PowerShellLanguageWorkerName)
             {
             }
 
-            public override void ConfigureScriptHost(IWebJobsBuilder webJobsBuilder)
+            protected override Task CreateTestStorageEntities()
             {
-                base.ConfigureScriptHost(webJobsBuilder);
+                // no need
+                return Task.CompletedTask;
             }
         }
     }

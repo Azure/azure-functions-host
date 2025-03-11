@@ -25,6 +25,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             IEnvironment environment = builder.ApplicationServices.GetService<IEnvironment>() ?? SystemEnvironment.Instance;
             IOptionsMonitor<StandbyOptions> standbyOptionsMonitor = builder.ApplicationServices.GetService<IOptionsMonitor<StandbyOptions>>();
             IOptionsMonitor<HttpBodyControlOptions> httpBodyControlOptionsMonitor = builder.ApplicationServices.GetService<IOptionsMonitor<HttpBodyControlOptions>>();
+            IOptionsMonitor<ResponseCompressionOptions> responseCompressionOptionsMonitor = builder.ApplicationServices.GetService<IOptionsMonitor<ResponseCompressionOptions>>();
+
             IServiceProvider serviceProvider = builder.ApplicationServices;
 
             StandbyOptions standbyOptions = standbyOptionsMonitor.CurrentValue;
@@ -55,6 +57,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 builder.UseMiddleware<PlaceholderSpecializationMiddleware>();
             }
+
+            // Enable response compression only after PlaceholderSpecializationMiddleware, as it requires customer opt-in feature flag value.
+            builder.UseWhen(_ => responseCompressionOptionsMonitor.CurrentValue.EnableResponseCompression, config =>
+            {
+                config.UseResponseCompression();
+            });
 
             // Specialization can change the CompatMode setting, so this must run later than
             // the PlaceholderSpecializationMiddleware

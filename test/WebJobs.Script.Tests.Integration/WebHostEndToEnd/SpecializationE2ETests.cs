@@ -838,6 +838,41 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.DoesNotContain("Shutting down placeholder worker.", log);
         }
 
+        [Theory]
+        [InlineData("gzip", "gzip")]
+        [InlineData("br", "br")]
+        [InlineData("gzip, deflate, br", "br")]  // Compression defaults to Brotli compression when the client supports it.
+        [InlineData("", null)]
+        public async Task ResponseCompressionWorksAfterSpecialization(string acceptEncodingRequestHeaderValue, string expectedContentEncodingResponseHeaderValue)
+        {
+            var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetIsolated60Path, "HttpRequestDataFunction");
+
+            using var testServer = new TestServer(builder);
+
+            var client = testServer.CreateClient();
+            client.DefaultRequestHeaders.Add("Accept-Encoding", acceptEncodingRequestHeaderValue);
+            var response = await client.GetAsync("api/warmup");
+            response.EnsureSuccessStatusCode();
+            response.Content.Headers.TryGetValues("Content-Encoding", out var value);
+            Assert.Null(value);
+
+            // Validate that the channel is set up with native worker
+            var webChannelManager = testServer.Services.GetService<IWebHostRpcWorkerChannelManager>();
+            var placeholderChannel = await webChannelManager.GetChannels("dotnet-isolated").Single().Value.Task;
+
+            // Ensure we are in placeholder mode
+            Assert.Contains("FunctionsNetHost.exe", placeholderChannel.WorkerProcess.Process.StartInfo.FileName);
+
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags , ScriptConstants.FeatureFlagEnableResponseCompression);
+
+            response = await client.GetAsync("api/HttpRequestDataFunction");
+            response.EnsureSuccessStatusCode();
+            response.Content.Headers.TryGetValues("Content-Encoding", out value);
+            Assert.Equal(expectedContentEncodingResponseHeaderValue, value?.First());
+        }
+
         [Fact]
         public async Task DotNetIsolated_PlaceholderHit_WithProxies()
         {
