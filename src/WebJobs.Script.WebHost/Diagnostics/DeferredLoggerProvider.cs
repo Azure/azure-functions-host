@@ -60,56 +60,57 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                         foreach (var forwardingProvider in forwardingProviders)
                         {
                             var logger = forwardingProvider.CreateLogger(log.Category);
-                            List<IDisposable> scopes = null;
-
                             if (log.ScopeStorage?.Count > 0)
                             {
-                                try
-                                {
-                                    // Create a scope for each object in ScopeObject
-                                    scopes ??= new List<IDisposable>();
-                                    foreach (var scope in log.ScopeStorage)
-                                    {
-                                        // Create and store each scope
-                                        scopes.Add(logger.BeginScope(scope));
-                                    }
-
-                                    // Log the message
-                                    logger.Log(log.LogLevel, log.EventId, log.Exception, log.Message);
-                                }
-                                finally
-                                {
-                                    if (scopes is not null)
-                                    {
-                                        // Dispose all scopes in reverse order to properly unwind them
-                                        for (int i = scopes.Count - 1; i >= 0; i--)
-                                        {
-                                            scopes[i].Dispose();
-                                        }
-                                    }
-                                }
+                                ProcessLogWithScope(logger, log);
                             }
                             else
                             {
-                                // No scopes, avoid try-finally block
+                                // No scopes
                                 logger.Log(log.LogLevel, log.EventId, log.Exception, log.Message);
                             }
                         }
                     }
                 }
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!ex.IsFatal())
             {
-                if (ex.IsFatal())
-                {
-                    throw;
-                }
+                // Ignore exceptions
             }
         }
 
         public void SetScopeProvider(IExternalScopeProvider scopeProvider)
         {
             _scopeProvider = scopeProvider;
+        }
+
+        private static void ProcessLogWithScope(ILogger logger, DeferredLogEntry log)
+        {
+            List<IDisposable> scopes = null;
+            try
+            {
+                // Create a scope for each object in ScopeObject
+                scopes ??= new List<IDisposable>();
+                foreach (var scope in log.ScopeStorage)
+                {
+                    // Create and store each scope
+                    scopes.Add(logger.BeginScope(scope));
+                }
+
+                // Log the message
+                logger.Log(log.LogLevel, log.EventId, log.Exception, log.Message);
+            }
+            finally
+            {
+                if (scopes is not null)
+                {
+                    // Dispose all scopes in reverse order to properly unwind them
+                    for (int i = scopes.Count - 1; i >= 0; i--)
+                    {
+                        scopes[i].Dispose();
+                    }
+                }
+            }
         }
 
         public void Dispose()
