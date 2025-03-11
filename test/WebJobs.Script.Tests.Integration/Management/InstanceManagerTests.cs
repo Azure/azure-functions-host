@@ -16,7 +16,6 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.WebJobs.Script.Tests;
@@ -964,6 +963,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             };
             var meshInitServiceClient = new Mock<IMeshServiceClient>(MockBehavior.Strict);
 
+            bool called = false;
             meshInitServiceClient.Setup(client =>
                 client.MountCifs(Utility.BuildStorageConnectionString(account1, accessKey1, CloudConstants.AzureStorageSuffix), share1, targetPath1)).ReturnsAsync(true);
 
@@ -972,7 +972,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 _runFromPackageHandler, _packageDownloadHandler.Object);
 
             await instanceManager.AssignInstanceAsync(hostAssignmentContext);
-
             meshInitServiceClient.Verify(
                 client => client.MountCifs(Utility.BuildStorageConnectionString(account1, accessKey1, CloudConstants.AzureStorageSuffix), share1,
                     targetPath1), Times.Once);

@@ -21,7 +21,6 @@ using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
-using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security;
@@ -46,14 +45,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly ScriptApplicationHostOptions _hostOptions;
         private readonly TestServer _testServer;
         private readonly string _appRoot;
-        private readonly TestLoggerProvider _webHostLoggerProvider = new TestLoggerProvider();
-        private readonly TestLoggerProvider _scriptHostLoggerProvider = new TestLoggerProvider();
+        private readonly string _webHostInstanceId = Guid.NewGuid().ToString()[..8];
+        // we need to capture every provider created by host restarts
+        private readonly List<TestLoggerProvider> _scriptHostLoggerProviders = new();
         private readonly WebJobsScriptHostService _hostService;
 
         private readonly Timer _stillRunningTimer;
         private readonly DateTimeOffset _created = DateTimeOffset.UtcNow;
         private readonly string _createdStack;
         private readonly string _id = Guid.NewGuid().ToString();
+
+        private TestLoggerProvider _webHostLoggerProvider;
         private bool _timerFired = false;
         private bool _isDisposed = false;
 
@@ -93,9 +95,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var builder = new WebHostBuilder()
                 .ConfigureLogging(b =>
                 {
+                    _webHostLoggerProvider = new(_webHostInstanceId);
                     b.AddProvider(_webHostLoggerProvider);
-                    b.AddFilter<TestLoggerProvider>("Host", LogLevel.Trace);
-                    b.AddFilter<TestLoggerProvider>("Microsoft.Azure.WebJobs", LogLevel.Trace);
+
+                    b.AddFilter<TestLoggerProvider>(null, LogLevel.Trace)
+                     .AddFilter<TestLoggerProvider>("Microsoft.AspNet", LogLevel.Warning)
+                     .AddFilter<TestLoggerProvider>("Azure.Core", LogLevel.Warning);
                 })
                 .ConfigureServices(services =>
                   {
@@ -143,8 +148,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 })
                 .ConfigureScriptHostLogging(scriptHostLoggingBuilder =>
                 {
-                    scriptHostLoggingBuilder.AddProvider(_scriptHostLoggerProvider);
-                    scriptHostLoggingBuilder.AddFilter<TestLoggerProvider>(_ => true);
+                    scriptHostLoggingBuilder.Services.AddSingleton<ILoggerProvider, TestLoggerProvider>(s =>
+                    {
+                        var options = s.GetService<IOptions<ScriptJobHostOptions>>();
+                        var shortInstanceId = options.Value.InstanceId[..8];
+                        var loggerProvider = new TestLoggerProvider($"{_webHostInstanceId}->{shortInstanceId}");
+                        _scriptHostLoggerProviders.Add(loggerProvider);
+                        return loggerProvider;
+                    });
+                    scriptHostLoggingBuilder.AddFilter<TestLoggerProvider>(null, LogLevel.Trace);
+                    scriptHostLoggingBuilder.AddFilter<TestLoggerProvider>("Microsoft.AspNet", LogLevel.Warning);
+                    scriptHostLoggingBuilder.AddFilter<TestLoggerProvider>("Azure.Core", LogLevel.Warning);
                     configureScriptHostLogging?.Invoke(scriptHostLoggingBuilder);
                 })
                 .ConfigureScriptHostServices(scriptHostServices =>
@@ -275,6 +289,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             sb.AppendLine($"A host created at '{_created:yyyy-MM-dd HH:mm:ss}' ({ago}s ago) is still running. Details:");
             sb.AppendLine($"  Host id:      {hostId}");
             sb.AppendLine($"  Test host id: {_id}");
+            sb.AppendLine($"  WebHost instance id: {_webHostInstanceId}");
             sb.AppendLine($"  ScriptRoot:   {jobOptions.Value.RootScriptPath}");
             sb.AppendLine($"  Allow list:   {allowList}");
             sb.AppendLine($"  The captured stack from this test host's constructor:");
@@ -309,6 +324,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             else
             {
                 exit = true;
+                Console.WriteLine("---- FLUSHING LOG TO CONSOLE BEFORE FAILURE ----");
                 Console.WriteLine(GetLog());
                 throw new Exception("Functions Host timed out trying to start.");
             }
@@ -345,7 +361,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         /// These providers use different LoggerProviders, so it's important to know which one is receiving the logs.
         /// </summary>
         /// <returns>The messages from the ScriptHost LoggerProvider</returns>
-        public IList<LogMessage> GetScriptHostLogMessages() => _scriptHostLoggerProvider.GetAllLogMessages();
+        public IList<LogMessage> GetScriptHostLogMessages() => _scriptHostLoggerProviders.SelectMany(p => p.GetAllLogMessages()).OrderBy(p => p.Timestamp).ToList();
         public IEnumerable<LogMessage> GetScriptHostLogMessages(string category) => GetScriptHostLogMessages().Where(p => p.Category == category);
 
         /// <summary>
@@ -361,7 +377,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void ClearLogMessages()
         {
             _webHostLoggerProvider.ClearAllLogMessages();
-            _scriptHostLoggerProvider.ClearAllLogMessages();
+            foreach (var provider in _scriptHostLoggerProviders)
+            {
+                provider.ClearAllLogMessages();
+            }
         }
 
         public async Task BeginFunctionAsync(string functionName, JToken payload)
