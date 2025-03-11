@@ -4,3 +4,4 @@
 - My change description (#PR)
 -->
 - Update Java Worker Version to [2.18.1](https://github.com/Azure/azure-functions-java-worker/releases/tag/2.18.1)
+- Bug fix for platform release channel bundles resolution casing issue and additional logging (#10921)
