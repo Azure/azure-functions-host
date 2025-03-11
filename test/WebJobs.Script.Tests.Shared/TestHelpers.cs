@@ -1,6 +1,21 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
+using Azure.Storage.Sas;
+using Microsoft.Azure.Storage;
+using Microsoft.Azure.WebJobs.Host.Storage;
+using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Azure.WebJobs.Script.WebHost.Models;
+using Microsoft.Azure.WebJobs.Script.Workers;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Extensions.Azure;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
+using Moq;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -13,19 +28,6 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.Storage;
-using Microsoft.Azure.Storage.Blob;
-using Microsoft.Azure.WebJobs.Host.Storage;
-using Microsoft.Azure.WebJobs.Script.WebHost;
-using Microsoft.Azure.WebJobs.Script.WebHost.Models;
-using Microsoft.Azure.WebJobs.Script.Workers;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
-using Microsoft.Extensions.Azure;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Options;
-using Moq;
 using Xunit.Abstractions;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -129,17 +131,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        public static async Task<string> WaitForBlobAndGetStringAsync(CloudBlockBlob blob, Func<string> userMessageCallback = null)
+        public static async Task<string> WaitForBlobAndGetStringAsync(BlobClient blob, Func<string> userMessageCallback = null)
         {
-            await WaitForBlobAsync(blob, userMessageCallback: userMessageCallback);
+            await WaitForBlobAsync(blob, userMessageCallback);
 
-            string result = await blob.DownloadTextAsync(Encoding.UTF8,
-                null, new BlobRequestOptions(), new OperationContext());
-
-            return result;
+            var response = await blob.DownloadContentAsync();
+            return response.Value.Content.ToString();
         }
 
-        public static async Task WaitForBlobAsync(CloudBlockBlob blob, Func<string> userMessageCallback = null)
+        public static async Task WaitForBlobAsync(BlobClient blob, Func<string> userMessageCallback = null)
         {
             StringBuilder sb = new StringBuilder();
 
@@ -225,27 +225,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         // Deleting and recreating a container can result in a 409 as the container name is not
         // immediately available. Instead, use this helper to clear a container.
-        public static async Task ClearContainerAsync(CloudBlobContainer container)
+        public static async Task ClearContainerAsync(BlobContainerClient container)
         {
-            foreach (var blob in await ListBlobsAsync(container))
+            await foreach (var blob in container.GetBlobsAsync())
             {
-                await blob.DeleteIfExistsAsync();
+                await container.DeleteBlobIfExistsAsync(blob.Name);
             }
         }
 
-        public static async Task<IEnumerable<CloudBlockBlob>> ListBlobsAsync(CloudBlobContainer container)
+        public static async Task<IEnumerable<BlobItem>> ListBlobsAsync(BlobContainerClient container)
         {
-            List<CloudBlockBlob> blobs = new List<CloudBlockBlob>();
-            BlobContinuationToken token = null;
-
-            do
+            List<BlobItem> blobs = new List<BlobItem>();
+            await foreach (var blob in container.GetBlobsAsync())
             {
-                BlobResultSegment blobSegment = await container.ListBlobsSegmentedAsync(token);
-                token = blobSegment.ContinuationToken;
-                blobs.AddRange(blobSegment.Results.Cast<CloudBlockBlob>());
+                blobs.Add(blob);
             }
-            while (token != null);
-
             return blobs;
         }
 
@@ -425,43 +419,47 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public static async Task<Uri> CreateBlobSas(string connectionString, string filePath, string blobContainer, string blobName)
         {
-            CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
-            var blobClient = storageAccount.CreateCloudBlobClient();
-            var container = blobClient.GetContainerReference(blobContainer);
-            await container.CreateIfNotExistsAsync();
-            var blob = container.GetBlockBlobReference(blobName);
+            var blobServiceClient = new BlobServiceClient(connectionString);
+            var containerClient = blobServiceClient.GetBlobContainerClient(blobContainer);
+            await containerClient.CreateIfNotExistsAsync();
+
+            var blobClient = containerClient.GetBlobClient(blobName);
             if (!string.IsNullOrEmpty(filePath))
             {
-                await blob.UploadFromFileAsync(filePath);
+                await blobClient.UploadAsync(filePath, overwrite: true);
             }
-            var policy = new SharedAccessBlobPolicy
-            {
-                SharedAccessStartTime = DateTime.UtcNow,
-                SharedAccessExpiryTime = DateTime.UtcNow.AddHours(1),
-                Permissions = SharedAccessBlobPermissions.Read | SharedAccessBlobPermissions.List
-            };
-            var sas = blob.GetSharedAccessSignature(policy);
-            var sasUri = new Uri(blob.Uri, sas);
 
-            return sasUri;
+            var sasBuilder = new BlobSasBuilder()
+            {
+                BlobContainerName = blobContainer,
+                BlobName = blobName,
+                Resource = "b",
+                StartsOn = DateTimeOffset.UtcNow,
+                ExpiresOn = DateTimeOffset.UtcNow.AddHours(1)
+            };
+            sasBuilder.SetPermissions(BlobSasPermissions.Read | BlobSasPermissions.List);
+
+            var sas = blobClient.GenerateSasUri(sasBuilder);
+            return sas;
         }
 
         public static async Task<Uri> CreateBlobContainerSas(string connectionString, string blobContainer)
         {
-            CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
-            var blobClient = storageAccount.CreateCloudBlobClient();
-            var container = blobClient.GetContainerReference(blobContainer);
-            await container.CreateIfNotExistsAsync();
+            var blobServiceClient = new BlobServiceClient(connectionString);
+            var containerClient = blobServiceClient.GetBlobContainerClient(blobContainer);
+            await containerClient.CreateIfNotExistsAsync();
 
-            var policy = new SharedAccessBlobPolicy
+            var sasBuilder = new BlobSasBuilder()
             {
-                SharedAccessStartTime = DateTime.UtcNow,
-                SharedAccessExpiryTime = DateTime.UtcNow.AddHours(1),
-                Permissions = SharedAccessBlobPermissions.Read | SharedAccessBlobPermissions.Write | SharedAccessBlobPermissions.List | SharedAccessBlobPermissions.Delete
+                BlobContainerName = blobContainer,
+                Resource = "c",
+                StartsOn = DateTimeOffset.UtcNow,
+                ExpiresOn = DateTimeOffset.UtcNow.AddHours(1)
             };
-            var sas = container.GetSharedAccessSignature(policy);
+            sasBuilder.SetPermissions(BlobContainerSasPermissions.Read | BlobContainerSasPermissions.Write | BlobContainerSasPermissions.List | BlobContainerSasPermissions.Delete);
 
-            return new Uri(container.StorageUri.PrimaryUri, sas);
+            var sasUri = containerClient.GenerateSasUri(sasBuilder);
+            return sasUri;
         }
 
         // Creates an IAzureBlobStorageProvider without reacting to Specialization and ActiveHost change. To test the specialization logic, please refer to

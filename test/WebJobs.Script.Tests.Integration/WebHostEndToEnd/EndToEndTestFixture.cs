@@ -1,17 +1,10 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Net.Http;
-using System.Text;
-using System.Threading.Tasks;
 using Azure;
 using Azure.Data.Tables;
-using Microsoft.Azure.Storage.Blob;
-using Microsoft.Azure.Storage.Queue;
+using Azure.Storage.Blobs;
+using Azure.Storage.Queues;
 using Microsoft.Azure.WebJobs.Script.BindingExtensions;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
@@ -26,8 +19,14 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Net.Http;
+using System.Text;
+using System.Threading.Tasks;
 using Xunit;
-using CloudStorageAccount = Microsoft.Azure.Storage.CloudStorageAccount;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -57,30 +56,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _addTestSettings = addTestSettings;
         }
 
-        public CloudBlobContainer TestInputContainer { get; private set; }
-
-        public CloudBlobContainer TestOutputContainer { get; private set; }
-
-        public CloudQueueClient QueueClient { get; private set; }
-
+        public BlobContainerClient TestInputContainer { get; private set; }
+        public BlobContainerClient TestOutputContainer { get; private set; }
+        public QueueServiceClient QueueServiceClient { get; private set; }
         public TableServiceClient TableServiceClient { get; private set; }
-
-        public CloudBlobClient BlobClient { get; private set; }
-
-        public CloudQueue TestQueue { get; private set; }
-
-        public CloudQueue MobileTablesQueue { get; private set; }
-
+        public BlobServiceClient BlobServiceClient { get; private set; }
+        public QueueClient TestQueue { get; private set; }
+        public QueueClient MobileTablesQueue { get; private set; }
         public TableClient TestTable { get; private set; }
-
         public TestFunctionHost Host { get; private set; }
-
         public string FixtureId { get; private set; }
-
         public TestMetricsLogger MetricsLogger { get; private set; } = new TestMetricsLogger();
-
         public Mock<IFunctionsSyncManager> FunctionsSyncManagerMock { get; private set; }
-
         public TestEventGenerator EventGenerator { get; private set; } = new TestEventGenerator();
 
         public async Task<string> GetActiveHostInstanceIdAsync()
@@ -174,12 +161,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string connectionString = Host.JobHostServices?.GetService<IConfiguration>().GetWebJobsConnectionString(ConnectionStringNames.Storage);
             if (!string.IsNullOrEmpty(connectionString))
             {
-                CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
-
-                QueueClient = storageAccount.CreateCloudQueueClient();
-                BlobClient = storageAccount.CreateCloudBlobClient();
+                QueueServiceClient = new QueueServiceClient(connectionString);
+                BlobServiceClient = new BlobServiceClient(connectionString);
                 TableServiceClient = new TableServiceClient(connectionString);
-
                 await CreateTestStorageEntities();
             }
 
@@ -207,32 +191,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
         }
 
-        public async Task<CloudQueue> GetNewQueue(string queueName)
+        public async Task<QueueClient> GetNewQueue(string queueName)
         {
-            var queue = QueueClient.GetQueueReference(string.Format("{0}-{1}", queueName, FixtureId));
+            var queue = QueueServiceClient.GetQueueClient($"{queueName}-{FixtureId}");
             await queue.CreateIfNotExistsAsync();
-            await queue.ClearAsync();
+            await queue.ClearMessagesAsync();
             return queue;
         }
 
         protected virtual async Task CreateTestStorageEntities()
         {
-            TestQueue = QueueClient.GetQueueReference(string.Format("test-input-{0}", FixtureId));
+            TestQueue = QueueServiceClient.GetQueueClient($"test-input-{FixtureId}");
             await TestQueue.CreateIfNotExistsAsync();
-            await TestQueue.ClearAsync();
+            await TestQueue.ClearMessagesAsync();
 
-            // This queue name should really be suffixed by -fsharp, -csharp, -node etc.
-            MobileTablesQueue = QueueClient.GetQueueReference("mobiletables-input");
-            await MobileTablesQueue.CreateIfNotExistsAsync(); // do not clear this queue since it is currently shared between fixtures
+            MobileTablesQueue = QueueServiceClient.GetQueueClient("mobiletables-input");
+            await MobileTablesQueue.CreateIfNotExistsAsync();
 
-            TestInputContainer = BlobClient.GetContainerReference(string.Format("test-input-{0}", FixtureId));
+            TestInputContainer = BlobServiceClient.GetBlobContainerClient($"test-input-{FixtureId}");
             await TestInputContainer.CreateIfNotExistsAsync();
-
-            // Processing a large number of blobs on startup can take a while,
-            // so let's start with an empty container.
             await TestHelpers.ClearContainerAsync(TestInputContainer);
 
-            TestOutputContainer = BlobClient.GetContainerReference(string.Format("test-output-{0}", FixtureId));
+            TestOutputContainer = BlobServiceClient.GetBlobContainerClient($"test-output-{FixtureId}");
             await TestOutputContainer.CreateIfNotExistsAsync();
             await TestHelpers.ClearContainerAsync(TestOutputContainer);
 

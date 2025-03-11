@@ -1,15 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Net;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Text;
-using System.Threading.Tasks;
+using Google.Protobuf.WellKnownTypes;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.Workers;
@@ -21,6 +13,15 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
 using Newtonsoft.Json.Linq;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
@@ -241,19 +242,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             await Fixture.Host.BeginFunctionAsync("MultipleOutputs", input);
 
             // verify all 3 output blobs were written
-            var blob = Fixture.TestOutputContainer.GetBlockBlobReference(id1);
+            var blob = Fixture.TestOutputContainer.GetBlobClient(id1);
             await TestHelpers.WaitForBlobAsync(blob);
-            string blobContent = await blob.DownloadTextAsync();
+
+            var downloadResult = await blob.DownloadContentAsync();
+            string blobContent = downloadResult.Value.Content.ToString();
+
             Assert.Equal("Test Blob 1", Utility.RemoveUtf8ByteOrderMark(blobContent));
 
-            blob = Fixture.TestOutputContainer.GetBlockBlobReference(id2);
+            blob = Fixture.TestOutputContainer.GetBlobClient(id2);
             await TestHelpers.WaitForBlobAsync(blob);
-            blobContent = await blob.DownloadTextAsync();
+            downloadResult = await blob.DownloadContentAsync();
+            blobContent = downloadResult.Value.Content.ToString();
             Assert.Equal("Test Blob 2", Utility.RemoveUtf8ByteOrderMark(blobContent));
 
-            blob = Fixture.TestOutputContainer.GetBlockBlobReference(id3);
+            blob = Fixture.TestOutputContainer.GetBlobClient(id3);
             await TestHelpers.WaitForBlobAsync(blob);
-            blobContent = await blob.DownloadTextAsync();
+            downloadResult = await blob.DownloadContentAsync();
+            blobContent = downloadResult.Value.Content.ToString();
             Assert.Equal("Test Blob 3", Utility.RemoveUtf8ByteOrderMark(blobContent));
         }
 
@@ -311,7 +317,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             foreach (var blob in blobs)
             {
-                string content = await blob.DownloadTextAsync();
+                var downloadResult = await blob.DownloadContentAsync();
+                string content = downloadResult.Value.Content.ToString();
                 int blobInt = int.Parse(content.Trim(new char[] { '\uFEFF', '\u200B' }));
                 Assert.True(blobInt >= 0 && blobInt <= 3);
             }
@@ -445,7 +452,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             // verify blob was written
             string blobName = $"TestPrefix-{id}-TestSuffix-BBB";
-            var outBlob = Fixture.TestOutputContainer.GetBlockBlobReference(blobName);
+            var outBlob = Fixture.TestOutputContainer.GetBlobClient(blobName);
             string result = await TestHelpers.WaitForBlobAndGetStringAsync(outBlob);
             Assert.Equal(expectedValue, Utility.RemoveUtf8ByteOrderMark(result));
         }
@@ -565,7 +572,8 @@ namespace SecondaryDependency
             {
                 base.ConfigureScriptHost(webJobsBuilder);
 
-                webJobsBuilder.AddAzureStorage();
+                webJobsBuilder.AddAzureStorageBlobs();
+                webJobsBuilder.AddAzureStorageQueues();
                 webJobsBuilder.Services.Configure<ScriptJobHostOptions>(o =>
                 {
                     // Only load the functions we care about

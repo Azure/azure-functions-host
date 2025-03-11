@@ -1,24 +1,14 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Net;
-using System.Net.Http;
-using System.Runtime;
-using System.Threading;
-using System.Threading.Tasks;
 using Azure.Storage.Blobs;
+using Azure.Storage.Queues;
 using Azure.Storage.Sas;
 using Microsoft.ApplicationInsights.Channel;
 using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Azure.Storage;
-using Microsoft.Azure.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Logging;
@@ -35,6 +25,16 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Runtime;
+using System.Threading;
+using System.Threading.Tasks;
 using Xunit;
 using Xunit.Abstractions;
 using IApplicationLifetime = Microsoft.AspNetCore.Hosting.IApplicationLifetime;
@@ -968,14 +968,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         // Fix for https://github.com/Azure/azure-functions-host/issues/9288 
         public async Task SpecializedSite_StopsHostBeforeWorker()
         {
-            // this app has a QueueTrigger reading from "myqueue-items"
-            // add a few messages there before stopping the host
-            var storageValue = TestHelpers.GetTestConfiguration().GetWebJobsConnectionString("AzureWebJobsStorage");
-            CloudStorageAccount storageAccount = CloudStorageAccount.Parse(storageValue);
-            CloudQueueClient queueClient = storageAccount.CreateCloudQueueClient();
-            CloudQueue queue = queueClient.GetQueueReference("myqueue-items");
+            // This app has a QueueTrigger reading from "myqueue-items".
+            // Add a few messages there before stopping the host.
+            string storageValue = TestHelpers.GetTestConfiguration().GetWebJobsConnectionString("AzureWebJobsStorage");
+
+            // Create a QueueServiceClient and a QueueClient using the new SDK.
+            QueueServiceClient queueServiceClient = new QueueServiceClient(storageValue);
+            QueueClient queue = queueServiceClient.GetQueueClient("myqueue-items");
             await queue.CreateIfNotExistsAsync();
-            await queue.ClearAsync();
+            await queue.ClearMessagesAsync();
 
             var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetIsolated60Path, "HttpRequestDataFunction", "QueueFunction");
 
@@ -996,12 +997,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             scriptHostManager.ActiveHostChanged += (object sender, ActiveHostChangedEventArgs e) =>
             {
-                // for this test, this signals the host is about to shut down, so introduce an
-                // intentional delay to simulate a race condition
-                //
-                // there was a bug where we'd stop the worker channel and process before the host, resulting in
-                // a lot of "Did not find initialized language worker" errors due to a race between the process
-                // and listeners shutting down                
+                // For this test, this signals the host is about to shut down.
+                // Introduce an intentional delay to simulate a race condition.
+                // There was a bug where we'd stop the worker channel and process before the host,
+                // resulting in many "Did not find initialized language worker" errors.
                 if (e.NewHost == null)
                 {
                     Thread.Sleep(1000);
@@ -1010,18 +1009,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             bool keepRunning = true;
 
+            // Instead of CloudQueueMessage.AddMessageAsync, use SendMessageAsync with a simple string.
             Task messageTask = Task.Run(async () =>
             {
                 while (keepRunning)
                 {
-                    await queue.AddMessageAsync(new CloudQueueMessage("test"));
+                    await queue.SendMessageAsync("test");
                 }
             });
 
-            // make sure the invocations are flowing before we stop the host
+            // Ensure that invocations are flowing before stopping the host.
             await TestHelpers.Await(() =>
             {
-                int completed = _loggerProvider.GetAllLogMessages().Count(p => p.Category == "Function.QueueFunction" && p.EventId.Name == "FunctionCompleted");
+                int completed = _loggerProvider.GetAllLogMessages()
+                    .Count(p => p.Category == "Function.QueueFunction" && p.EventId.Name == "FunctionCompleted");
                 return completed > 10;
             });
 
@@ -1029,7 +1030,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             keepRunning = false;
             await messageTask;
-            await queue.ClearAsync();
+            await queue.ClearMessagesAsync();
 
             var completedLogs = _loggerProvider.GetAllLogMessages()
                 .Where(p => p.Category == "Function.QueueFunction")

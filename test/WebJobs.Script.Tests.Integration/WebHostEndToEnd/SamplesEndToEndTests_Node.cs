@@ -1,6 +1,15 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using Azure.Storage.Blobs;
+using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Models;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.WebJobs.Script.Tests;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -12,15 +21,6 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.Storage.Blob;
-using Microsoft.Azure.WebJobs.Logging;
-using Microsoft.Azure.WebJobs.Script.Config;
-using Microsoft.Azure.WebJobs.Script.Models;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.WebJobs.Script.Tests;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
@@ -41,18 +41,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         [Fact]
         public async Task ManualTrigger_Invoke_Succeeds()
         {
-            CloudBlobContainer outputContainer = _fixture.BlobClient.GetContainerReference("samples-output");
+            // Get the output container using BlobContainerClient
+            BlobContainerClient outputContainer = _fixture.BlobServiceClient.GetBlobContainerClient("samples-output");
             string inId = Guid.NewGuid().ToString();
             string outId = Guid.NewGuid().ToString();
-            CloudBlockBlob statusBlob = outputContainer.GetBlockBlobReference(inId);
-            JObject testData = new JObject()
+
+            // Get a BlobClient for the input blob and upload test data as text
+            BlobClient statusBlob = outputContainer.GetBlobClient(inId);
+            JObject testData = new JObject
             {
                 { "first", "Mathew" },
                 { "last", "Charles" }
             };
-            await statusBlob.UploadTextAsync(testData.ToString(Formatting.None));
+            await statusBlob.UploadAsync(BinaryData.FromString(testData.ToString(Formatting.None)));
 
-            JObject input = new JObject()
+            JObject input = new JObject
             {
                 { "inId", inId },
                 { "outId", outId }
@@ -60,9 +63,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             await _fixture.Host.BeginFunctionAsync("manualtrigger", input);
 
-            // wait for completion
-            CloudBlockBlob outputBlob = outputContainer.GetBlockBlobReference(outId);
+            // Wait for completion by retrieving the output blob using BlobClient.
+            // TestHelpers.WaitForBlobAndGetStringAsync should be updated to work with BlobClient,
+            // e.g., by calling DownloadContentAsync and converting the BinaryData to a string.
+            BlobClient outputBlob = outputContainer.GetBlobClient(outId);
             string result = await TestHelpers.WaitForBlobAndGetStringAsync(outputBlob);
+
             Assert.Equal("Mathew Charles", result);
         }
 
@@ -201,30 +207,36 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             string id = Guid.NewGuid().ToString();
             string functionKey = await _fixture.Host.GetFunctionSecretAsync("HttpTrigger-CustomRoute-Post");
             string uri = $"api/node/products/housewares/{id}?code={functionKey}";
+
             JObject product = new JObject
-            {
-                { "id", id },
-                { "name", "Waffle Maker Pro" },
-                { "category", "Housewares" }
-            };
+                {
+                    { "id", id },
+                    { "name", "Waffle Maker Pro" },
+                    { "category", "Housewares" }
+                };
 
             var request = new HttpRequestMessage(HttpMethod.Post, uri)
             {
-                Content = new StringContent(product.ToString())
+                Content = new StringContent(product.ToString(), Encoding.UTF8, "application/json")
             };
 
             HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.Created, response.StatusCode);
 
-            // wait for function to execute and produce its result blob
-            CloudBlobContainer outputContainer = _fixture.BlobClient.GetContainerReference("samples-output");
-            string path = $"housewares/{id}";
-            CloudBlockBlob outputBlob = outputContainer.GetBlockBlobReference(path);
+            // Wait for the function to execute and produce its result blob.
+            // Use BlobContainerClient and BlobClient from Azure.Storage.Blobs.
+            BlobContainerClient outputContainer = _fixture.BlobServiceClient.GetBlobContainerClient("samples-output");
+            string blobPath = $"housewares/{id}";
+            BlobClient outputBlob = outputContainer.GetBlobClient(blobPath);
+
+            // Update TestHelpers.WaitForBlobAndGetStringAsync to work with BlobClient if needed.
             string result = await TestHelpers.WaitForBlobAndGetStringAsync(outputBlob);
             JObject resultProduct = JObject.Parse(Utility.RemoveUtf8ByteOrderMark(result));
+
             Assert.Equal(id, (string)resultProduct["id"]);
             Assert.Equal((string)product["name"], (string)resultProduct["name"]);
         }
+
 
         [Fact]
         public async Task SharedDirectory_ReloadsOnFileChange()

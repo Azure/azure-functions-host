@@ -1,17 +1,11 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
-using System.Collections.Generic;
-using System.Runtime.InteropServices;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Web.Http;
 using Azure;
 using Azure.Data.Tables;
+using Azure.Storage.Blobs;
+using Azure.Storage.Queues;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.Azure.Storage.Blob;
-using Microsoft.Azure.Storage.Queue;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -25,6 +19,12 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
+using System;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Web.Http;
 using Xunit;
 using CloudStorageAccount = Microsoft.Azure.Storage.CloudStorageAccount;
 using IApplicationLifetime = Microsoft.AspNetCore.Hosting.IApplicationLifetime;
@@ -66,19 +66,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public Mock<IApplicationLifetime> MockApplicationLifetime { get; }
 
-        public CloudBlobContainer TestInputContainer { get; private set; }
+        public BlobContainerClient TestInputContainer { get; private set; }
 
-        public CloudBlobContainer TestOutputContainer { get; private set; }
+        public BlobContainerClient TestOutputContainer { get; private set; }
 
-        public CloudQueueClient QueueClient { get; private set; }
+        public QueueServiceClient QueueServiceClient { get; private set; }
 
         public TableServiceClient TableServiceClient { get; private set; }
 
-        public CloudBlobClient BlobClient { get; private set; }
+        public BlobServiceClient BlobServiceClient { get; private set; }
 
-        public CloudQueue TestQueue { get; private set; }
+        public QueueClient TestQueue { get; private set; }
 
-        public CloudQueue MobileTablesQueue { get; private set; }
+        public QueueClient MobileTablesQueue { get; private set; }
 
         public TableClient TestTable { get; private set; }
 
@@ -104,10 +104,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
             IConfiguration configuration = TestHelpers.GetTestConfiguration();
             string connectionString = configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
-            CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
-            QueueClient = storageAccount.CreateCloudQueueClient();
-            BlobClient = storageAccount.CreateCloudBlobClient();
-
+            QueueServiceClient = new QueueServiceClient(connectionString);
+            BlobServiceClient = new BlobServiceClient(connectionString);
             TableServiceClient = new TableServiceClient(connectionString);
 
             await CreateTestStorageEntities();
@@ -124,10 +122,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Host = new HostBuilder()
                 .ConfigureDefaultTestWebScriptHost(webjobsBuilder =>
                 {
-                    webjobsBuilder.AddAzureStorage();
+                    webjobsBuilder.AddAzureStorageBlobs();
+                    webjobsBuilder.AddAzureStorageQueues();
 
-                   // This needs to added manually at the ScriptHost level, as although FunctionMetadataManager is available through WebHost,
-                   // it needs to change the services during its lifetime.
+                    // This needs to added manually at the ScriptHost level, as although FunctionMetadataManager is available through WebHost,
+                    // it needs to change the services during its lifetime.
                     webjobsBuilder.Services.AddSingleton<IFunctionMetadataManager, FunctionMetadataManager>();
                 },
                 o =>
@@ -188,58 +187,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        public async Task<CloudQueue> GetNewQueue(string queueName)
+        public async Task<QueueClient> GetNewQueue(string queueName)
         {
-            var queue = QueueClient.GetQueueReference(string.Format("{0}-{1}", queueName, FixtureId));
+            var queue = QueueServiceClient.GetQueueClient(string.Format("{0}-{1}", queueName, FixtureId));
             await queue.CreateIfNotExistsAsync();
-            await queue.ClearAsync();
+            await queue.ClearMessagesAsync();
             return queue;
         }
 
         protected virtual async Task CreateTestStorageEntities()
         {
-            TestQueue = QueueClient.GetQueueReference(string.Format("test-input-{0}", FixtureId));
+            TestQueue = QueueServiceClient.GetQueueClient(string.Format("test-input-{0}", FixtureId));
             await TestQueue.CreateIfNotExistsAsync();
-            await TestQueue.ClearAsync();
+            await TestQueue.ClearMessagesAsync();
 
-            // This queue name should really be suffixed by -fsharp, -csharp, -node etc.
-            MobileTablesQueue = QueueClient.GetQueueReference("mobiletables-input");
-            await MobileTablesQueue.CreateIfNotExistsAsync(); // do not clear this queue since it is currently shared between fixtures
+            MobileTablesQueue = QueueServiceClient.GetQueueClient("mobiletables-input");
+            await MobileTablesQueue.CreateIfNotExistsAsync();
 
-            TestInputContainer = BlobClient.GetContainerReference(string.Format("test-input-{0}", FixtureId));
+            TestInputContainer = BlobServiceClient.GetBlobContainerClient(string.Format("test-input-{0}", FixtureId));
             await TestInputContainer.CreateIfNotExistsAsync();
 
-            // Processing a large number of blobs on startup can take a while,
-            // so let's start with an empty container.
-            await TestHelpers.ClearContainerAsync(TestInputContainer);
-
-            TestOutputContainer = BlobClient.GetContainerReference(string.Format("test-output-{0}", FixtureId));
+            TestOutputContainer = BlobServiceClient.GetBlobContainerClient(string.Format("test-output-{0}", FixtureId));
             await TestOutputContainer.CreateIfNotExistsAsync();
-            await TestHelpers.ClearContainerAsync(TestOutputContainer);
 
             TestTable = TableServiceClient.GetTableClient("test");
             await TestTable.CreateIfNotExistsAsync();
-
-            await DeleteEntities(TestTable, TableServiceClient, "AAA");
-            await DeleteEntities(TestTable, TableServiceClient, "BBB");
-
-            var batch = new List<TableTransactionAction>
-            {
-                new TableTransactionAction(TableTransactionActionType.Add, new TestEntity { PartitionKey = "AAA", RowKey = "001", Region = "West", Name = "Test Entity 1", Status = 0 }),
-                new TableTransactionAction(TableTransactionActionType.Add, new TestEntity { PartitionKey = "AAA", RowKey = "002", Region = "East", Name = "Test Entity 2", Status = 1 }),
-                new TableTransactionAction (TableTransactionActionType.Add, new TestEntity { PartitionKey = "AAA", RowKey = "003", Region = "West", Name = "Test Entity 3", Status = 1 }),
-                new TableTransactionAction (TableTransactionActionType.Add, new TestEntity { PartitionKey = "AAA", RowKey = "004", Region = "West", Name = "Test Entity 4", Status = 1 }),
-                new TableTransactionAction (TableTransactionActionType.Add, new TestEntity { PartitionKey = "AAA", RowKey = "005", Region = "East", Name = "Test Entity 5", Status = 0 })
-            };
-            await TestTable.SubmitTransactionAsync(batch);
-
-            batch =
-            [
-                new TableTransactionAction(TableTransactionActionType.Add, new TestEntity { PartitionKey = "BBB", RowKey = "001", Region = "South", Name = "Test Entity 1", Status = 0 }),
-                new TableTransactionAction(TableTransactionActionType.Add, new TestEntity { PartitionKey = "BBB", RowKey = "002", Region = "West", Name = "Test Entity 2", Status = 1 }),
-                new TableTransactionAction(TableTransactionActionType.Add, new TestEntity { PartitionKey = "BBB", RowKey = "003", Region = "West", Name = "Test Entity 3", Status = 0 }),
-            ];
-            await TestTable.SubmitTransactionAsync(batch);
         }
 
         public async Task DeleteEntities(TableClient table, TableServiceClient tableServiceClient, string partition = null)

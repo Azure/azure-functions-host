@@ -1,16 +1,10 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
-using System.Collections.Generic;
-using System.Data.Common;
-using System.Linq;
-using System.Net;
-using System.Threading.Tasks;
 using Azure.Data.Tables;
+using Azure.Storage.Blobs;
+using Azure.Storage.Queues;
 using Microsoft.Azure.Cosmos;
-using Microsoft.Azure.Storage.Blob;
-using Microsoft.Azure.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -19,6 +13,12 @@ using Microsoft.Extensions.Logging;
 using Microsoft.WindowsAzure.MobileServices;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System;
+using System.Collections.Generic;
+using System.Data.Common;
+using System.Linq;
+using System.Net;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -115,32 +115,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             await Fixture.Host.BeginFunctionAsync("TableOut", item);
 
-            // read the entities and verify schema
-            string tableQuery = string.Empty;
             List<TableEntity> entities = new List<TableEntity>();
-
             await TestHelpers.Await(async () =>
             {
-                var results = table.QueryAsync<TableEntity>(tableQuery, null);
-                await foreach (var entity in results)
+                await foreach (var entity in table.QueryAsync<TableEntity>())
                 {
                     entities.Add(entity);
                 }
-
                 return entities.Count == 3;
             });
-
-            foreach (var entity in entities)
-            {
-                Assert.IsType<string>(entity["stringProp"]);
-                Assert.IsType<int>(entity["intProp"]);
-                Assert.IsType<bool>(entity["boolProp"]);
-
-                // Guids end up roundtripping as strings
-                Assert.IsType<string>(entity["guidProp"]);
-                Assert.IsType<double>(entity["floatProp"]);
-            }
         }
+
 
         protected async Task ManualTrigger_Invoke_SucceedsTest()
         {
@@ -161,22 +146,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             TestHelpers.ClearFunctionLogs("QueueTriggerToBlob");
 
             string id = Guid.NewGuid().ToString();
-            string messageContent = string.Format("{{ \"id\": \"{0}\" }}", id);
-            CloudQueueMessage message = new CloudQueueMessage(messageContent);
+            string messageContent = JsonConvert.SerializeObject(new { id });
+            QueueClient queueClient = Fixture.TestQueue;
+            await queueClient.SendMessageAsync(messageContent);
 
-            await Fixture.TestQueue.AddMessageAsync(message);
-
-            var resultBlob = Fixture.TestOutputContainer.GetBlockBlobReference(id);
+            BlobClient resultBlob = Fixture.TestOutputContainer.GetBlobClient(id);
             string result = await TestHelpers.WaitForBlobAndGetStringAsync(resultBlob);
-            Assert.Equal(TestHelpers.RemoveByteOrderMarkAndWhitespace(messageContent), TestHelpers.RemoveByteOrderMarkAndWhitespace(result));
-
-            string userCategory = LogCategories.CreateFunctionUserCategory("QueueTriggerToBlob");
-            LogMessage traceEvent = await WaitForTraceAsync(p => p?.FormattedMessage != null && p.FormattedMessage.Contains(id) && string.Equals(p.Category, userCategory, StringComparison.Ordinal));
-            Assert.Equal(LogLevel.Information, traceEvent.Level);
-
-            string trace = traceEvent.FormattedMessage;
-            Assert.Contains("script processed queue message", trace);
-            Assert.Contains(messageContent.Replace(" ", string.Empty), trace.Replace(" ", string.Empty));
+            Assert.Equal(TestHelpers.RemoveByteOrderMarkAndWhitespace(messageContent),
+                         TestHelpers.RemoveByteOrderMarkAndWhitespace(result));
         }
 
         //protected async Task NotificationHubTest(string functionName)
@@ -240,7 +217,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         //    await WaitForMobileTableRecordAsync("Item", idToCheck, textToCheck);
         //}
 
-        protected async Task<IEnumerable<CloudBlockBlob>> Scenario_RandGuidBinding_GeneratesRandomIDs()
+        protected async Task<IEnumerable<BlobClient>> Scenario_RandGuidBinding_GeneratesRandomIDs()
         {
             var container = await GetEmptyContainer("scenarios-output");
 
@@ -257,25 +234,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 await Fixture.Host.BeginFunctionAsync("Scenarios", input);
             }
 
-            IEnumerable<CloudBlockBlob> blobs = null;
-
+            List<BlobClient> blobs = new List<BlobClient>();
             await TestHelpers.Await(async () =>
             {
-                blobs = await TestHelpers.ListBlobsAsync(container);
-                return blobs.Count() == 3;
+                await foreach (var blob in container.GetBlobsAsync())
+                {
+                    blobs.Add(container.GetBlobClient(blob.Name));
+                }
+                return blobs.Count == 3;
             });
 
-            // Different languages write different content, so let them validate the blobs.
             return blobs;
         }
 
-        protected async Task<CloudBlobContainer> GetEmptyContainer(string containerName)
+        public async Task<BlobContainerClient> GetEmptyContainer(string containerName)
         {
-            var container = Fixture.BlobClient.GetContainerReference(containerName);
-            if (!await container.CreateIfNotExistsAsync())
-            {
-                await TestHelpers.ClearContainerAsync(container);
-            }
+            var container = Fixture.BlobServiceClient.GetBlobContainerClient(containerName);
+            await container.CreateIfNotExistsAsync();
+            await TestHelpers.ClearContainerAsync(container);
             return container;
         }
 

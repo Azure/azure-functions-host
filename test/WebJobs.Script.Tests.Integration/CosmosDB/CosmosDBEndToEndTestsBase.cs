@@ -5,7 +5,6 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.Cosmos;
-using Microsoft.Azure.Storage.Queue;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -32,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
             Fixture.InitializeCosmosClient();
 
             bool collectionsCreated = await Fixture.CreateDocumentCollections();
-            var resultBlob = Fixture.TestOutputContainer.GetBlockBlobReference("cosmosdbtriggere2e-completed");
+            var resultBlob = Fixture.TestOutputContainer.GetBlobClient("cosmosdbtriggere2e-completed");
             await resultBlob.DeleteIfExistsAsync();
 
             string id = Guid.NewGuid().ToString();
@@ -67,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
             // Now add that Id to a Queue, in an object to test binding
             var queue = await Fixture.GetNewQueue("documentdb-input");
             string messageContent = string.Format("{{ \"documentId\": \"{0}\" }}", id);
-            await queue.AddMessageAsync(new CloudQueueMessage(messageContent));
+            await queue.SendMessageAsync(messageContent);
 
             // And wait for the text to be updated
             ItemResponse<JObject> updatedItemResponse = await WaitForDocumentAsync(id, "This was updated!");
