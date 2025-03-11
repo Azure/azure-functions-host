@@ -317,21 +317,24 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
             }
 
             // keep the latest version, log a notice
-            _logger.LogInformation("Unable to apply platform release channel configuration {platformReleaseChannelName}. Only one matching bundle version is available. {latestBundleVersion} will be used", _platformReleaseChannel, latest);
+            _logger.LogWarning("Unable to apply platform release channel configuration {platformReleaseChannelName}. Only one matching bundle version is available. {latestBundleVersion} will be used", _platformReleaseChannel, latest);
             return latest;
         }
 
         private NuGetVersion GetLatestBundleVersion(IList<NuGetVersion> orderedByDescBundlesList)
         {
             var latest = orderedByDescBundlesList.FirstOrDefault();
-            _logger.LogInformation("Applying platform release channel configuration {platformReleaseChannelName}. Bundle version {latest} will be used", _platformReleaseChannel, latest);
+            if (string.Equals(_platformReleaseChannel.ToUpper(), ScriptConstants.LatestPlatformChannelNameUpper))
+            {
+                _logger.LogInformation("Applying platform release channel configuration {platformReleaseChannelName}. Bundle version {latest} will be used", _platformReleaseChannel, latest);
+            }
             return latest;
         }
 
         private NuGetVersion HandleUnknownPlatformReleaseChannelName(IList<NuGetVersion> orderedByDescBundlesList)
         {
             var latest = GetLatestBundleVersion(orderedByDescBundlesList);
-            _logger.LogInformation("Unknown platform release channel name {platformReleaseChannelName}. The latest bundle version, {latestBundleVersion}, will be used.", _platformReleaseChannel, latest);
+            _logger.LogWarning("Unknown platform release channel name {platformReleaseChannelName}. The latest bundle version, {latestBundleVersion}, will be used.", _platformReleaseChannel, latest);
             return latest;
         }
 
