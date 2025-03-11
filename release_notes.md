@@ -8,3 +8,4 @@
 - Update PowerShell worker to 4.0.4175 (sets defaultRuntimeVersion to 7.4 in worker.config.json)
 - Fixing default DateTime bug with TimeZones in TimerTrigger (#10906)
 - Add support for the release channel setting `WEBSITE_PlatformReleaseChannel` and use this value in extension bundles resolution.
+- Bug fix for platform release channel bundles resolution casing issue and additional logging (#10921)
