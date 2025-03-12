@@ -963,7 +963,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             };
             var meshInitServiceClient = new Mock<IMeshServiceClient>(MockBehavior.Strict);
 
-            bool called = false;
             meshInitServiceClient.Setup(client =>
                 client.MountCifs(Utility.BuildStorageConnectionString(account1, accessKey1, CloudConstants.AzureStorageSuffix), share1, targetPath1)).ReturnsAsync(true);
 
