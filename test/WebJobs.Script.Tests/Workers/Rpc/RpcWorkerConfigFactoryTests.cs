@@ -5,12 +5,12 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
-using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
@@ -115,7 +115,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger(), _testWorkerProfileManager);
 
             var workerConfigs = configFactory.GetConfigs();
-
+            var errors = testLogger.GetLogMessages().Where(m => m.Exception != null).ToList();
             Assert.False(testLogger.GetLogMessages().Any(m => m.Exception != null), "There should not be an exception logged while executing GetConfigs method.");
             Assert.Equal(1, workerConfigs.Count);
             Assert.EndsWith("worker1\\1.bat", workerConfigs[0].Description.DefaultWorkerPath);
@@ -217,17 +217,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [InlineData(false, true, true, 4, 8, "00:00:05")]
         public void GetWorkerProcessCount_Tests(bool defaultWorkerConfig, bool setProcessCountToNumberOfCpuCores, bool setWorkerCountInEnv, int minProcessCount, int maxProcessCount, string processStartupInterval)
         {
-            JObject processCount = new JObject();
-            processCount["ProcessCount"] = minProcessCount;
-            processCount["MaxProcessCount"] = maxProcessCount;
-            processCount["ProcessStartupInterval"] = processStartupInterval;
-            processCount["SetProcessCountToNumberOfCpuCores"] = setProcessCountToNumberOfCpuCores;
-
-            JObject workerConfig = new JObject();
-            if (!defaultWorkerConfig)
+            using var stream = new MemoryStream();
+            using (var writer = new Utf8JsonWriter(stream))
             {
-                workerConfig[WorkerConstants.ProcessCount] = processCount;
+                writer.WriteStartObject();
+
+                if (!defaultWorkerConfig)
+                {
+                    writer.WritePropertyName(WorkerConstants.ProcessCount);
+                    writer.WriteStartObject();
+
+                    writer.WriteNumber("ProcessCount", minProcessCount);
+                    writer.WriteNumber("MaxProcessCount", maxProcessCount);
+                    writer.WriteString("ProcessStartupInterval", processStartupInterval);
+                    writer.WriteBoolean("SetProcessCountToNumberOfCpuCores", setProcessCountToNumberOfCpuCores);
+
+                    writer.WriteEndObject();
+                }
+
+                writer.WriteEndObject();
             }
+
+            using var jsonDocument = JsonDocument.Parse(stream.ToArray());
+            JsonElement workerConfig = jsonDocument.RootElement;
 
             if (setWorkerCountInEnv)
             {
@@ -273,14 +285,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public void GetWorkerProcessCount_ThrowsException_Tests()
         {
-            JObject processCount = new JObject();
-            processCount["ProcessCount"] = -4;
-            processCount["MaxProcessCount"] = 10;
-            processCount["ProcessStartupInterval"] = "00:10:00";
-            processCount["SetProcessCountToNumberOfCpuCores"] = false;
-
-            JObject workerConfig = new JObject();
-            workerConfig[WorkerConstants.ProcessCount] = processCount;
+            JsonElement workerConfig = CreateWorkerConfig(-4, 10, "00:10:00", false);
 
             var config = new ConfigurationBuilder().Build();
             var testLogger = new TestLogger("test");
@@ -288,14 +293,35 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var resultEx1 = Assert.Throws<ArgumentOutOfRangeException>(() => rpcWorkerConfigFactory.GetWorkerProcessCount(workerConfig));
             Assert.Contains("ProcessCount must be greater than 0", resultEx1.Message);
 
-            processCount["ProcessCount"] = 40;
+            workerConfig = CreateWorkerConfig(40, 10, "00:10:00", false);
             var resultEx2 = Assert.Throws<ArgumentException>(() => rpcWorkerConfigFactory.GetWorkerProcessCount(workerConfig));
             Assert.Contains("ProcessCount must not be greater than MaxProcessCount", resultEx2.Message);
 
-            processCount["ProcessStartupInterval"] = "-800";
-            processCount["ProcessCount"] = 10;
-            var resultEx3 = Assert.Throws<ArgumentOutOfRangeException>(() => rpcWorkerConfigFactory.GetWorkerProcessCount(workerConfig));
-            Assert.Contains("The TimeSpan must not be negative", resultEx3.Message);
+            workerConfig = CreateWorkerConfig(10, 10, "-800", false);
+            var resultEx3 = Assert.Throws<JsonException>(() => rpcWorkerConfigFactory.GetWorkerProcessCount(workerConfig));
+            Assert.Contains("value could not be converted to System.TimeSpan", resultEx3.Message);
+        }
+
+        private static JsonElement CreateWorkerConfig(int processCount, int maxProcessCount, string processStartupInterval, bool setProcessCountToCores)
+        {
+            using var stream = new MemoryStream();
+            using (var writer = new Utf8JsonWriter(stream))
+            {
+                writer.WriteStartObject();
+                writer.WritePropertyName(WorkerConstants.ProcessCount);
+
+                writer.WriteStartObject();
+                writer.WriteNumber("ProcessCount", processCount);
+                writer.WriteNumber("MaxProcessCount", maxProcessCount);
+                writer.WriteString("ProcessStartupInterval", processStartupInterval);
+                writer.WriteBoolean("SetProcessCountToNumberOfCpuCores", setProcessCountToCores);
+                writer.WriteEndObject();
+
+                writer.WriteEndObject();
+            }
+
+            using var doc = JsonDocument.Parse(stream.ToArray());
+            return doc.RootElement.Clone();
         }
     }
 }

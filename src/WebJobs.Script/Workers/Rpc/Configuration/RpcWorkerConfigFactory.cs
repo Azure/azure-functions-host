@@ -5,12 +5,12 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
@@ -24,6 +24,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly IMetricsLogger _metricsLogger;
         private readonly string _workerRuntime;
         private readonly IEnvironment _environment;
+        private readonly JsonSerializerOptions _jsonSerializerOptions = new()
+        {
+            PropertyNameCaseInsensitive = true
+        };
 
         private Dictionary<string, RpcWorkerConfig> _workerDescriptionDictionary = new Dictionary<string, RpcWorkerConfig>();
 
@@ -116,6 +120,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             {
                 try
                 {
+                    // After specialization, load worker config only for the specified runtime unless it's a multi-language app.
+                    if (!string.IsNullOrWhiteSpace(_workerRuntime) && !_environment.IsPlaceholderModeEnabled() && !_environment.IsMultiLanguageRuntimeEnvironment())
+                    {
+                        string workerRuntime = Path.GetFileName(workerDir);
+                        if (!workerRuntime.Equals(_workerRuntime, StringComparison.OrdinalIgnoreCase) && workerDir.Contains("workers", StringComparison.OrdinalIgnoreCase))
+                        {
+                            return;
+                        }
+                    }
+
                     string workerConfigPath = Path.Combine(workerDir, RpcWorkerConstants.WorkerConfigFileName);
 
                     if (!File.Exists(workerConfigPath))
@@ -126,15 +140,21 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
                     _logger.LogDebug("Found worker config: {workerConfigPath}", workerConfigPath);
 
-                    // Parse worker config file
-                    string json = File.ReadAllText(workerConfigPath);
-                    JObject workerConfig = JObject.Parse(json);
-                    RpcWorkerDescription workerDescription = workerConfig.Property(WorkerConstants.WorkerDescription).Value.ToObject<RpcWorkerDescription>();
+                    ReadOnlySpan<byte> jsonSpan = File.ReadAllBytes(workerConfigPath).AsSpan();
+                    if (jsonSpan.StartsWith(stackalloc byte[] { 0xEF, 0xBB, 0xBF }))
+                    {
+                        jsonSpan = jsonSpan[3..]; // Skip Byte Order Mark if present in the begining of the file.
+                    }
+                    var reader = new Utf8JsonReader(jsonSpan, isFinalBlock: true, state: default);
+                    using var doc = JsonDocument.ParseValue(ref reader);
+                    JsonElement workerConfig = doc.RootElement;
+
+                    var workerDescriptionElement = workerConfig.GetProperty(WorkerConstants.WorkerDescription);
+                    var workerDescription = workerDescriptionElement.Deserialize<RpcWorkerDescription>(_jsonSerializerOptions);
                     workerDescription.WorkerDirectory = workerDir;
 
-                    //Read the profiles from worker description and load the profile for which the conditions match
-                    JToken profiles = workerConfig.GetValue(WorkerConstants.WorkerDescriptionProfiles);
-                    if (profiles != null)
+                    // Read the profiles from worker description and load the profile for which the conditions match
+                    if (workerConfig.TryGetProperty(WorkerConstants.WorkerDescriptionProfiles, out var profiles))
                     {
                         List<WorkerDescriptionProfile> workerDescriptionProfiles = ReadWorkerDescriptionProfiles(profiles);
                         if (workerDescriptionProfiles.Count > 0)
@@ -146,12 +166,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
                     // Check if any app settings are provided for that language
                     var languageSection = _config.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}:{workerDescription.Language}");
-                    workerDescription.Arguments = workerDescription.Arguments ?? new List<string>();
+                    workerDescription.Arguments ??= new List<string>();
                     GetWorkerDescriptionFromAppSettings(workerDescription, languageSection);
                     AddArgumentsFromAppSettings(workerDescription, languageSection);
 
                     // Validate workerDescription
-                    workerDescription.ApplyDefaultsAndValidate(Directory.GetCurrentDirectory(), _logger);
+                    var currentDirectory = Directory.GetCurrentDirectory();
+                    workerDescription.ApplyDefaultsAndValidate(currentDirectory, _logger);
 
                     if (workerDescription.IsDisabled == true)
                     {
@@ -197,9 +218,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
         }
 
-        private List<WorkerDescriptionProfile> ReadWorkerDescriptionProfiles(JToken profilesJToken)
+        private List<WorkerDescriptionProfile> ReadWorkerDescriptionProfiles(JsonElement profilesElement)
         {
-            var profiles = profilesJToken.ToObject<IList<WorkerProfileDescriptor>>();
+            var profiles = profilesElement.Deserialize<IList<WorkerProfileDescriptor>>(_jsonSerializerOptions);
 
             if (profiles == null || profiles.Count <= 0)
             {
@@ -237,11 +258,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             return descriptionProfiles;
         }
 
-        internal WorkerProcessCountOptions GetWorkerProcessCount(JObject workerConfig)
+        internal WorkerProcessCountOptions GetWorkerProcessCount(JsonElement workerConfig)
         {
-            WorkerProcessCountOptions workerProcessCount = workerConfig.Property(WorkerConstants.ProcessCount)?.Value.ToObject<WorkerProcessCountOptions>();
+            WorkerProcessCountOptions workerProcessCount = null;
 
-            workerProcessCount = workerProcessCount ?? new WorkerProcessCountOptions();
+            if (workerConfig.TryGetProperty(WorkerConstants.ProcessCount, out var processCountElement))
+            {
+                workerProcessCount = processCountElement.Deserialize<WorkerProcessCountOptions>();
+            }
+
+            workerProcessCount ??= new WorkerProcessCountOptions();
 
             if (workerProcessCount.SetProcessCountToNumberOfCpuCores)
             {
