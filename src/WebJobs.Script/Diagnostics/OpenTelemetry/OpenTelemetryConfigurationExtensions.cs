@@ -2,11 +2,15 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics;
 using System.Diagnostics.Tracing;
+using System.Linq;
 using Azure.Core;
 using Azure.Identity;
 using Azure.Monitor.OpenTelemetry.Exporter;
 using Azure.Monitor.OpenTelemetry.LiveMetrics;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -69,6 +73,35 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
             ConfigureTracing(loggingBuilder, enableOtlp, enableAzureMonitor, azMonConnectionString, credential);
 
             ConfigureEventLogLevel(loggingBuilder, context.Configuration);
+
+            ConfigureMetrics(loggingBuilder, enableOtlp, enableAzureMonitor, azMonConnectionString, credential);
+        }
+
+        private static void ConfigureMetrics(ILoggingBuilder loggingBuilder, bool enableOtlp, bool enableAzureMonitor, string azMonConnectionString, TokenCredential credential)
+        {
+            loggingBuilder.Services.AddOpenTelemetry()
+                .ConfigureResource(r => ConfigureResource(r))
+                .WithMetrics(builder =>
+                {
+                    builder.AddAspNetCoreInstrumentation();
+                    builder.AddMeter(HostMetrics.MeterName);
+                    builder.AddView(HostMetrics.FaasInvokeDuration, new ExplicitBucketHistogramConfiguration
+                    {
+                        Boundaries = new double[] { 0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10 }
+                    });
+
+                    // Ignore all other metrics
+                    builder.AddView(instrument => instrument.Name == HostMetrics.FaasInvokeDuration ? new MetricStreamConfiguration() : MetricStreamConfiguration.Drop);
+
+                    if (enableOtlp)
+                    {
+                        builder.AddOtlpExporter();
+                    }
+                    if (enableAzureMonitor)
+                    {
+                        builder.AddAzureMonitorMetricExporter(opt => ConfigureAzureMonitorOptions(opt, azMonConnectionString, credential));
+                    }
+                });
         }
 
         private static void ConfigureTracing(ILoggingBuilder loggingBuilder, bool enableOtlp, bool enableAzureMonitor, string azMonConnectionString, TokenCredential credential)
@@ -78,7 +111,21 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
                 .WithTracing(builder =>
                 {
                     builder.AddSource("Azure.*")
-                           .AddAspNetCoreInstrumentation();
+                    .AddAspNetCoreInstrumentation(o =>
+                    {
+                        o.EnrichWithHttpResponse = (activity, httpResponse) =>
+                        {
+                            if (Activity.Current != null)
+                            {
+                                var routingFeature = httpResponse.HttpContext.Features.Get<AspNetCore.Routing.IRoutingFeature>();
+                                var template = routingFeature.RouteData.Routers.FirstOrDefault(r => r is Route) as Route;
+
+                                Activity.Current.DisplayName = $"{Activity.Current.DisplayName} {template?.RouteTemplate}";
+                                Activity.Current.AddTag(ResourceSemanticConventions.HttpRoute, template?.RouteTemplate);
+                                Activity.Current.AddTag(ResourceSemanticConventions.FaaSTrigger, OpenTelemetryConstants.HttpTriggerType);
+                            }
+                        };
+                    });
 
                     if (enableOtlp)
                     {
