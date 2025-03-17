@@ -222,7 +222,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.OpenTelemetry
             Resource resource = detector.Detect();
 
             Assert.Equal($"/subscriptions/AAAAA-AAAAA-AAAAA-AAA/resourceGroups/rg/providers/Microsoft.Web/sites/appName",
-                resource.Attributes.FirstOrDefault(a => a.Key == "cloud.resource.id").Value);
+                resource.Attributes.FirstOrDefault(a => a.Key == "cloud.resource_id").Value);
             Assert.Equal($"EastUS", resource.Attributes.FirstOrDefault(a => a.Key == "cloud.region").Value);
         }
 
@@ -232,7 +232,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.OpenTelemetry
             FunctionsResourceDetector detector = new FunctionsResourceDetector();
             Resource resource = detector.Detect();
 
-            Assert.Equal(4, resource.Attributes.Count());
+            Assert.Equal(3, resource.Attributes.Count());
         }
 
         [Fact]
@@ -302,7 +302,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.OpenTelemetry
 
             // Extract the clientId from the client object
             var tracerClientIdValue = tracerResolvedClient?.GetType().GetProperty("ClientId", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(tracerResolvedClient)?.ToString();
-            var meterClientIdValue = meterResolvedClient?.GetType().GetProperty("ClientId", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(tracerResolvedClient)?.ToString();
+            var meterClientIdValue = meterResolvedClient?.GetType().GetProperty("ClientId", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(meterResolvedClient)?.ToString();
 
             // Assert
             serviceCollection.Should().NotBeNullOrEmpty();
@@ -310,7 +310,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.OpenTelemetry
             tracerClientIdValue.Should().BeNull();
             meterClientIdValue.Should().BeNull();
             tracerResolvedClient.GetType().Name.Should().Be("ManagedIdentityClient");
-            meterResolvedClient.GetType().Name.Should().Be("ManagedIdentityClient");
+            meterResolvedClient.GetType().Name.Should().Be("ManagedIdentityCredential");
         }
 
         [Fact]
