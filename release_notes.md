@@ -11,3 +11,4 @@
 - Adjusting the logic to determine the warmup call in placeholder simulation mode to align with the production flow (#10918)
 - Fixing invalid DateTimes in status blobs when invoking via portal (#10916)
 - Bug fix for platform release channel bundles resolution casing issue and additional logging (#10921)
+- Adding support for faas.invoke_duration metric and other spec related updates (#10929)

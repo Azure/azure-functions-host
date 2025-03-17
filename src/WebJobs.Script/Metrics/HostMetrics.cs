@@ -67,7 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.Metrics
             _faasInvokeDuration = meter.CreateHistogram<double>(
                 name: FaasInvokeDuration,
                 unit: "s",
-                description: "Measures the duration of the function’s logic execution.");
+                description: "Measures the duration of the function's logic execution.");
         }
 
         private KeyValuePair<string, object> FunctionGroupTag
