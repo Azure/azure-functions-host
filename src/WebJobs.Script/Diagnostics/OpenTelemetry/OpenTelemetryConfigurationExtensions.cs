@@ -94,13 +94,15 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
                 {
                     o.EnrichWithHttpResponse = (activity, httpResponse) =>
                     {
-                        if (Activity.Current != null)
+                        if (Activity.Current is not null)
                         {
-                            var routingFeature = httpResponse.HttpContext.Features.Get<AspNetCore.Routing.IRoutingFeature>();
-                            var template = routingFeature.RouteData.Routers.FirstOrDefault(r => r is Route) as Route;
-
-                            Activity.Current.DisplayName = $"{Activity.Current.DisplayName} {template?.RouteTemplate}";
-                            Activity.Current.AddTag(ResourceSemanticConventions.HttpRoute, template?.RouteTemplate);
+                            var routingFeature = httpResponse.HttpContext.Features.Get<IRoutingFeature>();
+                            if (routingFeature is not null)
+                            {
+                                var template = routingFeature.RouteData.Routers.FirstOrDefault(r => r is Route) as Route;
+                                Activity.Current.DisplayName = $"{Activity.Current.DisplayName} {template?.RouteTemplate}";
+                                Activity.Current.AddTag(ResourceSemanticConventions.HttpRoute, template?.RouteTemplate);
+                            }
                             Activity.Current.AddTag(ResourceSemanticConventions.FaaSTrigger, OpenTelemetryConstants.HttpTriggerType);
                         }
                     };
