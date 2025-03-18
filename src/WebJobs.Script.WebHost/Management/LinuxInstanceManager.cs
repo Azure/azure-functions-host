@@ -87,9 +87,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     return _assignmentContext.Equals(context);
                 }
                 _assignmentContext = context;
+                _assignment = AssignAsync(context);
             }
-
-            _ = AssignAsync(context);
 
             return true;
         }
@@ -119,7 +118,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         private async Task AssignAsync(HostAssignmentContext assignmentContext)
         {
-            await Task.Yield(); // This may be called from within a lock. This will force the lock to be released.
+            await Task.Yield(); // This may be called from within a lock. When AssignAsync is awaited, control flow will return to the caller and the lock will be released when it exits the lock scope.
 
             try
             {
