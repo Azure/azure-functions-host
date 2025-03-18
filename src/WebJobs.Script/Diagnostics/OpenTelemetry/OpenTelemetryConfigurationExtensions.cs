@@ -96,14 +96,17 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
                     {
                         if (Activity.Current is not null)
                         {
-                            var routingFeature = httpResponse.HttpContext.Features.Get<IRoutingFeature>();
-                            if (routingFeature is not null)
-                            {
-                                var template = routingFeature.RouteData.Routers.FirstOrDefault(r => r is Route) as Route;
-                                Activity.Current.DisplayName = $"{Activity.Current.DisplayName} {template?.RouteTemplate}";
-                                Activity.Current.AddTag(ResourceSemanticConventions.HttpRoute, template?.RouteTemplate);
-                            }
                             Activity.Current.AddTag(ResourceSemanticConventions.FaaSTrigger, OpenTelemetryConstants.HttpTriggerType);
+
+                            var routingFeature = httpResponse.HttpContext.Features.Get<IRoutingFeature>();
+                            if (routingFeature is null)
+                            {
+                                return;
+                            }
+
+                            var template = routingFeature.RouteData.Routers.FirstOrDefault(r => r is Route) as Route;
+                            Activity.Current.DisplayName = $"{Activity.Current.DisplayName} {template?.RouteTemplate}";
+                            Activity.Current.AddTag(ResourceSemanticConventions.HttpRoute, template?.RouteTemplate);
                         }
                     };
                 });
