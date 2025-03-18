@@ -9,7 +9,7 @@
   <Target Name="RemovePowershellWorkerRuntimes" BeforeTargets="AssignTargetPaths" Condition="'$(RuntimeIdentifier)' != ''">
     <ItemGroup>
       <_KeepPowerShellRuntime Include="win;win-x86;win10-x86;win-x64;win10-x64" Condition="$(RuntimeIdentifier.StartsWith(win))" />
-      <_KeepPowerShellRuntime Include="linux;linux-x64" Condition="$(RuntimeIdentifier.StartsWith(linux))" />
+      <_KeepPowerShellRuntime Include="linux;linux-x64;unix" Condition="$(RuntimeIdentifier.StartsWith(linux))" />
     </ItemGroup>
 
     <PropertyGroup>
