@@ -314,11 +314,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         [Fact]
         public async Task TrySyncTriggers_ManagedAppEnv_WithNo_AzureWebJobsStorage_ReturnsTrue()
         {
+            _vars.Add("AzureWebJobsStorage", null);
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteArmCacheEnabled)).Returns("0");
 
             using (var env = new TestScopedEnvironmentVariable(_vars))
             {
-                _vars.Add("AzureWebJobsStorage", null);
                 _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.ManagedEnvironment)).Returns("true");
                 _mockEnvironment.Setup(p => p.GetEnvironmentVariable("FUNCTIONS_API_SERVER")).Returns("https://appname.azurewebsites.net");
                 _mockEnvironment.Setup(p => p.GetEnvironmentVariable("CONTAINER_APP_NAME")).Returns("appname");
@@ -343,11 +343,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         [Fact]
         public async Task TrySyncTriggers_KubernetesManagedEnv_WithNo_AzureWebJobsStorage_ReturnsTrue()
         {
+            _vars.Add("AzureWebJobsStorage", null);
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteArmCacheEnabled)).Returns("0");
 
             using (var env = new TestScopedEnvironmentVariable(_vars))
             {
-                _vars.Add("AzureWebJobsStorage", null);
                 _mockEnvironment.Setup(p => p.GetEnvironmentVariable("FUNCTIONS_API_SERVER")).Returns("https://appname.azurewebsites.net");
                 _mockEnvironment.Setup(p => p.GetEnvironmentVariable("KUBERNETES_SERVICE_HOST")).Returns("kubhost");
                 _mockEnvironment.Setup(p => p.GetEnvironmentVariable("POD_NAMESPACE")).Returns("podns");
