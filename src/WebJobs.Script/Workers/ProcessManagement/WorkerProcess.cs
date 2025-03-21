@@ -7,6 +7,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Logging;
@@ -33,10 +34,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         private readonly IEnvironment _environment;
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _scriptApplicationHostOptions;
 
-        private bool _useStdErrorStreamForErrorsOnly;
-        private Queue<string> _processStdErrDataQueue = new Queue<string>(3);
+        private readonly object _syncLock = new();
+        private readonly bool _useStdErrorStreamForErrorsOnly;
+        private Queue<string> _processStdErrDataQueue = new(3);
         private IHostProcessMonitor _processMonitor;
-        private object _syncLock = new object();
+        private TaskCompletionSource _processExit; // used to hold custom exceptions on non-success exit.
 
         internal WorkerProcess(IScriptEventManager eventManager, IProcessRegistry processRegistry, ILogger workerProcessLogger, IWorkerConsoleLogSource consoleLogSource, IMetricsLogger metricsLogger,
             IServiceProvider serviceProvider, ILoggerFactory loggerFactory, IEnvironment environment, IOptionsMonitor<ScriptApplicationHostOptions> scriptApplicationHostOptions, bool useStdErrStreamForErrorsOnly = false)
@@ -69,8 +71,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         internal abstract Process CreateWorkerProcess();
 
-        public Task StartProcessAsync()
+        public Task StartProcessAsync(CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             using (_metricsLogger.LatencyEvent(MetricEventNames.ProcessStart))
             {
                 Process = CreateWorkerProcess();
@@ -79,6 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                     AssignUserExecutePermissionsIfNotExists();
                 }
 
+                _processExit = new();
                 try
                 {
                     Process.ErrorDataReceived += (sender, e) => OnErrorDataReceived(sender, e);
@@ -103,10 +107,22 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 }
                 catch (Exception ex)
                 {
+                    _processExit.TrySetException(ex);
                     _workerProcessLogger.LogError(ex, $"Failed to start Worker Channel. Process fileName: {Process.StartInfo.FileName}");
                     return Task.FromException(ex);
                 }
             }
+        }
+
+        public Task WaitForExitAsync(CancellationToken cancellationToken = default)
+        {
+            if (_processExit is { } tcs)
+            {
+                // We use a TaskCompletionSource (and not Process.WaitForExitAsync) so we can propagate our custom exceptions.
+                return tcs.Task.WaitAsync(cancellationToken);
+            }
+
+            throw new InvalidOperationException("Process has not been started yet.");
         }
 
         private void OnErrorDataReceived(object sender, DataReceivedEventArgs e)
@@ -159,40 +175,56 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
             if (Disposing)
             {
-                // No action needed
                 return;
             }
 
             try
             {
-                if (Process.ExitCode == WorkerConstants.SuccessExitCode)
-                {
-                    Process.WaitForExit();
-                    Process.Close();
-                }
-                else if (Process.ExitCode == WorkerConstants.IntentionalRestartExitCode)
+                ThrowIfExitError();
+
+                Process.WaitForExit();
+                if (Process.ExitCode == WorkerConstants.IntentionalRestartExitCode)
                 {
                     HandleWorkerProcessRestart();
                 }
-                else
-                {
-                    string exceptionMessage = string.Join(",", _processStdErrDataQueue.Where(s => !string.IsNullOrEmpty(s)));
-                    string sanitizedExceptionMessage = Sanitizer.Sanitize(exceptionMessage);
-                    var processExitEx = new WorkerProcessExitException($"{Process.StartInfo.FileName} exited with code {Process.ExitCode} (0x{Process.ExitCode.ToString("X")})", new Exception(sanitizedExceptionMessage));
-                    processExitEx.ExitCode = Process.ExitCode;
-                    processExitEx.Pid = Process.Id;
-                    HandleWorkerProcessExitError(processExitEx);
-                }
+            }
+            catch (WorkerProcessExitException processExitEx)
+            {
+                _processExit.TrySetException(processExitEx);
+                HandleWorkerProcessExitError(processExitEx);
             }
             catch (Exception exc)
             {
-                _workerProcessLogger?.LogDebug(exc, "Exception on worker process exit. Process id: {processId}", Process?.Id);
                 // ignore process is already disposed
+                _processExit.TrySetException(exc);
+                _workerProcessLogger?.LogDebug(exc, "Exception on worker process exit. Process id: {processId}", Process?.Id);
             }
             finally
             {
+                _processExit.TrySetResult();
                 UnregisterFromProcessMonitor();
+                Process.Close();
             }
+        }
+
+        private void ThrowIfExitError()
+        {
+            if (Process.ExitCode is WorkerConstants.SuccessExitCode or WorkerConstants.IntentionalRestartExitCode)
+            {
+                return;
+            }
+
+            string exceptionMessage = string.Join(",", _processStdErrDataQueue.Where(s => !string.IsNullOrEmpty(s)));
+            string sanitizedExceptionMessage = Sanitizer.Sanitize(exceptionMessage);
+            WorkerProcessExitException processExitEx = new(
+                $"{Process.StartInfo.FileName} exited with code {Process.ExitCode} (0x{Process.ExitCode:X})",
+                new Exception(sanitizedExceptionMessage))
+            {
+                ExitCode = Process.ExitCode,
+                Pid = Process.Id
+            };
+
+            throw processExitEx;
         }
 
         private void OnOutputDataReceived(object sender, DataReceivedEventArgs e)

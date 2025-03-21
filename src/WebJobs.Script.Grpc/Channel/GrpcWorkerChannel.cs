@@ -367,19 +367,31 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         public bool IsChannelReadyForInvocations()
         {
-            return !_disposing && !_disposed && _state.HasFlag(RpcWorkerChannelState.InvocationBuffersInitialized | RpcWorkerChannelState.Initialized);
+            return !_disposing && !_disposed
+                && _state.HasFlag(
+                    RpcWorkerChannelState.InvocationBuffersInitialized | RpcWorkerChannelState.Initialized);
         }
 
         public async Task StartWorkerProcessAsync(CancellationToken cancellationToken)
         {
-            RegisterCallbackForNextGrpcMessage(MsgType.StartStream, _workerConfig.CountOptions.ProcessStartupTimeout, 1, SendWorkerInitRequest, HandleWorkerStartStreamError);
-            // note: it is important that the ^^^ StartStream is in place *before* we start process the loop, otherwise we get a race condition
+            RegisterCallbackForNextGrpcMessage(
+                MsgType.StartStream,
+                _workerConfig.CountOptions.ProcessStartupTimeout,
+                count: 1,
+                SendWorkerInitRequest,
+                HandleWorkerStartStreamError);
+
+            // note: it is important that the ^^^ StartStream is in place *before* we start process the loop,
+            // otherwise we get a race condition
             _ = ProcessInbound();
 
             _workerChannelLogger.LogDebug("Initiating Worker Process start up");
-            await _rpcWorkerProcess.StartProcessAsync();
-            _state = _state | RpcWorkerChannelState.Initializing;
-            await _workerInitTask.Task;
+            await _rpcWorkerProcess.StartProcessAsync(cancellationToken);
+            _state |= RpcWorkerChannelState.Initializing;
+            Task winner = await Task.WhenAny(
+                _workerInitTask.Task, _rpcWorkerProcess.WaitForExitAsync(cancellationToken))
+                .WaitAsync(cancellationToken);
+            await winner;
         }
 
         public async Task<WorkerStatus> GetWorkerStatusAsync()

@@ -76,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _testWorkerConfig.CountOptions.InitializationTimeout = TimeSpan.FromSeconds(5);
             _testWorkerConfig.CountOptions.EnvironmentReloadTimeout = TimeSpan.FromSeconds(5);
 
-            _mockrpcWorkerProcess.Setup(m => m.StartProcessAsync()).Returns(Task.CompletedTask);
+            _mockrpcWorkerProcess.Setup(m => m.StartProcessAsync(default)).Returns(Task.CompletedTask);
             _mockrpcWorkerProcess.Setup(m => m.Id).Returns(910);
             _testEnvironment = new TestEnvironment();
             _testEnvironment.SetEnvironmentVariable(FunctionDataCacheConstants.FunctionDataCacheEnabledSettingName, "1");
@@ -225,7 +225,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public async Task StartWorkerProcessAsync_Invoked_SetupFunctionBuffers_Verify_ReadyForInvocation()
         {
             await CreateDefaultWorkerChannel();
-            _mockrpcWorkerProcess.Verify(m => m.StartProcessAsync(), Times.Once);
+            _mockrpcWorkerProcess.Verify(m => m.StartProcessAsync(default), Times.Once);
             Assert.False(_workerChannel.IsChannelReadyForInvocations());
             _workerChannel.SetupFunctionInvocationBuffers(GetTestFunctionsList("node"));
             Assert.True(_workerChannel.IsChannelReadyForInvocations());
@@ -288,7 +288,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             // note: uses custom worker channel
             Mock<IWorkerProcess> mockrpcWorkerProcessThatThrows = new Mock<IWorkerProcess>();
-            mockrpcWorkerProcessThatThrows.Setup(m => m.StartProcessAsync()).Throws<FileNotFoundException>();
+            mockrpcWorkerProcessThatThrows.Setup(m => m.StartProcessAsync(default)).Throws<FileNotFoundException>();
 
             _workerChannel = new GrpcWorkerChannel(
                _workerId,

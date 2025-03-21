@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Http
             Mock<IHttpWorkerService> httpWorkerService = new Mock<IHttpWorkerService>();
 
             httpWorkerService.Setup(a => a.IsWorkerReady(It.IsAny<CancellationToken>())).Returns(Task.FromResult(isWorkerReady));
-            workerProcess.Setup(a => a.StartProcessAsync()).Returns(Task.CompletedTask);
+            workerProcess.Setup(a => a.StartProcessAsync(default)).Returns(Task.CompletedTask);
             TestLogger logger = new TestLogger("HttpWorkerChannel");
             IHttpWorkerChannel testWorkerChannel = new HttpWorkerChannel("RandomWorkerId", _eventManager, workerProcess.Object, httpWorkerService.Object, logger, _metricsLogger, 3);
             Task resultTask = null;
@@ -61,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Http
             IMetricsLogger metricsLogger = new TestMetricsLogger();
 
             httpWorkerService.Setup(a => a.IsWorkerReady(It.IsAny<CancellationToken>())).Throws(new Exception("RandomException"));
-            workerProcess.Setup(a => a.StartProcessAsync()).Returns(Task.CompletedTask);
+            workerProcess.Setup(a => a.StartProcessAsync(default)).Returns(Task.CompletedTask);
             TestLogger logger = new TestLogger("HttpWorkerChannel");
             IHttpWorkerChannel testWorkerChannel = new HttpWorkerChannel("RandomWorkerId", _eventManager, workerProcess.Object, httpWorkerService.Object, logger, _metricsLogger, 3);
             Task resultTask = null;
@@ -85,7 +85,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Http
             IMetricsLogger metricsLogger = new TestMetricsLogger();
 
             httpWorkerService.Setup(a => a.IsWorkerReady(It.IsAny<CancellationToken>())).Throws(new Exception("RandomException"));
-            workerProcess.Setup(a => a.StartProcessAsync()).Throws(new Exception("RandomException"));
+            workerProcess.Setup(a => a.StartProcessAsync(default)).Throws(new Exception("RandomException"));
             TestLogger logger = new TestLogger("HttpWorkerChannel");
             IHttpWorkerChannel testWorkerChannel = new HttpWorkerChannel("RandomWorkerId", _eventManager, workerProcess.Object, httpWorkerService.Object, logger, _metricsLogger, 3);
             Task resultTask = null;

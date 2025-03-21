@@ -6,7 +6,7 @@ namespace Microsoft.Azure.WebJobs.Script
     public enum ScriptHostState
     {
         /// <summary>
-        /// The host has not yet been created
+        /// The host has not yet been created.
         /// </summary>
         Default,
 
@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script
         Running,
 
         /// <summary>
-        /// The host is in an error state
+        /// The host is in an error state.
         /// </summary>
         Error,
 
@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script
         Stopped,
 
         /// <summary>
-        /// The host is offline
+        /// The host is offline.
         /// </summary>
         Offline
     }

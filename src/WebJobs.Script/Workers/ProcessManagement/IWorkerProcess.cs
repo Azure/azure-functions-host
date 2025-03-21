@@ -2,8 +2,8 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Diagnostics;
+using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script.Scale;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers
 {
@@ -13,7 +13,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         Process Process { get; }
 
-        Task StartProcessAsync();
+        Task StartProcessAsync(CancellationToken cancellationToken = default);
+
+        Task WaitForExitAsync(CancellationToken cancellationToken = default);
 
         void WaitForProcessExitInMilliSeconds(int waitTime);
     }
