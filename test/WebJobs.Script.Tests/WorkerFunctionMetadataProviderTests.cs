@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
@@ -29,11 +30,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var mockScriptHostManager = new Mock<IScriptHostManager>();
 
             _workerFunctionMetadataProvider = new WorkerFunctionMetadataProvider(
-             mockScriptOptions.Object,
-             mockLogger.Object,
-             mockEnvironment.Object,
-             mockChannelManager.Object,
-             mockScriptHostManager.Object);
+                mockScriptOptions.Object,
+                mockLogger.Object,
+                mockEnvironment.Object,
+                mockChannelManager.Object,
+                mockScriptHostManager.Object);
         }
 
         [Fact]
@@ -220,6 +221,63 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var function = _workerFunctionMetadataProvider.ValidateBindings(rawBindings, functionMetadata);
             Assert.Equal(isoString, function.Bindings.FirstOrDefault().Raw["startFromTime"].ToString());
+        }
+
+        [Fact]
+        public async Task GetFunctionMetadataAsync_AddsFunctionToMetadataList()
+        {
+            var mockFunctionMetadataProvider = new Mock<IWorkerFunctionMetadataProvider>(MockBehavior.Strict);
+            var mockChannelManager = new Mock<IWebHostRpcWorkerChannelManager>(MockBehavior.Strict);
+            var mockScriptHostManager = new Mock<IScriptHostManager>(MockBehavior.Strict);
+            var mockOptionsMonitor = new Mock<IOptionsMonitor<ScriptApplicationHostOptions>>(MockBehavior.Strict);
+            var scriptOptions = new ScriptApplicationHostOptions
+            {
+                IsFileSystemReadOnly = true
+            };
+            mockOptionsMonitor.Setup(m => m.CurrentValue).Returns(scriptOptions);
+
+            var testEnvironment = new TestEnvironment();
+            testEnvironment.SetEnvironmentVariable("FUNCTIONS_WORKER_RUNTIME", "node");
+
+            var mockRpcWorkerChannel = new Mock<IRpcWorkerChannel>(MockBehavior.Strict);
+            var rawFunctionMetadataList = new List<RawFunctionMetadata>
+            {
+                new RawFunctionMetadata
+                {
+                    Metadata = new FunctionMetadata { Name = "TestFunction" },
+                    Bindings = ["{\"type\": \"httpTrigger\", \"name\": \"req\", \"direction\": \"in\"}"],
+                    UseDefaultMetadataIndexing = false
+                }
+            };
+            mockRpcWorkerChannel.Setup(m => m.GetFunctionMetadata()).ReturnsAsync(rawFunctionMetadataList);
+
+            var tcs = new TaskCompletionSource<IRpcWorkerChannel>();
+            tcs.SetResult(mockRpcWorkerChannel.Object);
+            var channels = new Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>>
+            {
+                { "testWorkerId", tcs }
+            };
+
+            mockChannelManager.Setup(m => m.GetChannels("node")).Returns(channels);
+
+            var provider = new WorkerFunctionMetadataProvider(
+                mockOptionsMonitor.Object,
+                NullLogger<WorkerFunctionMetadataProvider>.Instance,
+                testEnvironment,
+                mockChannelManager.Object,
+                mockScriptHostManager.Object);
+
+            var workerConfigs = new List<RpcWorkerConfig>();
+
+            var result1 = await provider.GetFunctionMetadataAsync(workerConfigs, true);
+            var result2 = await provider.GetFunctionMetadataAsync(workerConfigs, true);
+
+            var function1 = result1.Functions.Single();
+            var function2 = result2.Functions.Single();
+
+            // Current bug is that calling GetFunctionMetadataAsync twice will add the same binding twice!
+            Assert.Single(function1.Bindings);
+            Assert.Single(function2.Bindings);
         }
     }
 }
