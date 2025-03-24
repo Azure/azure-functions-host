@@ -224,7 +224,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task GetFunctionMetadataAsync_AddsFunctionToMetadataList()
+        public async Task GetFunctionMetadataAsync_Idempotent()
         {
             var mockFunctionMetadataProvider = new Mock<IWorkerFunctionMetadataProvider>(MockBehavior.Strict);
             var mockChannelManager = new Mock<IWebHostRpcWorkerChannelManager>(MockBehavior.Strict);
