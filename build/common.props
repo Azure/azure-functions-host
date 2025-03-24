@@ -4,7 +4,7 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <LangVersion>latest</LangVersion>
     <MajorVersion>3</MajorVersion>
-    <MinorVersion>24</MinorVersion>
+    <MinorVersion>25</MinorVersion>
     <PatchVersion>0</PatchVersion>
     <VersionPrefix>$(MajorVersion).$(MinorVersion).$(PatchVersion)</VersionPrefix>
     <Version Condition=" '$(BuildNumber)' != '' ">$(VersionPrefix)-$(BuildNumber)</Version>
