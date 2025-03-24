@@ -148,6 +148,22 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         }
 
         /// <summary>
+        /// Gets or sets a value indicating whether to exclude the function test data property from API responses.
+        /// </summary>
+        internal bool EnableTestDataExclusionInApiResponse
+        {
+            get
+            {
+                return GetFeatureAsBooleanOrDefault(ScriptConstants.FeatureFlagEnableTestDataExclusionInApiResponse, false);
+            }
+
+            set
+            {
+                _features[ScriptConstants.FeatureFlagEnableTestDataExclusionInApiResponse] = value ? "1" : "0";
+            }
+        }
+
+        /// <summary>
         /// Gets the highest version of extension bundle v3 supported.
         /// </summary>
         internal string MaximumBundleV3Version
