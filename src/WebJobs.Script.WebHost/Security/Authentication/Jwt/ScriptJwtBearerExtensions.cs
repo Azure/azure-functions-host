@@ -90,14 +90,8 @@ namespace Microsoft.Extensions.DependencyInjection
         {
             if (SystemEnvironment.Instance.IsPlaceholderModeEnabled())
             {
-                if (SystemEnvironment.Instance.IsLinuxConsumptionOnLegion())
-                {
-                    return new string[]
-                    {
-                        ScriptSettingsManager.Instance.GetSetting(WebsitePodName)
-                    };
-                }
-                else if (SystemEnvironment.Instance.IsLinuxConsumptionOnAtlas())
+                if (SystemEnvironment.Instance.IsLinuxConsumptionOnAtlas() ||
+                    SystemEnvironment.Instance.IsLinuxConsumptionOnLegion())
                 {
                     return new string[]
                     {

@@ -97,7 +97,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ContainerManagement
 
             _environment.SetEnvironmentVariable(ContainerSpecializationContextVolumePath, ContainerSpecializationContextPath);
             _environment.SetEnvironmentVariable(ContainerEncryptionKey, containerEncryptionKey);
-            AddLinuxConsumptionSettings(_environment);
+            AddLinuxConsumptionOnLegionSettings(_environment);
 
             _instanceManagerMock.Setup(m =>
                 m.SpecializeMSISidecar(It.Is<HostAssignmentContext>(context =>
@@ -148,11 +148,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ContainerManagement
             return hostAssignmentContext;
         }
 
-        private static void AddLinuxConsumptionSettings(IEnvironment environment)
+        private static void AddLinuxConsumptionOnLegionSettings(IEnvironment environment)
         {
+            // configure the environment to simulate Linux Consumption on Legion
             environment.SetEnvironmentVariable(AzureWebsiteInstanceId, string.Empty);
             environment.SetEnvironmentVariable(ContainerName, "ContainerName");
             environment.SetEnvironmentVariable(LegionServiceHost, "1");
+            environment.SetEnvironmentVariable(AzureWebsiteSku, "Dynamic");
         }
         
         private static void CreateTemporaryStartContextFile(string content)

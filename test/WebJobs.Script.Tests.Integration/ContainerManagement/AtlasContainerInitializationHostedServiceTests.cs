@@ -56,8 +56,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ContainerManagement
         [Fact]
         public async Task Does_Not_Run_In_Linux_Container_On_Legion()
         {
+            // configure the environment to simulate Linux Consumption on Legion
             _environment.SetEnvironmentVariable(ContainerName, "abcd");
             _environment.SetEnvironmentVariable(LegionServiceHost, "1");
+            _environment.SetEnvironmentVariable(AzureWebsiteSku, "Dynamic");
+
             Assert.True(_environment.IsAnyLinuxConsumption());
             Assert.False(_environment.IsLinuxConsumptionOnAtlas());
 

@@ -56,6 +56,8 @@ namespace Microsoft.WebJobs.Script.Tests
         /// </summary>
         public const string FunctionsControllerEndToEnd = "FunctionsControllerEndToEnd";
 
+        public const string LinuxConsumptionMetricsTests = "LinuxConsumptionMetricsTests";
+
         public const string HISSecretsTests = "HISSecretsTests";
     }
 }
