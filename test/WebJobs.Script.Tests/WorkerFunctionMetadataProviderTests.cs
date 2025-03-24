@@ -269,15 +269,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var workerConfigs = new List<RpcWorkerConfig>();
 
+            // Calling this twice should return the same data
             var result1 = await provider.GetFunctionMetadataAsync(workerConfigs, true);
             var result2 = await provider.GetFunctionMetadataAsync(workerConfigs, true);
 
             var function1 = result1.Functions.Single();
             var function2 = result2.Functions.Single();
 
-            // Current bug is that calling GetFunctionMetadataAsync twice will add the same binding twice!
-            Assert.Single(function1.Bindings);
-            Assert.Single(function2.Bindings);
+            static void AssertFunction(FunctionMetadata function)
+            {
+                Assert.Equal("TestFunction", function.Name);
+                Assert.Equal("node", function.Language);
+                Assert.Collection(function.Bindings, binding =>
+                {
+                    Assert.Equal("httpTrigger", binding.Type);
+                    Assert.Equal("req", binding.Name);
+                    Assert.Equal(BindingDirection.In, binding.Direction);
+                });
+            }
+
+            AssertFunction(function1);
+            AssertFunction(function2);
         }
     }
 }
