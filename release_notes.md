@@ -13,3 +13,4 @@
 - Bug fix for platform release channel bundles resolution casing issue and additional logging (#10921)
 - Adding support for faas.invoke_duration metric and other spec related updates (#10929)
 - Added the option to exclude test data from the `/functions` endpoint API response (#10943)
+- Fixed bug that could result in "Binding names must be unique" error (#10938)
