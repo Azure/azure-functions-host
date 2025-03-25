@@ -148,18 +148,18 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         }
 
         /// <summary>
-        /// Gets or sets a value indicating whether to exclude the function test data property from API responses.
+        /// Gets or sets a value indicating whether to ignore the TestData property during read and write operations of functions metadata.
         /// </summary>
-        internal bool EnableTestDataExclusionInApiResponse
+        internal bool EnableTestDataSuppression
         {
             get
             {
-                return GetFeatureAsBooleanOrDefault(ScriptConstants.FeatureFlagEnableTestDataExclusionInApiResponse, false);
+                return GetFeatureAsBooleanOrDefault(ScriptConstants.FeatureFlagEnableTestDataSuppression, false);
             }
 
             set
             {
-                _features[ScriptConstants.FeatureFlagEnableTestDataExclusionInApiResponse] = value ? "1" : "0";
+                _features[ScriptConstants.FeatureFlagEnableTestDataSuppression] = value ? "1" : "0";
             }
         }
 

@@ -53,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             var hostOptions = _applicationHostOptions.CurrentValue.ToHostOptions();
             var functionsMetadata = GetFunctionsMetadata(includeProxies, forceRefresh: false);
 
-            return await GetFunctionMetadataResponse(functionsMetadata, hostOptions, _hostNameProvider, excludeTestData: _hostingConfigOptions.Value.EnableTestDataExclusionInApiResponse);
+            return await GetFunctionMetadataResponse(functionsMetadata, hostOptions, _hostNameProvider, excludeTestData: _hostingConfigOptions.Value.EnableTestDataSuppression);
         }
 
         internal static async Task<IEnumerable<FunctionMetadataResponse>> GetFunctionMetadataResponse(IEnumerable<FunctionMetadata> functionsMetadata, ScriptJobHostOptions hostOptions, HostNameProvider hostNameProvider, bool excludeTestData)
@@ -148,7 +148,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 configChanged = true;
             }
 
-            if (functionMetadata.TestData != null)
+            if (functionMetadata.TestData != null && !_hostingConfigOptions.Value.EnableTestDataSuppression)
             {
                 await FileUtility.WriteAsync(dataFilePath, functionMetadata.TestData);
             }
@@ -161,7 +161,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             FunctionMetadataResponse functionMetadataResult = null;
             if (metadata != null)
             {
-                functionMetadataResult = await GetFunctionMetadataResponseAsync(metadata, hostOptions, request, _hostingConfigOptions.Value.EnableTestDataExclusionInApiResponse);
+                functionMetadataResult = await GetFunctionMetadataResponseAsync(metadata, hostOptions, request, _hostingConfigOptions.Value.EnableTestDataSuppression);
                 success = true;
             }
 
@@ -197,7 +197,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
             if (functionMetadata != null)
             {
-                var functionMetadataResponse = await GetFunctionMetadataResponseAsync(functionMetadata, hostOptions, request, _hostingConfigOptions.Value.EnableTestDataExclusionInApiResponse);
+                var functionMetadataResponse = await GetFunctionMetadataResponseAsync(functionMetadata, hostOptions, request, _hostingConfigOptions.Value.EnableTestDataSuppression);
                 return (true, functionMetadataResponse);
             }
             else
