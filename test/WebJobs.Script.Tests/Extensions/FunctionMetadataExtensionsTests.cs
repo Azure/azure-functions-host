@@ -199,37 +199,45 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
                 TestDataPath = testDataFilePath
             };
 
-            var testDataContent = @"
+            IFileSystem fileSystem = FileUtility.Instance;
+
+            try
+            {
+                var testDataContent = @"
                                     {
                                         ""method"": ""POST"",
                                         ""headers"": [],
                                         ""body"": ""foo""
                                     }";
 
-            var memoryStream = new MemoryStream(Encoding.UTF8.GetBytes(testDataContent))
+                var memoryStream = new MemoryStream(Encoding.UTF8.GetBytes(testDataContent))
+                {
+                    Position = 0
+                };
+                // Mock the file system
+                var mockFileSystem = new Mock<IFileSystem>();
+                var mockFile = new Mock<FileBase>();
+                mockFileSystem.Setup(f => f.Directory.Exists(It.IsAny<string>())).Returns(true);
+                mockFile.Setup(f => f.Exists(It.Is<string>(path => path.EndsWith(Path.Combine(functionName, "function.json"))))).Returns(true);
+                mockFile.Setup(f => f.Exists(It.Is<string>(path => path.EndsWith(testDataFileName)))).Returns(true);
+                mockFile.Setup(f => f.Open(It.Is<string>(path => path.EndsWith(testDataFileName)), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>()))
+                        .Returns(memoryStream);
+                mockFileSystem.Setup(fs => fs.File).Returns(mockFile.Object);
+                FileUtility.Instance = mockFileSystem.Object;
+
+                AddSampleBindings(functionMetadata);
+                var result = await functionMetadata.ToFunctionMetadataResponse(options, string.Empty, null, excludeTestData: shouldExcludeTestDataFromApiResponse);
+
+                Assert.Equal(functionName, result.Name);
+                Assert.Equal(shouldExcludeTestDataFromApiResponse, result.TestData == null);
+                if (!shouldExcludeTestDataFromApiResponse)
+                {
+                    Assert.True(result.TestData.Trim().Length > 0);
+                }
+            }
+            finally
             {
-                Position = 0
-            };
-
-            // Mock the file system
-            var mockFileSystem = new Mock<IFileSystem>();
-            var mockFile = new Mock<FileBase>();
-            mockFileSystem.Setup(f => f.Directory.Exists(It.IsAny<string>())).Returns(true);
-            mockFile.Setup(f => f.Exists(It.Is<string>(path => path.EndsWith(Path.Combine(functionName, "function.json"))))).Returns(true);
-            mockFile.Setup(f => f.Exists(It.Is<string>(path => path.EndsWith(testDataFileName)))).Returns(true);
-            mockFile.Setup(f => f.Open(It.Is<string>(path => path.EndsWith(testDataFileName)), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>()))
-                    .Returns(memoryStream);
-            mockFileSystem.Setup(fs => fs.File).Returns(mockFile.Object);
-            FileUtility.Instance = mockFileSystem.Object;
-
-            AddSampleBindings(functionMetadata);
-            var result = await functionMetadata.ToFunctionMetadataResponse(options, string.Empty, null, excludeTestData: shouldExcludeTestDataFromApiResponse);
-
-            Assert.Equal(functionName, result.Name);
-            Assert.Equal(shouldExcludeTestDataFromApiResponse, result.TestData == null);
-            if (!shouldExcludeTestDataFromApiResponse)
-            {
-                Assert.True(result.TestData.Trim().Length > 0);
+                FileUtility.Instance = fileSystem;
             }
         }
 
