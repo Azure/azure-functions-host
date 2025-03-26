@@ -843,6 +843,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     }
                     else
                     {
+                        //systemPath = "<app-root-folder>\bin\Debug\net8.0\.azurefunctions"
                         logger.LogWarning("Could not find the path: {systemPath} to resolve extensions metadata", systemPath);
                     }
                 }
