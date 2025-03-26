@@ -171,8 +171,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     AddArgumentsFromAppSettings(workerDescription, languageSection);
 
                     // Validate workerDescription
-                    var currentDirectory = Directory.GetCurrentDirectory();
-                    workerDescription.ApplyDefaultsAndValidate(currentDirectory, _logger);
+                    workerDescription.ApplyDefaultsAndValidate(Directory.GetCurrentDirectory(), _logger);
 
                     if (workerDescription.IsDisabled == true)
                     {
