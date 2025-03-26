@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Castle.Components.DictionaryAdapter.Xml;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
@@ -69,36 +70,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ContainerManagement
         [Fact]
         public async Task Assigns_Context_From_CONTAINER_START_CONTEXT()
         {
-            var containerEncryptionKey = TestHelpers.GenerateKeyHexString();
-            var hostAssignmentContext = GetHostAssignmentContext();
-            var secrets = new FunctionAppSecrets();
-            secrets.Host = new FunctionAppSecrets.HostSecrets
-            {
-                Master = "test-key",
-                Function = new Dictionary<string, string>
-                {
-                    { "host-function-key-1", "test-key" }
-                },
-                System = new Dictionary<string, string>
-                {
-                    { "host-system-key-1", "test-key" }
-                }
-            };
-            hostAssignmentContext.Secrets = secrets;
-            hostAssignmentContext.MSIContext = new MSIContext();
-
-            var encryptedHostAssignmentContext = GetEncryptedHostAssignmentContext(hostAssignmentContext, containerEncryptionKey);
-            var serializedContext = JsonConvert.SerializeObject(new { encryptedContext = encryptedHostAssignmentContext });
-
-            _environment.SetEnvironmentVariable(ContainerStartContext, serializedContext);
-            _environment.SetEnvironmentVariable(ContainerEncryptionKey, containerEncryptionKey);
-            AddLinuxConsumptionSettings(_environment);
+            var (hostAssignmentContext, _) = SetupHostAssignmentContext();
 
             _instanceManagerMock.Setup(m =>
                 m.SpecializeMSISidecar(It.Is<HostAssignmentContext>(context =>
                     hostAssignmentContext.Equals(context) && !context.IsWarmupRequest))).Returns(Task.FromResult(string.Empty));
 
-            _instanceManagerMock.Setup(manager => manager.StartAssignment(It.Is<HostAssignmentContext>(context => hostAssignmentContext.Equals(context) && !context.IsWarmupRequest))).Returns(true);
+            _instanceManagerMock.Setup(manager => manager.AssignInstanceAsync(It.Is<HostAssignmentContext>(context => hostAssignmentContext.Equals(context) && !context.IsWarmupRequest))).Returns(Task.FromResult(true));
 
             var initializationHostService = new AtlasContainerInitializationHostedService(_environment, _instanceManagerMock.Object, NullLogger<AtlasContainerInitializationHostedService>.Instance, _startupContextProvider);
             await initializationHostService.StartAsync(CancellationToken.None);
@@ -107,7 +85,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ContainerManagement
                 m.SpecializeMSISidecar(It.Is<HostAssignmentContext>(context =>
                     hostAssignmentContext.Equals(context) && !context.IsWarmupRequest)), Times.Once);
 
-            _instanceManagerMock.Verify(manager => manager.StartAssignment(It.Is<HostAssignmentContext>(context => hostAssignmentContext.Equals(context) && !context.IsWarmupRequest)), Times.Once);
+            _instanceManagerMock.Verify(manager => manager.AssignInstanceAsync(It.Is<HostAssignmentContext>(context => hostAssignmentContext.Equals(context) && !context.IsWarmupRequest)), Times.Once);
 
             var hostSecrets = _startupContextProvider.GetHostSecretsOrNull();
             Assert.Equal("test-key", hostSecrets.MasterKey);
@@ -120,26 +98,83 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ContainerManagement
             await initializationHostService.StartAsync(CancellationToken.None);
 
             _instanceManagerMock.Verify(m => m.SpecializeMSISidecar(It.IsAny<HostAssignmentContext>()), Times.Never);
-            _instanceManagerMock.Verify(manager => manager.StartAssignment(It.IsAny<HostAssignmentContext>()), Times.Never);
+            _instanceManagerMock.Verify(manager => manager.AssignInstanceAsync(It.IsAny<HostAssignmentContext>()), Times.Never);
         }
 
         [Fact]
         public async Task Assigns_Even_If_MSI_Specialization_Fails()
         {
-            var containerEncryptionKey = TestHelpers.GenerateKeyHexString();
+            var (hostAssignmentContext, _) = SetupHostAssignmentContext();
+
+            _instanceManagerMock.Setup(m =>
+                m.SpecializeMSISidecar(It.Is<HostAssignmentContext>(context =>
+                    hostAssignmentContext.Equals(context) && !context.IsWarmupRequest))).Returns(Task.FromResult("msi-specialization-error"));
+
+            _instanceManagerMock.Setup(manager => manager.AssignInstanceAsync(It.Is<HostAssignmentContext>(context => hostAssignmentContext.Equals(context) && !context.IsWarmupRequest))).Returns(Task.FromResult(true));
+
+            var initializationHostService = new AtlasContainerInitializationHostedService(_environment, _instanceManagerMock.Object, NullLogger<AtlasContainerInitializationHostedService>.Instance, _startupContextProvider);
+            await initializationHostService.StartAsync(CancellationToken.None);
+
+            _instanceManagerMock.Verify(m =>
+                m.SpecializeMSISidecar(It.Is<HostAssignmentContext>(context =>
+                    hostAssignmentContext.Equals(context) && !context.IsWarmupRequest)), Times.Once);
+
+            _instanceManagerMock.Verify(manager => manager.AssignInstanceAsync(It.Is<HostAssignmentContext>(context => hostAssignmentContext.Equals(context) && !context.IsWarmupRequest)), Times.Once);
+
+            var hostSecrets = _startupContextProvider.GetHostSecretsOrNull();
+            Assert.Equal("test-key", hostSecrets.MasterKey);
+        }
+
+        [Fact]
+        public async Task AssignInstance_Failure_Logged()
+        {
+            var (hostAssignmentContext, _) = SetupHostAssignmentContext();
+
+            _instanceManagerMock.Setup(m =>
+                m.SpecializeMSISidecar(It.Is<HostAssignmentContext>(context =>
+                    hostAssignmentContext.Equals(context) && !context.IsWarmupRequest)))
+                .Returns(Task.FromResult(string.Empty));
+
+            // Setup assignment to throw
+            _instanceManagerMock.Setup(manager =>
+                manager.AssignInstanceAsync(It.Is<HostAssignmentContext>(context =>
+                    hostAssignmentContext.Equals(context) && !context.IsWarmupRequest)))
+                .ThrowsAsync(new InvalidOperationException("Assignment failed"));
+
+            var logger = new TestLogger<AtlasContainerInitializationHostedService>();
+
+            var initializationHostService = new AtlasContainerInitializationHostedService(
+                _environment,
+                _instanceManagerMock.Object,
+                logger,
+                _startupContextProvider);
+
+            await initializationHostService.StartAsync(CancellationToken.None);
+
+            // Verify assignment was attempted
+            _instanceManagerMock.Verify(manager =>
+                manager.AssignInstanceAsync(It.Is<HostAssignmentContext>(context =>
+                    hostAssignmentContext.Equals(context) && !context.IsWarmupRequest)), Times.Once);
+
+            // Verify error was logged
+            Assert.Contains(logger.GetLogMessages(), m =>
+                m.Level == LogLevel.Error &&
+                m.Exception?.Message == "Assignment failed");
+
+        }
+
+        private (HostAssignmentContext context, string serializedContext) SetupHostAssignmentContext(string containerEncryptionKey = null)
+        {
+            containerEncryptionKey ??= TestHelpers.GenerateKeyHexString();
             var hostAssignmentContext = GetHostAssignmentContext();
-            var secrets = new FunctionAppSecrets();
-            secrets.Host = new FunctionAppSecrets.HostSecrets
+            var secrets = new FunctionAppSecrets
             {
-                Master = "test-key",
-                Function = new Dictionary<string, string>
-                {
-                    { "host-function-key-1", "test-key" }
-                },
-                System = new Dictionary<string, string>
-                {
-                    { "host-system-key-1", "test-key" }
-                }
+                Host = new FunctionAppSecrets.HostSecrets
+                    {
+                        Master = "test-key",
+                        Function = new Dictionary<string, string> {{ "host-function-key-1", "test-key" }},
+                        System = new Dictionary<string, string> {{ "host-system-key-1", "test-key" }}
+                    }
             };
             hostAssignmentContext.Secrets = secrets;
             hostAssignmentContext.MSIContext = new MSIContext();
@@ -151,23 +186,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ContainerManagement
             _environment.SetEnvironmentVariable(ContainerEncryptionKey, containerEncryptionKey);
             AddLinuxConsumptionSettings(_environment);
 
-            _instanceManagerMock.Setup(m =>
-                m.SpecializeMSISidecar(It.Is<HostAssignmentContext>(context =>
-                    hostAssignmentContext.Equals(context) && !context.IsWarmupRequest))).Returns(Task.FromResult("msi-specialization-error"));
-
-            _instanceManagerMock.Setup(manager => manager.StartAssignment(It.Is<HostAssignmentContext>(context => hostAssignmentContext.Equals(context) && !context.IsWarmupRequest))).Returns(true);
-
-            var initializationHostService = new AtlasContainerInitializationHostedService(_environment, _instanceManagerMock.Object, NullLogger<AtlasContainerInitializationHostedService>.Instance, _startupContextProvider);
-            await initializationHostService.StartAsync(CancellationToken.None);
-
-            _instanceManagerMock.Verify(m =>
-                m.SpecializeMSISidecar(It.Is<HostAssignmentContext>(context =>
-                    hostAssignmentContext.Equals(context) && !context.IsWarmupRequest)), Times.Once);
-
-            _instanceManagerMock.Verify(manager => manager.StartAssignment(It.Is<HostAssignmentContext>(context => hostAssignmentContext.Equals(context) && !context.IsWarmupRequest)), Times.Once);
-
-            var hostSecrets = _startupContextProvider.GetHostSecretsOrNull();
-            Assert.Equal("test-key", hostSecrets.MasterKey);
+            return (hostAssignmentContext, serializedContext);
         }
 
         private static string GetEncryptedHostAssignmentContext(HostAssignmentContext hostAssignmentContext, string containerEncryptionKey)
