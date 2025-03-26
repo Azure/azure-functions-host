@@ -14,3 +14,4 @@
 - Adding support for faas.invoke_duration metric and other spec related updates (#10929)
 - Increased the GC allocation budget value to improve cold start (#10953)
 - Fixed bug that could result in "Binding names must be unique" error (#10938)
+- Memory allocation optimizations in `RpcWorkerConfigFactory.AddProviders` (#10959)
