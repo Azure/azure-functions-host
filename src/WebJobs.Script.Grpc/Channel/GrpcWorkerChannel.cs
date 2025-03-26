@@ -1718,7 +1718,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             if (isOtelEnabled)
             {
                 Activity.Current?.AddTag(ResourceSemanticConventions.FaaSName, context.FunctionMetadata.Name);
-                Activity.Current?.AddTag(ResourceSemanticConventions.FaaSTrigger, OpenTelemetryConstants.ResolveTriggerType(context.FunctionMetadata?.Trigger?.Type));
             }
         }
 

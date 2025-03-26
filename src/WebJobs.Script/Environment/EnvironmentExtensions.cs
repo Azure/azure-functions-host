@@ -230,15 +230,24 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <returns><see cref="true"/> if running in the FlexConsumption Sku, false otherwise.</returns>
         public static bool IsFlexConsumptionSku(this IEnvironment environment)
         {
+            // SKU is part of Flex Consumption placeholder environment vars, so should always be present
             string value = environment.GetEnvironmentVariable(AzureWebsiteSku);
             if (string.Equals(value, ScriptConstants.FlexConsumptionSku, StringComparison.OrdinalIgnoreCase))
             {
                 return true;
             }
 
-            // when in placeholder mode, site settings like SKU are not available
-            // to enable this check to run in both modes, we check additional settings
-            return environment.IsLinuxConsumptionOnLegion();
+            // In the past, SKU was not set in placeholder mode, so the following additional
+            // checks were performed. May not be needed anymore.
+            if (!environment.IsConsumptionOnLegion())
+            {
+                // not running on Legion, so not Flex Consumption
+                return false;
+            }
+
+            // If we're running on Legion and the app isn't CV1 on Legion,
+            // then it's Flex
+            return !environment.WebsiteSkuIsDynamic();
         }
 
         /// <summary>
@@ -317,7 +326,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <returns><see cref="true"/> if running in a Linux Consumption App Service app; otherwise, false.</returns>
         public static bool IsAnyLinuxConsumption(this IEnvironment environment)
         {
-            return (environment.IsLinuxConsumptionOnAtlas() || environment.IsFlexConsumptionSku()) && !environment.IsManagedAppEnvironment();
+            return (environment.IsLinuxConsumptionOnAtlas() || environment.IsFlexConsumptionSku() || environment.IsLinuxConsumptionOnLegion()) && !environment.IsManagedAppEnvironment();
         }
 
         public static bool IsLinuxConsumptionOnAtlas(this IEnvironment environment)
@@ -327,12 +336,47 @@ namespace Microsoft.Azure.WebJobs.Script
                    string.IsNullOrEmpty(environment.GetEnvironmentVariable(LegionServiceHost));
         }
 
-        private static bool IsLinuxConsumptionOnLegion(this IEnvironment environment)
+        private static bool IsConsumptionOnLegion(this IEnvironment environment)
         {
             return !environment.IsAppService() &&
                    (!string.IsNullOrEmpty(environment.GetEnvironmentVariable(ContainerName)) ||
                    !string.IsNullOrEmpty(environment.GetEnvironmentVariable(WebsitePodName))) &&
                    !string.IsNullOrEmpty(environment.GetEnvironmentVariable(LegionServiceHost));
+        }
+
+        /// <summary>
+        /// Returns a value indicating whether the app is V1 Linux Consumption running on Legion.
+        /// </summary>
+        /// <param name="environment">The environment to verify.</param>
+        /// <returns><see cref="true"/> if the app is V1 Linux Consumption running on Legion; otherwise, <see cref="false"/>.</returns>
+        public static bool IsLinuxConsumptionOnLegion(this IEnvironment environment)
+        {
+            return IsConsumptionOnLegion(environment) && environment.WebsiteSkuIsDynamic();
+        }
+
+        /// <summary>
+        /// Checks both WEBSITE_SKU and WEBSITE_SKU_NAME and returns true IFF one is
+        /// set to "Dynamic".
+        /// </summary>
+        /// <param name="environment">The environment to check.</param>
+        /// <returns><see cref="true"/> if the sku is Dynamic; otherwise, <see cref="false"/>.</returns>
+        public static bool WebsiteSkuIsDynamic(this IEnvironment environment)
+        {
+            string value = environment.GetEnvironmentVariable(AzureWebsiteSku);
+            if (string.Equals(value, ScriptConstants.DynamicSku, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            // Linux Consumption uses WEBSITE_SKU_NAME but is migrating to use WEBSITE_SKU.
+            // So for now, we must check both.
+            value = environment.GetEnvironmentVariable(AzureWebsiteSkuName);
+            if (string.Equals(value, ScriptConstants.DynamicSku, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            return false;
         }
 
         /// <summary>

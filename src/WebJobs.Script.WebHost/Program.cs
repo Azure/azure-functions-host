@@ -109,9 +109,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 AppDomain.CurrentDomain.UnhandledException += CurrentDomainOnUnhandledExceptionInLinuxConsumption;
             }
-            else if (SystemEnvironment.Instance.IsFlexConsumptionSku())
+            else if (SystemEnvironment.Instance.IsFlexConsumptionSku() ||
+                SystemEnvironment.Instance.IsLinuxConsumptionOnLegion())
             {
-                //todo: Replace with legion specific logger.
+                // TODO: Replace with legion specific logger?
                 AppDomain.CurrentDomain.UnhandledException += CurrentDomainOnUnhandledExceptionInLinuxConsumption;
             }
             else if (SystemEnvironment.Instance.IsLinuxAppService())

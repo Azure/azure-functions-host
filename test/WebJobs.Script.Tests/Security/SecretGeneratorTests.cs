@@ -28,7 +28,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             // "Master01" can be used as the next string literal if this seed
             // is versioned. The bytes are reversed in an attempt to retain a
             // common prefix (left-hand data value) for the the seed if changed.
-            ulong expectedSeed = BitConverter.ToUInt64(Encoding.ASCII.GetBytes("Master00").Reverse().ToArray());
+            byte[] bytes = Encoding.ASCII.GetBytes("Master00");
+            Array.Reverse(bytes);
+            ulong expectedSeed = BitConverter.ToUInt64(bytes.ToArray());
             Assert.Equal(expectedSeed, SecretGenerator.MasterKeySeed);
 
             string secret = SecretGenerator.GenerateMasterKeyValue();
@@ -42,7 +44,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             // "System01" can be used as the next string literal if this seed
             // is versioned. The bytes are reversed in an attempt to retain a
             // common prefix (left-hand data value) for the the seed if changed.
-            ulong expectedSeed = BitConverter.ToUInt64(Encoding.ASCII.GetBytes("System00").Reverse().ToArray());
+            byte[] bytes = Encoding.ASCII.GetBytes("System00");
+            Array.Reverse(bytes);
+            ulong expectedSeed = BitConverter.ToUInt64(bytes.ToArray());
             Assert.Equal(expectedSeed, SecretGenerator.SystemKeySeed);
 
             string secret = SecretGenerator.GenerateSystemKeyValue();
@@ -56,7 +60,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             // "Functi01" can be used as the next string literal if this seed
             // is versioned. The bytes are reversed in an attempt to retain a
             // common prefix (left-hand data value) for the the seed if changed.
-            ulong expectedSeed = BitConverter.ToUInt64(Encoding.ASCII.GetBytes("Functi00").Reverse().ToArray());
+            byte[] bytes = Encoding.ASCII.GetBytes("Functi00");
+            Array.Reverse(bytes);
+            ulong expectedSeed = BitConverter.ToUInt64(bytes.ToArray());
             Assert.Equal(expectedSeed, SecretGenerator.FunctionKeySeed);
 
             string secret = SecretGenerator.GenerateFunctionKeyValue();

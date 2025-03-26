@@ -183,10 +183,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         }
 
         [Theory]
+        [Trait(TestTraits.Group, TestTraits.LinuxConsumptionMetricsTests)]
         [InlineData("FlexConsumption", "", "", "", true)] // not a valid configuration, but testing for thoroughness
         [InlineData(null, "", "container-name", "1", true)] // simulate placeholder mode where SKU not available yet
         [InlineData("FlexConsumption", "", "container-name", "1", true)] // expected state when specialized
         [InlineData(null, "website-instance-id", "container-name", "1", false)] // not a valid configuration, but testing for thoroughness
+        [InlineData("Dynamic", "", "container-name", "1", false)] // Linux Consumption on Legion
         [InlineData("Dynamic", "", "", "", false)]
         [InlineData("ElasticPremium", "", "", "", false)]
         [InlineData("", "", "", "", false)]
@@ -202,37 +204,41 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         }
 
         [Theory]
-        [InlineData(true, false, false, true, false)]
-        [InlineData(false, true, false, true, false)]
-        [InlineData(false, true, false, true, true)]
-        [InlineData(true, true, false, true, false)]
-        [InlineData(true, true, false, true, true)]
-        [InlineData(false, false, false, false, false)]
-        [InlineData(false, false, true, false, false)]
-        public void IsAnyLinuxConsumption_ReturnsExpectedResult(bool isLinuxConsumptionOnAtlas, bool isLinuxConsumptionOnLegion, bool isManagedAppEnvironment, bool expectedValue, bool setPodName)
+        [Trait(TestTraits.Group, TestTraits.LinuxConsumptionMetricsTests)]
+        [InlineData("RandomContainerName", null, null, false, null, true)] // Linux Consumption on Atlas
+        [InlineData("RandomContainerName", null, "RandomLegionServiceHostName", false, null, true)] // Flex Consumption on Legion
+        [InlineData(null, "RandomPodName", "RandomLegionServiceHostName", false, null, true)] // Flex Consumption on Legion
+        [InlineData(null, null, null, false, "FlexConsumption", true)] // Flex Consumption on Legion
+        [InlineData("RandomContainerName", null, "RandomLegionServiceHostName", false, "Dynamic", true)] // Linux Consumption on Legion
+        [InlineData(null, null, null, false, null, false)]
+        [InlineData(null, null, null, true, null, false)] // Managed App Environment
+        [InlineData("RandomContainerName", null, null, true, null, false)] // Managed App Environment
+        public void IsAnyLinuxConsumption_ReturnsExpectedResult(string containerName, string podName, string legionServiceHostName, bool isManagedAppEnvironment, string sku, bool expectedValue)
         {
             IEnvironment env = new TestEnvironment();
-            if (isLinuxConsumptionOnAtlas)
+            if (!string.IsNullOrEmpty(containerName))
             {
-                env.SetEnvironmentVariable(ContainerName, "RandomContainerName");
+                env.SetEnvironmentVariable(ContainerName, containerName);
             }
 
-            if (isLinuxConsumptionOnLegion)
+            if (!string.IsNullOrEmpty(podName))
             {
-                if (setPodName)
-                {
-                    env.SetEnvironmentVariable(WebsitePodName, "RandomPodName");
-                }
-                else
-                {
-                    env.SetEnvironmentVariable(ContainerName, "RandomContainerName");
-                }
-                env.SetEnvironmentVariable(LegionServiceHost, "RandomLegionServiceHostName");
+                env.SetEnvironmentVariable(WebsitePodName, podName);
+            }
+
+            if (!string.IsNullOrEmpty(legionServiceHostName))
+            {
+                env.SetEnvironmentVariable(LegionServiceHost, legionServiceHostName);
             }
 
             if (isManagedAppEnvironment)
             {
                 env.SetEnvironmentVariable(ManagedEnvironment, "true");
+            }
+
+            if (!string.IsNullOrEmpty(sku))
+            {
+                env.SetEnvironmentVariable(AzureWebsiteSku, sku);
             }
 
             Assert.Equal(expectedValue, env.IsAnyLinuxConsumption());
@@ -271,6 +277,44 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             }
 
             Assert.Equal(expectedValue, env.IsManagedAppEnvironment());
+        }
+
+        [Theory]
+        [Trait(TestTraits.Group, TestTraits.LinuxConsumptionMetricsTests)]
+        [InlineData(null, null, null, null, false)]
+        [InlineData(null, null, "", "", false)]
+        [InlineData(null, null, ScriptConstants.DynamicSku, null, false)]
+        [InlineData(null, null, null, ScriptConstants.DynamicSku, false)]
+        [InlineData("RandomPodName", "RandomLegionServiceHostName", null, null, false)]
+        [InlineData("RandomPodName", "RandomLegionServiceHostName", "", "", false)]
+        [InlineData("RandomPodName", "RandomLegionServiceHostName", ScriptConstants.FlexConsumptionSku, null, false)]
+        [InlineData("RandomPodName", "RandomLegionServiceHostName", null, ScriptConstants.DynamicSku, true)]
+        [InlineData("RandomPodName", "RandomLegionServiceHostName", ScriptConstants.DynamicSku, null, true)]
+        public void IsLinuxConsumptionOnLegion_ReturnsExpectedResult(string websitePodName, string legionServiceHostName, string websiteSku, string websiteSkuName, bool expectedValue)
+        {
+            IEnvironment env = new TestEnvironment();
+
+            if (!string.IsNullOrEmpty(websitePodName))
+            {
+                env.SetEnvironmentVariable(WebsitePodName, websitePodName);
+            }
+
+            if (!string.IsNullOrEmpty(legionServiceHostName))
+            {
+                env.SetEnvironmentVariable(LegionServiceHost, legionServiceHostName);
+            }
+
+            if (!string.IsNullOrEmpty(websiteSku))
+            {
+                env.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, websiteSku);
+            }
+
+            if (!string.IsNullOrEmpty(websiteSkuName))
+            {
+                env.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSkuName, websiteSkuName);
+            }
+
+            Assert.Equal(expectedValue, env.IsLinuxConsumptionOnLegion());
         }
 
         [Theory]
