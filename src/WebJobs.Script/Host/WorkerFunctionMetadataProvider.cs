@@ -251,6 +251,10 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             HashSet<string> bindingNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
+            // This method takes the RawBindings and adds them to the FunctionMetadata object. It's possible
+            // to call this twice, and we don't want to duplicate the bindings in that case.
+            function.Bindings.Clear();
+
             foreach (string binding in rawBindings)
             {
                 var deserializedObj = JsonConvert.DeserializeObject<JObject>(binding, _dateTimeSerializerSettings);
