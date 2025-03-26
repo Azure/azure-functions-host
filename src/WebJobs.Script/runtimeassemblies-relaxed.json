@@ -352,6 +352,10 @@
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
+      "name": "Microsoft.Azure.Functions.Platform.Metrics.LinuxConsumption",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
       "name": "Microsoft.Azure.WebJobs",
       "resolutionPolicy": "minorMatchOrLower"
     },

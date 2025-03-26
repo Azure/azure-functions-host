@@ -464,6 +464,10 @@
       "resolutionPolicy": "private"
     },
     {
+      "name": "Microsoft.Azure.Functions.Platform.Metrics.LinuxConsumption",
+      "resolutionPolicy": "private"
+    },
+    {
       "name": "Microsoft.Azure.Cosmos.Table",
       "resolutionPolicy": "private"
     },
