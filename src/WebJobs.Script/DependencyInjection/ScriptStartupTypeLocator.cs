@@ -133,7 +133,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
             else
             {
                 extensionsMetadataPath = Path.Combine(_rootScriptPath, "bin");
-                if (Utility.TryResolveExtensionsMetadataPath(_rootScriptPath, out string resolvedPath, out baseProbingPath))
+                if (Utility.TryResolveExtensionsMetadataPath(_rootScriptPath, _logger, out string resolvedPath, out baseProbingPath))
                 {
                     extensionsMetadataPath = resolvedPath;
                 }

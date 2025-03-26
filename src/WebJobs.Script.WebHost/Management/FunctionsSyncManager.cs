@@ -553,7 +553,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 }
             }
 
-            var durableMajorVersion = await GetDurableMajorVersionAsync(hostJson, hostOptions);
+            var durableMajorVersion = await GetDurableMajorVersionAsync(hostJson, hostOptions, _logger);
             if (durableMajorVersion == null || durableMajorVersion.Equals("1"))
             {
                 return GetDurableV1Config(durableHostConfig);
@@ -566,7 +566,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         }
 
         // This is a stopgap approach to get the Durable extension version. It duplicates some logic in ExtensionManager.cs.
-        private async Task<string> GetDurableMajorVersionAsync(JObject hostJson, ScriptJobHostOptions hostOptions)
+        private async Task<string> GetDurableMajorVersionAsync(JObject hostJson, ScriptJobHostOptions hostOptions, ILogger logger)
         {
             string metadataFilePath;
             bool isUsingBundles = hostJson != null && hostJson.TryGetValue("extensionBundle", StringComparison.OrdinalIgnoreCase, out _);
@@ -596,7 +596,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 }
 
                 // If the app is not using bundles, we look for extensions.json
-                if (!Utility.TryResolveExtensionsMetadataPath(hostOptions.RootScriptPath, out string metadataDirectoryPath, out _))
+                if (!Utility.TryResolveExtensionsMetadataPath(hostOptions.RootScriptPath, logger, out string metadataDirectoryPath, out _))
                 {
                     return null;
                 }
