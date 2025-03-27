@@ -3,19 +3,11 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net.Http;
-using System.Text;
 using System.Threading.Tasks;
-using Microsoft.Azure.Storage;
-using Microsoft.Azure.Storage.File;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
-using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
-using Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 {
@@ -29,6 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private readonly IEnvironment _environment;
         private readonly HttpClient _client;
         private readonly IScriptWebHostEnvironment _webHostEnvironment;
+        private Task _assignment;
 
         private HostAssignmentContext _assignmentContext;
 
@@ -44,7 +37,65 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         public abstract Task<string> SpecializeMSISidecar(HostAssignmentContext context);
 
+        public async Task<bool> AssignInstanceAsync(HostAssignmentContext context)
+        {
+            if (!IsValidEnvironment(context))
+            {
+                return false;
+            }
+
+            if (context.IsWarmupRequest)
+            {
+                await HandleWarmupRequestAsync(context);
+                return true;
+            }
+
+            lock (_assignmentLock)
+            {
+                if (_assignmentContext == null)
+                {
+                    _assignmentContext = context;
+                    _assignment = AssignAsync(context);
+                }
+                else if (!_assignmentContext.Equals(context))
+                {
+                    return false;
+                }
+            }
+
+            await _assignment;
+            return true;
+        }
+
         public bool StartAssignment(HostAssignmentContext context)
+        {
+            if (!IsValidEnvironment(context))
+            {
+                return false;
+            }
+
+            if (context.IsWarmupRequest)
+            {
+                Task.Run(async () => await HandleWarmupRequestAsync(context));
+                return true;
+            }
+
+            lock (_assignmentLock)
+            {
+                if (_assignmentContext != null)
+                {
+                    return _assignmentContext.Equals(context);
+                }
+                _assignmentContext = context;
+                _assignment = AssignAsync(context);
+            }
+
+            return true;
+        }
+
+        public abstract Task<string> ValidateContext(HostAssignmentContext assignmentContext);
+
+        private bool IsValidEnvironment(HostAssignmentContext context)
         {
             if (!_webHostEnvironment.InStandbyMode)
             {
@@ -62,24 +113,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 return false;
             }
 
-            if (context.IsWarmupRequest)
-            {
-                // Based on profiling download code jit-ing holds up cold start.
-                // Pre-jit to avoid paying the cost later.
-                Task.Run(async () => await DownloadWarmupAsync(context.GetRunFromPkgContext()));
-                return true;
-            }
-            else if (_assignmentContext == null)
-            {
-                lock (_assignmentLock)
-                {
-                    if (_assignmentContext != null)
-                    {
-                        return _assignmentContext.Equals(context);
-                    }
-                    _assignmentContext = context;
-                }
+            return true;
+        }
 
+        private async Task AssignAsync(HostAssignmentContext assignmentContext)
+        {
+            await Task.Yield(); // This may be called from within a lock. When AssignAsync is awaited, control flow will return to the caller and the lock will be released when it exits the lock scope.
+
+            try
+            {
                 _logger.LogInformation($"Starting Assignment. Cloud Name: {_environment.GetCloudName()}");
 
                 // set a flag which will cause any incoming http requests to buffer
@@ -90,24 +132,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 // will be delayed until complete
                 _webHostEnvironment.DelayRequests();
 
-                // start the specialization process in the background
-                Task.Run(async () => await AssignAsync(context));
-
-                return true;
-            }
-            else
-            {
-                // No lock needed here since _assignmentContext is not null when we are here
-                return _assignmentContext.Equals(context);
-            }
-        }
-
-        public abstract Task<string> ValidateContext(HostAssignmentContext assignmentContext);
-
-        private async Task AssignAsync(HostAssignmentContext assignmentContext)
-        {
-            try
-            {
                 // first make all environment and file system changes required for
                 // the host to be specialized
                 _logger.LogInformation("Applying {environmentCount} app setting(s)", assignmentContext.Environment.Count);
@@ -131,6 +155,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
                 _webHostEnvironment.ResumeRequests();
             }
+        }
+
+        private async Task HandleWarmupRequestAsync(HostAssignmentContext assignmentContext)
+        {
+            try
+            {
+                await DownloadWarmupAsync(assignmentContext.GetRunFromPkgContext());
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Warmup download failed");
+                await _meshServiceClient.NotifyHealthEvent(ContainerHealthEventType.Warning, GetType(), "Warmup download failed");
+                throw;
+            }
+            return;
         }
 
         protected abstract Task ApplyContextAsync(HostAssignmentContext assignmentContext);
