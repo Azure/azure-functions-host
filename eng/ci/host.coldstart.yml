@@ -50,13 +50,13 @@ extends:
       displayName: Record latency(Windows)
       jobs:
       - ${{ each appId in split(variables.runInstances, ',') }}:
-        - template: /eng/ci/templates/official/jobs/run-coldstart.yml@self
-          parameters:
-            description: .NET9 Web Application
-            functionAppName: HelloHttpNet9
-            instanceId: ${{ appId }} 
-            collectPerfViewProfileOnWindows: ${{ parameters.collectPerfViewProfileOnWindows }}
-            perfViewCollectArguments: ${{ parameters.perfViewCollectArguments }}
+        # - template: /eng/ci/templates/official/jobs/run-coldstart.yml@self
+        #   parameters:
+        #     description: .NET9 Web Application
+        #     functionAppName: HelloHttpNet9
+        #     instanceId: ${{ appId }} 
+        #     collectPerfViewProfileOnWindows: ${{ parameters.collectPerfViewProfileOnWindows }}
+        #     perfViewCollectArguments: ${{ parameters.perfViewCollectArguments }}
         - template: /eng/ci/templates/official/jobs/run-coldstart.yml@self
           parameters:
             description: .NET9 Worker Application
@@ -69,12 +69,12 @@ extends:
       displayName: Process results(Windows)
       dependsOn: RunWindows
       jobs:
-      - template: /eng/ci/templates/official/jobs/process-coldstart.yml@self
-        parameters:
-          functionAppName: HelloHttpNet9
-          description: .NET9 Web Application
-          runInstances: 
-            items: ${{ split(variables.runInstances, ',') }}
+      # - template: /eng/ci/templates/official/jobs/process-coldstart.yml@self
+      #   parameters:
+      #     functionAppName: HelloHttpNet9
+      #     description: .NET9 Web Application
+      #     runInstances: 
+      #       items: ${{ split(variables.runInstances, ',') }}
       - template: /eng/ci/templates/official/jobs/process-coldstart.yml@self
         parameters:
           functionAppName: HelloHttpNet9NoProxy
@@ -82,40 +82,40 @@ extends:
           runInstances: 
             items: ${{ split(variables.runInstances, ',') }}
 
-# # LINUX
-    - stage: RunLinux
-      dependsOn: []
-      displayName:  Record latency(Linux)
-      jobs:
-      - ${{ each appId in split(variables.runInstances, ',') }}:
-        - template: /eng/ci/templates/official/jobs/run-coldstart.yml@self
-          parameters:
-            description: .NET9 Web Application
-            functionAppName: HelloHttpNet9
-            instanceId: ${{ appId }}
-            os: Linux
-        - template: /eng/ci/templates/official/jobs/run-coldstart.yml@self
-          parameters:
-            description: .NET9 Worker Application
-            functionAppName: HelloHttpNet9NoProxy
-            instanceId: ${{ appId }}
-            os: Linux
+# # # LINUX
+#     - stage: RunLinux
+#       dependsOn: []
+#       displayName:  Record latency(Linux)
+#       jobs:
+#       - ${{ each appId in split(variables.runInstances, ',') }}:
+#         - template: /eng/ci/templates/official/jobs/run-coldstart.yml@self
+#           parameters:
+#             description: .NET9 Web Application
+#             functionAppName: HelloHttpNet9
+#             instanceId: ${{ appId }}
+#             os: Linux
+#         - template: /eng/ci/templates/official/jobs/run-coldstart.yml@self
+#           parameters:
+#             description: .NET9 Worker Application
+#             functionAppName: HelloHttpNet9NoProxy
+#             instanceId: ${{ appId }}
+#             os: Linux
   
-    - stage: CalculateLinux
-      displayName:  Process results(Linux)
-      dependsOn: RunLinux
-      jobs:
-      - template: /eng/ci/templates/official/jobs/process-coldstart.yml@self
-        parameters:
-          functionAppName: HelloHttpNet9
-          description: .NET9 Web Application
-          os: Linux
-          runInstances: 
-            items: ${{ split(variables.runInstances, ',') }}
-      - template: /eng/ci/templates/official/jobs/process-coldstart.yml@self
-        parameters:
-          functionAppName: HelloHttpNet9NoProxy
-          description: .NET9 Worker Application
-          os: Linux
-          runInstances: 
-            items: ${{ split(variables.runInstances, ',') }}
+#     - stage: CalculateLinux
+#       displayName:  Process results(Linux)
+#       dependsOn: RunLinux
+#       jobs:
+#       - template: /eng/ci/templates/official/jobs/process-coldstart.yml@self
+#         parameters:
+#           functionAppName: HelloHttpNet9
+#           description: .NET9 Web Application
+#           os: Linux
+#           runInstances: 
+#             items: ${{ split(variables.runInstances, ',') }}
+#       - template: /eng/ci/templates/official/jobs/process-coldstart.yml@self
+#         parameters:
+#           functionAppName: HelloHttpNet9NoProxy
+#           description: .NET9 Worker Application
+#           os: Linux
+#           runInstances: 
+#             items: ${{ split(variables.runInstances, ',') }}
