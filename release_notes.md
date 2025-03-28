@@ -16,3 +16,4 @@
 - Increased the GC allocation budget value to improve cold start (#10953)
 - Fixed bug that could result in "Binding names must be unique" error (#10938)
 - Fix race condition that leads the host to initialize placeholder (warmup) function in Linux environments (#10848)
+- Updating Azure.Core and OTel related packages, recording exception and retaining "Microsoft.Azure.WebJobs" logs  (#10965)
