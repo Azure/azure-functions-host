@@ -56,15 +56,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         private readonly ScriptApplicationHostOptions _hostOptions;
         private readonly WebFunctionsManager _webFunctionsManager;
         private readonly Mock<IEnvironment> _mockEnvironment;
-        private readonly Mock<HttpRequest> mockHttpRequest;
+        private readonly Mock<HttpRequest> _mockHttpRequest;
         private readonly IFileSystem _fileSystem;
         private readonly FunctionsHostingConfigOptions _hostingConfigOptions;
 
         public WebFunctionsManagerTests()
         {
-            mockHttpRequest = new Mock<HttpRequest>();
-            mockHttpRequest.Setup(r => r.Scheme).Returns("https");
-            mockHttpRequest.Setup(r => r.Host).Returns(new HostString(TestHostName));
+            _mockHttpRequest = new Mock<HttpRequest>();
+            _mockHttpRequest.Setup(r => r.Scheme).Returns("https");
+            _mockHttpRequest.Setup(r => r.Host).Returns(new HostString(TestHostName));
 
             _testRootScriptPath = Path.GetTempPath();
             _testHostConfigFilePath = Path.Combine(_testRootScriptPath, ScriptConstants.HostMetadataFileName);
@@ -127,7 +127,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var emptyOptions = new JobHostInternalStorageOptions();
             var azureBlobStorageProvider = TestHelpers.GetAzureBlobStorageProvider(configurationMock.Object, storageOptions: emptyOptions);
             var functionsSyncManager = new FunctionsSyncManager(hostIdProviderMock.Object, optionsMonitor, loggerFactory.CreateLogger<FunctionsSyncManager>(), httpClientFactory, secretManagerProviderMock.Object, mockWebHostEnvironment.Object, _mockEnvironment.Object, hostNameProvider, functionMetadataManager, azureBlobStorageProvider, hostingConfigOptionsWrapper, mockScriptHostManager.Object);
-            _webFunctionsManager = new WebFunctionsManager(optionsMonitor, loggerFactory, httpClientFactory, secretManagerProviderMock.Object, functionsSyncManager, hostNameProvider, functionMetadataManager, metadataProvider, new TestOptionsMonitor<LanguageWorkerOptions>(TestHelpers.GetTestLanguageWorkerOptions()), hostingConfigOptionsWrapper);
+            _webFunctionsManager = new WebFunctionsManager(optionsMonitor, loggerFactory, httpClientFactory, secretManagerProviderMock.Object, functionsSyncManager, hostNameProvider, functionMetadataManager, metadataProvider, new TestOptionsMonitor<LanguageWorkerOptions>(TestHelpers.GetTestLanguageWorkerOptions()), new TestOptionsMonitor<FunctionsHostingConfigOptions>(_hostingConfigOptions));
         }
 
         [Theory]
@@ -172,7 +172,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         [InlineData(false)]
         public async Task TestDataShouldBeIgnoredIfSuppressionFeatureIsEnabled(bool shouldSuppressTestData)
         {
-            _hostingConfigOptions.EnableTestDataSuppression = shouldSuppressTestData;
+            _hostingConfigOptions.IsTestDataSuppressionEnabled = shouldSuppressTestData;
 
             var functionMetadataResponse = new Management.Models.FunctionMetadataResponse
             {
@@ -183,7 +183,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             string testDataFilePath = Path.Combine(_hostOptions.TestDataPath, "function1.dat");
             var fileBaseMock = Mock.Get(_fileSystem.File);
 
-            var result = await _webFunctionsManager.CreateOrUpdate("function1", functionMetadataResponse, mockHttpRequest.Object);
+            var result = await _webFunctionsManager.CreateOrUpdate("function1", functionMetadataResponse, _mockHttpRequest.Object);
 
             Assert.True(result.Success);
 

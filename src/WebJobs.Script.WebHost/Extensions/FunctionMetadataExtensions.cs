@@ -55,7 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
                 response.ConfigHref = VirtualFileSystem.FilePathToVfsUri(functionMetadataFilePath, baseUrl, hostOptions);
             }
 
-            if (!string.IsNullOrEmpty(hostOptions.TestDataPath) && !excludeTestData)
+            if (!excludeTestData && !string.IsNullOrEmpty(hostOptions.TestDataPath))
             {
                 var testDataFilePath = functionMetadata.GetTestDataFilePath(hostOptions);
                 response.TestDataHref = VirtualFileSystem.FilePathToVfsUri(testDataFilePath, baseUrl, hostOptions);

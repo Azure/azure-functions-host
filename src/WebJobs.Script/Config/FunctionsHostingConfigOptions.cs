@@ -150,7 +150,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         /// <summary>
         /// Gets or sets a value indicating whether to ignore the TestData property during read and write operations of functions metadata.
         /// </summary>
-        internal bool EnableTestDataSuppression
+        internal bool IsTestDataSuppressionEnabled
         {
             get
             {
