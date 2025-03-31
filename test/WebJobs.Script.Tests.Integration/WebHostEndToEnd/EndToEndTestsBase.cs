@@ -25,7 +25,7 @@ using Xunit;
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public abstract class EndToEndTestsBase<TTestFixture> :
-        IClassFixture<TTestFixture> where TTestFixture : EndToEndTestFixture, new()
+        IClassFixture<TTestFixture> where TTestFixture : EndToEndTestFixture
     {
         private INameResolver _nameResolver;
         private IConfiguration _configuration;

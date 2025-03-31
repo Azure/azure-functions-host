@@ -15,10 +15,10 @@ using Microsoft.Azure.Storage.Queue;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Tests.Integration.Fixtures;
 using Microsoft.Azure.WebJobs.Script.WebHost.Helpers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -32,6 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public abstract class ScriptHostEndToEndTestFixture : IAsyncLifetime
     {
+        private readonly AzuriteFixture _azurite = new();
         private readonly ScriptSettingsManager _settingsManager;
         private readonly ManualResetEventSlim _hostStartedEvent = new ManualResetEventSlim();
         private readonly string _rootPath;
@@ -93,6 +94,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public async Task InitializeAsync()
         {
+            await _azurite.InitializeAsync();
             if (!string.IsNullOrEmpty(_functionsWorkerLanguage))
             {
                 Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, _functionsWorkerLanguage);
@@ -101,8 +103,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerDynamicConcurrencyEnabled, "true");
             }
-            IConfiguration configuration = TestHelpers.GetTestConfiguration();
-            string connectionString = configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
+
+            string connectionString = _azurite.GetConnectionString();
             CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
             QueueClient = storageAccount.CreateCloudQueueClient();
             BlobClient = storageAccount.CreateCloudBlobClient();
@@ -281,6 +283,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Host.Dispose();
             }
             Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, string.Empty);
+
+            await _azurite.DisposeAsync();
         }
 
         private class TestEntity : ITableEntity

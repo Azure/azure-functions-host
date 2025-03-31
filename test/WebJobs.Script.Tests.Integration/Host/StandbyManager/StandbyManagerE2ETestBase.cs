@@ -17,6 +17,7 @@ using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
@@ -44,6 +45,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             CleanupTestDirectory();
 
             StandbyManager.ResetChangeToken();
+        }
+
+        protected virtual void ConfigureScriptHostConfiguration(IConfigurationBuilder builder)
+        {
         }
 
         protected async Task<IWebHostBuilder> CreateWebHostBuilderAsync(string testDirName, IEnvironment environment, string websiteSiteName = TestSiteName)
@@ -110,7 +115,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                         // tests based on CPU limits being hit resulting in 429 responses
                         o.DynamicThrottlesEnabled = false;
                     });
-                });
+                })
+                .ConfigureScriptHostAppConfiguration(ConfigureScriptHostConfiguration);
 
             return webHostBuilder;
         }

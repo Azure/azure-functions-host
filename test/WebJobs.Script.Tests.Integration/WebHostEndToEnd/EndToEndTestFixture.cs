@@ -13,9 +13,11 @@ using Azure.Data.Tables;
 using Microsoft.Azure.Storage.Blob;
 using Microsoft.Azure.Storage.Queue;
 using Microsoft.Azure.WebJobs.Script.BindingExtensions;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Models;
+using Microsoft.Azure.WebJobs.Script.Tests.Integration.Fixtures;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Helpers;
@@ -27,12 +29,14 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
+using Xunit.Abstractions;
 using CloudStorageAccount = Microsoft.Azure.Storage.CloudStorageAccount;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public abstract class EndToEndTestFixture : IAsyncLifetime
     {
+        private readonly AzuriteFixture _azurite = new();
         private readonly string _rootPath;
         private string _copiedRootPath;
         private string _functionsWorkerRuntime;
@@ -49,7 +53,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             bool addTestSettings = true)
         {
             FixtureId = testId;
-
             _rootPath = rootPath;
             _functionsWorkerRuntime = functionsWorkerRuntime;
             _workerProcessCount = workerProcessesCount;
@@ -101,8 +104,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             return null;
         }
 
-        public async Task InitializeAsync()
+        public virtual async Task InitializeAsync()
         {
+            await _azurite.InitializeAsync();
             string nowString = DateTime.UtcNow.ToString("yyMMdd-HHmmss");
             string GetDestPath(int counter)
             {
@@ -146,6 +150,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             FunctionsSyncManagerMock = new Mock<IFunctionsSyncManager>(MockBehavior.Strict);
             FunctionsSyncManagerMock.Setup(p => p.TrySyncTriggersAsync(It.IsAny<bool>())).ReturnsAsync(new SyncTriggersResult { Success = true });
 
+            string azuriteConnectionString = _azurite.GetConnectionString();
             Host = new TestFunctionHost(_copiedRootPath, logPath, addTestSettings: _addTestSettings,
                 configureScriptHostWebJobsBuilder: webJobsBuilder =>
                 {
@@ -159,11 +164,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 },
                 configureScriptHostAppConfiguration: configBuilder =>
                 {
+                    configBuilder.AddInMemoryCollection(new Dictionary<string, string>
+                    {
+                        { "AzureWebJobsStorage", azuriteConnectionString },
+                        { "ConnectionStrings:AzureWebJobsStorage", azuriteConnectionString },
+                    });
+
                     ConfigureScriptHost(configBuilder);
                 },
                 configureWebHostServices: s =>
                 {
                     s.AddSingleton<IEventGenerator>(_ => EventGenerator);
+
+                    // Flow this env variable to out of proc workers.
+                    s.Configure<FunctionsHostingConfigOptions>(o => o.Features["AzureWebJobsStorage"] = azuriteConnectionString);
                     ConfigureWebHost(s);
                 },
                 configureWebHostAppConfiguration: configBuilder =>
@@ -171,14 +185,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     ConfigureWebHost(configBuilder);
                 });
 
-            string connectionString = Host.JobHostServices?.GetService<IConfiguration>().GetWebJobsConnectionString(ConnectionStringNames.Storage);
-            if (!string.IsNullOrEmpty(connectionString))
+            if (!string.IsNullOrEmpty(azuriteConnectionString))
             {
-                CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
+                CloudStorageAccount storageAccount = CloudStorageAccount.Parse(azuriteConnectionString);
 
                 QueueClient = storageAccount.CreateCloudQueueClient();
                 BlobClient = storageAccount.CreateCloudBlobClient();
-                TableServiceClient = new TableServiceClient(connectionString);
+                TableServiceClient = new TableServiceClient(azuriteConnectionString);
 
                 await CreateTestStorageEntities();
             }
@@ -309,10 +322,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     // best effort
                 }
             }
+
             Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, string.Empty);
             Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerProcessCountSettingName, string.Empty);
             Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, string.Empty);
-            return Task.CompletedTask;
+            return _azurite.DisposeAsync();
         }
 
         public void AssertNoScriptHostErrors()

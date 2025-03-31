@@ -8,7 +8,7 @@
 * @azure/azure-functions-core
 
 # Adding codeowner for Python specific files such that GitHub automatically adds python folks as a reviewer.
-eng/build/Workers.Python.props @vrdmr @gavin-aguiar @YunchuWang @pdthummar @hallvictoria
+eng/build/Workers.Python.props @vrdmr @gavin-aguiar @hallvictoria
 
 # Deps.json validation file
 test/WebJobs.Script.Tests/Microsoft.Azure.WebJobs.Script.WebHost.deps.json @fabiocav @brettsam @mathewc

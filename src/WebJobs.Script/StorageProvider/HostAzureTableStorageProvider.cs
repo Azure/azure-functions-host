@@ -3,6 +3,8 @@
 
 using System;
 using Azure.Data.Tables;
+using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -15,11 +17,32 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly TableServiceClientProvider _tableServiceClientProvider;
         private readonly IConfiguration _configuration;
 
-        public HostAzureTableStorageProvider(IConfiguration configuration, ILogger<HostAzureTableStorageProvider> logger, AzureComponentFactory componentFactory, AzureEventSourceLogForwarder logForwarder)
+        public HostAzureTableStorageProvider(IScriptHostManager scriptHostManager, IConfiguration configuration, ILogger<HostAzureTableStorageProvider> logger, AzureComponentFactory componentFactory, AzureEventSourceLogForwarder logForwarder)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _tableServiceClientProvider = new TableServiceClientProvider(componentFactory, logForwarder);
-            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+
+            if (configuration is null)
+            {
+                throw new ArgumentNullException(nameof(configuration));
+            }
+
+            if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagDisableMergedWebHostScriptHostConfiguration))
+            {
+                _configuration = configuration;
+            }
+            else
+            {
+                if (scriptHostManager == null)
+                {
+                    throw new ArgumentNullException(nameof(scriptHostManager));
+                }
+
+                _configuration = new ConfigurationBuilder()
+                    .Add(new ActiveHostConfigurationSource(scriptHostManager))
+                    .AddConfiguration(configuration)
+                    .Build();
+            }
         }
 
         public bool TryCreateTableServiceClient(string connection, out TableServiceClient client)

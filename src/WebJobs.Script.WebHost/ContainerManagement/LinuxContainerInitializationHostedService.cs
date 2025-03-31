@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
@@ -51,8 +52,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
                 var assignmentContext = _startupContextProvider.SetContext(encryptedAssignmentContext);
                 await SpecializeMSISideCar(assignmentContext);
 
-                bool success = _instanceManager.StartAssignment(assignmentContext);
-                _logger.LogDebug($"StartAssignment invoked (Success={success})");
+                try
+                {
+                    bool success = await _instanceManager.AssignInstanceAsync(assignmentContext);
+                    _logger.LogDebug("AssignInstanceAsync was invoked (Success={success})", success);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to assign instance.");
+                }
             }
             else
             {

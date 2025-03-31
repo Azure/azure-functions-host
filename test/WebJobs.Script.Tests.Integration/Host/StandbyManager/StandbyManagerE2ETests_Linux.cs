@@ -7,11 +7,10 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
-using System.Reactive.Joins;
 using System.Text;
 using System.Threading.Tasks;
-using DryIoc;
 using Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Tests.Integration.Fixtures;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
@@ -20,7 +19,6 @@ using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
@@ -32,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     [Trait(TestTraits.Category, TestTraits.EndToEnd)]
     [Trait(TestTraits.Group, TestTraits.StandbyModeTestsLinux)]
-    public class StandbyManagerE2ETests_Linux : StandbyManagerE2ETestBase
+    public class StandbyManagerE2ETests_Linux(AzuriteFixture azurite) : StandbyManagerE2ETestBase, IClassFixture<AzuriteFixture>
     {
         [Fact]
         public async Task StandbyModeE2E_LinuxContainer()
@@ -212,8 +210,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await TestHelpers.CreateContentZip(contentRoot, zipFilePath, testFunctionPath);
 
             // upload the blob and get a SAS uri
-            var configuration = _httpServer.Host.Services.GetService<IConfiguration>();
-            string connectionString = configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
+            string connectionString = azurite.GetConnectionString();
             var sasUri = await TestHelpers.CreateBlobSas(connectionString, zipFilePath, "azure-functions-test", "appcontents.zip");
 
             // Now specialize the host by invoking assign
@@ -239,6 +236,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             request.Headers.Add(AuthenticationLevelHandler.FunctionsKeyHeaderName, masterKey);
             var response = await _httpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+        }
+
+        protected override void ConfigureScriptHostConfiguration(IConfigurationBuilder builder)
+        {
+            builder.AddInMemoryCollection([KeyValuePair.Create("AzureWebJobsStorage", azurite.GetConnectionString())]);
+            base.ConfigureScriptHostConfiguration(builder);
         }
 
         private static EncryptedHostAssignmentContext CreateEncryptedContext(HostAssignmentContext context, string key)

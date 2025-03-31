@@ -5,6 +5,7 @@ using System.IO.Abstractions;
 using System.Net.Http;
 using System.Runtime.InteropServices;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Azure.Functions.Platform.Metrics.LinuxConsumption;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -107,7 +108,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 {
                     var hostNameProvider = p.GetService<HostNameProvider>();
                     IOptions<FunctionsHostingConfigOptions> functionsHostingConfigOptions = p.GetService<IOptions<FunctionsHostingConfigOptions>>();
-                    return new LinuxAppServiceEventGenerator(new LinuxAppServiceFileLoggerFactory(), hostNameProvider, functionsHostingConfigOptions);
+                    IOptions<AzureMonitorLoggingOptions> azureMonitorOptions = p.GetService<IOptions<AzureMonitorLoggingOptions>>();
+                    return new LinuxAppServiceEventGenerator(new LinuxAppServiceFileLoggerFactory(), hostNameProvider, functionsHostingConfigOptions, azureMonitorOptions);
                 }
                 else if (environment.IsAnyKubernetesEnvironment())
                 {
@@ -206,6 +208,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.ConfigureOptionsWithChangeTokenSource<AppServiceOptions, AppServiceOptionsSetup, SpecializationChangeTokenSource<AppServiceOptions>>();
             services.ConfigureOptionsWithChangeTokenSource<HttpBodyControlOptions, HttpBodyControlOptionsSetup, SpecializationChangeTokenSource<HttpBodyControlOptions>>();
             services.ConfigureOptions<ConsoleLoggingOptionsSetup>();
+            services.ConfigureOptions<AzureMonitorLoggingOptionsSetup>();
             services.AddHostingConfigOptions(configuration);
 
             services.TryAddSingleton<IDependencyValidator, DependencyValidator>();
@@ -247,6 +250,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private static void AddLinuxContainerServices(this IServiceCollection services)
         {
+            if (SystemEnvironment.Instance.IsLinuxConsumptionOnLegion())
+            {
+                services.AddLinuxConsumptionMetricsServices();
+            }
+
             services.AddSingleton<IHostedService>(s =>
             {
                 var environment = s.GetService<IEnvironment>();
@@ -271,7 +279,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IMetricsPublisher>(s =>
             {
                 var environment = s.GetService<IEnvironment>();
-                if (environment.IsLinuxMetricsPublishingEnabled())
+                if (environment.IsLinuxConsumptionOnLegion())
+                {
+                    var options = s.GetService<IOptions<LinuxConsumptionLegionMetricsPublisherOptions>>();
+                    var logger = s.GetService<ILogger<LinuxContainerLegionMetricsPublisher>>();
+                    var metricsTracker = s.GetService<ILinuxConsumptionMetricsTracker>();
+                    var standbyOptions = s.GetService<IOptionsMonitor<StandbyOptions>>();
+                    var scriptHostManager = s.GetService<IScriptHostManager>();
+                    return new LinuxContainerLegionMetricsPublisher(environment, standbyOptions, options, logger, new FileSystem(), metricsTracker, scriptHostManager);
+                }
+                else if (environment.IsLinuxMetricsPublishingEnabled())
                 {
                     var logger = s.GetService<ILogger<LinuxContainerMetricsPublisher>>();
                     var standbyOptions = s.GetService<IOptionsMonitor<StandbyOptions>>();

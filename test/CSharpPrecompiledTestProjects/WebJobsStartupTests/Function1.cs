@@ -104,7 +104,7 @@ namespace WebJobsStartupTests
         {
             if (_config is ConfigurationRoot root)
             {
-                if (root.Providers.Count() != 9)
+                if (root.Providers.Count() != 10)
                 {
                     return false;
                 }
@@ -119,8 +119,9 @@ namespace WebJobsStartupTests
                     root.Providers.ElementAt(i++) is ChainedConfigurationProvider &&
                     root.Providers.ElementAt(i++) is JsonConfigurationProvider &&
                     root.Providers.ElementAt(i++) is EnvironmentVariablesConfigurationProvider &&
-                    root.Providers.ElementAt(i++) is MemoryConfigurationProvider && // From Startup.cs
-                    root.Providers.ElementAt(i++) is JsonConfigurationProvider; // From test settings; Always runs last in tests.
+                    root.Providers.ElementAt(i++) is MemoryConfigurationProvider && // From Startup.cs.
+                    root.Providers.ElementAt(i++) is JsonConfigurationProvider && // From test settings.
+                    root.Providers.ElementAt(i++) is MemoryConfigurationProvider; // From fixture injecting emulator settings.
             }
 
             return false;
