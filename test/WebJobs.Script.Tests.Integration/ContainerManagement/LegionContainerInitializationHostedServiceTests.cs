@@ -139,7 +139,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ContainerManagement
 
             _environment.SetEnvironmentVariable(ContainerSpecializationContextVolumePath, ContainerSpecializationContextPath);
             _environment.SetEnvironmentVariable(ContainerEncryptionKey, containerEncryptionKey);
-            AddLinuxConsumptionSettings(_environment);
+            AddLinuxConsumptionOnLegionSettings(_environment);
 
             // Mock the instance manager to simulate a failure
             _instanceManagerMock.Setup(m => m.AssignInstanceAsync(It.IsAny<HostAssignmentContext>()))
