@@ -4,8 +4,8 @@ trigger:
     include:
     - dev
     - in-proc
-    - release/4.*
-    - release/in-proc
+    - release/*
+    - internal/release/*
 
 # CI only, does not trigger on PRs.
 pr: none
