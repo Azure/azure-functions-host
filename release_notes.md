@@ -3,7 +3,6 @@
 <!-- Please add your release notes in the following format:
 - My change description (#PR)
 -->
-- Update Java Worker Version to [2.19.0](https://github.com/Azure/azure-functions-java-worker/releases/tag/2.19.0)
 - Introduced support for response compression, which can be enabled through explicit opt-in (#10870)
 - Add support for new FeatureFlag `EnableAzureMonitorTimeIsoFormat` to enable iso time format for azmon logs for Linux Dedicated/EP Skus. (#10684)
 - Allow sync trigger to happen in managed environment when `AzureWebJobsStorage` is not set (#10767)
@@ -17,3 +16,5 @@
 - Fixed bug that could result in "Binding names must be unique" error (#10938)
 - Fix race condition that leads the host to initialize placeholder (warmup) function in Linux environments (#10848)
 - Updating Azure.Core and OTel related packages, recording exception and retaining "Microsoft.Azure.WebJobs" logs  (#10965)
+- Update Python Worker Version to [4.36.1](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.36.1)
+- Update Java Worker Version to [2.19.0](https://github.com/Azure/azure-functions-java-worker/releases/tag/2.19.0)
