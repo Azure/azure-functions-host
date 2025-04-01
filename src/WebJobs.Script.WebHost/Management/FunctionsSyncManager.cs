@@ -596,7 +596,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 }
 
                 // If the app is not using bundles, we look for extensions.json
-                if (!Utility.TryResolveExtensionsMetadataPath(hostOptions.RootScriptPath, logger, out string metadataDirectoryPath, out _))
+                if (!Utility.TryResolveExtensionsMetadataPath(hostOptions.RootScriptPath, out string metadataDirectoryPath, out _))
                 {
                     return null;
                 }
