@@ -816,7 +816,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        public static bool TryResolveExtensionsMetadataPath(string rootScriptPath, ILogger logger, out string extensionsMetadataPath, out string baseProbingPath)
+        public static bool TryResolveExtensionsMetadataPath(string rootScriptPath, out string extensionsMetadataPath, out string baseProbingPath)
         {
             baseProbingPath = null;
 
@@ -840,11 +840,6 @@ namespace Microsoft.Azure.WebJobs.Script
                     if (Directory.Exists(systemPath))
                     {
                         baseProbingPath = systemPath;
-                    }
-                    else
-                    {
-                        //systemPath = "<app-root-folder>\bin\Debug\net8.0\.azurefunctions"
-                        logger.LogWarning("Could not find the path: {systemPath} to resolve extensions metadata", systemPath);
                     }
                 }
                 else if (FileUtility.FileExists(Path.Combine(systemPath, ScriptConstants.ExtensionsMetadataFileName)))
