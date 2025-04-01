@@ -9,6 +9,7 @@ using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
+using System.Timers;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Host.Executors.Internal;
 using Microsoft.Azure.WebJobs.Logging;
@@ -685,7 +686,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 if (channel.IsExecutingInvocation(invocationId))
                 {
                     _logger.LogDebug($"Restarting channel with workerId: '{channel.Id}' that is executing invocation: '{invocationId}' and timed out.");
-                    await DisposeAndRestartWorkerChannel(_workerRuntime, channel.Id);
+                    await DisposeAndRestartWorkerChannel(_workerRuntime, channel.Id, new TimeoutException($"Executing invocation `{invocationId}` timed out"));
                     return true;
                 }
             }

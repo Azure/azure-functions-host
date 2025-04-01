@@ -550,6 +550,111 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
+        public async Task FunctionDispatcher_RestartOfTimedOutChannels_WebHostFailsCurrentExecutions()
+        {
+            var invocationId = Guid.NewGuid().ToString();
+            var mockChannel = new Mock<IRpcWorkerChannel>(MockBehavior.Strict);
+            var mockJobHostChannelManager = new Mock<IJobHostRpcWorkerChannelManager>(MockBehavior.Strict);
+            var mockWebHostChannelManager = new Mock<IWebHostRpcWorkerChannelManager>(MockBehavior.Strict);
+
+            // Setup the channel managers to return our mock channel
+            mockWebHostChannelManager.Setup(mockWebHostChannelManager => mockWebHostChannelManager.GetChannels(It.IsAny<string>()))
+                                     .Returns(new Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>>());
+            mockJobHostChannelManager.Setup(m => m.GetChannels(It.IsAny<string>()))
+                  .Returns(new List<IRpcWorkerChannel> { mockChannel.Object });
+            mockJobHostChannelManager.Setup(m => m.GetChannels())
+                              .Returns(new List<IRpcWorkerChannel> { mockChannel.Object });
+
+            // Setup the mock channel to indicate it's executing the specified invocation
+            mockChannel.Setup(c => c.Id).Returns("testChannelId");
+            mockChannel.Setup(c => c.IsExecutingInvocation(invocationId)).Returns(true);
+            mockChannel.Setup(c => c.IsChannelReadyForInvocations()).Returns(true);
+
+            // Set up ShutdownChannelIfExistsAsync to be called with the right exception type
+            mockWebHostChannelManager.Setup(m => m.ShutdownChannelIfExistsAsync(
+                It.IsAny<string>(),
+                It.Is<string>(id => id == "testChannelId"),
+                It.Is<Exception>(ex => ex is TimeoutException && ex.Message == $"Executing invocation `{invocationId}` timed out")))
+                .ReturnsAsync(true);
+
+            // Setup for initialization of a new channel
+            var workerConfig = new RpcWorkerConfig
+            {
+                Description = new RpcWorkerDescription { Language = "test" },
+                CountOptions = new WorkerProcessCountOptions { ProcessCount = 1 }
+            };
+
+            // Create the dispatcher with our mocks
+            var dispatcher = GetTestFunctionDispatcher(mockwebHostLanguageWorkerChannelManager: mockWebHostChannelManager, mockJobHostLanguageWorkerChannelManager: mockJobHostChannelManager);
+
+            // Act
+            var result = await dispatcher.RestartWorkerWithInvocationIdAsync(invocationId);
+
+            // Assert
+            Assert.True(result);
+            mockWebHostChannelManager.Verify(m => m.ShutdownChannelIfExistsAsync(
+                It.IsAny<string>(),
+                It.Is<string>(id => id == "testChannelId"),
+                It.Is<Exception>(ex => ex is TimeoutException && ex.Message == $"Executing invocation `{invocationId}` timed out")),
+                Times.Once);
+        }
+
+        [Fact]
+        public async Task FunctionDispatcher_RestartOfTimedOutChannels_JobHostFailsCurrentExecutions()
+        {
+            var invocationId = Guid.NewGuid().ToString();
+            var mockChannel = new Mock<IRpcWorkerChannel>(MockBehavior.Strict);
+            var mockJobHostChannelManager = new Mock<IJobHostRpcWorkerChannelManager>(MockBehavior.Strict);
+            var mockWebHostChannelManager = new Mock<IWebHostRpcWorkerChannelManager>(MockBehavior.Strict);
+
+            // Setup both channel managers to return our mock channel
+            mockWebHostChannelManager.Setup(mockWebHostChannelManager => mockWebHostChannelManager.GetChannels(It.IsAny<string>()))
+                                     .Returns(new Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>>());
+            mockJobHostChannelManager.Setup(m => m.GetChannels(It.IsAny<string>()))
+                  .Returns(new List<IRpcWorkerChannel> { mockChannel.Object });
+            mockJobHostChannelManager.Setup(m => m.GetChannels())
+                              .Returns(new List<IRpcWorkerChannel> { mockChannel.Object });
+
+            // Setup the mock channel to indicate it's executing the specified invocation
+            mockChannel.Setup(c => c.Id).Returns("testChannelId");
+            mockChannel.Setup(c => c.IsExecutingInvocation(invocationId)).Returns(true);
+            mockChannel.Setup(c => c.IsChannelReadyForInvocations()).Returns(true);
+
+            // Set up WebHost ShutdownChannelIfExistsAsync to return false, forcing the JobHost to attempt to shutdown channel
+            mockWebHostChannelManager.Setup(m => m.ShutdownChannelIfExistsAsync(
+                It.IsAny<string>(),
+                It.Is<string>(id => id == "testChannelId"),
+                It.Is<Exception>(ex => ex is TimeoutException && ex.Message == $"Executing invocation `{invocationId}` timed out")))
+                .ReturnsAsync(false);
+
+            // Set up JobHost ShutdownChannelIfExistsAsync to be called with the right exception type
+            mockJobHostChannelManager.Setup(m => m.ShutdownChannelIfExistsAsync(
+                It.Is<string>(id => id == "testChannelId"),
+                It.Is<Exception>(ex => ex is TimeoutException && ex.Message == $"Executing invocation `{invocationId}` timed out")))
+                .ReturnsAsync(true);
+
+            // Setup for initialization of a new channel
+            var workerConfig = new RpcWorkerConfig
+            {
+                Description = new RpcWorkerDescription { Language = "test" },
+                CountOptions = new WorkerProcessCountOptions { ProcessCount = 1 }
+            };
+
+            // Create the dispatcher with our mocks
+            var dispatcher = GetTestFunctionDispatcher(mockwebHostLanguageWorkerChannelManager: mockWebHostChannelManager, mockJobHostLanguageWorkerChannelManager: mockJobHostChannelManager);
+
+            // Act
+            var result = await dispatcher.RestartWorkerWithInvocationIdAsync(invocationId);
+
+            // Assert
+            Assert.True(result);
+            mockJobHostChannelManager.Verify(m => m.ShutdownChannelIfExistsAsync(
+                It.Is<string>(id => id == "testChannelId"),
+                It.Is<Exception>(ex => ex is TimeoutException && ex.Message == $"Executing invocation `{invocationId}` timed out")),
+                Times.Once);
+        }
+
+        [Fact]
         public async Task FunctionDispatcher_Error_WithinThreshold_BucketFills()
         {
             RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher(1, runtime: RpcWorkerConstants.NodeLanguageWorkerName);
@@ -713,6 +818,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             int maxProcessCountValue = 1,
             bool addWebhostChannel = false,
             Mock<IWebHostRpcWorkerChannelManager> mockwebHostLanguageWorkerChannelManager = null,
+            Mock<IJobHostRpcWorkerChannelManager> mockJobHostLanguageWorkerChannelManager = null,
             bool throwOnProcessStartUp = false,
             TimeSpan? startupIntervals = null,
             string runtime = null,
@@ -766,6 +872,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             if (mockwebHostLanguageWorkerChannelManager != null)
             {
                 testWebHostLanguageWorkerChannelManager = mockwebHostLanguageWorkerChannelManager.Object;
+            }
+            if (mockJobHostLanguageWorkerChannelManager != null)
+            {
+                jobHostLanguageWorkerChannelManager = mockJobHostLanguageWorkerChannelManager.Object;
             }
 
             var mockFunctionDispatcherLoadBalancer = new Mock<IRpcFunctionInvocationDispatcherLoadBalancer>();
