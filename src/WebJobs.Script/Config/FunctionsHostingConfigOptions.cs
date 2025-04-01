@@ -148,6 +148,22 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         }
 
         /// <summary>
+        /// Gets or sets a value indicating whether to ignore the TestData property during read and write operations of functions metadata.
+        /// </summary>
+        internal bool IsTestDataSuppressionEnabled
+        {
+            get
+            {
+                return GetFeatureAsBooleanOrDefault(ScriptConstants.FeatureFlagEnableTestDataSuppression, false);
+            }
+
+            set
+            {
+                _features[ScriptConstants.FeatureFlagEnableTestDataSuppression] = value ? "1" : "0";
+            }
+        }
+
+        /// <summary>
         /// Gets the highest version of extension bundle v3 supported.
         /// </summary>
         internal string MaximumBundleV3Version

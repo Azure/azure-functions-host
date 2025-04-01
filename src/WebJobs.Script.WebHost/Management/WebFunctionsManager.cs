@@ -8,6 +8,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Management.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Extensions;
@@ -27,8 +28,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private readonly IFunctionsSyncManager _functionsSyncManager;
         private readonly HostNameProvider _hostNameProvider;
         private readonly IFunctionMetadataManager _functionMetadataManager;
+        private readonly IOptionsMonitor<FunctionsHostingConfigOptions> _hostingConfigOptions;
 
-        public WebFunctionsManager(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILoggerFactory loggerFactory, IHttpClientFactory httpClientFactory, ISecretManagerProvider secretManagerProvider, IFunctionsSyncManager functionsSyncManager, HostNameProvider hostNameProvider, IFunctionMetadataManager functionMetadataManager)
+        public WebFunctionsManager(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILoggerFactory loggerFactory, IHttpClientFactory httpClientFactory, ISecretManagerProvider secretManagerProvider, IFunctionsSyncManager functionsSyncManager, HostNameProvider hostNameProvider, IFunctionMetadataManager functionMetadataManager, IOptionsMonitor<FunctionsHostingConfigOptions> hostingConfigOptions)
         {
             _applicationHostOptions = applicationHostOptions;
             _logger = loggerFactory?.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
@@ -37,6 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             _functionsSyncManager = functionsSyncManager;
             _hostNameProvider = hostNameProvider;
             _functionMetadataManager = functionMetadataManager;
+            _hostingConfigOptions = hostingConfigOptions;
         }
 
         public async Task<IEnumerable<FunctionMetadataResponse>> GetFunctionsMetadata(bool includeProxies)
@@ -44,14 +47,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             var hostOptions = _applicationHostOptions.CurrentValue.ToHostOptions();
             var functionsMetadata = GetFunctionsMetadata(includeProxies, forceRefresh: false);
 
-            return await GetFunctionMetadataResponse(functionsMetadata, hostOptions, _hostNameProvider);
+            return await GetFunctionMetadataResponse(functionsMetadata, hostOptions, _hostNameProvider, excludeTestData: _hostingConfigOptions.CurrentValue.IsTestDataSuppressionEnabled);
         }
 
-        internal static async Task<IEnumerable<FunctionMetadataResponse>> GetFunctionMetadataResponse(IEnumerable<FunctionMetadata> functionsMetadata, ScriptJobHostOptions hostOptions, HostNameProvider hostNameProvider)
+        internal static async Task<IEnumerable<FunctionMetadataResponse>> GetFunctionMetadataResponse(IEnumerable<FunctionMetadata> functionsMetadata, ScriptJobHostOptions hostOptions, HostNameProvider hostNameProvider, bool excludeTestData)
         {
             string baseUrl = GetBaseUrl(hostNameProvider);
             string routePrefix = await GetRoutePrefix(hostOptions.RootScriptPath);
-            var tasks = functionsMetadata.Select(p => p.ToFunctionMetadataResponse(hostOptions, routePrefix, baseUrl));
+            var tasks = functionsMetadata.Select(p => p.ToFunctionMetadataResponse(hostOptions, routePrefix, baseUrl, excludeTestData));
 
             return await tasks.WhenAll();
         }
@@ -139,7 +142,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 configChanged = true;
             }
 
-            if (functionMetadata.TestData != null)
+            if (functionMetadata.TestData != null && !_hostingConfigOptions.CurrentValue.IsTestDataSuppressionEnabled)
             {
                 await FileUtility.WriteAsync(dataFilePath, functionMetadata.TestData);
             }
@@ -180,7 +183,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             {
                 string routePrefix = await GetRoutePrefix(hostOptions.RootScriptPath);
                 var baseUrl = $"{request.Scheme}://{request.Host}";
-                return (true, await functionMetadata.ToFunctionMetadataResponse(hostOptions, routePrefix, baseUrl));
+                return (true, await functionMetadata.ToFunctionMetadataResponse(hostOptions, routePrefix, baseUrl, excludeTestData: _hostingConfigOptions.CurrentValue.IsTestDataSuppressionEnabled));
             }
             else
             {

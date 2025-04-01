@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
         /// <param name="functionMetadata">FunctionMetadata to be mapped.</param>
         /// <param name="hostOptions">The host options.</param>
         /// <returns>Promise of a FunctionMetadataResponse.</returns>
-        public static async Task<FunctionMetadataResponse> ToFunctionMetadataResponse(this FunctionMetadata functionMetadata, ScriptJobHostOptions hostOptions, string routePrefix, string baseUrl)
+        public static async Task<FunctionMetadataResponse> ToFunctionMetadataResponse(this FunctionMetadata functionMetadata, ScriptJobHostOptions hostOptions, string routePrefix, string baseUrl, bool excludeTestData)
         {
             string functionPath = GetFunctionPathOrNull(hostOptions.RootScriptPath, functionMetadata.Name);
             string functionMetadataFilePath = GetMetadataPathOrNull(functionPath);
@@ -54,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
                 response.ConfigHref = VirtualFileSystem.FilePathToVfsUri(functionMetadataFilePath, baseUrl, hostOptions);
             }
 
-            if (!string.IsNullOrEmpty(hostOptions.TestDataPath))
+            if (!excludeTestData && !string.IsNullOrEmpty(hostOptions.TestDataPath))
             {
                 var testDataFilePath = functionMetadata.GetTestDataFilePath(hostOptions);
                 response.TestDataHref = VirtualFileSystem.FilePathToVfsUri(testDataFilePath, baseUrl, hostOptions);
@@ -183,7 +183,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
 
         private static async Task<string> GetTestData(string testDataPath, ScriptJobHostOptions config)
         {
-            if (!File.Exists(testDataPath))
+            if (!FileUtility.FileExists(testDataPath))
             {
                 FileUtility.EnsureDirectoryExists(Path.GetDirectoryName(testDataPath));
                 await FileUtility.WriteAsync(testDataPath, string.Empty);
