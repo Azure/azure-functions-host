@@ -1,0 +1,61 @@
+parameters:
+- name: os
+  type: string
+  default: Windows
+  values:
+    - Windows
+    - Linux
+
+jobs:
+- job: ${{ parameters.os }}
+
+  pool:
+    name: 1es-pool-azfunc-benchmarking-large
+    image: 1es-windows-2022-benchmark-runner-vanilla
+    os: windows
+
+  variables:
+    mergedJitTraceOutputDirectory: $(Build.ArtifactStagingDirectory)/MergedJitTraces
+    mergedJitTraceFilePath: $(mergedJitTraceOutputDirectory)/$(Build.BuildNumber)_${{ parameters.os }}_coldstart.jittrace
+
+  templateContext:
+    outputParentDirectory: $(Build.ArtifactStagingDirectory)
+    outputs:
+    - output: pipelineArtifact
+      displayName: Publish benchmark results
+      path: $(mergedJitTraceFilePath)
+      artifact: MergedJitTrace_${{ parameters.os }}
+
+  steps:
+    - pwsh: |
+        New-Item -ItemType Directory -Path $(mergedJitTraceOutputDirectory)
+      displayName: Create directories
+  
+    - task: DownloadPipelineArtifact@2
+      displayName: Download PerfTraceData artifacts for ${{ parameters.os }} HelloHttpNet9
+      inputs:
+        artifact: PerfTraceData_${{ parameters.os }}_HelloHttpNet9
+        patterns: '**/*.jittrace'
+        path: '$(Pipeline.Workspace)/${{ parameters.os }}_jittrace/HelloHttpNet9'
+
+    - task: DownloadPipelineArtifact@2
+      displayName: Download PerfTraceData artifacts for ${{ parameters.os }} HelloHttpNet9NoProxy
+      inputs:
+        artifact: PerfTraceData_${{ parameters.os }}_HelloHttpNet9NoProxy
+        patterns: '**/*.jittrace'
+        path: '$(Pipeline.Workspace)/${{ parameters.os }}_jittrace/HelloHttpNet9NoProxy'
+
+    - task: DownloadPipelineArtifact@2
+      displayName: Download PerfTraceData artifacts for ${{ parameters.os }} HelloHttpNode
+      inputs:
+        artifact: PerfTraceData_${{ parameters.os }}_HelloHttpNode
+        patterns: '**/*.jittrace'
+        path: '$(Pipeline.Workspace)/${{ parameters.os }}_jittrace/HelloHttpNode'
+        
+    - pwsh: |
+        $output = "$(mergedJitTraceFilePath)"
+        $files = Get-ChildItem -Path "$(Pipeline.Workspace)/${{ parameters.os }}_jittrace" -Recurse -Filter *.jittrace
+        Write-Host "Merging the following .jittrace files:"
+        $files | ForEach-Object { Write-Host $_.FullName }
+        $files | Get-Content | Set-Content $output
+      displayName: Merge all .jittrace files ${{ parameters.os }}

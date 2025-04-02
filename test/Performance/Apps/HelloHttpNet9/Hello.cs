@@ -7,8 +7,14 @@ namespace HelloHttpNet9
 {
     public sealed class Hello(ILogger<Hello> logger)
     {
-        [Function("Hello")]
-        public IActionResult Run([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post")] HttpRequest req)
+        [Function("HelloHttp")]
+        public IActionResult Run(
+#if AUTH_FUNCTION
+            [HttpTrigger(AuthorizationLevel.Function, "get", "post")] HttpRequest req
+#else
+            [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post")] HttpRequest req
+#endif
+            )
         {
             logger.LogInformation("C# HTTP trigger function processed a request.");
             return new OkObjectResult("Welcome to Azure Functions!");
