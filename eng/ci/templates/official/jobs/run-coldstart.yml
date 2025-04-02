@@ -17,6 +17,14 @@ parameters:
 - name: perfViewCollectArguments
   type: string
   default: ''
+- name: collectNetTrace
+  type: boolean
+  default: false
+- name: netTraceCollectArguments
+  type: string
+- name: createJitTrace
+  type: boolean
+  default: false
 
 jobs:
 - job: ${{ parameters.functionAppName }}_${{ parameters.instanceId }}
@@ -24,11 +32,17 @@ jobs:
   pool:
     name: 1es-pool-azfunc-benchmarking
     ${{ if eq(parameters.os, 'Linux') }}:
-      image: 1es-ubuntu-22.04-benchmark-runner-vanilla
-      os: linux 
+      os: linux
+      ${{ if and(eq(parameters.createJitTrace, true), eq(parameters.instanceId, '1')) }}:
+        image: 1es-ubuntu-22.04-mms-benchmark-coreclr-builder
+      ${{ else }}:
+        image: 1es-ubuntu-22.04-benchmark-runner-vanilla
     ${{ else }}:
-      image: 1es-windows-2022-benchmark-runner-vanilla
       os: windows
+      ${{ if and(eq(parameters.createJitTrace, true), eq(parameters.instanceId, '1')) }}:
+        image: 1es-windows-2022-mms-benchmark-coreclr-builder
+      ${{ else }}:
+        image: 1es-windows-2022-benchmark-runner-vanilla
 
   variables:
     functionAppOutputPath: $(Build.BinariesDirectory)/Published/${{ parameters.functionAppName }}
@@ -37,58 +51,111 @@ jobs:
     logsDirectory: $(Build.ArtifactStagingDirectory)/Logs
     stdOutLogsFilePath: $(logsDirectory)/std_out_logs.txt
     stdErrorLogsFilePath: $(logsDirectory)/std_error_logs.txt
-    FUNCTIONS_WORKER_RUNTIME: 'dotnet-isolated'
-    FUNCTIONS_WORKER_RUNTIME_VERSION: '9.0'
+    ${{ if or(eq(parameters.functionAppName, 'HelloHttpNet9'), eq(parameters.functionAppName, 'HelloHttpNet9NoProxy')) }}:
+      FUNCTIONS_WORKER_RUNTIME: 'dotnet-isolated'
+      FUNCTIONS_WORKER_RUNTIME_VERSION: '9.0'
+    ${{ if eq(parameters.functionAppName, 'HelloHttpNode') }}:
+      FUNCTIONS_WORKER_RUNTIME: 'node'
+      WEBSITE_RUN_FROM_PACKAGE: '1' # Node app needs this to use placeholder channel.
     AzureWebJobsScriptRoot: '$(functionAppOutputPath)'
     perfViewPath: C:\.tools\perfview\perfview.exe 
     traceDirectory: $(Build.ArtifactStagingDirectory)/out
+    netTraceDirectory: $(traceDirectory)/nettrace
     traceFileNameWithoutExtension: PerfViewData_$(Build.BuildNumber)_${{ parameters.functionAppName }}
     traceFileName: $(traceFileNameWithoutExtension).etl
     traceFileZipName: $(traceFileName).zip
     traceFilePath: $(traceDirectory)/$(traceFileName)
     traceZipFilePath: $(traceDirectory)/$(traceFileZipName)
-    traceAnalysisResultsDirectory: $(traceDirectory)/results
+    traceAnalysisResultsDirectory: $(netTraceDirectory)/results
     traceAnalysisResultMarkdownFilePath: $(traceAnalysisResultsDirectory)/$(traceFileNameWithoutExtension).md
     traceLogPath: $(logsDirectory)/logs.log
     ${{ if eq(parameters.os, 'Linux') }}:
       publishRid: linux-x64
     ${{ if eq(parameters.os, 'Windows') }}:
       publishRid: win-x64
+    ${{ if and(eq(parameters.collectNetTrace, true), eq(parameters.instanceId, '1')) }}:
+      netTraceFileNameWithoutExtension: azfunc_${{ parameters.functionAppName }}_${{ parameters.os }}_${{ parameters.instanceId }}
+      netTraceFileName: $(netTraceFileNameWithoutExtension).nettrace
+      netTraceFilePath: $(netTraceDirectory)/$(netTraceFileName)
+      netTraceAnalysisResultsMarkdownFilePath: $(netTraceDirectory)/results/$(netTraceFileNameWithoutExtension).md
+      # For JIT trace generation, ensure the trace is collected from an app with authentication enabled (as done by the SLA site).
+    ${{ if and(eq(parameters.createJitTrace, true), eq(parameters.instanceId, '1')) }}:
+      warmupApiUrl: http://localhost:5000  # For JIT trace generation case, we call the home page instead of the api/warmup endpoint to ensure the host is up and running.
+      WEBSITE_SITE_NAME: PGO_${{ parameters.functionAppName }}_${{ parameters.os }}
+      benchmarkAppBuildConstants: "-p:DefineConstants=AUTH_FUNCTION" # To publish the function app with authentication enabled.
+      functionInvocationUrl: http://localhost:5000/api/HelloAuth?forcespecialization=1&code=test
+    ${{ else }}:
+      warmupApiUrl: http://localhost:5000/api/warmup?restart=1
+      functionInvocationUrl: http://localhost:5000/api/Hello?forcespecialization=1
+      benchmarkAppBuildConstants: ""
 
-  ${{ if and(eq(parameters.collectPerfViewProfileOnWindows, true), eq(parameters.instanceId, '1')) }}: # profile collection is only on the first instance
+  ${{ if and(or(eq(parameters.collectPerfViewProfileOnWindows, true), eq(parameters.collectNetTrace, true)), eq(parameters.instanceId, '1')) }}:
     templateContext:
       outputParentDirectory: $(traceDirectory)
       outputs:
         - output: pipelineArtifact
-          displayName: Publish PerfView profile
-          path: $(traceZipFilePath)
-          artifact: PerfViewData_${{ parameters.functionAppName }}
-        - output: pipelineArtifact
-          displayName: Publish ColdStart Analysis Result
-          path: $(traceAnalysisResultsDirectory)
-          artifact: ColdStartProfileAnalysisResult_${{ parameters.functionAppName }}
+          displayName: Publish Trace artifacts
+          path: $(traceDirectory)
+          artifact: AzFunc_${{ parameters.os }}_${{ parameters.functionAppName }}
+          condition:: always()
 
   steps:
+
+  # # For JIT trace generation, ensure the app is configured with a storage account so the authentication flow can be executed end-to-end.
+  - ${{ if and(eq(parameters.createJitTrace, true), eq(parameters.instanceId, '1')) }}:
+    - task: AzureKeyVault@2
+      inputs:
+        azureSubscription: Azure-Functions-Host-CI-internal
+        KeyVaultName: azure-functions-perf
+        SecretsFilter: PGO-APP-AZURE-WEBJOBS-STORAGE
+        RunAsPreJob: false
+
   - template: /eng/ci/templates/install-dotnet.yml@self
 
-  - task: CopyFiles@2
-    displayName: Copy benchmark apps to temp location
+  - task: UseDotNet@2 
+    displayName: Install .NET 10
     inputs:
-      SourceFolder: '$(Build.SourcesDirectory)/test/Performance/Apps'
-      Contents: '**/*'
-      TargetFolder: '$(Build.ArtifactStagingDirectory)/PerformanceTestApps'
-      CleanTargetFolder: true
+      packageType: sdk
+      version: 10.x
+      includePreviewVersions: true
 
-  - task: DotNetCoreCLI@2
-    displayName: Publish benchmark app
-    inputs:
-      command: publish
-      publishWebProjects: false
-      zipAfterPublish: false
-      modifyOutputPath: false
-      projects: '$(Build.ArtifactStagingDirectory)/PerformanceTestApps/${{ parameters.functionAppName }}/HelloHttp.csproj'
-      arguments: -c Release -o $(functionAppOutputPath) -f net9.0 -r $(publishRid)
-      workingDirectory: $(Build.ArtifactStagingDirectory)/PerformanceTestApps/${{ parameters.functionAppName }}
+  - ${{ if eq(parameters.functionAppName, 'HelloHttpNode') }}:
+    - task: CopyFiles@2
+      displayName: Copy node js app content to script root dir
+      inputs:
+        SourceFolder: '$(Build.SourcesDirectory)/test/Performance/Apps/HelloHttpNode'
+        Contents: '**/*'
+        TargetFolder: '$(functionAppOutputPath)'
+        CleanTargetFolder: true
+
+    - task: UseNode@1
+      displayName: Install Node.js
+      inputs:
+        version: '18.x'
+
+    - script: npm install
+      displayName: Run npm install for HelloHttpNode
+      workingDirectory: '$(functionAppOutputPath)'
+
+  - ${{ if or(eq(parameters.functionAppName, 'HelloHttpNet9'), eq(parameters.functionAppName, 'HelloHttpNet9NoProxy')) }}:
+    - task: CopyFiles@2
+      displayName: Copy benchmark apps to temp location
+      inputs:
+        SourceFolder: '$(Build.SourcesDirectory)/test/Performance/Apps'
+        Contents: '**/*'
+        TargetFolder: '$(Build.ArtifactStagingDirectory)/PerformanceTestApps'
+        CleanTargetFolder: true
+
+    - task: DotNetCoreCLI@2
+      displayName: Publish benchmark app
+      inputs:
+        command: publish
+        publishWebProjects: false
+        zipAfterPublish: false
+        modifyOutputPath: false
+        projects: '$(Build.ArtifactStagingDirectory)/PerformanceTestApps/${{ parameters.functionAppName }}/HelloHttp.csproj'
+        arguments: -c Release -o $(functionAppOutputPath) -f net9.0 -r $(publishRid) $(benchmarkAppBuildConstants)
+        workingDirectory: $(Build.ArtifactStagingDirectory)/PerformanceTestApps/${{ parameters.functionAppName }}
 
   - task: DotNetCoreCLI@2
     displayName: Publish host
@@ -102,9 +169,10 @@ jobs:
       workingDirectory: $(Build.SourcesDirectory)/src/WebJobs.Script.WebHost
 
   - pwsh: |
-      Write-Host "Creating log directory: $(logsDirectory)"
       New-Item -ItemType Directory -Path $(logsDirectory)
-    displayName: Create log directory
+      New-Item -ItemType Directory -Path $(traceDirectory)
+      New-Item -ItemType Directory -Path $(netTraceDirectory)
+    displayName: Create directories
 
   - ${{ if eq(parameters.os, 'Windows') }}:
     - pwsh: |
@@ -113,18 +181,23 @@ jobs:
         Write-Host "Started process ID: $($process.Id)"
         echo $process.Id > $(Build.ArtifactStagingDirectory)/hostProcessId.txt
       displayName: Start host in placeholder mode
+      ${{ if and(eq(parameters.createJitTrace, true), eq(parameters.instanceId, '1')) }}:
+        env:
+          AzureWebJobsStorage: $(PGO-APP-AZURE-WEBJOBS-STORAGE)
   - ${{ else }}:
     - script: |
         # In Azure DevOps, when variables convert into environment variables, variable names become uppercase, and periods turn into underscores.
         # This works for windows when getting the env variable value, but fails on linux. So we need to pass the variable value using correct case.
         # https://learn.microsoft.com/en-us/azure/devops/pipelines/process/variables?view=azure-devops&tabs=yaml%2Cbatch#environment-variables
         export AzureWebJobsScriptRoot="$(functionAppOutputPath)"
-        nohup dotnet $(hostAssemblyPath) > $(stdOutLogsFilePath) 2> $(stdErrorLogsFilePath) &
+        nohup $(hostOutputPath)/Microsoft.Azure.WebJobs.Script.WebHost > $(stdOutLogsFilePath) 2> $(stdErrorLogsFilePath) &
         echo $! > $(Build.ArtifactStagingDirectory)/hostProcessId.txt
       displayName: Start host in placeholder mode
-
-  - pwsh: |     
-      $url = "http://localhost:5000/api/warmup?restart=1"
+      ${{ if and(eq(parameters.createJitTrace, true), eq(parameters.instanceId, '1')) }}:
+        env:
+          AzureWebJobsStorage: $(PGO-APP-AZURE-WEBJOBS-STORAGE)
+  - pwsh: |
+      $url = "$(warmupApiUrl)"
       Write-Host "Checking if host is ready at $url..."
       $maxAttempts = 10
 
@@ -156,8 +229,35 @@ jobs:
       env:
         COLLECT_ARGUMENTS: ${{ parameters.perfViewCollectArguments }}
 
+  - ${{ if and(eq(parameters.collectNetTrace, true), eq(parameters.instanceId, '1'), eq(parameters.os, 'Windows')) }}:
+    - pwsh: |
+        dotnet tool install --global dotnet-trace
+        $dotnetToolPath = [System.IO.Path]::Combine($env:USERPROFILE, ".dotnet", "tools")
+        $dotnetTraceExecutable = Join-Path $dotnetToolPath "dotnet-trace.exe"
+        $collectArguments = ${env:COLLECT_ARGUMENTS}
+        $arguments = "collect $collectArguments -o $(netTraceFilePath)"
+        Write-Host "Starting dotnet trace with command '$arguments'..."
+        Start-Process -FilePath $dotnetTraceExecutable -ArgumentList $arguments -NoNewWindow
+      displayName: "Start dotnet trace"
+      env:
+        COLLECT_ARGUMENTS: ${{ parameters.netTraceCollectArguments }}
+
+  - ${{ if and(eq(parameters.collectNetTrace, true), eq(parameters.instanceId, '1'), eq(parameters.os, 'Linux')) }}:
+    - pwsh: |
+        dotnet tool install --global dotnet-trace
+        $dotnetToolPath = Join-Path -Path $env:HOME -ChildPath ".dotnet/tools"
+        $dotnetTraceExecutable = Join-Path -Path $dotnetToolPath -ChildPath "dotnet-trace"
+        $collectArguments = ${env:COLLECT_ARGUMENTS}
+        # $arguments = "collect -n Microsoft.Azure.WebJobs.Script.WebHost --providers Microsoft-Diagnostics-DiagnosticSource:0xfffffffffffff7ff:5,Microsoft-Windows-DotNETRuntime:0x10:5,Microsoft-Windows-DotNETRuntime:0x4000080018:5 --stopping-event-provider-name Microsoft-Diagnostics-DiagnosticSource --stopping-event-event-name Activity1/Stop -o $(netTraceFilePath)"
+        $arguments = "collect $collectArguments -o $(netTraceFilePath)"
+        echo "Starting dotnet trace with command '$arguments'..."
+        bash -c "nohup $dotnetTraceExecutable $arguments > /dev/null 2>&1 &"
+      displayName: "Start dotnet trace"
+      env:
+        COLLECT_ARGUMENTS: ${{ parameters.netTraceCollectArguments }}
+
   - pwsh: |
-      $helloUrl = "http://localhost:5000/api/hello?forcespecialization=1"
+      $helloUrl = "$(functionInvocationUrl)"
       Write-Host "Calling $helloUrl"
 
       $duration = Measure-Command {
@@ -215,6 +315,7 @@ jobs:
 
   - ${{ if eq(parameters.os, 'Windows') }}:
     - pwsh: |
+        Start-Sleep -Seconds 30 # Waiting 30 seconds before stopping the host is a test-and-tried good value based on testing so far; this helps ensure dotnet trace has time to finish and the trace file is complete.
         $processIdFile = "$(Build.ArtifactStagingDirectory)/hostProcessId.txt"
         if (Test-Path $processIdFile) {
             $processId = Get-Content $processIdFile
@@ -228,6 +329,7 @@ jobs:
 
   - ${{ if eq(parameters.os, 'Linux') }}:
     - script: |
+        sleep 30 # Waiting 30 seconds before stopping the host is a test-and-tried good value based on testing so far; this helps ensure dotnet trace has time to finish and the trace file is complete.
         processIdFile="$(Build.ArtifactStagingDirectory)/hostProcessId.txt"
         if [ -f "$processIdFile" ]; then
             processId=$(cat $processIdFile)
@@ -247,3 +349,50 @@ jobs:
       Get-Content $(stdErrorLogsFilePath)
     displayName: Print logs
     condition: always()
+
+  - ${{ if and(eq(parameters.collectNetTrace, true), eq(parameters.instanceId, '1')) }}:
+    - pwsh: |
+        Write-Host "Checking '$(netTraceFileName)' file is generated inside '$(netTraceDirectory)'"
+        $maxAttempts = 10
+        $attempt = 0
+
+        while ($attempt -lt $maxAttempts) {
+            Start-Sleep -Seconds 15
+            $files = Get-ChildItem -Path $(netTraceDirectory)
+            $fileCount = $files.Count
+            Write-Host "Found $fileCount files in $(netTraceDirectory)"
+            if ($fileCount -eq 1 -and $files[0].Name -eq '$(netTraceFileName)') {
+                Write-Host "Found expected .nettrace file: $($files[0].Name)"
+                break
+            } else {
+                Write-Host "Expected .nettrace file not found. Rechecking again in 30 seconds..."
+                $attempt++
+            }
+        }  
+      displayName: Wait until trace file is created
+
+    - pwsh: |
+        dotnet tool install -g Microsoft.Azure.Functions.ColdStartProfileAnalyzer --prerelease
+        $analyzerArgs = ${env:ANALYZER_ARGS}
+        Write-Host "Invoking with arguments --file $(netTraceFilePath) --format markdown text $analyzerArgs"
+        func-cold-start-analyzer --file $(netTraceFilePath) --format markdown text $analyzerArgs
+      displayName: Generate JIT trace
+      ${{ if and(eq(parameters.createJitTrace, true), eq(parameters.instanceId, '1')) }}:
+        env:
+          ANALYZER_ARGS: --generate-jittrace
+
+    - pwsh: |
+        Get-ChildItem -Path "$(netTraceDirectory)"
+      displayName: List contents of netTraceDirectory
+
+    - pwsh: |
+        if (Test-Path $(netTraceAnalysisResultsMarkdownFilePath)) {
+            Write-Host "Analysis result file is present at $(netTraceAnalysisResultsMarkdownFilePath)"
+            Write-Host "##vso[task.addattachment type=Distributedtask.Core.Summary;name=$env:OS $env:FUNCTION_APP_NAME;]$(netTraceAnalysisResultsMarkdownFilePath)"
+        } else {
+            Write-Host "Analysis result file is not present at $(netTraceAnalysisResultsMarkdownFilePath)"
+        }
+      displayName: Upload analysis result
+      env:
+        FUNCTION_APP_NAME: ${{ parameters.functionAppName }}
+        OS: ${{ parameters.os }}

@@ -5,3 +5,4 @@
 -->
 - Memory allocation optimizations in `ScriptStartupTypeLocator.GetExtensionsStartupTypesAsync` (#11012)
 - Fix invocation timeout when incoming request contains "x-ms-invocation-id" header (#10980)
+- Added support for collecting cross-platform perf traces and generating PGO JIT traces (#11062)
