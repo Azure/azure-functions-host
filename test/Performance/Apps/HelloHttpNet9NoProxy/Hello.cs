@@ -7,8 +7,14 @@ namespace HelloHttpNet9
 {
     public sealed class Hello(ILogger<Hello> logger)
     {
-        [Function("Hello")]
-        public HttpResponseData Run([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post")] HttpRequestData req)
+        [Function("HelloHttp")]
+        public HttpResponseData Run(
+#if AUTH_FUNCTION
+            [HttpTrigger(AuthorizationLevel.Function, "get", "post")] HttpRequestData req
+#else
+            [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post")] HttpRequestData req
+#endif
+        )
         {
             logger.LogInformation("C# HTTP trigger function processed a request.");
 
