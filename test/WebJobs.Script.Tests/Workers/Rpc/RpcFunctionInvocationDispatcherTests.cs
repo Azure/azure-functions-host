@@ -964,7 +964,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 It.Is<string>(id => id == "testChannelId"),
                 It.Is<Exception>(ex => ex is TimeoutException && ex.Message == $"Executing invocation `{invocationId}` timed out")))
                 .ReturnsAsync(!webHostShutdownSucceeds);
-
         }
     }
 }
