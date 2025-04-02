@@ -4,13 +4,13 @@ trigger: none
 # No PR triggers for now
 pr: none
 
-schedules:
-  - cron: "0 5 * * *"
-    displayName: Nightly Build
-    branches:
-      include:
-      - dev
-    always: true
+# schedules:
+#   - cron: "0 5 * * *"
+#     displayName: Nightly Build
+#     branches:
+#       include:
+#       - dev
+#     always: true
 
 parameters:
 - name: collectPerfViewProfileOnWindows
@@ -21,6 +21,18 @@ parameters:
   displayName: PerfView profile collection arguments (Valid only if "Collect PerfView Profile" is true))
   type: string
   default: '/NoGui /AcceptEula /NoV2Rundown /NoNGenRundown /NoClrRundown /BufferSizeMB=64 /CircularMB=64 /Providers=a7044dd6-c8ef-4980-858c-942d972b6250'
+- name: collectNetTrace
+  displayName: Collect DotNet trace
+  type: boolean
+  default: true
+- name: netTraceCollectArguments
+  displayName: DotNet trace profile collection arguments (Valid only if "Collect DotNet trace" is true)). Example `-n Microsoft.Azure.WebJobs.Script.WebHost --profile cpu-sampling --duration 00:00:00:10`
+  type: string
+  default: '-n Microsoft.Azure.WebJobs.Script.WebHost --providers Microsoft-Diagnostics-DiagnosticSource:0xfffffffffffff7ff:5,Microsoft-Windows-DotNETRuntime:0x10:5,Microsoft-Windows-DotNETRuntime:0x4000080018:5,FunctionsSystemLogsEventSource:0xFFFFFFFFFFFFFFFF:5 --stopping-event-provider-name Microsoft-Diagnostics-DiagnosticSource --stopping-event-event-name Activity1/Stop'
+- name: createJitTrace
+  displayName: Create Jit trace (Ensure "Collect DotNet trace" is set to true)
+  type: boolean
+  default: false
 
 resources:
   repositories:
@@ -57,6 +69,9 @@ extends:
             instanceId: ${{ appId }} 
             collectPerfViewProfileOnWindows: ${{ parameters.collectPerfViewProfileOnWindows }}
             perfViewCollectArguments: ${{ parameters.perfViewCollectArguments }}
+            netTraceCollectArguments: ${{ parameters.netTraceCollectArguments }}
+            collectNetTrace: ${{ parameters.collectNetTrace }}
+            createJitTrace: ${{ parameters.createJitTrace }}
         - template: /eng/ci/templates/official/jobs/run-coldstart.yml@self
           parameters:
             description: .NET9 Worker Application
@@ -64,6 +79,19 @@ extends:
             instanceId: ${{ appId }}
             collectPerfViewProfileOnWindows: ${{ parameters.collectPerfViewProfileOnWindows }}
             perfViewCollectArguments: ${{ parameters.perfViewCollectArguments }}
+            netTraceCollectArguments: ${{ parameters.netTraceCollectArguments }}
+            collectNetTrace: ${{ parameters.collectNetTrace }}
+            createJitTrace: ${{ parameters.createJitTrace }}
+        - template: /eng/ci/templates/official/jobs/run-coldstart.yml@self
+          parameters:
+            description: Node Application
+            functionAppName: HelloHttpNode
+            instanceId: ${{ appId }}
+            collectPerfViewProfileOnWindows: ${{ parameters.collectPerfViewProfileOnWindows }}
+            perfViewCollectArguments: ${{ parameters.perfViewCollectArguments }}
+            netTraceCollectArguments: ${{ parameters.netTraceCollectArguments }}
+            collectNetTrace: ${{ parameters.collectNetTrace }}
+            createJitTrace: ${{ parameters.createJitTrace }}
 
     - stage: CalculateWindows
       displayName: Process results(Windows)
@@ -81,7 +109,12 @@ extends:
           description: .NET9 Worker Application
           runInstances: 
             items: ${{ split(variables.runInstances, ',') }}
-
+      - template: /eng/ci/templates/official/jobs/process-coldstart.yml@self
+        parameters:
+          functionAppName: HelloHttpNode
+          description: Node Application
+          runInstances: 
+            items: ${{ split(variables.runInstances, ',') }}
 # # LINUX
     - stage: RunLinux
       dependsOn: []
@@ -94,13 +127,28 @@ extends:
             functionAppName: HelloHttpNet9
             instanceId: ${{ appId }}
             os: Linux
+            collectNetTrace: ${{ parameters.collectNetTrace }}
+            netTraceCollectArguments: ${{ parameters.netTraceCollectArguments }}
+            createJitTrace: ${{ parameters.createJitTrace }}
         - template: /eng/ci/templates/official/jobs/run-coldstart.yml@self
           parameters:
             description: .NET9 Worker Application
             functionAppName: HelloHttpNet9NoProxy
             instanceId: ${{ appId }}
             os: Linux
-  
+            collectNetTrace: ${{ parameters.collectNetTrace }}
+            netTraceCollectArguments: ${{ parameters.netTraceCollectArguments }}
+            createJitTrace: ${{ parameters.createJitTrace }}
+        - template: /eng/ci/templates/official/jobs/run-coldstart.yml@self
+          parameters:
+            description: Node Application
+            functionAppName: HelloHttpNode
+            instanceId: ${{ appId }}
+            os: Linux
+            collectNetTrace: ${{ parameters.collectNetTrace }}
+            netTraceCollectArguments: ${{ parameters.netTraceCollectArguments }}
+            createJitTrace: ${{ parameters.createJitTrace }}  
+
     - stage: CalculateLinux
       displayName:  Process results(Linux)
       dependsOn: RunLinux
@@ -119,3 +167,30 @@ extends:
           os: Linux
           runInstances: 
             items: ${{ split(variables.runInstances, ',') }}
+      - template: /eng/ci/templates/official/jobs/process-coldstart.yml@self
+        parameters:
+          functionAppName: HelloHttpNode
+          description: Node Application
+          os: Linux
+          runInstances: 
+            items: ${{ split(variables.runInstances, ',') }}
+
+    - stage: MergeWindowsJitTraceFiles
+      displayName: Create JitTrace(Windows)
+      condition: and(succeeded(), eq('${{ parameters.createJitTrace }}', true))
+      dependsOn:
+        - CalculateWindows
+      jobs:
+      - template: /eng/ci/templates/official/jobs/merge-jittrace.yml@self
+        parameters:
+          os: Windows
+
+    - stage: MergeLinuxJitTraceFiles
+      displayName: Create JitTrace(Linux)
+      condition: and(succeeded(), eq('${{ parameters.createJitTrace }}', true))
+      dependsOn:
+        - CalculateLinux
+      jobs:
+      - template: /eng/ci/templates/official/jobs/merge-jittrace.yml@self
+        parameters:
+          os: Linux
