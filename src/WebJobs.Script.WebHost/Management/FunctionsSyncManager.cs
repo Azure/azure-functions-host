@@ -339,7 +339,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
             // Add all listable functions details to the payload
             var listableFunctions = _functionMetadataManager.GetFunctionMetadata().Where(m => !m.IsCodeless());
-            var functionDetails = await WebFunctionsManager.GetFunctionMetadataResponse(listableFunctions, hostOptions, _hostNameProvider);
+            var functionDetails = await WebFunctionsManager.GetFunctionMetadataResponse(listableFunctions, hostOptions, _hostNameProvider, excludeTestData: _hostingConfigOptions.Value.IsTestDataSuppressionEnabled);
             result.Add("functions", new JArray(functionDetails.Select(p => JObject.FromObject(p))));
 
             // TEMP: refactor this code to properly add extensions in all scenario(#7394)

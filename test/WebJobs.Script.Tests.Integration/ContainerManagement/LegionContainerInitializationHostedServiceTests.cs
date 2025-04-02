@@ -15,7 +15,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
-using Moq.Protected;
 using Newtonsoft.Json;
 using Xunit;
 using static Microsoft.Azure.WebJobs.Script.EnvironmentSettingNames;
@@ -103,15 +102,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ContainerManagement
             _instanceManagerMock.Setup(m =>
                 m.SpecializeMSISidecar(It.Is<HostAssignmentContext>(context =>
                     hostAssignmentContext.Equals(context) && !context.IsWarmupRequest))).Returns(Task.FromResult(string.Empty));
-
-            _instanceManagerMock.Setup(manager => manager.StartAssignment(It.Is<HostAssignmentContext>(context => hostAssignmentContext.Equals(context) && !context.IsWarmupRequest))).Returns(true);
+            _instanceManagerMock.Setup(m => m.AssignInstanceAsync(It.Is<HostAssignmentContext>(context => hostAssignmentContext.Equals(context) && !context.IsWarmupRequest))).Returns(Task.FromResult(true));
 
             var initializationHostService = new LegionContainerInitializationHostedService(_environment, _instanceManagerMock.Object, NullLogger<LegionContainerInitializationHostedService>.Instance, _startupContextProvider);
             await initializationHostService.StartAsync(CancellationToken.None);
 
             _instanceManagerMock.Verify(m => m.SpecializeMSISidecar(It.Is<HostAssignmentContext>(context => hostAssignmentContext.Equals(context) && !context.IsWarmupRequest)), Times.Never);
             
-            _instanceManagerMock.Verify(manager => manager.StartAssignment(It.Is<HostAssignmentContext>(context => hostAssignmentContext.Equals(context) && !context.IsWarmupRequest)), Times.Once);
+            _instanceManagerMock.Verify(manager => manager.AssignInstanceAsync(It.Is<HostAssignmentContext>(context => hostAssignmentContext.Equals(context) && !context.IsWarmupRequest)), Times.Once);
 
             var hostSecrets = _startupContextProvider.GetHostSecretsOrNull();
             Assert.Equal("test-key", hostSecrets.MasterKey);
@@ -125,7 +123,45 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ContainerManagement
             var initializationHostService = new LegionContainerInitializationHostedService(_environment, _instanceManagerMock.Object, NullLogger<LegionContainerInitializationHostedService>.Instance, _startupContextProvider);
             await initializationHostService.StartAsync(CancellationToken.None);
 
-            _instanceManagerMock.Verify(manager => manager.StartAssignment(It.IsAny<HostAssignmentContext>()), Times.Never);
+            _instanceManagerMock.Verify(manager => manager.AssignInstanceAsync(It.IsAny<HostAssignmentContext>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task AssignInstance_Failure_Logged()
+        {
+            var containerEncryptionKey = TestHelpers.GenerateKeyHexString();
+            var hostAssignmentContext = GetHostAssignmentContext();
+
+            var encryptedHostAssignmentContext = GetEncryptedHostAssignmentContext(hostAssignmentContext, containerEncryptionKey);
+            var serializedContext = JsonConvert.SerializeObject(new { encryptedContext = encryptedHostAssignmentContext });
+
+            // Set up the context file
+            CreateTemporaryStartContextFile(serializedContext);
+
+            _environment.SetEnvironmentVariable(ContainerSpecializationContextVolumePath, ContainerSpecializationContextPath);
+            _environment.SetEnvironmentVariable(ContainerEncryptionKey, containerEncryptionKey);
+            AddLinuxConsumptionSettings(_environment);
+
+            // Mock the instance manager to simulate a failure
+            _instanceManagerMock.Setup(m => m.AssignInstanceAsync(It.IsAny<HostAssignmentContext>()))
+                .ThrowsAsync(new InvalidOperationException("Assignment failed"));
+
+            var logger = new TestLogger<LegionContainerInitializationHostedService>();
+
+            var initializationHostService = new LegionContainerInitializationHostedService(
+                _environment,
+                _instanceManagerMock.Object,
+                logger,
+                _startupContextProvider);
+
+            await initializationHostService.StartAsync(CancellationToken.None);
+
+            // Verify error was logged
+            Assert.Contains(logger.GetLogMessages(), m =>
+                m.Level == LogLevel.Error &&
+                m.Exception?.Message == "Assignment failed");
+
+            DeleteTemporaryStartContextFile();
         }
 
 

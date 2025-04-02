@@ -141,6 +141,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string FeatureFlagEnableResponseCompression = "EnableResponseCompression";
         public const string FeatureFlagDisableOrderedInvocationMessages = "DisableOrderedInvocationMessages";
         public const string FeatureFlagEnableAzureMonitorTimeIsoFormat = "EnableAzureMonitorTimeIsoFormat";
+        public const string FeatureFlagEnableTestDataSuppression = "EnableTestDataSuppression";
         public const string HostingConfigDisableLinuxAppServiceDetailedExecutionEvents = "DisableLinuxExecutionDetails";
         public const string HostingConfigDisableLinuxAppServiceExecutionEventLogBackoff = "DisableLinuxLogBackoff";
         public const string FeatureFlagEnableLegacyDurableVersionCheck = "EnableLegacyDurableVersionCheck";
