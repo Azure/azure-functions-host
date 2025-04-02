@@ -557,25 +557,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var mockJobHostChannelManager = new Mock<IJobHostRpcWorkerChannelManager>(MockBehavior.Strict);
             var mockWebHostChannelManager = new Mock<IWebHostRpcWorkerChannelManager>(MockBehavior.Strict);
 
-            // Setup the channel managers to return our mock channel
-            mockWebHostChannelManager.Setup(mockWebHostChannelManager => mockWebHostChannelManager.GetChannels(It.IsAny<string>()))
-                                     .Returns(new Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>>());
-            mockJobHostChannelManager.Setup(m => m.GetChannels(It.IsAny<string>()))
-                  .Returns(new List<IRpcWorkerChannel> { mockChannel.Object });
-            mockJobHostChannelManager.Setup(m => m.GetChannels())
-                              .Returns(new List<IRpcWorkerChannel> { mockChannel.Object });
-
-            // Setup the mock channel to indicate it's executing the specified invocation
-            mockChannel.Setup(c => c.Id).Returns("testChannelId");
-            mockChannel.Setup(c => c.IsExecutingInvocation(invocationId)).Returns(true);
-            mockChannel.Setup(c => c.IsChannelReadyForInvocations()).Returns(true);
-
-            // Set up ShutdownChannelIfExistsAsync to be called with the right exception type
-            mockWebHostChannelManager.Setup(m => m.ShutdownChannelIfExistsAsync(
-                It.IsAny<string>(),
-                It.Is<string>(id => id == "testChannelId"),
-                It.Is<Exception>(ex => ex is TimeoutException && ex.Message == $"Executing invocation `{invocationId}` timed out")))
-                .ReturnsAsync(true);
+            SetUpMocksForTimeoutTests(mockWebHostChannelManager, mockJobHostChannelManager, mockChannel, invocationId, true);
 
             // Setup for initialization of a new channel
             var workerConfig = new RpcWorkerConfig
@@ -607,31 +589,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var mockJobHostChannelManager = new Mock<IJobHostRpcWorkerChannelManager>(MockBehavior.Strict);
             var mockWebHostChannelManager = new Mock<IWebHostRpcWorkerChannelManager>(MockBehavior.Strict);
 
-            // Setup both channel managers to return our mock channel
-            mockWebHostChannelManager.Setup(mockWebHostChannelManager => mockWebHostChannelManager.GetChannels(It.IsAny<string>()))
-                                     .Returns(new Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>>());
-            mockJobHostChannelManager.Setup(m => m.GetChannels(It.IsAny<string>()))
-                  .Returns(new List<IRpcWorkerChannel> { mockChannel.Object });
-            mockJobHostChannelManager.Setup(m => m.GetChannels())
-                              .Returns(new List<IRpcWorkerChannel> { mockChannel.Object });
-
-            // Setup the mock channel to indicate it's executing the specified invocation
-            mockChannel.Setup(c => c.Id).Returns("testChannelId");
-            mockChannel.Setup(c => c.IsExecutingInvocation(invocationId)).Returns(true);
-            mockChannel.Setup(c => c.IsChannelReadyForInvocations()).Returns(true);
-
-            // Set up WebHost ShutdownChannelIfExistsAsync to return false, forcing the JobHost to attempt to shutdown channel
-            mockWebHostChannelManager.Setup(m => m.ShutdownChannelIfExistsAsync(
-                It.IsAny<string>(),
-                It.Is<string>(id => id == "testChannelId"),
-                It.Is<Exception>(ex => ex is TimeoutException && ex.Message == $"Executing invocation `{invocationId}` timed out")))
-                .ReturnsAsync(false);
-
-            // Set up JobHost ShutdownChannelIfExistsAsync to be called with the right exception type
-            mockJobHostChannelManager.Setup(m => m.ShutdownChannelIfExistsAsync(
-                It.Is<string>(id => id == "testChannelId"),
-                It.Is<Exception>(ex => ex is TimeoutException && ex.Message == $"Executing invocation `{invocationId}` timed out")))
-                .ReturnsAsync(true);
+            SetUpMocksForTimeoutTests(mockWebHostChannelManager, mockJobHostChannelManager, mockChannel, invocationId, false);
 
             // Setup for initialization of a new channel
             var workerConfig = new RpcWorkerConfig
@@ -976,6 +934,37 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 var diff = startTimestamps[i] - startTimestamps[i - 1];
                 Assert.True(diff > from && diff < to, $"Expected startup intervals between {from.TotalMilliseconds}ms and {to.TotalMilliseconds}ms. Actual: {diff.TotalMilliseconds}ms.");
             }
+        }
+
+        private void SetUpMocksForTimeoutTests(Mock<IWebHostRpcWorkerChannelManager> mockWebHostChannelManager, Mock<IJobHostRpcWorkerChannelManager> mockJobHostChannelManager,
+            Mock<IRpcWorkerChannel> mockChannel, string invocationId, bool webHostShutdownSucceeds)
+        {
+            // Setup the channel managers to return our mock channel
+            mockWebHostChannelManager.Setup(mockWebHostChannelManager => mockWebHostChannelManager.GetChannels(It.IsAny<string>()))
+                                     .Returns(new Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>>());
+            mockJobHostChannelManager.Setup(m => m.GetChannels(It.IsAny<string>()))
+                  .Returns(new List<IRpcWorkerChannel> { mockChannel.Object });
+            mockJobHostChannelManager.Setup(m => m.GetChannels())
+                              .Returns(new List<IRpcWorkerChannel> { mockChannel.Object });
+
+            // Setup the mock channel to indicate it's executing the specified invocation
+            mockChannel.Setup(c => c.Id).Returns("testChannelId");
+            mockChannel.Setup(c => c.IsExecutingInvocation(invocationId)).Returns(true);
+            mockChannel.Setup(c => c.IsChannelReadyForInvocations()).Returns(true);
+
+            // Set up WebHost ShutdownChannelIfExistsAsync to return false, forcing the JobHost to attempt to shutdown channel
+            mockWebHostChannelManager.Setup(m => m.ShutdownChannelIfExistsAsync(
+                It.IsAny<string>(),
+                It.Is<string>(id => id == "testChannelId"),
+                It.Is<Exception>(ex => ex is TimeoutException && ex.Message == $"Executing invocation `{invocationId}` timed out")))
+                .ReturnsAsync(webHostShutdownSucceeds);
+
+            // Set up JobHost ShutdownChannelIfExistsAsync to be called with the right exception type
+            mockJobHostChannelManager.Setup(m => m.ShutdownChannelIfExistsAsync(
+                It.Is<string>(id => id == "testChannelId"),
+                It.Is<Exception>(ex => ex is TimeoutException && ex.Message == $"Executing invocation `{invocationId}` timed out")))
+                .ReturnsAsync(!webHostShutdownSucceeds);
+
         }
     }
 }
