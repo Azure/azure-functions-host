@@ -132,11 +132,11 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
             }
             else
             {
-                string systemPath = Path.Combine(_rootScriptPath, ScriptConstants.AzureFunctionsSystemDirectoryName);
+                string packageRootPath = Path.Combine(_rootScriptPath, ScriptConstants.AzureFunctionsSystemDirectoryName);
 
-                if (isDotnetIsolatedApp && !Directory.Exists(systemPath))
+                if (isDotnetIsolatedApp && !Directory.Exists(packageRootPath))
                 {
-                    _logger.NoAzureFunctionsFolder(systemPath);
+                    _logger.NoAzureFunctionsFolder(packageRootPath);
                 }
 
                 extensionsMetadataPath = Path.Combine(_rootScriptPath, "bin");

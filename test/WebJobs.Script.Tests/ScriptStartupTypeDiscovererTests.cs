@@ -835,11 +835,65 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 //Assert
                 var traces = testLoggerProvider.GetAllLogMessages();
-                var traceMessage = traces.FirstOrDefault(val => val.EventId.Name.Equals("ScriptStartNotLoadingExtensionBundle"));
-                bool loadingExtensionBundle = traceMessage == null;
+                var traceMessage = traces.FirstOrDefault(val => val.EventId.Name.Equals("NoAzureFunctionsFolder"));
 
-                Assert.True(traces.Any(m => m.FormattedMessage.Contains($"Could not find the .azurefunctions folder in the path")));
+                Assert.NotNull(traceMessage);
             }
+
+            Environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, null);
+        }
+
+        [Fact]
+        public async Task GetExtensionsStartupTypes_Node_InnerBuild()
+        {
+            var vars = new Dictionary<string, string>();
+
+            using (var directory = GetTempDirectory())
+            using (var env = new TestScopedEnvironmentVariable(vars))
+            {
+                Environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "node");
+                var binPath = Path.Combine(directory.Path, "bin");
+                TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
+                TestLoggerProvider testLoggerProvider = new TestLoggerProvider();
+                LoggerFactory factory = new LoggerFactory();
+                factory.AddProvider(testLoggerProvider);
+                var testLogger = factory.CreateLogger<ScriptStartupTypeLocator>();
+
+                var mockExtensionBundleManager = new Mock<IExtensionBundleManager>();
+                mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(false);
+                mockExtensionBundleManager.Setup(e => e.GetExtensionBundleBinPathAsync()).Returns(Task.FromResult(binPath));
+                mockExtensionBundleManager.Setup(e => e.IsLegacyExtensionBundle()).Returns(false);
+                mockExtensionBundleManager.Setup(e => e.GetExtensionBundleDetails()).Returns(Task.FromResult(GetBundleDetails()));
+
+                RpcWorkerConfig nodeWorkerConfig = new RpcWorkerConfig() { Description = TestHelpers.GetTestWorkerDescription("node", "none", false) };
+                RpcWorkerConfig dotnetIsolatedWorkerConfig = new RpcWorkerConfig() { Description = TestHelpers.GetTestWorkerDescription("dotnet-isolated", "none", false) };
+
+                var tempOptions = new LanguageWorkerOptions();
+                tempOptions.WorkerConfigs = new List<RpcWorkerConfig>();
+                tempOptions.WorkerConfigs.Add(nodeWorkerConfig);
+
+                var optionsMonitor = new TestOptionsMonitor<LanguageWorkerOptions>(tempOptions);
+                var mockFunctionMetadataManager = GetTestFunctionMetadataManager(optionsMonitor, hasNodeFunctions: true);
+
+                var languageWorkerOptions = new TestOptionsMonitor<LanguageWorkerOptions>(tempOptions);
+
+                OptionsWrapper<ExtensionRequirementOptions> optionsWrapper = new(new ExtensionRequirementOptions());
+
+                // Modifying the path of .azurefunctions folder
+                //Directory.Move(directory.Path, directory.Path + "test");
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger, languageWorkerOptions, optionsWrapper);
+
+                // Act
+                var types = await discoverer.GetExtensionsStartupTypesAsync();
+
+                //Assert
+                var traces = testLoggerProvider.GetAllLogMessages();
+                var traceMessage = traces.FirstOrDefault(val => val.EventId.Name.Equals("NoAzureFunctionsFolder"));
+
+                Assert.Null(traceMessage);
+            }
+
+            Environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, null);
         }
 
         [Theory(Skip = "This test is failing on CI and needs to be fixed.")]
