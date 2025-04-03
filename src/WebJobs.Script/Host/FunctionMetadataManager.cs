@@ -27,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IFunctionMetadataProvider _functionMetadataProvider;
         private readonly IEnvironment _environment;
 
-        private IOptionsMonitor<LanguageWorkerOptions> _languageOptions;
+        private readonly IOptionsMonitor<LanguageWorkerOptions> _languageOptions;
         private IDisposable _onChangeSubscription;
         private IOptions<ScriptJobHostOptions> _scriptOptions;
         private ILogger _logger;
