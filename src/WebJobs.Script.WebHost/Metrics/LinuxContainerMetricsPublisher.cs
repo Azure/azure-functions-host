@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Formatting;
@@ -19,7 +20,7 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 {
-    public class LinuxContainerMetricsPublisher : IMetricsPublisher
+    public sealed class LinuxContainerMetricsPublisher : IMetricsPublisher, IDisposable
     {
         public const string PublishMemoryActivityPath = "/memoryactivity";
         public const string PublishFunctionActivityPath = "/functionactivity";
@@ -36,10 +37,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         private readonly TimeSpan _metricPublishInterval = TimeSpan.FromMilliseconds(30 * 1000);
         private readonly TimeSpan _timerStartDelay = TimeSpan.FromSeconds(2);
         private readonly IOptionsMonitor<StandbyOptions> _standbyOptions;
-        private readonly IDisposable _standbyOptionsOnChangeSubscription;
+        private readonly IDisposable _standbyOptionsOnChangeListener;
+        private readonly IDisposable _hostingConfigOptionsOnChangeListener;
         private readonly string _requestUri;
         private readonly IEnvironment _environment;
-        private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions;
+        private readonly IOptionsMonitor<FunctionsHostingConfigOptions> _hostingConfigOptions;
 
         // Buffer for all memory activities for this container.
         private BlockingCollection<MemoryActivity> _memoryActivities;
@@ -65,7 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         private string _stampName;
         private bool _initialized = false;
 
-        public LinuxContainerMetricsPublisher(IEnvironment environment, IOptionsMonitor<StandbyOptions> standbyOptions, ILogger<LinuxContainerMetricsPublisher> logger, HostNameProvider hostNameProvider, IOptions<FunctionsHostingConfigOptions> functionsHostingConfigOptions, HttpClient httpClient = null)
+        public LinuxContainerMetricsPublisher(IEnvironment environment, IOptionsMonitor<StandbyOptions> standbyOptions, ILogger<LinuxContainerMetricsPublisher> logger, HostNameProvider hostNameProvider, IOptionsMonitor<FunctionsHostingConfigOptions> functionsHostingConfigOptions, HttpClient httpClient = null)
         {
             _standbyOptions = standbyOptions ?? throw new ArgumentNullException(nameof(standbyOptions));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
@@ -86,12 +88,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
             _httpClient = (httpClient != null) ? httpClient : CreateMetricsPublisherHttpClient();
             if (_standbyOptions.CurrentValue.InStandbyMode)
             {
-                _standbyOptionsOnChangeSubscription = _standbyOptions.OnChange(o => OnStandbyOptionsChange());
+                _standbyOptionsOnChangeListener = _standbyOptions.OnChange(o => OnStandbyOptionsChange());
             }
             else
             {
                 Start();
             }
+
+            _hostingConfigOptionsOnChangeListener = _hostingConfigOptions.OnChange(OnHostingConfigOptionsChanged);
+        }
+
+        private void OnHostingConfigOptionsChanged(FunctionsHostingConfigOptions newOptions)
+        {
+            _logger.LogInformation("CGroup memory metrics enabled: {Enabled}", newOptions.IsCGroupMemoryMetricsEnabled);
         }
 
         private void OnStandbyOptionsChange()
@@ -234,7 +243,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
             try
             {
                 var request = BuildRequest(HttpMethod.Post, publishPath, activitiesToPublish.ToArray());
-
                 HttpResponseMessage response = await _httpClient.SendAsync(request);
                 response.EnsureSuccessStatusCode();
             }
@@ -261,15 +269,60 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
             _logger.LogInformation(string.Format("Starting metrics publisher for container : {0}. Publishing endpoint is {1}", _containerName, _requestUri));
         }
 
+        private long GetControlGroupMemoryUsage()
+        {
+            try
+            {
+                const string cgroupPathV1 = "/sys/fs/cgroup/memory/memory.usage_in_bytes";
+                const string cgroupPathV2 = "/sys/fs/cgroup/memory.current";
+
+                // Newer distros use cgroup v2
+                if (TryReadMemoryUsage(cgroupPathV2, out var memoryUsageInBytes) || TryReadMemoryUsage(cgroupPathV1, out memoryUsageInBytes))
+                {
+                    return memoryUsageInBytes;
+                }
+
+                _logger.LogDebug("Memory usage not available from either control group v1 or v2");
+                return 0;
+
+                bool TryReadMemoryUsage(string path, out long result)
+                {
+                    result = default;
+
+                    if (!File.Exists(path))
+                    {
+                        _logger.LogDebug("Control group path {ControlGroupPath} does not exist.", path);
+                        return false;
+                    }
+
+                    return long.TryParse(File.ReadAllText(path), out result);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error reading control group resource usage.");
+                return 0;
+            }
+        }
+
         private void OnProcessMonitorTimer(object state)
         {
             try
             {
-                _process.Refresh();
-                var commitSizeBytes = _process.WorkingSet64;
-                if (commitSizeBytes != 0)
+                long memoryUsageInBytes;
+                if (!PlatformHelper.IsWindows && _hostingConfigOptions.CurrentValue.IsCGroupMemoryMetricsEnabled)
                 {
-                    AddMemoryActivity(DateTime.UtcNow, commitSizeBytes);
+                    memoryUsageInBytes = GetControlGroupMemoryUsage();
+                }
+                else
+                {
+                    _process.Refresh();
+                    memoryUsageInBytes = _process.WorkingSet64;
+                }
+
+                if (memoryUsageInBytes != 0)
+                {
+                    AddMemoryActivity(DateTime.UtcNow, memoryUsageInBytes);
                 }
             }
             catch (Exception e)
@@ -292,7 +345,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
             request.Headers.Add(HostNameHeader, _hostNameProvider.Value);
             request.Headers.Add(StampNameHeader, _stampName);
 
-            if (_hostingConfigOptions.Value.SwtIssuerEnabled)
+            if (_hostingConfigOptions.CurrentValue.SwtIssuerEnabled)
             {
                 string swtToken = SimpleWebTokenHelper.CreateToken(DateTime.UtcNow.AddMinutes(5));
                 request.Headers.Add(ScriptConstants.SiteRestrictedTokenHeaderName, swtToken);
@@ -312,6 +365,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         public void OnFunctionCompleted(string functionName, string invocationId)
         {
             // nothing to do
+        }
+
+        public void Dispose()
+        {
+            _standbyOptionsOnChangeListener?.Dispose();
+            _hostingConfigOptionsOnChangeListener?.Dispose();
+            _processMonitorTimer?.Dispose();
+            _metricsPublisherTimer?.Dispose();
+            _httpClient?.Dispose();
+            _memoryActivities?.Dispose();
+            _functionActivities?.Dispose();
         }
     }
 }

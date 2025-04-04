@@ -320,7 +320,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     var logger = s.GetService<ILogger<LinuxContainerMetricsPublisher>>();
                     var standbyOptions = s.GetService<IOptionsMonitor<StandbyOptions>>();
                     var hostNameProvider = s.GetService<HostNameProvider>();
-                    var hostingConfigOptions = s.GetService<IOptions<FunctionsHostingConfigOptions>>();
+                    var hostingConfigOptions = s.GetService<IOptionsMonitor<FunctionsHostingConfigOptions>>();
                     return new LinuxContainerMetricsPublisher(environment, standbyOptions, logger, hostNameProvider, hostingConfigOptions);
                 }
 
