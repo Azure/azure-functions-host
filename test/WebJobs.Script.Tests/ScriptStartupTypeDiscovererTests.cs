@@ -838,9 +838,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var traceMessage = traces.FirstOrDefault(val => val.EventId.Name.Equals("NoAzureFunctionsFolder"));
 
                 Assert.NotNull(traceMessage);
-            }
 
-            Environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, null);
+                Environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, null);
+            }
         }
 
         [Fact]
@@ -891,9 +891,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var traceMessage = traces.FirstOrDefault(val => val.EventId.Name.Equals("NoAzureFunctionsFolder"));
 
                 Assert.Null(traceMessage);
-            }
 
-            Environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, null);
+                Environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, null);
+            }
         }
 
         [Theory(Skip = "This test is failing on CI and needs to be fixed.")]
