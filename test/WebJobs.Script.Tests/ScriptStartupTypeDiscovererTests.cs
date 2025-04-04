@@ -834,7 +834,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
                 Environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, null);
-                Directory.Move(directory.Path, oldPath);
+                Directory.Move(directory.Path + "test", directory.Path);
 
                 //Assert
                 var traces = testLoggerProvider.GetAllLogMessages();
