@@ -832,6 +832,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
+                Environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, null);
 
                 //Assert
                 var traces = testLoggerProvider.GetAllLogMessages();
@@ -883,6 +884,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
+                Environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, null);
 
                 //Assert
                 var traces = testLoggerProvider.GetAllLogMessages();
