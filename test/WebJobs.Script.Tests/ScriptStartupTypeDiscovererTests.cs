@@ -838,8 +838,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var traceMessage = traces.FirstOrDefault(val => val.EventId.Name.Equals("NoAzureFunctionsFolder"));
 
                 Assert.NotNull(traceMessage);
-
-                Environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, null);
             }
         }
 
@@ -891,8 +889,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var traceMessage = traces.FirstOrDefault(val => val.EventId.Name.Equals("NoAzureFunctionsFolder"));
 
                 Assert.Null(traceMessage);
-
-                Environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, null);
             }
         }
 
