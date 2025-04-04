@@ -193,8 +193,8 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
             new EventId(339, nameof(NoHostJsonFile)),
             "No functions were found. This can occur before you deploy code to your function app or when the host.json file is missing from the most recent deployment. Make sure that your deployment package includes the host.json file in the root of the package. For deployment package requirements, see https://aka.ms/functions-deployment-technologies.");
 
-        private static readonly Action<ILogger, string, Exception> _noAzureFunctionsFolderIssue =
-            LoggerMessage.Define<string>(LogLevel.Warning,
+        private static readonly Action<ILogger, Exception> _noAzureFunctionsFolderIssue =
+            LoggerMessage.Define(LogLevel.Warning,
             new EventId(338, nameof(NoAzureFunctionsFolder)),
             "Could not find the .azurefunctions folder in the deployed function app artifacts. Make sure that your deployment package includes the .azurefunctions folder. For deployment package requirements, see https://aka.ms/functions-deployment-technologies.");
 
@@ -393,9 +393,9 @@ Lock file hash: {currentLockFileHash}";
             _noHostJsonFile(logger, null);
         }
 
-        public static void NoAzureFunctionsFolder(this ILogger logger, string path)
+        public static void NoAzureFunctionsFolder(this ILogger logger)
         {
-            _noAzureFunctionsFolderIssue(logger, path, null);
+            _noAzureFunctionsFolderIssue(logger, null);
         }
     }
 }
