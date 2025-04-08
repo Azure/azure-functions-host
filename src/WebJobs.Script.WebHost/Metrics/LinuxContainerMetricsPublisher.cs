@@ -313,7 +313,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
             try
             {
                 long memoryUsageInBytes;
-                if (!PlatformHelper.IsWindows && _hostingConfigOptions.CurrentValue.IsCGroupMemoryMetricsEnabled)
+                if (_hostingConfigOptions.CurrentValue.IsCGroupMemoryMetricsEnabled)
                 {
                     memoryUsageInBytes = GetControlGroupMemoryUsage();
                 }
