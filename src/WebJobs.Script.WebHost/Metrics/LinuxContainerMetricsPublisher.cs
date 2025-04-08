@@ -269,6 +269,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
             _logger.LogInformation(string.Format("Starting metrics publisher for container : {0}. Publishing endpoint is {1}", _containerName, _requestUri));
         }
 
+        /// <summary>
+        /// Retrieves the memory usage of the control group in bytes. Supports both cgroup v1 and v2 paths.
+        /// </summary>
+        /// <returns>The memory usage in bytes if available; otherwise, 0.</returns>
         private long GetControlGroupMemoryUsage()
         {
             try
@@ -282,16 +286,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
                     return memoryUsageInBytes;
                 }
 
-                _logger.LogDebug("Memory usage not available from either control group v1 or v2");
+                _logger.LogWarning("Memory usage not available from either control group v1 or v2");
                 return 0;
 
-                bool TryReadMemoryUsage(string path, out long result)
+                static bool TryReadMemoryUsage(string path, out long result)
                 {
                     result = default;
 
                     if (!File.Exists(path))
                     {
-                        _logger.LogDebug("Control group path {ControlGroupPath} does not exist.", path);
                         return false;
                     }
 
