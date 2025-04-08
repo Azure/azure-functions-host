@@ -66,6 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         private int _errorCount = 0;
         private string _stampName;
         private bool _initialized = false;
+        private bool _isCGroupMemoryMetricsEnabled = false;
 
         public LinuxContainerMetricsPublisher(IEnvironment environment, IOptionsMonitor<StandbyOptions> standbyOptions, ILogger<LinuxContainerMetricsPublisher> logger, HostNameProvider hostNameProvider, IOptionsMonitor<FunctionsHostingConfigOptions> functionsHostingConfigOptions, HttpClient httpClient = null)
         {
@@ -100,7 +101,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 
         private void OnHostingConfigOptionsChanged(FunctionsHostingConfigOptions newOptions)
         {
-            _logger.LogInformation("CGroup memory metrics enabled: {Enabled}", newOptions.IsCGroupMemoryMetricsEnabled);
+            if (newOptions.IsCGroupMemoryMetricsEnabled != _isCGroupMemoryMetricsEnabled)
+            {
+                _logger.LogInformation("CGroup memory metrics enabled: {Enabled}", newOptions.IsCGroupMemoryMetricsEnabled);
+                _isCGroupMemoryMetricsEnabled = newOptions.IsCGroupMemoryMetricsEnabled;
+            }
         }
 
         private void OnStandbyOptionsChange()
