@@ -75,15 +75,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
             _hostingConfigOptionsOnChangeListener = _hostingConfigOptions.OnChange(OnHostingConfigOptionsChanged);
         }
 
-        private void OnHostingConfigOptionsChanged(FunctionsHostingConfigOptions newOptions)
-        {
-            if (newOptions.IsCGroupMemoryMetricsEnabled != _isCGroupMemoryMetricsEnabled)
-            {
-                _logger.LogInformation("CGroup memory metrics enabled: {Enabled}", newOptions.IsCGroupMemoryMetricsEnabled);
-                _isCGroupMemoryMetricsEnabled = newOptions.IsCGroupMemoryMetricsEnabled;
-            }
-        }
-
         public IMetricsLogger MetricsLogger
         {
             get
@@ -97,6 +88,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
                 }
 
                 return _metricsLogger;
+            }
+        }
+
+        private void OnHostingConfigOptionsChanged(FunctionsHostingConfigOptions newOptions)
+        {
+            if (newOptions.IsCGroupMemoryMetricsEnabled != _isCGroupMemoryMetricsEnabled)
+            {
+                _logger.LogInformation("CGroup memory metrics enabled: {Enabled}", newOptions.IsCGroupMemoryMetricsEnabled);
+                _isCGroupMemoryMetricsEnabled = newOptions.IsCGroupMemoryMetricsEnabled;
             }
         }
 
