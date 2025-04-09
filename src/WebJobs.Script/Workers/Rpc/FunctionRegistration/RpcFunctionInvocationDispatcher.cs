@@ -71,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             IScriptEventManager eventManager,
             ILoggerFactory loggerFactory,
             IRpcWorkerChannelFactory rpcWorkerChannelFactory,
-            IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions,
+            IOptionsMonitor<LanguageWorkerOptions> workerOptions,
             IWebHostRpcWorkerChannelManager webHostLanguageWorkerChannelManager,
             IJobHostRpcWorkerChannelManager jobHostLanguageWorkerChannelManager,
             IOptions<ManagedDependencyOptions> managedDependencyOptions,
@@ -87,7 +87,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _webHostLanguageWorkerChannelManager = webHostLanguageWorkerChannelManager;
             _jobHostLanguageWorkerChannelManager = jobHostLanguageWorkerChannelManager;
             _eventManager = eventManager;
-            _workerConfigs = languageWorkerOptions?.CurrentValue?.WorkerConfigs ?? throw new ArgumentNullException(nameof(languageWorkerOptions));
+
+            // The state of worker configuration and the LanguageWorkerOptions will match the lifetime of the JobHost and the
+            // RpcFunctionInvocationDispatcher. So, we can safely cache the workerConfigs and workerRuntime here.
+            // Using IOptionsMonitor here to get the same cached version used by other copmponents and avoid a new instance initialization.
+            _workerConfigs = workerOptions?.CurrentValue?.WorkerConfigs ?? throw new ArgumentNullException(nameof(workerOptions));
             _managedDependencyOptions = managedDependencyOptions ?? throw new ArgumentNullException(nameof(managedDependencyOptions));
             _logger = loggerFactory.CreateLogger<RpcFunctionInvocationDispatcher>();
             _rpcWorkerChannelFactory = rpcWorkerChannelFactory;

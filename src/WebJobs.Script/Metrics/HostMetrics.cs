@@ -16,13 +16,18 @@ namespace Microsoft.Azure.WebJobs.Script.Metrics
         private readonly ILogger _logger;
 
         public const string MeterName = "Microsoft.Azure.WebJobs.Script.Host.Internal";
+        public const string FaasMeterName = "Microsoft.Azure.Functions.Host";
         public const string CloudPlatformName = "azure_functions";
         public const string AppFailureCount = "azure.functions.app_failures";
         public const string ActiveInvocationCount = "azure.functions.active_invocations";
         public const string StartedInvocationCount = "azure.functions.started_invocations";
 
+        // FaaS Metrics
+        public const string FaasInvokeDuration = "faas.invoke_duration";
+
         private Counter<long> _appFailureCount;
         private Counter<long> _startedInvocationCount;
+        private Histogram<double> _faasInvokeDuration;
 
         private KeyValuePair<string, object>? _cachedFunctionGroupTag = null;
 
@@ -59,6 +64,12 @@ namespace Microsoft.Azure.WebJobs.Script.Metrics
 
             _appFailureCount = meter.CreateCounter<long>(AppFailureCount, "numeric", "Number of times the host has failed to start.");
             _startedInvocationCount = meter.CreateCounter<long>(StartedInvocationCount, "numeric", "Number of function invocations that have started.");
+
+            var faasMeter = meterFactory.Create(new MeterOptions(FaasMeterName));
+            _faasInvokeDuration = faasMeter.CreateHistogram<double>(
+                name: FaasInvokeDuration,
+                unit: "s",
+                description: "Measures the duration of the function's logic execution.");
         }
 
         private KeyValuePair<string, object> FunctionGroupTag
@@ -95,5 +106,14 @@ namespace Microsoft.Azure.WebJobs.Script.Metrics
         public void AppFailure() => _appFailureCount.Add(1, FunctionGroupTag);
 
         public void IncrementStartedInvocationCount() => _startedInvocationCount.Add(1, FunctionGroupTag);
+
+        public void TrackFunctionExecutionDuration(double duration, string functionName)
+        {
+            var tags = new TagList()
+            {
+                { ResourceSemanticConventions.FaaSName, functionName }
+            };
+            _faasInvokeDuration.Record(duration, tags);
+        }
     }
 }

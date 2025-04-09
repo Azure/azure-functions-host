@@ -7,14 +7,12 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
-using Azure;
-using Azure.Core;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Management.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Extensions;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
@@ -33,9 +31,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private readonly IFunctionMetadataManager _functionMetadataManager;
         private readonly IHostFunctionMetadataProvider _hostFunctionMetadataProvider;
         private readonly IOptionsMonitor<LanguageWorkerOptions> _languageWorkerOptions;
+        private readonly IOptionsMonitor<FunctionsHostingConfigOptions> _hostingConfigOptions;
 
         public WebFunctionsManager(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILoggerFactory loggerFactory, IHttpClientFactory httpClientFactory, ISecretManagerProvider secretManagerProvider, IFunctionsSyncManager functionsSyncManager, HostNameProvider hostNameProvider, IFunctionMetadataManager functionMetadataManager, IHostFunctionMetadataProvider hostFunctionMetadataProvider,
-            IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions)
+            IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions, IOptionsMonitor<FunctionsHostingConfigOptions> hostingConfigOptions)
         {
             _applicationHostOptions = applicationHostOptions;
             _logger = loggerFactory?.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
@@ -46,6 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             _functionMetadataManager = functionMetadataManager;
             _hostFunctionMetadataProvider = hostFunctionMetadataProvider;
             _languageWorkerOptions = languageWorkerOptions;
+            _hostingConfigOptions = hostingConfigOptions;
         }
 
         public async Task<IEnumerable<FunctionMetadataResponse>> GetFunctionsMetadata(bool includeProxies)
@@ -53,14 +53,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             var hostOptions = _applicationHostOptions.CurrentValue.ToHostOptions();
             var functionsMetadata = GetFunctionsMetadata(includeProxies, forceRefresh: false);
 
-            return await GetFunctionMetadataResponse(functionsMetadata, hostOptions, _hostNameProvider);
+            return await GetFunctionMetadataResponse(functionsMetadata, hostOptions, _hostNameProvider, excludeTestData: _hostingConfigOptions.CurrentValue.IsTestDataSuppressionEnabled);
         }
 
-        internal static async Task<IEnumerable<FunctionMetadataResponse>> GetFunctionMetadataResponse(IEnumerable<FunctionMetadata> functionsMetadata, ScriptJobHostOptions hostOptions, HostNameProvider hostNameProvider)
+        internal static async Task<IEnumerable<FunctionMetadataResponse>> GetFunctionMetadataResponse(IEnumerable<FunctionMetadata> functionsMetadata, ScriptJobHostOptions hostOptions, HostNameProvider hostNameProvider, bool excludeTestData)
         {
             string baseUrl = GetBaseUrl(hostNameProvider);
             string routePrefix = await GetRoutePrefix(hostOptions.RootScriptPath);
-            var tasks = functionsMetadata.Select(p => p.ToFunctionMetadataResponse(hostOptions, routePrefix, baseUrl));
+            var tasks = functionsMetadata.Select(p => p.ToFunctionMetadataResponse(hostOptions, routePrefix, baseUrl, excludeTestData));
 
             return await tasks.WhenAll();
         }
@@ -148,7 +148,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 configChanged = true;
             }
 
-            if (functionMetadata.TestData != null)
+            if (functionMetadata.TestData != null && !_hostingConfigOptions.CurrentValue.IsTestDataSuppressionEnabled)
             {
                 await FileUtility.WriteAsync(dataFilePath, functionMetadata.TestData);
             }
@@ -161,7 +161,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             FunctionMetadataResponse functionMetadataResult = null;
             if (metadata != null)
             {
-                functionMetadataResult = await GetFunctionMetadataResponseAsync(metadata, hostOptions, request);
+                functionMetadataResult = await GetFunctionMetadataResponseAsync(metadata, hostOptions, request, _hostingConfigOptions.CurrentValue.IsTestDataSuppressionEnabled);
                 success = true;
             }
 
@@ -197,7 +197,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
             if (functionMetadata != null)
             {
-                var functionMetadataResponse = await GetFunctionMetadataResponseAsync(functionMetadata, hostOptions, request);
+                var functionMetadataResponse = await GetFunctionMetadataResponseAsync(functionMetadata, hostOptions, request, _hostingConfigOptions.CurrentValue.IsTestDataSuppressionEnabled);
                 return (true, functionMetadataResponse);
             }
             else
@@ -245,11 +245,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
         }
 
-        private static async Task<FunctionMetadataResponse> GetFunctionMetadataResponseAsync(FunctionMetadata functionMetadata, ScriptJobHostOptions hostOptions, HttpRequest request)
+        private async Task<FunctionMetadataResponse> GetFunctionMetadataResponseAsync(FunctionMetadata functionMetadata, ScriptJobHostOptions hostOptions, HttpRequest request, bool excludeTestData)
         {
             string routePrefix = await GetRoutePrefix(hostOptions.RootScriptPath);
             var baseUrl = $"{request.Scheme}://{request.Host}";
-            return await functionMetadata.ToFunctionMetadataResponse(hostOptions, routePrefix, baseUrl);
+            return await functionMetadata.ToFunctionMetadataResponse(hostOptions, routePrefix, baseUrl, excludeTestData);
         }
 
         // TODO : Due to lifetime scoping issues (this service lifetime is longer than the lifetime

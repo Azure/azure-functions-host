@@ -251,6 +251,10 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             HashSet<string> bindingNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
+            // This method takes the RawBindings and adds them to the FunctionMetadata object. It's possible
+            // to call this twice, and we don't want to duplicate the bindings in that case.
+            function.Bindings.Clear();
+
             foreach (string binding in rawBindings)
             {
                 var deserializedObj = JsonConvert.DeserializeObject<JObject>(binding, _dateTimeSerializerSettings);
@@ -261,12 +265,10 @@ namespace Microsoft.Azure.WebJobs.Script
                 // Ensure no duplicate binding names exist
                 if (bindingNames.Contains(functionBinding.Name))
                 {
-                    throw new InvalidOperationException(string.Format("Multiple bindings with name '{0}' discovered. Binding names must be unique.", functionBinding.Name));
+                    throw new InvalidOperationException($"{nameof(WorkerFunctionDescriptorProvider)}: Multiple bindings with name '{functionBinding.Name}' discovered. Binding names must be unique.");
                 }
-                else
-                {
-                    bindingNames.Add(functionBinding.Name);
-                }
+
+                bindingNames.Add(functionBinding.Name);
 
                 // add binding to function.Bindings once validation is complete
                 function.Bindings.Add(functionBinding);

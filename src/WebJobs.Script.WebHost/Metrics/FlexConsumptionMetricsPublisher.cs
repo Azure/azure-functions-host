@@ -26,6 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         private readonly IHostMetricsProvider _metricsProvider;
         private readonly object _lock = new object();
         private readonly IFileSystem _fileSystem;
+        private readonly LegionMetricsFileManager _metricsFileManager;
 
         private Timer _metricsPublisherTimer;
         private bool _started = false;
@@ -44,6 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
             _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _fileSystem = fileSystem ?? new FileSystem();
+            _metricsFileManager = new LegionMetricsFileManager(_options.MetricsFilePath, _fileSystem, _logger, _options.MaxFileCount);
             _metricsProvider = metricsProvider ?? throw new ArgumentNullException(nameof(metricsProvider));
 
             if (_standbyOptions.CurrentValue.InStandbyMode)
@@ -66,13 +68,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 
         internal bool IsAlwaysReady { get; set; }
 
-        internal string MetricsFilePath { get; set; }
+        internal LegionMetricsFileManager MetricsFileManager => _metricsFileManager;
 
         public void Start()
         {
             Initialize();
 
-            _logger.LogInformation($"Starting metrics publisher (AlwaysReady={IsAlwaysReady}, MetricsPath='{MetricsFilePath}').");
+            _logger.LogInformation($"Starting metrics publisher (AlwaysReady={IsAlwaysReady}, MetricsPath='{_metricsFileManager.MetricsFilePath}').");
 
             _metricsPublisherTimer = new Timer(OnFunctionMetricsPublishTimer, null, _initialPublishDelay, _metricPublishInterval);
             _started = true;
@@ -86,7 +88,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
             _metricPublishInterval = TimeSpan.FromMilliseconds(_options.MetricsPublishIntervalMS);
             _initialPublishDelay = TimeSpan.FromMilliseconds(_options.InitialPublishDelayMS);
             _intervalStopwatch = ValueStopwatch.StartNew();
-            MetricsFilePath = _options.MetricsFilePath;
 
             IsAlwaysReady = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsAlwaysReadyInstance) == "1";
         }
@@ -136,7 +137,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
                     FunctionExecutionTimeMS = FunctionExecutionCount = 0;
                 }
 
-                await PublishMetricsAsync(metrics);
+                await _metricsFileManager.PublishMetricsAsync(metrics);
+            }
+            catch (Exception ex) when (!ex.IsFatal())
+            {
+                // ensure no background exceptions escape
+                _logger.LogError(ex, $"Error publishing metrics.");
             }
             finally
             {
@@ -147,84 +153,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         private async void OnFunctionMetricsPublishTimer(object state)
         {
             await OnPublishMetrics(DateTime.UtcNow);
-        }
-
-        private async Task PublishMetricsAsync(Metrics metrics)
-        {
-            string fileName = string.Empty;
-
-            try
-            {
-                bool metricsPublishEnabled = !string.IsNullOrEmpty(MetricsFilePath);
-                if (metricsPublishEnabled && !PrepareDirectoryForFile())
-                {
-                    return;
-                }
-
-                string metricsContent = JsonConvert.SerializeObject(metrics);
-                _logger.PublishingMetrics(metricsContent);
-
-                if (metricsPublishEnabled)
-                {
-                    fileName = $"{Guid.NewGuid().ToString().ToLower()}.json";
-                    string filePath = Path.Combine(MetricsFilePath, fileName);
-
-                    using (var streamWriter = _fileSystem.File.CreateText(filePath))
-                    {
-                        await streamWriter.WriteAsync(metricsContent);
-                    }
-                }
-            }
-            catch (Exception ex) when (!ex.IsFatal())
-            {
-                // TODO: consider using a retry strategy here
-                _logger.LogError(ex, $"Error writing metrics file '{fileName}'.");
-            }
-        }
-
-        private bool PrepareDirectoryForFile()
-        {
-            if (string.IsNullOrEmpty(MetricsFilePath))
-            {
-                return false;
-            }
-
-            // ensure the directory exists
-            _fileSystem.Directory.CreateDirectory(MetricsFilePath);
-
-            var metricsDirectoryInfo = _fileSystem.DirectoryInfo.FromDirectoryName(MetricsFilePath);
-            var files = metricsDirectoryInfo.GetFiles().OrderBy(p => p.CreationTime).ToList();
-
-            // ensure we're under the max file count
-            if (files.Count < _options.MaxFileCount)
-            {
-                return true;
-            }
-
-            // we're at or over limit
-            // delete enough files that we have space to write a new one
-            int numToDelete = files.Count - _options.MaxFileCount + 1;
-            var filesToDelete = files.Take(numToDelete).ToArray();
-
-            _logger.LogDebug($"Deleting {filesToDelete.Length} metrics file(s).");
-
-            foreach (var file in filesToDelete)
-            {
-                try
-                {
-                    file.Delete();
-                }
-                catch (Exception ex) when (!ex.IsFatal())
-                {
-                    // best effort
-                    _logger.LogError(ex, $"Error deleting metrics file '{file.FullName}'.");
-                }
-            }
-
-            files = metricsDirectoryInfo.GetFiles().OrderBy(p => p.CreationTime).ToList();
-
-            // return true if we have space for a new file
-            return files.Count < _options.MaxFileCount;
         }
 
         private void OnStandbyOptionsChange()

@@ -181,7 +181,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected internal virtual void ValidateFunction(FunctionMetadata functionMetadata)
         {
-            HashSet<string> names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            HashSet<string> names = new(StringComparer.OrdinalIgnoreCase);
             foreach (var binding in functionMetadata.Bindings)
             {
                 ValidateBinding(binding);
@@ -189,12 +189,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 // Ensure no duplicate binding names
                 if (names.Contains(binding.Name))
                 {
-                    throw new InvalidOperationException(string.Format("Multiple bindings with name '{0}' discovered. Binding names must be unique.", binding.Name));
+                    throw new InvalidOperationException($"{nameof(FunctionDescriptorProvider)}: Multiple bindings with name '{binding.Name}' discovered. Binding names must be unique.");
                 }
-                else
-                {
-                    names.Add(binding.Name);
-                }
+
+                names.Add(binding.Name);
             }
 
             // Verify there aren't multiple triggers defined

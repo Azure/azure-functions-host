@@ -141,9 +141,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 var bundleManager = new ExtensionBundleManager(extensionBundleOptions, SystemEnvironment.Instance, loggerFactory, configOption);
                 var metadataServiceManager = applicationOptions.RootServiceProvider.GetService<IFunctionMetadataManager>();
-                var languageWorkerOptions = applicationOptions.RootServiceProvider.GetService<IOptionsMonitor<LanguageWorkerOptions>>();
 
-                var locator = new ScriptStartupTypeLocator(applicationOptions.ScriptPath, loggerFactory.CreateLogger<ScriptStartupTypeLocator>(), bundleManager, metadataServiceManager, metricsLogger, languageWorkerOptions, extensionRequirementOptions);
+                var locator = new ScriptStartupTypeLocator(applicationOptions.ScriptPath, loggerFactory.CreateLogger<ScriptStartupTypeLocator>(), bundleManager, metadataServiceManager, metricsLogger, extensionRequirementOptions);
 
                 // The locator (and thus the bundle manager) need to be created now in order to configure app configuration.
                 // Store them so they do not need to be re-created later when configuring services.
@@ -320,10 +319,9 @@ namespace Microsoft.Azure.WebJobs.Script
                 // Configuration
                 services.AddSingleton<IOptions<ScriptApplicationHostOptions>>(new OptionsWrapper<ScriptApplicationHostOptions>(applicationHostOptions));
                 services.AddSingleton<IOptionsMonitor<ScriptApplicationHostOptions>>(new ScriptApplicationHostOptionsMonitor(applicationHostOptions));
+
                 services.ConfigureOptions<ScriptJobHostOptionsSetup>();
                 services.ConfigureOptions<JobHostFunctionTimeoutOptionsSetup>();
-                // LanguageWorkerOptionsSetup should be registered in WebHostServiceCollection as well to enable starting worker processing in placeholder mode.
-                services.ConfigureOptions<LanguageWorkerOptionsSetup>();
                 services.AddOptions<WorkerConcurrencyOptions>();
                 services.ConfigureOptions<HttpWorkerOptionsSetup>();
                 services.ConfigureOptions<ManagedDependencyOptionsSetup>();
@@ -338,8 +336,17 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 services.AddSingleton<IFileLoggingStatusManager, FileLoggingStatusManager>();
 
-                if (!applicationHostOptions.HasParentScope)
+                if (applicationHostOptions.HasParentScope)
                 {
+                    // Forward the host LanguageWorkerOptions to the Job Host.
+                    var languageWorkerOptions = applicationHostOptions.RootServiceProvider.GetService<IOptionsMonitor<LanguageWorkerOptions>>();
+                    services.AddSingleton(languageWorkerOptions);
+                    services.AddSingleton<IOptions<LanguageWorkerOptions>>(s => new OptionsWrapper<LanguageWorkerOptions>(languageWorkerOptions.CurrentValue));
+                    services.ConfigureOptions<JobHostLanguageWorkerOptionsSetup>();
+                }
+                else
+                {
+                    services.ConfigureOptions<LanguageWorkerOptionsSetup>();
                     AddCommonServices(services);
                 }
 
@@ -419,38 +426,37 @@ namespace Microsoft.Azure.WebJobs.Script
 
         internal static void ConfigureTelemetry(this ILoggingBuilder loggingBuilder, HostBuilderContext context)
         {
-            TelemetryMode mode;
-            var telemetryModeSection = context.Configuration.GetSection(ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, ConfigurationSectionNames.TelemetryMode));
-            if (telemetryModeSection.Exists() && Enum.TryParse(telemetryModeSection.Value, true, out TelemetryMode telemetryMode))
-            {
-                mode = telemetryMode;
-            }
-            else
-            {
-                // Default to ApplicationInsights.
-                mode = TelemetryMode.ApplicationInsights;
-            }
+            var telemetryMode = GetTelemetryMode(context);
 
             // Use switch statement so any change to the enum results in a build error if we don't handle it.
-            switch (mode)
+            switch (telemetryMode)
             {
                 case TelemetryMode.ApplicationInsights:
                 case TelemetryMode.None:
-                    loggingBuilder.ConfigureApplicationInsights(context);
+                    loggingBuilder.ConfigureApplicationInsights(context, telemetryMode);
                     break;
+
                 case TelemetryMode.OpenTelemetry:
-                    loggingBuilder.ConfigureOpenTelemetry(context);
+                    loggingBuilder.ConfigureOpenTelemetry(context, telemetryMode);
                     break;
+
+                case TelemetryMode.Placeholder:
+                    loggingBuilder.ConfigureApplicationInsights(context, telemetryMode);
+                    loggingBuilder.ConfigureOpenTelemetry(context, telemetryMode);
+                    break;
+
+                default:
+                    throw new NotSupportedException($"Unhandled TelemetryMode: {telemetryMode}");
             }
         }
 
-        internal static void ConfigureApplicationInsights(this ILoggingBuilder builder, HostBuilderContext context)
+        internal static void ConfigureApplicationInsights(this ILoggingBuilder builder, HostBuilderContext context, TelemetryMode telemetryMode)
         {
             string appInsightsInstrumentationKey = GetConfigurationValue(EnvironmentSettingNames.AppInsightsInstrumentationKey, context.Configuration);
             string appInsightsConnectionString = GetConfigurationValue(EnvironmentSettingNames.AppInsightsConnectionString, context.Configuration);
 
             // Initializing AppInsights services during placeholder mode as well to avoid the cost of JITting these objects during specialization
-            if (!string.IsNullOrEmpty(appInsightsInstrumentationKey) || !string.IsNullOrEmpty(appInsightsConnectionString) || SystemEnvironment.Instance.IsPlaceholderModeEnabled())
+            if (!string.IsNullOrEmpty(appInsightsInstrumentationKey) || !string.IsNullOrEmpty(appInsightsConnectionString) || telemetryMode == TelemetryMode.Placeholder)
             {
                 string eventLogLevel = GetConfigurationValue(EnvironmentSettingNames.AppInsightsEventListenerLogLevel, context.Configuration);
                 string authString = GetConfigurationValue(EnvironmentSettingNames.AppInsightsAuthenticationString, context.Configuration);
@@ -615,6 +621,26 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 return null;
             }
+        }
+
+        private static TelemetryMode GetTelemetryMode(HostBuilderContext context)
+        {
+            var telemetryModeSection = context.Configuration.GetSection(ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, ConfigurationSectionNames.TelemetryMode));
+
+            if (telemetryModeSection.Exists())
+            {
+                if (Enum.TryParse(telemetryModeSection.Value, true, out TelemetryMode telemetryMode))
+                {
+                    return telemetryMode;
+                }
+
+                throw new InvalidEnumArgumentException($"Invalid TelemetryMode: `{telemetryModeSection.Value}`.");
+            }
+
+            // Initialize AppInsights SDK and OTel services during placeholder mode to avoid JIT cost during specialization.
+            return SystemEnvironment.Instance.IsPlaceholderModeEnabled()
+                ? TelemetryMode.Placeholder
+                : TelemetryMode.ApplicationInsights;
         }
     }
 }

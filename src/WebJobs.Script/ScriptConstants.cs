@@ -130,6 +130,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string FeatureFlagRelaxedAssemblyUnification = "RelaxedAssemblyUnification";
         public const string FeatureFlagEnableDiagnosticEventLogging = "EnableDiagnosticEventLogging";
         public const string FeatureFlagDisableDiagnosticEventLogging = "DisableDiagnosticEventLogging";
+        public const string FeatureFlagDisableWebHostLogForwarding = "DisableWebHostLogForwarding";
         public const string FeatureFlagDisableMergedWebHostScriptHostConfiguration = "DisableMergedConfiguration";
         public const string FeatureFlagEnableWorkerIndexing = "EnableWorkerIndexing";
         public const string FeatureFlagEnableDebugTracing = "EnableDebugTracing";
@@ -137,7 +138,10 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string FeatureFlagStrictHISModeEnabled = "StrictHISModeEnabled";
         public const string FeatureFlagStrictHISModeWarn = "StrictHISModeWarn";
         public const string FeatureFlagEnableOrderedInvocationmessages = "EnableOrderedInvocationMessages";
+        public const string FeatureFlagEnableResponseCompression = "EnableResponseCompression";
         public const string FeatureFlagDisableOrderedInvocationMessages = "DisableOrderedInvocationMessages";
+        public const string FeatureFlagEnableAzureMonitorTimeIsoFormat = "EnableAzureMonitorTimeIsoFormat";
+        public const string FeatureFlagEnableTestDataSuppression = "EnableTestDataSuppression";
         public const string HostingConfigDisableLinuxAppServiceDetailedExecutionEvents = "DisableLinuxExecutionDetails";
         public const string HostingConfigDisableLinuxAppServiceExecutionEventLogBackoff = "DisableLinuxLogBackoff";
         public const string FeatureFlagEnableLegacyDurableVersionCheck = "EnableLegacyDurableVersionCheck";
@@ -197,7 +201,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const int ExtensionBundleV3MajorVersion = 3;
         public const int ExtensionBundleV4MajorVersion = 4;
         public const string ExtensionBundleDirectory = "ExtensionBundles";
-        public const string ExtensionBundleDefaultSourceUri = "https://functionscdn.azureedge.net/public";
+        public const string ExtensionBundleDefaultSourceUri = "https://cdn.functions.azure.com/public";
         public const string ExtensionBundleMetadataFile = "bundle.json";
         public const string ExtensionBundleVersionIndexFile = "index.json";
         public const string ExtensionBundleBindingMetadataFile = "bindings.json";
@@ -215,6 +219,11 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string WorkFlowAppKind = "workflowapp";
         public const string LogicAppDefaultExtensionBundleVersion = "[1.*, 2.0.0)";
         public const string DefaultExtensionBundleVersion = "[4.*, 5.0.0)";
+
+        // Antares Platform Channel Names, used in extension bundle resolution
+        public const string LatestPlatformChannelNameUpper = "LATEST";
+        public const string StandardPlatformChannelNameUpper = "STANDARD";
+        public const string ExtendedPlatformChannelNameUpper = "EXTENDED";
 
         public const string AzureMonitorTraceCategory = "FunctionAppLogs";
 

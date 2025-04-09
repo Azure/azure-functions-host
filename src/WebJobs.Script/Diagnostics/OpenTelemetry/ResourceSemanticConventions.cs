@@ -14,14 +14,13 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
         internal const string CloudProvider = "cloud.provider";
         internal const string CloudPlatform = "cloud.platform";
         internal const string CloudRegion = "cloud.region";
-        internal const string CloudResourceId = "cloud.resource.id";
+        internal const string CloudResourceId = "cloud.resource_id";
 
         //FaaS
         internal const string FaaSTrigger = "faas.trigger";
         internal const string FaaSInvocationId = "faas.invocation_id";
         internal const string FaaSColdStart = "faas.coldstart";
         internal const string FaaSName = "faas.name";
-        internal const string FaaSVersion = "faas.version";
         internal const string FaaSInstance = "faas.instance";
 
         // Process
@@ -30,6 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
         // Http
         internal const string QueryUrl = "url.query";
         internal const string FullUrl = "url.full";
+        internal const string HttpRoute = "http.route";
 
         // AI
         internal const string AISDKPrefix = "ai.sdk.prefix";
