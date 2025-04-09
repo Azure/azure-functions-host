@@ -274,45 +274,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
             _logger.LogInformation(string.Format("Starting metrics publisher for container : {0}. Publishing endpoint is {1}", _containerName, _requestUri));
         }
 
-        /// <summary>
-        /// Retrieves the memory usage of the control group in bytes. Supports both cgroup v1 and v2 paths.
-        /// </summary>
-        /// <returns>The memory usage in bytes if available; otherwise, 0.</returns>
-        private long GetControlGroupMemoryUsage()
-        {
-            try
-            {
-                const string cgroupPathV1 = "/sys/fs/cgroup/memory/memory.usage_in_bytes";
-                const string cgroupPathV2 = "/sys/fs/cgroup/memory.current";
-
-                // Newer distros use cgroup v2
-                if (TryReadMemoryUsage(cgroupPathV2, out var memoryUsageInBytes) || TryReadMemoryUsage(cgroupPathV1, out memoryUsageInBytes))
-                {
-                    return memoryUsageInBytes;
-                }
-
-                _logger.LogWarning("Memory usage not available from either control group v1 or v2");
-                return 0;
-
-                static bool TryReadMemoryUsage(string path, out long result)
-                {
-                    result = default;
-
-                    if (!File.Exists(path))
-                    {
-                        return false;
-                    }
-
-                    return long.TryParse(File.ReadAllText(path), out result);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error reading control group resource usage.");
-                return 0;
-            }
-        }
-
         private void OnProcessMonitorTimer(object state)
         {
             try
@@ -320,7 +281,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
                 long memoryUsageInBytes;
                 if (_hostingConfigOptions.CurrentValue.IsCGroupMemoryMetricsEnabled)
                 {
-                    memoryUsageInBytes = GetControlGroupMemoryUsage();
+                    memoryUsageInBytes = CgroupMemoryUsageHelper.GetMemoryUsageInBytes(_logger);
                 }
                 else
                 {
