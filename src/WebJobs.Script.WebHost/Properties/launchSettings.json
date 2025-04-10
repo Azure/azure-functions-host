@@ -4,7 +4,15 @@
       "commandName": "Project",
       "launchBrowser": true,
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "AzureWebJobsScriptRoot": "D:\\apps\\HelloHttpNet9NoProxy",
+        "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+        "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+        "AZURE_FUNCTIONS_ENVIRONMENT": "Development",
+        "FUNCTIONS_WORKER_RUNTIME_VERSION": "9.0",
+        "WEBSITE_SKU": "dynamic",
+        "WEBSITE_POD_NAME": "podname",
+        "CONTAINER_NAME": "foo",
+        "LEGION_SERVICE_HOST": "1"
       },
       "applicationUrl": "https://localhost:62513;http://localhost:62514"
     }

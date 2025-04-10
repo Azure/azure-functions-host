@@ -33,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
         private readonly Random _random = new Random();
         private readonly TestLogger<LinuxContainerLegionMetricsPublisher> _logger;
         private readonly TestMetricsLogger _testMetricsLogger;
-        private readonly IScriptHostManager _scriptHostManager;
+        private readonly IServiceProvider _serviceProvider;
 
         private IOptions<LinuxConsumptionLegionMetricsPublisherOptions> _options;
         private StandbyOptions _standbyOptions;
@@ -45,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             _environment = new TestEnvironment();
             _logger = new TestLogger<LinuxContainerLegionMetricsPublisher>();
             _testMetricsLogger = new TestMetricsLogger();
-            _scriptHostManager = new TestScriptHostManager(_testMetricsLogger);
+            _serviceProvider = new TestScriptHostManager(_testMetricsLogger);
 
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsMetricsPublishPath, _metricsFilePath);
 
@@ -65,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
 
             var testHostingConfigOptionsMonitor = new TestOptionsMonitor<FunctionsHostingConfigOptions>(new FunctionsHostingConfigOptions());
 
-            return new LinuxContainerLegionMetricsPublisher(_environment, _standbyOptionsMonitor, _options, _logger, new FileSystem(), _testMetricsTracker, _scriptHostManager, testHostingConfigOptionsMonitor, metricsPublishInterval);
+            return new LinuxContainerLegionMetricsPublisher(_environment, _standbyOptionsMonitor, _options, _logger, new FileSystem(), _testMetricsTracker, _serviceProvider, testHostingConfigOptionsMonitor, metricsPublishInterval);
         }
 
         [Fact]
