@@ -176,7 +176,7 @@ jobs:
         & $(perfViewPath) stop
 
         # Wait for the zip file to be created
-        $maxAttempts = 10
+        $maxAttempts = 20
         $attempt = 0
 
         while ($attempt -lt $maxAttempts) {
