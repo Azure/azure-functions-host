@@ -9,6 +9,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.Functions.Platform.Metrics.LinuxConsumption;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
@@ -62,7 +63,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
                 MetricsFilePath = _metricsFilePath
             });
 
-            return new LinuxContainerLegionMetricsPublisher(_environment, _standbyOptionsMonitor, _options, _logger, new FileSystem(), _testMetricsTracker, _scriptHostManager, metricsPublishInterval);
+            var testHostingConfigOptionsMonitor = new TestOptionsMonitor<FunctionsHostingConfigOptions>(new FunctionsHostingConfigOptions());
+
+            return new LinuxContainerLegionMetricsPublisher(_environment, _standbyOptionsMonitor, _options, _logger, new FileSystem(), _testMetricsTracker, _scriptHostManager, testHostingConfigOptionsMonitor, metricsPublishInterval);
         }
 
         [Fact]

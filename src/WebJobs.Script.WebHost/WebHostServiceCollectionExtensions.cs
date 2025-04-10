@@ -305,7 +305,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     var metricsTracker = s.GetService<ILinuxConsumptionMetricsTracker>();
                     var standbyOptions = s.GetService<IOptionsMonitor<StandbyOptions>>();
                     var scriptHostManager = s.GetService<IScriptHostManager>();
-                    return new LinuxContainerLegionMetricsPublisher(environment, standbyOptions, options, logger, new FileSystem(), metricsTracker, scriptHostManager);
+                    var hostingConfigOptions = s.GetService<IOptionsMonitor<FunctionsHostingConfigOptions>>();
+                    return new LinuxContainerLegionMetricsPublisher(environment, standbyOptions, options, logger, new FileSystem(), metricsTracker, scriptHostManager, hostingConfigOptions);
                 }
                 else if (environment.IsFlexConsumptionSku())
                 {
@@ -320,7 +321,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     var logger = s.GetService<ILogger<LinuxContainerMetricsPublisher>>();
                     var standbyOptions = s.GetService<IOptionsMonitor<StandbyOptions>>();
                     var hostNameProvider = s.GetService<HostNameProvider>();
-                    var hostingConfigOptions = s.GetService<IOptions<FunctionsHostingConfigOptions>>();
+                    var hostingConfigOptions = s.GetService<IOptionsMonitor<FunctionsHostingConfigOptions>>();
                     return new LinuxContainerMetricsPublisher(environment, standbyOptions, logger, hostNameProvider, hostingConfigOptions);
                 }
 
