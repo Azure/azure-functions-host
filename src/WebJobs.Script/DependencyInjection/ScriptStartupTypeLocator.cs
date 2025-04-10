@@ -132,9 +132,9 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
             }
             else
             {
-                string packageRootPath = Path.Combine(_rootScriptPath, ScriptConstants.AzureFunctionsSystemDirectoryName);
-
-                if (isDotnetIsolatedApp && !Directory.Exists(packageRootPath) && !SystemEnvironment.Instance.IsPlaceholderModeEnabled())
+                if (isDotnetIsolatedApp &&
+                    !SystemEnvironment.Instance.IsPlaceholderModeEnabled() &&
+                    !Directory.Exists(Path.Combine(_rootScriptPath, ScriptConstants.AzureFunctionsSystemDirectoryName)))
                 {
                     _logger.NoAzureFunctionsFolder();
                 }
