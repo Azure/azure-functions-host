@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
@@ -18,7 +17,6 @@ using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Newtonsoft.Json;
 using Xunit;
-using static Microsoft.Azure.WebJobs.Script.Tests.TestHelpers;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
 {
@@ -240,37 +238,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             return new FileInfo[0];
         }
 
-        private class TestMetricsTracker : ILinuxConsumptionMetricsTracker
-        {
-            public event EventHandler<DiagnosticEventArgs> OnDiagnosticEvent;
-
-            public List<FunctionActivity> FunctionActivities { get; } = new List<FunctionActivity>();
-
-            public List<MemoryActivity> MemoryActivities { get; } = new List<MemoryActivity>();
-
-            public Queue<LinuxConsumptionMetrics> MetricsQueue { get; } = new Queue<LinuxConsumptionMetrics>();
-
-            public void AddFunctionActivity(FunctionActivity activity)
-            {
-                FunctionActivities.Add(activity);
-            }
-
-            public void AddMemoryActivity(MemoryActivity activity)
-            {
-                MemoryActivities.Add(activity);
-            }
-
-            public bool TryGetMetrics(out LinuxConsumptionMetrics metrics)
-            {
-                return MetricsQueue.TryDequeue(out metrics);
-            }
-
-            public void LogEvent(string eventName)
-            {
-                OnDiagnosticEvent?.Invoke(this, new DiagnosticEventArgs(eventName));
-            }
-        }
-
         private class TestScriptHostManager : IServiceProvider, IScriptHostManager
         {
             private readonly IMetricsLogger _metricsLogger;
@@ -280,11 +247,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
                 _metricsLogger = metricsLogger;
             }
 
-            #pragma warning disable CS0067
+#pragma warning disable CS0067
             public event EventHandler HostInitializing;
 
             public event EventHandler<ActiveHostChangedEventArgs> ActiveHostChanged;
-            #pragma warning restore CS0067
+#pragma warning restore CS0067
 
             public ScriptHostState State => throw new NotImplementedException();
 
