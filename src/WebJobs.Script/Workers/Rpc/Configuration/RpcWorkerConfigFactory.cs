@@ -124,6 +124,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     if (!string.IsNullOrWhiteSpace(_workerRuntime) && !_environment.IsPlaceholderModeEnabled() && !_environment.IsMultiLanguageRuntimeEnvironment())
                     {
                         string workerRuntime = Path.GetFileName(workerDir);
+                        // We do not want to skip non-worker directories like function app payload directory.
                         if (!workerRuntime.Equals(_workerRuntime, StringComparison.OrdinalIgnoreCase) && workerDir.Contains("workers", StringComparison.OrdinalIgnoreCase))
                         {
                             return;
@@ -140,15 +141,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
                     _logger.LogDebug("Found worker config: {workerConfigPath}", workerConfigPath);
 
-                    ReadOnlySpan<byte> jsonSpan = File.ReadAllBytes(workerConfigPath).AsSpan();
-                    if (jsonSpan.StartsWith(stackalloc byte[] { 0xEF, 0xBB, 0xBF }))
-                    {
-                        jsonSpan = jsonSpan[3..]; // Skip Byte Order Mark if present in the begining of the file.
-                    }
-                    var reader = new Utf8JsonReader(jsonSpan, isFinalBlock: true, state: default);
-                    using var doc = JsonDocument.ParseValue(ref reader);
-                    JsonElement workerConfig = doc.RootElement;
-
+                    JsonElement workerConfig = GetWorkerConfigJsonElement(workerConfigPath);
                     var workerDescriptionElement = workerConfig.GetProperty(WorkerConstants.WorkerDescription);
                     var workerDescription = workerDescriptionElement.Deserialize<RpcWorkerDescription>(_jsonSerializerOptions);
                     workerDescription.WorkerDirectory = workerDir;
@@ -215,6 +208,19 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     _logger.LogError(ex, "Failed to initialize worker provider for: {workerDir}", workerDir);
                 }
             }
+        }
+
+        private static JsonElement GetWorkerConfigJsonElement(string workerConfigPath)
+        {
+            ReadOnlySpan<byte> jsonSpan = File.ReadAllBytes(workerConfigPath).AsSpan();
+            if (jsonSpan.StartsWith(stackalloc byte[] { 0xEF, 0xBB, 0xBF }))
+            {
+                jsonSpan = jsonSpan[3..]; // Skip UTF-8 Byte Order Mark (BOM) if present at the beginning of the file.
+            }
+            var reader = new Utf8JsonReader(jsonSpan, isFinalBlock: true, state: default);
+            using var doc = JsonDocument.ParseValue(ref reader);
+
+            return doc.RootElement.Clone();
         }
 
         private List<WorkerDescriptionProfile> ReadWorkerDescriptionProfiles(JsonElement profilesElement)
