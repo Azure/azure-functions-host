@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure;
 using Azure.Data.Tables;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Hosting;
@@ -17,7 +18,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
-    public class DiagnosticEventTableStorageRepository : IDiagnosticEventRepository, IDisposable
+    public partial class DiagnosticEventTableStorageRepository : IDiagnosticEventRepository, IDisposable
     {
         internal const string TableNamePrefix = "AzureFunctionsDiagnosticEvents";
         private const int LogFlushInterval = 1000 * 60 * 10; // 10 minutes
@@ -59,11 +60,33 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         {
             get
             {
-                if (!_environment.IsPlaceholderModeEnabled() && _tableClient == null && !_azureTableStorageProvider.TryCreateHostingTableServiceClient(out _tableClient))
+                if (!_environment.IsPlaceholderModeEnabled() && _tableClient == null)
                 {
-                    _logger.LogWarning("An error occurred initializing the Table Storage Client. We are unable to record diagnostic events, so the diagnostic logging service is being stopped.");
-                    _isEnabled = false;
-                    StopTimer();
+                    if (!_azureTableStorageProvider.TryCreateHostingTableServiceClient(out _tableClient))
+                    {
+                        DisableService();
+                        Logger.ServiceDisabledFailedToCreateClient(_logger);
+                        return _tableClient;
+                    }
+
+                    try
+                    {
+                        // When using RBAC, we need "Storage Table Data Contributor" as we require to list, create and delete tables and query/insert/delete entities.
+                        // Testing permissions by listing tables and creating a test table.
+                        var testTable = _tableClient.GetTableClient($"{TableNamePrefix}Check");
+                        _ = TableStorageHelpers.TableExist(testTable, _tableClient);
+                        _ = testTable.CreateIfNotExists();
+                    }
+                    catch (RequestFailedException ex) when (ex.Status == 403)
+                    {
+                        DisableService();
+                        Logger.ServiceDisabledUnauthorizedClient(_logger, ex);
+                    }
+                    catch (Exception)
+                    {
+                        // Other exceptions might be due to conflict issues or other transient errors
+                        // which don't necessarily indicate a permissions problem
+                    }
                 }
 
                 return _tableClient;
@@ -83,6 +106,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         }
 
         internal ConcurrentDictionary<string, DiagnosticEvent> Events => _events;
+
+        private void DisableService()
+        {
+            _isEnabled = false;
+            StopTimer();
+            _events.Clear();
+        }
 
         internal TableClient GetDiagnosticEventsTable(DateTime? now = null)
         {
@@ -114,7 +144,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         private async Task PurgePreviousEventVersions()
         {
-            _logger.LogDebug("Purging diagnostic events with versions older than '{currentEventVersion}'.", DiagnosticEvent.CurrentEventVersion);
+            Logger.PurgingDiagnosticEvents(_logger, DiagnosticEvent.CurrentEventVersion);
 
             bool tableDeleted = false;
 
@@ -133,7 +163,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                             // Delete table if it doesn't have records with EventVersion
                             if (string.IsNullOrEmpty(record.EventVersion) == true)
                             {
-                                _logger.LogDebug("Deleting table '{tableName}' as it contains records without an EventVersion.", table.Name);
+                                Logger.DeletingTableWithoutEventVersion(_logger, table.Name);
                                 await table.DeleteAsync();
                                 tableDeleted = true;
                                 break;
@@ -142,7 +172,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                             // If the table does have EventVersion, query if it is an outdated version
                             if (string.Compare(DiagnosticEvent.CurrentEventVersion, record.EventVersion, StringComparison.Ordinal) > 0)
                             {
-                                _logger.LogDebug("Deleting table '{tableName}' as it contains records with an outdated EventVersion.", table.Name);
+                                Logger.DeletingTableWithOutdatedEventVersion(_logger, table.Name);
                                 await table.DeleteAsync();
                                 tableDeleted = true;
                                 break;
@@ -154,7 +184,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error occurred when attempting to purge previous diagnostic event versions.");
+                    Logger.ErrorPurgingDiagnosticEventVersions(_logger, ex);
                 }
             }, maxRetries: 5, retryInterval: TimeSpan.FromSeconds(5));
 
@@ -170,7 +200,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             // TableClient is initialized lazily and it will stop the timer that schedules flush logs whenever it fails to initialize.
             // We need to check if the TableClient is null before proceeding. This helps when the first time the property is accessed is as part of the FlushLogs method.
             // We should not have any events stored pending to be written since WriteDiagnosticEvent will check for an initialized TableClient.
-            if (_environment.IsPlaceholderModeEnabled() || TableClient is null)
+            if (_environment.IsPlaceholderModeEnabled() || TableClient is null || !IsEnabled())
             {
                 return;
             }
@@ -186,21 +216,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
                 if (table == null)
                 {
-                    _logger.LogError("Unable to get table reference. Aborting write operation.");
-                    StopTimer();
+                    Logger.UnableToGetTableReference(_logger);
+                    DisableService();
                     return;
                 }
 
                 bool tableCreated = await TableStorageHelpers.CreateIfNotExistsAsync(table, TableClient, TableCreationMaxRetryCount);
                 if (tableCreated)
                 {
-                    _logger.LogDebug("Queueing background table purge.");
+                    Logger.QueueingBackgroundTablePurge(_logger);
                     TableStorageHelpers.QueueBackgroundTablePurge(table, TableClient, TableNamePrefix, _logger);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Unable to get table reference or create table. Aborting write operation.");
+                Logger.UnableToGetTableReferenceOrCreateTable(_logger, ex);
                 // Clearing the memory cache to avoid memory build up.
                 _events.Clear();
                 return;
@@ -234,7 +264,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Unable to write diagnostic events to table storage.");
+                Logger.UnableToWriteDiagnosticEvents(_logger, ex);
             }
         }
 
@@ -275,7 +305,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             var primaryHostStateProvider = _serviceProvider?.GetService<IPrimaryHostStateProvider>();
             if (primaryHostStateProvider is null)
             {
-                _logger.LogDebug("PrimaryHostStateProvider is not available. Skipping the check for primary host.");
+                Logger.PrimaryHostStateProviderNotAvailable(_logger);
                 return false;
             }
 
@@ -284,7 +314,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         private void StopTimer()
         {
-            _logger.LogInformation("Stopping the flush logs timer.");
+            Logger.StoppingFlushLogsTimer(_logger);
             _flushLogsTimer?.Change(Timeout.Infinite, Timeout.Infinite);
         }
 

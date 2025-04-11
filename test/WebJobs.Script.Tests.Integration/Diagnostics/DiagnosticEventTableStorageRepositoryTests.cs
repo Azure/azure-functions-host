@@ -164,7 +164,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             var cloudTable = repository.GetDiagnosticEventsTable(dateTime);
             Assert.Null(cloudTable);
             var messages = _loggerProvider.GetAllLogMessages();
-            Assert.Equal(messages[0].FormattedMessage, "An error occurred initializing the Table Storage Client. We are unable to record diagnostic events, so the diagnostic logging service is being stopped.");
+            var errorIntializingPresent = messages.Any(m => m.FormattedMessage.Contains( "An error occurred initializing the Table Storage Client. We are unable to record diagnostic events, so the diagnostic logging service is being stopped."));
+            Assert.True(errorIntializingPresent);
             Assert.False(repository.IsEnabled());
         }
 
