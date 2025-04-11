@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using System.Web.Http;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Azure.Functions.Platform.Metrics.LinuxConsumption;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -73,6 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName, websiteSiteName);
             }
 
+            var testMetricsTracker = new TestMetricsTracker();
             var webHostBuilder = Program.CreateWebHostBuilder()
                 .ConfigureAppConfiguration(c =>
                 {
@@ -102,6 +104,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                     c.AddSingleton<IEnvironment>(_ => environment);
                     c.AddSingleton<IMetricsLogger>(_ => _metricsLogger);
+                    c.AddSingleton<ILinuxConsumptionMetricsTracker>(_ => testMetricsTracker);
                 })
                 .ConfigureScriptHostLogging(b =>
                 {
