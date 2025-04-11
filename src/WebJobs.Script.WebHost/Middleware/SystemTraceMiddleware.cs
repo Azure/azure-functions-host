@@ -2,12 +2,11 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Diagnostics;
-using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions;
@@ -33,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
             var sw = ValueStopwatch.StartNew();
             string userAgent = context.Request.GetHeaderValueOrDefault("User-Agent");
-            _logger.ExecutingHttpRequest(requestId, context.Request.Method, userAgent, context.Request.Path);
+            _logger.ExecutingHttpRequest(requestId, context.Request.Method, userAgent, Sanitizer.Sanitize(context.Request.Path));
 
             await _next.Invoke(context);
 

@@ -158,9 +158,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
                 .AddFilter<OpenTelemetryLoggerProvider>("Azure.*", _ => false)
                 // Host.Results and Host.Aggregator are used to emit metrics, ignoring these categories.
                 .AddFilter<OpenTelemetryLoggerProvider>("Host.Results", _ => false)
-                .AddFilter<OpenTelemetryLoggerProvider>("Host.Aggregator", _ => false)
-                // Ignoring all Microsoft.Azure.WebJobs.* logs like /getScriptTag and /lock.
-                .AddFilter<OpenTelemetryLoggerProvider>("Microsoft.Azure.WebJobs.*", _ => false);
+                .AddFilter<OpenTelemetryLoggerProvider>("Host.Aggregator", _ => false);
         }
 
         private static IOpenTelemetryBuilder ConfigureEventLogLevel(this IOpenTelemetryBuilder builder, IConfiguration configuration)
