@@ -85,9 +85,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 _processExit = new();
                 try
                 {
-                    Process.ErrorDataReceived += (sender, e) => OnErrorDataReceived(sender, e);
-                    Process.OutputDataReceived += (sender, e) => OnOutputDataReceived(sender, e);
-                    Process.Exited += (sender, e) => OnProcessExited(sender, e);
+                    Process.ErrorDataReceived += OnErrorDataReceived;
+                    Process.OutputDataReceived += OnOutputDataReceived;
+                    Process.Exited += OnProcessExited;
                     Process.EnableRaisingEvents = true;
                     string sanitizedArguments = Sanitizer.Sanitize(Process.StartInfo.Arguments);
 

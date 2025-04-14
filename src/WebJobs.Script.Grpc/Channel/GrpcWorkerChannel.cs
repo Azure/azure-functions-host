@@ -388,10 +388,15 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _workerChannelLogger.LogDebug("Initiating Worker Process start up");
             await _rpcWorkerProcess.StartProcessAsync(cancellationToken);
             _state |= RpcWorkerChannelState.Initializing;
-            Task winner = await Task.WhenAny(
-                _workerInitTask.Task, _rpcWorkerProcess.WaitForExitAsync(cancellationToken))
-                .WaitAsync(cancellationToken);
+            Task exited = _rpcWorkerProcess.WaitForExitAsync(cancellationToken);
+            Task winner = await Task.WhenAny(_workerInitTask.Task, exited).WaitAsync(cancellationToken);
             await winner;
+
+            if (winner == exited)
+            {
+                // process exited without throwing. We need to throw to indicate process is not running.
+                throw new WorkerProcessExitException("Worker process exited before initializing.");
+            }
         }
 
         public async Task<WorkerStatus> GetWorkerStatusAsync()
