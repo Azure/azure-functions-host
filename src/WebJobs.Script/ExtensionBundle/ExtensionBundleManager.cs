@@ -10,6 +10,7 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Extensions.Logging;
@@ -20,6 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
 {
     public class ExtensionBundleManager : IExtensionBundleManager
     {
+        private const int _latestMajorBundleVersion = 4;
         private readonly IEnvironment _environment;
         private readonly ExtensionBundleOptions _options;
         private readonly FunctionsHostingConfigOptions _configOption;
@@ -48,6 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
                 }
 
                 _extensionBundleVersion = _extensionBundleVersion ?? await GetLatestMatchingBundleVersionAsync();
+                CompareWithLatestMajorVersion();
 
                 return new ExtensionBundleDetails()
                 {
@@ -57,6 +60,18 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
             }
 
             return null;
+        }
+
+        private void CompareWithLatestMajorVersion()
+        {
+            string majorVersionStr = _extensionBundleVersion?.Split('.')?.FirstOrDefault() ?? string.Empty;
+            int majorVersion = int.TryParse(majorVersionStr, out int result) ? result : 0;
+
+            if (majorVersion != 0 && majorVersion < _latestMajorBundleVersion)
+            {
+                string message = $"Extension bundle version {majorVersion} is outdated. The latest version range is \"[{_latestMajorBundleVersion}.*, {_latestMajorBundleVersion + 1}.0.0)\"";
+                DiagnosticEventLoggerExtensions.LogDiagnosticEventInformation(_logger, DiagnosticEventConstants.OutdatedBundlesVersionErrorCode, message, DiagnosticEventConstants.OutdatedBundlesVersionHelpLink);
+            }
         }
 
         public bool IsExtensionBundleConfigured()

@@ -34,5 +34,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public const string WorkerRuntimeDoesNotMatchWithFunctionMetadataErrorCode = "AZFD0013";
         public const string WorkerRuntimeDoesNotMatchWithFunctionMetadataHelpLink = "https://aka.ms/functions-invalid-worker-runtime";
+
+        public const string OutdatedBundlesVersionErrorCode = "AZFD0014";
+        public const string OutdatedBundlesVersionHelpLink = "https://aka.ms/functions-outdated-bundles";
     }
 }
