@@ -15,7 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
     {
         internal static List<string> GetWorkerConfigs(List<string> probingPaths, string fallbackPath)
         {
-            bool featureFlagEnabled = true;
+            bool featureFlagEnabled = IsFeatureFlagEnabled();
 
             // Dict of language-name : workerConfig
             ConcurrentDictionary<string, string> outputDict = new ConcurrentDictionary<string, string>();
@@ -104,6 +104,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         }
 
         private static bool IsCompatibleWithHost(HashSet<string> hostCapabilities, string workerConfigPath)
+        {
+            // Read worker config section = capabilities as HashSet
+            // for each capability in Host, should exist in worker.
+            // what about extra capability in worker?
+
+            return true;
+        }
+
+        private static bool IsFeatureFlagEnabled()
         {
             return true;
         }
