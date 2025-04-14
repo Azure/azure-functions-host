@@ -335,7 +335,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         private List<string> GetWorkerProbingPaths()
         {
-            //var paths = new List<string>(languageWorkerOptions.ProbingPaths);
+            //var paths = get languageWorker section name and then ProbingPaths
 
             return ["C:\\testfolder\\workers"];
         }

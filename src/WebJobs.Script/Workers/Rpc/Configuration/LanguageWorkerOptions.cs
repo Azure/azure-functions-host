@@ -12,11 +12,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
     {
         public IList<RpcWorkerConfig> WorkerConfigs { get; set; }
 
-        /// <summary>
-        /// Gets the Probing paths of the Language Workers.
-        /// </summary>
-        public ICollection<string> ProbingPaths { get; private set; } = new Collection<string>();
-
         public string Format()
         {
             return JsonSerializer.Serialize(this, typeof(LanguageWorkerOptions), LanguageWorkerOptionsJsonSerializerContext.Default);
