@@ -274,6 +274,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             // arrange
             using Process process = GetProcess(exitCode: 0);
             _hostProcessMonitorMock.Setup(m => m.RegisterChildProcess(process));
+            _hostProcessMonitorMock.Setup(m => m.UnregisterChildProcess(process));
             _workerProcessFactory.Setup(m => m.CreateWorkerProcess(It.IsNotNull<WorkerContext>())).Returns(process);
             using var rpcWorkerProcess = GetRpcWorkerConfigProcess(
                 TestHelpers.GetTestWorkerConfigsWithExecutableWorkingDirectory().ElementAt(0));
@@ -291,6 +292,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             // arrange
             using Process process = GetProcess(exitCode: -1);
             _hostProcessMonitorMock.Setup(m => m.RegisterChildProcess(process));
+            _hostProcessMonitorMock.Setup(m => m.UnregisterChildProcess(process));
             _workerProcessFactory.Setup(m => m.CreateWorkerProcess(It.IsNotNull<WorkerContext>())).Returns(process);
             using var rpcWorkerProcess = GetRpcWorkerConfigProcess(
                 TestHelpers.GetTestWorkerConfigsWithExecutableWorkingDirectory().ElementAt(0));
