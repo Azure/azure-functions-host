@@ -8,6 +8,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
@@ -84,15 +85,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal void AddProviders()
         {
-            _logger.LogDebug("Workers Directory set to: {WorkersDirPath}", WorkersDirPath);
+            List<string> probingPaths = GetWorkerProbingPaths();
 
-            foreach (var workerDir in Directory.EnumerateDirectories(WorkersDirPath))
+            _logger.LogDebug("Workers Directory set to: probingPaths = { probingPaths} and fallback path = {WorkersDirPath}", probingPaths.ToString(), WorkersDirPath);
+
+            List<string> workerConfigs = RPCWorkerConfigsResolver.GetWorkerConfigs(probingPaths, WorkersDirPath);
+
+            foreach (var workerConfig in workerConfigs)
             {
-                string workerConfigPath = Path.Combine(workerDir, RpcWorkerConstants.WorkerConfigFileName);
-                if (File.Exists(workerConfigPath))
-                {
-                    AddProvider(workerDir);
-                }
+                AddProvider(workerConfig);
             }
         }
 
@@ -330,6 +331,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 // Read language worker file to avoid disk reads during specialization. This is only to page-in bytes.
                 File.ReadAllBytes(workerPath);
             }
+        }
+
+        private List<string> GetWorkerProbingPaths()
+        {
+            //var paths = new List<string>(languageWorkerOptions.ProbingPaths);
+
+            return ["C:\\testfolder\\workers"];
         }
     }
 }

@@ -1,6 +1,7 @@
 ﻿// Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Azure.WebJobs.Hosting;
@@ -10,6 +11,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
     public class LanguageWorkerOptions : IOptionsFormatter
     {
         public IList<RpcWorkerConfig> WorkerConfigs { get; set; }
+
+        /// <summary>
+        /// Gets the Probing paths of the Language Workers.
+        /// </summary>
+        public ICollection<string> ProbingPaths { get; private set; } = new Collection<string>();
 
         public string Format()
         {
