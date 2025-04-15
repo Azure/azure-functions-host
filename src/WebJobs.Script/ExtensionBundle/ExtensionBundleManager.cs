@@ -69,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
 
             if (majorVersion != 0 && majorVersion < _latestMajorBundleVersion)
             {
-                string message = $"Extension bundle version {majorVersion} is outdated. The latest version range is \"[{_latestMajorBundleVersion}.*, {_latestMajorBundleVersion + 1}.0.0)\"";
+                string message = $"Extension bundle version {majorVersion} is outdated. It is strongly recommended to update the app to use the latest version range: \"[{_latestMajorBundleVersion}.*, {_latestMajorBundleVersion + 1}.0.0)\"";
                 DiagnosticEventLoggerExtensions.LogDiagnosticEventInformation(_logger, DiagnosticEventConstants.OutdatedBundlesVersionErrorCode, message, DiagnosticEventConstants.OutdatedBundlesVersionHelpLink);
             }
         }
