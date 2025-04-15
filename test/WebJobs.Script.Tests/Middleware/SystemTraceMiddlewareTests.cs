@@ -40,12 +40,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Handlers
             _middleware = new SystemTraceMiddleware(requestDelegate, logger);
         }
 
-        [Fact]
-        public async Task SendAsync_WritesExpectedTraces()
+        [Theory]
+        [InlineData("http://functions.com/api/testfunc?code=123", "/api/testfunc")]
+        [InlineData("http://functions.com/api/testfunc/code=123", "/api/testfunc[Hidden Credential]")]
+        public async Task SendAsync_WritesExpectedTraces(string uriString, string loggedUriString)
         {
             string requestId = Guid.NewGuid().ToString();
             var context = new DefaultHttpContext();
-            Uri uri = new Uri("http://functions.com/api/testfunc?code=123");
+            Uri uri = new Uri(uriString);
             var requestFeature = context.Request.HttpContext.Features.Get<IHttpRequestFeature>();
             requestFeature.Method = "GET";
             requestFeature.Scheme = uri.Scheme;
@@ -86,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Handlers
             Assert.Equal(4, jo.Count);
             Assert.Equal(requestId, jo["requestId"]);
             Assert.Equal("GET", jo["method"]);
-            Assert.Equal("/api/testfunc", jo["uri"]);
+            Assert.Equal(loggedUriString, jo["uri"]);
             Assert.Equal("TestAgent", jo["userAgent"]);
 
             // validate executed trace
