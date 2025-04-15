@@ -210,7 +210,7 @@ namespace Microsoft.Azure.WebJobs.Script.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Extension bundle version {0} is outdated. It is strongly recommended to update the app to use the latest version range: \&quot;[{1}.*, {2}.0.0)\&quot;.
+        ///   Looks up a localized string similar to Extension bundle version {0} is outdated. It is strongly recommended to update the app to use the latest version range: [{1}.*, {2}.0.0).
         /// </summary>
         internal static string OutdatedExtensionBundlesVersionInfoFormat {
             get {

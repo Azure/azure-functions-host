@@ -70,7 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
 
             if (majorVersion != 0 && majorVersion < _latestMajorBundleVersion)
             {
-                string message = string.Format(Resources.OutdatedExtensionBundlesVersionInfoFormat, majorVersion, _latestMajorBundleVersion, _latestMajorBundleVersion + 1);
+                string message = string.Format(Resources.OutdatedExtensionBundlesVersionInfoFormat, _extensionBundleVersion, _latestMajorBundleVersion, _latestMajorBundleVersion + 1);
                 DiagnosticEventLoggerExtensions.LogDiagnosticEventInformation(_logger, DiagnosticEventConstants.OutdatedBundlesVersionErrorCode, message, DiagnosticEventConstants.OutdatedBundlesVersionHelpLink);
             }
         }
