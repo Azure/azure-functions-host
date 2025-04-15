@@ -125,7 +125,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     {
                         string workerRuntime = Path.GetFileName(workerDir);
                         // We do not want to skip non-worker directories like function app payload directory.
-                        if (!workerRuntime.Equals(_workerRuntime, StringComparison.OrdinalIgnoreCase) && workerDir.Contains("workers", StringComparison.OrdinalIgnoreCase))
+                        if (!workerRuntime.Equals(_workerRuntime, StringComparison.OrdinalIgnoreCase) && workerDir.StartsWith(WorkersDirPath))
                         {
                             return;
                         }
@@ -213,10 +213,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private static JsonElement GetWorkerConfigJsonElement(string workerConfigPath)
         {
             ReadOnlySpan<byte> jsonSpan = File.ReadAllBytes(workerConfigPath).AsSpan();
+
             if (jsonSpan.StartsWith(stackalloc byte[] { 0xEF, 0xBB, 0xBF }))
             {
                 jsonSpan = jsonSpan[3..]; // Skip UTF-8 Byte Order Mark (BOM) if present at the beginning of the file.
             }
+
             var reader = new Utf8JsonReader(jsonSpan, isFinalBlock: true, state: default);
             using var doc = JsonDocument.ParseValue(ref reader);
 
