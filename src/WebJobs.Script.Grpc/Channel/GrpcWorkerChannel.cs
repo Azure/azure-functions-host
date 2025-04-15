@@ -65,8 +65,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private bool _disposing;
         private WorkerInitResponse _initMessage;
         private RpcWorkerChannelState _state;
-        private IDictionary<string, Exception> _functionLoadErrors = new Dictionary<string, Exception>();
-        private IDictionary<string, Exception> _metadataRequestErrors = new Dictionary<string, Exception>();
+        private IDictionary<string, Exception> _functionLoadErrors = new ConcurrentDictionary<string, Exception>();
+        private IDictionary<string, Exception> _metadataRequestErrors = new ConcurrentDictionary<string, Exception>();
         private ConcurrentDictionary<string, ExecutingInvocation> _executingInvocations = new();
         private IDictionary<string, BufferBlock<ScriptInvocationContext>> _functionInputBuffers = new ConcurrentDictionary<string, BufferBlock<ScriptInvocationContext>>();
         private ConcurrentDictionary<string, TaskCompletionSource<bool>> _workerStatusRequests = new ConcurrentDictionary<string, TaskCompletionSource<bool>>();
