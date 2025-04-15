@@ -124,7 +124,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             return webHostBuilder;
         }
 
-        protected async Task InitializeTestHostAsync(string testDirName, IEnvironment environment, string websiteSiteName = TestSiteName)
+        protected async Task<IWebHost> InitializeTestHostAsync(string testDirName, IEnvironment environment, string websiteSiteName = TestSiteName)
         {
             var webHostBuilder = await CreateWebHostBuilderAsync(testDirName, environment, websiteSiteName);
             _httpServer = new TestServer(webHostBuilder);
@@ -138,6 +138,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.NotNull(traces.Single(p => p.FormattedMessage.StartsWith("Host is in standby mode")));
 
             _expectedHostId = await _httpServer.Host.Services.GetService<IHostIdProvider>().GetHostIdAsync(CancellationToken.None);
+
+            return _httpServer.Host;
         }
 
 

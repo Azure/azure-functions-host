@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
+using Microsoft.Azure.WebJobs.Script.WebHost.Metrics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security;
 using Microsoft.Azure.WebJobs.Script.Workers;
@@ -57,13 +58,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.False(environment.IsFlexConsumptionSku());
             Assert.True(environment.IsAnyLinuxConsumption());
 
-            await InitializeTestHostAsync("Linux", environment);
+            var webHost = await InitializeTestHostAsync("Linux", environment);
 
             // verify the expected startup logs
-            var logEntries = _loggerProvider.GetAllLogMessages().Where(p => p.FormattedMessage != null);
+            var logEntries = _loggerProvider.GetAllLogMessages().Where(p => p.FormattedMessage != null).ToList();
             Assert.True(logEntries.Any(m => m.Category == "Host.Startup" && m.FormattedMessage.Contains("Host is in standby mode")));
             Assert.True(logEntries.Any(cat => cat.Category == "Microsoft.Azure.WebJobs.Script.WebHost.StandbyManager"));
             Assert.True(logEntries.Any(cat => cat.Category == "Host.Triggers.Warmup"));
+
+            // verify that the expected (legion specific) implementations are resolved
+            Assert.Equal(nameof(LinuxContainerLegionMetricsPublisher), webHost.Services.GetRequiredService<IMetricsPublisher>().GetType().Name);
         }
 
         [Fact]
