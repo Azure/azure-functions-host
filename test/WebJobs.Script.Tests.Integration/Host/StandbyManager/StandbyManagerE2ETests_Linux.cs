@@ -67,7 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(logEntries.Any(cat => cat.Category == "Host.Triggers.Warmup"));
 
             // verify that the expected (legion specific) implementations are resolved
-            Assert.Equal(nameof(LinuxContainerLegionMetricsPublisher), webHost.Services.GetRequiredService<IMetricsPublisher>().GetType().Name);
+            Assert.Equal(typeof(LinuxContainerLegionMetricsPublisher), webHost.Services.GetRequiredService<IMetricsPublisher>().GetType());
         }
 
         [Fact]
