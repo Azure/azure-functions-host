@@ -195,7 +195,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
 
         private static readonly Action<ILogger, Exception> _noAzureFunctionsFolderIssue =
             LoggerMessage.Define(LogLevel.Warning,
-            new EventId(338, nameof(NoAzureFunctionsFolder)),
+            new EventId(340, nameof(NoAzureFunctionsFolder)),
             "Could not find the .azurefunctions folder in the deployed function app artifacts. Make sure that your deployment package includes the .azurefunctions folder. For deployment package requirements, see https://aka.ms/functions-deployment-technologies.");
 
         private static readonly Action<ILogger, string, Exception> _publishingMetrics =
