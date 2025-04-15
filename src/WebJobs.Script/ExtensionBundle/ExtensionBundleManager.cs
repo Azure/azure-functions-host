@@ -13,6 +13,7 @@ using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Models;
+using Microsoft.Azure.WebJobs.Script.Properties;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using NuGet.Versioning;
@@ -69,7 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
 
             if (majorVersion != 0 && majorVersion < _latestMajorBundleVersion)
             {
-                string message = $"Extension bundle version {majorVersion} is outdated. It is strongly recommended to update the app to use the latest version range: \"[{_latestMajorBundleVersion}.*, {_latestMajorBundleVersion + 1}.0.0)\"";
+                string message = string.Format(Resources.OutdatedExtensionBundlesVersionInfoFormat, majorVersion, _latestMajorBundleVersion, _latestMajorBundleVersion + 1);
                 DiagnosticEventLoggerExtensions.LogDiagnosticEventInformation(_logger, DiagnosticEventConstants.OutdatedBundlesVersionErrorCode, message, DiagnosticEventConstants.OutdatedBundlesVersionHelpLink);
             }
         }
