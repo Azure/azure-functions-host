@@ -829,7 +829,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 // Modifying the path of .azurefunctions folder
                 var oldPath = directory.Path;
                 Directory.Move(directory.Path, directory.Path + "test");
-                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger, languageWorkerOptions, optionsWrapper);
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger, optionsWrapper);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
@@ -881,7 +881,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 OptionsWrapper<ExtensionRequirementOptions> optionsWrapper = new(new ExtensionRequirementOptions());
 
                 // Modifying the path of .azurefunctions folder
-                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger, languageWorkerOptions, optionsWrapper);
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger, optionsWrapper);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
