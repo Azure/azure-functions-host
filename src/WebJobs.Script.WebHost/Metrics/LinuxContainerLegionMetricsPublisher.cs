@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.Functions.Platform.Metrics.LinuxConsumption;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -24,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         private readonly IDisposable _standbyOptionsOnChangeSubscription;
         private readonly IEnvironment _environment;
         private readonly ILogger _logger;
-        private readonly IScriptHostManager _scriptHostManager;
+        private readonly IServiceProvider _serviceProvider;
         private readonly string _containerName;
 
         private IMetricsLogger _metricsLogger;
@@ -36,14 +37,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 
         public LinuxContainerLegionMetricsPublisher(IEnvironment environment, IOptionsMonitor<StandbyOptions> standbyOptions,
             IOptions<LinuxConsumptionLegionMetricsPublisherOptions> options, ILogger<LinuxContainerLegionMetricsPublisher> logger,
-            IFileSystem fileSystem, ILinuxConsumptionMetricsTracker metricsTracker, IScriptHostManager scriptHostManager,
+            IFileSystem fileSystem, ILinuxConsumptionMetricsTracker metricsTracker, IServiceProvider serviceProvider,
             int? metricsPublishIntervalMS = null)
         {
             _standbyOptions = standbyOptions ?? throw new ArgumentNullException(nameof(standbyOptions));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _metricsTracker = metricsTracker ?? throw new ArgumentNullException(nameof(metricsTracker));
-            _scriptHostManager = scriptHostManager ?? throw new ArgumentNullException(nameof(scriptHostManager));
+            _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
             _containerName = options.Value.ContainerName;
 
             // Set this to 15 minutes worth of files
@@ -67,21 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
             }
         }
 
-        public IMetricsLogger MetricsLogger
-        {
-            get
-            {
-                if (_metricsLogger == null)
-                {
-                    if (!Utility.TryGetHostService<IMetricsLogger>(_scriptHostManager, out _metricsLogger))
-                    {
-                        throw new InvalidOperationException($"Unable to resolve {nameof(IMetricsLogger)} service.");
-                    }
-                }
-
-                return _metricsLogger;
-            }
-        }
+        private IMetricsLogger MetricsLogger => _metricsLogger ??= _serviceProvider.GetRequiredService<IMetricsLogger>();
 
         public void Initialize()
         {

@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.IO.Abstractions;
 using System.Net.Http;
 using System.Runtime.InteropServices;
@@ -285,8 +286,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     var logger = s.GetService<ILogger<LinuxContainerLegionMetricsPublisher>>();
                     var metricsTracker = s.GetService<ILinuxConsumptionMetricsTracker>();
                     var standbyOptions = s.GetService<IOptionsMonitor<StandbyOptions>>();
-                    var scriptHostManager = s.GetService<IScriptHostManager>();
-                    return new LinuxContainerLegionMetricsPublisher(environment, standbyOptions, options, logger, new FileSystem(), metricsTracker, scriptHostManager);
+                    var serviceProvider = s.GetService<IServiceProvider>();
+                    return new LinuxContainerLegionMetricsPublisher(environment, standbyOptions, options, logger, new FileSystem(), metricsTracker, serviceProvider);
                 }
                 else if (environment.IsLinuxMetricsPublishingEnabled())
                 {
