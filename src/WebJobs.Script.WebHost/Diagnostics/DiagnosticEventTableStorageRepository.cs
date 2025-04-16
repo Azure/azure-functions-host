@@ -60,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         {
             get
             {
-                if (!_environment.IsPlaceholderModeEnabled() && _tableClient == null)
+                if (_tableClient is null && !_environment.IsPlaceholderModeEnabled())
                 {
                     if (!_azureTableStorageProvider.TryCreateHostingTableServiceClient(out _tableClient))
                     {
@@ -261,6 +261,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 }
                 await table.SubmitTransactionAsync(batch);
                 events.Clear();
+            }
+            catch (RequestFailedException ex) when (ex.Status == 403)
+            {
+                DisableService();
+                Logger.ServiceDisabledUnauthorizedClient(_logger, ex);
             }
             catch (Exception ex)
             {
