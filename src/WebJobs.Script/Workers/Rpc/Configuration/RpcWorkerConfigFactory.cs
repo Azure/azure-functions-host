@@ -124,7 +124,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     if (!string.IsNullOrWhiteSpace(_workerRuntime) && !_environment.IsPlaceholderModeEnabled() && !_environment.IsMultiLanguageRuntimeEnvironment())
                     {
                         string workerRuntime = Path.GetFileName(workerDir);
-                        // We do not want to skip non-worker directories like function app payload directory.
+                        // Only skip worker directories that don't match the current runtime.
+                        // Do not skip non-worker directories like the function app payload directory
                         if (!workerRuntime.Equals(_workerRuntime, StringComparison.OrdinalIgnoreCase) && workerDir.StartsWith(WorkersDirPath))
                         {
                             return;
@@ -141,7 +142,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
                     _logger.LogDebug("Found worker config: {workerConfigPath}", workerConfigPath);
 
-                    JsonElement workerConfig = GetWorkerConfigJsonElement(workerConfigPath);
+                    var workerConfig = GetWorkerConfigJsonElement(workerConfigPath);
                     var workerDescriptionElement = workerConfig.GetProperty(WorkerConstants.WorkerDescription);
                     var workerDescription = workerDescriptionElement.Deserialize<RpcWorkerDescription>(_jsonSerializerOptions);
                     workerDescription.WorkerDirectory = workerDir;
@@ -212,9 +213,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         private static JsonElement GetWorkerConfigJsonElement(string workerConfigPath)
         {
-            ReadOnlySpan<byte> jsonSpan = File.ReadAllBytes(workerConfigPath).AsSpan();
+            ReadOnlySpan<byte> jsonSpan = File.ReadAllBytes(workerConfigPath);
 
-            if (jsonSpan.StartsWith(stackalloc byte[] { 0xEF, 0xBB, 0xBF }))
+            if (jsonSpan.StartsWith<byte>([0xEF, 0xBB, 0xBF]))
             {
                 jsonSpan = jsonSpan[3..]; // Skip UTF-8 Byte Order Mark (BOM) if present at the beginning of the file.
             }

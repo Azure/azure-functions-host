@@ -34,6 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Profiles
             {
                 _name = conditionNameElement.GetString();
             }
+
             if (descriptor.Properties.TryGetValue(WorkerConstants.WorkerDescriptionProfileConditionExpression, out var conditionExpressionElement))
             {
                 _expression = conditionExpressionElement.GetString();
