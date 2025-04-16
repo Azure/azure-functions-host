@@ -2,6 +2,8 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
@@ -53,11 +55,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Profiles
         [Fact]
         public void TryCreateWorkerProfileCondition_ValidCondition_ReturnsTrue()
         {
-            var conditionJObject = new JObject();
-            conditionJObject[WorkerConstants.WorkerDescriptionProfileConditionType] = "environment";
-            conditionJObject[WorkerConstants.WorkerDescriptionProfileConditionName] = "PROFILE_TEST_ENVIRONMENT_VARIABLE";
-            conditionJObject[WorkerConstants.WorkerDescriptionProfileConditionExpression] = "true";
-            var conditionDescriptor = conditionJObject.ToObject<WorkerProfileConditionDescriptor>();
+            var conditionJObject = new JsonObject
+            {
+                [WorkerConstants.WorkerDescriptionProfileConditionType] = "environment",
+                [WorkerConstants.WorkerDescriptionProfileConditionName] = "PROFILE_TEST_ENVIRONMENT_VARIABLE",
+                [WorkerConstants.WorkerDescriptionProfileConditionExpression] = "true"
+            };
+
+            WorkerProfileConditionDescriptor conditionDescriptor = conditionJObject.Deserialize<WorkerProfileConditionDescriptor>();
 
             WorkerProfileManager profileManager = new(_testLogger, _testEnvironment);
             var result = profileManager.TryCreateWorkerProfileCondition(conditionDescriptor, out var condition);
