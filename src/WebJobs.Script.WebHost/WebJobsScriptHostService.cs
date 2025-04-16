@@ -367,7 +367,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     if (deferredLogProvider is not null)
                     {
                         var selectedProviders = loggerProviders.Where(provider => provider is ApplicationInsightsLoggerProvider or OpenTelemetryLoggerProvider).ToArray();
-                        deferredLogProvider.ProcessBufferedLogs(selectedProviders);
+                        _ = Task.Run(() => deferredLogProvider.ProcessBufferedLogsAsync(selectedProviders));
                     }
                 }
 

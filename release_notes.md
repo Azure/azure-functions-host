@@ -3,6 +3,6 @@
 <!-- Please add your release notes in the following format:
 - My change description (#PR)
 -->
-- Update Java Worker Version to [2.18.1](https://github.com/Azure/azure-functions-java-worker/releases/tag/2.18.1)
-- Introduced support for response compression, which can be enabled through explicit opt-in (#10870)
-- Add support for new FeatureFlag `EnableAzureMonitorTimeIsoFormat` to enable iso time format for azmon logs for Linux Dedicated/EP Skus. (#10684)
+- Improved memory metrics reporting using CGroup data for Linux consumption (#10968)
+- Fixing GrpcWorkerChannel concurrency bug (#10998)
+- Avoid circular dependency when resolving LinuxContainerLegionMetricsPublisher. (#10991)

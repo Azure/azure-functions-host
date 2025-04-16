@@ -42,18 +42,31 @@ jobs:
     AzureWebJobsScriptRoot: '$(functionAppOutputPath)'
     perfViewPath: C:\.tools\perfview\perfview.exe 
     traceDirectory: $(Build.ArtifactStagingDirectory)/out
-    traceFileName: PerfViewData_$(Build.BuildNumber)_${{ parameters.functionAppName }}.etl
+    traceFileNameWithoutExtension: PerfViewData_$(Build.BuildNumber)_${{ parameters.functionAppName }}
+    traceFileName: $(traceFileNameWithoutExtension).etl
+    traceFileZipName: $(traceFileName).zip
     traceFilePath: $(traceDirectory)/$(traceFileName)
+    traceZipFilePath: $(traceDirectory)/$(traceFileZipName)
+    traceAnalysisResultsDirectory: $(traceDirectory)/results
+    traceAnalysisResultMarkdownFilePath: $(traceAnalysisResultsDirectory)/$(traceFileNameWithoutExtension).md
     traceLogPath: $(logsDirectory)/logs.log
+    ${{ if eq(parameters.os, 'Linux') }}:
+      publishRid: linux-x64
+    ${{ if eq(parameters.os, 'Windows') }}:
+      publishRid: win-x64
 
   ${{ if and(eq(parameters.collectPerfViewProfileOnWindows, true), eq(parameters.instanceId, '1')) }}: # profile collection is only on the first instance
     templateContext:
-      outputParentDirectory: $(System.DefaultWorkingDirectory)/out
+      outputParentDirectory: $(traceDirectory)
       outputs:
         - output: pipelineArtifact
           displayName: Publish PerfView profile
-          path: $(traceFilePath).zip
+          path: $(traceZipFilePath)
           artifact: PerfViewData_${{ parameters.functionAppName }}
+        - output: pipelineArtifact
+          displayName: Publish ColdStart Analysis Result
+          path: $(traceAnalysisResultsDirectory)
+          artifact: ColdStartProfileAnalysisResult_${{ parameters.functionAppName }}
 
   steps:
   - template: /eng/ci/templates/install-dotnet.yml@self
@@ -74,7 +87,7 @@ jobs:
       zipAfterPublish: false
       modifyOutputPath: false
       projects: '$(Build.ArtifactStagingDirectory)/PerformanceTestApps/${{ parameters.functionAppName }}/HelloHttp.csproj'
-      arguments: -c Release -o $(functionAppOutputPath) -f net9.0
+      arguments: -c Release -o $(functionAppOutputPath) -f net9.0 -r $(publishRid)
       workingDirectory: $(Build.ArtifactStagingDirectory)/PerformanceTestApps/${{ parameters.functionAppName }}
 
   - task: DotNetCoreCLI@2
@@ -85,7 +98,7 @@ jobs:
       zipAfterPublish: false
       modifyOutputPath: false
       projects: '$(Build.SourcesDirectory)/src/WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj'
-      arguments: -c Release -o $(hostOutputPath) -f net8.0 -p:PlaceholderSimulation=true 
+      arguments: -c Release -o $(hostOutputPath) -r $(publishRid) -f net8.0 -p:PlaceholderSimulation=true 
       workingDirectory: $(Build.SourcesDirectory)/src/WebJobs.Script.WebHost
 
   - pwsh: |
@@ -111,7 +124,7 @@ jobs:
       displayName: Start host in placeholder mode
 
   - pwsh: |     
-      $url = "http://localhost:5000/api/warmup"
+      $url = "http://localhost:5000/api/warmup?restart=1"
       Write-Host "Checking if host is ready at $url..."
       $maxAttempts = 10
 
@@ -163,13 +176,13 @@ jobs:
         & $(perfViewPath) stop
 
         # Wait for the zip file to be created
-        $maxAttempts = 10
+        $maxAttempts = 20
         $attempt = 0
 
         while ($attempt -lt $maxAttempts) {
             $files = Get-ChildItem -Path $(traceDirectory)
             $fileCount = $files.Count
-            if ($fileCount -eq 1 -and $files[0].Name -eq '$(traceFileName).zip') {
+            if ($fileCount -eq 1 -and $files[0].Name -eq '$(traceFileZipName)') {
                 break
             } else {
                 Write-Host "Expected zip file not found. Rechecking again in 15 seconds..."
@@ -187,6 +200,18 @@ jobs:
         Write-Host "PerfView logs:"
         Get-Content $(traceLogPath)
       displayName: Stop PerfView
+
+    - pwsh: |
+        # Install the profile analyzer tool and run it on the trace file.
+        dotnet tool install -g Microsoft.Azure.Functions.ColdStartProfileAnalyzer --prerelease
+        func-cold-start-analyzer --file $(traceZipFilePath) --format markdown text
+
+        # Upload analysis result
+        Write-Host "##vso[task.addattachment type=Distributedtask.Core.Summary;name=$env:OS $env:FUNCTION_APP_NAME;]$(traceAnalysisResultMarkdownFilePath)"
+      displayName: Analyze profile
+      env:
+        FUNCTION_APP_NAME: ${{ parameters.functionAppName }}
+        OS: ${{ parameters.os }}
 
   - ${{ if eq(parameters.os, 'Windows') }}:
     - pwsh: |

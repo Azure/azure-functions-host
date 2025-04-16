@@ -20,7 +20,7 @@ parameters:
 - name: perfViewCollectArguments
   displayName: PerfView profile collection arguments (Valid only if "Collect PerfView Profile" is true))
   type: string
-  default: '/NoGui /AcceptEula /NoV2Rundown /NoNGenRundown /NoClrRundown /BufferSizeMB=64 /CircularMB=64 /ThreadTime /Providers=a7044dd6-c8ef-4980-858c-942d972b6250'
+  default: '/NoGui /AcceptEula /NoV2Rundown /NoNGenRundown /NoClrRundown /BufferSizeMB=64 /CircularMB=64 /Providers=a7044dd6-c8ef-4980-858c-942d972b6250'
 
 resources:
   repositories:

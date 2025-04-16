@@ -105,7 +105,8 @@ namespace Microsoft.Extensions.DependencyInjection
                         ScriptSettingsManager.Instance.GetSetting(WebsitePodName)
                     };
                 }
-                else if (SystemEnvironment.Instance.IsLinuxConsumptionOnAtlas())
+                else if (SystemEnvironment.Instance.IsLinuxConsumptionOnAtlas() ||
+                    SystemEnvironment.Instance.IsLinuxConsumptionOnLegion())
                 {
                     return new string[]
                     {

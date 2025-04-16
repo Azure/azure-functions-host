@@ -26,7 +26,10 @@ jobs:
     agentId: ${{ parameters.functionAppName }}${{ parameters.os }}
     functionApp: ${{ parameters.functionAppName }}
     functionAppOutputPath: $(Build.ArtifactStagingDirectory)/FunctionApps/$(functionApp)
-
+    ${{ if eq(parameters.os, 'Linux') }}:
+      publishRid: linux-x64
+    ${{ if eq(parameters.os, 'Windows') }}:
+      publishRid: win-x64
   steps:
 
   - template: /eng/ci/templates/install-dotnet.yml@self
@@ -58,7 +61,7 @@ jobs:
       zipAfterPublish: false
       modifyOutputPath: false
       projects: '$(Build.ArtifactStagingDirectory)/PerformanceTestApps/$(functionApp)/HelloHttp.csproj'
-      arguments: -c Release -o $(functionAppOutputPath) -f net9.0
+      arguments: -c Release -o $(functionAppOutputPath) -f net9.0 -r $(publishRid)
       workingDirectory: $(Build.ArtifactStagingDirectory)/PerformanceTestApps/$(functionApp)
 
   - ${{ if eq(parameters.os, 'Windows') }}:

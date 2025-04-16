@@ -12,12 +12,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
     /// <summary>
     /// A middleware responsible for Optimizing CLR settings like GC to help with cold start
     /// </summary>
-    internal class ClrOptimizationMiddleware
+    internal sealed class ClrOptimizationMiddleware
     {
-        // This is double the amount of memory allocated during cold start specialization.
         // This value is calculated based on prod profiles across all languages observed for an extended period of time.
         // This value is just a best effort and if for any reason CLR needs to allocate more memory then it will ignore this value.
-        private const long AllocationBudgetForGCDuringSpecialization = 16 * 1024 * 1024;
+        private const long AllocationBudgetForGCDuringSpecialization = 24 * 1024 * 1024;
         private readonly ILogger _logger;
         private readonly RequestDelegate _next;
         private readonly IScriptWebHostEnvironment _webHostEnvironment;

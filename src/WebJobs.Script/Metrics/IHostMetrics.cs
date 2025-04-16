@@ -19,5 +19,12 @@ namespace Microsoft.Azure.WebJobs.Script.Metrics
         /// that have started on a given instance.
         /// </summary>
         public void IncrementStartedInvocationCount();
+
+        /// <summary>
+        /// Measures the duration of the function’s logic execution.
+        /// </summary>
+        /// <param name="duration">Invoke duration.</param>
+        /// <param name="functionName">Function name.</param>
+        void TrackFunctionExecutionDuration(double duration, string functionName);
     }
 }
