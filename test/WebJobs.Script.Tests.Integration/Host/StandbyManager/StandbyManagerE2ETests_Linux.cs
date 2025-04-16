@@ -13,6 +13,7 @@ using Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Tests.Integration.Fixtures;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
+using Microsoft.Azure.WebJobs.Script.WebHost.Metrics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security;
 using Microsoft.Azure.WebJobs.Script.Workers;
@@ -32,6 +33,43 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     [Trait(TestTraits.Group, TestTraits.StandbyModeTestsLinux)]
     public class StandbyManagerE2ETests_Linux(AzuriteFixture azurite) : StandbyManagerE2ETestBase, IClassFixture<AzuriteFixture>
     {
+        [Fact]
+        public async Task StandbyModeE2E_LinuxConsumptionOnLegion()
+        {
+            var vars = new Dictionary<string, string>
+            {
+                { EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1" },
+                { EnvironmentSettingNames.ContainerName, "testContainer" },
+                { EnvironmentSettingNames.AzureWebsiteHostName, "testapp.azurewebsites.net" },
+                { EnvironmentSettingNames.AzureWebsiteName, "TestApp" },
+                { EnvironmentSettingNames.ContainerEncryptionKey, Convert.ToBase64String(TestHelpers.GenerateKeyBytes()) },
+                { EnvironmentSettingNames.AzureWebsiteContainerReady, null },
+                { EnvironmentSettingNames.AzureWebsiteSku, "Dynamic" },
+                { EnvironmentSettingNames.AzureWebsiteZipDeployment, null },
+                { EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableProxies },
+                { "AzureWebEncryptionKey", "0F75CA46E7EBDD39E4CA6B074D1F9A5972B849A55F91A248" },
+                { EnvironmentSettingNames.FunctionsTimeZone, "Europe/Berlin" },
+                { EnvironmentSettingNames.FunctionWorkerRuntime, "dotnet" },
+                { EnvironmentSettingNames.LegionServiceHost, "1"}
+            };
+
+            var environment = new TestEnvironment(vars);
+
+            Assert.True(environment.IsLinuxConsumptionOnLegion());
+            Assert.True(environment.IsAnyLinuxConsumption());
+
+            var webHost = await InitializeTestHostAsync("Linux", environment);
+
+            // verify the expected startup logs
+            var logEntries = _loggerProvider.GetAllLogMessages().Where(p => p.FormattedMessage != null).ToList();
+            Assert.True(logEntries.Any(m => m.Category == "Host.Startup" && m.FormattedMessage.Contains("Host is in standby mode")));
+            Assert.True(logEntries.Any(cat => cat.Category == "Microsoft.Azure.WebJobs.Script.WebHost.StandbyManager"));
+            Assert.True(logEntries.Any(cat => cat.Category == "Host.Triggers.Warmup"));
+
+            // verify that the expected (legion specific) implementations are resolved
+            Assert.Equal(typeof(LinuxContainerLegionMetricsPublisher), webHost.Services.GetRequiredService<IMetricsPublisher>().GetType());
+        }
+
         [Fact]
         public async Task StandbyModeE2E_LinuxContainer()
         {

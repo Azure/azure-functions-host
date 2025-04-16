@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
         private readonly Random _random = new Random();
         private readonly TestLogger<LinuxContainerLegionMetricsPublisher> _logger;
         private readonly TestMetricsLogger _testMetricsLogger;
-        private readonly IScriptHostManager _scriptHostManager;
+        private readonly IServiceProvider _serviceProvider;
 
         private IOptions<LinuxConsumptionLegionMetricsPublisherOptions> _options;
         private StandbyOptions _standbyOptions;
@@ -44,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             _environment = new TestEnvironment();
             _logger = new TestLogger<LinuxContainerLegionMetricsPublisher>();
             _testMetricsLogger = new TestMetricsLogger();
-            _scriptHostManager = new TestScriptHostManager(_testMetricsLogger);
+            _serviceProvider = new TestScriptHostManager(_testMetricsLogger);
 
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsMetricsPublishPath, _metricsFilePath);
 
@@ -62,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
                 MetricsFilePath = _metricsFilePath
             });
 
-            return new LinuxContainerLegionMetricsPublisher(_environment, _standbyOptionsMonitor, _options, _logger, new FileSystem(), _testMetricsTracker, _scriptHostManager, metricsPublishInterval);
+            return new LinuxContainerLegionMetricsPublisher(_environment, _standbyOptionsMonitor, _options, _logger, new FileSystem(), _testMetricsTracker, _serviceProvider, metricsPublishInterval);
         }
 
         [Fact]
@@ -235,37 +235,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             }
 
             return new FileInfo[0];
-        }
-
-        private class TestMetricsTracker : ILinuxConsumptionMetricsTracker
-        {
-            public event EventHandler<DiagnosticEventArgs> OnDiagnosticEvent;
-
-            public List<FunctionActivity> FunctionActivities { get; } = new List<FunctionActivity>();
-
-            public List<MemoryActivity> MemoryActivities { get; } = new List<MemoryActivity>();
-
-            public Queue<LinuxConsumptionMetrics> MetricsQueue { get; } = new Queue<LinuxConsumptionMetrics>();
-
-            public void AddFunctionActivity(FunctionActivity activity)
-            {
-                FunctionActivities.Add(activity);
-            }
-
-            public void AddMemoryActivity(MemoryActivity activity)
-            {
-                MemoryActivities.Add(activity);
-            }
-
-            public bool TryGetMetrics(out LinuxConsumptionMetrics metrics)
-            {
-                return MetricsQueue.TryDequeue(out metrics);
-            }
-
-            public void LogEvent(string eventName)
-            {
-                OnDiagnosticEvent?.Invoke(this, new DiagnosticEventArgs(eventName));
-            }
         }
 
         private class TestScriptHostManager : IServiceProvider, IScriptHostManager
