@@ -7,3 +7,4 @@
 - Fixing GrpcWorkerChannel concurrency bug (#10998)
 - Avoid circular dependency when resolving LinuxContainerLegionMetricsPublisher. (#10991)
 - Add 'unix' to the list of runtimes kept when importing PowerShell worker for Linux builds
+- Update PowerShell 7.4 worker to 4.0.4206
