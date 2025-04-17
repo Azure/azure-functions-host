@@ -5,7 +5,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Text.Json;
 using Microsoft.Azure.WebJobs.Script.ExtensionRequirements;
 using Microsoft.Extensions.DependencyModel;
 using Newtonsoft.Json.Linq;
@@ -15,6 +17,19 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     public static class DependencyHelper
     {
         private const string AssemblyNamePrefix = "assembly:";
+        private static readonly Assembly _thisAssembly = typeof(DependencyHelper).Assembly;
+        private static readonly string _thisAssemblyName = _thisAssembly.GetName().Name;
+        private static readonly JsonDocumentOptions _jsonDocOptions = new()
+        {
+            CommentHandling = JsonCommentHandling.Skip,
+            AllowTrailingCommas = true
+        };
+
+        private static readonly JsonSerializerOptions _jsonOptions = new()
+        {
+            PropertyNameCaseInsensitive = true,
+        };
+
         private static readonly Lazy<Dictionary<string, string[]>> _ridGraph = new Lazy<Dictionary<string, string[]>>(BuildRuntimesGraph);
         private static string _runtimeIdentifier;
 
@@ -73,12 +88,20 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         private static string GetResourceFileContents(string fileName)
         {
-            var assembly = typeof(DependencyHelper).Assembly;
-            using (Stream resource = assembly.GetManifestResourceStream($"{assembly.GetName().Name}.{fileName}"))
+            var assembly = _thisAssembly;
+            using (Stream resource = assembly.GetManifestResourceStream($"{_thisAssemblyName}.{fileName}"))
             using (var reader = new StreamReader(resource))
             {
                 return reader.ReadToEnd();
             }
+        }
+
+        private static Stream GetResourceStream(string fileName)
+        {
+            var manifestResourceName = $"{_thisAssemblyName}.{fileName}";
+            var stream = _thisAssembly.GetManifestResourceStream(manifestResourceName);
+
+            return stream ?? throw new FileNotFoundException($"Embedded resourceStream '{manifestResourceName}' not found.");
         }
 
         internal static Dictionary<string, ScriptRuntimeAssembly> GetRuntimeAssemblies(string assemblyManifestName)
@@ -93,14 +116,18 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         internal static ExtensionRequirementsInfo GetExtensionRequirements()
         {
-            string requirementsJson = GetResourceFileContents("extensionrequirements.json");
-            JObject requirements = JObject.Parse(requirementsJson);
+            const string fileName = "extensionrequirements.json";
 
-            var bundleRequirements = requirements["bundles"]
-                .ToObject<BundleRequirement[]>();
+            using var resourceStream = GetResourceStream(fileName);
+            using var doc = JsonDocument.Parse(resourceStream, _jsonDocOptions);
 
-            var extensionRequirements = requirements["types"]
-                .ToObject<ExtensionStartupTypeRequirement[]>();
+            var jsonElementRoot = doc.RootElement;
+
+            var bundleRequirements = jsonElementRoot.GetProperty("bundles")
+                .Deserialize<BundleRequirement[]>(_jsonOptions);
+
+            var extensionRequirements = jsonElementRoot.GetProperty("types")
+                .Deserialize<ExtensionStartupTypeRequirement[]>(_jsonOptions);
 
             return new ExtensionRequirementsInfo(bundleRequirements, extensionRequirements);
         }

@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Extensions.DependencyModel;
 using Xunit;
@@ -13,6 +12,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Description
 {
     public class DependencyHelperTests
     {
+        [Fact]
+        public void GetExtensionRequirementsReturnsEmbededManifestContent()
+        {
+            var extensionRequirements = DependencyHelper.GetExtensionRequirements();
+
+            Assert.NotNull(extensionRequirements);
+            Assert.NotNull(extensionRequirements.BundleRequirementsByBundleId);
+            Assert.NotNull(extensionRequirements.ExtensionRequirementsByStartupType);
+
+            // Ensure properties are populated for an item in the collection.
+            Assert.NotEmpty(extensionRequirements.ExtensionRequirementsByStartupType.First().Value.AssemblyName);
+            Assert.NotEmpty(extensionRequirements.ExtensionRequirementsByStartupType.First().Value.Name);
+            Assert.NotEmpty(extensionRequirements.ExtensionRequirementsByStartupType.First().Value.PackageName);
+            Assert.NotEmpty(extensionRequirements.ExtensionRequirementsByStartupType.First().Value.MinimumAssemblyVersion);
+            Assert.NotEmpty(extensionRequirements.ExtensionRequirementsByStartupType.First().Value.MinimumPackageVersion);
+        }
+
         [Fact]
         public void GetDefaultRuntimeFallbacks_MatchesCurrentRuntimeFallbacks()
         {
