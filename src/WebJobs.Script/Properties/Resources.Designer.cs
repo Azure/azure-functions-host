@@ -210,6 +210,15 @@ namespace Microsoft.Azure.WebJobs.Script.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to You are currently using an outdated version - {0} of the extension bundle. To ensure optimal performance and access to the latest features, please update to the latest version range: [{1}.*, {2}.0.0).
+        /// </summary>
+        internal static string OutdatedExtensionBundlesVersionInfoFormat {
+            get {
+                return ResourceManager.GetString("OutdatedExtensionBundlesVersionInfoFormat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to SAS token within &apos;{0}&apos; setting has expired. Please generate a new SAS token or switch to using identites instead. For more information, see https://go.microsoft.com/fwlink/?linkid=2244092..
         /// </summary>
         internal static string SasTokenExpiredFormat {
