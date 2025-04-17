@@ -16,7 +16,7 @@ jobs:
       displayName: Publish deps.json
       path: $(Build.ArtifactStagingDirectory)
       artifact: WebHost_Deps
-      condition: failed()
+      condition: and(failed(), eq(variables['System.JobAttempt'], 1)) # only publish on first attempt
 
   steps:
   - template: /eng/ci/templates/install-dotnet.yml@self
