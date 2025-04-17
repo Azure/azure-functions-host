@@ -15,6 +15,7 @@ using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Models;
+using Microsoft.Azure.WebJobs.Script.Properties;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -28,6 +29,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class ScriptStartupTypeDiscovererTests
     {
+        private const int LatestMajorBundleVersion = 4;
+
         [Fact]
         public async Task GetExtensionsStartupTypes_FiltersBuiltinExtensionsAsync()
         {
@@ -739,6 +742,65 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 //Assert that filtering did not take place because of worker indexing
                 Assert.True(types.Count() == 1);
                 Assert.Equal(typeof(AzureStorageWebJobsStartup).FullName, types.ElementAt(0).FullName);
+            }
+        }
+
+        [Theory]
+        [InlineData("Microsoft.Azure.Functions.ExtensionBundle", "3.36.0", true)]
+        [InlineData("Microsoft.Azure.Functions.ExtensionBundle", "2.25.0", true)]
+        [InlineData("Microsoft.Azure.Functions.ExtensionBundle", "4.22.0", false)]
+        [InlineData("Microsoft.Azure.Functions.ExtensionBundle.Preview", "4.29.0", false)]
+        [InlineData("Microsoft.Azure.Functions.ExtensionBundle.Preview", "3.2.0", false)]
+        public async Task CompareWithLatestMajorVersion_LogsExpectedDiagnosticEvents(string bundleId, string bundleVersion, bool shouldLogEvent)
+        {
+            using (var directory = GetTempDirectory())
+            {
+                // Setup
+                TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
+                TestLoggerProvider testLoggerProvider = new TestLoggerProvider();
+                LoggerFactory factory = new LoggerFactory();
+                factory.AddProvider(testLoggerProvider);
+                var testLogger = factory.CreateLogger<ScriptStartupTypeLocator>();
+
+                var binPath = Path.Combine(directory.Path, "bin");
+
+                var mockExtensionBundleManager = new Mock<IExtensionBundleManager>();
+                mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
+                mockExtensionBundleManager.Setup(e => e.GetExtensionBundleBinPathAsync()).Returns(Task.FromResult(binPath));
+                mockExtensionBundleManager.Setup(e => e.IsLegacyExtensionBundle()).Returns(false);
+                mockExtensionBundleManager.Setup(e => e.GetExtensionBundleDetails()).Returns(Task.FromResult(new ExtensionBundleDetails
+                {
+                    Id = bundleId,
+                    Version = bundleVersion
+                }));
+
+                var languageWorkerOptions = new TestOptionsMonitor<LanguageWorkerOptions>(new LanguageWorkerOptions());
+                var mockFunctionMetadataManager = GetTestFunctionMetadataManager(languageWorkerOptions);
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object,
+                    mockFunctionMetadataManager, testMetricsLogger, languageWorkerOptions);
+
+                // Act - call GetExtensionsStartupTypesAsync to trigger CompareWithLatestMajorVersion
+                try
+                {
+                    await discoverer.GetExtensionsStartupTypesAsync();
+                }
+                catch (HostInitializationException)
+                {
+                    // We might get this exception for certain bundle versions,
+                    // but it's not relevant to this test
+                }
+
+                // Assert
+                var traces = testLoggerProvider.GetAllLogMessages();
+                string message = string.Format(Resources.OutdatedExtensionBundlesVersionInfoFormat, bundleVersion, LatestMajorBundleVersion, LatestMajorBundleVersion + 1);
+
+                // Check for logs matching the pattern for outdated bundle version
+                bool hasOutdatedBundleLog = traces.Any(m =>
+                    m.Level == LogLevel.Information &&
+                    m.FormattedMessage.Contains(message) &&
+                    m.FormattedMessage.Contains(bundleVersion));
+
+                Assert.Equal(shouldLogEvent, hasOutdatedBundleLog);
             }
         }
 
