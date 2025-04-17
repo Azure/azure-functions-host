@@ -313,23 +313,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public static async Task<string> ReadStreamToEnd(Stream stream)
         {
             stream.Position = 0;
-            using (var sr = new StreamReader(stream))
-            {
-                return await sr.ReadToEndAsync();
-            }
+            using var sr = new StreamReader(stream);
+            return await sr.ReadToEndAsync();
         }
 
-        public static IList<RpcWorkerConfig> GetTestWorkerConfigs(bool includeDllWorker = false, int processCountValue = 1,
-            TimeSpan? processStartupInterval = null, TimeSpan? processRestartInterval = null, TimeSpan? processShutdownTimeout = null, bool workerIndexing = false)
+        public static IList<RpcWorkerConfig> GetTestWorkerConfigs(
+            bool includeDllWorker = false,
+            int processCountValue = 1,
+            TimeSpan? processStartupInterval = null,
+            TimeSpan? processRestartInterval = null,
+            TimeSpan? processShutdownTimeout = null,
+            bool workerIndexing = false)
         {
             var defaultCountOptions = new WorkerProcessCountOptions();
             TimeSpan startupInterval = processStartupInterval ?? defaultCountOptions.ProcessStartupInterval;
             TimeSpan restartInterval = processRestartInterval ?? defaultCountOptions.ProcessRestartInterval;
             TimeSpan shutdownTimeout = processShutdownTimeout ?? defaultCountOptions.ProcessShutdownTimeout;
 
-            var workerConfigs = new List<RpcWorkerConfig>
-            {
-                new RpcWorkerConfig
+            List<RpcWorkerConfig> workerConfigs =
+            [
+                new()
                 {
                     Description = GetTestWorkerDescription("node", ".js", workerIndexing),
                     CountOptions = new WorkerProcessCountOptions
@@ -340,7 +343,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                         ProcessShutdownTimeout = shutdownTimeout
                     }
                 },
-                new RpcWorkerConfig
+                new()
                 {
                     Description = GetTestWorkerDescription("java", ".jar", workerIndexing),
                     CountOptions = new WorkerProcessCountOptions
@@ -351,7 +354,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                         ProcessShutdownTimeout = shutdownTimeout
                     }
                 }
-            };
+            ];
 
             // Allow tests to have a worker that claims the .dll extension.
             if (includeDllWorker)

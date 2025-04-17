@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         [Fact]
         public async Task Validator_AllValid()
         {
-            LogMessage invalidServicesMessage = await RunTest();
+            LogMessage invalidServicesMessage = await RunTestAsync();
 
             string msg = $"If you have registered new dependencies, make sure to update the DependencyValidator. Invalid Services:{Environment.NewLine}";
             Assert.True(invalidServicesMessage == null, msg + invalidServicesMessage?.Exception?.ToString());
@@ -37,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         [Fact]
         public async Task Validator_InvalidServices_ThrowsException()
         {
-            LogMessage invalidServicesMessage = await RunTest(configureJobHost: s =>
+            LogMessage invalidServicesMessage = await RunTestAsync(configureJobHost: s =>
             {
                 s.AddSingleton<IHostedService, MyHostedService>();
                 s.AddSingleton<IScriptEventManager, MyScriptEventManager>();
@@ -61,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         [Fact]
         public async Task Validator_NoJobHost()
         {
-            LogMessage invalidServicesMessage = await RunTest(configureWebHost: s =>
+            LogMessage invalidServicesMessage = await RunTestAsync(configureWebHost: s =>
             {
                 // This will force us to skip host startup (which removes the JobHost)
                 s.AddSingleton<IScriptHostBuilder, TestScriptHostBuilder>();
@@ -71,10 +71,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             Assert.True(invalidServicesMessage == null, msg + invalidServicesMessage?.Exception?.ToString());
         }
 
-        private async Task<LogMessage> RunTest(Action<IServiceCollection> configureWebHost = null, Action<IServiceCollection> configureJobHost = null, bool expectSuccess = true)
+        private async Task<LogMessage> RunTestAsync(Action<IServiceCollection> configureWebHost = null, Action<IServiceCollection> configureJobHost = null, bool expectSuccess = true)
         {
             LogMessage invalidServicesMessage = null;
-            TestLoggerProvider loggerProvider = new TestLoggerProvider();
+            TestLoggerProvider loggerProvider = new();
 
             var builder = Program.CreateWebHostBuilder(null)
                     .ConfigureLogging(b =>
