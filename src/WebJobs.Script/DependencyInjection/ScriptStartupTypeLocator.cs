@@ -233,15 +233,15 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
                 try
                 {
                     await using var stream = File.OpenRead(metadataFilePath);
-                    var jsonData = await JsonSerializer.DeserializeAsync<Dictionary<string, ExtensionReference[]>>(stream, JsonSerializerOptionsProvider.CaseInsensitiveOptions);
+                    var extensionReferences = await JsonSerializer.DeserializeAsync(stream, ExtensionReferencesJsonContext.Default.ExtensionReferences);
 
-                    if (jsonData == null || !jsonData.TryGetValue("extensions", out var extensions) || extensions == null)
+                    if (extensionReferences?.Extensions == null || extensionReferences.Extensions.Length == 0)
                     {
                         _logger.ScriptStartUpUnableParseMetadataMissingProperty(metadataFilePath);
                         return [];
                     }
 
-                    return extensions;
+                    return extensionReferences.Extensions;
                 }
                 catch (JsonException exc)
                 {
