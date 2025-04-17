@@ -8,8 +8,13 @@
 
   <Target Name="RemovePowershellWorkerRuntimes" BeforeTargets="AssignTargetPaths" Condition="'$(RuntimeIdentifier)' != ''">
     <ItemGroup>
-      <_KeepPowerShellRuntime Include="win;win-x86;win10-x86;win-x64;win10-x64" Condition="$(RuntimeIdentifier.StartsWith(win))" />
-      <_KeepPowerShellRuntime Include="linux;linux-x64;unix" Condition="$(RuntimeIdentifier.StartsWith(linux))" />
+      <_KeepPowerShellRuntime Include="win;win-x86;win10-x86;win-x64;win10-x64" Condition="$(RuntimeIdentifier.StartsWith('win')) and !$(RuntimeIdentifier.Contains('arm'))" />
+      <_KeepPowerShellRuntime Include="linux;linux-x64;unix" Condition="$(RuntimeIdentifier.StartsWith('linux')) and !$(RuntimeIdentifier.Contains('arm'))" />
+      <_KeepPowerShellRuntime Include="osx-x64" Condition="$(RuntimeIdentifier.StartsWith('osx')) and !$(RuntimeIdentifier.Contains('arm'))" />
+
+      <_KeepPowerShellRuntime Include="win-arm64" Condition="$(RuntimeIdentifier.StartsWith('win')) and $(RuntimeIdentifier.Contains('arm'))" />
+      <_KeepPowerShellRuntime Include="linux-arm64" Condition="$(RuntimeIdentifier.StartsWith('linux')) and $(RuntimeIdentifier.Contains('arm'))" />
+      <_KeepPowerShellRuntime Include="osx-arm64" Condition="$(RuntimeIdentifier.StartsWith('osx')) and $(RuntimeIdentifier.Contains('arm'))" />
     </ItemGroup>
 
     <PropertyGroup>
