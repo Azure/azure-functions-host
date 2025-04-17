@@ -5,7 +5,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Text.Json;
 using Microsoft.Azure.WebJobs.Script.ExtensionRequirements;
 using Microsoft.Extensions.DependencyModel;
 using Newtonsoft.Json.Linq;
@@ -15,7 +17,15 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     public static class DependencyHelper
     {
         private const string AssemblyNamePrefix = "assembly:";
-        private static readonly Lazy<Dictionary<string, string[]>> _ridGraph = new Lazy<Dictionary<string, string[]>>(BuildRuntimesGraph);
+        private static readonly Assembly ThisAssembly = typeof(DependencyHelper).Assembly;
+        private static readonly string ThisAssemblyName = ThisAssembly.GetName().Name;
+        private static readonly Lazy<Dictionary<string, string[]>> RidGraph = new Lazy<Dictionary<string, string[]>>(BuildRuntimesGraph);
+        private static readonly JsonDocumentOptions JsonDocumentOptions = new()
+        {
+            CommentHandling = JsonCommentHandling.Skip,
+            AllowTrailingCommas = true
+        };
+
         private static string _runtimeIdentifier;
 
         private static Dictionary<string, string[]> BuildRuntimesGraph()
@@ -73,12 +83,20 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         private static string GetResourceFileContents(string fileName)
         {
-            var assembly = typeof(DependencyHelper).Assembly;
-            using (Stream resource = assembly.GetManifestResourceStream($"{assembly.GetName().Name}.{fileName}"))
+            var assembly = ThisAssembly;
+            using (Stream resource = assembly.GetManifestResourceStream($"{ThisAssemblyName}.{fileName}"))
             using (var reader = new StreamReader(resource))
             {
                 return reader.ReadToEnd();
             }
+        }
+
+        private static Stream GetResourceStream(string fileName)
+        {
+            var manifestResourceName = $"{ThisAssemblyName}.{fileName}";
+            var stream = ThisAssembly.GetManifestResourceStream(manifestResourceName);
+
+            return stream ?? throw new InvalidOperationException($"The embedded resource '{manifestResourceName}' could not be found.");
         }
 
         internal static Dictionary<string, ScriptRuntimeAssembly> GetRuntimeAssemblies(string assemblyManifestName)
@@ -93,14 +111,20 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         internal static ExtensionRequirementsInfo GetExtensionRequirements()
         {
-            string requirementsJson = GetResourceFileContents("extensionrequirements.json");
-            JObject requirements = JObject.Parse(requirementsJson);
+            const string fileName = "extensionrequirements.json";
 
-            var bundleRequirements = requirements["bundles"]
-                .ToObject<BundleRequirement[]>();
+            using var resourceStream = GetResourceStream(fileName);
+            using var doc = JsonDocument.Parse(resourceStream, JsonDocumentOptions);
 
-            var extensionRequirements = requirements["types"]
-                .ToObject<ExtensionStartupTypeRequirement[]>();
+            var jsonElementRoot = doc.RootElement;
+
+            var bundleRequirements = jsonElementRoot.TryGetProperty("bundles", out var bundles)
+                ? bundles.Deserialize(ExtensionRequirementsJsonContext.Default.BundleRequirementArray)
+                : [];
+
+            var extensionRequirements = jsonElementRoot.TryGetProperty("types", out var types)
+                ? types.Deserialize(ExtensionRequirementsJsonContext.Default.ExtensionStartupTypeRequirementArray)
+                : [];
 
             return new ExtensionRequirementsInfo(bundleRequirements, extensionRequirements);
         }
@@ -115,7 +139,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         /// <returns>The runtime fallbacks for the provided identifier.</returns>
         public static RuntimeFallbacks GetDefaultRuntimeFallbacks(string rid)
         {
-            var ridGraph = _ridGraph.Value;
+            var ridGraph = RidGraph.Value;
 
             var runtimeFallbacks = new RuntimeFallbacks(rid);
             var fallbacks = new List<string>();
@@ -184,7 +208,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         /// <returns> bool if string in was in proper assembly representation format. </returns>
         public static bool IsAssemblyReferenceFormat(string assemblyFormatString)
         {
-           return assemblyFormatString != null && assemblyFormatString.StartsWith(AssemblyNamePrefix);
+            return assemblyFormatString != null && assemblyFormatString.StartsWith(AssemblyNamePrefix);
         }
 
         /// <summary>
