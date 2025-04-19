@@ -227,6 +227,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string ExtendedPlatformChannelNameUpper = "EXTENDED";
 
         public const string AzureMonitorTraceCategory = "FunctionAppLogs";
+        public const string DefaultAzureMonitorCategories = "None";
 
         public const string KubernetesManagedAppName = "K8SE_APP_NAME";
         public const string KubernetesManagedAppNamespace = "K8SE_APP_NAMESPACE";
