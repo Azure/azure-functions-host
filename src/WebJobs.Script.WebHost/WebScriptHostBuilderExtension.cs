@@ -2,8 +2,11 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Linq;
 using System.Net.Http;
 using System.Runtime.InteropServices;
+using Autofac.Core;
+using Google.Protobuf.WellKnownTypes;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Host.Executors;
@@ -25,6 +28,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
 using Microsoft.Azure.WebJobs.Script.WebHost.Storage;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -91,6 +95,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     loggingBuilder.AddWebJobsSystem<SystemLoggerProvider>();
                     if (environment.IsAzureMonitorEnabled())
                     {
+                        loggingBuilder.Services.AddOptions<LoggerFilterOptions>()
+                            .Configure<IConfiguration>((options, config) =>
+                            {
+                                string setting = config[EnvironmentSettingNames.AzureMonitorCategories];
+                                options.AddFilter<AzureMonitorDiagnosticLoggerProvider>((category, level) =>
+                                {
+                                    if (setting == null || string.Equals(ScriptConstants.DefaultAzureMonitorCategories, setting, StringComparison.Ordinal))
+                                    {
+                                        return true;
+                                    }
+                                    string[] categories = setting.Split(',');
+                                    return categories.Contains(ScriptConstants.AzureMonitorTraceCategory);
+                                });
+                            });
+
                         loggingBuilder.Services.AddSingleton<ILoggerProvider, AzureMonitorDiagnosticLoggerProvider>();
                     }
 
