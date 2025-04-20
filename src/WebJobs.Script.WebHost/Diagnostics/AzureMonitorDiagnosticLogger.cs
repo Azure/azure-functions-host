@@ -54,6 +54,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public bool IsEnabled(LogLevel logLevel)
         {
+            if ((_environment.IsFlexConsumptionSku() || _environment.IsLinuxConsumptionOnLegion()) 
+                && !_environment.IsAzureMonitorEnabledOnLegionSkus()) {
+                return false;
+            }
             // We want to instantiate this Logger in placeholder mode to warm it up, but do not want to log anything.
             return !string.IsNullOrEmpty(_hostNameProvider.Value) && !_environment.IsPlaceholderModeEnabled();
         }
