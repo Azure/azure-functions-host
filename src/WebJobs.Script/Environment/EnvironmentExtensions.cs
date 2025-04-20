@@ -20,6 +20,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private static bool? isMultiLanguageEnabled;
 
+        private static bool? isAzureMonitorLogsSubscribed;
+
         internal static string BaseDirectory { get; set; }
 
         public static string GetEnvironmentVariableOrDefault(this IEnvironment environment, string name, string defaultValue)
@@ -76,6 +78,32 @@ namespace Microsoft.Azure.WebJobs.Script
             }
             string[] categories = value.Split(',');
             return categories.Contains(ScriptConstants.AzureMonitorTraceCategory);
+        }
+
+        /// <summary>
+        /// Returns true if any Functions AzureMonitor log categories are enabled on legion based SKUs.
+        /// </summary>
+        public static bool IsAzureMonitorEnabledOnLegionSkus(this IEnvironment environment)
+        {
+            string value = environment.GetEnvironmentVariable(AzureMonitorCategories);
+            if (value == null)
+            {
+                return true;
+            }
+            if (string.Equals(ScriptConstants.DefaultAzureMonitorCategories, value, StringComparison.Ordinal))
+            {
+                // Default value for the env variable is None.
+                // This is set when customer does not subscribe any category.
+                return false;
+            }
+            // If control came here, it means customer has subscribed to someazure monitor log categories.
+            // So, cache whether FunctionsLogs category is subscribed.
+            if (isAzureMonitorLogsSubscribed == null)
+            {
+                string[] categories = value.Split(',');
+                isAzureMonitorLogsSubscribed = categories.Contains(ScriptConstants.AzureMonitorTraceCategory);
+            }
+            return isAzureMonitorLogsSubscribed.Value;
         }
 
         /// <summary>
