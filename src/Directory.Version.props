@@ -1,6 +1,6 @@
 <Project>
   <PropertyGroup>
     <VersionPrefix>4.1040.100</VersionPrefix>
-    <UpdateBuildNumber>true</UpdateBuildNumber>
+    <UpdateBuildNumber Condition="'$(UpdateBuildNumber)' == ''">true</UpdateBuildNumber>
   </PropertyGroup>
 </Project>
