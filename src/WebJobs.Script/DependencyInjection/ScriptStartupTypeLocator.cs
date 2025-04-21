@@ -159,8 +159,8 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
                 }
 
                 if (!bundleConfigured
-                    || extensionItem.Bindings.Count == 0
-                    || extensionItem.Bindings.Intersect(bindingsSet, StringComparer.OrdinalIgnoreCase).Any())
+                    || extensionItem.Bindings is { Count: 0 }
+                    || extensionItem.Bindings?.Intersect(bindingsSet, StringComparer.OrdinalIgnoreCase).Any() == true)
                 {
                     string startupExtensionName = extensionItem.Name ?? extensionItem.TypeName;
                     _logger.ScriptStartUpLoadingStartUpExtension(startupExtensionName);
