@@ -35,7 +35,9 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <returns>true if a warmup function or else false</returns>
         public static bool IsWarmupFunction(this FunctionDescriptor function)
         {
-            if (IsFunctionNameMatch(function.Name, WarmupFunctionName))
+            var isInValidationMode = FunctionGroups.IsValidationPodGroup(Environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsTargetGroup));
+
+            if (!isInValidationMode && IsFunctionNameMatch(function.Name, WarmupFunctionName))
             {
                 return function.Metadata
                     .InputBindings

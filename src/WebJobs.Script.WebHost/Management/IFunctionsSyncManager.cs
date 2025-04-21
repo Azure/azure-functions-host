@@ -13,5 +13,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         /// <param name="isBackgroundSync">Indicates whether this is a background sync operation.</param>
         /// <returns>The <see cref="SyncTriggersResult"/> for the request.</returns>
         Task<SyncTriggersResult> TrySyncTriggersAsync(bool isBackgroundSync = false);
+
+        /// <summary>
+        /// Get function triggers payload.
+        /// </summary>
+        /// <returns>The <see cref="GetTriggersResult"/> for the request.</returns>
+        Task<GetTriggersResult> GetSyncTriggersPayloadAsync();
     }
 }

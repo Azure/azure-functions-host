@@ -16,6 +16,7 @@ using Microsoft.AspNetCore.Mvc.WebApiCompatShim;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Scale;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Scale;
@@ -419,6 +420,30 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             return result.Success
                 ? Ok(new { status = "success" })
                 : StatusCode(StatusCodes.Status500InternalServerError, new { status = result.Error });
+        }
+
+        [HttpGet]
+        [Route("admin/host/triggers")]
+        [Authorize(Policy = PolicyNames.AdminAuthLevel)]
+        [ResourceContainsSecrets]
+        [RequiresRunningHost]
+        public async Task<IActionResult> GetTriggers()
+        {
+            _metricsLogger.LogEvent(MetricEventNames.GetTriggersInvoked);
+
+            var isInValidationMode = FunctionGroups.IsValidationPodGroup(_environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsTargetGroup));
+
+            if (isInValidationMode)
+            {
+                var result = await _functionsSyncManager.GetSyncTriggersPayloadAsync();
+
+                // Return a dummy body to make it valid in ARM template action evaluation
+                return result.Success
+                    ? Ok(result)
+                    : StatusCode(StatusCodes.Status500InternalServerError, new { status = result.Error });
+            }
+
+            return NotFound();
         }
 
         [HttpPost]

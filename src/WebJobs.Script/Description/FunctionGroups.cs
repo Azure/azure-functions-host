@@ -11,6 +11,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         public const string Durable = "durable";
         public const string Blob = "blob";
 
+        // Functions Deployment Manager
+        public const string FunctionGroupForValidationPod = "deployment:validation";
+
         public static string ForFunction(string function)
         {
             return $"function:{function}";
@@ -30,6 +33,16 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 // 1. WebHook which enqueues a message to Azure Storage Queue.
                 // 2. Azure Storage Queue trigger which processes the message.
                 // So we need to run in both http and blob groups.
+                return true;
+            }
+
+            return false;
+        }
+
+        public static bool IsValidationPodGroup(string functionsTargetGroup)
+        {
+            if (string.Equals(functionsTargetGroup, FunctionGroups.FunctionGroupForValidationPod, StringComparison.InvariantCultureIgnoreCase))
+            {
                 return true;
             }
 

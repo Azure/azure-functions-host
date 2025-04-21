@@ -786,6 +786,56 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
         }
 
+        public async Task<GetTriggersResult> GetSyncTriggersPayloadAsync()
+        {
+            var result = new GetTriggersResult
+            {
+                Success = true
+            };
+
+            if (!IsSyncTriggersEnvironment(_webHostEnvironment, _environment))
+            {
+                result.Success = false;
+                result.Error = "Invalid environment for GetTriggers operation.";
+                _logger.LogWarning(result.Error);
+                return result;
+            }
+
+            try
+            {
+                await _syncSemaphore.WaitAsync();
+
+                PrepareSyncTriggers();
+
+                var hashBlobClient = await GetHashBlobAsync();
+
+                var payload = await GetSyncTriggersPayload();
+                if (payload.Count == 0)
+                {
+                    // We don't do background sync for empty triggers.
+                    // We've seen error cases where a site temporarily gets into a situation
+                    // where it's site content is empty. Doing the empty sync can cause the app
+                    // to go idle when it shouldn't.
+                    _logger.LogDebug("No functions found. Skipping GetTriggers operation.");
+                }
+
+                result.Payload = payload;
+                return result;
+            }
+            catch (Exception ex)
+            {
+                // best effort - log error and continue
+                result.Success = false;
+                result.Error = "GetTriggers operation failed.";
+                _logger.LogError(ex, result.Error);
+                return result;
+            }
+            finally
+            {
+                _syncSemaphore.Release();
+            }
+        }
+
         public void Dispose()
         {
             _syncSemaphore.Dispose();
