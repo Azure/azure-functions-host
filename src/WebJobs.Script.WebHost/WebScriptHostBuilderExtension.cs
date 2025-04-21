@@ -101,7 +101,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                                 string setting = config[EnvironmentSettingNames.AzureMonitorCategories];
                                 options.AddFilter<AzureMonitorDiagnosticLoggerProvider>((category, level) =>
                                 {
-                                    if (setting == null || string.Equals(ScriptConstants.DefaultAzureMonitorCategories, setting, StringComparison.Ordinal))
+                                    if (setting == null)
                                     {
                                         return true;
                                     }
