@@ -104,35 +104,35 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                      .AddFilter<TestLoggerProvider>("Azure.Core", LogLevel.Warning);
                 })
                 .ConfigureServices(services =>
-                  {
-                      services.Replace(new ServiceDescriptor(typeof(ISecretManagerProvider), new TestSecretManagerProvider(new TestSecretManager())));
-                      services.Replace(new ServiceDescriptor(typeof(IOptions<ScriptApplicationHostOptions>), sp =>
-                      {
-                          _hostOptions.RootServiceProvider = sp;
-                          return new OptionsWrapper<ScriptApplicationHostOptions>(_hostOptions);
-                      }, ServiceLifetime.Singleton));
-                      services.Replace(new ServiceDescriptor(typeof(IOptionsMonitor<ScriptApplicationHostOptions>), sp =>
-                      {
-                          _hostOptions.RootServiceProvider = sp;
-                          return TestHelpers.CreateOptionsMonitor(_hostOptions);
-                      }, ServiceLifetime.Singleton));
-                      services.Replace(new ServiceDescriptor(typeof(IExtensionBundleManager), new TestExtensionBundleManager()));
-                      services.Replace(new ServiceDescriptor(typeof(IFunctionMetadataManager), sp =>
-                      {
-                          var montior = sp.GetService<IOptionsMonitor<ScriptApplicationHostOptions>>();
-                          var scriptManager = sp.GetService<IScriptHostManager>();
-                          var loggerFactory = sp.GetService<ILoggerFactory>();
-                          var environment = sp.GetService<IEnvironment>();
+                {
+                    services.Replace(new ServiceDescriptor(typeof(ISecretManagerProvider), new TestSecretManagerProvider(new TestSecretManager())));
+                    services.Replace(new ServiceDescriptor(typeof(IOptions<ScriptApplicationHostOptions>), sp =>
+                    {
+                        _hostOptions.RootServiceProvider = sp;
+                        return new OptionsWrapper<ScriptApplicationHostOptions>(_hostOptions);
+                    }, ServiceLifetime.Singleton));
+                    services.Replace(new ServiceDescriptor(typeof(IOptionsMonitor<ScriptApplicationHostOptions>), sp =>
+                    {
+                        _hostOptions.RootServiceProvider = sp;
+                        return TestHelpers.CreateOptionsMonitor(_hostOptions);
+                    }, ServiceLifetime.Singleton));
+                    services.Replace(new ServiceDescriptor(typeof(IExtensionBundleManager), new TestExtensionBundleManager()));
+                    services.Replace(new ServiceDescriptor(typeof(IFunctionMetadataManager), sp =>
+                    {
+                        var montior = sp.GetService<IOptionsMonitor<ScriptApplicationHostOptions>>();
+                        var scriptManager = sp.GetService<IScriptHostManager>();
+                        var loggerFactory = sp.GetService<ILoggerFactory>();
+                        var environment = sp.GetService<IEnvironment>();
 
-                          return GetMetadataManager(montior, scriptManager, loggerFactory, environment);
-                      }, ServiceLifetime.Singleton));
+                        return GetMetadataManager(montior, scriptManager, loggerFactory, environment);
+                    }, ServiceLifetime.Singleton));
 
-                      services.AddSingleton<ISystemLoggerFactory, SystemLoggerFactory>();
-                      services.SkipDependencyValidation();
+                    services.AddSingleton<ISystemLoggerFactory, SystemLoggerFactory>();
+                    services.SkipDependencyValidation();
 
-                      // Allows us to configure services as the last step, thereby overriding anything
-                      services.AddSingleton(new PostConfigureServices(configureWebHostServices));
-                  })
+                    // Allows us to configure services as the last step, thereby overriding anything
+                    services.AddSingleton(new PostConfigureServices(configureWebHostServices));
+                })
                 .ConfigureScriptHostWebJobsBuilder(scriptHostWebJobsBuilder =>
                 {
                     /// REVIEW THIS

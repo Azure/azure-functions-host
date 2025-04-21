@@ -9,53 +9,49 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
-using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
-using Moq;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
-    public class FunctionInvokerBaseTests : IDisposable
+    public sealed class FunctionInvokerBaseTests : IDisposable
     {
-        private MockInvoker _invoker;
-        private IHost _host;
-        private ScriptHost _scriptHost;
-        private TestMetricsLogger _metricsLogger;
-        private TestLoggerProvider _testLoggerProvider;
+        private readonly TestMetricsLogger _metricsLogger = new();
+        private readonly TestLoggerProvider _testLoggerProvider = new();
+        private readonly MockInvoker _invoker;
+        private readonly IHost _host;
+        private readonly ScriptHost _scriptHost;
 
         public FunctionInvokerBaseTests()
         {
-            _metricsLogger = new TestMetricsLogger();
-            _testLoggerProvider = new TestLoggerProvider();
-
-            ILoggerFactory loggerFactory = new LoggerFactory();
+            LoggerFactory loggerFactory = new();
             loggerFactory.AddProvider(_testLoggerProvider);
 
-            var eventManager = new ScriptEventManager();
-
-            var metadata = new FunctionMetadata
+            FunctionMetadata metadata = new()
             {
                 Name = "TestFunction",
                 ScriptFile = "index.js",
                 Language = "node"
             };
+
             JObject binding = JObject.FromObject(new
             {
                 type = "manualTrigger",
                 name = "manual",
                 direction = "in"
             });
+
             metadata.Bindings.Add(BindingMetadata.Create(binding));
 
-            var metadataManager = new MockMetadataManager(new[] { metadata });
+            MockMetadataManager metadataManager = new([metadata]);
+
+            // TODO: Can we instantiate a ScriptHost directly?
             _host = new HostBuilder()
                 .ConfigureDefaultTestWebScriptHost()
                 .ConfigureServices(s =>
@@ -66,10 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 .Build();
 
             _scriptHost = _host.GetScriptHost();
-            _scriptHost.InitializeAsync().Wait();
-
             var hostMetrics = _host.Services.GetService<HostMetrics>();
-
             _invoker = new MockInvoker(_scriptHost, _metricsLogger, hostMetrics, metadataManager, metadata, loggerFactory);
         }
 
@@ -182,17 +175,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(startLatencyEvent, completedLatencyEvent);
         }
 
-        protected virtual void Dispose(bool disposing)
+        public void Dispose()
         {
-            if (disposing)
+            try
             {
                 _host?.Dispose();
             }
-        }
-
-        public void Dispose()
-        {
-            Dispose(true);
+            catch (Exception)
+            {
+                // this might throw due to invalid setup.
+            }
         }
 
         private class MockInvoker : FunctionInvokerBase

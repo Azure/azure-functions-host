@@ -26,22 +26,23 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions;
         private readonly IEnvironment _environment;
 
-        internal RpcWorkerProcess(string runtime,
-                                       string workerId,
-                                       string rootScriptPath,
-                                       Uri serverUri,
-                                       RpcWorkerConfig rpcWorkerConfig,
-                                       IScriptEventManager eventManager,
-                                       IWorkerProcessFactory processFactory,
-                                       IProcessRegistry processRegistry,
-                                       ILogger workerProcessLogger,
-                                       IWorkerConsoleLogSource consoleLogSource,
-                                       IMetricsLogger metricsLogger,
-                                       IServiceProvider serviceProvider,
-                                       IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
-                                       IEnvironment environment,
-                                       IOptionsMonitor<ScriptApplicationHostOptions> scriptApplicationHostOptions,
-                                       ILoggerFactory loggerFactory)
+        internal RpcWorkerProcess(
+            string runtime,
+            string workerId,
+            string rootScriptPath,
+            Uri serverUri,
+            RpcWorkerConfig rpcWorkerConfig,
+            IScriptEventManager eventManager,
+            IWorkerProcessFactory processFactory,
+            IProcessRegistry processRegistry,
+            ILogger workerProcessLogger,
+            IWorkerConsoleLogSource consoleLogSource,
+            IMetricsLogger metricsLogger,
+            IServiceProvider serviceProvider,
+            IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
+            IEnvironment environment,
+            IOptionsMonitor<ScriptApplicationHostOptions> scriptApplicationHostOptions,
+            ILoggerFactory loggerFactory)
             : base(eventManager, processRegistry, workerProcessLogger, consoleLogSource, metricsLogger, serviceProvider, loggerFactory, environment,
                   scriptApplicationHostOptions, rpcWorkerConfig.Description.UseStdErrorStreamForErrorsOnly)
         {
@@ -81,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
 
             // The subscriber of WorkerErrorEvent is expected to Dispose() the errored channel
-            _workerProcessLogger.LogError(rpcWorkerProcessExitException, $"Language Worker Process exited. Pid={rpcWorkerProcessExitException.Pid}.", _workerProcessArguments.ExecutablePath);
+            _workerProcessLogger.LogError(rpcWorkerProcessExitException, $"Language Worker Process exited. Pid={rpcWorkerProcessExitException.Pid}.", _workerProcessArguments?.ExecutablePath);
             _eventManager.Publish(new WorkerErrorEvent(_runtime, _workerId, rpcWorkerProcessExitException));
         }
 
