@@ -972,8 +972,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                                       {
                                         "extensions": [
                                           {
-                                            "Name": "Storage",
-                                            "TypeName": "{{typeof(AzureStorageWebJobsStartup).AssemblyQualifiedName}}",
+                                            "name": "Storage",
+                                            "typeName": "{{typeof(AzureStorageWebJobsStartup).AssemblyQualifiedName}}",
                                             "hintPath": "Microsoft.Azure.WebJobs.Extensions.Storage.dll"  
                                           },
                                           {
