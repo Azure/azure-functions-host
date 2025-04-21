@@ -87,7 +87,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(expected, syncService.ShouldSyncTriggers);
         }
 
-
         [Fact]
         public async Task StartAsync_PrimaryHost_Running_SyncsTriggers_AfterTimeout()
         {

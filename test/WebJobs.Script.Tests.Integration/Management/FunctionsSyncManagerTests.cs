@@ -14,6 +14,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
@@ -254,6 +255,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         {
             var fileSystem = CreateFileSystem(_hostOptions, hostJsonContent, extensionsJsonContent);
             FileUtility.Instance = fileSystem;
+        }
+
+        [Fact]
+        public async Task GetSyncTriggersPayload_ExpectedContent()
+        {
+            Dictionary<string, string> vars = new Dictionary<string, string>();
+            vars.Add(EnvironmentSettingNames.FunctionsTargetGroup, FunctionGroups.FunctionGroupForValidationPod);
+
+            using (var env = new TestScopedEnvironmentVariable(vars))
+            {
+                // Act
+                var syncResult = await _functionsSyncManager.GetSyncTriggersPayloadAsync();
+
+                // Assert
+                Assert.True(syncResult.Success);
+                Assert.Null(syncResult.Error);
+                Assert.NotNull(syncResult.Payload);
+
+                var result = JObject.Parse(syncResult.Payload.Content);
+                var triggers = result["triggers"];
+                Assert.Equal(GetExpectedTriggersPayload(durableVersion: "V1"), triggers.ToString(Formatting.None));
+            }
         }
 
         [Fact]
