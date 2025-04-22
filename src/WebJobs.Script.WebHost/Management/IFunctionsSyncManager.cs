@@ -17,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         /// <summary>
         /// Get function triggers payload.
         /// </summary>
-        /// <returns>The <see cref="GetTriggersResult"/> for the request.</returns>
-        Task<GetTriggersResult> GetTriggersPayloadAsync();
+        /// <returns>The <see cref="TriggersPayload"/> for the request.</returns>
+        Task<TriggersPayload> GetTriggersPayloadAsync();
     }
 }
