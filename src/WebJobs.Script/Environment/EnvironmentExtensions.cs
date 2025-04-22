@@ -69,21 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <summary>
         /// Returns true if any Functions AzureMonitor log categories are enabled.
         /// </summary>
-        public static bool IsAzureMonitorEnabled(this IEnvironment environment)
-        {
-            string value = environment.GetEnvironmentVariable(AzureMonitorCategories);
-            if (value == null)
-            {
-                return true;
-            }
-            string[] categories = value.Split(',');
-            return categories.Contains(ScriptConstants.AzureMonitorTraceCategory);
-        }
-
-        /// <summary>
-        /// Returns true if any Functions AzureMonitor log categories are enabled on legion based SKUs.
-        /// </summary>
-        public static bool IsAzureMonitorEnabledOnLegionSkus(this IEnvironment environment)
+        public static bool IsAzureMonitorEnabled(this IEnvironment environment, bool useCache=false)
         {
             string value = environment.GetEnvironmentVariable(AzureMonitorCategories);
             if (value == null)
@@ -96,13 +82,12 @@ namespace Microsoft.Azure.WebJobs.Script
                 // This is set when customer does not subscribe any category.
                 return false;
             }
-            // If control came here, it means customer has subscribed to someazure monitor log categories.
-            // So, cache whether FunctionsLogs category is subscribed.
-            if (isAzureMonitorLogsSubscribed == null)
+            if (useCache && isAzureMonitorLogsSubscribed != null)
             {
-                string[] categories = value.Split(',');
-                isAzureMonitorLogsSubscribed = categories.Contains(ScriptConstants.AzureMonitorTraceCategory);
+                return isAzureMonitorLogsSubscribed.Value;
             }
+            string[] categories = value.Split(',');
+            isAzureMonitorLogsSubscribed = categories.Contains(ScriptConstants.AzureMonitorTraceCategory);
             return isAzureMonitorLogsSubscribed.Value;
         }
 
@@ -277,6 +262,16 @@ namespace Microsoft.Azure.WebJobs.Script
             // If we're running on Legion and the app isn't CV1 on Legion,
             // then it's Flex
             return !environment.WebsiteSkuIsDynamic();
+        }
+
+        /// <summary>
+        /// Gets a value indicating whether the application is running in Legion.
+        /// </summary>
+        /// <param name="environment">The environment to verify.</param>
+        /// <returns><see cref="true"/> if running on legion, false otherwise.</returns>
+        public static bool IsLegionBasedSku(this IEnvironment environment)
+        {
+            return environment.IsFlexConsumptionSku() || environment.IsLinuxConsumptionOnLegion();
         }
 
         /// <summary>

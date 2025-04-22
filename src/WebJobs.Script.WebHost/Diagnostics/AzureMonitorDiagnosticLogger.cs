@@ -54,8 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public bool IsEnabled(LogLevel logLevel)
         {
-            if ((_environment.IsFlexConsumptionSku() || _environment.IsLinuxConsumptionOnLegion())
-                && !_environment.IsAzureMonitorEnabledOnLegionSkus())
+            if (_environment.IsLegionBasedSku() && !_environment.IsAzureMonitorEnabled(useCache:true))
             {
                 return false;
             }
