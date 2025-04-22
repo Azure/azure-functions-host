@@ -2,13 +2,13 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.Functions.Platform.Metrics.LinuxConsumption;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
@@ -17,7 +17,6 @@ using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Newtonsoft.Json;
 using Xunit;
-using static Microsoft.Azure.WebJobs.Script.Tests.TestHelpers;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
 {
@@ -32,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
         private readonly Random _random = new Random();
         private readonly TestLogger<LinuxContainerLegionMetricsPublisher> _logger;
         private readonly TestMetricsLogger _testMetricsLogger;
-        private readonly IScriptHostManager _scriptHostManager;
+        private readonly IServiceProvider _serviceProvider;
 
         private IOptions<LinuxConsumptionLegionMetricsPublisherOptions> _options;
         private StandbyOptions _standbyOptions;
@@ -44,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             _environment = new TestEnvironment();
             _logger = new TestLogger<LinuxContainerLegionMetricsPublisher>();
             _testMetricsLogger = new TestMetricsLogger();
-            _scriptHostManager = new TestScriptHostManager(_testMetricsLogger);
+            _serviceProvider = new TestScriptHostManager(_testMetricsLogger);
 
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsMetricsPublishPath, _metricsFilePath);
 
@@ -62,7 +61,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
                 MetricsFilePath = _metricsFilePath
             });
 
-            return new LinuxContainerLegionMetricsPublisher(_environment, _standbyOptionsMonitor, _options, _logger, new FileSystem(), _testMetricsTracker, _scriptHostManager, metricsPublishInterval);
+            var testHostingConfigOptionsMonitor = new TestOptionsMonitor<FunctionsHostingConfigOptions>(new FunctionsHostingConfigOptions());
+
+            return new LinuxContainerLegionMetricsPublisher(_environment, _standbyOptionsMonitor, _options, _logger, new FileSystem(), _testMetricsTracker, _serviceProvider, testHostingConfigOptionsMonitor, metricsPublishInterval);
         }
 
         [Fact]
@@ -237,37 +238,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             return new FileInfo[0];
         }
 
-        private class TestMetricsTracker : ILinuxConsumptionMetricsTracker
-        {
-            public event EventHandler<DiagnosticEventArgs> OnDiagnosticEvent;
-
-            public List<FunctionActivity> FunctionActivities { get; } = new List<FunctionActivity>();
-
-            public List<MemoryActivity> MemoryActivities { get; } = new List<MemoryActivity>();
-
-            public Queue<LinuxConsumptionMetrics> MetricsQueue { get; } = new Queue<LinuxConsumptionMetrics>();
-
-            public void AddFunctionActivity(FunctionActivity activity)
-            {
-                FunctionActivities.Add(activity);
-            }
-
-            public void AddMemoryActivity(MemoryActivity activity)
-            {
-                MemoryActivities.Add(activity);
-            }
-
-            public bool TryGetMetrics(out LinuxConsumptionMetrics metrics)
-            {
-                return MetricsQueue.TryDequeue(out metrics);
-            }
-
-            public void LogEvent(string eventName)
-            {
-                OnDiagnosticEvent?.Invoke(this, new DiagnosticEventArgs(eventName));
-            }
-        }
-
         private class TestScriptHostManager : IServiceProvider, IScriptHostManager
         {
             private readonly IMetricsLogger _metricsLogger;
@@ -277,11 +247,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
                 _metricsLogger = metricsLogger;
             }
 
-            #pragma warning disable CS0067
+#pragma warning disable CS0067
             public event EventHandler HostInitializing;
 
             public event EventHandler<ActiveHostChangedEventArgs> ActiveHostChanged;
-            #pragma warning restore CS0067
+#pragma warning restore CS0067
 
             public ScriptHostState State => throw new NotImplementedException();
 

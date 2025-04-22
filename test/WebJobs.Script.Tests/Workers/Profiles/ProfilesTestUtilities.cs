@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Text.Json;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Extensions.Logging;
@@ -29,8 +30,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Profiles
         {
             var descriptor = new WorkerProfileConditionDescriptor();
             descriptor.Type = WorkerConstants.WorkerDescriptionProfileEnvironmentCondition;
-            descriptor.Properties[WorkerConstants.WorkerDescriptionProfileConditionName] = name;
-            descriptor.Properties[WorkerConstants.WorkerDescriptionProfileConditionExpression] = expression;
+            descriptor.Properties[WorkerConstants.WorkerDescriptionProfileConditionName] = JsonSerializer.SerializeToElement(name);
+            descriptor.Properties[WorkerConstants.WorkerDescriptionProfileConditionExpression] = JsonSerializer.SerializeToElement(expression);
 
             return new EnvironmentCondition(logger, testEnvironment, descriptor);
         }
@@ -39,8 +40,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Profiles
         {
             var descriptor = new WorkerProfileConditionDescriptor();
             descriptor.Type = WorkerConstants.WorkerDescriptionProfileHostPropertyCondition;
-            descriptor.Properties[WorkerConstants.WorkerDescriptionProfileConditionName] = name;
-            descriptor.Properties[WorkerConstants.WorkerDescriptionProfileConditionExpression] = expression;
+            descriptor.Properties[WorkerConstants.WorkerDescriptionProfileConditionName] = JsonSerializer.SerializeToElement(name);
+            descriptor.Properties[WorkerConstants.WorkerDescriptionProfileConditionExpression] = JsonSerializer.SerializeToElement(expression);
 
             return new HostPropertyCondition(logger, testSystemRuntimeInfo, descriptor);
         }

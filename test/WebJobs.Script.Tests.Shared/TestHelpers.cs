@@ -103,8 +103,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     }
                     throw new ApplicationException(error);
                 }
-        }
             }
+        }
 
         public static async Task RetryFailedTest(Func<Task> test, int retries, ITestOutputHelper output = null)
         {
