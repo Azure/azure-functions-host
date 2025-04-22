@@ -57,9 +57,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
                 int nestedProxiesCount = GetNestedProxiesCount(context, functionExecution);
                 IActionResult result = await GetResultAsync(context, functionExecution);
 
-                if (context.Items.TryGetValue(ScriptConstants.HttpProxyingEnabled, out var value))
+                if (context.Items.TryGetValue(ScriptConstants.HttpProxyingEnabled, out var httpProxyingEnabled))
                 {
-                    if (value?.ToString() == bool.TrueString)
+                    if (httpProxyingEnabled?.ToString() == bool.TrueString)
+                    {
+                        return;
+                    }
+                }
+
+                // TODO: Come back to this after custom handler proxying settings are set up
+                if (context.Items.TryGetValue("SomeValue", out var customHandlerProxyingEnabled))
+                {
+                    if (customHandlerProxyingEnabled?.ToString() == bool.TrueString)
                     {
                         return;
                     }

@@ -24,17 +24,21 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         private readonly HttpWorkerOptions _httpWorkerOptions;
         private readonly ILogger _logger;
         private readonly bool _enableRequestTracing;
+        private readonly IHttpProxyService _httpProxyService;
 
-        public DefaultHttpWorkerService(IOptions<HttpWorkerOptions> httpWorkerOptions, ILoggerFactory loggerFactory, IEnvironment environment, IOptions<ScriptJobHostOptions> scriptHostOptions)
-            : this(CreateHttpClient(httpWorkerOptions), httpWorkerOptions, loggerFactory.CreateLogger<DefaultHttpWorkerService>(), environment, scriptHostOptions)
+        public DefaultHttpWorkerService(IOptions<HttpWorkerOptions> httpWorkerOptions, ILoggerFactory loggerFactory, IEnvironment environment,
+            IOptions<ScriptJobHostOptions> scriptHostOptions, IHttpProxyService httpProxyService)
+            : this(CreateHttpClient(httpWorkerOptions), httpWorkerOptions, loggerFactory.CreateLogger<DefaultHttpWorkerService>(), environment, scriptHostOptions, httpProxyService)
         {
         }
 
-        internal DefaultHttpWorkerService(HttpClient httpClient, IOptions<HttpWorkerOptions> httpWorkerOptions, ILogger logger, IEnvironment environment, IOptions<ScriptJobHostOptions> scriptHostOptions)
+        internal DefaultHttpWorkerService(HttpClient httpClient, IOptions<HttpWorkerOptions> httpWorkerOptions, ILogger logger, IEnvironment environment,
+            IOptions<ScriptJobHostOptions> scriptHostOptions, IHttpProxyService httpProxyService)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
             _httpWorkerOptions = httpWorkerOptions.Value ?? throw new ArgumentNullException(nameof(httpWorkerOptions.Value));
+            _httpProxyService = httpProxyService ?? throw new ArgumentNullException(nameof(httpProxyService));
             _enableRequestTracing = environment.IsCoreTools();
             if (scriptHostOptions.Value.FunctionTimeout == null)
             {
@@ -61,6 +65,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         {
             if (scriptInvocationContext.FunctionMetadata.IsHttpInAndOutFunction())
             {
+                if (_httpWorkerOptions.EnableProxyingHttpRequest)
+                {
+                    return ProxyInvocationRequest(scriptInvocationContext);
+                }
+
                 // type is empty for httpWorker section. EnableForwardingHttpRequest is opt-in for custom handler section.
                 if (_httpWorkerOptions.Type == CustomHandlerType.None || _httpWorkerOptions.EnableForwardingHttpRequest)
                 {
@@ -69,6 +78,27 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 return ProcessDefaultInvocationRequest(scriptInvocationContext);
             }
             return ProcessDefaultInvocationRequest(scriptInvocationContext);
+        }
+
+        internal async Task ProxyInvocationRequest(ScriptInvocationContext scriptInvocationContext)
+        {
+            var uriString = BuildAndGetUri(scriptInvocationContext.FunctionMetadata.Name);
+            var uri = new UriBuilder(uriString).Uri;
+
+            try
+            {
+                _httpProxyService.StartForwarding(scriptInvocationContext, uri);
+
+                await _httpProxyService.EnsureSuccessfulForwardingAsync(scriptInvocationContext);
+
+                var result = new ScriptInvocationResult();
+
+                scriptInvocationContext.ResultSource.SetResult(result);
+            }
+            catch (Exception exc)
+            {
+                scriptInvocationContext.ResultSource.TrySetException(exc);
+            }
         }
 
         internal async Task ProcessHttpInAndOutInvocationRequest(ScriptInvocationContext scriptInvocationContext)
