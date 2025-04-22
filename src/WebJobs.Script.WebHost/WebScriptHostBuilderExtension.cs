@@ -95,7 +95,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     loggingBuilder.AddWebJobsSystem<SystemLoggerProvider>();
                     if (environment.IsAzureMonitorEnabled())
                     {
-                        loggingBuilder.Services.AddOptions<LoggerFilterOptions>()
+                        if (environment.IsLegionBasedSku())
+                        {
+                            loggingBuilder.Services.AddOptions<LoggerFilterOptions>()
                             .Configure<IConfiguration>((options, config) =>
                             {
                                 string setting = config[EnvironmentSettingNames.AzureMonitorCategories];
@@ -109,8 +111,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                                     return categories.Contains(ScriptConstants.AzureMonitorTraceCategory);
                                 });
                             });
-
-                        loggingBuilder.Services.AddSingleton<ILoggerProvider, AzureMonitorDiagnosticLoggerProvider>();
+                        }
+                        else
+                        {
+                            loggingBuilder.Services.AddSingleton<ILoggerProvider, AzureMonitorDiagnosticLoggerProvider>();
+                        }
                     }
 
                     if (!FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagDisableDiagnosticEventLogging))
