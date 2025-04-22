@@ -3,7 +3,7 @@
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 {
-    public class SyncTriggersResult
+    public class TriggersOperationResult
     {
         /// <summary>
         /// Gets or sets a value indicating whether the sync operation was successful.

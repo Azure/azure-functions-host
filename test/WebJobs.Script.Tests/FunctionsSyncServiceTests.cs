@@ -67,7 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task StartAsync_PrimaryHost_Running_SyncsTriggers_AfterTimeout()
         {
             TaskCompletionSource syncTriggers = new TaskCompletionSource();
-            _mockSyncManager.Setup(p => p.TrySyncTriggersAsync(true)).ReturnsAsync(new SyncTriggersResult { Success = true }).Callback(() => syncTriggers.TrySetResult());
+            _mockSyncManager.Setup(p => p.TrySyncTriggersAsync(true)).ReturnsAsync(new TriggersOperationResult { Success = true }).Callback(() => syncTriggers.TrySetResult());
 
             await _syncService.StartAsync(CancellationToken.None);
 

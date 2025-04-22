@@ -265,9 +265,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             // Assert
             Assert.True(result.Success);
             Assert.Null(result.Error);
-            Assert.NotNull(result.Payload);
+            Assert.NotNull(result.Content);
 
-            var content = JObject.Parse(result.Payload.Content);
+            var content = JObject.Parse(result.Content);
             var triggers = content["triggers"];
             Assert.Equal(GetExpectedTriggersPayload(durableVersion: "V1"), triggers.ToString(Formatting.None));
         }

@@ -92,9 +92,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
         }
 
-        public async Task<SyncTriggersResult> TrySyncTriggersAsync(bool isBackgroundSync = false)
+        public async Task<TriggersOperationResult> TrySyncTriggersAsync(bool isBackgroundSync = false)
         {
-            var result = new SyncTriggersResult
+            var result = new TriggersOperationResult
             {
                 Success = true
             };
@@ -808,12 +808,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 PrepareSyncTriggers();
 
                 var payload = await GetSyncTriggersPayload();
-                if (payload.Count == 0)
-                {
-                    _logger.LogDebug("No functions found in GetTriggers operation.");
-                }
 
-                result.Payload = payload;
+                result.Content = payload.Content;
                 return result;
             }
             catch (Exception ex)
