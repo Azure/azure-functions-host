@@ -421,6 +421,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 : StatusCode(StatusCodes.Status500InternalServerError, new { status = result.Error });
         }
 
+        [HttpGet]
+        [Route("admin/host/triggers")]
+        [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal)]
+        [ResourceContainsSecrets]
+        [RequiresRunningHost]
+        public async Task<IActionResult> GetTriggers()
+        {
+            _metricsLogger.LogEvent(MetricEventNames.GetTriggersInvoked);
+
+            var result = await _functionsSyncManager.GetTriggersPayloadAsync();
+
+            // Return a dummy body to make it valid in ARM template action evaluation
+            return result.Success
+                ? Ok(result)
+                : StatusCode(StatusCodes.Status500InternalServerError, new { status = result.Error });
+        }
+
         [HttpPost]
         [Route("admin/host/restart")]
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
