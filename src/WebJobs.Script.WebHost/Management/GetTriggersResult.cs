@@ -8,17 +8,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
     public class GetTriggersResult
     {
         /// <summary>
-        /// Gets or sets a value indicating whether the sync operation was successful.
+        /// Gets or sets a value indicating whether the operation was successful.
         /// </summary>
         public bool Success { get; set; }
 
         /// <summary>
-        /// Gets or sets the error string in the case of a failed sync operation.
+        /// Gets or sets the error string in the case of a failed operation.
         /// </summary>
         public string Error { get; set; }
 
         /// <summary>
-        /// Gets or sets the payload of the triggers.
+        /// Gets or sets the triggers payload.
         /// </summary>
         public SyncTriggersPayload Payload { get; set; }
     }

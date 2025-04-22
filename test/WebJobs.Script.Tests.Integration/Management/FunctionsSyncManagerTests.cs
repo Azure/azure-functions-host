@@ -257,18 +257,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         }
 
         [Fact]
-        public async Task GetSyncTriggersPayload_ExpectedContent()
+        public async Task GetTriggersPayload_ExpectedContent()
         {
             // Act
-            var syncResult = await _functionsSyncManager.GetTriggersPayloadAsync();
+            var result = await _functionsSyncManager.GetTriggersPayloadAsync();
 
             // Assert
-            Assert.True(syncResult.Success);
-            Assert.Null(syncResult.Error);
-            Assert.NotNull(syncResult.Payload);
+            Assert.True(result.Success);
+            Assert.Null(result.Error);
+            Assert.NotNull(result.Payload);
 
-            var result = JObject.Parse(syncResult.Payload.Content);
-            var triggers = result["triggers"];
+            var content = JObject.Parse(result.Payload.Content);
+            var triggers = content["triggers"];
             Assert.Equal(GetExpectedTriggersPayload(durableVersion: "V1"), triggers.ToString(Formatting.None));
         }
 

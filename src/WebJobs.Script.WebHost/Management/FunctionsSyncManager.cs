@@ -807,15 +807,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
                 PrepareSyncTriggers();
 
-                var hashBlobClient = await GetHashBlobAsync();
-
                 var payload = await GetSyncTriggersPayload();
                 if (payload.Count == 0)
                 {
-                    // We don't do background sync for empty triggers.
-                    // We've seen error cases where a site temporarily gets into a situation
-                    // where it's site content is empty. Doing the empty sync can cause the app
-                    // to go idle when it shouldn't.
                     _logger.LogDebug("No functions found in GetTriggers operation.");
                 }
 
