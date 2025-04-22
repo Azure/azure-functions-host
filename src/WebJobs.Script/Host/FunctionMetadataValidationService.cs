@@ -9,6 +9,7 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -16,9 +17,14 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<FunctionMetadataValidationService> _logger;
+        private IOptions<ScriptJobHostOptions> _scriptOptions;
 
-        public FunctionMetadataValidationService(IServiceProvider serviceProvider, ILogger<FunctionMetadataValidationService> logger)
+        public FunctionMetadataValidationService(
+            IServiceProvider serviceProvider,
+            ILogger<FunctionMetadataValidationService> logger,
+            IOptions<ScriptJobHostOptions> scriptOptions)
         {
+            _scriptOptions = scriptOptions;
             _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
@@ -28,37 +34,18 @@ namespace Microsoft.Azure.WebJobs.Script
             using (var scope = _serviceProvider.CreateScope())
             {
                 var functionMetadataManager = scope.ServiceProvider.GetService<IFunctionMetadataManager>();
-                if (functionMetadataManager == null)
+                if (functionMetadataManager is not null)
                 {
-                    _logger.LogError("IFunctionMetadataManager is not registered in the service provider.");
-                    throw new InvalidOperationException("FunctionMetadataManager is required for validation.");
-                }
+                    var functionMetadataList = functionMetadataManager.GetFunctionMetadata(forceRefresh: true);
 
-                /*
-                    if (isDotnetIsolatedApp &&
+                    if (Utility.IsDotnetIsolatedApp(functionMetadataList, SystemEnvironment.Instance) &&
                         !SystemEnvironment.Instance.IsPlaceholderModeEnabled() &&
-                        !Directory.Exists(Path.Combine(_rootScriptPath, ScriptConstants.AzureFunctionsSystemDirectoryName)))
+                        !Directory.Exists(Path.Combine(_scriptOptions.Value.RootScriptPath, ScriptConstants.AzureFunctionsSystemDirectoryName)) &&
+                        !_scriptOptions.Value.IsDefaultHostConfig)
                     {
                         _logger.NoAzureFunctionsFolder();
                     }
-                */
-
-                // Retrieve the function metadata
-                var functionMetadataList = functionMetadataManager.GetFunctionMetadata(forceRefresh: true);
-
-                if (Directory.Exists(Path.Combine("C:\\FunctionsRepos\\Repros\\long-overdue-int-erubtion\\Functions.IntBug\\bin\\Debug\\net8.0", ScriptConstants.AzureFunctionsSystemDirectoryName)))
-                {
-                    _logger.NoAzureFunctionsFolder();
                 }
-
-                // Check if the list is empty
-                if (functionMetadataList.IsDefaultOrEmpty)
-                {
-                    _logger.LogError("FunctionMetadataList is empty. Validation failed.");
-                    throw new InvalidOperationException("FunctionMetadataList is empty. Ensure at least one valid function is configured.");
-                }
-
-                _logger.LogInformation("FunctionMetadataList validation succeeded. Functions are properly configured.");
             }
 
             await Task.CompletedTask;
@@ -66,7 +53,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public Task StopAsync(CancellationToken cancellationToken)
         {
-            // No cleanup required for this service
             return Task.CompletedTask;
         }
     }

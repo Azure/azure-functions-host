@@ -103,7 +103,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
                 }
             }
 
-            bool isDotnetIsolatedApp = IsDotnetIsolatedApp(functionMetadataCollection, SystemEnvironment.Instance);
+            bool isDotnetIsolatedApp = Utility.IsDotnetIsolatedApp(functionMetadataCollection, SystemEnvironment.Instance);
             bool isDotnetApp = isPrecompiledFunctionApp || isDotnetIsolatedApp;
             var isLogicApp = SystemEnvironment.Instance.IsLogicApp();
 
@@ -338,12 +338,6 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
 
                 throw new HostInitializationException(builder.ToString());
             }
-        }
-
-        private bool IsDotnetIsolatedApp(IEnumerable<FunctionMetadata> functions, IEnvironment environment)
-        {
-            string workerRuntime = Utility.GetWorkerRuntime(functions, environment);
-            return workerRuntime?.Equals(RpcWorkerConstants.DotNetIsolatedLanguageWorkerName, StringComparison.OrdinalIgnoreCase) ?? false;
         }
 
         private ExtensionRequirementsInfo GetExtensionRequirementsInfo()
