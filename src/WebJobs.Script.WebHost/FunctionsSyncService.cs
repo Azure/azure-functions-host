@@ -5,7 +5,6 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Hosting;
-using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -45,11 +44,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             get
             {
-                var isInValidationMode = FunctionGroups.IsValidationPodGroup(_environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsTargetGroup));
-
                 return _primaryHostStateProvider.IsPrimary &&
                        (_scriptHostManager.State == ScriptHostState.Running) &&
-                       !isInValidationMode;
+                       !_environment.IsInValidationMode();
             }
         }
 

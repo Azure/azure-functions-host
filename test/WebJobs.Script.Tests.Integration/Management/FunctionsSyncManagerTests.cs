@@ -260,13 +260,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         [Fact]
         public async Task GetSyncTriggersPayload_ExpectedContent()
         {
+            // Arrange
             Dictionary<string, string> vars = new Dictionary<string, string>();
-            vars.Add(EnvironmentSettingNames.FunctionsTargetGroup, FunctionGroups.FunctionGroupForValidationPod);
+            vars.Add(EnvironmentSettingNames.FunctionsTargetGroup, FunctionGroups.FunctionGroupForValidationWorker);
 
             using (var env = new TestScopedEnvironmentVariable(vars))
             {
                 // Act
-                var syncResult = await _functionsSyncManager.GetSyncTriggersPayloadAsync();
+                var syncResult = await _functionsSyncManager.GetTriggersPayloadAsync();
 
                 // Assert
                 Assert.True(syncResult.Success);

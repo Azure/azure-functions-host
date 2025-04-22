@@ -67,7 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
-        [InlineData(true, ScriptHostState.Running, FunctionGroups.FunctionGroupForValidationPod, false)]
+        [InlineData(true, ScriptHostState.Running, FunctionGroups.FunctionGroupForValidationWorker, false)]
         [InlineData(true, ScriptHostState.Running, "function:http", true)]
         [InlineData(true, ScriptHostState.Running, null, true)]
         public void ShouldSyncTriggers_DisabledForValidationPod(bool isPrimary, ScriptHostState hostState, string functionGroup, bool expected)

@@ -431,11 +431,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         {
             _metricsLogger.LogEvent(MetricEventNames.GetTriggersInvoked);
 
-            var isInValidationMode = FunctionGroups.IsValidationPodGroup(_environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsTargetGroup));
-
-            if (isInValidationMode)
+            if (_environment.IsInValidationMode())
             {
-                var result = await _functionsSyncManager.GetSyncTriggersPayloadAsync();
+                var result = await _functionsSyncManager.GetTriggersPayloadAsync();
 
                 // Return a dummy body to make it valid in ARM template action evaluation
                 return result.Success
