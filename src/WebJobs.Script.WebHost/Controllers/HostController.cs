@@ -432,7 +432,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
             var result = await _functionsSyncManager.GetTriggersPayloadAsync();
 
-            // Return a dummy body to make it valid in ARM template action evaluation
             return result.Success
                 ? Ok(result)
                 : StatusCode(StatusCodes.Status500InternalServerError, new { status = result.Error });
