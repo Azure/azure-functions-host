@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors.Internal;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -559,25 +560,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             SetUpMocksForTimeoutTests(mockWebHostChannelManager, mockJobHostChannelManager, mockChannel, invocationId, true);
 
-            // Setup for initialization of a new channel
             var workerConfig = new RpcWorkerConfig
             {
                 Description = new RpcWorkerDescription { Language = "test" },
                 CountOptions = new WorkerProcessCountOptions { ProcessCount = 1 }
             };
 
-            // Create the dispatcher with our mocks
             var dispatcher = GetTestFunctionDispatcher(mockwebHostLanguageWorkerChannelManager: mockWebHostChannelManager, mockJobHostLanguageWorkerChannelManager: mockJobHostChannelManager);
 
-            // Act
-            var result = await dispatcher.RestartWorkerWithInvocationIdAsync(invocationId);
+            var result = await dispatcher.RestartWorkerWithInvocationIdAsync(invocationId, new FunctionTimeoutException());
 
-            // Assert
             Assert.True(result);
             mockWebHostChannelManager.Verify(m => m.ShutdownChannelIfExistsAsync(
                 It.IsAny<string>(),
                 It.Is<string>(id => id == "testChannelId"),
-                It.Is<Exception>(ex => ex is TimeoutException && ex.Message == $"Executing invocation `{invocationId}` timed out")),
+                It.Is<Exception>(ex => ex is FunctionTimeoutException)),
                 Times.Once);
         }
 
@@ -591,24 +588,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             SetUpMocksForTimeoutTests(mockWebHostChannelManager, mockJobHostChannelManager, mockChannel, invocationId, false);
 
-            // Setup for initialization of a new channel
             var workerConfig = new RpcWorkerConfig
             {
                 Description = new RpcWorkerDescription { Language = "test" },
                 CountOptions = new WorkerProcessCountOptions { ProcessCount = 1 }
             };
 
-            // Create the dispatcher with our mocks
             var dispatcher = GetTestFunctionDispatcher(mockwebHostLanguageWorkerChannelManager: mockWebHostChannelManager, mockJobHostLanguageWorkerChannelManager: mockJobHostChannelManager);
 
-            // Act
-            var result = await dispatcher.RestartWorkerWithInvocationIdAsync(invocationId);
+            var result = await dispatcher.RestartWorkerWithInvocationIdAsync(invocationId, new FunctionTimeoutException());
 
-            // Assert
             Assert.True(result);
             mockJobHostChannelManager.Verify(m => m.ShutdownChannelIfExistsAsync(
                 It.Is<string>(id => id == "testChannelId"),
-                It.Is<Exception>(ex => ex is TimeoutException && ex.Message == $"Executing invocation `{invocationId}` timed out")),
+                It.Is<Exception>(ex => ex is FunctionTimeoutException)),
                 Times.Once);
         }
 
@@ -956,13 +949,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             mockWebHostChannelManager.Setup(m => m.ShutdownChannelIfExistsAsync(
                 It.IsAny<string>(),
                 It.Is<string>(id => id == "testChannelId"),
-                It.Is<Exception>(ex => ex is TimeoutException && ex.Message == $"Executing invocation `{invocationId}` timed out")))
+                It.Is<Exception>(ex => ex is FunctionTimeoutException)))
                 .ReturnsAsync(webHostShutdownSucceeds);
 
             // Set up JobHost ShutdownChannelIfExistsAsync to be called with the right exception type
             mockJobHostChannelManager.Setup(m => m.ShutdownChannelIfExistsAsync(
                 It.Is<string>(id => id == "testChannelId"),
-                It.Is<Exception>(ex => ex is TimeoutException && ex.Message == $"Executing invocation `{invocationId}` timed out")))
+                It.Is<Exception>(ex => ex is FunctionTimeoutException)))
                 .ReturnsAsync(!webHostShutdownSucceeds);
         }
     }
