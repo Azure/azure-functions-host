@@ -326,12 +326,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
             /// Gets or sets the total number of function invocations that have started.
             /// </summary>
             public long StartedInvocationCount { get; set; }
-
-            /// <summary>
-            /// Gets a value indicating whether the publisher is alive and sending metrics.
-            /// Will always be true. If not sent, the platform should assume the host is unable to publish metrics.
-            /// </summary>
-            public bool IsAlive { get; } = true;
         }
     }
 }

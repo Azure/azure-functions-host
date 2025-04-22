@@ -559,7 +559,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             // We expect all activity values to be zero
             Assert.Equal(0, metrics.ExecutionCount);
             Assert.Equal(0, metrics.ExecutionTimeMS);
-            Assert.True(metrics.IsAlive); // The keep-alive flag should be true
         }
 
         [Fact]
