@@ -179,7 +179,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
             }
             Errors = _functionErrors.ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray());
-            //hostService.ValidateEnvironment();
 
             if (functionsAllowList != null)
             {
@@ -192,8 +191,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 // Validate the host.json file if no functions are found.
                 ValidateHostJsonFile();
             }
-
-           // ValidateFunctionMetadata(_serviceProvider);
 
             return functionMetadataList.OrderBy(f => f.Name, StringComparer.OrdinalIgnoreCase).ToImmutableArray();
         }
@@ -325,29 +322,6 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 // Ignore any exceptions.
             }
-        }
-
-        public void ValidateFunctionMetadata(IServiceProvider hostService)
-        {
-            // Retrieve the function metadata
-          //  var functionMetadataList = GetFunctionMetadata(forceRefresh: true);
-
-
-                // Perform validation using HostService
-                var hostValidator = hostService.GetService<FunctionMetadataValidationService>();
-
-                if (hostValidator != null)
-                {
-                hostValidator.StartAsync(default).GetAwaiter().GetResult();
-            }
-                else
-                {
-                    _logger.LogError("HostService validation failed: IHostValidator is not available.");
-                }
-
-                // Optionally, throw an exception or log an error
-              //  throw new InvalidOperationException("FunctionMetadataList is empty. Validation failed.");
-         //   }
         }
     }
 }

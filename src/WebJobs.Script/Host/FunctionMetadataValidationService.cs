@@ -31,6 +31,15 @@ namespace Microsoft.Azure.WebJobs.Script
                     throw new InvalidOperationException("FunctionMetadataManager is required for validation.");
                 }
 
+                /*
+                    if (isDotnetIsolatedApp &&
+                        !SystemEnvironment.Instance.IsPlaceholderModeEnabled() &&
+                        !Directory.Exists(Path.Combine(_rootScriptPath, ScriptConstants.AzureFunctionsSystemDirectoryName)))
+                    {
+                        _logger.NoAzureFunctionsFolder();
+                    }
+                */
+
                 // Retrieve the function metadata
                 var functionMetadataList = functionMetadataManager.GetFunctionMetadata(forceRefresh: true);
 
