@@ -3,4 +3,5 @@
 <!-- Please add your release notes in the following format:
 - My change description (#PR)
 -->
+- Memory allocation optimizations in `DependencyHelper.GetExtensionRequirements` (#11022)
 - Memory allocation optimizations in `ScriptStartupTypeLocator.GetExtensionsStartupTypesAsync` (#11012)
