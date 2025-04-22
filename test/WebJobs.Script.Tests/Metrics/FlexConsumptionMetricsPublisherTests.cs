@@ -532,6 +532,37 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
         }
 
         [Fact]
+        public async Task OnPublishMetrics_KeepAliveMetricsPublished_WhenNoActivity()
+        {
+            CleanupMetricsFiles();
+
+            var publisher = CreatePublisher(metricsPublishInterval: TimeSpan.FromHours(1), inStandbyMode: false);
+
+            DateTime now = DateTime.UtcNow;
+
+            // No function activity at all
+            await publisher.OnPublishMetrics(now);
+
+            // Should not publish anything because it's the first call and not yet 60 seconds
+            var files = GetMetricsFilesSafe(_metricsFilePath);
+            Assert.Empty(files);
+
+            // Simulate 31 seconds passing with no function activity
+            now = now.AddSeconds(31);
+            await publisher.OnPublishMetrics(now);
+
+            files = GetMetricsFilesSafe(_metricsFilePath);
+            Assert.Single(files);
+
+            var metrics = await ReadMetricsAsync(files[0].FullName, deleteFile: true);
+
+            // We expect all activity values to be zero
+            Assert.Equal(0, metrics.ExecutionCount);
+            Assert.Equal(0, metrics.ExecutionTimeMS);
+            Assert.True(metrics.IsAlive); // The keep-alive flag should be true
+        }
+
+        [Fact]
         public void OnFunctionCompleted_NoOutstandingInvocations_IgnoresEvent()
         {
             var publisher = CreatePublisher(metricsPublishInterval: TimeSpan.FromHours(1), inStandbyMode: false);
