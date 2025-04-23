@@ -87,12 +87,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
             try
             {
+                var input = scriptInvocationContext.Inputs.First();
+                HttpRequest httpRequest = input.Val as HttpRequest;
+                AddProxyingHeaders(httpRequest, scriptInvocationContext.ExecutionContext.InvocationId.ToString());
+
                 _httpProxyService.StartForwarding(scriptInvocationContext, uri);
 
                 await _httpProxyService.EnsureSuccessfulForwardingAsync(scriptInvocationContext);
 
                 var result = new ScriptInvocationResult();
-
                 scriptInvocationContext.ResultSource.SetResult(result);
             }
             catch (Exception exc)
@@ -193,6 +196,23 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             httpRequest.Headers.Add(HttpWorkerConstants.HostVersionHeaderName, ScriptHost.Version);
             httpRequest.Headers.Add(HttpWorkerConstants.InvocationIdHeaderName, invocationId);
             httpRequest.Headers.UserAgent.ParseAdd($"{HttpWorkerConstants.UserAgentHeaderValue}/{ScriptHost.Version}");
+        }
+
+        internal void AddProxyingHeaders(HttpRequest httpRequest, string invocationId)
+        {
+            httpRequest.Headers.TryAdd(HttpWorkerConstants.HostVersionHeaderName, ScriptHost.Version);
+
+            if (!httpRequest.Headers.TryAdd(HttpWorkerConstants.InvocationIdHeaderName, invocationId))
+            {
+                httpRequest.Headers[HttpWorkerConstants.InvocationIdHeaderName] = invocationId;
+            }
+
+            var userAgent = $"{HttpWorkerConstants.UserAgentHeaderValue}/{ScriptHost.Version}";
+            httpRequest.Headers.Remove("User-Agent");
+            httpRequest.Headers.Append("User-Agent", userAgent);
+
+            // Add header so that the functions middleware skips the script invocation result handling
+            httpRequest.Headers.TryAdd(ScriptConstants.HttpProxyingEnabled, bool.TrueString); // placeholder http proxying enabled header for now
         }
 
         internal string GetPathValue(HttpWorkerOptions httpWorkerOptions, string functionName, HttpRequest httpRequest)
