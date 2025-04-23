@@ -34,48 +34,49 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 //       It is recommended that new properties only look at "1/0" for their setting.
 #pragma warning disable SA1010 // Opening square brackets should be spaced correctly
 #pragma warning disable SA1011 // Closing square brackets should be spaced correctly
-                yield return [ nameof(FunctionsHostingConfigOptions.DisableLinuxAppServiceExecutionDetails), "DisableLinuxExecutionDetails=1", true ];
-                yield return [ nameof(FunctionsHostingConfigOptions.DisableLinuxAppServiceLogBackoff), "DisableLinuxLogBackoff=1", true ];
+                yield return [nameof(FunctionsHostingConfigOptions.DisableLinuxAppServiceExecutionDetails), "DisableLinuxExecutionDetails=1", true];
+                yield return [nameof(FunctionsHostingConfigOptions.DisableLinuxAppServiceLogBackoff), "DisableLinuxLogBackoff=1", true];
 
                 // Supports True/False/1/0
-                yield return [ nameof(FunctionsHostingConfigOptions.EnableOrderedInvocationMessages), "EnableOrderedInvocationMessages=True", true ];
-                yield return [ nameof(FunctionsHostingConfigOptions.EnableOrderedInvocationMessages), "EnableOrderedInvocationMessages=1", true ];
-                yield return [ nameof(FunctionsHostingConfigOptions.EnableOrderedInvocationMessages), "EnableOrderedInvocationMessages=unparseable", true ]; // default
-                yield return [ nameof(FunctionsHostingConfigOptions.EnableOrderedInvocationMessages), string.Empty, true ]; // default
+                yield return [nameof(FunctionsHostingConfigOptions.EnableOrderedInvocationMessages), "EnableOrderedInvocationMessages=True", true];
+                yield return [nameof(FunctionsHostingConfigOptions.EnableOrderedInvocationMessages), "EnableOrderedInvocationMessages=1", true];
+                yield return [nameof(FunctionsHostingConfigOptions.EnableOrderedInvocationMessages), "EnableOrderedInvocationMessages=unparseable", true]; // default
+                yield return [nameof(FunctionsHostingConfigOptions.EnableOrderedInvocationMessages), string.Empty, true]; // default
 
-                yield return [ nameof(FunctionsHostingConfigOptions.FunctionsWorkerDynamicConcurrencyEnabled), "FUNCTIONS_WORKER_DYNAMIC_CONCURRENCY_ENABLED=1", true ];
-                yield return [ nameof(FunctionsHostingConfigOptions.MaximumBundleV3Version), "FunctionRuntimeV4MaxBundleV3Version=teststring", "teststring" ];
-                yield return [ nameof(FunctionsHostingConfigOptions.MaximumBundleV4Version), "FunctionRuntimeV4MaxBundleV4Version=teststring", "teststring" ];
-                yield return [ nameof(FunctionsHostingConfigOptions.RevertWorkerShutdownBehavior), "REVERT_WORKER_SHUTDOWN_BEHAVIOR=1", true ];
-
-                // Supports True/False/1/0
-                yield return [ nameof(FunctionsHostingConfigOptions.ShutdownWebhostWorkerChannelsOnHostShutdown), "ShutdownWebhostWorkerChannelsOnHostShutdown=False", false ];
-                yield return [ nameof(FunctionsHostingConfigOptions.ShutdownWebhostWorkerChannelsOnHostShutdown), "ShutdownWebhostWorkerChannelsOnHostShutdown=True", true ];
-                yield return [ nameof(FunctionsHostingConfigOptions.ShutdownWebhostWorkerChannelsOnHostShutdown), "ShutdownWebhostWorkerChannelsOnHostShutdown=1", true ];
-                yield return [ nameof(FunctionsHostingConfigOptions.ShutdownWebhostWorkerChannelsOnHostShutdown), "ShutdownWebhostWorkerChannelsOnHostShutdown=unparseable", true ]; // default
-                yield return [ nameof(FunctionsHostingConfigOptions.ShutdownWebhostWorkerChannelsOnHostShutdown), string.Empty, true ]; // default
+                yield return [nameof(FunctionsHostingConfigOptions.FunctionsWorkerDynamicConcurrencyEnabled), "FUNCTIONS_WORKER_DYNAMIC_CONCURRENCY_ENABLED=1", true];
+                yield return [nameof(FunctionsHostingConfigOptions.MaximumBundleV3Version), "FunctionRuntimeV4MaxBundleV3Version=teststring", "teststring"];
+                yield return [nameof(FunctionsHostingConfigOptions.MaximumBundleV4Version), "FunctionRuntimeV4MaxBundleV4Version=teststring", "teststring"];
+                yield return [nameof(FunctionsHostingConfigOptions.RevertWorkerShutdownBehavior), "REVERT_WORKER_SHUTDOWN_BEHAVIOR=1", true];
 
                 // Supports True/False/1/0
-                yield return [ nameof(FunctionsHostingConfigOptions.SwtIssuerEnabled), "SwtIssuerEnabled=False", false ];
-                yield return [ nameof(FunctionsHostingConfigOptions.SwtIssuerEnabled), "SwtIssuerEnabled=True", true ];
-                yield return [ nameof(FunctionsHostingConfigOptions.SwtIssuerEnabled), "SwtIssuerEnabled=0", false ];
-                yield return [ nameof(FunctionsHostingConfigOptions.SwtIssuerEnabled), "SwtIssuerEnabled=unparseable", true ]; //default
-                yield return [ nameof(FunctionsHostingConfigOptions.SwtIssuerEnabled), string.Empty, true ]; // default
+                yield return [nameof(FunctionsHostingConfigOptions.ShutdownWebhostWorkerChannelsOnHostShutdown), "ShutdownWebhostWorkerChannelsOnHostShutdown=False", false];
+                yield return [nameof(FunctionsHostingConfigOptions.ShutdownWebhostWorkerChannelsOnHostShutdown), "ShutdownWebhostWorkerChannelsOnHostShutdown=True", true];
+                yield return [nameof(FunctionsHostingConfigOptions.ShutdownWebhostWorkerChannelsOnHostShutdown), "ShutdownWebhostWorkerChannelsOnHostShutdown=1", true];
+                yield return [nameof(FunctionsHostingConfigOptions.ShutdownWebhostWorkerChannelsOnHostShutdown), "ShutdownWebhostWorkerChannelsOnHostShutdown=unparseable", true]; // default
+                yield return [nameof(FunctionsHostingConfigOptions.ShutdownWebhostWorkerChannelsOnHostShutdown), string.Empty, true]; // default
 
-                yield return [ nameof(FunctionsHostingConfigOptions.ThrowOnMissingFunctionsWorkerRuntime), "THROW_ON_MISSING_FUNCTIONS_WORKER_RUNTIME=1", true ];
-                yield return [ nameof(FunctionsHostingConfigOptions.WorkerIndexingDisabledApps), "WORKER_INDEXING_DISABLED_APPS=teststring", "teststring" ];
-                yield return [ nameof(FunctionsHostingConfigOptions.WorkerIndexingEnabled), "WORKER_INDEXING_ENABLED=1", true ];
-                yield return [ nameof(FunctionsHostingConfigOptions.WorkerRuntimeStrictValidationEnabled), "WORKER_RUNTIME_STRICT_VALIDATION_ENABLED=1", true ];
+                // Supports True/False/1/0
+                yield return [nameof(FunctionsHostingConfigOptions.SwtIssuerEnabled), "SwtIssuerEnabled=False", false];
+                yield return [nameof(FunctionsHostingConfigOptions.SwtIssuerEnabled), "SwtIssuerEnabled=True", true];
+                yield return [nameof(FunctionsHostingConfigOptions.SwtIssuerEnabled), "SwtIssuerEnabled=0", false];
+                yield return [nameof(FunctionsHostingConfigOptions.SwtIssuerEnabled), "SwtIssuerEnabled=unparseable", true]; //default
+                yield return [nameof(FunctionsHostingConfigOptions.SwtIssuerEnabled), string.Empty, true]; // default
 
-                yield return [ nameof(FunctionsHostingConfigOptions.InternalAuthApisAllowList), "InternalAuthApisAllowList=|", "|" ];
-                yield return [ nameof(FunctionsHostingConfigOptions.InternalAuthApisAllowList), "InternalAuthApisAllowList=/admin/host/foo|/admin/host/bar", "/admin/host/foo|/admin/host/bar" ];
+                yield return [nameof(FunctionsHostingConfigOptions.ThrowOnMissingFunctionsWorkerRuntime), "THROW_ON_MISSING_FUNCTIONS_WORKER_RUNTIME=1", true];
+                yield return [nameof(FunctionsHostingConfigOptions.WorkerIndexingDisabledApps), "WORKER_INDEXING_DISABLED_APPS=teststring", "teststring"];
+                yield return [nameof(FunctionsHostingConfigOptions.WorkerIndexingEnabled), "WORKER_INDEXING_ENABLED=1", true];
+                yield return [nameof(FunctionsHostingConfigOptions.WorkerRuntimeStrictValidationEnabled), "WORKER_RUNTIME_STRICT_VALIDATION_ENABLED=1", true];
 
-                yield return [ nameof(FunctionsHostingConfigOptions.IsDotNetInProcDisabled), "DotNetInProcDisabled=False", false ];
-                yield return [ nameof(FunctionsHostingConfigOptions.IsDotNetInProcDisabled), "DotNetInProcDisabled=True", true ];
-                yield return [ nameof(FunctionsHostingConfigOptions.IsDotNetInProcDisabled), "DotNetInProcDisabled=1", true ];
-                yield return [ nameof(FunctionsHostingConfigOptions.IsDotNetInProcDisabled), "DotNetInProcDisabled=0", false ];
+                yield return [nameof(FunctionsHostingConfigOptions.InternalAuthApisAllowList), "InternalAuthApisAllowList=|", "|"];
+                yield return [nameof(FunctionsHostingConfigOptions.InternalAuthApisAllowList), "InternalAuthApisAllowList=/admin/host/foo|/admin/host/bar", "/admin/host/foo|/admin/host/bar"];
+
+                yield return [nameof(FunctionsHostingConfigOptions.IsDotNetInProcDisabled), "DotNetInProcDisabled=False", false];
+                yield return [nameof(FunctionsHostingConfigOptions.IsDotNetInProcDisabled), "DotNetInProcDisabled=True", true];
+                yield return [nameof(FunctionsHostingConfigOptions.IsDotNetInProcDisabled), "DotNetInProcDisabled=1", true];
+                yield return [nameof(FunctionsHostingConfigOptions.IsDotNetInProcDisabled), "DotNetInProcDisabled=0", false];
 
                 yield return [nameof(FunctionsHostingConfigOptions.IsTestDataSuppressionEnabled), "EnableTestDataSuppression=1", true];
+                yield return [nameof(FunctionsHostingConfigOptions.IsCGroupMemoryMetricsEnabled), "EnableCGroupMemoryMetrics=1", true];
 
 #pragma warning restore SA1011 // Closing square brackets should be spaced correctly
 #pragma warning restore SA1010 // Opening square brackets should be spaced correctly

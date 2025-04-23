@@ -311,9 +311,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             }
         }
 
-        [Fact(Skip = "flaky test")]
+        [Fact]
         public async Task TrySyncTriggers_ManagedAppEnv_WithNo_AzureWebJobsStorage_ReturnsTrue()
         {
+            _vars.Add("AzureWebJobsStorage", null);
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteArmCacheEnabled)).Returns("0");
 
             using (var env = new TestScopedEnvironmentVariable(_vars))
@@ -323,15 +324,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 _mockEnvironment.Setup(p => p.GetEnvironmentVariable("CONTAINER_APP_NAME")).Returns("appname");
                 _mockEnvironment.Setup(p => p.GetEnvironmentVariable("CONTAINER_APP_NAMESPACE")).Returns("appns");
                 _mockEnvironment.Setup(p => p.GetEnvironmentVariable("CONTAINER_APP_REVISION")).Returns("appname--r1");
+
+                // _functionsSyncManager is initialized in the constructor with all the secrets from environment,
+                // so HostAzureBlobStorageProvider will have AzureWebJobsStorage defined in both ActiveHostConfigurationSource
+                // and the WebHost IConfiguration source from DI.
+                // The TestScopedEnvironmentVariable only changes the WebHost level IConfiguration
+                // When it is set to empty/null, the connection string from the ActiveHostConfigurationSource wins (never changed since it is set in
+                // constructor as mentioned).
+                // Therefore, we need to force refresh the configuration with an ActiveHostChanged event. This is because setting an empty/null environment variable
+                // removes it, but will not remove it from the ActiveHostConfigurationSource.
+                _scriptHostManager.OnActiveHostChanged();
                 var result = await _functionsSyncManager.TrySyncTriggersAsync(isBackgroundSync: true);
                 Assert.True(result.Success);
                 VerifyResultWithCacheOff(durableVersion: "V1");
             }
         }
 
-        [Fact(Skip = "flaky test")]
+        [Fact]
         public async Task TrySyncTriggers_KubernetesManagedEnv_WithNo_AzureWebJobsStorage_ReturnsTrue()
         {
+            _vars.Add("AzureWebJobsStorage", null);
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteArmCacheEnabled)).Returns("0");
 
             using (var env = new TestScopedEnvironmentVariable(_vars))
@@ -339,6 +351,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 _mockEnvironment.Setup(p => p.GetEnvironmentVariable("FUNCTIONS_API_SERVER")).Returns("https://appname.azurewebsites.net");
                 _mockEnvironment.Setup(p => p.GetEnvironmentVariable("KUBERNETES_SERVICE_HOST")).Returns("kubhost");
                 _mockEnvironment.Setup(p => p.GetEnvironmentVariable("POD_NAMESPACE")).Returns("podns");
+
+                // _functionsSyncManager is initialized in the constructor with all the secrets from environment,
+                // so HostAzureBlobStorageProvider will have AzureWebJobsStorage defined in both ActiveHostConfigurationSource
+                // and the WebHost IConfiguration source from DI.
+                // The TestScopedEnvironmentVariable only changes the WebHost level IConfiguration
+                // When it is set to empty/null, the connection string from the ActiveHostConfigurationSource wins (never changed since it is set in
+                // constructor as mentioned).
+                // Therefore, we need to force refresh the configuration with an ActiveHostChanged event. This is because setting an empty/null environment variable
+                // removes it, but will not remove it from the ActiveHostConfigurationSource.
+                _scriptHostManager.OnActiveHostChanged();
                 var result = await _functionsSyncManager.TrySyncTriggersAsync(isBackgroundSync: true);
                 Assert.True(result.Success);
                 VerifyResultWithCacheOff(durableVersion: "V1");
