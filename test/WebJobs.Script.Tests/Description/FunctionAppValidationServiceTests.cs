@@ -6,7 +6,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Description;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
@@ -15,24 +14,16 @@ using Xunit;
 
 namespace WebJobs.Script.Tests
 {
-    public class FunctionMetadataValidationServiceTests
+    public class FunctionAppValidationServiceTests
     {
-        private readonly Mock<IServiceProvider> _serviceProviderMock;
-        private readonly Mock<IServiceScopeFactory> _serviceScopeFactoryMock;
-        private readonly Mock<IServiceScope> _serviceScopeMock;
-        private readonly ILogger<FunctionMetadataValidationService> _testLogger;
+        private readonly ILogger<FunctionAppValidationService> _testLogger;
         private readonly Mock<IOptions<ScriptJobHostOptions>> _scriptOptionsMock;
-        private readonly Mock<IFunctionMetadataManager> _functionMetadataManagerMock;
         private readonly ScriptJobHostOptions _scriptJobHostOptions;
         private readonly TestLoggerProvider _testLoggerProvider;
 
-        public FunctionMetadataValidationServiceTests()
+        public FunctionAppValidationServiceTests()
         {
-            _serviceProviderMock = new Mock<IServiceProvider>();
-            _serviceScopeFactoryMock = new Mock<IServiceScopeFactory>();
-            _serviceScopeMock = new Mock<IServiceScope>();
             _scriptOptionsMock = new Mock<IOptions<ScriptJobHostOptions>>();
-            _functionMetadataManagerMock = new Mock<IFunctionMetadataManager>();
 
             _scriptJobHostOptions = new ScriptJobHostOptions
             {
@@ -42,24 +33,10 @@ namespace WebJobs.Script.Tests
 
             _scriptOptionsMock.Setup(o => o.Value).Returns(_scriptJobHostOptions);
 
-            // Setup the service scope
-            _serviceScopeMock
-                .Setup(s => s.ServiceProvider)
-                .Returns(_serviceProviderMock.Object);
-
-            _serviceScopeFactoryMock
-                .Setup(f => f.CreateScope())
-                .Returns(_serviceScopeMock.Object);
-
-            // Ensure the service provider returns the scope factory
-            _serviceProviderMock
-                .Setup(sp => sp.GetService(typeof(IServiceScopeFactory)))
-                .Returns(_serviceScopeFactoryMock.Object);
-
             _testLoggerProvider = new TestLoggerProvider();
             LoggerFactory factory = new LoggerFactory();
             factory.AddProvider(_testLoggerProvider);
-            _testLogger = factory.CreateLogger<FunctionMetadataValidationService>();
+            _testLogger = factory.CreateLogger<FunctionAppValidationService>();
         }
 
         [Fact]
@@ -67,17 +44,7 @@ namespace WebJobs.Script.Tests
         {
             _testLoggerProvider.ClearAllLogMessages();
 
-            // Arrange
-            _functionMetadataManagerMock
-                .Setup(m => m.GetFunctionMetadata(true, true, true))
-                .Returns(ImmutableArray<FunctionMetadata>.Empty);
-
-            _serviceProviderMock
-                .Setup(sp => sp.GetService(typeof(IFunctionMetadataManager)))
-                .Returns(_functionMetadataManagerMock.Object);
-
-            var service = new FunctionMetadataValidationService(
-                _serviceProviderMock.Object,
+            var service = new FunctionAppValidationService(
                 _testLogger,
                 _scriptOptionsMock.Object);
 
@@ -101,16 +68,7 @@ namespace WebJobs.Script.Tests
 
             Environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "dotnet-isolated");
 
-            _functionMetadataManagerMock
-                .Setup(m => m.GetFunctionMetadata(true, true, true))
-                .Returns(functionMetadataList);
-
-            _serviceProviderMock
-                .Setup(sp => sp.GetService(typeof(IFunctionMetadataManager)))
-                .Returns(_functionMetadataManagerMock.Object);
-
-            var service = new FunctionMetadataValidationService(
-                _serviceProviderMock.Object,
+            var service = new FunctionAppValidationService(
                 _testLogger,
                 _scriptOptionsMock.Object);
 
