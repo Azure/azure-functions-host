@@ -69,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                     LogRouteMap(routesLogBuilder, function.Metadata.Name, route, httpTrigger.Methods, isProxy, _httpOptions.Value.RoutePrefix);
                 }
-                else if (warmupRouteBuilder != null && function.IsWarmupFunction())
+                else if (warmupRouteBuilder != null && function.IsWarmupFunction(_environment))
                 {
                     warmupRouteBuilder.MapFunctionRoute(function.Metadata.Name, "warmup", function.Metadata.Name);
                 }

@@ -68,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Features
             var sw = ValueStopwatch.StartNew();
 
             var arguments = new ScriptInvocationArguments(request.HttpContext.RequestServices);
-            if (_descriptor.IsWarmupFunction())
+            if (_descriptor.IsWarmupFunction(_environment))
             {
                 arguments.Add(_descriptor.TriggerParameter.Name, new WarmupContext());
             }
