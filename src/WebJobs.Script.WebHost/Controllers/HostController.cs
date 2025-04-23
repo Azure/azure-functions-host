@@ -430,7 +430,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         {
             _metricsLogger.LogEvent(MetricEventNames.GetTriggersInvoked);
 
-            var result = await _functionsSyncManager.GetTriggersPayloadAsync();
+            var result = await _functionsSyncManager.GetTriggersAsync();
 
             return result.Success
                 ? Ok(result)

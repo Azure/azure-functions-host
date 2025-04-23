@@ -786,7 +786,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
         }
 
-        public async Task<TriggersPayload> GetTriggersPayloadAsync()
+        public async Task<TriggersPayload> GetTriggersAsync()
         {
             var result = new TriggersPayload
             {

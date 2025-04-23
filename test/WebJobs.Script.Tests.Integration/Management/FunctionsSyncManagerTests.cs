@@ -260,7 +260,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         public async Task GetTriggersPayload_ExpectedContent()
         {
             // Act
-            var result = await _functionsSyncManager.GetTriggersPayloadAsync();
+            var result = await _functionsSyncManager.GetTriggersAsync();
 
             // Assert
             Assert.True(result.Success);
