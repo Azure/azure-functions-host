@@ -3,7 +3,7 @@
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 {
-    public sealed class TriggersPayload : TriggersOperationResult
+    public sealed class TriggersResult : TriggersOperationResult
     {
         /// <summary>
         /// Gets or sets the triggers payload.
