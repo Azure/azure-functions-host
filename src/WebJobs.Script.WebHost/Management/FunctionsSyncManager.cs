@@ -801,21 +801,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 return result;
             }
 
-            try
-            {
-                var payload = await GetSyncTriggersPayload();
-
-                result.Content = payload.Content;
-                return result;
-            }
-            catch (Exception ex)
-            {
-                // best effort - log error and continue
-                result.Success = false;
-                result.Error = "GetTriggers operation failed.";
-                _logger.LogError(ex, result.Error);
-                return result;
-            }
+            var payload = await GetSyncTriggersPayload();
+            result.Content = payload.Content;
+            return result;
         }
 
         public void Dispose()

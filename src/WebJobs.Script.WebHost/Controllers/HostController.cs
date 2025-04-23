@@ -434,7 +434,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
             return result.Success
                 ? Ok(result)
-                : StatusCode(StatusCodes.Status500InternalServerError, new { status = result.Error });
+                : StatusCode(StatusCodes.Status403Forbidden, new { status = result.Error });
         }
 
         [HttpPost]
