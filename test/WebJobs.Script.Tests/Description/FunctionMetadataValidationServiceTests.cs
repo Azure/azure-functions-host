@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Immutable;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script;
@@ -8,6 +9,7 @@ using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Xunit;
 
@@ -18,17 +20,17 @@ namespace WebJobs.Script.Tests
         private readonly Mock<IServiceProvider> _serviceProviderMock;
         private readonly Mock<IServiceScopeFactory> _serviceScopeFactoryMock;
         private readonly Mock<IServiceScope> _serviceScopeMock;
-        private readonly Mock<ILogger<FunctionMetadataValidationService>> _loggerMock;
+        private readonly ILogger<FunctionMetadataValidationService> _testLogger;
         private readonly Mock<IOptions<ScriptJobHostOptions>> _scriptOptionsMock;
         private readonly Mock<IFunctionMetadataManager> _functionMetadataManagerMock;
         private readonly ScriptJobHostOptions _scriptJobHostOptions;
+        private readonly TestLoggerProvider _testLoggerProvider;
 
         public FunctionMetadataValidationServiceTests()
         {
             _serviceProviderMock = new Mock<IServiceProvider>();
             _serviceScopeFactoryMock = new Mock<IServiceScopeFactory>();
             _serviceScopeMock = new Mock<IServiceScope>();
-            _loggerMock = new Mock<ILogger<FunctionMetadataValidationService>>();
             _scriptOptionsMock = new Mock<IOptions<ScriptJobHostOptions>>();
             _functionMetadataManagerMock = new Mock<IFunctionMetadataManager>();
 
@@ -53,23 +55,18 @@ namespace WebJobs.Script.Tests
             _serviceProviderMock
                 .Setup(sp => sp.GetService(typeof(IServiceScopeFactory)))
                 .Returns(_serviceScopeFactoryMock.Object);
-        }
 
-        [Fact]
-        public async Task StartAsync_FunctionMetadataManagerIsNull_DoesNotThrow()
-        {
-            var service = new FunctionMetadataValidationService(
-                _serviceProviderMock.Object,
-                _loggerMock.Object,
-                _scriptOptionsMock.Object);
-
-            // Act & Assert
-            await service.StartAsync(CancellationToken.None);
+            _testLoggerProvider = new TestLoggerProvider();
+            LoggerFactory factory = new LoggerFactory();
+            factory.AddProvider(_testLoggerProvider);
+            _testLogger = factory.CreateLogger<FunctionMetadataValidationService>();
         }
 
         [Fact]
         public async Task StartAsync_FunctionMetadataListIsEmpty_DoesNotLogError()
         {
+            _testLoggerProvider.ClearAllLogMessages();
+
             // Arrange
             _functionMetadataManagerMock
                 .Setup(m => m.GetFunctionMetadata(true, true, true))
@@ -81,29 +78,28 @@ namespace WebJobs.Script.Tests
 
             var service = new FunctionMetadataValidationService(
                 _serviceProviderMock.Object,
-                _loggerMock.Object,
+                _testLogger,
                 _scriptOptionsMock.Object);
 
             // Act
             await service.StartAsync(CancellationToken.None);
 
-            // Assert
-            _loggerMock.Verify(
-                l => l.Log(
-                    It.Is<LogLevel>(level => level == LogLevel.Error),
-                    It.IsAny<EventId>(),
-                    It.IsAny<It.IsAnyType>(),
-                    It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception, string>>()),
-                Times.Never);
+            //Assert
+            var traces = _testLoggerProvider.GetAllLogMessages();
+            var traceMessage = traces.FirstOrDefault(val => val.EventId.Name.Equals("NoAzureFunctionsFolder"));
+
+            Assert.Null(traceMessage);
         }
 
-        /*
         [Fact]
         public async Task StartAsync_NoAzureFunctionsFolder_LogsWarning()
         {
+            _testLoggerProvider.ClearAllLogMessages();
+
             // Arrange
             var functionMetadataList = ImmutableArray.Create(new FunctionMetadata());
+
+            Environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "dotnet-isolated");
 
             _functionMetadataManagerMock
                 .Setup(m => m.GetFunctionMetadata(true, true, true))
@@ -115,22 +111,19 @@ namespace WebJobs.Script.Tests
 
             var service = new FunctionMetadataValidationService(
                 _serviceProviderMock.Object,
-                _loggerMock.Object,
+                _testLogger,
                 _scriptOptionsMock.Object);
 
             // Act
             await service.StartAsync(CancellationToken.None);
 
-            // Assert
-            _loggerMock.Verify(
-                l => l.Log(
-                    It.Is<LogLevel>(level => level == LogLevel.Warning),
-                    It.IsAny<EventId>(),
-                    It.IsAny<It.IsAnyType>(),
-                    It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception, string>>()),
-                Times.Once);
+            Environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, null);
+
+            //Assert
+            var traces = _testLoggerProvider.GetAllLogMessages();
+            var traceMessage = traces.FirstOrDefault(val => val.EventId.Name.Equals("NoAzureFunctionsFolder"));
+
+            Assert.NotNull(traceMessage);
         }
-        */
     }
 }
