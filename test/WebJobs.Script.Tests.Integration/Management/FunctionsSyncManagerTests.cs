@@ -257,7 +257,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         }
 
         [Fact]
-        public async Task GetTriggersPayload_ExpectedContent()
+        public async Task GetTriggersAsync_ReturnsExpectedContent()
         {
             // Act
             var result = await _functionsSyncManager.GetTriggersAsync();

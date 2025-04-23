@@ -111,8 +111,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             {
                 await _syncSemaphore.WaitAsync();
 
-                PrepareSyncTriggers();
-
                 var hashBlobClient = await GetHashBlobAsync();
                 if (isBackgroundSync && hashBlobClient == null && !_environment.IsAnyKubernetesEnvironment())
                 {
@@ -308,6 +306,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         private async Task<SyncTriggersPayload> GetSyncTriggersPayload()
         {
+            PrepareSyncTriggers();
+
             var hostOptions = _applicationHostOptions.CurrentValue.ToHostOptions();
             var functionsMetadata = _functionMetadataManager.GetFunctionMetadata().Where(m => !m.IsProxy());
 
@@ -803,10 +803,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
             try
             {
-                await _syncSemaphore.WaitAsync();
-
-                PrepareSyncTriggers();
-
                 var payload = await GetSyncTriggersPayload();
 
                 result.Content = payload.Content;
@@ -819,10 +815,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 result.Error = "GetTriggers operation failed.";
                 _logger.LogError(ex, result.Error);
                 return result;
-            }
-            finally
-            {
-                _syncSemaphore.Release();
             }
         }
 
