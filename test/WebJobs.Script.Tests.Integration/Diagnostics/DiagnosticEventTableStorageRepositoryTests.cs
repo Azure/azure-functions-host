@@ -172,7 +172,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             var cloudTable = repository.GetDiagnosticEventsTable(dateTime);
             Assert.Null(cloudTable);
             var messages = _loggerProvider.GetAllLogMessages();
-            var errorIntializingPresent = messages.Any(m => m.FormattedMessage.Contains("An error occurred initializing the Table Storage Client. We are unable to record diagnostic events, so the diagnostic logging service is being stopped."));
+            var errorIntializingPresent = messages.Any(m => m.FormattedMessage.Contains("We couldn’t initialize the Table Storage Client using the 'AzureWebJobsStorage' connection string. We are unable to record diagnostic events, so the diagnostic logging service is being stopped. Please check the 'AzureWebJobsStorage' connection string in Application Settings."));
             Assert.True(errorIntializingPresent);
             Assert.False(repository.IsEnabled());
         }
@@ -294,7 +294,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             await repository.FlushLogs();
 
             // Assert
-            var createFailureMessagePresent = _loggerProvider.GetAllLogMessages().Any(m => m.FormattedMessage.Contains("An error occurred initializing the Table Storage Client. We are unable to record diagnostic events, so the diagnostic logging service is being stopped."));
+            var createFailureMessagePresent = _loggerProvider.GetAllLogMessages().Any(m => m.FormattedMessage.Contains("We couldn’t initialize the Table Storage Client using the 'AzureWebJobsStorage' connection string. We are unable to record diagnostic events, so the diagnostic logging service is being stopped. Please check the 'AzureWebJobsStorage' connection string in Application Settings."));
             Assert.True(createFailureMessagePresent);
 
             var purgeEventMessagePresent = _loggerProvider.GetAllLogMessages().Any(m => m.FormattedMessage.Contains("Purging diagnostic events with versions older than"));

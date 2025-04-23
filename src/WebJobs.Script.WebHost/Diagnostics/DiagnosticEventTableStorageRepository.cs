@@ -5,10 +5,12 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure;
 using Azure.Data.Tables;
+using Azure.Data.Tables.Models;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Hosting;
 using Microsoft.Azure.WebJobs.Logging;
@@ -77,15 +79,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                         _ = TableStorageHelpers.TableExist(testTable, _tableClient);
                         _ = testTable.CreateIfNotExists();
                     }
-                    catch (RequestFailedException ex) when (ex.Status == 403)
+                    catch (RequestFailedException rfe) when (rfe.Status == (int)HttpStatusCode.Conflict || rfe.ErrorCode == TableErrorCode.TableBeingDeleted)
+                    {
+                        // The table is being deleted or there could be a conflict for several instances initializing.
+                        // We can ignore this error as it is not a failure and we tested the permissions.
+                    }
+                    catch (RequestFailedException rfe) when (rfe.Status == (int)HttpStatusCode.Forbidden)
                     {
                         DisableService();
-                        Logger.ServiceDisabledUnauthorizedClient(_logger, ex);
+                        Logger.ServiceDisabledUnauthorizedClient(_logger, rfe);
                     }
-                    catch (Exception)
+                    catch (Exception ex)
                     {
-                        // Other exceptions might be due to conflict issues or other transient errors
-                        // which don't necessarily indicate a permissions problem
+                        // We failed to connect to the table storage account. This could be due to a transient error or a configuration issue, such network issues.
+                        // We will disable the service.
+                        DisableService();
+                        Logger.ServiceDisabledUnableToConnectToStorage(_logger, ex);
                     }
                 }
 
@@ -228,6 +237,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     TableStorageHelpers.QueueBackgroundTablePurge(table, TableClient, TableNamePrefix, _logger);
                 }
             }
+            catch (RequestFailedException ex) when (ex.Status == 403)
+            {
+                // If we reach this point, we already checked for permissions on TableClient initialization. It is possible that the permissions changed after the initialization or any storage firewall/network configuration changed.
+                // We will log the error and disable the service.
+                Logger.UnableToGetTableReferenceOrCreateTable(_logger, ex);
+                DisableService();
+                Logger.ServiceDisabledUnauthorizedClient(_logger, ex);
+            }
             catch (Exception ex)
             {
                 Logger.UnableToGetTableReferenceOrCreateTable(_logger, ex);
@@ -264,6 +281,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             }
             catch (RequestFailedException ex) when (ex.Status == 403)
             {
+                // If we reach this point, we already checked for permissions on TableClient initialization. It is possible that the permissions changed after the initialization or any firewall/network rules were changed.
+                // We will log the error and disable the service.
+                Logger.UnableToWriteDiagnosticEvents(_logger, ex);
                 DisableService();
                 Logger.ServiceDisabledUnauthorizedClient(_logger, ex);
             }
