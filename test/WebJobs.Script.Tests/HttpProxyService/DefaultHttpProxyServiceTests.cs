@@ -32,11 +32,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var httpContext = new DefaultHttpContext();
             httpContext.Items.Add(ScriptConstants.AzureFunctionsHttpTriggerContext, new());
-
+            var invocationId = Guid.NewGuid();
             var context = new ScriptInvocationContext
             {
                 FunctionMetadata = new FunctionMetadata { Name = "TestFunction" },
-                ExecutionContext = new ExecutionContext { InvocationId = Guid.NewGuid() },
+                ExecutionContext = new ExecutionContext { InvocationId = invocationId },
                 Inputs = new List<(string Name, DataType Type, object Val)>
                 {
                     ("req", DataType.String, httpContext.Request)
@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var httpRequest = (HttpRequest)context.Inputs.First().Val;
             Assert.True(httpRequest.Headers.ContainsKey(ScriptConstants.HttpProxyCorrelationHeader));
-            Assert.Equal(context.ExecutionContext.InvocationId.ToString(), httpRequest.Headers[ScriptConstants.HttpProxyCorrelationHeader]);
+            Assert.Equal(invocationId.ToString(), httpRequest.Headers[ScriptConstants.HttpProxyCorrelationHeader]);
         }
 
         [Fact]
@@ -58,11 +58,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var httpContext = new DefaultHttpContext();
             httpContext.Items.Add(ScriptConstants.AzureFunctionsHttpTriggerContext, new());
-
+            var invocationId = Guid.NewGuid();
             var context = new ScriptInvocationContext
             {
                 FunctionMetadata = new FunctionMetadata { Name = "TestFunction" },
-                ExecutionContext = new ExecutionContext { InvocationId = Guid.NewGuid() },
+                ExecutionContext = new ExecutionContext { InvocationId = invocationId },
                 Inputs = new List<(string Name, DataType Type, object Val)>
                 {
                     ("req", DataType.String, httpContext.Request)
@@ -76,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             httpRequest.Headers[ScriptConstants.HttpProxyCorrelationHeader] = existingCorrelationId;
 
             _proxyService.StartForwarding(context, httpUri);
-            Assert.NotEqual<string>(existingCorrelationId, httpRequest.Headers[ScriptConstants.HttpProxyCorrelationHeader]);
+            Assert.Equal(invocationId.ToString(), httpRequest.Headers[ScriptConstants.HttpProxyCorrelationHeader]);
         }
     }
 }
