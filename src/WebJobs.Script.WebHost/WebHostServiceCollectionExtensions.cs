@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.IO.Abstractions;
 using System.Net.Http;
 using System.Runtime.InteropServices;
@@ -304,8 +305,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     var logger = s.GetService<ILogger<LinuxContainerLegionMetricsPublisher>>();
                     var metricsTracker = s.GetService<ILinuxConsumptionMetricsTracker>();
                     var standbyOptions = s.GetService<IOptionsMonitor<StandbyOptions>>();
-                    var scriptHostManager = s.GetService<IScriptHostManager>();
-                    return new LinuxContainerLegionMetricsPublisher(environment, standbyOptions, options, logger, new FileSystem(), metricsTracker, scriptHostManager);
+                    var serviceProvider = s.GetService<IServiceProvider>();
+                    var hostingConfigOptions = s.GetService<IOptionsMonitor<FunctionsHostingConfigOptions>>();
+                    return new LinuxContainerLegionMetricsPublisher(environment, standbyOptions, options, logger, new FileSystem(), metricsTracker, serviceProvider, hostingConfigOptions);
                 }
                 else if (environment.IsFlexConsumptionSku())
                 {
@@ -320,7 +322,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     var logger = s.GetService<ILogger<LinuxContainerMetricsPublisher>>();
                     var standbyOptions = s.GetService<IOptionsMonitor<StandbyOptions>>();
                     var hostNameProvider = s.GetService<HostNameProvider>();
-                    var hostingConfigOptions = s.GetService<IOptions<FunctionsHostingConfigOptions>>();
+                    var hostingConfigOptions = s.GetService<IOptionsMonitor<FunctionsHostingConfigOptions>>();
                     return new LinuxContainerMetricsPublisher(environment, standbyOptions, logger, hostNameProvider, hostingConfigOptions);
                 }
 

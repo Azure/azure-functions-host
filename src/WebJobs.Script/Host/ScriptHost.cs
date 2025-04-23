@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Globalization;
@@ -373,13 +374,10 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <returns>A metadata collection of functions and proxies configured.</returns>
         private IEnumerable<FunctionMetadata> GetFunctionsMetadata()
         {
-            IEnumerable<FunctionMetadata> functionMetadata;
-
-            functionMetadata = _functionMetadataManager.GetFunctionMetadata(forceRefresh: false, workerConfigs: _languageWorkerOptions.CurrentValue.WorkerConfigs);
-
+            ImmutableArray<FunctionMetadata> functionMetadata = _functionMetadataManager.GetFunctionMetadata(forceRefresh: false);
             foreach (var error in _functionMetadataManager.Errors)
             {
-                FunctionErrors.Add(error.Key, error.Value.ToArray());
+                FunctionErrors.Add(error.Key, error.Value);
             }
 
             return functionMetadata;
