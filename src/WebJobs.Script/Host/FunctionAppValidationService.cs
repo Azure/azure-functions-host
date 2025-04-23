@@ -27,7 +27,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
-
             if (Utility.IsDotnetIsolatedApp(null, SystemEnvironment.Instance) &&
                 !SystemEnvironment.Instance.IsPlaceholderModeEnabled() &&
                 !Directory.Exists(Path.Combine(_scriptOptions.Value.RootScriptPath, ScriptConstants.AzureFunctionsSystemDirectoryName)) &&
