@@ -8,7 +8,6 @@ using System.Linq;
 using Azure.Core;
 using Azure.Identity;
 using Azure.Monitor.OpenTelemetry.Exporter;
-using Azure.Monitor.OpenTelemetry.LiveMetrics;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Extensions.Configuration;
@@ -119,7 +118,6 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
                 if (enableAzureMonitor)
                 {
                     builder.AddAzureMonitorTraceExporter(opt => ConfigureAzureMonitorOptions(opt, azMonConnectionString, credential));
-                    builder.AddLiveMetrics(opt => ConfigureAzureMonitorOptions(opt, azMonConnectionString, credential));
                 }
 
                 builder.AddProcessor(ActivitySanitizingProcessor.Instance);
@@ -207,15 +205,6 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
         }
 
         private static void ConfigureAzureMonitorOptions(AzureMonitorExporterOptions options, string connectionString, TokenCredential credential)
-        {
-            options.ConnectionString = connectionString;
-            if (credential is not null)
-            {
-                options.Credential = credential;
-            }
-        }
-
-        private static void ConfigureAzureMonitorOptions(LiveMetricsExporterOptions options, string connectionString, TokenCredential credential)
         {
             options.ConnectionString = connectionString;
             if (credential is not null)
