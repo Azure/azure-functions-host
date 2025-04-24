@@ -430,14 +430,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         {
             _metricsLogger.LogEvent(MetricEventNames.GetTriggersInvoked);
 
-            var result = await _functionsSyncManager.GetTriggersAsync();
+            // This endpoint is only available in validation mode
+            if (_environment.IsInValidationMode())
+            {
+                var result = await _functionsSyncManager.GetTriggersAsync();
 
-            // GetTriggersAsync() does not swallow exceptions,so any failures will still be a 500.
-            // The only result.Success == false we need to consideris when the environment
-            // does not support sync triggers.
-            return result.Success
-                ? Ok(result)
-                : StatusCode(StatusCodes.Status403Forbidden, new { status = result.Error });
+                // GetTriggersAsync() does not swallow exceptions,so any failures will still be a 500.
+                // The only result.Success == false we need to consideris when the environment
+                // does not support sync triggers.
+                return result.Success
+                    ? Ok(result)
+                    : StatusCode(StatusCodes.Status403Forbidden, new { status = result.Error });
+            }
+
+            return NotFound();
         }
 
         [HttpPost]
