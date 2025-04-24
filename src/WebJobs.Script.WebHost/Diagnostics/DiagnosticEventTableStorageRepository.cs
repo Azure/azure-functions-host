@@ -237,7 +237,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     TableStorageHelpers.QueueBackgroundTablePurge(table, TableClient, TableNamePrefix, _logger);
                 }
             }
-            catch (RequestFailedException ex) when (ex.Status == 403)
+            catch (RequestFailedException ex) when (ex.Status == (int)HttpStatusCode.Forbidden)
             {
                 // If we reach this point, we already checked for permissions on TableClient initialization. It is possible that the permissions changed after the initialization or any storage firewall/network configuration changed.
                 // We will log the error and disable the service.
@@ -279,9 +279,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 await table.SubmitTransactionAsync(batch);
                 events.Clear();
             }
-            catch (RequestFailedException ex) when (ex.Status == 403)
+            catch (RequestFailedException ex) when (ex.Status == (int)HttpStatusCode.Forbidden)
             {
-                // If we reach this point, we already checked for permissions on TableClient initialization. It is possible that the permissions changed after the initialization or any firewall/network rules were changed.
+                // If we reach this point, we already checked for permissions on TableClient initialization.
+                // It is possible that the permissions changed after the initialization, any firewall/network rules were changed or it's a custom role where we don't have permissions to write entities.
                 // We will log the error and disable the service.
                 Logger.UnableToWriteDiagnosticEvents(_logger, ex);
                 DisableService();
