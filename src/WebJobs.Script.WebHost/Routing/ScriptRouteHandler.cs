@@ -41,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.Http
         {
             if (_isProxy)
             {
-                ProxyFunctionExecutor proxyFunctionExecutor = new ProxyFunctionExecutor(_scriptHost, _environment);
+                ProxyFunctionExecutor proxyFunctionExecutor = new ProxyFunctionExecutor(_scriptHost);
                 context.Items.TryAdd(ScriptConstants.AzureProxyFunctionExecutorKey, proxyFunctionExecutor);
             }
             else if (_isWarmup)

@@ -32,10 +32,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Middleware
                 { "Host", uri.Host }
             };
 
-            var mockEnvironment = new Mock<IEnvironment>(MockBehavior.Strict);
-            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsTargetGroup)).Returns((string)null);
-            FunctionInvocationMiddleware functionInvocationMiddleware = new FunctionInvocationMiddleware(null, mockEnvironment.Object);
-
             // Function level auth requires authz
             FunctionMetadata metadata = new FunctionMetadata();
             var function = new Mock<FunctionDescriptor>(MockBehavior.Strict, "test", null, metadata, null, null, null, null);
@@ -44,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Middleware
                 Route = "test"
             };
             function.SetupGet(p => p.HttpTriggerAttribute).Returns(() => attribute);
-            bool result = functionInvocationMiddleware.RequiresAuthz(request, function.Object);
+            bool result = FunctionInvocationMiddleware.RequiresAuthz(request, function.Object);
             Assert.True(result);
 
             // Proxies don't require authz
@@ -55,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Middleware
                 Route = "test"
             };
             function.SetupGet(p => p.HttpTriggerAttribute).Returns(() => attribute);
-            result = functionInvocationMiddleware.RequiresAuthz(request, function.Object);
+            result = FunctionInvocationMiddleware.RequiresAuthz(request, function.Object);
             Assert.False(result);
 
             // Anonymous functions don't require authz
@@ -66,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Middleware
                 Route = "test"
             };
             function.SetupGet(p => p.HttpTriggerAttribute).Returns(() => attribute);
-            result = functionInvocationMiddleware.RequiresAuthz(request, function.Object);
+            result = FunctionInvocationMiddleware.RequiresAuthz(request, function.Object);
             Assert.False(result);
 
             // Anonymous functions with EasyAuth header require authz
@@ -74,7 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Middleware
             {
                 { ScriptConstants.EasyAuthIdentityHeader, "abc123" }
             };
-            result = functionInvocationMiddleware.RequiresAuthz(request, function.Object);
+            result = FunctionInvocationMiddleware.RequiresAuthz(request, function.Object);
             Assert.True(result);
 
             // Anonymous functions with key header require authz
@@ -82,7 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Middleware
             {
                 { AuthenticationLevelHandler.FunctionsKeyHeaderName, "abc123" }
             };
-            result = functionInvocationMiddleware.RequiresAuthz(request, function.Object);
+            result = FunctionInvocationMiddleware.RequiresAuthz(request, function.Object);
             Assert.True(result);
 
             // Anonymous functions with key query param require authz
@@ -98,7 +94,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Middleware
             {
                 { "Host", uri.Host }
             };
-            result = functionInvocationMiddleware.RequiresAuthz(request, function.Object);
+            result = FunctionInvocationMiddleware.RequiresAuthz(request, function.Object);
             Assert.True(result);
         }
     }

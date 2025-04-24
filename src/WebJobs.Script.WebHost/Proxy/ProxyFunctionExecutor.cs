@@ -27,12 +27,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Proxy
     public class ProxyFunctionExecutor : IFuncExecutor
     {
         private readonly IScriptJobHost _scriptHost;
-        private readonly IEnvironment _environment;
 
-        internal ProxyFunctionExecutor(IScriptJobHost scriptHost, IEnvironment environment)
+        internal ProxyFunctionExecutor(IScriptJobHost scriptHost)
         {
             _scriptHost = scriptHost;
-            _environment = environment;
         }
 
         public async Task<IActionResult> ExecuteFuncAsync(string functionName, Dictionary<string, object> arguments, CancellationToken cancellationToken)
@@ -75,7 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Proxy
 
             await rc.Handler.Invoke(httpContext);
 
-            FunctionInvocationMiddleware functionInvocationMiddleware = new FunctionInvocationMiddleware(null, _environment);
+            FunctionInvocationMiddleware functionInvocationMiddleware = new FunctionInvocationMiddleware(null);
 
             if (!httpContext.Items.TryGetValue(ScriptConstants.AzureFunctionsNestedProxyCount, out object nestedProxiesCount))
             {

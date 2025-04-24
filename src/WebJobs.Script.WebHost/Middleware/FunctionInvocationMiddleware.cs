@@ -27,12 +27,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
     public class FunctionInvocationMiddleware
     {
         private readonly RequestDelegate _next;
-        private readonly IEnvironment _environment;
 
-        public FunctionInvocationMiddleware(RequestDelegate next, IEnvironment environment)
+        public FunctionInvocationMiddleware(RequestDelegate next)
         {
             _next = next;
-            _environment = environment;
         }
 
         // TODO: Confirm that only HttpTrigger requests would flow through here
@@ -208,9 +206,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             }
         }
 
-        internal bool RequiresAuthz(HttpRequest request, FunctionDescriptor descriptor)
+        internal static bool RequiresAuthz(HttpRequest request, FunctionDescriptor descriptor)
         {
-            if (descriptor.Metadata.IsProxy() || descriptor.IsWarmupFunction(_environment))
+            if (descriptor.Metadata.IsProxy() || descriptor.IsWarmupFunction())
             {
                 return false;
             }
