@@ -56,10 +56,10 @@
     <PackageReference Include="Microsoft.Azure.Cosmos.Table" Version="1.0.8" />
     <PackageReference Include="Microsoft.Azure.Functions.Platform.Metrics.LinuxConsumption" Version="1.0.5" />
     <PackageReference Include="Microsoft.Azure.Storage.File" Version="11.1.7" />
-
     <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.41" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Host.Storage" Version="5.0.1" />
     <PackageReference Include="Microsoft.Azure.WebSites.DataProtection" Version="2.1.91-alpha" />
+    <PackageReference Include="Microsoft.DotNet.PlatformAbstractions" Version="2.1.0" />
     <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="$(IdentityDependencyVersion)" />
     <PackageReference Include="Microsoft.Security.Utilities" Version="1.3.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
