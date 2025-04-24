@@ -111,12 +111,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
 
             FlexConsumptionMetricsPublisher.Metrics metrics = null;
             FileInfo metricsFile = null;
-            if (!isAlwaysReadyInstance)
-            {
-                // don't expect a file to be written when no activity
-                Assert.Equal(0, files.Length);
-            }
-            else
+
+            if (isAlwaysReadyInstance)
             {
                 Assert.Equal(1, files.Length);
 
@@ -536,7 +532,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
         {
             CleanupMetricsFiles();
 
-            var publisher = CreatePublisher(metricsPublishInterval: TimeSpan.FromHours(1), inStandbyMode: false);
+            var publisher = CreatePublisher();
 
             DateTime now = DateTime.UtcNow;
 
@@ -545,14 +541,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
 
             // Should not publish anything because it's the first call and not yet 60 seconds
             var files = GetMetricsFilesSafe(_metricsFilePath);
-            Assert.Empty(files);
+            Assert.Equal(0, files.Length);
 
             // Simulate 31 seconds passing with no function activity
             now = now.AddSeconds(31);
             await publisher.OnPublishMetrics(now);
 
             files = GetMetricsFilesSafe(_metricsFilePath);
-            Assert.Single(files);
+            Assert.Equal(1, files.Length);
 
             var metrics = await ReadMetricsAsync(files[0].FullName, deleteFile: true);
 
