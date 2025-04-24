@@ -82,20 +82,36 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
         internal async Task ProxyInvocationRequest(ScriptInvocationContext scriptInvocationContext)
         {
-            var uriString = BuildAndGetUri(scriptInvocationContext.FunctionMetadata.Name);
-            var uri = new UriBuilder(uriString).Uri;
-
             try
             {
-                var input = scriptInvocationContext.Inputs.First();
-                HttpRequest httpRequest = input.Val as HttpRequest;
+                if (!scriptInvocationContext.TryGetHttpRequest(out HttpRequest httpRequest))
+                {
+                    throw new InvalidOperationException($"Cannot proxy the HttpTrigger function {scriptInvocationContext.FunctionMetadata.Name} without an input of type {nameof(HttpRequest)}.");
+                }
+
+                string uriPathValue = GetPathValue(_httpWorkerOptions, scriptInvocationContext.FunctionMetadata.Name, httpRequest);
+                var uri = GetUriBuilder(uriPathValue).Uri;
+
+                var httpContext = httpRequest.HttpContext;
+
                 AddProxyingHeaders(httpRequest, scriptInvocationContext.ExecutionContext.InvocationId.ToString());
 
                 _httpProxyService.StartForwarding(scriptInvocationContext, uri);
 
                 await _httpProxyService.EnsureSuccessfulForwardingAsync(scriptInvocationContext);
 
-                var result = new ScriptInvocationResult();
+                var result = new ScriptInvocationResult()
+                {
+                    Outputs = new Dictionary<string, object>()
+                };
+                BindingMetadata httpOutputBinding = scriptInvocationContext.FunctionMetadata.OutputBindings.FirstOrDefault();
+                if (httpOutputBinding != null)
+                {
+                    // handle http output binding
+                    result.Outputs.Add(httpOutputBinding.Name, "filler");
+                    // handle $return
+                    result.Return = "filler";
+                }
                 scriptInvocationContext.ResultSource.SetResult(result);
             }
             catch (Exception exc)
@@ -210,15 +226,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             var userAgent = $"{HttpWorkerConstants.UserAgentHeaderValue}/{ScriptHost.Version}";
             httpRequest.Headers.Remove("User-Agent");
             httpRequest.Headers.Append("User-Agent", userAgent);
-
-            // Add header so that the functions middleware skips the script invocation result handling
-            httpRequest.Headers.TryAdd(ScriptConstants.HttpProxyingEnabled, bool.TrueString); // placeholder http proxying enabled header for now
         }
 
         internal string GetPathValue(HttpWorkerOptions httpWorkerOptions, string functionName, HttpRequest httpRequest)
         {
             string pathValue = functionName;
-            if (httpWorkerOptions.EnableForwardingHttpRequest && httpWorkerOptions.Type == CustomHandlerType.Http)
+            if ((httpWorkerOptions.EnableForwardingHttpRequest && httpWorkerOptions.Type == CustomHandlerType.Http) ||
+                httpWorkerOptions.EnableProxyingHttpRequest)
             {
                 pathValue = httpRequest.GetRequestUri().AbsolutePath;
             }
@@ -345,6 +359,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 return new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port).ToString();
             }
             return new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port, pathValue).ToString();
+        }
+
+        internal UriBuilder GetUriBuilder(string pathValue)
+        {
+            return new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port, pathValue);
         }
 
         private async Task<HttpResponseMessage> SendPingRequestAsync(string requestUri, HttpMethod method = null)
