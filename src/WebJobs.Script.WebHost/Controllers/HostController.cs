@@ -443,7 +443,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                     : StatusCode(StatusCodes.Status403Forbidden, new { status = result.Error });
             }
 
-            return NotFound();
+            return StatusCode(StatusCodes.Status403Forbidden, new { status = "GetTriggers operation is Forbidden." });
         }
 
         [HttpPost]
