@@ -36,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         private IDisposable _standbyOptionsOnChangeSubscription;
         private TimeSpan _metricPublishInterval;
         private TimeSpan _initialPublishDelay;
-        private DateTime _lastPublishTime = DateTime.MinValue;
+        private DateTime _lastPublishTime = DateTime.UtcNow;
 
         public FlexConsumptionMetricsPublisher(IEnvironment environment, IOptionsMonitor<StandbyOptions> standbyOptions, IOptions<FlexConsumptionMetricsPublisherOptions> options,
             ILogger<FlexConsumptionMetricsPublisher> logger, IFileSystem fileSystem, IHostMetricsProvider metricsProvider)
@@ -106,12 +106,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
                     }
                 }
 
-                bool hasActivity = FunctionExecutionCount > 0 || FunctionExecutionTimeMS > 0 || IsAlwaysReady || _metricsProvider.HasMetrics();
+                bool hasActivity = FunctionExecutionCount > 0 || FunctionExecutionTimeMS > 0 || _metricsProvider.HasMetrics();
                 bool shouldForcePublish = (now - _lastPublishTime) >= TimeSpan.FromMilliseconds(_options.KeepAliveIntervalMS);
 
-                if (!hasActivity && !shouldForcePublish)
+                if (!hasActivity && !shouldForcePublish && !IsAlwaysReady)
                 {
-                    // No activity and not time for keep-alive publish
+                    // No activity and not time for keep-alive publish & not always ready
                     return;
                 }
 
