@@ -25,6 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         private readonly ILogger _logger;
         private readonly bool _enableRequestTracing;
         private readonly IHttpProxyService _httpProxyService;
+        private readonly ScriptInvocationResult _successfulInvocationResult;
 
         public DefaultHttpWorkerService(IOptions<HttpWorkerOptions> httpWorkerOptions, ILoggerFactory loggerFactory, IEnvironment environment,
             IOptions<ScriptJobHostOptions> scriptHostOptions, IHttpProxyService httpProxyService)
@@ -51,6 +52,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 // Set 1 minute greater than FunctionTimeout to ensure invoction failure due to timeout is raised before httpClient raises operation cancelled exception
                 _httpClient.Timeout = scriptHostOptions.Value.FunctionTimeout.Value.Add(TimeSpan.FromMinutes(1));
             }
+
+            _successfulInvocationResult = new ScriptInvocationResult()
+            {
+                Outputs = new Dictionary<string, object>()
+            };
         }
 
         private static HttpClient CreateHttpClient(IOptions<HttpWorkerOptions> httpWorkerOptions)
@@ -89,10 +95,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                     throw new InvalidOperationException($"Cannot proxy the HttpTrigger function {scriptInvocationContext.FunctionMetadata.Name} without an input of type {nameof(HttpRequest)}.");
                 }
 
-                string uriPathValue = GetPathValue(_httpWorkerOptions, scriptInvocationContext.FunctionMetadata.Name, httpRequest);
-                var uri = GetUriBuilder(uriPathValue).Uri;
-
-                var httpContext = httpRequest.HttpContext;
+                // YARP only requires the destination prefix. The path and query string are added by the YARP proxy during SendAsync using info from the HttpContext.
+                var uri = new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port).Uri;
 
                 AddProxyingHeaders(httpRequest, scriptInvocationContext.ExecutionContext.InvocationId.ToString());
 
@@ -100,19 +104,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
                 await _httpProxyService.EnsureSuccessfulForwardingAsync(scriptInvocationContext);
 
-                var result = new ScriptInvocationResult()
-                {
-                    Outputs = new Dictionary<string, object>()
-                };
-                BindingMetadata httpOutputBinding = scriptInvocationContext.FunctionMetadata.OutputBindings.FirstOrDefault();
-                if (httpOutputBinding != null)
-                {
-                    // handle http output binding
-                    result.Outputs.Add(httpOutputBinding.Name, "filler");
-                    // handle $return
-                    result.Return = "filler";
-                }
-                scriptInvocationContext.ResultSource.SetResult(result);
+                var httpContext = httpRequest.HttpContext;
+
+                scriptInvocationContext.ResultSource.SetResult(_successfulInvocationResult);
             }
             catch (Exception exc)
             {
@@ -359,11 +353,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 return new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port).ToString();
             }
             return new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port, pathValue).ToString();
-        }
-
-        internal UriBuilder GetUriBuilder(string pathValue)
-        {
-            return new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port, pathValue);
         }
 
         private async Task<HttpResponseMessage> SendPingRequestAsync(string requestUri, HttpMethod method = null)

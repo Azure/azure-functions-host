@@ -289,6 +289,8 @@ namespace Microsoft.Azure.WebJobs.Script
                 // Core WebJobs/Script Host services
                 services.AddSingleton<ScriptHost>();
 
+                services.AddSingleton<IHttpProxyService, DefaultHttpProxyService>();
+
                 // HTTP Worker
                 services.AddSingleton<IHttpWorkerProcessFactory, HttpWorkerProcessFactory>();
                 services.AddSingleton<IHttpWorkerChannelFactory, HttpWorkerChannelFactory>();
