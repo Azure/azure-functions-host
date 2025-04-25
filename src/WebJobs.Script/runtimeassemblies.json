@@ -20,15 +20,7 @@
       "resolutionPolicy": "private"
     },
     {
-      "name": "Azure.Monitor.OpenTelemetry.AspNetCore",
-      "resolutionPolicy": "private"
-    },
-    {
       "name": "Azure.Monitor.OpenTelemetry.Exporter",
-      "resolutionPolicy": "private"
-    },
-    {
-      "name": "Azure.Monitor.OpenTelemetry.LiveMetrics",
       "resolutionPolicy": "private"
     },
     {
@@ -945,6 +937,14 @@
     },
     {
       "name": "OpenTelemetry.Instrumentation.Http",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "OpenTelemetry.Instrumentation.Process",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "OpenTelemetry.Instrumentation.Runtime",
       "resolutionPolicy": "private"
     },
     {

@@ -6,7 +6,7 @@
   "compilationOptions": {},
   "targets": {
     ".NETCoreApp,Version=v8.0": {
-      "Microsoft.Azure.WebJobs.Script.WebHost/4.1040.100-pr.25224.15": {
+      "Microsoft.Azure.WebJobs.Script.WebHost/4.1040.100-pr.25225.8": {
         "dependencies": {
           "Azure.Data.Tables": "12.8.3",
           "Azure.Identity": "1.11.4",
@@ -32,8 +32,8 @@
           "Microsoft.Azure.Storage.File": "11.1.7",
           "Microsoft.Azure.WebJobs": "3.0.41",
           "Microsoft.Azure.WebJobs.Host.Storage": "5.0.1",
-          "Microsoft.Azure.WebJobs.Script": "4.1040.100-pr.25224.15",
-          "Microsoft.Azure.WebJobs.Script.Grpc": "4.1040.100-pr.25224.15",
+          "Microsoft.Azure.WebJobs.Script": "4.1040.100-pr.25225.8",
+          "Microsoft.Azure.WebJobs.Script.Grpc": "4.1040.100-pr.25225.8",
           "Microsoft.Azure.WebSites.DataProtection": "2.1.91-alpha",
           "Microsoft.IdentityModel.Protocols.OpenIdConnect": "6.35.0",
           "Microsoft.IdentityModel.Tokens": "6.35.0",
@@ -1017,7 +1017,7 @@
         "runtime": {
           "lib/netstandard2.0/Microsoft.Azure.WebJobs.Script.Abstractions.dll": {
             "assemblyVersion": "1.0.0.0",
-            "fileVersion": "1.0.22000.0"
+            "fileVersion": "1.0.21220.0"
           }
         }
       },
@@ -2055,6 +2055,28 @@
           }
         }
       },
+      "OpenTelemetry.Instrumentation.Process/1.11.0-beta.2": {
+        "dependencies": {
+          "OpenTelemetry.Api": "1.11.2"
+        },
+        "runtime": {
+          "lib/netstandard2.0/OpenTelemetry.Instrumentation.Process.dll": {
+            "assemblyVersion": "1.11.0.408",
+            "fileVersion": "1.11.0.408"
+          }
+        }
+      },
+      "OpenTelemetry.Instrumentation.Runtime/1.11.1": {
+        "dependencies": {
+          "OpenTelemetry.Api": "1.11.2"
+        },
+        "runtime": {
+          "lib/net8.0/OpenTelemetry.Instrumentation.Runtime.dll": {
+            "assemblyVersion": "1.11.1.410",
+            "fileVersion": "1.11.1.410"
+          }
+        }
+      },
       "OpenTelemetry.PersistentStorage.Abstractions/1.0.1": {
         "runtime": {
           "lib/netstandard2.0/OpenTelemetry.PersistentStorage.Abstractions.dll": {
@@ -2934,7 +2956,7 @@
           }
         }
       },
-      "Microsoft.Azure.WebJobs.Script/4.1040.100-pr.25224.15": {
+      "Microsoft.Azure.WebJobs.Script/4.1040.100-pr.25225.8": {
         "dependencies": {
           "Azure.Core": "1.45.0",
           "Azure.Data.Tables": "12.8.3",
@@ -2966,6 +2988,8 @@
           "OpenTelemetry.Extensions.Hosting": "1.11.2",
           "OpenTelemetry.Instrumentation.AspNetCore": "1.11.1",
           "OpenTelemetry.Instrumentation.Http": "1.11.1",
+          "OpenTelemetry.Instrumentation.Process": "1.11.0-beta.2",
+          "OpenTelemetry.Instrumentation.Runtime": "1.11.1",
           "System.Diagnostics.DiagnosticSource": "9.0.4",
           "System.Drawing.Common": "8.0.0",
           "System.Formats.Asn1": "6.0.1",
@@ -2985,7 +3009,7 @@
           "Microsoft.Azure.WebJobs.Script.dll": {}
         }
       },
-      "Microsoft.Azure.WebJobs.Script.Grpc/4.1040.100-pr.25224.15": {
+      "Microsoft.Azure.WebJobs.Script.Grpc/4.1040.100-pr.25225.8": {
         "dependencies": {
           "Grpc.AspNetCore": "2.55.0",
           "Microsoft.ApplicationInsights": "2.22.0",
@@ -2994,7 +3018,7 @@
           "Microsoft.ApplicationInsights.WindowsServer": "2.22.0",
           "Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel": "2.22.0",
           "Microsoft.Azure.WebJobs.Rpc.Core": "3.0.37",
-          "Microsoft.Azure.WebJobs.Script": "4.1040.100-pr.25224.15",
+          "Microsoft.Azure.WebJobs.Script": "4.1040.100-pr.25225.8",
           "System.IO.FileSystem.Primitives": "4.3.0",
           "System.Threading.Channels": "8.0.0",
           "Yarp.ReverseProxy": "2.0.1"
@@ -3007,7 +3031,7 @@
         "runtime": {
           "Microsoft.Azure.WebJobs.Script.dll": {
             "assemblyVersion": "4.1040.0.0",
-            "fileVersion": "4.1040.100.25224"
+            "fileVersion": "4.1040.100.25225"
           }
         }
       },
@@ -3015,14 +3039,14 @@
         "runtime": {
           "Microsoft.Azure.WebJobs.Script.Grpc.dll": {
             "assemblyVersion": "4.1040.0.0",
-            "fileVersion": "4.1040.100.25224"
+            "fileVersion": "4.1040.100.25225"
           }
         }
       }
     }
   },
   "libraries": {
-    "Microsoft.Azure.WebJobs.Script.WebHost/4.1040.100-pr.25224.15": {
+    "Microsoft.Azure.WebJobs.Script.WebHost/4.1040.100-pr.25225.8": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
@@ -3660,7 +3684,7 @@
     "Microsoft.Azure.WebJobs.Core/3.0.41": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-nNW4I8m5GEhOxxD/NVZGjT6ZARGSy7wi8q+ihvKDin4IY4zYLpTy/GakZeGgbi7vPxcPHL5Z65n9DAV+goasqA==",
+      "sha512": "sha512-VtmzMUEMhhY7+lxhXxphPbn/1du+QFKU+VtH3UHzmn/sS2JwXJNtQNk/SiC+wad69GSGzgKH5x1aN2qTnEXh+Q==",
       "path": "microsoft.azure.webjobs.core/3.0.41",
       "hashPath": "microsoft.azure.webjobs.core.3.0.41.nupkg.sha512"
     },
@@ -3709,7 +3733,7 @@
     "Microsoft.Azure.WebJobs.Script.Abstractions/1.0.4-preview": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-U/aVn/i0P9MdPsca9TrLmTlKuGOJ8okTdifrBeNviwd80Xbv/+dIM/GGReQXaVVtUM5/SlbUHRAhvA9w0yuEyA==",
+      "sha512": "sha512-+f2iWeAdES4X4HtvgWoIHPXfTxXeX7UlQDbWMkSuxWdt1vHVJf164IEUZxG7Gtfh42ircV9jy7F1zPhuaWNamQ==",
       "path": "microsoft.azure.webjobs.script.abstractions/1.0.4-preview",
       "hashPath": "microsoft.azure.webjobs.script.abstractions.1.0.4-preview.nupkg.sha512"
     },
@@ -4258,6 +4282,20 @@
       "sha512": "sha512-hyZ3H8HxtQPvipBPdkN6tJWSCvY06XVyLbKlHuJlPrlV/lQJ/QuEBKYTXqcSa21LE/Th4HV+Choxi8eTu74xyw==",
       "path": "opentelemetry.instrumentation.http/1.11.1",
       "hashPath": "opentelemetry.instrumentation.http.1.11.1.nupkg.sha512"
+    },
+    "OpenTelemetry.Instrumentation.Process/1.11.0-beta.2": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-XLLKYK9zRS3iT/GhkXRPKJUWzBxdqYEQ8zFyNxbnz3d5I8Wky/hqyIbWta9h6GmyXvqnJ2XT+pUYUf8gRukUwA==",
+      "path": "opentelemetry.instrumentation.process/1.11.0-beta.2",
+      "hashPath": "opentelemetry.instrumentation.process.1.11.0-beta.2.nupkg.sha512"
+    },
+    "OpenTelemetry.Instrumentation.Runtime/1.11.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-fSAeBd8SEiWGAeCV9+p4y3QaUEn+1qOhp+VEOAEIQl2lh2j5rUM0sPRiI6PBhPjmWRn+Cm6heqXx5dsQTpBBXw==",
+      "path": "opentelemetry.instrumentation.runtime/1.11.1",
+      "hashPath": "opentelemetry.instrumentation.runtime.1.11.1.nupkg.sha512"
     },
     "OpenTelemetry.PersistentStorage.Abstractions/1.0.1": {
       "type": "package",
@@ -5008,12 +5046,12 @@
       "path": "yarp.reverseproxy/2.0.1",
       "hashPath": "yarp.reverseproxy.2.0.1.nupkg.sha512"
     },
-    "Microsoft.Azure.WebJobs.Script/4.1040.100-pr.25224.15": {
+    "Microsoft.Azure.WebJobs.Script/4.1040.100-pr.25225.8": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
     },
-    "Microsoft.Azure.WebJobs.Script.Grpc/4.1040.100-pr.25224.15": {
+    "Microsoft.Azure.WebJobs.Script.Grpc/4.1040.100-pr.25225.8": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
