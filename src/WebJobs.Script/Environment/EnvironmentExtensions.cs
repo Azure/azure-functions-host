@@ -755,8 +755,8 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         public static bool IsInValidationMode(this IEnvironment environment)
         {
-            return string.Equals(environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsTargetGroup),
-                FunctionGroups.ValidationWorker, StringComparison.InvariantCultureIgnoreCase);
+            return environment.TryGetFunctionsTargetGroup(out string group)
+                && string.Equals(group, FunctionGroups.ValidationWorker, StringComparison.InvariantCultureIgnoreCase);
         }
     }
 }
