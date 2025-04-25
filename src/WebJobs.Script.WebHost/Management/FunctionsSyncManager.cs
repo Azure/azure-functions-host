@@ -92,9 +92,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
         }
 
-        public async Task<SyncTriggersResult> TrySyncTriggersAsync(bool isBackgroundSync = false)
+        public async Task<TriggersOperationResult> TrySyncTriggersAsync(bool isBackgroundSync = false)
         {
-            var result = new SyncTriggersResult
+            var result = new TriggersOperationResult
             {
                 Success = true
             };
@@ -110,8 +110,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             try
             {
                 await _syncSemaphore.WaitAsync();
-
-                PrepareSyncTriggers();
 
                 var hashBlobClient = await GetHashBlobAsync();
                 if (isBackgroundSync && hashBlobClient == null && !_environment.IsAnyKubernetesEnvironment())
@@ -308,6 +306,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         private async Task<SyncTriggersPayload> GetSyncTriggersPayload()
         {
+            PrepareSyncTriggers();
+
             var hostOptions = _applicationHostOptions.CurrentValue.ToHostOptions();
             var functionsMetadata = _functionMetadataManager.GetFunctionMetadata().Where(m => !m.IsProxy());
 
@@ -784,6 +784,26 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     return (false, message);
                 }
             }
+        }
+
+        public async Task<TriggersResult> GetTriggersAsync()
+        {
+            var result = new TriggersResult
+            {
+                Success = true
+            };
+
+            if (!IsSyncTriggersEnvironment(_webHostEnvironment, _environment))
+            {
+                result.Success = false;
+                result.Error = "Invalid environment for GetTriggers operation.";
+                _logger.LogWarning(result.Error);
+                return result;
+            }
+
+            var payload = await GetSyncTriggersPayload();
+            result.Content = payload.Content;
+            return result;
         }
 
         public void Dispose()
