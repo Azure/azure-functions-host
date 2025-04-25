@@ -266,6 +266,12 @@ namespace Microsoft.Azure.WebJobs.Script
 
             await base.StartAsyncCore(cancellationToken);
 
+            var methodCallHistory = _typeLocator.GetMethodsCalled();
+            foreach (var kvp in methodCallHistory)
+            {
+                _logger.LogInformation($"StartAsync> Method {kvp.Key} was called at: {string.Join(", ", kvp.Value.Select(g => g.ToString("yyyy-MM-dd HH:mm:ss.fff")))}");
+            }
+
             LogHostFunctionErrors();
         }
 
@@ -320,6 +326,8 @@ namespace Microsoft.Azure.WebJobs.Script
                 await InitializeFunctionDescriptorsAsync(functionMetadataList, workerRuntime, cancellationToken);
 
                 var filteredFunctionMetadata = functionMetadataList.Where(m => m.IsProxy() || !Utility.IsCodelessDotNetLanguageFunction(m));
+
+                _logger.LogInformation("InitializeAsync> Functions count: {0}", Functions.Count);
                 await _functionDispatcher.InitializeAsync(Utility.GetValidFunctions(filteredFunctionMetadata, Functions), cancellationToken);
 
                 GenerateFunctions();
@@ -523,6 +531,7 @@ namespace Microsoft.Azure.WebJobs.Script
             // generate the Type wrapper
             string typeName = string.Format(CultureInfo.InvariantCulture, "{0}.{1}", GeneratedTypeNamespace, GeneratedTypeName);
             Type functionWrapperType = FunctionGenerator.Generate(HostAssemblyName, typeName, typeAttributes, Functions);
+            _logger.LogInformation("Generated type '{0}'", functionWrapperType.FullName);
 
             // configure the Type locator
             var types = new HashSet<Type>
@@ -530,15 +539,33 @@ namespace Microsoft.Azure.WebJobs.Script
                 functionWrapperType
             };
 
+            _logger.LogInformation("GenerateFunctions> Functions count: {0}", Functions.Count);
             foreach (var descriptor in Functions)
             {
                 if (descriptor.Metadata.Properties.TryGetValue(ScriptConstants.FunctionMetadataDirectTypeKey, out Type type))
                 {
+                    _logger.LogInformation("Adding type '{0}' for function '{1}'", type.FullName, descriptor.Name);
                     types.Add(type);
+                }
+                else
+                {
+                    _logger.LogWarning("GenerateFunctions> Could not derive a type from Function '{0}'", descriptor.Name);
+                    var props = string.Join(",", descriptor.Metadata.Properties.Select(a => a.Key));
+                    var propValues = string.Join(",", descriptor.Metadata.Properties.Select(a => a.Value));
+                    _logger.LogWarning("Property Keys: {0}", props);
+                    _logger.LogWarning("Property values: {0}", propValues);
                 }
             }
 
+            _logger.LogInformation("GenerateFunctions> Invoking TypeLocator.SetTypes with types count: {0}", types.Count);
+
             _typeLocator.SetTypes(types);
+
+            var methodCallHistory = _typeLocator.GetMethodsCalled();
+            foreach (var kvp in methodCallHistory)
+            {
+                _logger.LogInformation($"GenerateFunctions> Method {kvp.Key} was called at: {string.Join(", ", kvp.Value.Select(g => g.ToString("yyyy-MM-dd HH:mm:ss.fff")))}");
+            }
         }
 
         /// <summary>
@@ -557,7 +584,10 @@ namespace Microsoft.Azure.WebJobs.Script
                 functions = await GetFunctionDescriptorsAsync(functionMetadata, _descriptorProviders, workerRuntime, cancellationToken);
                 _logger.DescriptorsCreated();
             }
+            _logger.LogInformation("InitializeFunctionDescriptorsAsync> FunctionDescriptors count: {0}", functions.Count);
+            _logger.LogInformation("InitializeFunctionDescriptorsAsync> 1. Functions count: {0}", Functions.Count);
             Functions = functions;
+            _logger.LogInformation("InitializeFunctionDescriptorsAsync> 2. Functions count: {0}", Functions.Count);
         }
 
         private void AddFunctionDescriptors(IEnumerable<FunctionMetadata> functionMetadata, string workerRuntime)
@@ -1046,6 +1076,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 var metadata = _metadataProvider.GetFunctionMetadata(function.Metadata.Name);
                 if (metadata != null)
                 {
+                    _logger.LogInformation("ApplyJobHostMetadata> Setting IsDisabled '{0}'for function {1}, {2}", metadata.IsDisabled, function.Name, function.Metadata.Name);
                     function.Metadata.SetIsDisabled(metadata.IsDisabled);
                 }
             }
