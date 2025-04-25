@@ -920,10 +920,6 @@
       "resolutionPolicy": "private"
     },
     {
-      "name": "OpenTelemetry.Exporter.Console",
-      "resolutionPolicy": "private"
-    },
-    {
       "name": "OpenTelemetry.Exporter.OpenTelemetryProtocol",
       "resolutionPolicy": "private"
     },
@@ -1549,10 +1545,6 @@
     },
     {
       "name": "System.Text.Encodings.Web",
-      "resolutionPolicy": "minorMatchOrLower"
-    },
-    {
-      "name": "System.Text.Json",
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
