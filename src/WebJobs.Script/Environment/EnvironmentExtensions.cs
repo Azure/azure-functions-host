@@ -11,6 +11,7 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using static Microsoft.Azure.WebJobs.Script.EnvironmentSettingNames;
+using static Microsoft.Azure.WebJobs.Script.Utility;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -19,8 +20,6 @@ namespace Microsoft.Azure.WebJobs.Script
         private static bool? isApplicationInsightsAgentEnabled;
 
         private static bool? isMultiLanguageEnabled;
-
-        private static bool? isAzureMonitorLogsSubscribed;
 
         internal static string BaseDirectory { get; set; }
 
@@ -69,26 +68,9 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <summary>
         /// Returns true if any Functions AzureMonitor log categories are enabled.
         /// </summary>
-        public static bool IsAzureMonitorEnabled(this IEnvironment environment, bool useCache=false)
+        public static bool IsAzureMonitorEnabled(this IEnvironment environment)
         {
-            string value = environment.GetEnvironmentVariable(AzureMonitorCategories);
-            if (value == null)
-            {
-                return true;
-            }
-            if (string.Equals(ScriptConstants.DefaultAzureMonitorCategories, value, StringComparison.Ordinal))
-            {
-                // Default value for the env variable is None.
-                // This is set when customer does not subscribe any category.
-                return false;
-            }
-            if (useCache && isAzureMonitorLogsSubscribed != null)
-            {
-                return isAzureMonitorLogsSubscribed.Value;
-            }
-            string[] categories = value.Split(',');
-            isAzureMonitorLogsSubscribed = categories.Contains(ScriptConstants.AzureMonitorTraceCategory);
-            return isAzureMonitorLogsSubscribed.Value;
+            return IsAzureMonitorLoggingEnabled(environment.GetEnvironmentVariable(AzureMonitorCategories));
         }
 
         /// <summary>
@@ -265,16 +247,6 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
-        /// Gets a value indicating whether the application is running in Legion.
-        /// </summary>
-        /// <param name="environment">The environment to verify.</param>
-        /// <returns><see cref="true"/> if running on legion, false otherwise.</returns>
-        public static bool IsLegionBasedSku(this IEnvironment environment)
-        {
-            return environment.IsFlexConsumptionSku() || environment.IsLinuxConsumptionOnLegion();
-        }
-
-        /// <summary>
         /// Returns true if the app is running on Virtual Machine Scale Sets (VMSS).
         /// </summary>
         public static bool IsVMSS(this IEnvironment environment)
@@ -360,7 +332,7 @@ namespace Microsoft.Azure.WebJobs.Script
                    string.IsNullOrEmpty(environment.GetEnvironmentVariable(LegionServiceHost));
         }
 
-        private static bool IsConsumptionOnLegion(this IEnvironment environment)
+        public static bool IsConsumptionOnLegion(this IEnvironment environment)
         {
             return !environment.IsAppService() &&
                    (!string.IsNullOrEmpty(environment.GetEnvironmentVariable(ContainerName)) ||

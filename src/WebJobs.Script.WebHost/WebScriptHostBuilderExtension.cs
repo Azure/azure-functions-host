@@ -5,8 +5,6 @@ using System;
 using System.Linq;
 using System.Net.Http;
 using System.Runtime.InteropServices;
-using Autofac.Core;
-using Google.Protobuf.WellKnownTypes;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Host.Executors;
@@ -34,6 +32,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using static Microsoft.Azure.WebJobs.Script.Utility;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -95,27 +94,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     loggingBuilder.AddWebJobsSystem<SystemLoggerProvider>();
                     if (environment.IsAzureMonitorEnabled())
                     {
-                        if (environment.IsLegionBasedSku())
+                        if (environment.IsConsumptionOnLegion())
                         {
                             loggingBuilder.Services.AddOptions<LoggerFilterOptions>()
                             .Configure<IConfiguration>((options, config) =>
                             {
-                                string setting = config[EnvironmentSettingNames.AzureMonitorCategories];
+                                string value = config[EnvironmentSettingNames.AzureMonitorCategories];
                                 options.AddFilter<AzureMonitorDiagnosticLoggerProvider>((category, level) =>
                                 {
-                                    if (setting == null)
-                                    {
-                                        return true;
-                                    }
-                                    string[] categories = setting.Split(',');
-                                    return categories.Contains(ScriptConstants.AzureMonitorTraceCategory);
+                                    return IsAzureMonitorLoggingEnabled(value);
                                 });
                             });
                         }
-                        else
-                        {
-                            loggingBuilder.Services.AddSingleton<ILoggerProvider, AzureMonitorDiagnosticLoggerProvider>();
-                        }
+                        loggingBuilder.Services.AddSingleton<ILoggerProvider, AzureMonitorDiagnosticLoggerProvider>();
                     }
 
                     if (!FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagDisableDiagnosticEventLogging))
