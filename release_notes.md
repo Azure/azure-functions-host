@@ -9,4 +9,6 @@
 - Avoid circular dependency when resolving LinuxContainerLegionMetricsPublisher. (#10991)
 - Add 'unix' to the list of runtimes kept when importing PowerShell worker for Linux builds
 - Update PowerShell 7.4 worker to 4.0.4206
+- Update Python Worker Version to [4.37.0](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.37.0)
+- Add runtime and process metrics. (#11034)
 - Bug fix that fails current executions when a worker channel restarts (#10979)

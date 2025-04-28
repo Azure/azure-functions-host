@@ -62,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             fileBase.Setup(f => f.ReadAllText(Path.Combine(rootScriptPath, "DNE", ScriptConstants.FunctionMetadataFileName))).Throws(new DirectoryNotFoundException());
 
             _functionsSyncManagerMock = new Mock<IFunctionsSyncManager>(MockBehavior.Strict);
-            _functionsSyncManagerMock.Setup(p => p.TrySyncTriggersAsync(false)).ReturnsAsync(new SyncTriggersResult { Success = true });
+            _functionsSyncManagerMock.Setup(p => p.TrySyncTriggersAsync(false)).ReturnsAsync(new TriggersOperationResult { Success = true });
 
             var hostManagerMock = new Mock<IScriptHostManager>(MockBehavior.Strict);
             hostManagerMock.SetupGet(p => p.State).Returns(ScriptHostState.Running);
