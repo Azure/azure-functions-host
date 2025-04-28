@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 {
-    internal static class RPCWorkerConfigsResolver
+    internal static class WorkerConfigurationResolver
     {
         internal static List<string> GetWorkerConfigs(List<string> probingPaths, string fallbackPath)
         {

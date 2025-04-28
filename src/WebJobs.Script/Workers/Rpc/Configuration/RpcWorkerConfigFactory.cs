@@ -89,7 +89,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             _logger.LogDebug("Workers Directory set to: probingPaths = { probingPaths} and fallback path = {WorkersDirPath}", probingPaths.ToString(), WorkersDirPath);
 
-            List<string> workerConfigs = RPCWorkerConfigsResolver.GetWorkerConfigs(probingPaths, WorkersDirPath);
+            List<string> workerConfigs = WorkerConfigurationResolver.GetWorkerConfigs(probingPaths, WorkersDirPath);
 
             foreach (var workerConfig in workerConfigs)
             {
@@ -335,7 +335,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         private List<string> GetWorkerProbingPaths()
         {
-            //var paths = get languageWorker section name and then ProbingPaths
+            //var paths = get languageWorker section name and then ProbingPaths based on SKU
 
             return ["C:\\testfolder\\workers"];
         }
