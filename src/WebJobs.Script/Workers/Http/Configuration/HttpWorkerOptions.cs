@@ -15,10 +15,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
         public int Port { get; set; }
 
-        // This is the legacy setting that rebuilds the HTTP request for forwrding
+        /// <summary>
+        /// Setting that enables the host to rebuild the initial invocation HTTP Request and send the copy to the worker process.
+        /// </summary>
         public bool EnableForwardingHttpRequest { get; set; }
 
-        // This uses YARP to forward the HTTP request
+        /// <summary>
+        /// Setting that enables YARP to proxy the invocation HTTP request to the worker process.
+        /// </summary>
         public bool EnableProxyingHttpRequest { get; set; }
 
         public TimeSpan InitializationTimeout { get; set; } = TimeSpan.FromSeconds(30);
