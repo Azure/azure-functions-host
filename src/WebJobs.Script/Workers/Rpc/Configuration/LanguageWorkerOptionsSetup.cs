@@ -4,6 +4,9 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
+using System.Text;
+using System.Text.Json;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Extensions.Configuration;
@@ -60,6 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             // Use the latest configuration from the ScriptHostManager if available.
             // After specialization, the ScriptHostManager will have the latest IConfiguration reflecting additional configuration entries added during specialization.
             var configuration = _configuration;
+
             if (_scriptHostManager is IServiceProvider scriptHostManagerServiceProvider)
             {
                 var latestConfiguration = scriptHostManagerServiceProvider.GetService<IConfiguration>();
@@ -72,8 +76,44 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 }
             }
 
+            var jsonString = ReadJsonFileAsString("C:\\testfolder\\test-config.json");
+            using var jsonStream = new MemoryStream(Encoding.UTF8.GetBytes(jsonString));
+
+            // Create a new configuration builder and add the JSON stream
+            configuration = new ConfigurationBuilder()
+                .AddConfiguration(configuration)
+                .AddJsonStream(jsonStream)
+                .Build();
+
             var configFactory = new RpcWorkerConfigFactory(configuration, _logger, SystemRuntimeInformation.Instance, _environment, _metricsLogger, _workerProfileManager);
             options.WorkerConfigs = configFactory.GetConfigs();
+        }
+
+        public string ReadJsonFileAsString(string filePath)
+        {
+            if (string.IsNullOrEmpty(filePath))
+            {
+                throw new ArgumentNullException(nameof(filePath), "File path cannot be null or empty.");
+            }
+
+            if (!File.Exists(filePath))
+            {
+                throw new FileNotFoundException($"The file at path '{filePath}' does not exist.");
+            }
+
+            string jsonString = File.ReadAllText(filePath);
+
+            var a = JsonDocument.Parse(jsonString);
+
+            string b, c = null;
+
+            if (_environment.IsWindowsConsumption())
+            {
+                b = a.RootElement.GetProperty("windowsConsumption").GetProperty("languageWorkers").GetProperty("probingPaths").ToString();
+                c = a.RootElement.GetProperty("windowsConsumption").ToString();
+            }
+
+            return c;
         }
     }
 

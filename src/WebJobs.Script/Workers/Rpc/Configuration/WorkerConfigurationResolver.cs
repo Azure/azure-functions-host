@@ -16,6 +16,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             // Dict of language-name : workerConfig
             ConcurrentDictionary<string, string> outputDict = new ConcurrentDictionary<string, string>();
 
+            //if not dotnet-isolated -- it will always be read from fallback path
+
             // check worker release channel
             string releaseChannel = Utility.GetPlatformReleaseChannel(environment);
 
@@ -29,7 +31,17 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 {
                     var workerVersions = Directory.EnumerateDirectories(languageWorkerPath);
 
-                    workerVersions.OrderDescending();
+                    var versions = new List<Version>();
+                    foreach (var v in workerVersions)
+                    {
+                        string versionFolder = Path.GetFileName(v);
+                        if (Version.TryParse(versionFolder, out Version version))
+                        {
+                            versions.Add(version);
+                        }
+                    }
+
+                    versions.OrderDescending();
 
                     int found = 0;
 
@@ -39,9 +51,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                     }
 
                     // language worker version
-                    foreach (var versionFolder in workerVersions)
+                    foreach (var versionFolder in versions)
                     {
-                        string workerConfigPath = Path.Combine(versionFolder, RpcWorkerConstants.WorkerConfigFileName);
+                        string workerConfigPath = Path.Combine(languageWorkerPath, versionFolder.ToString(), RpcWorkerConstants.WorkerConfigFileName);
                         if (File.Exists(workerConfigPath))
                         {
                             // static capability resolution
@@ -83,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 }
             }
 
-            return (List<string>)outputDict.Values;
+            return outputDict.Values.ToList();
         }
 
         private static HashSet<string> GetHostCapabilities()

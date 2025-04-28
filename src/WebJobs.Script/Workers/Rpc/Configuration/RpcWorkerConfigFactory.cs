@@ -386,9 +386,22 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         private List<string> GetWorkerProbingPaths(IConfiguration config)
         {
-            //var paths = get languageWorker section name and then ProbingPaths based on SKU
+            List<string> probingPaths = new List<string>();
 
-            return ["C:\\testfolder\\workers"];
+            var a = config.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}");
+            var b = a.GetSection("probingPaths");
+            var c = b.AsEnumerable();
+
+            for(int i=0; i< c.Count(); i++)
+            {
+                var n = b.GetSection($"{i}").Value;
+                if (n is not null)
+                {
+                    probingPaths.Add(n);
+                }
+            }
+            //var paths = get languageWorker section name and then ProbingPaths based on SKU
+            return probingPaths;
         }
 
         private bool AreProbingPathsEnabled()
