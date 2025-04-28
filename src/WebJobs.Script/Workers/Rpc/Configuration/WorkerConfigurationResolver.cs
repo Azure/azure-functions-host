@@ -1,17 +1,31 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 {
     internal static class WorkerConfigurationResolver
     {
-        internal static List<string> GetWorkerConfigs(List<string> probingPaths, string fallbackPath, IEnvironment environment)
+        internal static List<string> GetWorkerConfigs(
+            List<string> probingPaths,
+            string fallbackPath,
+            IEnvironment environment,
+            JsonSerializerOptions _jsonSerializerOptions,
+            IWorkerProfileManager _profileManager,
+            IConfiguration _config,
+            ILogger _logger
+            )
         {
             // Dict of language-name : workerConfig
             ConcurrentDictionary<string, string> outputDict = new ConcurrentDictionary<string, string>();
@@ -57,7 +71,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                         if (File.Exists(workerConfigPath))
                         {
                             // static capability resolution
-                            if (IsCompatibleWithHost(hostCapabilites, workerConfigPath))
+                            if (IsCompatibleWithHost(
+                                hostCapabilites,
+                                workerConfigPath,
+                                _jsonSerializerOptions,
+                                Path.Combine(languageWorkerPath, versionFolder.ToString()),
+                                _profileManager,
+                                _config,
+                                _logger))
                             {
                                 found++;
                                 outputDict[languageWorkerPath] = workerConfigPath;
@@ -105,11 +126,52 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             return hostCapabilites;
         }
 
-        private static bool IsCompatibleWithHost(HashSet<string> hostCapabilities, string workerConfigPath)
+        private static bool IsCompatibleWithHost(
+            HashSet<string> hostCapabilities,
+            string workerConfigPath,
+            JsonSerializerOptions _jsonSerializerOptions,
+            string workerDir,
+            IWorkerProfileManager _profileManager,
+            IConfiguration _config,
+            ILogger _logger)
         {
+            var workerConfig = WorkerConfigurationHelper.GetWorkerConfigJsonElement(workerConfigPath);
+
+            HashSet<string> n = new HashSet<string>();
+
             // Read worker config section = capabilities as HashSet
+            var a = workerConfig.GetProperty("hostRequirements");
+
+            var b = a.EnumerateArray();
+
+            foreach (var k in b)
+            {
+                var m = k.GetString();
+                n.Add(m);
+            }
+
+            foreach (var l in n)
+            {
+                if (!hostCapabilities.Contains(l))
+                {
+                    return false;
+                }
+            }
 
             // profiles evaluation
+
+            RpcWorkerDescription workerDescription = WorkerConfigurationHelper.GetWorkerDescription(
+                workerConfig,
+                _jsonSerializerOptions,
+                workerDir,
+                _profileManager,
+                _config,
+                _logger);
+
+            if (workerDescription.IsDisabled == true)
+            {
+                return false;
+            }
 
             return true;
         }
