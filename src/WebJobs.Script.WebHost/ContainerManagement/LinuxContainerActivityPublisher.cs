@@ -14,7 +14,7 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
 {
-    public class LinuxContainerActivityPublisher : IHostedService, IDisposable, ILinuxContainerActivityPublisher
+    public sealed class LinuxContainerActivityPublisher : IHostedService, IAsyncDisposable, ILinuxContainerActivityPublisher
     {
         public const string SpecializationCompleteEvent = "SpecializationCompleted";
         private const int InitialFlushIntervalMs = 5 * 1000; // 5 seconds
@@ -30,9 +30,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
         private readonly HashSet<ContainerFunctionExecutionActivity> _uniqueActivities;
         private IDisposable _standbyOptionsOnChangeSubscription;
         private DateTime _lastHeartBeatTime = DateTime.MinValue;
-        private Timer _timer;
         private int _flushInProgress;
         private bool _initialPublish;
+        private CancellationTokenSource _publishingCts;
+        private Task _publishingTask;
 
         public LinuxContainerActivityPublisher(IOptionsMonitor<StandbyOptions> standbyOptions,
             IMeshServiceClient meshServiceClient, IEnvironment environment,
@@ -49,7 +50,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
             _logger = logger;
             _flushIntervalMs = flushIntervalMs;
             _initialFlushIntervalMs = initialFlushIntervalMs;
-            _timer = new Timer(OnTimer, null, Timeout.Infinite, Timeout.Infinite);
             _uniqueActivities = new HashSet<ContainerFunctionExecutionActivity>();
             _flushInProgress = 0;
             _initialPublish = true;
@@ -59,8 +59,47 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
         {
             _logger.LogInformation($"Starting {nameof(LinuxContainerActivityPublisher)}");
 
-            // start the timer by setting the due time
-            SetTimerInterval(_initialFlushIntervalMs);
+            _publishingTask = StartPublishingAsync();
+        }
+
+        private async Task StartPublishingAsync()
+        {
+            _publishingCts = new CancellationTokenSource();
+
+            try
+            {
+                while (!_publishingCts.IsCancellationRequested)
+                {
+                    try
+                    {
+                        var nextFlushDelay = _flushIntervalMs;
+
+                        if (_initialPublish)
+                        {
+                            _initialPublish = false;
+                            await PublishSpecializationCompleteEvent();
+
+                            nextFlushDelay -= _initialFlushIntervalMs;
+                        }
+                        else
+                        {
+                            await FlushFunctionExecutionActivities();
+                        }
+
+                        await Task.Delay(nextFlushDelay, _publishingCts.Token);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex,$"Error in {nameof(LinuxContainerActivityPublisher)} publishing loop.");
+                    }
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected in normal termination flow
+            }
+
+            _logger.LogInformation($"{nameof(LinuxContainerActivityPublisher)} publishing loop completed.");
         }
 
         private void OnStandbyOptionsChange()
@@ -94,25 +133,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
         {
             _logger.LogInformation($"Stopping {nameof(LinuxContainerActivityPublisher)}");
 
-            // stop the timer if it has been started
-            _timer?.Change(Timeout.Infinite, Timeout.Infinite);
+            _publishingCts.Cancel();
 
             return Task.CompletedTask;
-        }
-
-        private async void OnTimer(object state)
-        {
-            if (_initialPublish)
-            {
-                _initialPublish = false;
-                await PublishSpecializationCompleteEvent();
-                SetTimerInterval(_flushIntervalMs - _initialFlushIntervalMs);
-            }
-            else
-            {
-                await FlushFunctionExecutionActivities();
-                SetTimerInterval(_flushIntervalMs);
-            }
         }
 
         private async Task PublishSpecializationCompleteEvent()
@@ -169,81 +192,72 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
             }
         }
 
-        private void SetTimerInterval(int dueTime)
-        {
-            var timer = _timer;
-            try
-            {
-                timer?.Change(dueTime, Timeout.Infinite);
-            }
-            catch (ObjectDisposedException)
-            {
-                // might race with dispose
-            }
-            catch (Exception e)
-            {
-                _logger.LogError(e, nameof(SetTimerInterval));
-            }
-        }
-
-        public void Dispose()
-        {
-            if (_timer != null)
-            {
-                _timer?.Dispose();
-                _timer = null;
-            }
-        }
-
         private bool PublishActivity(ContainerFunctionExecutionActivity activity)
         {
-            if (_activitiesLock.TryEnterWriteLock(LockTimeOutMs))
+            if (!_activitiesLock.TryEnterWriteLock(LockTimeOutMs))
             {
-                try
-                {
-                    _uniqueActivities.Add(activity);
-                }
-                finally
-                {
-                    _activitiesLock.ExitWriteLock();
-                }
-                return true;
+                return false;
             }
 
-            return false;
+            try
+            {
+                _uniqueActivities.Add(activity);
+            }
+            finally
+            {
+                _activitiesLock.ExitWriteLock();
+            }
+
+            return true;
         }
 
         private bool TryGetCurrentActivities(IList<ContainerFunctionExecutionActivity> currentActivities)
         {
-            if (_activitiesLock.TryEnterWriteLock(LockTimeOutMs))
+            if (!_activitiesLock.TryEnterWriteLock(LockTimeOutMs))
             {
-                try
-                {
-                    foreach (var activity in _uniqueActivities)
-                    {
-                        currentActivities.Add(activity);
-                    }
-                    _uniqueActivities.Clear();
-                }
-                finally
-                {
-                    _activitiesLock.ExitWriteLock();
-                }
-                return true;
+                return false;
             }
 
-            return false;
+            try
+            {
+                foreach (var activity in _uniqueActivities)
+                {
+                    currentActivities.Add(activity);
+                }
+
+                _uniqueActivities.Clear();
+            }
+            finally
+            {
+                _activitiesLock.ExitWriteLock();
+            }
+            return true;
         }
 
         public void PublishFunctionExecutionActivity(ContainerFunctionExecutionActivity activity)
         {
-            if (!_standbyOptions.CurrentValue.InStandbyMode)
+            if (_standbyOptions.CurrentValue.InStandbyMode)
             {
-                if (!PublishActivity(activity))
-                {
-                    _logger.LogWarning($"Failed to add activity {activity}");
-                }
+                return;
             }
+
+            if (!PublishActivity(activity))
+            {
+                _logger.LogWarning($"Failed to add activity {activity}");
+            }
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            // Wait for the publishing task to complete
+            if (_publishingTask != null)
+            {
+                await _publishingTask;
+            }
+
+            _activitiesLock?.Dispose();
+            _standbyOptionsOnChangeSubscription?.Dispose();
+            _publishingCts?.Dispose();
         }
     }
 }
