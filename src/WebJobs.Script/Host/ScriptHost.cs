@@ -330,9 +330,24 @@ namespace Microsoft.Azure.WebJobs.Script
                 _logger.LogInformation("InitializeAsync> Functions count: {0}", Functions.Count);
                 await _functionDispatcher.InitializeAsync(Utility.GetValidFunctions(filteredFunctionMetadata, Functions), cancellationToken);
 
+                foreach (var function in Functions)
+                {
+                    LogFunction(function);
+                }
+
                 GenerateFunctions();
                 ScheduleFileSystemCleanup();
             }
+        }
+
+        private void LogFunction(FunctionDescriptor functionDescriptor)
+        {
+            var details = $"{functionDescriptor.Name}: ";
+
+            details += "; Metadata.InputBindings:" + string.Join(",", functionDescriptor.Metadata?.InputBindings.Select(b => b.Name + ": " + b.Raw));
+            details += "; Metadata.OutputBindings:" + string.Join(",", functionDescriptor.Metadata?.OutputBindings.Select(b => b.Name + ": " + b.Raw));
+
+            _logger.LogInformation($"Function: {details}");
         }
 
         /// <summary>
@@ -531,7 +546,10 @@ namespace Microsoft.Azure.WebJobs.Script
             // generate the Type wrapper
             string typeName = string.Format(CultureInfo.InvariantCulture, "{0}.{1}", GeneratedTypeNamespace, GeneratedTypeName);
             Type functionWrapperType = FunctionGenerator.Generate(HostAssemblyName, typeName, typeAttributes, Functions);
-            _logger.LogInformation("Generated type '{0}'", functionWrapperType.FullName);
+            _logger.LogInformation("GenerateFunctions> Generated type '{0}'", functionWrapperType.FullName);
+
+            var methods = functionWrapperType.GetMethods(BindingFlags.Public | BindingFlags.Static).Select(a => a.Name).ToArray();
+            _logger.LogInformation("GenerateFunctions> Methods '{0}'", string.Join(",", methods));
 
             // configure the Type locator
             var types = new HashSet<Type>
