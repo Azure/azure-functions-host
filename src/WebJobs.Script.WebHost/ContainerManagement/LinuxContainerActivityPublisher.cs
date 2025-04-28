@@ -90,7 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex,$"Error in {nameof(LinuxContainerActivityPublisher)} publishing loop.");
+                        _logger.LogError(ex, $"Error in {nameof(LinuxContainerActivityPublisher)} publishing loop.");
                     }
                 }
             }
@@ -249,6 +249,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
 
         public async ValueTask DisposeAsync()
         {
+            if (_publishingCts is { IsCancellationRequested: false })
+            {
+                await _publishingCts.CancelAsync();
+            }
+
             // Wait for the publishing task to complete
             if (_publishingTask != null)
             {
