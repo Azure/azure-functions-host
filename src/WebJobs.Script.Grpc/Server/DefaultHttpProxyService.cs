@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -12,6 +13,7 @@ using Microsoft.Azure.WebJobs.Script.Grpc.Exceptions;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.Logging;
 using Yarp.ReverseProxy.Forwarder;
+using static Microsoft.Azure.AppService.Proxy.Common.Debug.DebugLogHelper;
 
 namespace Microsoft.Azure.WebJobs.Script.Grpc
 {
@@ -99,7 +101,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             string invocationId = context.ExecutionContext.InvocationId.ToString();
 
             // add invocation id as correlation id, override existing header if present
-            httpRequest.Headers[ScriptConstants.HttpProxyCorrelationHeader] = invocationId;
+            httpRequest.Headers[ScriptConstants.HttpProxyCorrelationHeader] = context.ExecutionContext.InvocationId.ToString();
 
             var forwardingTask = _httpForwarder.SendAsync(httpContext, httpUri.ToString(), _messageInvoker, _forwarderRequestConfig).AsTask();
             context.Properties[ScriptConstants.HttpProxyTask] = forwardingTask;
