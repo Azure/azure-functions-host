@@ -12,9 +12,11 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
+using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Net.Http.Headers;
@@ -39,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
         private int _defaultPort = 8090;
         private TestLogger _testLogger = new TestLogger("ServiceLogger");
         private TestLogger _functionLogger = new TestLogger(TestFunctionName);
-        private Mock<IHttpProxyService> mockHttpProxyService;
+        private Mock<IHttpProxyService> _mockHttpProxyService;
 
         public DefaultHttpWorkerServiceTests()
         {
@@ -55,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
             {
                 FunctionTimeout = TimeSpan.FromMinutes(15)
             };
-            mockHttpProxyService = new Mock<IHttpProxyService>(MockBehavior.Strict);
+            _mockHttpProxyService = new Mock<IHttpProxyService>(MockBehavior.Strict);
         }
 
         public static IEnumerable<object[]> TestLogs
@@ -79,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
                 .ReturnsAsync(HttpWorkerTestUtilities.GetValidHttpResponseMessage());
 
             _httpClient = new HttpClient(handlerMock.Object);
-            _defaultHttpWorkerService = new DefaultHttpWorkerService(_httpClient, new OptionsWrapper<HttpWorkerOptions>(_httpWorkerOptions), _testLogger, _testEnvironment, new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), mockHttpProxyService.Object);
+            _defaultHttpWorkerService = new DefaultHttpWorkerService(_httpClient, new OptionsWrapper<HttpWorkerOptions>(_httpWorkerOptions), _testLogger, _testEnvironment, new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), _mockHttpProxyService.Object);
             Assert.Equal(_httpClient.Timeout, _scriptJobHostOptions.FunctionTimeout.Value.Add(TimeSpan.FromMinutes(1)));
             var testScriptInvocationContext = HttpWorkerTestUtilities.GetScriptInvocationContext(TestFunctionName, _testInvocationId, _functionLogger);
             await _defaultHttpWorkerService.ProcessDefaultInvocationRequest(testScriptInvocationContext);
@@ -110,7 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
                 .ReturnsAsync(HttpWorkerTestUtilities.GetValidHttpResponseMessageWithJsonRes());
 
             _httpClient = new HttpClient(handlerMock.Object);
-            _defaultHttpWorkerService = new DefaultHttpWorkerService(_httpClient, new OptionsWrapper<HttpWorkerOptions>(customHandlerOptions), _testLogger, _testEnvironment, new OptionsWrapper<ScriptJobHostOptions>(scriptJobHostOptionsNoTimeout), mockHttpProxyService.Object);
+            _defaultHttpWorkerService = new DefaultHttpWorkerService(_httpClient, new OptionsWrapper<HttpWorkerOptions>(customHandlerOptions), _testLogger, _testEnvironment, new OptionsWrapper<ScriptJobHostOptions>(scriptJobHostOptionsNoTimeout), _mockHttpProxyService.Object);
             Assert.Equal(_httpClient.Timeout, TimeSpan.FromMilliseconds(int.MaxValue));
             var testScriptInvocationContext = HttpWorkerTestUtilities.GetSimpleHttpTriggerScriptInvocationContext(TestFunctionName, _testInvocationId, _functionLogger);
             await _defaultHttpWorkerService.InvokeAsync(testScriptInvocationContext);
@@ -142,7 +144,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
                 .ReturnsAsync(HttpWorkerTestUtilities.GetValidHttpResponseMessage_DataType_Binary_Data());
 
             _httpClient = new HttpClient(handlerMock.Object);
-            _defaultHttpWorkerService = new DefaultHttpWorkerService(_httpClient, new OptionsWrapper<HttpWorkerOptions>(_httpWorkerOptions), _testLogger, _testEnvironment, new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), mockHttpProxyService.Object);
+            _defaultHttpWorkerService = new DefaultHttpWorkerService(_httpClient, new OptionsWrapper<HttpWorkerOptions>(_httpWorkerOptions), _testLogger, _testEnvironment, new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), _mockHttpProxyService.Object);
             var testScriptInvocationContext = HttpWorkerTestUtilities.GetScriptInvocationContext(TestFunctionName, _testInvocationId, _functionLogger, WebJobs.Script.Description.DataType.Binary);
             await _defaultHttpWorkerService.ProcessDefaultInvocationRequest(testScriptInvocationContext);
             var invocationResult = await testScriptInvocationContext.ResultSource.Task;
@@ -178,7 +180,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
                 .ReturnsAsync(HttpWorkerTestUtilities.GetValidHttpResponseMessage_Binary_Data());
 
             _httpClient = new HttpClient(handlerMock.Object);
-            _defaultHttpWorkerService = new DefaultHttpWorkerService(_httpClient, new OptionsWrapper<HttpWorkerOptions>(_httpWorkerOptions), _testLogger, _testEnvironment, new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), mockHttpProxyService.Object);
+            _defaultHttpWorkerService = new DefaultHttpWorkerService(_httpClient, new OptionsWrapper<HttpWorkerOptions>(_httpWorkerOptions), _testLogger, _testEnvironment, new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), _mockHttpProxyService.Object);
             var testScriptInvocationContext = HttpWorkerTestUtilities.GetScriptInvocationContext(TestFunctionName, _testInvocationId, _functionLogger);
             await _defaultHttpWorkerService.ProcessDefaultInvocationRequest(testScriptInvocationContext);
             var invocationResult = await testScriptInvocationContext.ResultSource.Task;
@@ -216,7 +218,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
                 .ReturnsAsync(HttpWorkerTestUtilities.GetSimpleNotFoundHttpResponseMessage());
 
             _httpClient = new HttpClient(handlerMock.Object);
-            _defaultHttpWorkerService = new DefaultHttpWorkerService(_httpClient, new OptionsWrapper<HttpWorkerOptions>(_httpWorkerOptions), _testLogger, _testEnvironment, new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), mockHttpProxyService.Object);
+            _defaultHttpWorkerService = new DefaultHttpWorkerService(_httpClient, new OptionsWrapper<HttpWorkerOptions>(_httpWorkerOptions), _testLogger, _testEnvironment, new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), _mockHttpProxyService.Object);
             await _defaultHttpWorkerService.PingAsync();
             handlerMock.VerifyAll();
         }
@@ -233,7 +235,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
                 .ReturnsAsync(HttpWorkerTestUtilities.GetValidSimpleHttpResponseMessage());
 
             _httpClient = new HttpClient(handlerMock.Object);
-            _defaultHttpWorkerService = new DefaultHttpWorkerService(_httpClient, new OptionsWrapper<HttpWorkerOptions>(_httpWorkerOptions), _testLogger, _testEnvironment, new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), mockHttpProxyService.Object);
+            _defaultHttpWorkerService = new DefaultHttpWorkerService(_httpClient, new OptionsWrapper<HttpWorkerOptions>(_httpWorkerOptions), _testLogger, _testEnvironment, new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), _mockHttpProxyService.Object);
             var testScriptInvocationContext = HttpWorkerTestUtilities.GetSimpleHttpTriggerScriptInvocationContext(TestFunctionName, _testInvocationId, _functionLogger);
             await _defaultHttpWorkerService.ProcessHttpInAndOutInvocationRequest(testScriptInvocationContext);
             var invocationResult = await testScriptInvocationContext.ResultSource.Task;
@@ -271,7 +273,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
                 .ReturnsAsync(HttpWorkerTestUtilities.GetValidSimpleHttpResponseMessage());
 
             _httpClient = new HttpClient(handlerMock.Object);
-            _defaultHttpWorkerService = new DefaultHttpWorkerService(_httpClient, new OptionsWrapper<HttpWorkerOptions>(customHandlerOptions), _testLogger, _testEnvironment, new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), mockHttpProxyService.Object);
+            _defaultHttpWorkerService = new DefaultHttpWorkerService(_httpClient, new OptionsWrapper<HttpWorkerOptions>(customHandlerOptions), _testLogger, _testEnvironment, new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), _mockHttpProxyService.Object);
             var testScriptInvocationContext = HttpWorkerTestUtilities.GetSimpleHttpTriggerScriptInvocationContext(TestFunctionName, _testInvocationId, _functionLogger);
             await _defaultHttpWorkerService.InvokeAsync(testScriptInvocationContext);
             var invocationResult = await testScriptInvocationContext.ResultSource.Task;
@@ -302,7 +304,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
             {
                 Port = 8080,
             };
-            DefaultHttpWorkerService defaultHttpWorkerService = new DefaultHttpWorkerService(new HttpClient(), new OptionsWrapper<HttpWorkerOptions>(testOptions), _testLogger, _testEnvironment, new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), mockHttpProxyService.Object);
+            DefaultHttpWorkerService defaultHttpWorkerService = new DefaultHttpWorkerService(new HttpClient(), new OptionsWrapper<HttpWorkerOptions>(testOptions), _testLogger, _testEnvironment, new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), _mockHttpProxyService.Object);
             Assert.Equal(expectedUriString, defaultHttpWorkerService.BuildAndGetUri(pathValue));
         }
 
@@ -310,7 +312,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
         public void AddHeadersTest()
         {
             HttpWorkerOptions testOptions = new HttpWorkerOptions();
-            DefaultHttpWorkerService defaultHttpWorkerService = new DefaultHttpWorkerService(new HttpClient(), new OptionsWrapper<HttpWorkerOptions>(testOptions), _testLogger, _testEnvironment, new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), mockHttpProxyService.Object);
+            DefaultHttpWorkerService defaultHttpWorkerService = new DefaultHttpWorkerService(new HttpClient(), new OptionsWrapper<HttpWorkerOptions>(testOptions), _testLogger, _testEnvironment, new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), _mockHttpProxyService.Object);
             HttpRequestMessage input = new HttpRequestMessage();
             string invocationId = Guid.NewGuid().ToString();
 
@@ -334,7 +336,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
                 });
 
             _httpClient = new HttpClient(handlerMock.Object);
-            _defaultHttpWorkerService = new DefaultHttpWorkerService(_httpClient, new OptionsWrapper<HttpWorkerOptions>(_httpWorkerOptions), _testLogger, _testEnvironment, new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), mockHttpProxyService.Object);
+            _defaultHttpWorkerService = new DefaultHttpWorkerService(_httpClient, new OptionsWrapper<HttpWorkerOptions>(_httpWorkerOptions), _testLogger, _testEnvironment, new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), _mockHttpProxyService.Object);
             var testScriptInvocationContext = HttpWorkerTestUtilities.GetSimpleHttpTriggerScriptInvocationContext(TestFunctionName, _testInvocationId, _functionLogger);
             await _defaultHttpWorkerService.ProcessHttpInAndOutInvocationRequest(testScriptInvocationContext);
             var invocationResult = await testScriptInvocationContext.ResultSource.Task;
@@ -366,7 +368,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
                 .ReturnsAsync(HttpWorkerTestUtilities.GetHttpResponseMessageWithJsonContent());
 
             _httpClient = new HttpClient(handlerMock.Object);
-            _defaultHttpWorkerService = new DefaultHttpWorkerService(_httpClient, new OptionsWrapper<HttpWorkerOptions>(_httpWorkerOptions), _testLogger, _testEnvironment, new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), mockHttpProxyService.Object);
+            _defaultHttpWorkerService = new DefaultHttpWorkerService(_httpClient, new OptionsWrapper<HttpWorkerOptions>(_httpWorkerOptions), _testLogger, _testEnvironment, new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), _mockHttpProxyService.Object);
             var testScriptInvocationContext = HttpWorkerTestUtilities.GetScriptInvocationContext(TestFunctionName, _testInvocationId, _functionLogger);
             await _defaultHttpWorkerService.ProcessDefaultInvocationRequest(testScriptInvocationContext);
             var invocationResult = await testScriptInvocationContext.ResultSource.Task;
@@ -386,7 +388,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
                 .ReturnsAsync(HttpWorkerTestUtilities.GetValidHttpResponseMessage_JsonType_InvalidContent());
 
             _httpClient = new HttpClient(handlerMock.Object);
-            _defaultHttpWorkerService = new DefaultHttpWorkerService(_httpClient, new OptionsWrapper<HttpWorkerOptions>(_httpWorkerOptions), _testLogger, _testEnvironment, new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), mockHttpProxyService.Object);
+            _defaultHttpWorkerService = new DefaultHttpWorkerService(_httpClient, new OptionsWrapper<HttpWorkerOptions>(_httpWorkerOptions), _testLogger, _testEnvironment, new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), _mockHttpProxyService.Object);
             var testScriptInvocationContext = HttpWorkerTestUtilities.GetScriptInvocationContext(TestFunctionName, _testInvocationId, _functionLogger);
             await _defaultHttpWorkerService.ProcessDefaultInvocationRequest(testScriptInvocationContext);
             InvalidOperationException recodedEx = await Assert.ThrowsAsync<InvalidOperationException>(async () => await testScriptInvocationContext.ResultSource.Task);
@@ -406,7 +408,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
                 .ReturnsAsync(HttpWorkerTestUtilities.GetHttpResponseMessageWithStringContent());
 
             _httpClient = new HttpClient(handlerMock.Object);
-            _defaultHttpWorkerService = new DefaultHttpWorkerService(_httpClient, new OptionsWrapper<HttpWorkerOptions>(_httpWorkerOptions), _testLogger, _testEnvironment, new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), mockHttpProxyService.Object);
+            _defaultHttpWorkerService = new DefaultHttpWorkerService(_httpClient, new OptionsWrapper<HttpWorkerOptions>(_httpWorkerOptions), _testLogger, _testEnvironment, new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), _mockHttpProxyService.Object);
             var testScriptInvocationContext = HttpWorkerTestUtilities.GetScriptInvocationContext(TestFunctionName, _testInvocationId, _testLogger);
             await _defaultHttpWorkerService.ProcessDefaultInvocationRequest(testScriptInvocationContext);
             InvalidOperationException recodedEx = await Assert.ThrowsAsync<InvalidOperationException>(async () => await testScriptInvocationContext.ResultSource.Task);
@@ -428,7 +430,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
                 });
 
             _httpClient = new HttpClient(handlerMock.Object);
-            _defaultHttpWorkerService = new DefaultHttpWorkerService(_httpClient, new OptionsWrapper<HttpWorkerOptions>(_httpWorkerOptions), _testLogger, _testEnvironment, new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), mockHttpProxyService.Object);
+            _defaultHttpWorkerService = new DefaultHttpWorkerService(_httpClient, new OptionsWrapper<HttpWorkerOptions>(_httpWorkerOptions), _testLogger, _testEnvironment, new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), _mockHttpProxyService.Object);
             var testScriptInvocationContext = HttpWorkerTestUtilities.GetScriptInvocationContext(TestFunctionName, _testInvocationId, _testLogger);
             await _defaultHttpWorkerService.ProcessDefaultInvocationRequest(testScriptInvocationContext);
             await Assert.ThrowsAsync<HttpRequestException>(async () => await testScriptInvocationContext.ResultSource.Task);
@@ -447,7 +449,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
                 .ReturnsAsync(HttpWorkerTestUtilities.GetValidHttpResponseMessage());
 
             _httpClient = new HttpClient(handlerMock.Object);
-            _defaultHttpWorkerService = new DefaultHttpWorkerService(_httpClient, new OptionsWrapper<HttpWorkerOptions>(_httpWorkerOptions), _testLogger, _testEnvironment, new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), mockHttpProxyService.Object);
+            _defaultHttpWorkerService = new DefaultHttpWorkerService(_httpClient, new OptionsWrapper<HttpWorkerOptions>(_httpWorkerOptions), _testLogger, _testEnvironment, new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), _mockHttpProxyService.Object);
             _defaultHttpWorkerService.ProcessLogsFromHttpResponse(HttpWorkerTestUtilities.GetScriptInvocationContext(TestFunctionName, _testInvocationId, _functionLogger), httpScriptInvocationResult);
             var testLogs = _functionLogger.GetLogMessages();
             if (httpScriptInvocationResult.Logs != null && httpScriptInvocationResult.Logs.Any())
@@ -474,7 +476,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
                 Type = type,
                 EnableForwardingHttpRequest = enableForwardingHttpRequest,
             };
-            DefaultHttpWorkerService defaultHttpWorkerService = new DefaultHttpWorkerService(new HttpClient(), new OptionsWrapper<HttpWorkerOptions>(testOptions), _testLogger, _testEnvironment, new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), mockHttpProxyService.Object);
+            DefaultHttpWorkerService defaultHttpWorkerService = new DefaultHttpWorkerService(new HttpClient(), new OptionsWrapper<HttpWorkerOptions>(testOptions), _testLogger, _testEnvironment, new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), _mockHttpProxyService.Object);
             string actualValue = defaultHttpWorkerService.GetPathValue(testOptions, functionName, testHttpRequest);
             Assert.Equal(actualValue, expectedValue);
         }
@@ -491,7 +493,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
                 .Throws(new HttpRequestException("Invalid http worker service", new SocketException()));
 
             _httpClient = new HttpClient(handlerMock.Object);
-            _defaultHttpWorkerService = new DefaultHttpWorkerService(_httpClient, new OptionsWrapper<HttpWorkerOptions>(_httpWorkerOptions), _testLogger, _testEnvironment, new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), mockHttpProxyService.Object);
+            _defaultHttpWorkerService = new DefaultHttpWorkerService(_httpClient, new OptionsWrapper<HttpWorkerOptions>(_httpWorkerOptions), _testLogger, _testEnvironment, new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), _mockHttpProxyService.Object);
 
             bool workerReady = await _defaultHttpWorkerService.IsWorkerReady(CancellationToken.None);
             Assert.False(workerReady);
@@ -512,10 +514,126 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
                 .ReturnsAsync(HttpWorkerTestUtilities.GetValidHttpResponseMessage());
 
             _httpClient = new HttpClient(handlerMock.Object);
-            _defaultHttpWorkerService = new DefaultHttpWorkerService(_httpClient, new OptionsWrapper<HttpWorkerOptions>(_httpWorkerOptions), _testLogger, _testEnvironment, new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), mockHttpProxyService.Object);
+            _defaultHttpWorkerService = new DefaultHttpWorkerService(_httpClient, new OptionsWrapper<HttpWorkerOptions>(_httpWorkerOptions), _testLogger, _testEnvironment, new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), _mockHttpProxyService.Object);
 
             bool workerReady = await _defaultHttpWorkerService.IsWorkerReady(CancellationToken.None);
             Assert.True(workerReady);
+        }
+
+        [Fact]
+        public async Task ProxyInvocationRequest_Success()
+        {
+            var testUri = new Uri("http://localhost:7071/api/test");
+            var testInvocationId = Guid.NewGuid();
+            var testFunctionName = "TestFunction";
+
+            // When there is a simple HttpTrigger and EnableHttpProxyingRequest is set to true proxy, proxying service should be called and invocation result set to true upon completion
+            var testScriptInvocationContext = HttpWorkerTestUtilities.GetSimpleHttpTriggerScriptInvocationContext(testFunctionName, testInvocationId, _functionLogger);
+            var mockHttpClient = new Mock<HttpClient>();
+            HttpWorkerOptions testOptions = new HttpWorkerOptions
+            {
+                EnableProxyingHttpRequest = true
+            };
+
+            var mockHttpRequest = SetUpMockHttpRequestForProxying();
+
+            // Add the mocked HttpRequest to the ScriptInvocationContext
+            testScriptInvocationContext.Inputs = new List<(string Name, DataType Type, object Val)>
+            {
+                ("req", DataType.Undefined, mockHttpRequest.Object)
+            };
+
+            testScriptInvocationContext.Inputs = new List<(string Name, DataType Type, object Val)> { ("req", DataType.Undefined, mockHttpRequest.Object) };
+
+            _mockHttpProxyService
+                .Setup(m => m.StartForwarding(testScriptInvocationContext, It.IsAny<Uri>()))
+                .Verifiable();
+
+            _mockHttpProxyService
+                .Setup(m => m.EnsureSuccessfulForwardingAsync(testScriptInvocationContext))
+                .Returns(Task.CompletedTask)
+                .Verifiable();
+
+            _defaultHttpWorkerService = new DefaultHttpWorkerService(
+                mockHttpClient.Object,
+                new OptionsWrapper<HttpWorkerOptions>(testOptions),
+                _testLogger,
+                _testEnvironment,
+                new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions),
+                _mockHttpProxyService.Object);
+
+            await _defaultHttpWorkerService.InvokeAsync(testScriptInvocationContext);
+
+            _mockHttpProxyService.Verify(m => m.StartForwarding(testScriptInvocationContext, It.IsAny<Uri>()), Times.Once);
+            _mockHttpProxyService.Verify(m => m.EnsureSuccessfulForwardingAsync(testScriptInvocationContext), Times.Once);
+            Assert.True(testScriptInvocationContext.ResultSource.Task.IsCompletedSuccessfully);
+        }
+
+        [Fact]
+        public async Task ProxyInvocationRequest_ThrowsException_WhenHttpRequestIsMissing()
+        {
+            var mockHttpClient = new Mock<HttpClient>();
+            var testInvocationId = Guid.NewGuid();
+            var testFunctionName = "TestFunction";
+            var testScriptInvocationContext = HttpWorkerTestUtilities.GetSimpleHttpTriggerScriptInvocationContext(testFunctionName, testInvocationId, _functionLogger);
+
+            _defaultHttpWorkerService = new DefaultHttpWorkerService(
+                mockHttpClient.Object,
+                new OptionsWrapper<HttpWorkerOptions>(_httpWorkerOptions),
+                _testLogger,
+                _testEnvironment,
+                new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions),
+                _mockHttpProxyService.Object);
+
+            await _defaultHttpWorkerService.ProxyInvocationRequest(testScriptInvocationContext);
+
+            Assert.True(testScriptInvocationContext.ResultSource.Task.IsFaulted);
+            Assert.IsType<InvalidOperationException>(testScriptInvocationContext.ResultSource.Task.Exception.InnerException);
+            Assert.Equal("Cannot proxy the HttpTrigger function TestFunction without an input of type HttpRequest.", testScriptInvocationContext.ResultSource.Task.Exception.InnerException.Message);
+        }
+
+        [Fact]
+        public async Task ProxyInvocationRequest_HandlesForwardingError()
+        {
+            var mockHttpClient = new Mock<HttpClient>();
+            var testUri = new Uri("http://localhost:7071/api/test");
+            var testInvocationId = Guid.NewGuid();
+            var testFunctionName = "TestFunction";
+            var testScriptInvocationContext = HttpWorkerTestUtilities.GetSimpleHttpTriggerScriptInvocationContext(testFunctionName, testInvocationId, _functionLogger);
+
+            var mockHttpRequest = SetUpMockHttpRequestForProxying();
+
+            // Add the mocked HttpRequest to the ScriptInvocationContext
+            testScriptInvocationContext.Inputs = new List<(string Name, DataType Type, object Val)>
+            {
+                ("req", DataType.Undefined, mockHttpRequest.Object)
+            };
+
+            testScriptInvocationContext.Inputs = new List<(string Name, DataType Type, object Val)> { ("req", DataType.Undefined, mockHttpRequest.Object) };
+
+            _mockHttpProxyService
+                .Setup(m => m.StartForwarding(testScriptInvocationContext, It.IsAny<Uri>()))
+                .Verifiable();
+
+            _mockHttpProxyService
+                .Setup(m => m.EnsureSuccessfulForwardingAsync(testScriptInvocationContext))
+                .ThrowsAsync(new HttpForwardingException("Forwarding failed"))
+                .Verifiable();
+
+            _defaultHttpWorkerService = new DefaultHttpWorkerService(
+                mockHttpClient.Object,
+                new OptionsWrapper<HttpWorkerOptions>(_httpWorkerOptions),
+                _testLogger,
+                _testEnvironment,
+                new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions),
+                _mockHttpProxyService.Object);
+
+            await _defaultHttpWorkerService.ProxyInvocationRequest(testScriptInvocationContext);
+
+            _mockHttpProxyService.Verify(m => m.StartForwarding(testScriptInvocationContext, It.IsAny<Uri>()), Times.Once);
+            _mockHttpProxyService.Verify(m => m.EnsureSuccessfulForwardingAsync(testScriptInvocationContext), Times.Once);
+            Assert.True(testScriptInvocationContext.ResultSource.Task.IsFaulted);
+            Assert.IsType<HttpForwardingException>(testScriptInvocationContext.ResultSource.Task.Exception.InnerException);
         }
 
         private async void ValidateDefaultInvocationRequest(HttpRequestMessage httpRequestMessage)
@@ -595,6 +713,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
         private void RequestHandler(HttpRequestMessage httpRequestMessage)
         {
             //used for tests that do not need request validation
+        }
+
+        private Mock<HttpRequest> SetUpMockHttpRequestForProxying()
+        {
+            var mockHttpRequest = new Mock<HttpRequest>();
+            var mockHttpContext = new Mock<HttpContext>();
+            var headers = new HeaderDictionary();
+            mockHttpRequest.SetupGet(r => r.Headers).Returns(headers);
+            mockHttpRequest.SetupGet(r => r.HttpContext).Returns(mockHttpContext.Object);
+            mockHttpContext.Setup(mockHttpContext => mockHttpContext.Items.ContainsKey(ScriptConstants.AzureFunctionsHttpTriggerContext)).Returns(true);
+
+            return mockHttpRequest;
         }
     }
 }

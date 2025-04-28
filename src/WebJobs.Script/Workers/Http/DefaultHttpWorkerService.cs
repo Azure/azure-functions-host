@@ -26,6 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         private readonly bool _enableRequestTracing;
         private readonly IHttpProxyService _httpProxyService;
         private readonly ScriptInvocationResult _successfulInvocationResult;
+        private readonly Uri _destinationPrefix;
 
         public DefaultHttpWorkerService(IOptions<HttpWorkerOptions> httpWorkerOptions, ILoggerFactory loggerFactory, IEnvironment environment,
             IOptions<ScriptJobHostOptions> scriptHostOptions, IHttpProxyService httpProxyService)
@@ -57,6 +58,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             {
                 Outputs = new Dictionary<string, object>()
             };
+
+            _destinationPrefix = new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port).Uri;
         }
 
         private static HttpClient CreateHttpClient(IOptions<HttpWorkerOptions> httpWorkerOptions)
@@ -95,17 +98,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                     throw new InvalidOperationException($"Cannot proxy the HttpTrigger function {scriptInvocationContext.FunctionMetadata.Name} without an input of type {nameof(HttpRequest)}.");
                 }
 
-                // YARP only requires the destination prefix. The path and query string are added by the YARP proxy during SendAsync using info from the HttpContext.
-                var uri = new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port).Uri;
-
                 AddProxyingHeaders(httpRequest, scriptInvocationContext.ExecutionContext.InvocationId.ToString());
 
-                _httpProxyService.StartForwarding(scriptInvocationContext, uri);
+                // YARP only requires the destination prefix. The path and query string are added by the YARP proxy during SendAsync using info from the HttpContext.
+                _httpProxyService.StartForwarding(scriptInvocationContext, _destinationPrefix);
 
                 await _httpProxyService.EnsureSuccessfulForwardingAsync(scriptInvocationContext);
-
-                var httpContext = httpRequest.HttpContext;
-
                 scriptInvocationContext.ResultSource.SetResult(_successfulInvocationResult);
             }
             catch (Exception exc)
@@ -225,8 +223,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         internal string GetPathValue(HttpWorkerOptions httpWorkerOptions, string functionName, HttpRequest httpRequest)
         {
             string pathValue = functionName;
-            if ((httpWorkerOptions.EnableForwardingHttpRequest && httpWorkerOptions.Type == CustomHandlerType.Http) ||
-                httpWorkerOptions.EnableProxyingHttpRequest)
+            if (httpWorkerOptions.EnableForwardingHttpRequest && httpWorkerOptions.Type == CustomHandlerType.Http)
             {
                 pathValue = httpRequest.GetRequestUri().AbsolutePath;
             }

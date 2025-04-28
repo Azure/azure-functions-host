@@ -63,15 +63,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
                     }
                 }
 
-                // TODO: Come back to this after custom handler proxying settings are set up
-                if (context.Items.TryGetValue("SomeValue", out var customHandlerProxyingEnabled))
-                {
-                    if (customHandlerProxyingEnabled?.ToString() == bool.TrueString)
-                    {
-                        return;
-                    }
-                }
-
                 if (nestedProxiesCount > 0)
                 {
                     // if Proxy, the rest of the pipeline will be processed by Proxies in
