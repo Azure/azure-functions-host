@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.Eventing.Reader;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -89,15 +90,31 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal void AddProviders()
         {
-            List<string> probingPaths = GetWorkerProbingPaths();
-
-            _logger.LogDebug("Workers Directory set to: probingPaths = { probingPaths} and fallback path = {WorkersDirPath}", probingPaths.ToString(), WorkersDirPath);
-
-            List<string> workerConfigs = WorkerConfigurationResolver.GetWorkerConfigs(probingPaths, WorkersDirPath);
-
-            foreach (var workerConfig in workerConfigs)
+            if (AreProbingPathsEnabled())
             {
-                AddProvider(workerConfig);
+                List<string> probingPaths = GetWorkerProbingPaths(_config);
+
+                _logger.LogDebug("Workers Directory set to: probingPaths = {probingPaths} and fallback path = {WorkersDirPath}", probingPaths.ToString(), WorkersDirPath);
+
+                List<string> workerConfigs = WorkerConfigurationResolver.GetWorkerConfigs(probingPaths, WorkersDirPath, _environment);
+
+                foreach (var workerConfig in workerConfigs)
+                {
+                    AddProvider(workerConfig);
+                }
+            }
+            else
+            {
+                _logger.LogDebug("Workers Directory set to: {WorkersDirPath}", WorkersDirPath);
+
+                foreach (var workerDir in Directory.EnumerateDirectories(WorkersDirPath))
+                {
+                    string workerConfigPath = Path.Combine(workerDir, RpcWorkerConstants.WorkerConfigFileName);
+                    if (File.Exists(workerConfigPath))
+                    {
+                        AddProvider(workerDir);
+                    }
+                }
             }
         }
 
@@ -367,11 +384,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
         }
 
-        private List<string> GetWorkerProbingPaths()
+        private List<string> GetWorkerProbingPaths(IConfiguration config)
         {
             //var paths = get languageWorker section name and then ProbingPaths based on SKU
 
             return ["C:\\testfolder\\workers"];
+        }
+
+        private bool AreProbingPathsEnabled()
+        {
+            return true;
         }
     }
 }
