@@ -587,6 +587,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
+        public async Task InFlight_Functions_Cancelled_WhenNoException()
+        {
+            await CreateDefaultWorkerChannel();
+
+            var resultSource = new TaskCompletionSource<ScriptInvocationResult>();
+            ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(Guid.NewGuid(), resultSource);
+
+            await _workerChannel.SendInvocationRequest(scriptInvocationContext);
+
+            Assert.True(_workerChannel.IsExecutingInvocation(scriptInvocationContext.ExecutionContext.InvocationId.ToString()));
+
+            _workerChannel.TryFailExecutions(null);
+
+            Assert.False(_workerChannel.IsExecutingInvocation(scriptInvocationContext.ExecutionContext.InvocationId.ToString()));
+            Assert.Equal(TaskStatus.Canceled, resultSource.Task.Status);
+        }
+
+        [Fact]
         public async Task SendLoadRequests_PublishesOutboundEvents()
         {
             await CreateDefaultWorkerChannel();
