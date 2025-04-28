@@ -98,11 +98,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             string invocationId = context.ExecutionContext.InvocationId.ToString();
 
-            // add invocation id as correlation id
-            if (!httpRequest.Headers.TryAdd(ScriptConstants.HttpProxyCorrelationHeader, invocationId))
-            {
-                httpRequest.Headers[ScriptConstants.HttpProxyCorrelationHeader] = invocationId;
-            }
+            // add invocation id as correlation id, override existing header if present
+            httpRequest.Headers[ScriptConstants.HttpProxyCorrelationHeader] = invocationId;
 
             var forwardingTask = _httpForwarder.SendAsync(httpContext, httpUri.ToString(), _messageInvoker, _forwarderRequestConfig).AsTask();
             context.Properties[ScriptConstants.HttpProxyTask] = forwardingTask;
