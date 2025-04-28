@@ -1556,16 +1556,16 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         public bool TryFailExecutions(Exception workerException)
         {
-            if (workerException == null)
-            {
-                return false;
-            }
-
             foreach (var invocation in _executingInvocations?.Values)
             {
                 string invocationId = invocation.Context?.ExecutionContext?.InvocationId.ToString();
                 _workerChannelLogger.LogDebug("Worker '{workerId}' encountered a fatal error. Failing invocation: '{invocationId}'", _workerId, invocationId);
-                invocation.Context?.ResultSource?.TrySetException(workerException);
+
+                if (workerException is not null)
+                {
+                    invocation.Context?.ResultSource?.TrySetException(workerException);
+                }
+
                 RemoveExecutingInvocation(invocationId);
             }
             return true;
