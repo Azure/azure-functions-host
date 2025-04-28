@@ -2,7 +2,7 @@
 
   <ItemGroup>
     <!-- Python worker does not ship with the host for windows. -->
-    <PackageReference Include="Microsoft.Azure.Functions.PythonWorker" Version="4.36.1" Condition="!$(RuntimeIdentifier.StartsWith('win'))" />
+    <PackageReference Include="Microsoft.Azure.Functions.PythonWorker" Version="4.37.0" Condition="!$(RuntimeIdentifier.StartsWith('win'))" />
   </ItemGroup>
 
 </Project>

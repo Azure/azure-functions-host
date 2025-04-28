@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using static Microsoft.Azure.WebJobs.Script.EnvironmentSettingNames;
 
@@ -747,6 +748,15 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             return group is not null;
+        }
+
+        /// <summary>
+        /// Returns true if the worker is running in validation mode.
+        /// </summary>
+        public static bool IsInValidationMode(this IEnvironment environment)
+        {
+            return environment.TryGetFunctionsTargetGroup(out string group)
+                && string.Equals(group, FunctionGroups.ValidationWorker, StringComparison.InvariantCultureIgnoreCase);
         }
     }
 }

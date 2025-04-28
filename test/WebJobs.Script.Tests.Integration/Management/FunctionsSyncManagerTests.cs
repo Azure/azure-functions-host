@@ -257,6 +257,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         }
 
         [Fact]
+        public async Task GetTriggersAsync_ReturnsExpectedContent()
+        {
+            // Act
+            var result = await _functionsSyncManager.GetTriggersAsync();
+
+            // Assert
+            Assert.True(result.Success);
+            Assert.Null(result.Error);
+            Assert.NotNull(result.Content);
+
+            var content = JObject.Parse(result.Content);
+            var triggers = content["triggers"];
+            Assert.Equal(GetExpectedTriggersPayload(durableVersion: "V1"), triggers.ToString(Formatting.None));
+        }
+
+        [Fact]
         public async Task TrySyncTriggers_StandbyMode_ReturnsFalse()
         {
             using (var env = new TestScopedEnvironmentVariable(_vars))
