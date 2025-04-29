@@ -27,6 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         private readonly IHttpProxyService _httpProxyService;
         private readonly ScriptInvocationResult _successfulInvocationResult;
         private readonly Uri _destinationPrefix;
+        private readonly string _userAgentString;
 
         public DefaultHttpWorkerService(IOptions<HttpWorkerOptions> httpWorkerOptions, ILoggerFactory loggerFactory, IEnvironment environment,
             IOptions<ScriptJobHostOptions> scriptHostOptions, IHttpProxyService httpProxyService)
@@ -60,6 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             };
 
             _destinationPrefix = new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port).Uri;
+            _userAgentString = $"{HttpWorkerConstants.UserAgentHeaderValue}/{ScriptHost.Version}";
         }
 
         private static HttpClient CreateHttpClient(IOptions<HttpWorkerOptions> httpWorkerOptions)
@@ -203,10 +205,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         {
             httpRequest.Headers.Add(HttpWorkerConstants.HostVersionHeaderName, ScriptHost.Version);
             httpRequest.Headers.Add(HttpWorkerConstants.InvocationIdHeaderName, invocationId);
-            httpRequest.Headers.UserAgent.ParseAdd($"{HttpWorkerConstants.UserAgentHeaderValue}/{ScriptHost.Version}");
+            httpRequest.Headers.UserAgent.ParseAdd(_userAgentString);
         }
 
-        internal void AddProxyingHeaders(HttpRequest httpRequest, string invocationId)
+        private void AddProxyingHeaders(HttpRequest httpRequest, string invocationId)
         {
             httpRequest.Headers.TryAdd(HttpWorkerConstants.HostVersionHeaderName, ScriptHost.Version);
 
@@ -215,9 +217,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 httpRequest.Headers[HttpWorkerConstants.InvocationIdHeaderName] = invocationId;
             }
 
-            var userAgent = $"{HttpWorkerConstants.UserAgentHeaderValue}/{ScriptHost.Version}";
-            httpRequest.Headers.Remove("User-Agent");
-            httpRequest.Headers.Append("User-Agent", userAgent);
+            httpRequest.Headers.UserAgent = _userAgentString;
         }
 
         internal string GetPathValue(HttpWorkerOptions httpWorkerOptions, string functionName, HttpRequest httpRequest)
