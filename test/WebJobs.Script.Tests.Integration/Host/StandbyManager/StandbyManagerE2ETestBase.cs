@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using System.Web.Http;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Azure.Functions.Platform.Metrics.LinuxConsumption;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -73,6 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName, websiteSiteName);
             }
 
+            var testMetricsTracker = new TestMetricsTracker();
             var webHostBuilder = Program.CreateWebHostBuilder()
                 .ConfigureAppConfiguration(c =>
                 {
@@ -102,6 +104,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                     c.AddSingleton<IEnvironment>(_ => environment);
                     c.AddSingleton<IMetricsLogger>(_ => _metricsLogger);
+                    c.AddSingleton<ILinuxConsumptionMetricsTracker>(_ => testMetricsTracker);
                 })
                 .ConfigureScriptHostLogging(b =>
                 {
@@ -121,7 +124,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             return webHostBuilder;
         }
 
-        protected async Task InitializeTestHostAsync(string testDirName, IEnvironment environment, string websiteSiteName = TestSiteName)
+        protected async Task<IWebHost> InitializeTestHostAsync(string testDirName, IEnvironment environment, string websiteSiteName = TestSiteName)
         {
             var webHostBuilder = await CreateWebHostBuilderAsync(testDirName, environment, websiteSiteName);
             _httpServer = new TestServer(webHostBuilder);
@@ -135,6 +138,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.NotNull(traces.Single(p => p.FormattedMessage.StartsWith("Host is in standby mode")));
 
             _expectedHostId = await _httpServer.Host.Services.GetService<IHostIdProvider>().GetHostIdAsync(CancellationToken.None);
+
+            return _httpServer.Host;
         }
 
 

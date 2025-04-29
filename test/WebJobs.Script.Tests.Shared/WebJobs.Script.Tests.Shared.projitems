@@ -24,6 +24,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)TestFunctionMetadataManager.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestHostBuilderExtensions.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestHostExtensions.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)TestMetricsTracker.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestOutputHelperLogger.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestOutputHelperLoggerProvider.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestMetricsLogger.cs" />
