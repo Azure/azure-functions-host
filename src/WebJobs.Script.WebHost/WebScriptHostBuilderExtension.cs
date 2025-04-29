@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Linq;
 using System.Net.Http;
 using System.Runtime.InteropServices;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
@@ -97,14 +96,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         if (environment.IsConsumptionOnLegion())
                         {
                             loggingBuilder.Services.AddOptions<LoggerFilterOptions>()
-                            .Configure<IConfiguration>((options, config) =>
-                            {
-                                string value = config[EnvironmentSettingNames.AzureMonitorCategories];
-                                options.AddFilter<AzureMonitorDiagnosticLoggerProvider>((category, level) =>
+                                .Configure<IOptionsMonitor<AppServiceOptions>>((filters, options) =>
                                 {
-                                    return IsAzureMonitorLoggingEnabled(value);
+                                    bool isAzureMonitorLoggingEnabled = options.CurrentValue.AzureMonitorLoggingEnabled;
+                                    filters.AddFilter<AzureMonitorDiagnosticLoggerProvider>((category, level) =>
+                                    {
+                                        return isAzureMonitorLoggingEnabled;
+                                    });
                                 });
-                            });
                         }
                         loggingBuilder.Services.AddSingleton<ILoggerProvider, AzureMonitorDiagnosticLoggerProvider>();
                     }
