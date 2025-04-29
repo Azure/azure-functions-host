@@ -1147,7 +1147,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static bool IsAzureMonitorLoggingEnabled(string azureMonitorcategoriesSubscribed)
         {
-            if (azureMonitorcategoriesSubscribed == null)
+            if (string.IsNullOrEmpty(azureMonitorcategoriesSubscribed))
             {
                 return true;
             }

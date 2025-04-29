@@ -5,17 +5,15 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
-using static Microsoft.Azure.WebJobs.Script.Utility;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
-    public class AzureMonitorDiagnosticLogger : ILogger, IDisposable
+    public class AzureMonitorDiagnosticLogger : ILogger
     {
         internal const string AzureMonitorCategoryName = "FunctionAppLogs";
         internal const string AzureMonitorOperationName = "Microsoft.Web/sites/functions/log";
@@ -31,9 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly IEventGenerator _eventGenerator;
         private readonly IEnvironment _environment;
         private readonly IExternalScopeProvider _scopeProvider;
-        private readonly IDisposable _appServiceOptionsOnChangeListener;
-        private AppServiceOptions _appServiceOptions;
-        private static bool isAzureMonitorLogsEnabled;
+        private IOptionsMonitor<AppServiceOptions> _appServiceOptionsMonitor;
 
         public AzureMonitorDiagnosticLogger(string category, string hostInstanceId, IEventGenerator eventGenerator, IEnvironment environment, IExternalScopeProvider scopeProvider,
             HostNameProvider hostNameProvider, IOptionsMonitor<AppServiceOptions> appServiceOptionsMonitor)
@@ -44,10 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _scopeProvider = scopeProvider ?? throw new ArgumentNullException(nameof(scopeProvider));
             _hostNameProvider = hostNameProvider ?? throw new ArgumentNullException(nameof(hostNameProvider));
-            _ = appServiceOptionsMonitor ?? throw new ArgumentNullException(nameof(appServiceOptionsMonitor));
-
-            _appServiceOptionsOnChangeListener = appServiceOptionsMonitor.OnChange(UpdateAppServiceOptions);
-            UpdateAppServiceOptions(appServiceOptionsMonitor.CurrentValue);
+            _appServiceOptionsMonitor = appServiceOptionsMonitor ?? throw new ArgumentNullException(nameof(appServiceOptionsMonitor));
 
             _roleInstance = _environment.GetInstanceId();
 
@@ -58,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public bool IsEnabled(LogLevel logLevel)
         {
-            if (_environment.IsConsumptionOnLegion() && !isAzureMonitorLogsEnabled)
+            if (_environment.IsConsumptionOnLegion() && !_appServiceOptionsMonitor.CurrentValue.AzureMonitorLoggingEnabled)
             {
                 return false;
             }
@@ -115,7 +108,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             using (JsonTextWriter writer = new JsonTextWriter(sw) { Formatting = Formatting.None })
             {
                 writer.WriteStartObject();
-                WritePropertyIfNotNull(writer, "appName", _appServiceOptions.AppName);
+                WritePropertyIfNotNull(writer, "appName", _appServiceOptionsMonitor.CurrentValue.AppName);
                 WritePropertyIfNotNull(writer, "roleInstance", _roleInstance);
                 WritePropertyIfNotNull(writer, "message", formattedMessage);
                 WritePropertyIfNotNull(writer, "category", _category);
@@ -142,17 +135,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             }
 
             _eventGenerator.LogAzureMonitorDiagnosticLogEvent(logLevel, _hostNameProvider.Value, AzureMonitorOperationName, AzureMonitorCategoryName, _regionName, sw.ToString());
-        }
-
-        public void Dispose()
-        {
-            _appServiceOptionsOnChangeListener?.Dispose();
-        }
-
-        private void UpdateAppServiceOptions(AppServiceOptions newOptions)
-        {
-            _appServiceOptions = newOptions;
-            isAzureMonitorLogsEnabled = IsAzureMonitorLoggingEnabled(_appServiceOptions.AzureMonitorTraceCategory);
         }
 
         private static void WritePropertyIfNotNull<T>(JsonTextWriter writer, string propertyName, T propertyValue)
