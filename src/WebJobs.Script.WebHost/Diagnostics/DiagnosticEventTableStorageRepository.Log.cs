@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 LoggerMessage.Define(
                     LogLevel.Warning,
                     new EventId(2, nameof(ServiceDisabledUnauthorizedClient)),
-                    "We couldn’t access the Table service in the Azure Storage account defined by the 'AzureWebJobsStorage' setting. We are unable to record diagnostic events, so the diagnostic logging service is being stopped. Please ensure the connection string or managed identity has permissions to access the Table service and that any network rules allow connectivity.");
+                    "We couldn’t access the Table service in the Azure Storage account defined by the 'AzureWebJobsStorage' setting. We are unable to record diagnostic events, so the diagnostic logging service is being stopped. Please ensure the connection string or managed identity has permissions to access the Table service and that any network rules allow connectivity. If you're using an identity-based connection, make sure it has been assigned the 'Storage Table Data Contributor' role.");
 
             private static readonly Action<ILogger, Exception> _serviceDisabledUnableToConnectToStorage =
                 LoggerMessage.Define(

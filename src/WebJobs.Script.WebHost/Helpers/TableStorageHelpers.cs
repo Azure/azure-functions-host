@@ -123,7 +123,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Helpers
             return false;
         }
 
-        internal static bool TableExist(TableClient table, TableServiceClient tableClient)
+        internal static bool TableExists(TableClient table, TableServiceClient tableClient)
         {
             var query = tableClient.Query(p => p.Name == table.Name);
 

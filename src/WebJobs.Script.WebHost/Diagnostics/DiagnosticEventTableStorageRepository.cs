@@ -76,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                         // When using RBAC, we need "Storage Table Data Contributor" as we require to list, create and delete tables and query/insert/delete entities.
                         // Testing permissions by listing tables, creating and deleting a test table.
                         var testTable = _tableClient.GetTableClient($"{TableNamePrefix}Check");
-                        _ = TableStorageHelpers.TableExist(testTable, _tableClient);
+                        _ = TableStorageHelpers.TableExists(testTable, _tableClient);
                         _ = testTable.CreateIfNotExists();
                         _ = testTable.Delete();
                     }
