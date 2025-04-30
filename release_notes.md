@@ -14,4 +14,3 @@
 - Add `win-arm64` and `linux-arm64` to the list of PowerShell runtimes; added filter for `osx` RIDs (includes `osx-x64` and `osx-arm64`) (#11013)
 - Disable Diagnostic Events when Table Storage is not accessible (#10996)
 - Warn if .azurefunctions folder does not exist (#10967)
--->
