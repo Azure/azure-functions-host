@@ -19,21 +19,24 @@ using Azure.Data.Tables;
 using Moq;
 using Moq.Protected;
 using Xunit;
+using Microsoft.Azure.WebJobs.Script.Tests.Integration.Fixtures;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
 {
-    public class DiagnosticEventTableStorageRepositoryTests
+    public class DiagnosticEventTableStorageRepositoryTests : IClassFixture<AzuriteFixture>
     {
         private const string TestHostId = "testhostid";
         private readonly IHostIdProvider _hostIdProvider;
         private readonly TestLoggerProvider _loggerProvider;
         private readonly IAzureTableStorageProvider _azureTableStorageProvider;
+        private readonly AzuriteFixture _azurite;
 
         private ILogger<DiagnosticEventTableStorageRepository> _logger;
         private Mock<IScriptHostManager> _scriptHostMock;
 
-        public DiagnosticEventTableStorageRepositoryTests()
+        public DiagnosticEventTableStorageRepositoryTests(AzuriteFixture azurite)
         {
+            _azurite = azurite;
             _hostIdProvider = new FixedHostIdProvider(TestHostId);
 
             var mockPrimaryHostStateProvider = new Mock<IPrimaryHostStateProvider>(MockBehavior.Strict);
@@ -47,7 +50,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             loggerFactory.AddProvider(_loggerProvider);
             _logger = loggerFactory.CreateLogger<DiagnosticEventTableStorageRepository>();
 
-            var configuration = new ConfigurationBuilder().AddEnvironmentVariables().Build();
+            var configuration = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    { "AzureWebJobsStorage", _azurite.GetConnectionString() },
+                })
+                .Build();
             _azureTableStorageProvider = TestHelpers.GetAzureTableStorageProvider(configuration);
         }
 
@@ -164,7 +172,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             var cloudTable = repository.GetDiagnosticEventsTable(dateTime);
             Assert.Null(cloudTable);
             var messages = _loggerProvider.GetAllLogMessages();
-            Assert.Equal(messages[0].FormattedMessage, "An error occurred initializing the Table Storage Client. We are unable to record diagnostic events, so the diagnostic logging service is being stopped.");
+            var errorIntializingPresent = messages.Any(m => m.FormattedMessage.Contains("We couldn’t initialize the Table Storage Client using the 'AzureWebJobsStorage' connection string. We are unable to record diagnostic events, so the diagnostic logging service is being stopped. Please check the 'AzureWebJobsStorage' connection string in Application Settings."));
+            Assert.True(errorIntializingPresent);
             Assert.False(repository.IsEnabled());
         }
 
@@ -285,7 +294,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             await repository.FlushLogs();
 
             // Assert
-            var createFailureMessagePresent = _loggerProvider.GetAllLogMessages().Any(m => m.FormattedMessage.Contains("An error occurred initializing the Table Storage Client. We are unable to record diagnostic events, so the diagnostic logging service is being stopped."));
+            var createFailureMessagePresent = _loggerProvider.GetAllLogMessages().Any(m => m.FormattedMessage.Contains("We couldn’t initialize the Table Storage Client using the 'AzureWebJobsStorage' connection string. We are unable to record diagnostic events, so the diagnostic logging service is being stopped. Please check the 'AzureWebJobsStorage' connection string in Application Settings."));
             Assert.True(createFailureMessagePresent);
 
             var purgeEventMessagePresent = _loggerProvider.GetAllLogMessages().Any(m => m.FormattedMessage.Contains("Purging diagnostic events with versions older than"));
@@ -418,9 +427,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             events.TryAdd("EC123", diagnosticEvent);
             await repository.ExecuteBatchAsync(events, table);
 
-            ExecuteQuery(tableClient, table);
             string message = _loggerProvider.GetAllLogMessages()[0].FormattedMessage;
             Assert.True(message.StartsWith("Unable to write diagnostic events to table storage"));
+        }
+
+        [Fact]
+        public async Task FlushLogs_DisablesService_NoPermissions()
+        {
+            IEnvironment testEnvironment = new TestEnvironment();
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+
+            // Tamper the connection string to simulate a permissions issue, we need a valid base64 connection string to create the TableServiceClient.
+            var connectionString = _azurite.GetConnectionString();
+            var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                { "AzureWebJobsStorage", connectionString.Replace(AzuriteFixture.AccountKey, TamperKey(AzuriteFixture.AccountKey)) },
+            })
+            .Build();
+            var localStorageProvider = TestHelpers.GetAzureTableStorageProvider(configuration);
+
+            DiagnosticEventTableStorageRepository repository =
+                new DiagnosticEventTableStorageRepository(_hostIdProvider, testEnvironment, _scriptHostMock.Object, localStorageProvider, _logger);
+
+            // The repository should be initially enabled and then disabled after failing to initialize the TableServiceClient while flushing Logs.
+            Assert.True(repository.IsEnabled());
+            await repository.FlushLogs();
+            Assert.False(repository.IsEnabled());
         }
 
         private DiagnosticEvent CreateDiagnosticEvent(DateTime timestamp, string errorCode, LogLevel level, string message, string helpLink, Exception exception, string eventVersion)
@@ -458,6 +491,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
 
             return table.Query<TableEntity>();
         }
+
+        private string TamperKey(string key) =>
+            string.Create(key.Length, key, (destination, source) =>
+            {
+                source.AsSpan().CopyTo(destination);
+                // We simply replace the first character to maintain a well-formed base64 key
+                destination[0] = destination[0] == 'A' ? 'B' : 'A';
+            });
 
         private class FixedHostIdProvider : IHostIdProvider
         {
