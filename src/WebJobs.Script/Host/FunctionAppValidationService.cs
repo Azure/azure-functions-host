@@ -24,9 +24,9 @@ namespace Microsoft.Azure.WebJobs.Script.Host
             IOptions<ScriptJobHostOptions> scriptOptions,
             IEnvironment environment)
         {
-            _scriptOptions = scriptOptions;
+            _scriptOptions = scriptOptions ?? throw new ArgumentNullException(nameof(scriptOptions));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _environment = environment;
+            _environment = environment ?? throw new ArgumentNullException(nameof(environment));
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
