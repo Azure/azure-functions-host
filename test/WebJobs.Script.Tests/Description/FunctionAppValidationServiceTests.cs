@@ -6,10 +6,8 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Host;
-using Microsoft.Azure.WebJobs.Script.Tests;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
@@ -45,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task StartAsync_FunctionMetadataListIsEmpty_DoesNotLogError()
+        public async Task StartAsync_NotDotnetIsolatedApp_DoesNotLogError()
         {
             _testLoggerProvider.ClearAllLogMessages();
 
@@ -53,6 +51,62 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 _testLogger,
                 _scriptOptionsMock.Object,
                 new TestEnvironment());
+
+            // Act
+            await service.StartAsync(CancellationToken.None);
+
+            //Assert
+            var traces = _testLoggerProvider.GetAllLogMessages();
+            var traceMessage = traces.FirstOrDefault(val => val.EventId.Name.Equals("NoAzureFunctionsFolder"));
+
+            Assert.Null(traceMessage);
+        }
+
+        [Fact]
+        public async Task StartAsync_PlaceholderMode_DoesNotLogError()
+        {
+            _testLoggerProvider.ClearAllLogMessages();
+
+            var environment = new TestEnvironment();
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+
+            var service = new FunctionAppValidationService(
+                _testLogger,
+                _scriptOptionsMock.Object,
+                environment);
+
+            // Act
+            await service.StartAsync(CancellationToken.None);
+
+            //Assert
+            var traces = _testLoggerProvider.GetAllLogMessages();
+            var traceMessage = traces.FirstOrDefault(val => val.EventId.Name.Equals("NoAzureFunctionsFolder"));
+
+            Assert.Null(traceMessage);
+        }
+
+        [Fact]
+        public async Task StartAsync_NewAppWithNoPayload_DoesNotLogError()
+        {
+            _testLoggerProvider.ClearAllLogMessages();
+
+            var environment = new TestEnvironment();
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "dotnet-isolated");
+
+            var scriptOptionsMock = new Mock<IOptions<ScriptJobHostOptions>>();
+
+            var scriptJobHostOptions = new ScriptJobHostOptions
+            {
+                RootScriptPath = "test-root-path",
+                IsDefaultHostConfig = true
+            };
+
+            scriptOptionsMock.Setup(o => o.Value).Returns(scriptJobHostOptions);
+
+            var service = new FunctionAppValidationService(
+                _testLogger,
+                scriptOptionsMock.Object,
+                environment);
 
             // Act
             await service.StartAsync(CancellationToken.None);
