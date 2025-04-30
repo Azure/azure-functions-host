@@ -6,6 +6,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -14,15 +15,21 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public class FunctionAppValidationService : IHostedService
     {
+        private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<FunctionAppValidationService> _logger;
         private IOptions<ScriptJobHostOptions> _scriptOptions;
+        private readonly IEnvironment _environment;
 
         public FunctionAppValidationService(
+            IServiceProvider serviceProvider,
             ILogger<FunctionAppValidationService> logger,
-            IOptions<ScriptJobHostOptions> scriptOptions)
+            IOptions<ScriptJobHostOptions> scriptOptions,
+            IEnvironment environment)
         {
             _scriptOptions = scriptOptions;
+            _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _environment = environment;
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
@@ -40,12 +47,21 @@ namespace Microsoft.Azure.WebJobs.Script
 
         internal void Validate()
         {
-            if (Utility.IsDotnetIsolatedApp(null, SystemEnvironment.Instance) &&
-                !SystemEnvironment.Instance.IsPlaceholderModeEnabled() &&
-                !Directory.Exists(Path.Combine(_scriptOptions.Value.RootScriptPath, ScriptConstants.AzureFunctionsSystemDirectoryName)) &&
-                !_scriptOptions.Value.IsDefaultHostConfig)
+            using (var scope = _serviceProvider.CreateScope())
             {
-                _logger.NoAzureFunctionsFolder();
+                var functionMetadataManager = scope.ServiceProvider.GetService<IFunctionMetadataManager>();
+                if (functionMetadataManager is not null)
+                {
+                    var functionMetadataList = functionMetadataManager.GetFunctionMetadata(forceRefresh: true);
+
+                    if (Utility.IsDotnetIsolatedApp(functionMetadataList, _environment) &&
+                    !SystemEnvironment.Instance.IsPlaceholderModeEnabled() &&
+                    !Directory.Exists(Path.Combine(_scriptOptions.Value.RootScriptPath, ScriptConstants.AzureFunctionsSystemDirectoryName)) &&
+                    !_scriptOptions.Value.IsDefaultHostConfig)
+                    {
+                        _logger.NoAzureFunctionsFolder();
+                    }
+                }
             }
         }
     }
