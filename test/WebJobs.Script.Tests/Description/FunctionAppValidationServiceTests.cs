@@ -8,13 +8,15 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Host;
+using Microsoft.Azure.WebJobs.Script.Tests;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Xunit;
 
-namespace WebJobs.Script.Tests
+namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class FunctionAppValidationServiceTests
     {
@@ -22,6 +24,7 @@ namespace WebJobs.Script.Tests
         private readonly Mock<IOptions<ScriptJobHostOptions>> _scriptOptionsMock;
         private readonly ScriptJobHostOptions _scriptJobHostOptions;
         private readonly TestLoggerProvider _testLoggerProvider;
+        private readonly TimeSpan _initializationDelay = TimeSpan.FromSeconds(11);
 
         public FunctionAppValidationServiceTests()
         {
@@ -48,7 +51,8 @@ namespace WebJobs.Script.Tests
 
             var service = new FunctionAppValidationService(
                 _testLogger,
-                _scriptOptionsMock.Object);
+                _scriptOptionsMock.Object,
+                new TestEnvironment());
 
             // Act
             await service.StartAsync(CancellationToken.None);
@@ -68,18 +72,18 @@ namespace WebJobs.Script.Tests
             // Arrange
             var functionMetadataList = ImmutableArray.Create(new FunctionMetadata());
 
-            Environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "dotnet-isolated");
+            var environment = new TestEnvironment();
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "dotnet-isolated");
 
             var service = new FunctionAppValidationService(
                 _testLogger,
-                _scriptOptionsMock.Object);
+                _scriptOptionsMock.Object,
+                environment);
 
             // Act
             await service.StartAsync(CancellationToken.None);
 
-            Environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, null);
-
-            await Task.Delay(TimeSpan.FromSeconds(12));
+            await Task.Delay(_initializationDelay);
 
             //Assert
             var traces = _testLoggerProvider.GetAllLogMessages();

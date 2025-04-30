@@ -10,25 +10,29 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace Microsoft.Azure.WebJobs.Script
+namespace Microsoft.Azure.WebJobs.Script.Host
 {
-    public class FunctionAppValidationService : IHostedService
+    public sealed class FunctionAppValidationService : IHostedService
     {
+        private readonly IEnvironment _environment;
         private readonly ILogger<FunctionAppValidationService> _logger;
-        private IOptions<ScriptJobHostOptions> _scriptOptions;
+        private readonly IOptions<ScriptJobHostOptions> _scriptOptions;
+        private readonly TimeSpan _initializationDelay = TimeSpan.FromSeconds(10);
 
         public FunctionAppValidationService(
             ILogger<FunctionAppValidationService> logger,
-            IOptions<ScriptJobHostOptions> scriptOptions)
+            IOptions<ScriptJobHostOptions> scriptOptions,
+            IEnvironment environment)
         {
             _scriptOptions = scriptOptions;
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _environment = environment;
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
             // Adding a delay to ensure that this validation does not impact the cold start performance
-            _ = Task.Delay(TimeSpan.FromSeconds(10), cancellationToken).ContinueWith(t => Validate());
+            _ = Task.Delay(_initializationDelay, cancellationToken).ContinueWith(t => Validate());
 
             await Task.CompletedTask;
         }
@@ -40,10 +44,10 @@ namespace Microsoft.Azure.WebJobs.Script
 
         internal void Validate()
         {
-            if (Utility.IsDotnetIsolatedApp(null, SystemEnvironment.Instance) &&
-                !SystemEnvironment.Instance.IsPlaceholderModeEnabled() &&
-                !Directory.Exists(Path.Combine(_scriptOptions.Value.RootScriptPath, ScriptConstants.AzureFunctionsSystemDirectoryName)) &&
-                !_scriptOptions.Value.IsDefaultHostConfig)
+            if (!_environment.IsPlaceholderModeEnabled() &&
+                !_scriptOptions.Value.IsDefaultHostConfig &&
+                Utility.IsDotnetIsolatedApp(environment: _environment) &&
+                !Directory.Exists(Path.Combine(_scriptOptions.Value.RootScriptPath, ScriptConstants.AzureFunctionsSystemDirectoryName)))
             {
                 _logger.NoAzureFunctionsFolder();
             }

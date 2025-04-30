@@ -103,7 +103,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
                 }
             }
 
-            bool isDotnetIsolatedApp = Utility.IsDotnetIsolatedApp(functionMetadataCollection, SystemEnvironment.Instance);
+            bool isDotnetIsolatedApp = Utility.IsDotnetIsolatedApp(SystemEnvironment.Instance, functionMetadataCollection);
             bool isDotnetApp = isPrecompiledFunctionApp || isDotnetIsolatedApp;
             var isLogicApp = SystemEnvironment.Instance.IsLogicApp();
 
