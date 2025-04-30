@@ -27,13 +27,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
-            if (Utility.IsDotnetIsolatedApp(null, SystemEnvironment.Instance) &&
-                !SystemEnvironment.Instance.IsPlaceholderModeEnabled() &&
-                !Directory.Exists(Path.Combine(_scriptOptions.Value.RootScriptPath, ScriptConstants.AzureFunctionsSystemDirectoryName)) &&
-                !_scriptOptions.Value.IsDefaultHostConfig)
-            {
-                _logger.NoAzureFunctionsFolder();
-            }
+            // Adding a delay to ensure that this validation does not impact the cold start performance
+            _ = Task.Delay(TimeSpan.FromSeconds(10), cancellationToken).ContinueWith(t => Validate());
 
             await Task.CompletedTask;
         }
@@ -41,6 +36,17 @@ namespace Microsoft.Azure.WebJobs.Script
         public Task StopAsync(CancellationToken cancellationToken)
         {
             return Task.CompletedTask;
+        }
+
+        internal void Validate()
+        {
+            if (Utility.IsDotnetIsolatedApp(null, SystemEnvironment.Instance) &&
+                !SystemEnvironment.Instance.IsPlaceholderModeEnabled() &&
+                !Directory.Exists(Path.Combine(_scriptOptions.Value.RootScriptPath, ScriptConstants.AzureFunctionsSystemDirectoryName)) &&
+                !_scriptOptions.Value.IsDefaultHostConfig)
+            {
+                _logger.NoAzureFunctionsFolder();
+            }
         }
     }
 }
