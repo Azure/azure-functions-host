@@ -539,7 +539,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // We want it to start first, but finish last, so unstick it in a couple seconds.
             Task ignore = Task.Delay(3000).ContinueWith(_ => _pauseAfterStandbyHostBuild.Release());
 
-            var expectedPowerShellVersion = "7.2";
+            var expectedPowerShellVersion = "7.4";
             IWebHost host = builder.Build();
             var scriptHostService = host.Services.GetService<WebJobsScriptHostService>();
             var channelFactory = host.Services.GetService<IRpcWorkerChannelFactory>();

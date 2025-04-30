@@ -67,8 +67,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private bool _disposing;
         private WorkerInitResponse _initMessage;
         private RpcWorkerChannelState _state;
-        private IDictionary<string, Exception> _functionLoadErrors = new Dictionary<string, Exception>();
-        private IDictionary<string, Exception> _metadataRequestErrors = new Dictionary<string, Exception>();
+        private IDictionary<string, Exception> _functionLoadErrors = new ConcurrentDictionary<string, Exception>();
+        private IDictionary<string, Exception> _metadataRequestErrors = new ConcurrentDictionary<string, Exception>();
         private ConcurrentDictionary<string, ExecutingInvocation> _executingInvocations = new();
         private IDictionary<string, BufferBlock<ScriptInvocationContext>> _functionInputBuffers = new ConcurrentDictionary<string, BufferBlock<ScriptInvocationContext>>();
         private ConcurrentDictionary<string, TaskCompletionSource<bool>> _workerStatusRequests = new ConcurrentDictionary<string, TaskCompletionSource<bool>>();
@@ -888,7 +888,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 }
 
                 var invocationRequest = await context.ToRpcInvocationRequest(_workerChannelLogger, _workerCapabilities, _isSharedMemoryDataTransferEnabled, _sharedMemoryManager);
-                AddAdditionalTraceContext(invocationRequest.TraceContext.Attributes, context);
+                AddAdditionalTraceContext(invocationRequest, context);
                 _executingInvocations.TryAdd(invocationRequest.InvocationId, new(context, _messageDispatcherFactory.Create(invocationRequest.InvocationId)));
                 _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvoked, Id), functionName: Sanitizer.Sanitize(context.FunctionMetadata.Name));
 
@@ -1680,8 +1680,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
         }
 
-        private void AddAdditionalTraceContext(MapField<string, string> attributes, ScriptInvocationContext context)
+        private void AddAdditionalTraceContext(InvocationRequest invocationRequest, ScriptInvocationContext context)
         {
+            MapField<string, string> attributes = invocationRequest.TraceContext.Attributes;
             bool isOtelEnabled = _scriptHostOptions?.Value.TelemetryMode == TelemetryMode.OpenTelemetry;
             bool isAIEnabled = _environment.IsApplicationInsightsAgentEnabled();
 
@@ -1721,6 +1722,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             if (isOtelEnabled)
             {
                 Activity.Current?.AddTag(ResourceSemanticConventions.FaaSName, context.FunctionMetadata.Name);
+                Activity.Current?.AddTag(ResourceSemanticConventions.FaaSInvocationId, invocationRequest.InvocationId);
             }
         }
 

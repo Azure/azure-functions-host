@@ -11,7 +11,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         /// Sync function triggers with Antares infrastructure.
         /// </summary>
         /// <param name="isBackgroundSync">Indicates whether this is a background sync operation.</param>
-        /// <returns>The <see cref="SyncTriggersResult"/> for the request.</returns>
-        Task<SyncTriggersResult> TrySyncTriggersAsync(bool isBackgroundSync = false);
+        /// <returns>The <see cref="TriggersOperationResult"/> for the request.</returns>
+        Task<TriggersOperationResult> TrySyncTriggersAsync(bool isBackgroundSync = false);
+
+        /// <summary>
+        /// Get function triggers payload.
+        /// </summary>
+        /// <returns>The <see cref="TriggersResult"/> for the request.</returns>
+        Task<TriggersResult> GetTriggersAsync();
     }
 }

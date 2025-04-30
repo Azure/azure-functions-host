@@ -7,8 +7,10 @@ using System.IO.Abstractions;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.Functions.Platform.Metrics.LinuxConsumption;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -21,11 +23,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         private readonly TimeSpan _memorySnapshotInterval = TimeSpan.FromMilliseconds(1000);
         private readonly TimeSpan _timerStartDelay = TimeSpan.FromSeconds(2);
         private readonly IOptionsMonitor<StandbyOptions> _standbyOptions;
-        private readonly IDisposable _standbyOptionsOnChangeSubscription;
+        private readonly IDisposable _standbyOptionsOnChangeListener;
+        private readonly IDisposable _hostingConfigOptionsOnChangeListener;
         private readonly IEnvironment _environment;
         private readonly ILogger _logger;
-        private readonly IScriptHostManager _scriptHostManager;
+        private readonly IServiceProvider _serviceProvider;
         private readonly string _containerName;
+        private readonly IOptionsMonitor<FunctionsHostingConfigOptions> _hostingConfigOptions;
 
         private IMetricsLogger _metricsLogger;
         private TimeSpan _metricPublishInterval;
@@ -33,17 +37,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         private Timer _processMonitorTimer;
         private Timer _metricsPublisherTimer;
         private bool _initialized = false;
+        private bool _isCGroupMemoryMetricsEnabled = false;
 
         public LinuxContainerLegionMetricsPublisher(IEnvironment environment, IOptionsMonitor<StandbyOptions> standbyOptions,
             IOptions<LinuxConsumptionLegionMetricsPublisherOptions> options, ILogger<LinuxContainerLegionMetricsPublisher> logger,
-            IFileSystem fileSystem, ILinuxConsumptionMetricsTracker metricsTracker, IScriptHostManager scriptHostManager,
+            IFileSystem fileSystem, ILinuxConsumptionMetricsTracker metricsTracker, IServiceProvider serviceProvider,
+            IOptionsMonitor<FunctionsHostingConfigOptions> functionsHostingConfigOptions,
             int? metricsPublishIntervalMS = null)
         {
             _standbyOptions = standbyOptions ?? throw new ArgumentNullException(nameof(standbyOptions));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _metricsTracker = metricsTracker ?? throw new ArgumentNullException(nameof(metricsTracker));
-            _scriptHostManager = scriptHostManager ?? throw new ArgumentNullException(nameof(scriptHostManager));
+            _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+            _hostingConfigOptions = functionsHostingConfigOptions ?? throw new ArgumentNullException(nameof(functionsHostingConfigOptions));
             _containerName = options.Value.ContainerName;
 
             // Set this to 15 minutes worth of files
@@ -59,27 +66,24 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 
             if (_standbyOptions.CurrentValue.InStandbyMode)
             {
-                _standbyOptionsOnChangeSubscription = _standbyOptions.OnChange(o => OnStandbyOptionsChange(o));
+                _standbyOptionsOnChangeListener = _standbyOptions.OnChange(o => OnStandbyOptionsChange(o));
             }
             else
             {
                 Start();
             }
+
+            _hostingConfigOptionsOnChangeListener = _hostingConfigOptions.OnChange(OnHostingConfigOptionsChanged);
         }
 
-        public IMetricsLogger MetricsLogger
-        {
-            get
-            {
-                if (_metricsLogger == null)
-                {
-                    if (!Utility.TryGetHostService<IMetricsLogger>(_scriptHostManager, out _metricsLogger))
-                    {
-                        throw new InvalidOperationException($"Unable to resolve {nameof(IMetricsLogger)} service.");
-                    }
-                }
+        private IMetricsLogger MetricsLogger => _metricsLogger ??= _serviceProvider.GetRequiredService<IMetricsLogger>();
 
-                return _metricsLogger;
+        private void OnHostingConfigOptionsChanged(FunctionsHostingConfigOptions newOptions)
+        {
+            if (newOptions.IsCGroupMemoryMetricsEnabled != _isCGroupMemoryMetricsEnabled)
+            {
+                _logger.LogInformation("CGroup memory metrics enabled: {Enabled}", newOptions.IsCGroupMemoryMetricsEnabled);
+                _isCGroupMemoryMetricsEnabled = newOptions.IsCGroupMemoryMetricsEnabled;
             }
         }
 
@@ -185,11 +189,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         {
             try
             {
-                _process.Refresh();
-                var commitSizeBytes = _process.WorkingSet64;
-                if (commitSizeBytes != 0)
+                long memoryUsageInBytes;
+                if (_hostingConfigOptions.CurrentValue.IsCGroupMemoryMetricsEnabled)
                 {
-                    AddMemoryActivity(DateTime.UtcNow, commitSizeBytes);
+                    memoryUsageInBytes = CgroupMemoryUsageHelper.GetMemoryUsageInBytes(_logger);
+                }
+                else
+                {
+                    _process.Refresh();
+                    memoryUsageInBytes = _process.WorkingSet64;
+                }
+
+                if (memoryUsageInBytes != 0)
+                {
+                    AddMemoryActivity(DateTime.UtcNow, memoryUsageInBytes);
                 }
             }
             catch (Exception e)
@@ -244,6 +257,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
             _metricsPublisherTimer = null;
 
             _metricsTracker.OnDiagnosticEvent -= OnMetricsDiagnosticEvent;
+            _standbyOptionsOnChangeListener?.Dispose();
+            _hostingConfigOptionsOnChangeListener?.Dispose();
         }
 
         internal class Metrics

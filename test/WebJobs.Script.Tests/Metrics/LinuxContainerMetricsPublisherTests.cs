@@ -86,11 +86,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
 
             _hostingConfigOptions = new FunctionsHostingConfigOptions();
             var hostingConfigOptionsWrapper = new OptionsWrapper<FunctionsHostingConfigOptions>(_hostingConfigOptions);
-
+            var testHostingConfigOptionsMonitor = new TestOptionsMonitor<FunctionsHostingConfigOptions>(_hostingConfigOptions);
             ILogger<LinuxContainerMetricsPublisher> logger = loggerFactory.CreateLogger<LinuxContainerMetricsPublisher>();
             var hostNameProvider = new HostNameProvider(mockEnvironment.Object);
             var standbyOptions = new TestOptionsMonitor<StandbyOptions>(new StandbyOptions { InStandbyMode = true });
-            _metricsPublisher = new LinuxContainerMetricsPublisher(mockEnvironment.Object, standbyOptions, logger, hostNameProvider, hostingConfigOptionsWrapper, _httpClient);
+            _metricsPublisher = new LinuxContainerMetricsPublisher(mockEnvironment.Object, standbyOptions, logger, hostNameProvider, testHostingConfigOptionsMonitor, _httpClient);
             _testLoggerProvider.ClearAllLogMessages();
         }
 
