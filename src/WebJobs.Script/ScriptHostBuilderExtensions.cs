@@ -175,6 +175,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             builder.ConfigureServices((context, services) =>
             {
+                services.AddSingleton<IHostedService, FunctionAppValidationService>();
                 services.AddSingleton<ExternalConfigurationStartupValidator>();
                 services.AddSingleton<IHostedService>(s =>
                 {
