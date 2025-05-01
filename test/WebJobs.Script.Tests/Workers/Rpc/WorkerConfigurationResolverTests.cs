@@ -3,15 +3,14 @@
 
 using System.Collections.Generic;
 using System.IO;
-using System.Text.Json;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
+using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
-using Microsoft.Azure.WebJobs.Script;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 
 public class WorkerConfigurationResolverTests
 {
@@ -19,7 +18,6 @@ public class WorkerConfigurationResolverTests
     private readonly Mock<IWorkerProfileManager> _mockProfileManager;
     private readonly Mock<IConfiguration> _mockConfig;
     private readonly Mock<ILogger> _mockLogger;
-    private readonly JsonSerializerOptions _jsonSerializerOptions;
 
     public WorkerConfigurationResolverTests()
     {
@@ -27,7 +25,6 @@ public class WorkerConfigurationResolverTests
         _mockProfileManager = new Mock<IWorkerProfileManager>();
         _mockConfig = new Mock<IConfiguration>();
         _mockLogger = new Mock<ILogger>();
-        _jsonSerializerOptions = new JsonSerializerOptions();
     }
 
     [Fact]
