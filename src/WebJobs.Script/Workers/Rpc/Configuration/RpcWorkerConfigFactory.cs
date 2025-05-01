@@ -26,6 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly IMetricsLogger _metricsLogger;
         private readonly string _workerRuntime;
         private readonly IEnvironment _environment;
+        private readonly IWorkerConfigurationResolver _workerConfigurationResolver;
         private readonly JsonSerializerOptions _jsonSerializerOptions = new()
         {
             PropertyNameCaseInsensitive = true
@@ -38,7 +39,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                                         ISystemRuntimeInformation systemRuntimeInfo,
                                         IEnvironment environment,
                                         IMetricsLogger metricsLogger,
-                                        IWorkerProfileManager workerProfileManager)
+                                        IWorkerProfileManager workerProfileManager,
+                                        IWorkerConfigurationResolver workerConfigurationResolver)
         {
             _config = config ?? throw new ArgumentNullException(nameof(config));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -47,6 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _metricsLogger = metricsLogger ?? throw new ArgumentNullException(nameof(metricsLogger));
             _profileManager = workerProfileManager ?? throw new ArgumentNullException(nameof(workerProfileManager));
             _workerRuntime = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
+            _workerConfigurationResolver = workerConfigurationResolver ?? throw new ArgumentNullException(nameof(workerConfigurationResolver));
 
             WorkersDirPath = GetDefaultWorkersDirectory(Directory.Exists);
             var workersDirectorySection = _config.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}:{WorkerConstants.WorkersDirectorySectionName}");
@@ -96,14 +99,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
                 _logger.LogDebug("Workers Directory set to: probingPaths = {probingPaths} and fallback path = {WorkersDirPath}", probingPaths.ToString(), WorkersDirPath);
 
-                List<string> workerConfigs = WorkerConfigurationResolver.GetWorkerConfigs(
-                    probingPaths,
-                    WorkersDirPath,
-                    _environment,
-                    _jsonSerializerOptions,
-                    _profileManager,
-                    _config,
-                    _logger);
+                List<string> workerConfigs = _workerConfigurationResolver.GetWorkerConfigs(probingPaths, WorkersDirPath);
 
                 foreach (var workerConfig in workerConfigs)
                 {
@@ -166,43 +162,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     }
 
                     _logger.LogDebug("Found worker config: {workerConfigPath}", workerConfigPath);
-                    /*
-                    var workerConfig = GetWorkerConfigJsonElement(workerConfigPath);
-                    var workerDescriptionElement = workerConfig.GetProperty(WorkerConstants.WorkerDescription);
-                    var workerDescription = workerDescriptionElement.Deserialize<RpcWorkerDescription>(_jsonSerializerOptions);
-                    workerDescription.WorkerDirectory = workerDir;
-
-                    // Read the profiles from worker description and load the profile for which the conditions match
-                    if (workerConfig.TryGetProperty(WorkerConstants.WorkerDescriptionProfiles, out var profiles))
-                    {
-                        List<WorkerDescriptionProfile> workerDescriptionProfiles = ReadWorkerDescriptionProfiles(profiles);
-                        if (workerDescriptionProfiles.Count > 0)
-                        {
-                            _profileManager.SetWorkerDescriptionProfiles(workerDescriptionProfiles, workerDescription.Language);
-                            _profileManager.LoadWorkerDescriptionFromProfiles(workerDescription, out workerDescription);
-                        }
-                    }
-
-                    // Check if any app settings are provided for that language
-                    var languageSection = _config.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}:{workerDescription.Language}");
-                    workerDescription.Arguments ??= new List<string>();
-                    GetWorkerDescriptionFromAppSettings(workerDescription, languageSection);
-                    AddArgumentsFromAppSettings(workerDescription, languageSection);
-
-                    // Validate workerDescription
-                    workerDescription.ApplyDefaultsAndValidate(Directory.GetCurrentDirectory(), _logger);
-
-                    */
 
                     var workerConfig = WorkerConfigurationHelper.GetWorkerConfigJsonElement(workerConfigPath);
 
                     RpcWorkerDescription workerDescription = WorkerConfigurationHelper.GetWorkerDescription(
-                        workerConfig,
-                        _jsonSerializerOptions,
-                        workerDir,
-                        _profileManager,
-                        _config,
-                        _logger);
+                                                                                            workerConfig,
+                                                                                            _jsonSerializerOptions,
+                                                                                            workerDir,
+                                                                                            _profileManager,
+                                                                                            _config,
+                                                                                            _logger);
 
                     if (workerDescription.IsDisabled == true)
                     {
@@ -334,19 +303,25 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         {
             List<string> probingPaths = new List<string>();
 
-            var a = config.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}");
-            var b = a.GetSection("probingPaths");
-            var c = b.AsEnumerable();
+            IConfigurationSection probingPathsSection = config.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}")
+                                                                ?.GetSection($"{RpcWorkerConstants.WorkerProbingPathsSectionName}");
 
-            for(int i=0; i< c.Count(); i++)
+            var probingPathsList = probingPathsSection?.AsEnumerable();
+
+            if (probingPathsList is null || probingPathsSection is null)
             {
-                var n = b.GetSection($"{i}").Value;
-                if (n is not null)
+                return probingPaths;
+            }
+
+            for (int i = 0; i < probingPathsList.Count(); i++)
+            {
+                var path = probingPathsSection.GetSection($"{i}").Value;
+                if (path is not null)
                 {
-                    probingPaths.Add(n);
+                    probingPaths.Add(path);
                 }
             }
-            //var paths = get languageWorker section name and then ProbingPaths based on SKU
+
             return probingPaths;
         }
 

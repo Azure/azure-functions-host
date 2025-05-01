@@ -9,6 +9,7 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -24,13 +25,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly IMetricsLogger _metricsLogger;
         private readonly IWorkerProfileManager _workerProfileManager;
         private readonly IScriptHostManager _scriptHostManager;
+        private readonly IWorkerConfigurationResolver _workerConfigurationResolver;
 
         public LanguageWorkerOptionsSetup(IConfiguration configuration,
                                           ILoggerFactory loggerFactory,
                                           IEnvironment environment,
                                           IMetricsLogger metricsLogger,
                                           IWorkerProfileManager workerProfileManager,
-                                          IScriptHostManager scriptHostManager)
+                                          IScriptHostManager scriptHostManager,
+                                          IWorkerConfigurationResolver workerConfigurationResolver)
         {
             if (loggerFactory is null)
             {
@@ -42,6 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _metricsLogger = metricsLogger ?? throw new ArgumentNullException(nameof(metricsLogger));
             _workerProfileManager = workerProfileManager ?? throw new ArgumentNullException(nameof(workerProfileManager));
+            _workerConfigurationResolver = workerConfigurationResolver ?? throw new ArgumentNullException(nameof(workerConfigurationResolver));
 
             _logger = loggerFactory.CreateLogger("Host.LanguageWorkerConfig");
         }
@@ -63,7 +67,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             // Use the latest configuration from the ScriptHostManager if available.
             // After specialization, the ScriptHostManager will have the latest IConfiguration reflecting additional configuration entries added during specialization.
             var configuration = _configuration;
-
             if (_scriptHostManager is IServiceProvider scriptHostManagerServiceProvider)
             {
                 var latestConfiguration = scriptHostManagerServiceProvider.GetService<IConfiguration>();
@@ -77,15 +80,18 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
 
             var jsonString = ReadJsonFileAsString("C:\\testfolder\\test-config.json");
-            using var jsonStream = new MemoryStream(Encoding.UTF8.GetBytes(jsonString));
 
-            // Create a new configuration builder and add the JSON stream
-            configuration = new ConfigurationBuilder()
-                .AddConfiguration(configuration)
-                .AddJsonStream(jsonStream)
-                .Build();
+            if (jsonString is not null)
+            {
+                using var jsonStream = new MemoryStream(Encoding.UTF8.GetBytes(jsonString));
 
-            var configFactory = new RpcWorkerConfigFactory(configuration, _logger, SystemRuntimeInformation.Instance, _environment, _metricsLogger, _workerProfileManager);
+                configuration = new ConfigurationBuilder()
+                    .AddConfiguration(configuration)
+                    .AddJsonStream(jsonStream)
+                    .Build();
+            }
+
+            var configFactory = new RpcWorkerConfigFactory(configuration, _logger, SystemRuntimeInformation.Instance, _environment, _metricsLogger, _workerProfileManager, _workerConfigurationResolver);
             options.WorkerConfigs = configFactory.GetConfigs();
         }
 
@@ -103,17 +109,17 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             string jsonString = File.ReadAllText(filePath);
 
-            var a = JsonDocument.Parse(jsonString);
+            JsonDocument jsonDocument = JsonDocument.Parse(jsonString);
 
-            string b, c = null;
+            string languageWorkersConfigString = null;
 
             if (_environment.IsWindowsConsumption())
             {
-                b = a.RootElement.GetProperty("windowsConsumption").GetProperty("languageWorkers").GetProperty("probingPaths").ToString();
-                c = a.RootElement.GetProperty("windowsConsumption").ToString();
+                var languageWorkersSection = jsonDocument.RootElement.GetProperty("windowsConsumption");
+                languageWorkersConfigString = languageWorkersSection.ToString();
             }
 
-            return c;
+            return languageWorkersConfigString;
         }
     }
 

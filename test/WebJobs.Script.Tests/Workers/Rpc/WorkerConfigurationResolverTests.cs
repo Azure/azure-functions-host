@@ -43,14 +43,9 @@ public class WorkerConfigurationResolverTests
         File.WriteAllText("c:\\testfolder\\workers\\java\\1.1\\worker.config.json", "{}");
 
         // Act
-        var result = WorkerConfigurationResolver.GetWorkerConfigs(
-            probingPaths,
-            fallbackPath,
-            _mockEnvironment.Object,
-            _jsonSerializerOptions,
-            _mockProfileManager.Object,
-            _mockConfig.Object,
-            _mockLogger.Object);
+        var workerConfigurationResolver = new WorkerConfigurationResolver(_mockConfig.Object, _mockLogger.Object, _mockEnvironment.Object, _mockProfileManager.Object);
+
+        var result = workerConfigurationResolver.GetWorkerConfigs(probingPaths, fallbackPath);
 
         // Assert
         Assert.Single(result);
@@ -82,14 +77,9 @@ public class WorkerConfigurationResolverTests
             });
 
         // Act
-        var result = WorkerConfigurationResolver.IsCompatibleWithHost(
-            hostCapabilities,
-            workerConfigPath,
-            _jsonSerializerOptions,
-            workerDir,
-            _mockProfileManager.Object,
-            _mockConfig.Object,
-            _mockLogger.Object);
+        var workerConfigurationResolver = new WorkerConfigurationResolver(_mockConfig.Object, _mockLogger.Object, _mockEnvironment.Object, _mockProfileManager.Object);
+
+        var result = workerConfigurationResolver.IsCompatibleWithHost(workerDir);
 
         // Assert
         Assert.True(result);
@@ -114,14 +104,9 @@ public class WorkerConfigurationResolverTests
         }");
 
         // Act
-        var result = WorkerConfigurationResolver.IsCompatibleWithHost(
-            hostCapabilities,
-            workerConfigPath,
-            _jsonSerializerOptions,
-            workerDir,
-            _mockProfileManager.Object,
-            _mockConfig.Object,
-            _mockLogger.Object);
+        var workerConfigurationResolver = new WorkerConfigurationResolver(_mockConfig.Object, _mockLogger.Object, _mockEnvironment.Object, _mockProfileManager.Object);
+
+        var result = workerConfigurationResolver.IsCompatibleWithHost(workerDir);
 
         // Assert
         Assert.False(result);

@@ -8,90 +8,94 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 {
-    internal static class WorkerConfigurationResolver
+    internal sealed class WorkerConfigurationResolver : IWorkerConfigurationResolver
     {
-        internal static List<string> GetWorkerConfigs(
-            List<string> probingPaths,
-            string fallbackPath,
-            IEnvironment environment,
-            JsonSerializerOptions _jsonSerializerOptions,
-            IWorkerProfileManager _profileManager,
-            IConfiguration _config,
-            ILogger _logger
-            )
+        private readonly IConfiguration _config;
+        private readonly ILogger _logger;
+        private readonly IWorkerProfileManager _profileManager;
+        private readonly IEnvironment _environment;
+        private readonly JsonSerializerOptions _jsonSerializerOptions = new()
         {
-            // Dict of language-name : workerConfig
+            PropertyNameCaseInsensitive = true
+        };
+
+        public WorkerConfigurationResolver(IConfiguration config,
+                                        ILogger logger,
+                                        IEnvironment environment,
+                                        IWorkerProfileManager workerProfileManager)
+        {
+            _config = config ?? throw new ArgumentNullException(nameof(config));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _environment = environment ?? throw new ArgumentNullException(nameof(environment));
+            _profileManager = workerProfileManager ?? throw new ArgumentNullException(nameof(workerProfileManager));
+        }
+
+        public List<string> GetWorkerConfigs(List<string> probingPaths, string fallbackPath)
+        {
+            var workerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
+
+            // Dictionary of language-name : workerConfig
             ConcurrentDictionary<string, string> outputDict = new ConcurrentDictionary<string, string>();
 
-            //if not dotnet-isolated -- it will always be read from fallback path
-
             // check worker release channel
-            string releaseChannel = Utility.GetPlatformReleaseChannel(environment);
+            string releaseChannel = Utility.GetPlatformReleaseChannel(_environment);
 
-            HashSet<string> hostCapabilites = GetHostCapabilities();
-
-            // test
             foreach (var probingPath in probingPaths)
             {
-                // language worker
                 foreach (var languageWorkerPath in Directory.EnumerateDirectories(probingPath))
                 {
-                    var workerVersions = Directory.EnumerateDirectories(languageWorkerPath);
+                    string languageWorkerFolder = Path.GetFileName(languageWorkerPath);
 
-                    var versions = new List<Version>();
-                    foreach (var v in workerVersions)
+                    //if not dotnet-isolated -- it will always be read from fallback path
+                    if (!string.IsNullOrWhiteSpace(workerRuntime) &&
+                        !workerRuntime.Equals(RpcWorkerConstants.DotNetIsolatedLanguageWorkerName, StringComparison.OrdinalIgnoreCase) &&
+                        !_environment.IsPlaceholderModeEnabled() &&
+                        !_environment.IsMultiLanguageRuntimeEnvironment())
                     {
-                        string versionFolder = Path.GetFileName(v);
-                        if (Version.TryParse(versionFolder, out Version version))
+                        // Only skip worker directories that don't match the current runtime.
+                        // Do not skip non-worker directories like the function app payload directory
+                        if (!workerRuntime.Equals(languageWorkerFolder, StringComparison.OrdinalIgnoreCase) && languageWorkerPath.StartsWith(fallbackPath))
                         {
-                            versions.Add(version);
+                            continue;
                         }
                     }
 
+                    IEnumerable<string> workerVersions = Directory.EnumerateDirectories(languageWorkerPath);
+                    var versions = ParseWorkerVersions(workerVersions);
                     versions.OrderDescending();
 
                     int found = 0;
 
-                    if (outputDict.ContainsKey(languageWorkerPath))
+                    if (outputDict.ContainsKey(languageWorkerFolder))
                     {
                         continue;
                     }
 
                     // language worker version
-                    foreach (var versionFolder in versions)
+                    foreach (Version versionFolder in versions)
                     {
-                        string workerConfigPath = Path.Combine(languageWorkerPath, versionFolder.ToString(), RpcWorkerConstants.WorkerConfigFileName);
-                        if (File.Exists(workerConfigPath))
+                        if (IsCompatibleWithHost(Path.Combine(languageWorkerPath, versionFolder.ToString())))
                         {
-                            // static capability resolution
-                            if (IsCompatibleWithHost(
-                                hostCapabilites,
-                                workerConfigPath,
-                                _jsonSerializerOptions,
-                                Path.Combine(languageWorkerPath, versionFolder.ToString()),
-                                _profileManager,
-                                _config,
-                                _logger))
+                            found++;
+                            outputDict[languageWorkerFolder] = languageWorkerPath;
+
+                            if (string.IsNullOrEmpty(releaseChannel) || !releaseChannel.Equals(ScriptConstants.StandardPlatformChannelNameUpper))
                             {
-                                found++;
-                                outputDict[languageWorkerPath] = workerConfigPath;
+                                // latest version is the default
+                                break;
+                            }
 
-                                if (string.IsNullOrEmpty(releaseChannel) || !releaseChannel.Equals(ScriptConstants.StandardPlatformChannelNameUpper))
-                                {
-                                    // latest version is the default
-                                    break;
-                                }
-
-                                if (found == 2 && releaseChannel.Equals(ScriptConstants.StandardPlatformChannelNameUpper))
-                                {
-                                    outputDict[languageWorkerPath] = workerConfigPath;
-                                    break;
-                                }
+                            if (found > 1 && releaseChannel.Equals(ScriptConstants.StandardPlatformChannelNameUpper))
+                            {
+                                outputDict[languageWorkerFolder] = languageWorkerPath;
+                                break;
                             }
                         }
                     }
@@ -102,7 +106,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
             foreach (var workerDir in Directory.EnumerateDirectories(fallbackPath))
             {
-                if (outputDict.ContainsKey(workerDir))
+                string workerFolder = Path.GetFileName(workerDir);
+
+                if (outputDict.ContainsKey(workerFolder))
                 {
                     continue;
                 }
@@ -110,54 +116,51 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 string workerConfigPath = Path.Combine(workerDir, RpcWorkerConstants.WorkerConfigFileName);
                 if (File.Exists(workerConfigPath))
                 {
-                    outputDict[workerDir] = workerConfigPath;
+                    outputDict[workerFolder] = workerDir;
                 }
             }
 
             return outputDict.Values.ToList();
         }
 
-        internal static HashSet<string> GetHostCapabilities()
+        internal List<Version> ParseWorkerVersions(IEnumerable<string> workerVersions)
+        {
+            var versions = new List<Version>();
+
+            foreach (var workerVersion in workerVersions)
+            {
+                string versionFolder = Path.GetFileName(workerVersion);
+
+                if (Version.TryParse(versionFolder, out Version version))
+                {
+                    versions.Add(version);
+                }
+            }
+
+            return versions;
+        }
+
+        internal HashSet<string> GetHostCapabilities()
         {
             HashSet<string> hostCapabilites = ["test-capability-1", "test-capability-2"];
 
             return hostCapabilites;
         }
 
-        internal static bool IsCompatibleWithHost(
-            HashSet<string> hostCapabilities,
-            string workerConfigPath,
-            JsonSerializerOptions _jsonSerializerOptions,
-            string workerDir,
-            IWorkerProfileManager _profileManager,
-            IConfiguration _config,
-            ILogger _logger)
+        internal bool IsCompatibleWithHost(string workerDir)
         {
-            var workerConfig = WorkerConfigurationHelper.GetWorkerConfigJsonElement(workerConfigPath);
-
-            HashSet<string> n = new HashSet<string>();
-
-            // Read worker config section = capabilities as HashSet
-            var a = workerConfig.GetProperty("hostRequirements");
-
-            var b = a.EnumerateArray();
-
-            foreach (var k in b)
+            string workerConfigPath = Path.Combine(workerDir, RpcWorkerConstants.WorkerConfigFileName);
+            if (!File.Exists(workerConfigPath))
             {
-                var m = k.GetString();
-                n.Add(m);
+                return false;
             }
 
-            foreach (var l in n)
-            {
-                if (!hostCapabilities.Contains(l))
-                {
-                    return false;
-                }
-            }
+            JsonElement workerConfig = WorkerConfigurationHelper.GetWorkerConfigJsonElement(workerConfigPath);
+
+            // static capability resolution
+            bool doesHostRequirementMeet = DoesHostRequirementMeet(workerConfig);
 
             // profiles evaluation
-
             RpcWorkerDescription workerDescription = WorkerConfigurationHelper.GetWorkerDescription(
                 workerConfig,
                 _jsonSerializerOptions,
@@ -169,6 +172,40 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             if (workerDescription.IsDisabled == true)
             {
                 return false;
+            }
+
+            return true;
+        }
+
+        internal HashSet<string> GetHostRequirements(JsonElement workerConfig)
+        {
+            HashSet<string> hostRequirements = new HashSet<string>();
+
+            if (workerConfig.TryGetProperty("hostRequirements", out JsonElement configSection))
+            {
+                var requirements = configSection.EnumerateArray();
+
+                foreach (var requirement in requirements)
+                {
+                    hostRequirements.Add(requirement.GetString());
+                }
+            }
+
+            return hostRequirements;
+        }
+
+        internal bool DoesHostRequirementMeet(JsonElement workerConfig)
+        {
+            HashSet<string> hostRequirements = GetHostRequirements(workerConfig);
+
+            HashSet<string> hostCapabilities = GetHostCapabilities();
+
+            foreach (var hostRequirement in hostRequirements)
+            {
+                if (!hostCapabilities.Contains(hostRequirement))
+                {
+                    return false;
+                }
             }
 
             return true;

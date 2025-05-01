@@ -38,6 +38,7 @@ using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -335,6 +336,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 services.ConfigureOptions<ScaleOptionsSetup>();
 
                 services.AddSingleton<IFileLoggingStatusManager, FileLoggingStatusManager>();
+                services.AddSingleton<IWorkerConfigurationResolver, WorkerConfigurationResolver>();
 
                 if (applicationHostOptions.HasParentScope)
                 {
