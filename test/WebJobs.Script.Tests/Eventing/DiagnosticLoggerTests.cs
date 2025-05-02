@@ -216,7 +216,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Eventing
         [InlineData(EnvironmentSettingNames.AzureWebsiteHostName, "host", true, true, true)]
         public void Log_IsEnabled(string envVariableName, string envVariableVale, bool isConsumptionOnLegion, bool isAzureMonitorEnabled,  bool isDisabled)
         {
-            string message = "TestMessage";
             string functionInvocationId = Guid.NewGuid().ToString();
             string activityId = Guid.NewGuid().ToString();
 
