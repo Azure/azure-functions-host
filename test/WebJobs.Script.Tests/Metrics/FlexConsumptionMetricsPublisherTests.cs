@@ -111,6 +111,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
 
             FlexConsumptionMetricsPublisher.Metrics metrics = null;
             FileInfo metricsFile = null;
+
             if (!isAlwaysReadyInstance)
             {
                 // don't expect a file to be written when no activity
@@ -529,6 +530,35 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             Assert.Equal(1, publisher.ActiveFunctionCount);
             Assert.Equal(2, metrics.ExecutionCount);
             Assert.Equal(2000, metrics.ExecutionTimeMS);
+        }
+
+        [Fact]
+        public async Task OnPublishMetrics_KeepAliveMetricsPublished_WhenNoActivity()
+        {
+            CleanupMetricsFiles();
+
+            var publisher = CreatePublisher();
+
+            DateTime now = DateTime.UtcNow;
+
+            // Should not publish because there is no activity and keepalive internal has not passed
+            await publisher.OnPublishMetrics(now);
+            var files = GetMetricsFilesSafe(_metricsFilePath);
+            Assert.Equal(0, files.Length);
+
+            // Simulate 31 seconds passing with no function activity
+            now = now.AddSeconds(31);
+
+            // Should publish as keepalive interval has passed
+            await publisher.OnPublishMetrics(now);
+            files = GetMetricsFilesSafe(_metricsFilePath);
+            Assert.Equal(1, files.Length);
+
+            var metrics = await ReadMetricsAsync(files[0].FullName, deleteFile: true);
+
+            // We expect all activity values to be zero as there has been no activity
+            Assert.Equal(0, metrics.ExecutionCount);
+            Assert.Equal(0, metrics.ExecutionTimeMS);
         }
 
         [Fact]
