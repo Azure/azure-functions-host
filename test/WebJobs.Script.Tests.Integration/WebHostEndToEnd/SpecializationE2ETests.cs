@@ -52,6 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private static readonly string _scriptRootConfigPath = ConfigurationPath.Combine(ConfigurationSectionNames.WebHost, nameof(ScriptApplicationHostOptions.ScriptPath));
 
         private static readonly string _dotnetIsolated60Path = Path.GetFullPath(@"..\..\DotNetIsolated60\debug");
+        private static readonly string _dotnetIsolatedInvalidAppPath = Path.GetFullPath(@"..\..\DotNetIsolatedInvalidApp\debug");
         private static readonly string _dotnetIsolatedUnsuppportedPath = Path.GetFullPath(@"..\..\DotNetIsolatedUnsupportedWorker\debug");
         private static readonly string _dotnetIsolatedEmptyScriptRoot = Path.GetFullPath(@"..\..\..\..\EmptyScriptRoot");
 
@@ -871,6 +872,40 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             response.EnsureSuccessStatusCode();
             response.Content.Headers.TryGetValues("Content-Encoding", out value);
             Assert.Equal(expectedContentEncodingResponseHeaderValue, value?.First());
+        }
+
+        [Fact]
+        public async Task Specialization_DotnetIsolatedApp_Logs()
+        {
+            var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetIsolatedInvalidAppPath, "HttpRequestFunction");
+
+            if (Directory.Exists(Path.Combine(_dotnetIsolatedInvalidAppPath, ".azurefunctions")))
+            {
+                Directory.Move(Path.Combine(_dotnetIsolatedInvalidAppPath, ".azurefunctions"), Path.Combine(_dotnetIsolatedInvalidAppPath, ".azurefunctions_temp"));
+            }
+
+            using var testServer = new TestServer(builder);
+
+            var standbyManager = testServer.Services.GetService<IStandbyManager>();
+            Assert.NotNull(standbyManager);
+
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "dotnet-isolated");
+
+            await standbyManager.SpecializeHostAsync();
+
+            // Assert: Verify that the host has specialized
+            var scriptHostManager = testServer.Services.GetService<IScriptHostManager>();
+            Assert.NotNull(scriptHostManager);
+            Assert.Equal(ScriptHostState.Running, scriptHostManager.State);
+
+            await Task.Delay(TimeSpan.FromSeconds(5));
+
+            var log = _loggerProvider.GetLog();
+            Assert.Contains("UsePlaceholderDotNetIsolated: True", log);
+            Assert.Contains("Starting host specialization", log);
+            Assert.Contains("Could not find the .azurefunctions folder in the deployed function app artifacts.", log);
         }
 
         [Fact]
