@@ -12,12 +12,11 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Host
 {
-    public sealed class FunctionAppValidationService : IHostedService
+    public sealed class FunctionAppValidationService : BackgroundService
     {
         private readonly IEnvironment _environment;
         private readonly ILogger<FunctionAppValidationService> _logger;
         private readonly IOptions<ScriptJobHostOptions> _scriptOptions;
-        private readonly TimeSpan _initializationDelay = TimeSpan.FromSeconds(10);
 
         public FunctionAppValidationService(
             ILogger<FunctionAppValidationService> logger,
@@ -29,23 +28,19 @@ namespace Microsoft.Azure.WebJobs.Script.Host
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
         }
 
-        public async Task StartAsync(CancellationToken cancellationToken)
+        protected override async Task ExecuteAsync(CancellationToken cancellationToken)
         {
             // Adding a delay to ensure that this validation does not impact the cold start performance
-            _ = Task.Delay(_initializationDelay, cancellationToken).ContinueWith(t => Validate());
+            Utility.ExecuteAfterColdStartDelay(_environment, Validate, cancellationToken);
 
             await Task.CompletedTask;
-        }
-
-        public Task StopAsync(CancellationToken cancellationToken)
-        {
-            return Task.CompletedTask;
         }
 
         internal void Validate()
         {
             if (!_environment.IsPlaceholderModeEnabled() &&
                 !_scriptOptions.Value.IsDefaultHostConfig &&
+                !_scriptOptions.Value.IsStandbyConfiguration &&
                 Utility.IsDotnetIsolatedApp(environment: _environment) &&
                 !Directory.Exists(Path.Combine(_scriptOptions.Value.RootScriptPath, ScriptConstants.AzureFunctionsSystemDirectoryName)))
             {
