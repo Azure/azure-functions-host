@@ -336,7 +336,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 services.ConfigureOptions<ScaleOptionsSetup>();
 
                 services.AddSingleton<IFileLoggingStatusManager, FileLoggingStatusManager>();
-                services.AddSingleton<IWorkerConfigurationResolver, WorkerConfigurationResolver>();
 
                 if (applicationHostOptions.HasParentScope)
                 {

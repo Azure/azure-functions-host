@@ -25,15 +25,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly IMetricsLogger _metricsLogger;
         private readonly IWorkerProfileManager _workerProfileManager;
         private readonly IScriptHostManager _scriptHostManager;
-        private readonly IWorkerConfigurationResolver _workerConfigurationResolver;
 
         public LanguageWorkerOptionsSetup(IConfiguration configuration,
                                           ILoggerFactory loggerFactory,
                                           IEnvironment environment,
                                           IMetricsLogger metricsLogger,
                                           IWorkerProfileManager workerProfileManager,
-                                          IScriptHostManager scriptHostManager,
-                                          IWorkerConfigurationResolver workerConfigurationResolver)
+                                          IScriptHostManager scriptHostManager)
         {
             if (loggerFactory is null)
             {
@@ -45,7 +43,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _metricsLogger = metricsLogger ?? throw new ArgumentNullException(nameof(metricsLogger));
             _workerProfileManager = workerProfileManager ?? throw new ArgumentNullException(nameof(workerProfileManager));
-            _workerConfigurationResolver = workerConfigurationResolver ?? throw new ArgumentNullException(nameof(workerConfigurationResolver));
 
             _logger = loggerFactory.CreateLogger("Host.LanguageWorkerConfig");
         }
@@ -79,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 }
             }
 
-            var jsonString = ReadJsonFileAsString("C:\\testfolder\\test-config.json");
+            var jsonString = ReadJsonFileAsString("C:\\testData\\test-config.json");
 
             if (jsonString is not null)
             {
@@ -91,7 +88,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     .Build();
             }
 
-            var configFactory = new RpcWorkerConfigFactory(configuration, _logger, SystemRuntimeInformation.Instance, _environment, _metricsLogger, _workerProfileManager, _workerConfigurationResolver);
+            var workerConfigurationResolver = new WorkerConfigurationResolver(configuration, _logger, _environment, _workerProfileManager);
+            var configFactory = new RpcWorkerConfigFactory(configuration, _logger, SystemRuntimeInformation.Instance, _environment, _metricsLogger, _workerProfileManager, workerConfigurationResolver);
             options.WorkerConfigs = configFactory.GetConfigs();
         }
 
@@ -109,6 +107,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             string jsonString = File.ReadAllText(filePath);
 
+            /*
             JsonDocument jsonDocument = JsonDocument.Parse(jsonString);
 
             string languageWorkersConfigString = null;
@@ -118,8 +117,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 var languageWorkersSection = jsonDocument.RootElement.GetProperty("windowsConsumption");
                 languageWorkersConfigString = languageWorkersSection.ToString();
             }
+            */
 
-            return languageWorkersConfigString;
+            return jsonString;
         }
     }
 
