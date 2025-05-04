@@ -80,10 +80,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                     // language worker version
                     foreach (Version versionFolder in versions)
                     {
-                        if (IsCompatibleWithHost(Path.Combine(languageWorkerPath, versionFolder.ToString())))
+                        string languageWorkerVersionPath = Path.Combine(languageWorkerPath, versionFolder.ToString());
+                        if (IsCompatibleWithHost(languageWorkerVersionPath))
                         {
                             found++;
-                            outputDict[languageWorkerFolder] = languageWorkerPath;
+                            outputDict[languageWorkerFolder] = languageWorkerVersionPath;
 
                             if (string.IsNullOrEmpty(releaseChannel) || !releaseChannel.Equals(ScriptConstants.StandardPlatformChannelNameUpper))
                             {
@@ -93,7 +94,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
                             if (found > 1 && releaseChannel.Equals(ScriptConstants.StandardPlatformChannelNameUpper))
                             {
-                                outputDict[languageWorkerFolder] = languageWorkerPath;
+                                outputDict[languageWorkerFolder] = languageWorkerVersionPath;
                                 break;
                             }
                         }
@@ -102,20 +103,22 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             }
 
             // fallback path
-
-            foreach (var workerDir in Directory.EnumerateDirectories(fallbackPath))
+            if (Directory.Exists(fallbackPath))
             {
-                string workerFolder = Path.GetFileName(workerDir);
-
-                if (outputDict.ContainsKey(workerFolder) || !workerRuntime.Equals(workerFolder, StringComparison.OrdinalIgnoreCase)) // && languageWorkerPath.StartsWith(fallbackPath))
+                foreach (var workerDir in Directory.EnumerateDirectories(fallbackPath))
                 {
-                    continue;
-                }
+                    string workerFolder = Path.GetFileName(workerDir);
 
-                string workerConfigPath = Path.Combine(workerDir, RpcWorkerConstants.WorkerConfigFileName);
-                if (File.Exists(workerConfigPath))
-                {
-                    outputDict[workerFolder] = workerDir;
+                    if (outputDict.ContainsKey(workerFolder) || !workerRuntime.Equals(workerFolder, StringComparison.OrdinalIgnoreCase)) // && languageWorkerPath.StartsWith(fallbackPath))
+                    {
+                        continue;
+                    }
+
+                    string workerConfigPath = Path.Combine(workerDir, RpcWorkerConstants.WorkerConfigFileName);
+                    if (File.Exists(workerConfigPath))
+                    {
+                        outputDict[workerFolder] = workerDir;
+                    }
                 }
             }
 

@@ -59,6 +59,44 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
         }
 
         [Fact]
+        public void GetWorkerConfigs_ReturnsExpectedConfigs1()
+        {
+            // Arrange
+            var probingPaths = new List<string> { "c:\\testfolder\\probingpaths\\workers\\" };
+            var fallbackPath = "c:\\testfolder\\fallback\\workers\\";
+
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime)).Returns("java");
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel)).Returns("LATEST");
+
+            // Mock directory structure
+            // CopyDirectory("C:\\FunctionsRepos\\Host\\azure-functions-host\\src\\WebJobs.Script\\TestWorkers\\ProbingPaths\\workers\\java\\", "c:\\testfolder\\probingpaths\\workers\\java");
+
+            string text = @"
+                {
+                    ""hostRequirements"": [""test-capability-1"", ""test-capability-2""],
+                    ""description"": { ""language"": ""java"", ""defaultExecutablePath"": ""%JAVA_HOME%/bin/java"" }
+                }";
+
+            Directory.CreateDirectory("c:\\testfolder\\probingpaths\\workers\\java\\1.1");
+            File.WriteAllText("c:\\testfolder\\probingpaths\\workers\\java\\1.1\\worker.config.json", text);
+
+            // Act
+            var workerConfigurationResolver = new WorkerConfigurationResolver(_mockConfig.Object, _mockLogger.Object, _mockEnvironment.Object, _mockProfileManager.Object);
+
+            var result = workerConfigurationResolver.GetWorkerConfigs(probingPaths, fallbackPath);
+
+            // Assert
+            Assert.Single(result);
+            Assert.Contains("c:\\testfolder\\probingpaths\\workers\\java\\1.1", result);
+
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime)).Returns((string)null);
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel)).Returns((string)null);
+
+            // Cleanup
+            Directory.Delete("c:\\testfolder", true);
+        }
+
+        [Fact]
         public void IsCompatibleWithHost_ReturnsTrue_WhenCapabilitiesMatch()
         {
             // Arrange
@@ -116,6 +154,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
 
             // Cleanup
             Directory.Delete("c:\\testfolder", true);
+        }
+
+        public static void CopyDirectory(string sourceDir, string destinationDir)
+        {
+            // Ensure the destination directory exists
+            Directory.CreateDirectory(destinationDir);
+
+            // Copy all files from the source directory to the destination directory
+            foreach (var file in Directory.GetFiles(sourceDir))
+            {
+                var destFile = Path.Combine(destinationDir, Path.GetFileName(file));
+                File.Copy(file, destFile, overwrite: true);
+            }
+
+            // Recursively copy all subdirectories
+            foreach (var subDir in Directory.GetDirectories(sourceDir))
+            {
+                var destSubDir = Path.Combine(destinationDir, Path.GetFileName(subDir));
+                CopyDirectory(subDir, destSubDir);
+            }
         }
     }
 }
