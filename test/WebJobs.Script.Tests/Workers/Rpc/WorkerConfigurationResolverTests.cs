@@ -3,7 +3,6 @@
 
 using System.Collections.Generic;
 using System.IO;
-using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
@@ -12,103 +11,111 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
-public class WorkerConfigurationResolverTests
+namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
 {
-    private readonly Mock<IEnvironment> _mockEnvironment;
-    private readonly Mock<IWorkerProfileManager> _mockProfileManager;
-    private readonly Mock<IConfiguration> _mockConfig;
-    private readonly Mock<ILogger> _mockLogger;
-
-    public WorkerConfigurationResolverTests()
+    public class WorkerConfigurationResolverTests
     {
-        _mockEnvironment = new Mock<IEnvironment>();
-        _mockProfileManager = new Mock<IWorkerProfileManager>();
-        _mockConfig = new Mock<IConfiguration>();
-        _mockLogger = new Mock<ILogger>();
-    }
+        private readonly Mock<IEnvironment> _mockEnvironment;
+        private readonly Mock<IWorkerProfileManager> _mockProfileManager;
+        private readonly Mock<IConfiguration> _mockConfig;
+        private readonly Mock<ILogger> _mockLogger;
 
-    [Fact]
-    public void GetWorkerConfigs_ReturnsExpectedConfigs()
-    {
-        // Arrange
-        var probingPaths = new List<string> { "c:\\testfolder\\workers" };
-        var fallbackPath = "c:\\testfolder\\fallback";
-        _mockEnvironment.Setup(e => e.GetEnvironmentVariable(It.IsAny<string>())).Returns("test-value");
+        public WorkerConfigurationResolverTests()
+        {
+            _mockEnvironment = new Mock<IEnvironment>();
+            _mockProfileManager = new Mock<IWorkerProfileManager>();
+            _mockConfig = new Mock<IConfiguration>();
+            _mockLogger = new Mock<ILogger>();
+        }
 
-        // Mock directory structure
-        Directory.CreateDirectory("c:\\testfolder\\workers\\java\\1.1");
-        File.WriteAllText("c:\\testfolder\\workers\\java\\1.1\\worker.config.json", "{}");
+        [Fact]
+        public void GetWorkerConfigs_ReturnsExpectedConfigs()
+        {
+            // Arrange
+            var probingPaths = new List<string> { "C:\\FunctionsRepos\\Host\\azure-functions-host\\src\\WebJobs.Script\\TestWorkers\\ProbingPaths\\workers\\" };
+            var fallbackPath = "C:\\FunctionsRepos\\Host\\azure-functions-host\\src\\WebJobs.Script\\TestWorkers\\FallbackPath\\workers\\";
+            //_mockEnvironment.Setup(e => e.GetEnvironmentVariable(It.IsAny<string>())).Returns("test-value");
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime)).Returns("java");
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel)).Returns("LATEST");
 
-        // Act
-        var workerConfigurationResolver = new WorkerConfigurationResolver(_mockConfig.Object, _mockLogger.Object, _mockEnvironment.Object, _mockProfileManager.Object);
+            // Mock directory structure
+            //    Directory.CreateDirectory("c:\\testfolder\\workers\\java\\1.1");
+            //    File.WriteAllText("c:\\testfolder\\workers\\java\\1.1\\worker.config.json", "{}");
 
-        var result = workerConfigurationResolver.GetWorkerConfigs(probingPaths, fallbackPath);
+            // Act
+            var workerConfigurationResolver = new WorkerConfigurationResolver(_mockConfig.Object, _mockLogger.Object, _mockEnvironment.Object, _mockProfileManager.Object);
 
-        // Assert
-        Assert.Single(result);
-        Assert.Contains("c:\\testfolder\\workers\\java\\1.1\\worker.config.json", result);
+            var result = workerConfigurationResolver.GetWorkerConfigs(probingPaths, fallbackPath);
 
-        // Cleanup
-        Directory.Delete("c:\\testfolder", true);
-    }
+            // Assert
+            Assert.Single(result);
+            Assert.Contains("C:\\FunctionsRepos\\Host\\azure-functions-host\\src\\WebJobs.Script\\TestWorkers\\ProbingPaths\\workers\\java", result);
 
-    [Fact]
-    public void IsCompatibleWithHost_ReturnsTrue_WhenCapabilitiesMatch()
-    {
-        // Arrange
-        var hostCapabilities = new HashSet<string> { "test-capability-1", "test-capability-2" };
-        var workerConfigPath = "c:\\testfolder\\workers\\java\\1.1\\worker.config.json";
-        var workerDir = "c:\\testfolder\\workers\\java\\1.1";
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime)).Returns((string)null);
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel)).Returns((string)null);
 
-        Directory.CreateDirectory(workerDir);
-        File.WriteAllText(workerConfigPath, @"
+            // Cleanup
+            Directory.Delete("c:\\testfolder", true);
+        }
+
+        [Fact]
+        public void IsCompatibleWithHost_ReturnsTrue_WhenCapabilitiesMatch()
+        {
+            // Arrange
+            var hostCapabilities = new HashSet<string> { "test-capability-1", "test-capability-2" };
+            var workerConfigPath = "c:\\testfolder\\workers\\java\\1.1\\worker.config.json";
+            var workerDir = "c:\\testfolder\\workers\\java\\1.1";
+
+            Directory.CreateDirectory(workerDir);
+            File.WriteAllText(workerConfigPath, @"
         {
             ""hostRequirements"": [""test-capability-1"", ""test-capability-2""],
             ""description"": { ""language"": ""java"" }
         }");
 
-        _mockProfileManager.Setup(p => p.LoadWorkerDescriptionFromProfiles(It.IsAny<RpcWorkerDescription>(), out It.Ref<RpcWorkerDescription>.IsAny))
-            .Callback((RpcWorkerDescription _, out RpcWorkerDescription desc) =>
-            {
-                desc = new RpcWorkerDescription { IsDisabled = false };
-            });
+            _mockProfileManager.Setup(p => p.LoadWorkerDescriptionFromProfiles(It.IsAny<RpcWorkerDescription>(), out It.Ref<RpcWorkerDescription>.IsAny))
+                .Callback((RpcWorkerDescription _, out RpcWorkerDescription desc) =>
+                {
+                    desc = new RpcWorkerDescription { IsDisabled = false };
+                });
 
-        // Act
-        var workerConfigurationResolver = new WorkerConfigurationResolver(_mockConfig.Object, _mockLogger.Object, _mockEnvironment.Object, _mockProfileManager.Object);
+            // Act
+            var workerConfigurationResolver = new WorkerConfigurationResolver(_mockConfig.Object, _mockLogger.Object, _mockEnvironment.Object, _mockProfileManager.Object);
 
-        var result = workerConfigurationResolver.IsCompatibleWithHost(workerDir);
+            var result = workerConfigurationResolver.IsCompatibleWithHost(workerDir);
 
-        // Assert
-        Assert.True(result);
+            // Assert
+            Assert.True(result);
 
-        // Cleanup
-        Directory.Delete("c:\\testfolder", true);
-    }
+            // Cleanup
+            Directory.Delete("c:\\testfolder", true);
+        }
 
-    [Fact]
-    public void IsCompatibleWithHost_ReturnsFalse_WhenCapabilitiesDoNotMatch()
-    {
-        // Arrange
-        var hostCapabilities = new HashSet<string> { "test-capability-1" };
-        var workerConfigPath = "c:\\testfolder\\workers\\java\\1.1\\worker.config.json";
-        var workerDir = "c:\\testfolder\\workers\\java\\1.1";
+        [Fact]
+        public void IsCompatibleWithHost_ReturnsFalse_WhenCapabilitiesDoNotMatch()
+        {
+            // Arrange
+            var hostCapabilities = new HashSet<string> { "test-capability-1" };
+            var workerConfigPath = "c:\\testfolder\\workers\\java\\1.1\\worker.config.json";
+            var workerDir = "c:\\testfolder\\workers\\java\\1.1";
 
-        Directory.CreateDirectory(workerDir);
-        File.WriteAllText(workerConfigPath, @"
+            Directory.CreateDirectory(workerDir);
+            File.WriteAllText(workerConfigPath, @"
         {
             ""hostRequirements"": [""test-capability-1"", ""test-capability-2""],
             ""description"": { ""language"": ""java"" }
         }");
 
-        // Act
-        var workerConfigurationResolver = new WorkerConfigurationResolver(_mockConfig.Object, _mockLogger.Object, _mockEnvironment.Object, _mockProfileManager.Object);
+            // Act
+            var workerConfigurationResolver = new WorkerConfigurationResolver(_mockConfig.Object, _mockLogger.Object, _mockEnvironment.Object, _mockProfileManager.Object);
 
-        var result = workerConfigurationResolver.IsCompatibleWithHost(workerDir);
+            var result = workerConfigurationResolver.IsCompatibleWithHost(workerDir);
 
-        // Assert
-        Assert.False(result);
+            // Assert
+            Assert.False(result);
 
-        // Cleanup
-        Directory.Delete("c:\\testfolder", true);
+            // Cleanup
+            Directory.Delete("c:\\testfolder", true);
+        }
     }
 }

@@ -110,17 +110,17 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
         private static void GetWorkerDescriptionFromAppSettings(RpcWorkerDescription workerDescription, IConfigurationSection languageSection)
         {
-            var defaultExecutablePathSetting = languageSection.GetSection($"{WorkerConstants.WorkerDescriptionDefaultExecutablePath}");
-            workerDescription.DefaultExecutablePath = defaultExecutablePathSetting.Value != null ? defaultExecutablePathSetting.Value : workerDescription.DefaultExecutablePath;
+            var defaultExecutablePathSetting = languageSection?.GetSection($"{WorkerConstants.WorkerDescriptionDefaultExecutablePath}");
+            workerDescription.DefaultExecutablePath = defaultExecutablePathSetting?.Value != null ? defaultExecutablePathSetting.Value : workerDescription.DefaultExecutablePath;
 
-            var defaultRuntimeVersionAppSetting = languageSection.GetSection($"{WorkerConstants.WorkerDescriptionDefaultRuntimeVersion}");
-            workerDescription.DefaultRuntimeVersion = defaultRuntimeVersionAppSetting.Value != null ? defaultRuntimeVersionAppSetting.Value : workerDescription.DefaultRuntimeVersion;
+            var defaultRuntimeVersionAppSetting = languageSection?.GetSection($"{WorkerConstants.WorkerDescriptionDefaultRuntimeVersion}");
+            workerDescription.DefaultRuntimeVersion = defaultRuntimeVersionAppSetting?.Value != null ? defaultRuntimeVersionAppSetting.Value : workerDescription.DefaultRuntimeVersion;
         }
 
         internal static void AddArgumentsFromAppSettings(RpcWorkerDescription workerDescription, IConfigurationSection languageSection)
         {
-            var argumentsSection = languageSection.GetSection($"{WorkerConstants.WorkerDescriptionArguments}");
-            if (argumentsSection.Value != null)
+            var argumentsSection = languageSection?.GetSection($"{WorkerConstants.WorkerDescriptionArguments}");
+            if (argumentsSection?.Value != null)
             {
                 ((List<string>)workerDescription.Arguments).AddRange(Regex.Split(argumentsSection.Value, @"\s+"));
             }

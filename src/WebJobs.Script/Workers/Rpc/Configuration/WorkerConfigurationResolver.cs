@@ -60,15 +60,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                     {
                         // Only skip worker directories that don't match the current runtime.
                         // Do not skip non-worker directories like the function app payload directory
-                        if (!workerRuntime.Equals(languageWorkerFolder, StringComparison.OrdinalIgnoreCase) && languageWorkerPath.StartsWith(fallbackPath))
+                        if (!workerRuntime.Equals(languageWorkerFolder, StringComparison.OrdinalIgnoreCase))// && languageWorkerPath.StartsWith(fallbackPath))
                         {
                             continue;
                         }
                     }
 
                     IEnumerable<string> workerVersions = Directory.EnumerateDirectories(languageWorkerPath);
-                    var versions = ParseWorkerVersions(workerVersions);
-                    versions.OrderDescending();
+                    var versionsList = ParseWorkerVersions(workerVersions);
+                    var versions = versionsList.OrderDescending();
 
                     int found = 0;
 
@@ -107,7 +107,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             {
                 string workerFolder = Path.GetFileName(workerDir);
 
-                if (outputDict.ContainsKey(workerFolder))
+                if (outputDict.ContainsKey(workerFolder) || !workerRuntime.Equals(workerFolder, StringComparison.OrdinalIgnoreCase)) // && languageWorkerPath.StartsWith(fallbackPath))
                 {
                     continue;
                 }
