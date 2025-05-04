@@ -11,3 +11,4 @@
 - Re-add `Microsoft.DotNet.PlatformAbstractions` (#11031)
 - Update Python Worker Version to [4.37.0](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.37.0)
 - Disable Diagnostic Events when Table Storage is not accessible (#10996)
+- Add JitTrace Files for v4.39
