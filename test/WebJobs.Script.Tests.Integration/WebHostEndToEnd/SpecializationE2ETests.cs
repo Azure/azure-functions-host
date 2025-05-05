@@ -875,13 +875,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task Specialization_DotnetIsolatedApp_Logs()
+        public async Task Specialization_DotnetIsolatedApp_MissingAzureFunctionsDir_Logs()
         {
             var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetIsolatedInvalidAppPath, "HttpRequestFunction");
+            var path = Path.Combine(_dotnetIsolatedInvalidAppPath, ".azurefunctions");
 
-            if (Directory.Exists(Path.Combine(_dotnetIsolatedInvalidAppPath, ".azurefunctions")))
+            if (Directory.Exists(path))
             {
-                Directory.Move(Path.Combine(_dotnetIsolatedInvalidAppPath, ".azurefunctions"), Path.Combine(_dotnetIsolatedInvalidAppPath, ".azurefunctions_temp"));
+                Directory.Move(path, Path.Combine(_dotnetIsolatedInvalidAppPath, ".azurefunctions_temp"));
             }
 
             using var testServer = new TestServer(builder);

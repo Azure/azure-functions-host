@@ -6,16 +6,8 @@ Console.WriteLine("Console Out from worker on startup.");
 
 var hostBuilder = new HostBuilder();
 
-if (useProxy)
-{
-    hostBuilder
-        .ConfigureFunctionsWebApplication();
-}
-else
-{
-    hostBuilder
-        .ConfigureFunctionsWorkerDefaults();
-}
+
+hostBuilder.ConfigureFunctionsWebApplication();
 
 var host = hostBuilder.Build();
 host.Run();
