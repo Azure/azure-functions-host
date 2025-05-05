@@ -52,18 +52,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 {
                     string languageWorkerFolder = Path.GetFileName(languageWorkerPath);
 
-                    //if not dotnet-isolated -- it will always be read from fallback path
-                    if (!string.IsNullOrWhiteSpace(workerRuntime) &&
-                        !workerRuntime.Equals(RpcWorkerConstants.DotNetIsolatedLanguageWorkerName, StringComparison.OrdinalIgnoreCase) &&
-                        !_environment.IsPlaceholderModeEnabled() &&
-                        !_environment.IsMultiLanguageRuntimeEnvironment())
+                    // Only skip worker directories that don't match the current runtime.
+                    // Do not skip non-worker directories like the function app payload directory
+                    if (!_environment.IsMultiLanguageRuntimeEnvironment() && !workerRuntime.Equals(languageWorkerFolder, StringComparison.OrdinalIgnoreCase)) // && languageWorkerPath.StartsWith(fallbackPath))
                     {
-                        // Only skip worker directories that don't match the current runtime.
-                        // Do not skip non-worker directories like the function app payload directory
-                        if (!workerRuntime.Equals(languageWorkerFolder, StringComparison.OrdinalIgnoreCase))// && languageWorkerPath.StartsWith(fallbackPath))
-                        {
-                            continue;
-                        }
+                        continue;
                     }
 
                     IEnumerable<string> workerVersions = Directory.EnumerateDirectories(languageWorkerPath);
@@ -103,6 +96,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             }
 
             // fallback path
+            GetWorkerConfigsFromWithinHost(fallbackPath, workerRuntime, outputDict);
+
+            return outputDict.Values.ToList();
+        }
+
+        internal void GetWorkerConfigsFromWithinHost(string fallbackPath, string workerRuntime, ConcurrentDictionary<string, string> outputDict)
+        {
+            // fallback path
             if (Directory.Exists(fallbackPath))
             {
                 foreach (var workerDir in Directory.EnumerateDirectories(fallbackPath))
@@ -121,8 +122,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                     }
                 }
             }
-
-            return outputDict.Values.ToList();
         }
 
         internal List<Version> ParseWorkerVersions(IEnumerable<string> workerVersions)
