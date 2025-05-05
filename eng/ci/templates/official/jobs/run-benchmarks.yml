@@ -33,7 +33,7 @@ jobs:
     benchmarkResultsJsonPath: $(Build.ArtifactStagingDirectory)/BenchmarkResults/$(Build.BuildNumber)_$(functionApp).json
     functionsWorkerRuntime: 'dotnet-isolated'
     configFilePath: "./eng/perf/http.benchmarks.yml"
-    hostLocation: "./../../"
+    hostLocation: "./../../test/Performance/Apps/$(functionApp)"
     baselineBenchmarkResultFilePath: ''
     baselineBenchmarkResultsDownloadDir: $(Pipeline.Workspace)/BenchmarkBaselineResult
     appAgentHostName: ''
@@ -115,9 +115,6 @@ jobs:
         $crankArgs += " --variable CrankAgentAppVm=$(appAgentHostName) --variable CrankAgentLoadVm=localhost --variable AspNetUrls=http://$(appAgentHostName):5000"
         $crankArgs += " $(AdditionalCrankArguments)"
         $command = "crank $crankArgs"
-        if ('$(storeBenchmarkResultsInDatabase)' -eq 'true') {
-            $command += " --table HttpBenchmarks --sql `"$(BenchmarkResultsSqlConnectionString)`""
-        }
 
         Write-Host "Running command: $command"
         Invoke-Expression $command
@@ -130,35 +127,3 @@ jobs:
       Write-Host $response.Content
     displayName: Fetch Function Host Logs
 
-  # Tag the build as a baseline if it originates from the specified branch.
-  # Baseline builds serve as reference points for performance comparisons in future builds.
-  # The tag added here will help identify these builds in the pipeline.
-  - pwsh: |
-      Write-Host "##vso[build.addbuildtag]$(benchmarkBaselineTagName)"
-    condition: and(succeeded(), eq(variables['Build.SourceBranch'], variables['benchmarkBaselineBranch']))
-    displayName: 'Tag Build as Baseline'
-
-  # Locate baseline benchmark result file from the downloaded baseline artifact.
-  - pwsh: |
-      $baselineDir = "$(baselineBenchmarkResultsDownloadDir)"
-      $fileNamePattern = "*_$(functionApp).json"
-
-      if (Test-Path $baselineDir -PathType Container) {
-          $baselineFile = Get-ChildItem -Path $baselineDir -Filter $fileNamePattern | Select-Object -First 1
-
-          if ($baselineFile) {
-              Write-Host "Found baseline benchmark result file: $($baselineFile.FullName)"
-              Write-Host "##vso[task.setvariable variable=baselineBenchmarkResultFilePath]$($baselineFile.FullName)"
-          } else {
-              Write-Host "No baseline benchmark result file matching the pattern '$fileNamePattern' found in directory '$baselineDir'."
-          }
-      } else {
-          Write-Host "The specified directory '$baselineDir' does not exist."
-      }
-    displayName: 'Set Baseline Benchmark Result File Path'
-
-  # Compare results with baseline
-  - pwsh: |
-      crank compare "$(baselineBenchmarkResultFilePath)" "$(benchmarkResultsJsonPath)"
-    condition: and(succeeded(), ne(variables['baselineBenchmarkResultFilePath'], ''))
-    displayName: 'Compare Results with Baseline'

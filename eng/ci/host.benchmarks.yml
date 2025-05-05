@@ -47,19 +47,12 @@ extends:
       # WINDOWS
       - template: /eng/ci/templates/official/jobs/setup-benchmark-agents.yml@self
         parameters:
-          functionAppName: HelloHttpNet9
-      - template: /eng/ci/templates/official/jobs/setup-benchmark-agents.yml@self
-        parameters:
-          functionAppName: HelloHttpNet9NoProxy
+          functionAppName: WebApi
 
       # LINUX
       - template: /eng/ci/templates/official/jobs/setup-benchmark-agents.yml@self
         parameters:
-          functionAppName: HelloHttpNet9 
-          os: Linux
-      - template: /eng/ci/templates/official/jobs/setup-benchmark-agents.yml@self
-        parameters:
-          functionAppName: HelloHttpNet9NoProxy
+          functionAppName: WebApi
           os: Linux
 
     - stage: Run
@@ -69,21 +62,12 @@ extends:
       # WINDOWS
       - template: /eng/ci/templates/official/jobs/run-benchmarks.yml@self
         parameters:
-          description: .NET9 Web Application
-          functionAppName: HelloHttpNet9  # App with ASP.NET Integration
-      - template: /eng/ci/templates/official/jobs/run-benchmarks.yml@self
-        parameters:
-          description: .NET9 Worker Application
-          functionAppName: HelloHttpNet9NoProxy # App without ASP.NET Integration
+          description: .NET9 WebApi
+          functionAppName: WebApi  
 
       # LINUX
       - template: /eng/ci/templates/official/jobs/run-benchmarks.yml@self
         parameters:
-          description: .NET9 Web Application
-          functionAppName: HelloHttpNet9  
-          os: Linux
-      - template: /eng/ci/templates/official/jobs/run-benchmarks.yml@self
-        parameters:
-          description: .NET9 Worker Application
-          functionAppName: HelloHttpNet9NoProxy 
+          description: .NET9 WebApi
+          functionAppName: WebApi  
           os: Linux

@@ -7,16 +7,14 @@ jobs:
     sources:
       functionshost:
         localFolder: '{{HostLocation}}'
-    project: functionshost/src/WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj
+    project: functionshost/WebApi.csproj
     readyStateText: 'Application started.'
     environmentVariables:
-      FUNCTIONS_WORKER_RUNTIME: '{{FunctionsWorkerRuntime}}'
-      AzureWebJobsScriptRoot: '{{FunctionAppPath}}'
       ASPNETCORE_URLS: '{{ AspNetUrls }}'
 
 scenarios:
   hellohttp:
-    hostruntime:
+    webapp:
       job: server
         
     load:
@@ -31,7 +29,7 @@ profiles:
       serverUri: http://{{ CrankAgentAppVm }}
       serverPort: 5000
     jobs: 
-      hostruntime:
+      webapp:
         endpoints: 
           - http://{{ CrankAgentAppVm }}:5010
       load:
