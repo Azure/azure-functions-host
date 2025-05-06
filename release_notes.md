@@ -1,6 +1,4 @@
 ### Release notes
 
-<!-- Please add your release notes in the following format:
-- My change description (#PR)
--->
-- Replaced `dynamic` usage with static typing in `ConvertFromHttpMessageToExpando` for improved performance. (#11054)
+- Memory allocation & CPU optimizations in `GrpcMessageExtensionUtilities.ConvertFromHttpMessageToExpando` (#11054)
+- Memory allocation optimizations in `ScriptStartupTypeLocator.GetExtensionsStartupTypesAsync` (#11012)
