@@ -30,17 +30,18 @@ namespace Microsoft.Azure.WebJobs.Script.Host
 
         protected override async Task ExecuteAsync(CancellationToken cancellationToken)
         {
-            // Adding a delay to ensure that this validation does not impact the cold start performance
-            Utility.ExecuteAfterColdStartDelay(_environment, Validate, cancellationToken);
+            if (!_environment.IsPlaceholderModeEnabled() && !_scriptOptions.Value.IsStandbyConfiguration)
+            {
+                // Adding a delay to ensure that this validation does not impact the cold start performance
+                Utility.ExecuteAfterColdStartDelay(_environment, Validate, cancellationToken);
+            }
 
             await Task.CompletedTask;
         }
 
         internal void Validate()
         {
-            if (!_environment.IsPlaceholderModeEnabled() &&
-                !_scriptOptions.Value.IsDefaultHostConfig &&
-                !_scriptOptions.Value.IsStandbyConfiguration &&
+            if (!_scriptOptions.Value.IsDefaultHostConfig &&
                 Utility.IsDotnetIsolatedApp(environment: _environment) &&
                 !Directory.Exists(Path.Combine(_scriptOptions.Value.RootScriptPath, ScriptConstants.AzureFunctionsSystemDirectoryName)))
             {
