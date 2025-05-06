@@ -953,6 +953,64 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task GetExtensionsStartupTypes_NoBindings_In_ExtensionJson()
+        {
+            TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
+
+            using var directory = new TempDirectory();
+            var binPath = Path.Combine(directory.Path, "bin");
+            Directory.CreateDirectory(binPath);
+
+            void CopyToBin(string path)
+            {
+                File.Copy(path, Path.Combine(binPath, Path.GetFileName(path)));
+            }
+
+            CopyToBin(typeof(AzureStorageWebJobsStartup).Assembly.Location);
+
+            string extensionJson = $$"""
+                                      {
+                                        "extensions": [
+                                          {
+                                            "name": "Storage",
+                                            "typeName": "{{typeof(AzureStorageWebJobsStartup).AssemblyQualifiedName}}",
+                                            "hintPath": "Microsoft.Azure.WebJobs.Extensions.Storage.dll"  
+                                          },
+                                          {
+                                            "Name": "AzureStorageBlobs",
+                                            "TypeName": "{{typeof(AzureStorageWebJobsStartup).AssemblyQualifiedName}}"
+                                          }
+                                        ]
+                                      }
+                                      """;
+
+            File.WriteAllText(Path.Combine(binPath, "extensions.json"), extensionJson);
+
+            TestLoggerProvider testLoggerProvider = new TestLoggerProvider();
+            LoggerFactory factory = new LoggerFactory();
+            factory.AddProvider(testLoggerProvider);
+            var testLogger = factory.CreateLogger<ScriptStartupTypeLocator>();
+
+            var mockExtensionBundleManager = new Mock<IExtensionBundleManager>();
+            mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
+            mockExtensionBundleManager.Setup(e => e.GetExtensionBundleDetails()).Returns(Task.FromResult(new ExtensionBundleDetails() { Id = "bundleID", Version = "1.0.0" }));
+            mockExtensionBundleManager.Setup(e => e.GetExtensionBundleBinPathAsync()).Returns(Task.FromResult(binPath));
+
+            var languageWorkerOptions = new TestOptionsMonitor<LanguageWorkerOptions>(new LanguageWorkerOptions());
+            var mockFunctionMetadataManager = GetTestFunctionMetadataManager(languageWorkerOptions);
+            OptionsWrapper<ExtensionRequirementOptions> optionsWrapper = new(new ExtensionRequirementOptions());
+            var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger, optionsWrapper);
+
+            // Act
+            var types = await discoverer.GetExtensionsStartupTypesAsync();
+
+            // Assert
+            AreExpectedMetricsGenerated(testMetricsLogger);
+            Assert.Equal(types.Count(), 2);
+            Assert.Equal(typeof(AzureStorageWebJobsStartup).FullName, types.FirstOrDefault().FullName);
+        }
+
+        [Fact]
         public async Task GetExtensionsStartupTypes_RejectsBundleBelowMinimumVersion()
         {
             using (var directory = GetTempDirectory())

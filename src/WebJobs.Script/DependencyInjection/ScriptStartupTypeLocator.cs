@@ -7,6 +7,7 @@ using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Hosting;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -19,8 +20,6 @@ using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
 {
@@ -28,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
     /// An implementation of an <see cref="IWebJobsStartupTypeLocator"/> that locates startup types
     /// from extension registrations.
     /// </summary>
-    public class ScriptStartupTypeLocator : IWebJobsStartupTypeLocator
+    public sealed class ScriptStartupTypeLocator : IWebJobsStartupTypeLocator
     {
         private const string ApplicationInsightsStartupType = "Microsoft.Azure.WebJobs.Extensions.ApplicationInsights.ApplicationInsightsWebJobsStartup, Microsoft.Azure.WebJobs.Extensions.ApplicationInsights, Version=1.0.0.0, Culture=neutral, PublicKeyToken=9475d07f10cb09df";
 
@@ -146,7 +145,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
             string metadataFilePath = Path.Combine(extensionsMetadataPath, ScriptConstants.ExtensionsMetadataFileName);
 
             // parse the extensions file to get declared startup extensions
-            ExtensionReference[] extensionItems = ParseExtensions(metadataFilePath);
+            ExtensionReference[] extensionItems = await ParseExtensionsAsync(metadataFilePath);
 
             var startupTypes = new List<Type>();
 
@@ -160,7 +159,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
                 }
 
                 if (!bundleConfigured
-                    || extensionItem.Bindings.Count == 0
+                    || extensionItem.Bindings is null || extensionItem.Bindings.Count == 0
                     || extensionItem.Bindings.Intersect(bindingsSet, StringComparer.OrdinalIgnoreCase).Any())
                 {
                     string startupExtensionName = extensionItem.Name ?? extensionItem.TypeName;
@@ -222,33 +221,32 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
             return startupTypes;
         }
 
-        private ExtensionReference[] ParseExtensions(string metadataFilePath)
+        private async Task<ExtensionReference[]> ParseExtensionsAsync(string metadataFilePath)
         {
             using (_metricsLogger.LatencyEvent(MetricEventNames.ParseExtensions))
             {
                 if (!File.Exists(metadataFilePath))
                 {
-                    return Array.Empty<ExtensionReference>();
+                    return [];
                 }
 
                 try
                 {
-                    var extensionMetadata = JObject.Parse(File.ReadAllText(metadataFilePath));
+                    await using var stream = File.OpenRead(metadataFilePath);
+                    var extensionReferences = await JsonSerializer.DeserializeAsync(stream, ExtensionReferencesJsonContext.Default.ExtensionReferences);
 
-                    var extensionItems = extensionMetadata["extensions"]?.ToObject<List<ExtensionReference>>();
-                    if (extensionItems == null)
+                    if (extensionReferences?.Extensions == null || extensionReferences.Extensions.Length == 0)
                     {
                         _logger.ScriptStartUpUnableParseMetadataMissingProperty(metadataFilePath);
-                        return Array.Empty<ExtensionReference>();
+                        return [];
                     }
 
-                    return extensionItems.ToArray();
+                    return extensionReferences.Extensions;
                 }
-                catch (JsonReaderException exc)
+                catch (JsonException exc)
                 {
                     _logger.ScriptStartUpUnableParseMetadata(exc, metadataFilePath);
-
-                    return Array.Empty<ExtensionReference>();
+                    return [];
                 }
             }
         }
@@ -275,12 +273,14 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
             {
                 return;
             }
-            var errors = new List<string>();
+
+            List<string> errors = null;
 
             void CollectError(Type extensionType, Version minimumVersion, ExtensionStartupTypeRequirement requirement)
             {
                 _logger.MinimumExtensionVersionNotSatisfied(extensionType.Name, extensionType.Assembly.FullName, minimumVersion, requirement.PackageName, requirement.MinimumPackageVersion);
                 string requirementNotMetError = $"ExtensionStartupType {extensionType.Name} from assembly '{extensionType.Assembly.FullName}' does not meet the required minimum version of {minimumVersion}. Update your NuGet package reference for {requirement.PackageName} to {requirement.MinimumPackageVersion} or later.";
+                errors ??= [];
                 errors.Add(requirementNotMetError);
             }
 
@@ -327,7 +327,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
                 }
             }
 
-            if (errors.Count > 0)
+            if (errors != null && errors.Count > 0)
             {
                 var builder = new System.Text.StringBuilder();
                 builder.AppendLine("One or more loaded extensions do not meet the minimum requirements. For more information see https://aka.ms/func-min-extension-versions.");
