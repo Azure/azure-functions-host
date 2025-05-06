@@ -25,22 +25,23 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         private static Dictionary<string, string[]> BuildRuntimesGraph()
         {
-            using var stream = GetResourceStream("runtimes.json");
-            var parsed = JsonSerializer.Deserialize(stream, RuntimeGraphJsonContext.Default.RuntimeGraph);
+            using var stream = GetEmbeddedResourceStream("runtimes.json");
 
-            if (parsed is null)
+            var runtimeGraph = JsonSerializer.Deserialize(stream, RuntimeGraphJsonContext.Default.RuntimeGraph);
+
+            if (runtimeGraph is not { Runtimes.Count: > 0 })
             {
-                throw new InvalidOperationException("Failed to deserialize runtimes graph JSON.");
+                throw new InvalidOperationException("Failed to deserialize runtimes graph JSON or runtimes section is empty.");
             }
 
-            var result = new Dictionary<string, string[]>(parsed.Runtimes.Count, StringComparer.OrdinalIgnoreCase);
+            var ridGraph = new Dictionary<string, string[]>(runtimeGraph.Runtimes.Count, StringComparer.OrdinalIgnoreCase);
 
-            foreach (var (rid, info) in parsed.Runtimes)
+            foreach (var (rid, info) in runtimeGraph.Runtimes)
             {
-                result[rid] = info.Imports ?? [];
+                ridGraph[rid] = info.Imports ?? [];
             }
 
-            return result;
+            return ridGraph;
         }
 
         private static string GetDefaultPlatformRid()
@@ -73,7 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return rid;
         }
 
-        private static Stream GetResourceStream(string fileName)
+        private static Stream GetEmbeddedResourceStream(string fileName)
         {
             var stream = ThisAssembly.GetManifestResourceStream($"{ThisAssemblyName}.{fileName}");
 
@@ -82,7 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         internal static Dictionary<string, ScriptRuntimeAssembly> GetRuntimeAssemblies(string assemblyManifestName)
         {
-            using var stream = GetResourceStream(assemblyManifestName);
+            using var stream = GetEmbeddedResourceStream(assemblyManifestName);
             var runtimeAssemblies = JsonSerializer.Deserialize(stream, RuntimeAssembliesJsonContext.Default.RuntimeAssembliesConfig);
 
             var assemblies = runtimeAssemblies?.RuntimeAssemblies ?? throw new InvalidOperationException($"Failed to retrieve runtime assemblies from the embedded resource '{assemblyManifestName}'.");
@@ -101,7 +102,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             const string fileName = "extensionrequirements.json";
 
-            using var stream = GetResourceStream(fileName);
+            using var stream = GetEmbeddedResourceStream(fileName);
             var extensionRequirementsInfo = JsonSerializer.Deserialize(stream, ExtensionRequirementsJsonContext.Default.ExtensionRequirementsInfo);
 
             if (extensionRequirementsInfo is null)
