@@ -11,10 +11,10 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionRequirements
     {
         private Dictionary<string, BundleRequirement> _bundleRequirementsById;
         private Dictionary<string, ExtensionStartupTypeRequirement> _extensionRequirementsByStartupType;
-        private List<BundleRequirement> _bundles = [];
-        private List<ExtensionStartupTypeRequirement> _types = [];
+        private BundleRequirement[] _bundles = [];
+        private ExtensionStartupTypeRequirement[] _types = [];
 
-        public List<BundleRequirement> Bundles
+        public BundleRequirement[] Bundles
         {
             get => _bundles;
             set
@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionRequirements
             }
         }
 
-        public List<ExtensionStartupTypeRequirement> Types
+        public ExtensionStartupTypeRequirement[] Types
         {
             get => _types;
             set
