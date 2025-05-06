@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
                 .Expect<WorkerConsoleLogService>()
                 .Expect<FunctionInvocationDispatcherShutdownManager>()
                 .Expect<WorkerConcurrencyManager>()
-                .Expect<FunctionAppValidationService>()
+                .Optional<FunctionAppValidationService>() // Conditionally registered.
                 .Optional<FuncAppFileProvisioningService>() // Used by powershell.
                 .Optional<JobHostService>() // Missing when host is offline.
                 .Optional<FunctionsSyncService>() // Conditionally registered.

@@ -30,11 +30,8 @@ namespace Microsoft.Azure.WebJobs.Script.Host
 
         protected override async Task ExecuteAsync(CancellationToken cancellationToken)
         {
-            if (!_environment.IsPlaceholderModeEnabled() && !_scriptOptions.Value.IsStandbyConfiguration)
-            {
-                // Adding a delay to ensure that this validation does not impact the cold start performance
-                Utility.ExecuteAfterColdStartDelay(_environment, Validate, cancellationToken);
-            }
+            // Adding a delay to ensure that this validation does not impact the cold start performance
+            Utility.ExecuteAfterColdStartDelay(_environment, Validate, cancellationToken);
 
             await Task.CompletedTask;
         }
