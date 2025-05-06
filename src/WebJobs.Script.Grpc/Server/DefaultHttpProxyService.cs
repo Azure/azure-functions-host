@@ -98,8 +98,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             HttpContext httpContext = httpRequest.HttpContext;
             httpContext.Items[ScriptConstants.HttpProxyingEnabled] = bool.TrueString;
 
-            string invocationId = context.ExecutionContext.InvocationId.ToString();
-
             // add invocation id as correlation id, override existing header if present
             httpRequest.Headers[ScriptConstants.HttpProxyCorrelationHeader] = context.ExecutionContext.InvocationId.ToString();
 
