@@ -9,15 +9,35 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionRequirements
 {
     internal sealed class ExtensionRequirementsInfo
     {
-        public ExtensionRequirementsInfo(IEnumerable<BundleRequirement> bundleRequirements, IEnumerable<ExtensionStartupTypeRequirement> extensionRequirements)
-        {
-            BundleRequirementsByBundleId = bundleRequirements?.ToDictionary(a => a.Id, StringComparer.OrdinalIgnoreCase);
+        private Dictionary<string, BundleRequirement> _bundleRequirementsById;
+        private Dictionary<string, ExtensionStartupTypeRequirement> _extensionRequirementsByStartupType;
+        private List<BundleRequirement> _bundles = [];
+        private List<ExtensionStartupTypeRequirement> _types = [];
 
-            ExtensionRequirementsByStartupType = extensionRequirements?.ToDictionary(a => a.Name, StringComparer.OrdinalIgnoreCase);
+        public List<BundleRequirement> Bundles
+        {
+            get => _bundles;
+            set
+            {
+                _bundles = value ?? [];
+                _bundleRequirementsById = null;
+            }
         }
 
-        public Dictionary<string, BundleRequirement> BundleRequirementsByBundleId { get; private set; }
+        public List<ExtensionStartupTypeRequirement> Types
+        {
+            get => _types;
+            set
+            {
+                _types = value ?? [];
+                _extensionRequirementsByStartupType = null;
+            }
+        }
 
-        public Dictionary<string, ExtensionStartupTypeRequirement> ExtensionRequirementsByStartupType { get; private set; }
+        public Dictionary<string, BundleRequirement> BundleRequirementsByBundleId =>
+            _bundleRequirementsById ??= Bundles.ToDictionary(b => b.Id, StringComparer.OrdinalIgnoreCase);
+
+        public Dictionary<string, ExtensionStartupTypeRequirement> ExtensionRequirementsByStartupType =>
+            _extensionRequirementsByStartupType ??= Types.ToDictionary(t => t.Name, StringComparer.OrdinalIgnoreCase);
     }
 }

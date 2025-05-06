@@ -8,9 +8,9 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text.Json;
+using Microsoft.Azure.WebJobs.Script.Description.DotNet;
 using Microsoft.Azure.WebJobs.Script.ExtensionRequirements;
 using Microsoft.Extensions.DependencyModel;
-using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
@@ -20,30 +20,27 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private static readonly Assembly ThisAssembly = typeof(DependencyHelper).Assembly;
         private static readonly string ThisAssemblyName = ThisAssembly.GetName().Name;
         private static readonly Lazy<Dictionary<string, string[]>> RidGraph = new Lazy<Dictionary<string, string[]>>(BuildRuntimesGraph);
-        private static readonly JsonDocumentOptions JsonDocumentOptions = new()
-        {
-            CommentHandling = JsonCommentHandling.Skip,
-            AllowTrailingCommas = true
-        };
 
         private static string _runtimeIdentifier;
 
         private static Dictionary<string, string[]> BuildRuntimesGraph()
         {
-            var ridGraph = new Dictionary<string, string[]>();
-            string runtimesJson = GetRuntimesGraphJson();
-            var runtimes = (JObject)JObject.Parse(runtimesJson)["runtimes"];
+            using var stream = GetResourceStream("runtimes.json");
+            var parsed = JsonSerializer.Deserialize(stream, RuntimeGraphJsonContext.Default.RuntimeGraph);
 
-            foreach (var runtime in runtimes)
+            if (parsed is null)
             {
-                string[] imports = ((JObject)runtime.Value)["#import"]
-                    ?.Values<string>()
-                    .ToArray();
-
-                ridGraph.Add(runtime.Key, imports);
+                throw new InvalidOperationException("Failed to deserialize runtimes graph JSON.");
             }
 
-            return ridGraph;
+            var result = new Dictionary<string, string[]>(parsed.Runtimes.Count, StringComparer.OrdinalIgnoreCase);
+
+            foreach (var (rid, info) in parsed.Runtimes)
+            {
+                result[rid] = info.Imports ?? [];
+            }
+
+            return result;
         }
 
         private static string GetDefaultPlatformRid()
@@ -76,57 +73,43 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return rid;
         }
 
-        private static string GetRuntimesGraphJson()
-        {
-            return GetResourceFileContents("runtimes.json");
-        }
-
-        private static string GetResourceFileContents(string fileName)
-        {
-            var assembly = ThisAssembly;
-            using (Stream resource = assembly.GetManifestResourceStream($"{ThisAssemblyName}.{fileName}"))
-            using (var reader = new StreamReader(resource))
-            {
-                return reader.ReadToEnd();
-            }
-        }
-
         private static Stream GetResourceStream(string fileName)
         {
-            var manifestResourceName = $"{ThisAssemblyName}.{fileName}";
-            var stream = ThisAssembly.GetManifestResourceStream(manifestResourceName);
+            var stream = ThisAssembly.GetManifestResourceStream($"{ThisAssemblyName}.{fileName}");
 
-            return stream ?? throw new InvalidOperationException($"The embedded resource '{manifestResourceName}' could not be found.");
+            return stream ?? throw new InvalidOperationException($"The embedded resource '{ThisAssemblyName}.{fileName}' could not be found.");
         }
 
         internal static Dictionary<string, ScriptRuntimeAssembly> GetRuntimeAssemblies(string assemblyManifestName)
         {
-            string assembliesJson = GetResourceFileContents(assemblyManifestName);
-            JObject assemblies = JObject.Parse(assembliesJson);
+            using var stream = GetResourceStream(assemblyManifestName);
+            var runtimeAssemblies = JsonSerializer.Deserialize(stream, RuntimeAssembliesJsonContext.Default.RuntimeAssembliesConfig);
 
-            return assemblies["runtimeAssemblies"]
-                .ToObject<ScriptRuntimeAssembly[]>()
-                .ToDictionary(a => a.Name, StringComparer.OrdinalIgnoreCase);
+            var assemblies = runtimeAssemblies?.RuntimeAssemblies ?? throw new InvalidOperationException($"Failed to retrieve runtime assemblies from the embedded resource '{assemblyManifestName}'.");
+
+            var dictionary = new Dictionary<string, ScriptRuntimeAssembly>(assemblies.Count, StringComparer.OrdinalIgnoreCase);
+
+            foreach (var assembly in assemblies)
+            {
+                dictionary[assembly.Name] = assembly;
+            }
+
+            return dictionary;
         }
 
         internal static ExtensionRequirementsInfo GetExtensionRequirements()
         {
             const string fileName = "extensionrequirements.json";
 
-            using var resourceStream = GetResourceStream(fileName);
-            using var doc = JsonDocument.Parse(resourceStream, JsonDocumentOptions);
+            using var stream = GetResourceStream(fileName);
+            var extensionRequirementsInfo = JsonSerializer.Deserialize(stream, ExtensionRequirementsJsonContext.Default.ExtensionRequirementsInfo);
 
-            var jsonElementRoot = doc.RootElement;
+            if (extensionRequirementsInfo is null)
+            {
+                throw new InvalidOperationException($"Failed to deserialize extension requirements from embedded resource '{fileName}'.");
+            }
 
-            var bundleRequirements = jsonElementRoot.TryGetProperty("bundles", out var bundles)
-                ? bundles.Deserialize(ExtensionRequirementsJsonContext.Default.BundleRequirementArray)
-                : [];
-
-            var extensionRequirements = jsonElementRoot.TryGetProperty("types", out var types)
-                ? types.Deserialize(ExtensionRequirementsJsonContext.Default.ExtensionStartupTypeRequirementArray)
-                : [];
-
-            return new ExtensionRequirementsInfo(bundleRequirements, extensionRequirements);
+            return extensionRequirementsInfo;
         }
 
         /// <summary>

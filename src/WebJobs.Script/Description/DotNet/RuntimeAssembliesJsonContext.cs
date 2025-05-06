@@ -4,9 +4,9 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace Microsoft.Azure.WebJobs.Script.ExtensionRequirements
+namespace Microsoft.Azure.WebJobs.Script.Description.DotNet
 {
     [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase, ReadCommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true)]
-    [JsonSerializable(typeof(ExtensionRequirementsInfo))]
-    internal partial class ExtensionRequirementsJsonContext : JsonSerializerContext;
+    [JsonSerializable(typeof(RuntimeAssembliesConfig))]
+    internal partial class RuntimeAssembliesJsonContext : JsonSerializerContext;
 }
