@@ -57,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             //Assert
             var traces = _testLoggerProvider.GetAllLogMessages();
-            var traceMessage = traces.FirstOrDefault(val => val.EventId.Name.Equals("NoAzureFunctionsFolder"));
+            var traceMessage = traces.FirstOrDefault(val => val.EventId.Name.Equals("MissingAzureFunctionsFolder"));
 
             Assert.Null(traceMessage);
         }
@@ -80,7 +80,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             //Assert
             var traces = _testLoggerProvider.GetAllLogMessages();
-            var traceMessage = traces.FirstOrDefault(val => val.EventId.Name.Equals("NoAzureFunctionsFolder"));
+            var traceMessage = traces.FirstOrDefault(val => val.EventId.Name.Equals("MissingAzureFunctionsFolder"));
 
             Assert.Null(traceMessage);
         }
@@ -113,13 +113,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             //Assert
             var traces = _testLoggerProvider.GetAllLogMessages();
-            var traceMessage = traces.FirstOrDefault(val => val.EventId.Name.Equals("NoAzureFunctionsFolder"));
+            var traceMessage = traces.FirstOrDefault(val => val.EventId.Name.Equals("MissingAzureFunctionsFolder"));
 
             Assert.Null(traceMessage);
         }
 
         [Fact]
-        public async Task StartAsync_NoAzureFunctionsFolder_LogsWarning()
+        public async Task StartAsync_MissingAzureFunctionsFolder_LogsWarning()
         {
             _testLoggerProvider.ClearAllLogMessages();
 
@@ -141,7 +141,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             //Assert
             var traces = _testLoggerProvider.GetAllLogMessages();
-            var traceMessage = traces.FirstOrDefault(val => val.EventId.Name.Equals("NoAzureFunctionsFolder"));
+            var traceMessage = traces.FirstOrDefault(val => val.EventId.Name.Equals("MissingAzureFunctionsFolder"));
 
             Assert.NotNull(traceMessage);
         }

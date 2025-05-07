@@ -906,7 +906,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var log = _loggerProvider.GetLog();
             Assert.Contains("UsePlaceholderDotNetIsolated: True", log);
             Assert.Contains("Starting host specialization", log);
-            Assert.Contains("Could not find the .azurefunctions folder in the deployed function app artifacts.", log);
+            Assert.Contains("Could not find the .azurefunctions folder in the deployed artifacts of a .NET isolated function app.", log);
         }
 
         [Fact]
