@@ -12,6 +12,9 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Host
 {
+    /// <summary>
+    /// A background service responsible for validating function app payload.
+    /// </summary>
     public sealed class FunctionAppValidationService : BackgroundService
     {
         private readonly IEnvironment _environment;
@@ -42,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Host
                 Utility.IsDotnetIsolatedApp(environment: _environment) &&
                 !Directory.Exists(Path.Combine(_scriptOptions.Value.RootScriptPath, ScriptConstants.AzureFunctionsSystemDirectoryName)))
             {
-                _logger.NoAzureFunctionsFolder();
+                _logger.MissingAzureFunctionsFolder();
             }
         }
     }

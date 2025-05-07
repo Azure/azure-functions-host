@@ -193,10 +193,10 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
             new EventId(339, nameof(NoHostJsonFile)),
             "No functions were found. This can occur before you deploy code to your function app or when the host.json file is missing from the most recent deployment. Make sure that your deployment package includes the host.json file in the root of the package. For deployment package requirements, see https://aka.ms/functions-deployment-technologies.");
 
-        private static readonly Action<ILogger, Exception> _noAzureFunctionsFolder =
-            LoggerMessage.Define(LogLevel.Warning,
-            new EventId(340, nameof(NoAzureFunctionsFolder)),
-            "Could not find the .azurefunctions folder in the deployed function app artifacts. Make sure that your deployment package includes the .azurefunctions folder. For deployment package requirements, see https://aka.ms/functions-deployment-technologies.");
+        private static readonly Action<ILogger, string, Exception> _missingAzureFunctionsFolder =
+            LoggerMessage.Define<string>(LogLevel.Warning,
+            new EventId(340, nameof(MissingAzureFunctionsFolder)),
+            "Could not find the .azurefunctions folder in the deployed artifacts of a .NET isolated function app. Make sure that your deployment package includes the .azurefunctions folder. For deployment package requirements, see https://aka.ms/functions-deployment-technologies. If this is not intended to be a .NET isolated app, please ensure that the {functionWorkerRuntime} app setting is configured correctly.");
 
         private static readonly Action<ILogger, string, Exception> _publishingMetrics =
             LoggerMessage.Define<string>(LogLevel.Debug, new EventId(338, nameof(PublishingMetrics)), "{metrics}");
@@ -393,9 +393,10 @@ Lock file hash: {currentLockFileHash}";
             _noHostJsonFile(logger, null);
         }
 
-        public static void NoAzureFunctionsFolder(this ILogger logger)
+        public static void MissingAzureFunctionsFolder(this ILogger logger)
         {
-            _noAzureFunctionsFolder(logger, null);
+            string functionWorkerRuntime = EnvironmentSettingNames.FunctionWorkerRuntime;
+            _missingAzureFunctionsFolder(logger, functionWorkerRuntime, null);
         }
     }
 }
