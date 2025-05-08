@@ -228,33 +228,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal)]
         public IActionResult DrainStatus([FromServices] IScriptHostManager scriptHostManager)
         {
-            if (Utility.TryGetHostService(scriptHostManager, out IFunctionActivityStatusProvider functionActivityStatusProvider) &&
-                Utility.TryGetHostService(scriptHostManager, out IDrainModeManager drainModeManager))
-            {
-                var functionActivityStatus = functionActivityStatusProvider.GetStatus();
-                DrainModeState state = DrainModeState.Disabled;
-                if (drainModeManager.IsDrainModeEnabled)
-                {
-                    state = (functionActivityStatus.OutstandingInvocations == 0 && functionActivityStatus.OutstandingRetries == 0)
-                            ? DrainModeState.Completed : DrainModeState.InProgress;
-                }
+            string message = $"[TEST] Drain Status";
+            _logger.LogDebug(message);
 
-                DrainModeStatus status = new DrainModeStatus()
-                {
-                    State = state,
-                    OutstandingInvocations = functionActivityStatus.OutstandingInvocations,
-                    OutstandingRetries = functionActivityStatus.OutstandingRetries
-                };
-
-                string message = $"Drain Status: {JsonConvert.SerializeObject(state, Formatting.Indented)}, Activity Status: {JsonConvert.SerializeObject(functionActivityStatus, Formatting.Indented)}";
-                _logger.LogDebug(message);
-
-                return Ok(status);
-            }
-            else
-            {
-                return StatusCode(StatusCodes.Status503ServiceUnavailable);
-            }
+            return StatusCode(StatusCodes.Status302Found);
         }
 
         [HttpPost]
