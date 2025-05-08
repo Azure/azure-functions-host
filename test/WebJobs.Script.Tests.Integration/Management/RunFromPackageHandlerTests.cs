@@ -105,11 +105,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             _meshServiceClientMock.Setup(m => m.MountCifs(connectionString, contentShare, HomeDirectory))
                 .ReturnsAsync(mountResult);
 
+            if (!mountResult)
+            {
+                _meshServiceClientMock.Setup(m => m.NotifyHealthEvent(ContainerHealthEventType.Fatal, 
+                    It.Is<Type>(t => t == typeof(RunFromPackageHandler)), It.IsAny<string>()))
+                    .Returns(Task.CompletedTask);
+            }
+
             var actualMountResult = await _runFromPackageHandler.MountAzureFileShare(hostAssignmentContext);
 
             Assert.Equal(mountResult, actualMountResult);
 
             _meshServiceClientMock.Verify(m => m.MountCifs(connectionString, contentShare, HomeDirectory), Times.Once);
+
+            if (!mountResult)
+            {
+                _meshServiceClientMock.Verify(m => m.NotifyHealthEvent(ContainerHealthEventType.Fatal,
+                    It.Is<Type>(t => t == typeof(RunFromPackageHandler)), It.IsAny<string>()), Times.Once);
+            }
         }
 
         [Fact]

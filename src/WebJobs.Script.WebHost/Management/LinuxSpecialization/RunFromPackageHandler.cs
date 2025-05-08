@@ -188,23 +188,37 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
 
         public async Task<bool> MountAzureFileShare(HostAssignmentContext assignmentContext)
         {
+            bool succeeded = false;
+
             try
             {
                 using (_metricsLogger.LatencyEvent(MetricEventNames.LinuxContainerSpecializationMountCifs))
                 {
                     var targetPath = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath);
+
                     _logger.LogDebug($"Mounting {EnvironmentSettingNames.AzureFilesContentShare} at {targetPath}");
-                    bool succeeded = await _meshServiceClient.MountCifs(assignmentContext.AzureFilesConnectionString,
+
+                    succeeded = await _meshServiceClient.MountCifs(assignmentContext.AzureFilesConnectionString,
                         assignmentContext.AzureFilesContentShare, targetPath);
+
                     _logger.LogInformation($"Mounted {EnvironmentSettingNames.AzureFilesContentShare} at {targetPath} Success = {succeeded}");
-                    return succeeded;
                 }
             }
             catch (Exception e)
             {
                 _logger.LogWarning(e, nameof(MountAzureFileShare));
-                return false;
             }
+
+            if (!succeeded)
+            {
+                _logger.LogWarning($"Failed to mount {EnvironmentSettingNames.AzureFilesContentShare}. Marking container as unhealthy");
+
+                await _meshServiceClient.NotifyHealthEvent(ContainerHealthEventType.Fatal, GetType(), $"Failed to mount {EnvironmentSettingNames.AzureFilesContentShare}");
+
+                _logger.LogInformation($"Container marked as unhealthy");
+            }
+
+            return succeeded;
         }
     }
 }
