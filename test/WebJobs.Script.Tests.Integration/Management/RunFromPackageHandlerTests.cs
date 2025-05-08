@@ -107,7 +107,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
 
             if (!mountResult)
             {
-                _meshServiceClientMock.Setup(m => m.NotifyHealthEvent(ContainerHealthEventType.Fatal, 
+                _meshServiceClientMock.Setup(m => m.NotifyHealthEvent(ContainerHealthEventType.Fatal,
                     It.Is<Type>(t => t == typeof(RunFromPackageHandler)), It.IsAny<string>()))
                     .Returns(Task.CompletedTask);
             }
@@ -122,6 +122,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             {
                 _meshServiceClientMock.Verify(m => m.NotifyHealthEvent(ContainerHealthEventType.Fatal,
                     It.Is<Type>(t => t == typeof(RunFromPackageHandler)), It.IsAny<string>()), Times.Once);
+            }
+            else
+            {
+                _meshServiceClientMock.Verify(m => m.NotifyHealthEvent(ContainerHealthEventType.Fatal,
+                    It.IsAny<Type>(), It.IsAny<string>()), Times.Never);
             }
         }
 
