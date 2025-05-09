@@ -3,7 +3,7 @@
 
 using System;
 
-namespace Microsoft.Azure.WebJobs.Script
+namespace Microsoft.Azure.WebJobs.Script.Exceptions
 {
     internal class HttpForwardingException : Exception
     {

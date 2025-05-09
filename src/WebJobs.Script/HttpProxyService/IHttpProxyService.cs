@@ -5,7 +5,7 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 
-namespace Microsoft.Azure.WebJobs.Script
+namespace Microsoft.Azure.WebJobs.Script.HttpProxyService
 {
     public interface IHttpProxyService
     {
