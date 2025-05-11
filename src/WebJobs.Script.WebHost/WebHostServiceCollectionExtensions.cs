@@ -14,6 +14,7 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Grpc;
+using Microsoft.Azure.WebJobs.Script.Host;
 using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.Middleware;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
@@ -136,6 +137,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             });
 
             // Management services
+            services.AddSingleton(provider => new Lazy<FunctionAppValidationService>(
+                () => new FunctionAppValidationService(
+                    provider.GetRequiredService<ILogger<FunctionAppValidationService>>(),
+                    provider.GetRequiredService<IOptions<ScriptJobHostOptions>>(),
+                    provider.GetRequiredService<IEnvironment>())));
+
             services.AddSingleton<IFunctionsSyncManager, FunctionsSyncManager>();
             services.AddSingleton<IFunctionMetadataManager, FunctionMetadataManager>();
             services.AddSingleton<IWebFunctionsManager, WebFunctionsManager>();

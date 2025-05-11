@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
+using Microsoft.Azure.WebJobs.Script.Host;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
@@ -27,6 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IFunctionMetadataProvider _functionMetadataProvider;
         private readonly IEnvironment _environment;
 
+        private readonly Lazy<FunctionAppValidationService> _validationService;
         private readonly IOptionsMonitor<LanguageWorkerOptions> _languageOptions;
         private IDisposable _onChangeSubscription;
         private IOptions<ScriptJobHostOptions> _scriptOptions;
@@ -44,7 +46,8 @@ namespace Microsoft.Azure.WebJobs.Script
             IScriptHostManager scriptHostManager,
             ILoggerFactory loggerFactory,
             IEnvironment environment,
-            IOptionsMonitor<LanguageWorkerOptions> languageOptions)
+            IOptionsMonitor<LanguageWorkerOptions> languageOptions,
+            Lazy<FunctionAppValidationService> validationService)
         {
             _scriptOptions = scriptOptions;
             _serviceProvider = scriptHostManager as IServiceProvider;
@@ -55,6 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             _languageOptions = languageOptions;
             _onChangeSubscription = languageOptions.OnChange(_ => _servicesReset = true);
+            _validationService = validationService;
 
             // Every time script host is re-initializing, we also need to re-initialize
             // services that change with the scope of the script host.
@@ -190,6 +194,8 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 // Validate the host.json file if no functions are found.
                 ValidateHostJsonFile();
+
+                _validationService.Value.RunValidation(_scriptOptions);
             }
 
             return functionMetadataList.OrderBy(f => f.Name, StringComparer.OrdinalIgnoreCase).ToImmutableArray();

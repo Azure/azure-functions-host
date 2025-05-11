@@ -33,17 +33,25 @@ namespace Microsoft.Azure.WebJobs.Script.Host
 
         protected override async Task ExecuteAsync(CancellationToken cancellationToken)
         {
-            // Adding a delay to ensure that this validation does not impact the cold start performance
-            Utility.ExecuteAfterColdStartDelay(_environment, Validate, cancellationToken);
+            RunValidation(_scriptOptions, cancellationToken);
 
             await Task.CompletedTask;
         }
 
-        internal void Validate()
+        public void RunValidation(IOptions<ScriptJobHostOptions> scriptOptions, CancellationToken cancellationToken = default)
         {
-            if (!_scriptOptions.Value.IsDefaultHostConfig &&
+            // Adding a delay to ensure that this validation does not impact the cold start performance
+            Utility.ExecuteAfterColdStartDelay(_environment, () => Validate(scriptOptions), cancellationToken);
+        }
+
+        internal void Validate(IOptions<ScriptJobHostOptions> scriptOptions)
+        {
+            if (!_environment.IsPlaceholderModeEnabled() &&
+                !scriptOptions.Value.IsStandbyConfiguration &&
+                !scriptOptions.Value.IsDefaultHostConfig &&
                 Utility.IsDotnetIsolatedApp(environment: _environment) &&
-                !Directory.Exists(Path.Combine(_scriptOptions.Value.RootScriptPath, ScriptConstants.AzureFunctionsSystemDirectoryName)))
+                scriptOptions.Value.RootScriptPath is not null &&
+                !Directory.Exists(Path.Combine(scriptOptions.Value.RootScriptPath, ScriptConstants.AzureFunctionsSystemDirectoryName)))
             {
                 _logger.MissingAzureFunctionsFolder();
             }
