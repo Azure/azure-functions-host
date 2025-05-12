@@ -194,7 +194,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 using (var scope = _serviceProvider.CreateScope())
                 {
-                    var validationService = scope.ServiceProvider.GetRequiredService<FunctionAppValidationService>();
+                    var validationService = scope.ServiceProvider.GetService<FunctionAppValidationService>();
                     validationService?.RunAppValidation(_scriptOptions);
                 }
             }
