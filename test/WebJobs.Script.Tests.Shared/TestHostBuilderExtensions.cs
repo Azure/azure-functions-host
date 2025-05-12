@@ -12,6 +12,7 @@ using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Grpc;
+using Microsoft.Azure.WebJobs.Script.Host;
 using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.Tests;
 using Microsoft.Azure.WebJobs.Script.WebHost;
@@ -148,6 +149,7 @@ namespace Microsoft.WebJobs.Script.Tests
                 return managerMock.Object;
             });
 
+            services.AddSingleton<FunctionAppValidationService>();
             services.AddSingleton<IFunctionMetadataManager, FunctionMetadataManager>();
 
             return services;

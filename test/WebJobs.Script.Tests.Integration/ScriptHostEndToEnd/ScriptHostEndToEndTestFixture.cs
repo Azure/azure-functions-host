@@ -15,6 +15,7 @@ using Microsoft.Azure.Storage.Queue;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Host;
 using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.Tests.Integration.Fixtures;
 using Microsoft.Azure.WebJobs.Script.WebHost.Helpers;
@@ -129,8 +130,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     webjobsBuilder.AddAzureStorage();
 
-                   // This needs to added manually at the ScriptHost level, as although FunctionMetadataManager is available through WebHost,
-                   // it needs to change the services during its lifetime.
+                    // This needs to added manually at the ScriptHost level, as although FunctionMetadataManager is available through WebHost,
+                    // it needs to change the services during its lifetime.
+                    webjobsBuilder.Services.AddSingleton<FunctionAppValidationService>();
                     webjobsBuilder.Services.AddSingleton<IFunctionMetadataManager, FunctionMetadataManager>();
                 },
                 o =>
