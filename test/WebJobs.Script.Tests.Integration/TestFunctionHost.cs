@@ -513,7 +513,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, new TestMetricsLogger(), SystemEnvironment.Instance);
             var defaultProvider = new FunctionMetadataProvider(NullLogger<FunctionMetadataProvider>.Instance, null, metadataProvider, new OptionsWrapper<FunctionsHostingConfigOptions>(new FunctionsHostingConfigOptions()), SystemEnvironment.Instance);
             var scriptOptions = managerServiceProvider.GetService<IOptions<ScriptJobHostOptions>>();
-            var validationService = new Lazy<FunctionAppValidationService>(new FunctionAppValidationService(factory.CreateLogger("test"), scriptOptions, environment));
+            var validationService = new FunctionAppValidationService(factory, scriptOptions, environment);
             var metadataManager = new FunctionMetadataManager(scriptOptions, defaultProvider,
                 managerServiceProvider.GetService<IOptions<HttpWorkerOptions>>(), manager, factory, environment, mockOptions.Object, validationService);
 

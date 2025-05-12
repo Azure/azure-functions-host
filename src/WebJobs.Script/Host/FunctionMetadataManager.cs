@@ -28,7 +28,8 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IFunctionMetadataProvider _functionMetadataProvider;
         private readonly IEnvironment _environment;
 
-        private readonly Lazy<FunctionAppValidationService> _validationService;
+        //private readonly Lazy<FunctionAppValidationService> _validationService;
+        private readonly FunctionAppValidationService _validationService;
         private readonly IOptionsMonitor<LanguageWorkerOptions> _languageOptions;
         private IDisposable _onChangeSubscription;
         private IOptions<ScriptJobHostOptions> _scriptOptions;
@@ -47,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script
             ILoggerFactory loggerFactory,
             IEnvironment environment,
             IOptionsMonitor<LanguageWorkerOptions> languageOptions,
-            Lazy<FunctionAppValidationService> validationService)
+            FunctionAppValidationService validationService)
         {
             _scriptOptions = scriptOptions;
             _serviceProvider = scriptHostManager as IServiceProvider;
@@ -195,7 +196,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 // Validate the host.json file if no functions are found.
                 ValidateHostJsonFile();
 
-                _validationService.Value.RunValidation(_scriptOptions);
+                _validationService.RunValidation(_scriptOptions);
             }
 
             return functionMetadataList.OrderBy(f => f.Name, StringComparer.OrdinalIgnoreCase).ToImmutableArray();

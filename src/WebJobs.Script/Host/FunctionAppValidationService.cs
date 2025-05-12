@@ -5,6 +5,7 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -22,19 +23,17 @@ namespace Microsoft.Azure.WebJobs.Script.Host
         private readonly IOptions<ScriptJobHostOptions> _scriptOptions;
 
         public FunctionAppValidationService(
-            ILogger logger,
+            ILoggerFactory loggerFactory,
             IOptions<ScriptJobHostOptions> scriptOptions,
             IEnvironment environment)
         {
             _scriptOptions = scriptOptions ?? throw new ArgumentNullException(nameof(scriptOptions));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _logger = loggerFactory.CreateLogger(LogCategories.Startup);
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
         }
 
         protected override async Task ExecuteAsync(CancellationToken cancellationToken)
         {
-            RunValidation(_scriptOptions, cancellationToken);
-
             await Task.CompletedTask;
         }
 

@@ -26,6 +26,7 @@ using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Grpc;
+using Microsoft.Azure.WebJobs.Script.Host;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -35,6 +36,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
+using Moq;
 using Xunit;
 using Xunit.Abstractions;
 using IApplicationLifetime = Microsoft.AspNetCore.Hosting.IApplicationLifetime;
@@ -888,6 +890,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             using var testServer = new TestServer(builder);
 
             var standbyManager = testServer.Services.GetService<IStandbyManager>();
+
             Assert.NotNull(standbyManager);
 
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
@@ -900,6 +903,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var scriptHostManager = testServer.Services.GetService<IScriptHostManager>();
             Assert.NotNull(scriptHostManager);
             Assert.Equal(ScriptHostState.Running, scriptHostManager.State);
+
+            var validationService = testServer.Services.GetService<FunctionAppValidationService>();
+
+            var scriptOptionsMock = new Mock<IOptions<ScriptJobHostOptions>>();
+
+            var scriptJobHostOptions = new ScriptJobHostOptions
+            {
+                RootScriptPath = "test-root-path",
+                IsDefaultHostConfig = false
+            };
+
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+
+            scriptOptionsMock.Setup(o => o.Value).Returns(scriptJobHostOptions);
+
+            validationService.RunValidation(scriptOptionsMock.Object, default);
 
             await Task.Delay(TimeSpan.FromSeconds(5));
 

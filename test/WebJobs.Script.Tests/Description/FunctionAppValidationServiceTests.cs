@@ -23,6 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly ScriptJobHostOptions _scriptJobHostOptions;
         private readonly TestLoggerProvider _testLoggerProvider;
         private readonly TimeSpan _initializationDelay = TimeSpan.FromSeconds(11);
+        private readonly LoggerFactory _factory;
 
         public FunctionAppValidationServiceTests()
         {
@@ -37,9 +38,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _scriptOptionsMock.Setup(o => o.Value).Returns(_scriptJobHostOptions);
 
             _testLoggerProvider = new TestLoggerProvider();
-            LoggerFactory factory = new LoggerFactory();
-            factory.AddProvider(_testLoggerProvider);
-            _testLogger = factory.CreateLogger<FunctionAppValidationService>();
+            _factory = new LoggerFactory();
+            _factory.AddProvider(_testLoggerProvider);
+            //_testLogger = factory.CreateLogger<FunctionAppValidationService>();
         }
 
         [Fact]
@@ -48,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _testLoggerProvider.ClearAllLogMessages();
 
             var service = new FunctionAppValidationService(
-                _testLogger,
+                _factory,
                 _scriptOptionsMock.Object,
                 new TestEnvironment());
 
@@ -71,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
 
             var service = new FunctionAppValidationService(
-                _testLogger,
+                _factory,
                 _scriptOptionsMock.Object,
                 environment);
 
@@ -104,7 +105,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             scriptOptionsMock.Setup(o => o.Value).Returns(scriptJobHostOptions);
 
             var service = new FunctionAppValidationService(
-                _testLogger,
+                _factory,
                 scriptOptionsMock.Object,
                 environment);
 
@@ -130,12 +131,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "dotnet-isolated");
 
             var service = new FunctionAppValidationService(
-                _testLogger,
+                _factory,
                 _scriptOptionsMock.Object,
                 environment);
 
+            var scriptOptionsMock = new Mock<IOptions<ScriptJobHostOptions>>();
+
+            var scriptJobHostOptions = new ScriptJobHostOptions
+                                            {
+                                                RootScriptPath = "test-root-path",
+                                                IsDefaultHostConfig = false
+                                            };
+
+            scriptOptionsMock.Setup(o => o.Value).Returns(scriptJobHostOptions);
+
             // Act
-            await service.StartAsync(CancellationToken.None);
+            service.RunValidation(scriptOptionsMock.Object, CancellationToken.None);
 
             await Task.Delay(_initializationDelay);
 

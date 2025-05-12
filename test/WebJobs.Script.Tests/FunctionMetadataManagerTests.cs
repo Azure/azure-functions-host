@@ -467,6 +467,47 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task FunctionMetadataManager_GetsMetadata_ValidateMissingInnerBuild()
+        {
+            var functionMetadataCollection1 = new Collection<FunctionMetadata>
+            {
+            };
+
+            var mockFunctionMetadataProvider = new Mock<IFunctionMetadataProvider>();
+            mockFunctionMetadataProvider.Setup(m => m.GetFunctionMetadataAsync(It.IsAny<IEnumerable<RpcWorkerConfig>>(), It.IsAny<bool>()))
+                .Returns(Task.FromResult(new Collection<FunctionMetadata>().ToImmutableArray()));
+            mockFunctionMetadataProvider.Setup(m => m.FunctionErrors)
+                .Returns(new Dictionary<string, ICollection<string>>().ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray()));
+
+            var mockFunctionProvider = new Mock<IFunctionProvider>();
+            mockFunctionProvider.Setup(m => m.GetFunctionMetadataAsync()).ReturnsAsync(functionMetadataCollection1.ToImmutableArray());
+
+            var testLoggerProvider = new TestLoggerProvider();
+            var loggerFactory = new LoggerFactory();
+            loggerFactory.AddProvider(testLoggerProvider);
+
+            _scriptJobHostOptions.IsDefaultHostConfig = false;
+            _scriptJobHostOptions.RootScriptPath = "test-path";
+            SystemEnvironment.Instance.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "dotnet-isolated");
+
+            FunctionMetadataManager testFunctionMetadataManager = TestFunctionMetadataManager.GetFunctionMetadataManagerWithDefaultHostConfig(
+                new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions),
+                mockFunctionMetadataProvider.Object,
+                new List<IFunctionProvider>() { mockFunctionProvider.Object },
+                new OptionsWrapper<HttpWorkerOptions>(_defaultHttpWorkerOptions),
+                loggerFactory,
+                new TestOptionsMonitor<LanguageWorkerOptions>(TestHelpers.GetTestLanguageWorkerOptions()));
+
+            var actualFunctionMetadata = testFunctionMetadataManager.LoadFunctionMetadata();
+
+            await Task.Delay(10000);
+            SystemEnvironment.Instance.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, null);
+
+            var traces = testLoggerProvider.GetAllLogMessages();
+            Assert.Single(traces.Where(t => t.EventId.Name.Equals("MissingAzureFunctionsFolder", StringComparison.OrdinalIgnoreCase)));
+        }
+
+        [Fact]
         public void FunctionMetadataManager_GetsMetadata_ValidateDefaultHostJson()
         {
             var functionMetadataCollection1 = new Collection<FunctionMetadata>

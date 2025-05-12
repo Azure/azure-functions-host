@@ -61,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var source = new TestChangeTokenSource<ScriptApplicationHostOptions>();
             var changeTokens = new[] { source };
             var optionsMonitor = new OptionsMonitor<ScriptApplicationHostOptions>(factory, changeTokens, factory);
-            var validationService = new Lazy<FunctionAppValidationService>(new FunctionAppValidationService(loggerFactory.CreateLogger("test"), jobHostOptions, SystemEnvironment.Instance));
+            var validationService = new FunctionAppValidationService(loggerFactory, jobHostOptions, SystemEnvironment.Instance);
             return new FunctionMetadataManager(jobHostOptions, functionMetadataProvider, httpOptions, managerMock.Object, loggerFactory, SystemEnvironment.Instance, languageWorkerOptions, validationService);
         }
 
@@ -96,7 +96,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var source = new TestChangeTokenSource<ScriptApplicationHostOptions>();
             var changeTokens = new[] { source };
             var optionsMonitor = new OptionsMonitor<ScriptApplicationHostOptions>(factory, changeTokens, factory);
-            var validationService = new Lazy<FunctionAppValidationService>(new FunctionAppValidationService(loggerFactory.CreateLogger("test"), jobHostOptions, SystemEnvironment.Instance));
+            var validationService = new FunctionAppValidationService(loggerFactory, jobHostOptions, SystemEnvironment.Instance);
             return new FunctionMetadataManager(jobHostOptions, functionMetadataProvider, httpOptions, managerMock.Object, loggerFactory, SystemEnvironment.Instance, languageWorkerOptions, validationService);
         }
     }
