@@ -121,6 +121,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
             {
                 await _meshServiceClient.NotifyHealthEvent(ContainerHealthEventType.Informational, GetType(),
                     SpecializationCompleteEvent);
+                await Task.Delay(Timeout.Infinite);
             }
             catch (Exception ex)
             {
