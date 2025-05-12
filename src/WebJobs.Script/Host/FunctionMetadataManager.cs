@@ -192,10 +192,17 @@ namespace Microsoft.Azure.WebJobs.Script
                 // Validate the host.json file if no functions are found.
                 ValidateHostJsonFile();
 
-                using (var scope = _serviceProvider.CreateScope())
+                try
                 {
-                    var validationService = scope.ServiceProvider.GetService<FunctionAppValidationService>();
-                    validationService?.RunAppValidation(_scriptOptions);
+                    using (var scope = _serviceProvider.CreateScope())
+                    {
+                        var validationService = scope.ServiceProvider.GetService<FunctionAppValidationService>();
+                        validationService?.RunAppValidation(_scriptOptions);
+                    }
+                }
+                catch (Exception)
+                {
+                    // Ignore any exceptions.
                 }
             }
 
