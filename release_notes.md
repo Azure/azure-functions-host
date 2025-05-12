@@ -14,4 +14,4 @@
 - Add `win-arm64` and `linux-arm64` to the list of PowerShell runtimes; added filter for `osx` RIDs (includes `osx-x64` and `osx-arm64`) (#11013)
 - Disable Diagnostic Events when Table Storage is not accessible (#10996)
 - Update flex metric publisher to publish every 30 seconds (regardless of actvity) (#11019)
-- Add JitTrace Files for v4.1039
+- Add JitTrace Files for v4.1040
