@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Host;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
@@ -60,7 +61,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var source = new TestChangeTokenSource<ScriptApplicationHostOptions>();
             var changeTokens = new[] { source };
             var optionsMonitor = new OptionsMonitor<ScriptApplicationHostOptions>(factory, changeTokens, factory);
-            return new FunctionMetadataManager(jobHostOptions, functionMetadataProvider, httpOptions, managerMock.Object, loggerFactory, SystemEnvironment.Instance, languageWorkerOptions);
+            var validationService = new Lazy<FunctionAppValidationService>(new FunctionAppValidationService(loggerFactory.CreateLogger("test"), jobHostOptions, SystemEnvironment.Instance));
+            return new FunctionMetadataManager(jobHostOptions, functionMetadataProvider, httpOptions, managerMock.Object, loggerFactory, SystemEnvironment.Instance, languageWorkerOptions, validationService);
         }
 
         public static FunctionMetadataManager GetFunctionMetadataManagerWithDefaultHostConfig(IOptions<ScriptJobHostOptions> jobHostOptions,
@@ -94,7 +96,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var source = new TestChangeTokenSource<ScriptApplicationHostOptions>();
             var changeTokens = new[] { source };
             var optionsMonitor = new OptionsMonitor<ScriptApplicationHostOptions>(factory, changeTokens, factory);
-            return new FunctionMetadataManager(jobHostOptions, functionMetadataProvider, httpOptions, managerMock.Object, loggerFactory, SystemEnvironment.Instance, languageWorkerOptions);
+            var validationService = new Lazy<FunctionAppValidationService>(new FunctionAppValidationService(loggerFactory.CreateLogger("test"), jobHostOptions, SystemEnvironment.Instance));
+            return new FunctionMetadataManager(jobHostOptions, functionMetadataProvider, httpOptions, managerMock.Object, loggerFactory, SystemEnvironment.Instance, languageWorkerOptions, validationService);
         }
     }
 }

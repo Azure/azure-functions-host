@@ -18,11 +18,11 @@ namespace Microsoft.Azure.WebJobs.Script.Host
     public sealed class FunctionAppValidationService : BackgroundService
     {
         private readonly IEnvironment _environment;
-        private readonly ILogger<FunctionAppValidationService> _logger;
+        private readonly ILogger _logger;
         private readonly IOptions<ScriptJobHostOptions> _scriptOptions;
 
         public FunctionAppValidationService(
-            ILogger<FunctionAppValidationService> logger,
+            ILogger logger,
             IOptions<ScriptJobHostOptions> scriptOptions,
             IEnvironment environment)
         {

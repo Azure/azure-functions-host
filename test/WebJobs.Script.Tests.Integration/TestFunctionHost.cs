@@ -18,6 +18,7 @@ using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
+using Microsoft.Azure.WebJobs.Script.Host;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
@@ -511,8 +512,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, new TestMetricsLogger(), SystemEnvironment.Instance);
             var defaultProvider = new FunctionMetadataProvider(NullLogger<FunctionMetadataProvider>.Instance, null, metadataProvider, new OptionsWrapper<FunctionsHostingConfigOptions>(new FunctionsHostingConfigOptions()), SystemEnvironment.Instance);
-            var metadataManager = new FunctionMetadataManager(managerServiceProvider.GetService<IOptions<ScriptJobHostOptions>>(), defaultProvider,
-                managerServiceProvider.GetService<IOptions<HttpWorkerOptions>>(), manager, factory, environment, mockOptions.Object);
+            var scriptOptions = managerServiceProvider.GetService<IOptions<ScriptJobHostOptions>>();
+            var validationService = new Lazy<FunctionAppValidationService>(new FunctionAppValidationService(factory.CreateLogger("test"), scriptOptions, environment));
+            var metadataManager = new FunctionMetadataManager(scriptOptions, defaultProvider,
+                managerServiceProvider.GetService<IOptions<HttpWorkerOptions>>(), manager, factory, environment, mockOptions.Object, validationService);
 
             return metadataManager;
         }
