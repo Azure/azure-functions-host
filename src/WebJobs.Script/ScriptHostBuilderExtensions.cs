@@ -176,6 +176,11 @@ namespace Microsoft.Azure.WebJobs.Script
 
             builder.ConfigureServices((context, services) =>
             {
+                if (!SystemEnvironment.Instance.IsPlaceholderModeEnabled())
+                {
+                    services.AddScoped<FunctionAppValidationService>();
+                }
+
                 services.AddSingleton<ExternalConfigurationStartupValidator>();
                 services.AddSingleton<IHostedService>(s =>
                 {

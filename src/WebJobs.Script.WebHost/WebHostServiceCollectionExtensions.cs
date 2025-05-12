@@ -137,12 +137,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             });
 
             // Management services
-            services.AddSingleton(provider => new Lazy<FunctionAppValidationService>(
-                () => new FunctionAppValidationService(
-                    provider.GetRequiredService<ILogger<FunctionAppValidationService>>(),
-                    provider.GetRequiredService<IOptions<ScriptJobHostOptions>>(),
-                    provider.GetRequiredService<IEnvironment>())));
-
             services.AddSingleton<IFunctionsSyncManager, FunctionsSyncManager>();
             services.AddSingleton<IFunctionMetadataManager, FunctionMetadataManager>();
             services.AddSingleton<IWebFunctionsManager, WebFunctionsManager>();

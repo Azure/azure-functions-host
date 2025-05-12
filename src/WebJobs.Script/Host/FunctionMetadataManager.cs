@@ -28,7 +28,6 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IFunctionMetadataProvider _functionMetadataProvider;
         private readonly IEnvironment _environment;
 
-        private readonly Lazy<FunctionAppValidationService> _validationService;
         private readonly IOptionsMonitor<LanguageWorkerOptions> _languageOptions;
         private IDisposable _onChangeSubscription;
         private IOptions<ScriptJobHostOptions> _scriptOptions;
@@ -46,8 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script
             IScriptHostManager scriptHostManager,
             ILoggerFactory loggerFactory,
             IEnvironment environment,
-            IOptionsMonitor<LanguageWorkerOptions> languageOptions,
-            Lazy<FunctionAppValidationService> validationService)
+            IOptionsMonitor<LanguageWorkerOptions> languageOptions)
         {
             _scriptOptions = scriptOptions;
             _serviceProvider = scriptHostManager as IServiceProvider;
@@ -58,7 +56,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
             _languageOptions = languageOptions;
             _onChangeSubscription = languageOptions.OnChange(_ => _servicesReset = true);
-            _validationService = validationService;
 
             // Every time script host is re-initializing, we also need to re-initialize
             // services that change with the scope of the script host.
@@ -195,7 +192,11 @@ namespace Microsoft.Azure.WebJobs.Script
                 // Validate the host.json file if no functions are found.
                 ValidateHostJsonFile();
 
-                _validationService.Value.RunValidation(_scriptOptions);
+                using (var scope = _serviceProvider.CreateScope())
+                {
+                    var validationService = scope.ServiceProvider.GetRequiredService<FunctionAppValidationService>();
+                    validationService?.RunAppValidation(_scriptOptions);
+                }
             }
 
             return functionMetadataList.OrderBy(f => f.Name, StringComparer.OrdinalIgnoreCase).ToImmutableArray();
