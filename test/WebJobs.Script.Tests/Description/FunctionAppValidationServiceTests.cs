@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task StartAsync_NotDotnetIsolatedApp_DoesNotLogError()
+        public void StartAsync_NotDotnetIsolatedApp_DoesNotLogError()
         {
             _testLoggerProvider.ClearAllLogMessages();
 
