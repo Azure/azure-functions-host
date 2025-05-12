@@ -47,13 +47,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             _testLoggerProvider.ClearAllLogMessages();
 
-            var service = new FunctionAppValidationService(
-                _testLogger,
-                _scriptOptionsMock.Object,
-                new TestEnvironment());
+            var service = new FunctionAppValidationService(_testLogger, new TestEnvironment());
 
             // Act
-            await service.StartAsync(CancellationToken.None);
+            service.RunAppValidation(_scriptOptionsMock.Object, CancellationToken.None);
 
             //Assert
             var traces = _testLoggerProvider.GetAllLogMessages();
@@ -70,10 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var environment = new TestEnvironment();
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
 
-            var service = new FunctionAppValidationService(
-                _testLogger,
-                _scriptOptionsMock.Object,
-                environment);
+            var service = new FunctionAppValidationService(_testLogger, environment);
 
             // Act
             await service.StartAsync(CancellationToken.None);
@@ -103,10 +97,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             scriptOptionsMock.Setup(o => o.Value).Returns(scriptJobHostOptions);
 
-            var service = new FunctionAppValidationService(
-                _testLogger,
-                scriptOptionsMock.Object,
-                environment);
+            var service = new FunctionAppValidationService(_testLogger, environment);
 
             // Act
             await service.StartAsync(CancellationToken.None);
@@ -129,13 +120,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var environment = new TestEnvironment();
             environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "dotnet-isolated");
 
-            var service = new FunctionAppValidationService(
-                _testLogger,
-                _scriptOptionsMock.Object,
-                environment);
+            var service = new FunctionAppValidationService(_testLogger, environment);
 
             // Act
-            await service.StartAsync(CancellationToken.None);
+            service.RunAppValidation(_scriptOptionsMock.Object, CancellationToken.None);
 
             await Task.Delay(_initializationDelay);
 

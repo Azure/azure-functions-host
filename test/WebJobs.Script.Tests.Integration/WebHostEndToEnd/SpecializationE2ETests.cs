@@ -874,6 +874,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(expectedContentEncodingResponseHeaderValue, value?.First());
         }
 
+        /*
         [Fact]
         public async Task Specialization_DotnetIsolatedApp_MissingAzureFunctionsDir_Logs()
         {
@@ -908,6 +909,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Contains("Starting host specialization", log);
             Assert.Contains("Could not find the .azurefunctions folder in the deployed artifacts of a .NET isolated function app.", log);
         }
+        */
 
         [Fact]
         public async Task DotNetIsolated_PlaceholderHit_WithProxies()

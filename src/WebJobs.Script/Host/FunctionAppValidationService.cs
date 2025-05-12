@@ -19,28 +19,23 @@ namespace Microsoft.Azure.WebJobs.Script.Host
     {
         private readonly IEnvironment _environment;
         private readonly ILogger<FunctionAppValidationService> _logger;
-        private readonly IOptions<ScriptJobHostOptions> _scriptOptions;
 
         public FunctionAppValidationService(
             ILogger<FunctionAppValidationService> logger,
-            IOptions<ScriptJobHostOptions> scriptOptions,
             IEnvironment environment)
         {
-            _scriptOptions = scriptOptions ?? throw new ArgumentNullException(nameof(scriptOptions));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
         }
 
         protected override async Task ExecuteAsync(CancellationToken cancellationToken)
         {
-            RunAppValidation(_scriptOptions, cancellationToken);
-
             await Task.CompletedTask;
         }
 
         public void RunAppValidation(IOptions<ScriptJobHostOptions> scriptOptions, CancellationToken cancellationToken = default)
         {
-            if (!_environment.IsPlaceholderModeEnabled())
+            if (!_environment.IsPlaceholderModeEnabled() && !scriptOptions.Value.IsStandbyConfiguration)
             {
                 // Adding a delay to ensure that this validation does not impact the cold start performance
                 Utility.ExecuteAfterColdStartDelay(_environment, () => Validate(scriptOptions), cancellationToken);
