@@ -18,7 +18,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class FunctionAppValidationServiceTests
     {
-        private readonly ILogger<FunctionAppValidationService> _testLogger;
         private readonly Mock<IOptions<ScriptJobHostOptions>> _scriptOptionsMock;
         private readonly ScriptJobHostOptions _scriptJobHostOptions;
         private readonly TestLoggerProvider _testLoggerProvider;
