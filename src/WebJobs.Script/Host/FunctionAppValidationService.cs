@@ -2,7 +2,9 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
@@ -41,11 +43,34 @@ namespace Microsoft.Azure.WebJobs.Script.Host
 
         internal void Validate()
         {
-            if (!_scriptOptions.Value.IsDefaultHostConfig &&
-                Utility.IsDotnetIsolatedApp(environment: _environment) &&
-                !Directory.Exists(Path.Combine(_scriptOptions.Value.RootScriptPath, ScriptConstants.AzureFunctionsSystemDirectoryName)))
+            try
             {
-                _logger.MissingAzureFunctionsFolder();
+                if (_scriptOptions.Value.RootScriptPath is not null &&
+                    !_scriptOptions.Value.IsDefaultHostConfig &&
+                    !_scriptOptions.Value.IsStandbyConfiguration &&
+                    Utility.IsDotnetIsolatedApp(environment: _environment) &&
+                    !Directory.Exists(Path.Combine(_scriptOptions.Value.RootScriptPath, ScriptConstants.AzureFunctionsSystemDirectoryName)))
+                {
+                    string azureFunctionsDirPath = Path.Combine(_scriptOptions.Value.RootScriptPath, ScriptConstants.AzureFunctionsSystemDirectoryName);
+
+                    // Search for the .azurefunctions directory within nested directories to verify scenarios where it isn't located at the root. This situation occurs when a function app has been improperly zipped.
+                    IEnumerable<string> azureFunctionsDirectories = Directory.GetDirectories(_scriptOptions.Value.RootScriptPath, ScriptConstants.AzureFunctionsSystemDirectoryName, SearchOption.AllDirectories)
+                        .Where(dir => !dir.Equals(azureFunctionsDirPath, StringComparison.OrdinalIgnoreCase));
+
+                    if (azureFunctionsDirectories is not null && azureFunctionsDirectories.Any())
+                    {
+                        string azureFunctionsDirectoriesPath = string.Join(", ", azureFunctionsDirectories).Replace(_scriptOptions.Value.RootScriptPath, string.Empty);
+                        _logger.IncorrectAzureFunctionsFolderPath(azureFunctionsDirectoriesPath);
+                    }
+                    else
+                    {
+                        _logger.MissingAzureFunctionsFolder();
+                    }
+                }
+            }
+            catch
+            {
+                // Ignore any exceptions.
             }
         }
     }

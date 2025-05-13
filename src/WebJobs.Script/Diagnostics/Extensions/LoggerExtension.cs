@@ -196,7 +196,12 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
         private static readonly Action<ILogger, string, Exception> _missingAzureFunctionsFolder =
             LoggerMessage.Define<string>(LogLevel.Warning,
             new EventId(340, nameof(MissingAzureFunctionsFolder)),
-            "Could not find the .azurefunctions folder in the deployed artifacts of a .NET isolated function app. Make sure that your deployment package includes the .azurefunctions folder. For deployment package requirements, see https://aka.ms/functions-deployment-technologies. If this is not intended to be a .NET isolated app, please ensure that the {functionWorkerRuntime} app setting is configured correctly.");
+            "Could not find the .azurefunctions folder in the deployed artifacts of a .NET isolated function app. Make sure that your deployment package includes the .azurefunctions folder at the root of the package. For deployment package requirements, see https://aka.ms/functions-deployment-technologies. If this is not intended to be a .NET isolated app, please ensure that the {functionWorkerRuntime} app setting is configured correctly.");
+
+        private static readonly Action<ILogger, string, string, Exception> _incorrectAzureFunctionsFolderPath =
+            LoggerMessage.Define<string, string>(LogLevel.Warning,
+            new EventId(341, nameof(IncorrectAzureFunctionsFolderPath)),
+            "Could not find the .azurefunctions folder in the deployed artifacts of a .NET isolated function app. However, it is found to be located at: {path}. Make sure that your deployment package includes the .azurefunctions folder at the root of the package. For deployment package requirements, see https://aka.ms/functions-deployment-technologies. If this is not intended to be a .NET isolated app, please ensure that the {functionWorkerRuntime} app setting is configured correctly.");
 
         private static readonly Action<ILogger, string, Exception> _publishingMetrics =
             LoggerMessage.Define<string>(LogLevel.Debug, new EventId(338, nameof(PublishingMetrics)), "{metrics}");
@@ -397,6 +402,12 @@ Lock file hash: {currentLockFileHash}";
         {
             string functionWorkerRuntime = EnvironmentSettingNames.FunctionWorkerRuntime;
             _missingAzureFunctionsFolder(logger, functionWorkerRuntime, null);
+        }
+
+        public static void IncorrectAzureFunctionsFolderPath(this ILogger logger, string path)
+        {
+            string functionWorkerRuntime = EnvironmentSettingNames.FunctionWorkerRuntime;
+            _incorrectAzureFunctionsFolderPath(logger, path, functionWorkerRuntime, null);
         }
     }
 }
