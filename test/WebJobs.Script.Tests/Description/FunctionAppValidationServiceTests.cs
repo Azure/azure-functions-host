@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Immutable;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -22,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly Mock<IOptions<ScriptJobHostOptions>> _scriptOptionsMock;
         private readonly ScriptJobHostOptions _scriptJobHostOptions;
         private readonly TestLoggerProvider _testLoggerProvider;
-        private readonly TimeSpan _initializationDelay = TimeSpan.FromSeconds(11);
+        private readonly TimeSpan _initializationDelay = TimeSpan.FromSeconds(6);
 
         public FunctionAppValidationServiceTests()
         {
@@ -122,6 +123,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task StartAsync_MissingAzureFunctionsFolder_LogsWarning()
         {
             _testLoggerProvider.ClearAllLogMessages();
+            Directory.CreateDirectory("test-root-path");
 
             // Arrange
             var functionMetadataList = ImmutableArray.Create(new FunctionMetadata());
