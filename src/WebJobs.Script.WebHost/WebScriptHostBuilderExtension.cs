@@ -98,10 +98,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                             loggingBuilder.Services.AddOptions<LoggerFilterOptions>()
                                 .Configure<IOptionsMonitor<AppServiceOptions>>((filters, options) =>
                                 {
-                                    bool isAzureMonitorLoggingEnabled = options.CurrentValue.AzureMonitorLoggingEnabled;
                                     filters.AddFilter<AzureMonitorDiagnosticLoggerProvider>((category, level) =>
                                     {
-                                        return isAzureMonitorLoggingEnabled;
+                                        return options.CurrentValue.AzureMonitorLoggingEnabled;
                                     });
                                 });
                         }
