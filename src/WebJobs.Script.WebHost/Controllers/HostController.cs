@@ -49,6 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         private readonly IMetricsLogger _metricsLogger;
         private static readonly SemaphoreSlim _drainSemaphore = new SemaphoreSlim(1, 1);
         private static readonly SemaphoreSlim _resumeSemaphore = new SemaphoreSlim(1, 1);
+        private static int pingCount = 0;
 
         public HostController(IOptions<ScriptApplicationHostOptions> applicationHostOptions,
             ILoggerFactory loggerFactory,
@@ -308,6 +309,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
         public async Task<IActionResult> Ping([FromServices] IScriptHostManager scriptHostManager)
         {
+            if (pingCount > 10)
+            {
+                // Request after hang started: hang here too
+                Thread.Sleep(Timeout.Infinite);
+            }
             var result = await _performanceManager.TryHandleHealthPingAsync(HttpContext.Request, _logger);
             if (result != null)
             {
@@ -321,6 +327,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
             string message = $"Ping Status: {pingStatus.ToString()}";
             _logger.Log(LogLevel.Debug, new EventId(0, "PingStatus"), message);
+            _logger.Log(LogLevel.Debug, new EventId(0, "PingStatus"), $"ping count: {pingCount++}");
 
             return Ok();
         }
