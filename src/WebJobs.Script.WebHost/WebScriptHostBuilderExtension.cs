@@ -100,7 +100,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                                 {
                                     filters.AddFilter<AzureMonitorDiagnosticLoggerProvider>((category, level) =>
                                     {
-                                        return options.CurrentValue.AzureMonitorLoggingEnabled;
+                                        return options.CurrentValue.IsAzureMonitorLoggingEnabled;
                                     });
                                 });
                         }

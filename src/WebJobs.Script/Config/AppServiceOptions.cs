@@ -13,6 +13,6 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 
         public string SlotName { get; set; }
 
-        public bool AzureMonitorLoggingEnabled { get; set; }
+        public bool IsAzureMonitorLoggingEnabled { get; set; }
     }
 }
