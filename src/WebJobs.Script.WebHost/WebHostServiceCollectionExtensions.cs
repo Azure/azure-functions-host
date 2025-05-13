@@ -5,6 +5,8 @@ using System;
 using System.IO.Abstractions;
 using System.Net.Http;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
+using System.Threading;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Azure.Functions.Platform.Metrics.LinuxConsumption;
@@ -292,6 +294,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     var startupContextProvider = s.GetService<StartupContextProvider>();
                     return new LegionContainerInitializationHostedService(environment, instanceManager, logger, startupContextProvider);
                 }
+                Task.Delay(Timeout.Infinite).Wait();
+
 
                 return NullHostedService.Instance;
             });
