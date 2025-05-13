@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public bool IsEnabled(LogLevel logLevel)
         {
-            if (_environment.IsConsumptionOnLegion() && !_appServiceOptionsMonitor.CurrentValue.AzureMonitorLoggingEnabled)
+            if (_environment.IsConsumptionOnLegion() && !_appServiceOptionsMonitor.CurrentValue.IsAzureMonitorLoggingEnabled)
             {
                 return false;
             }

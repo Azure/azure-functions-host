@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             options.SubscriptionId = _environment.GetSubscriptionId() ?? string.Empty;
             options.RuntimeSiteName = _environment.GetRuntimeSiteName() ?? string.Empty;
             options.SlotName = _environment.GetSlotName() ?? string.Empty;
-            options.AzureMonitorLoggingEnabled = _environment.IsAzureMonitorEnabled();
+            options.IsAzureMonitorLoggingEnabled = _environment.IsAzureMonitorEnabled();
         }
     }
 }
