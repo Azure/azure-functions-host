@@ -124,7 +124,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
                 var iter = 0;
                 while (true)
                 {
-                    _logger.LogDebug($"Bad code, iteration count = {iter++}");
+                   // Do nothing.
                 }
             }
             catch (Exception ex)
