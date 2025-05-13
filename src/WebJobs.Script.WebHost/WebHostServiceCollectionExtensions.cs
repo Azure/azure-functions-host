@@ -294,7 +294,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     var startupContextProvider = s.GetService<StartupContextProvider>();
                     return new LegionContainerInitializationHostedService(environment, instanceManager, logger, startupContextProvider);
                 }
-                Task.Delay(Timeout.Infinite).Wait();
 
                 return NullHostedService.Instance;
             });
