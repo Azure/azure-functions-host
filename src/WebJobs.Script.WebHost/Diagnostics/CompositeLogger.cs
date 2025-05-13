@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
-    public class CompositeLogger : ILogger
+    internal sealed class CompositeLogger : ILogger
     {
         private readonly ILogger[] _loggers;
 

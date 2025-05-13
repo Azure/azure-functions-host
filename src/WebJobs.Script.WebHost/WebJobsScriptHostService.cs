@@ -228,7 +228,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
-        private async Task CheckFileSystem()
+        private async Task CheckFileSystemAsync()
         {
             if (_environment.ZipDeploymentAppSettingsExist())
             {
@@ -254,7 +254,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         var errorMessage = $"{errorPrefix}{errorSuffix}";
 
                         _logger.LogError(errorMessage);
-                        await LogErrorWithTransientOtelLogger(errorMessage);
+                        await LogErrorWithTransientOtelLoggerAsync(errorMessage);
                     }
                     _applicationLifetime.StopApplication();
                 }
@@ -326,7 +326,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         /// </summary>
         private async Task UnsynchronizedStartHostAsync(ScriptHostStartupOperation activeOperation, int attemptCount = 0, JobHostStartupMode startupMode = JobHostStartupMode.Normal)
         {
-            await CheckFileSystem();
+            await CheckFileSystemAsync();
             if (ShutdownRequested)
             {
                 return;
@@ -1067,7 +1067,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _logger.StartupOperationCompleted(operation.Id);
         }
 
-        private async Task LogErrorWithTransientOtelLogger(string log)
+        private async Task LogErrorWithTransientOtelLoggerAsync(string log)
         {
             var loggerFactory = BuildOtelLoggerFactory();
 
@@ -1089,7 +1089,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             var appInsightsConnStr = GetConfigurationValue(AppInsightsConnectionString, _config);
             var otlpEndpoint = GetConfigurationValue(OtlpEndpoint, _config);
-
             if (appInsightsConnStr is not { Length: > 0 } && otlpEndpoint is not { Length: > 0 })
             {
                 return null; // Nothing configured
@@ -1146,18 +1145,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private static string GetConfigurationValue(string key, IConfiguration configuration = null)
         {
-            if (configuration != null && configuration[key] is string configValue)
-            {
-                return configValue;
-            }
-            else if (Environment.GetEnvironmentVariable(key) is string envValue)
-            {
-                return envValue;
-            }
-            else
-            {
-                return null;
-            }
+            return configuration?[key] ?? Environment.GetEnvironmentVariable(key);
         }
 
         protected virtual void Dispose(bool disposing)
