@@ -10,8 +10,10 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Models;
+using Microsoft.Azure.WebJobs.Script.Properties;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using NuGet.Versioning;
@@ -373,6 +375,21 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
 
             // if no bin directory is present something is wrong
             return FileUtility.DirectoryExists(binPath) ? binPath : null;
+        }
+
+        public void CompareWithLatestMajorVersion()
+        {
+            string majorVersionStr = _extensionBundleVersion?.Split('.')?.FirstOrDefault() ?? string.Empty;
+            int majorVersion = int.TryParse(majorVersionStr, out int result) ? result : 0;
+
+            int latestMajorVersion = ScriptConstants.ExtensionBundleV4MajorVersion;
+            if (string.Compare(_options?.Id, ScriptConstants.DefaultExtensionBundleId, StringComparison.OrdinalIgnoreCase) == 0
+                && majorVersion != 0
+                && majorVersion < latestMajorVersion)
+            {
+                string message = string.Format(Resources.OutdatedExtensionBundlesVersionInfoFormat, _extensionBundleVersion, latestMajorVersion, latestMajorVersion + 1);
+                DiagnosticEventLoggerExtensions.LogDiagnosticEventInformation(_logger, DiagnosticEventConstants.OutdatedBundlesVersionErrorCode, message, DiagnosticEventConstants.OutdatedBundlesVersionHelpLink);
+            }
         }
     }
 }

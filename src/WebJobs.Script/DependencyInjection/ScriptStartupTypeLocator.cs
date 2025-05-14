@@ -16,7 +16,6 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.ExtensionRequirements;
 using Microsoft.Azure.WebJobs.Script.Models;
-using Microsoft.Azure.WebJobs.Script.Properties;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -32,8 +31,6 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
     public class ScriptStartupTypeLocator : IWebJobsStartupTypeLocator
     {
         private const string ApplicationInsightsStartupType = "Microsoft.Azure.WebJobs.Extensions.ApplicationInsights.ApplicationInsightsWebJobsStartup, Microsoft.Azure.WebJobs.Extensions.ApplicationInsights, Version=1.0.0.0, Culture=neutral, PublicKeyToken=9475d07f10cb09df";
-        private const int LatestMajorBundleVersion = 4;
-        private const string DefaultBundleVersionId = "Microsoft.Azure.Functions.ExtensionBundle";
         private readonly string _rootScriptPath;
         private readonly ILogger _logger;
         private readonly IExtensionBundleManager _extensionBundleManager;
@@ -130,7 +127,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
 
                 _logger.ScriptStartUpLoadingExtensionBundle(extensionsMetadataPath);
 
-                CompareWithLatestMajorVersion(bundleDetails);
+                _extensionBundleManager.CompareWithLatestMajorVersion();
             }
             else
             {
@@ -225,20 +222,6 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
             ValidateExtensionRequirements(startupTypes, extensionRequirements);
 
             return startupTypes;
-        }
-
-        private void CompareWithLatestMajorVersion(ExtensionBundleDetails bundle)
-        {
-            string majorVersionStr = bundle?.Version?.Split('.')?.FirstOrDefault() ?? string.Empty;
-            int majorVersion = int.TryParse(majorVersionStr, out int result) ? result : 0;
-
-            if (string.Compare(bundle?.Id, DefaultBundleVersionId, StringComparison.OrdinalIgnoreCase) == 0
-                && majorVersion != 0
-                && majorVersion < LatestMajorBundleVersion)
-            {
-                string message = string.Format(Resources.OutdatedExtensionBundlesVersionInfoFormat, bundle.Version, LatestMajorBundleVersion, LatestMajorBundleVersion + 1);
-                DiagnosticEventLoggerExtensions.LogDiagnosticEventInformation(_logger, DiagnosticEventConstants.OutdatedBundlesVersionErrorCode, message, DiagnosticEventConstants.OutdatedBundlesVersionHelpLink);
-            }
         }
 
         private ExtensionReference[] ParseExtensions(string metadataFilePath)
