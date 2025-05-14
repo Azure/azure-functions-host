@@ -388,7 +388,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
                 && majorVersion < latestMajorVersion)
             {
                 string message = string.Format(Resources.OutdatedExtensionBundlesVersionInfoFormat, _extensionBundleVersion, latestMajorVersion, latestMajorVersion + 1);
-                DiagnosticEventLoggerExtensions.LogDiagnosticEventInformation(_logger, DiagnosticEventConstants.OutdatedBundlesVersionErrorCode, message, DiagnosticEventConstants.OutdatedBundlesVersionHelpLink);
+                DiagnosticEventLoggerExtensions.LogDiagnosticEventWarning(_logger, DiagnosticEventConstants.OutdatedBundlesVersionErrorCode, message, DiagnosticEventConstants.OutdatedBundlesVersionHelpLink, null);
             }
         }
     }
