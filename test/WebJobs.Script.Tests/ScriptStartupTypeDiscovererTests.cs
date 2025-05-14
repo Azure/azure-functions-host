@@ -504,12 +504,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task GetExtensionsStartupTypes_NoBindings_In_ExtensionJson()
         {
-            ExtensionInstall blobs = new("AzureStorageBlobs", typeof(AzureStorageWebJobsStartup));
-            string binPath = InstallExtensions(ExtensionInstall.Storage(true), blobs);
+            ExtensionInstall storage1 = new("AzureStorageBlobs", typeof(AzureStorageWebJobsStartup));
+            ExtensionInstall storage2 = new("Storage", typeof(AzureStorageWebJobsStartup))
+            {
+                HintPath = "Microsoft.Azure.WebJobs.Extensions.Storage.dll"
+            };
 
+            string binPath = InstallExtensions(storage1, storage2);
             _bundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
-            _bundleManager.Setup(e => e.GetExtensionBundleDetails()).Returns(Task.FromResult(new ExtensionBundleDetails() { Id = "bundleID", Version = "1.0.0" }));
-            _bundleManager.Setup(e => e.GetExtensionBundleBinPathAsync()).Returns(Task.FromResult(binPath));
+            _bundleManager.Setup(e => e.GetExtensionBundleDetails()).ReturnsAsync(new ExtensionBundleDetails() { Id = "bundleID", Version = "1.0.0" });
+            _bundleManager.Setup(e => e.GetExtensionBundleBinPathAsync()).ReturnsAsync(binPath);
 
             // Act
             ScriptStartupTypeLocator discoverer = CreateSystemUnderTest();
@@ -697,6 +701,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private class ExtensionInstall(string name, Type startupType, params string[] bindings)
         {
+            public string HintPath { get; init; }
+
             public static ExtensionInstall Storage(bool includeBinding = false)
             {
                 string[] bindings = includeBinding ? ["blob"] : [];
@@ -721,7 +727,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             public ExtensionReference GetReference()
             {
-                ExtensionReference reference = new() { Name = name, TypeName = startupType.AssemblyQualifiedName };
+                ExtensionReference reference = new()
+                {
+                    Name = name,
+                    TypeName = startupType.AssemblyQualifiedName,
+                    HintPath = HintPath,
+                };
                 foreach (string binding in bindings ?? Enumerable.Empty<string>())
                 {
                     reference.Bindings.Add(binding);
