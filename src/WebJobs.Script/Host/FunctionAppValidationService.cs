@@ -35,19 +35,21 @@ namespace Microsoft.Azure.WebJobs.Script.Host
 
         protected override async Task ExecuteAsync(CancellationToken cancellationToken)
         {
-            // Adding a delay to ensure that this validation does not impact the cold start performance
-            Utility.ExecuteAfterColdStartDelay(_environment, Validate, cancellationToken);
+            if (!_scriptOptions.Value.IsStandbyConfiguration)
+            {
+                // Adding a delay to ensure that this validation does not impact the cold start performance
+                Utility.ExecuteAfterColdStartDelay(_environment, Validate, cancellationToken);
+            }
 
             await Task.CompletedTask;
         }
 
-        internal void Validate()
+        private void Validate()
         {
             try
             {
                 if (_scriptOptions.Value.RootScriptPath is not null &&
                     !_scriptOptions.Value.IsDefaultHostConfig &&
-                    !_scriptOptions.Value.IsStandbyConfiguration &&
                     Utility.IsDotnetIsolatedApp(environment: _environment) &&
                     !Directory.Exists(Path.Combine(_scriptOptions.Value.RootScriptPath, ScriptConstants.AzureFunctionsSystemDirectoryName)))
                 {
@@ -57,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.Host
                     IEnumerable<string> azureFunctionsDirectories = Directory.GetDirectories(_scriptOptions.Value.RootScriptPath, ScriptConstants.AzureFunctionsSystemDirectoryName, SearchOption.AllDirectories)
                         .Where(dir => !dir.Equals(azureFunctionsDirPath, StringComparison.OrdinalIgnoreCase));
 
-                    if (azureFunctionsDirectories is not null && azureFunctionsDirectories.Any())
+                    if (azureFunctionsDirectories.Any())
                     {
                         string azureFunctionsDirectoriesPath = string.Join(", ", azureFunctionsDirectories).Replace(_scriptOptions.Value.RootScriptPath, string.Empty);
                         _logger.IncorrectAzureFunctionsFolderPath(azureFunctionsDirectoriesPath);

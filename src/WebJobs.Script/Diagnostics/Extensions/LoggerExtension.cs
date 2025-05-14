@@ -400,14 +400,12 @@ Lock file hash: {currentLockFileHash}";
 
         public static void MissingAzureFunctionsFolder(this ILogger logger)
         {
-            string functionWorkerRuntime = EnvironmentSettingNames.FunctionWorkerRuntime;
-            _missingAzureFunctionsFolder(logger, functionWorkerRuntime, null);
+            _missingAzureFunctionsFolder(logger, EnvironmentSettingNames.FunctionWorkerRuntime, null);
         }
 
         public static void IncorrectAzureFunctionsFolderPath(this ILogger logger, string path)
         {
-            string functionWorkerRuntime = EnvironmentSettingNames.FunctionWorkerRuntime;
-            _incorrectAzureFunctionsFolderPath(logger, path, functionWorkerRuntime, null);
+            _incorrectAzureFunctionsFolderPath(logger, path, EnvironmentSettingNames.FunctionWorkerRuntime, null);
         }
     }
 }
