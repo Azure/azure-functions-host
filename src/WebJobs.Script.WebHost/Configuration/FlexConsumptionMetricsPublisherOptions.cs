@@ -14,12 +14,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
         internal const int DefaultMetricsPublishIntervalMS = 5000;
         internal const int DefaultMinimumActivityIntervalMS = 1000;
         internal const int DefaultMetricsGranularityMS = 100;
+        internal const int DefaultKeepAliveIntervalMS = 30000;
 
         public FlexConsumptionMetricsPublisherOptions()
         {
             MetricsPublishIntervalMS = DefaultMetricsPublishIntervalMS;
             MinimumActivityIntervalMS = DefaultMinimumActivityIntervalMS;
             MetricsGranularityMS = DefaultMetricsGranularityMS;
+            KeepAliveIntervalMS = DefaultKeepAliveIntervalMS;
             InitialPublishDelayMS = Utility.ColdStartDelayMS;
 
             // Default this to 15 minutes worth of files
@@ -66,5 +68,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
         /// When over this limit, the oldest files will be deleted to make room for new files.
         /// </remarks>
         public int MaxFileCount { get; set; }
+
+        /// <summary>
+        /// Gets or sets the maximum interval at which metrics are published.
+        /// </summary>
+        /// <remarks>
+        /// This is required to ensure that we publish something even if there are no
+        /// new metrics or activity to report so that we have a heartbeat.
+        /// </remarks>
+        public int KeepAliveIntervalMS { get; set; }
     }
 }

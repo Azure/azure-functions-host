@@ -948,6 +948,14 @@
       "resolutionPolicy": "private"
     },
     {
+      "name": "OpenTelemetry.Instrumentation.Process",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "OpenTelemetry.Instrumentation.Runtime",
+      "resolutionPolicy": "private"
+    },
+    {
       "name": "OpenTelemetry.PersistentStorage.Abstractions",
       "resolutionPolicy": "private"
     },
