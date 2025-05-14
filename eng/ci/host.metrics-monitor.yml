@@ -1,0 +1,56 @@
+# No triggers for code push to any branch.
+trigger: none
+
+# No PR triggers.
+pr: none
+
+schedules:
+  - cron: "0 6,18 * * *"
+    displayName: Daily Schedule (6 AM & 6 PM UTC)
+    branches:
+      include:
+      - dev
+    always: true
+
+resources:
+  repositories:
+  - repository: 1es
+    type: git
+    name: 1ESPipelineTemplates/1ESPipelineTemplates
+    ref: refs/tags/release
+  - repository: eng
+    type: git
+    name: engineering
+    ref: refs/tags/release
+
+variables:
+  - template: /ci/variables/cfs.yml@eng
+
+extends:
+  template: v1/1ES.Unofficial.PipelineTemplate.yml@1es
+  parameters:
+    pool:
+      name: 1es-pool-azfunc-benchmarking
+      image: 1es-windows-2022-benchmark-runner-vanilla
+      os: windows
+
+    stages:
+    - stage: RunWindows
+      displayName: Collect Windows metrics
+      jobs:
+      - template: /eng/ci/templates/official/jobs/run-metrics-monitor.yml@self
+        parameters:
+          description: .NET9 Timer Application
+          functionAppName: TimerAppNet9
+          azureMonitorConnectionString: $(WINDOWS_AZURE_MONITOR_CONNECTION)
+
+    - stage: RunLinux
+      dependsOn: []
+      displayName: Collect Linux metrics
+      jobs:
+      - template: /eng/ci/templates/official/jobs/run-metrics-monitor.yml@self
+        parameters:
+          os: Linux
+          description: .NET9 Timer Application
+          functionAppName: TimerAppNet9
+          azureMonitorConnectionString: $(LINUX_AZURE_MONITOR_CONNECTION)
