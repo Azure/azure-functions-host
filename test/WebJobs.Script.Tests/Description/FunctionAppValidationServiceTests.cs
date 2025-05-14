@@ -23,7 +23,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly Mock<IOptions<ScriptJobHostOptions>> _scriptOptionsMock;
         private readonly ScriptJobHostOptions _scriptJobHostOptions;
         private readonly TestLoggerProvider _testLoggerProvider;
-        private readonly TimeSpan _initializationDelay = TimeSpan.FromSeconds(6);
 
         public FunctionAppValidationServiceTests()
         {
@@ -123,9 +122,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             _testLoggerProvider.ClearAllLogMessages();
 
-            // Arrange
+            string path = "test-root-path";
+            if (!Directory.Exists(path))
+            {
+                Directory.CreateDirectory(path);
+            }
 
-            Directory.CreateDirectory("test-root-path");
             var functionMetadataList = ImmutableArray.Create(new FunctionMetadata());
 
             var environment = new TestEnvironment();
@@ -139,13 +141,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // Act
             await service.StartAsync(CancellationToken.None);
 
-            await Task.Delay(_initializationDelay);
-
-            //Assert
-            var traces = _testLoggerProvider.GetAllLogMessages();
-            var traceMessage = traces.FirstOrDefault(val => val.EventId.Name.Equals("MissingAzureFunctionsFolder"));
-
-            Assert.NotNull(traceMessage);
+            await TestHelpers.Await(() =>
+            {
+                int completed = _testLoggerProvider.GetAllLogMessages().Count(p => p.FormattedMessage.Contains("Could not find the .azurefunctions folder in the deployed artifacts of a .NET isolated function app."));
+                return completed > 0;
+            });
         }
     }
 }

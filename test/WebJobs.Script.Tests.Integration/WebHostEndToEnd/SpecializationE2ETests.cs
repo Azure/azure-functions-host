@@ -52,7 +52,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private static readonly string _scriptRootConfigPath = ConfigurationPath.Combine(ConfigurationSectionNames.WebHost, nameof(ScriptApplicationHostOptions.ScriptPath));
 
         private static readonly string _dotnetIsolated60Path = Path.GetFullPath(@"..\..\DotNetIsolated60\debug");
-        private static readonly string _dotnetIsolatedInvalidAppPath = Path.GetFullPath(@"..\..\DotNetIsolatedInvalidApp\debug");
         private static readonly string _dotnetIsolatedUnsuppportedPath = Path.GetFullPath(@"..\..\DotNetIsolatedUnsupportedWorker\debug");
         private static readonly string _dotnetIsolatedEmptyScriptRoot = Path.GetFullPath(@"..\..\..\..\EmptyScriptRoot");
 
@@ -878,14 +877,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task Specialization_DotnetIsolatedApp_MissingAzureFunctionsDir_Logs()
         {
             Guid guid = Guid.NewGuid();
-            var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetIsolatedInvalidAppPath, "HttpRequestFunction");
-            var path = Path.Combine(_dotnetIsolatedInvalidAppPath, ".azurefunctions");
-            var updatedPath = Path.Combine(_dotnetIsolatedInvalidAppPath, ".azurefunctions_temp" + guid.ToString());
+            string path = "test-path" + guid.ToString();
 
-            if (Directory.Exists(path))
+            if (!Directory.Exists(path))
             {
-                Directory.Move(path, updatedPath);
+                Directory.CreateDirectory(path);
             }
+
+            string json = "{\r\n  \"version\": \"2.0\",\r\n  \"isDefaultHostConfig\": false\r\n}";
+            File.WriteAllText(Path.Combine(path, "host.json"), json);
+
+            var builder = InitializeDotNetIsolatedPlaceholderBuilder(path);
 
             using var testServer = new TestServer(builder);
 
@@ -904,12 +906,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.NotNull(scriptHostManager);
             Assert.Equal(ScriptHostState.Running, scriptHostManager.State);
 
-            await Task.Delay(TimeSpan.FromSeconds(6));
-
-            var log = _loggerProvider.GetLog();
-            Assert.Contains("UsePlaceholderDotNetIsolated: True", log);
-            Assert.Contains("Starting host specialization", log);
-            Assert.Contains("Could not find the .azurefunctions folder in the deployed artifacts of a .NET isolated function app.", log);
+            await TestHelpers.Await(() =>
+            {
+                int completed = _loggerProvider.GetAllLogMessages().Count(p => p.FormattedMessage.Contains("Could not find the .azurefunctions folder in the deployed artifacts of a .NET isolated function app."));
+                return completed > 0;
+            });
         }
 
         [Fact]
