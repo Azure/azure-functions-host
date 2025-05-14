@@ -98,10 +98,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             };
             bool result = _instanceManager.StartAssignment(context);
             Assert.True(result);
-            Assert.True(_scriptWebEnvironment.InStandbyMode);
 
-            // specialization is done in the background
-            await Task.Delay(500);
+            await TestHelpers.Await(() => !_scriptWebEnvironment.InStandbyMode, timeout: 5000);
+
+            Assert.True(!_scriptWebEnvironment.InStandbyMode);
 
             var value = _environment.GetEnvironmentVariable(envValue.Name);
             Assert.Equal(value, envValue.Value);
@@ -149,7 +149,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             bool result = _instanceManager.StartAssignment(context);
             Assert.True(result);
-            Assert.True(_scriptWebEnvironment.InStandbyMode);
 
             await TestHelpers.Await(() => !_scriptWebEnvironment.InStandbyMode, timeout: 5000);
 
@@ -172,9 +171,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             };
             bool result = _instanceManager.StartAssignment(context);
             Assert.True(result);
-            Assert.True(_scriptWebEnvironment.InStandbyMode);
 
             await TestHelpers.Await(() => !_scriptWebEnvironment.InStandbyMode, timeout: 5000);
+
+            Assert.False(_scriptWebEnvironment.InStandbyMode);
 
             var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
             Assert.Collection(logs,
@@ -184,7 +184,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         }
 
         [Fact]
-        public async void StartAssignment_Does_Not_Assign_Settings_For_Warmup_Request()
+        public async Task StartAssignment_Does_Not_Assign_Settings_For_Warmup_Request()
         {
 
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");

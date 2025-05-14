@@ -539,7 +539,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // We want it to start first, but finish last, so unstick it in a couple seconds.
             Task ignore = Task.Delay(3000).ContinueWith(_ => _pauseAfterStandbyHostBuild.Release());
 
-            var expectedPowerShellVersion = "7.2";
+            var expectedPowerShellVersion = "7.4";
             IWebHost host = builder.Build();
             var scriptHostService = host.Services.GetService<WebJobsScriptHostService>();
             var channelFactory = host.Services.GetService<IRpcWorkerChannelFactory>();
@@ -836,6 +836,41 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Contains("UsePlaceholderDotNetIsolated: True", log);
             Assert.Contains("Placeholder runtime version: '6.0'. Site runtime version: '6.0'. Match: True", log);
             Assert.DoesNotContain("Shutting down placeholder worker.", log);
+        }
+
+        [Theory]
+        [InlineData("gzip", "gzip")]
+        [InlineData("br", "br")]
+        [InlineData("gzip, deflate, br", "br")]  // Compression defaults to Brotli compression when the client supports it.
+        [InlineData("", null)]
+        public async Task ResponseCompressionWorksAfterSpecialization(string acceptEncodingRequestHeaderValue, string expectedContentEncodingResponseHeaderValue)
+        {
+            var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetIsolated60Path, "HttpRequestDataFunction");
+
+            using var testServer = new TestServer(builder);
+
+            var client = testServer.CreateClient();
+            client.DefaultRequestHeaders.Add("Accept-Encoding", acceptEncodingRequestHeaderValue);
+            var response = await client.GetAsync("api/warmup");
+            response.EnsureSuccessStatusCode();
+            response.Content.Headers.TryGetValues("Content-Encoding", out var value);
+            Assert.Null(value);
+
+            // Validate that the channel is set up with native worker
+            var webChannelManager = testServer.Services.GetService<IWebHostRpcWorkerChannelManager>();
+            var placeholderChannel = await webChannelManager.GetChannels("dotnet-isolated").Single().Value.Task;
+
+            // Ensure we are in placeholder mode
+            Assert.Contains("FunctionsNetHost.exe", placeholderChannel.WorkerProcess.Process.StartInfo.FileName);
+
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags , ScriptConstants.FeatureFlagEnableResponseCompression);
+
+            response = await client.GetAsync("api/HttpRequestDataFunction");
+            response.EnsureSuccessStatusCode();
+            response.Content.Headers.TryGetValues("Content-Encoding", out value);
+            Assert.Equal(expectedContentEncodingResponseHeaderValue, value?.First());
         }
 
         [Fact]

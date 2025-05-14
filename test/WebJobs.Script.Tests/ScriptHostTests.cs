@@ -453,7 +453,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData("node", "~3", "~8", "node-~8")]
         [InlineData("node", "~2", "~8", "node-~8")]
         [InlineData("powershell", "~2", "", "powershell")]
-        [InlineData("powershell", "~2", "~7", "powershell-~7")]
+        [InlineData("powershell", "~2", "7.4", "powershell-7.4")]
         [InlineData("java", "~3", "", "java")]
         public async Task Initialize_WithRuntimeAndWorkerVersion_ReportRuntimeToMetricsTable(
             string functionsWorkerRuntime,

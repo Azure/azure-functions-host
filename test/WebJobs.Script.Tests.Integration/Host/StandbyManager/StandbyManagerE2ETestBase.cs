@@ -12,11 +12,13 @@ using System.Threading.Tasks;
 using System.Web.Http;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Azure.Functions.Platform.Metrics.LinuxConsumption;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
@@ -36,6 +38,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         protected readonly object _originalTimeZoneInfoCache = GetCachedTimeZoneInfo();
         protected TestMetricsLogger _metricsLogger;
 
+        private const string TestSiteName = "test-site-name";
+
         public StandbyManagerE2ETestBase()
         {
             _testRootPath = Path.Combine(Path.GetTempPath(), "StandbyManagerTests");
@@ -44,7 +48,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             StandbyManager.ResetChangeToken();
         }
 
-        protected async Task<IWebHostBuilder> CreateWebHostBuilderAsync(string testDirName, IEnvironment environment)
+        protected virtual void ConfigureScriptHostConfiguration(IConfigurationBuilder builder)
+        {
+        }
+
+        protected async Task<IWebHostBuilder> CreateWebHostBuilderAsync(string testDirName, IEnvironment environment, string websiteSiteName = TestSiteName)
         {
             var httpConfig = new HttpConfiguration();
             var uniqueTestRootPath = Path.Combine(_testRootPath, testDirName, Guid.NewGuid().ToString());
@@ -63,9 +71,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 // if the test is mocking App Service environment, we need
                 // to also set the HOME and WEBSITE_SITE_NAME variables
                 environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath, uniqueTestRootPath);
-                environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName, "test-host-name");
+                environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName, websiteSiteName);
             }
 
+            var testMetricsTracker = new TestMetricsTracker();
             var webHostBuilder = Program.CreateWebHostBuilder()
                 .ConfigureAppConfiguration(c =>
                 {
@@ -95,6 +104,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                     c.AddSingleton<IEnvironment>(_ => environment);
                     c.AddSingleton<IMetricsLogger>(_ => _metricsLogger);
+                    c.AddSingleton<ILinuxConsumptionMetricsTracker>(_ => testMetricsTracker);
                 })
                 .ConfigureScriptHostLogging(b =>
                 {
@@ -108,14 +118,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                         // tests based on CPU limits being hit resulting in 429 responses
                         o.DynamicThrottlesEnabled = false;
                     });
-                });
+                })
+                .ConfigureScriptHostAppConfiguration(ConfigureScriptHostConfiguration);
 
             return webHostBuilder;
         }
 
-        protected async Task InitializeTestHostAsync(string testDirName, IEnvironment environment)
+        protected async Task<IWebHost> InitializeTestHostAsync(string testDirName, IEnvironment environment, string websiteSiteName = TestSiteName)
         {
-            var webHostBuilder = await CreateWebHostBuilderAsync(testDirName, environment);
+            var webHostBuilder = await CreateWebHostBuilderAsync(testDirName, environment, websiteSiteName);
             _httpServer = new TestServer(webHostBuilder);
             _httpClient = _httpServer.CreateClient();
             _httpClient.BaseAddress = new Uri("https://localhost/");
@@ -127,6 +138,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.NotNull(traces.Single(p => p.FormattedMessage.StartsWith("Host is in standby mode")));
 
             _expectedHostId = await _httpServer.Host.Services.GetService<IHostIdProvider>().GetHostIdAsync(CancellationToken.None);
+
+            return _httpServer.Host;
         }
 
 

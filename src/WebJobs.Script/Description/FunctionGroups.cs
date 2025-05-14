@@ -11,6 +11,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         public const string Durable = "durable";
         public const string Blob = "blob";
 
+        // Function group for validation worker used by Functions Deployment Manager
+        public const string ValidationWorker = "deployment:validation";
+
         public static string ForFunction(string function)
         {
             return $"function:{function}";

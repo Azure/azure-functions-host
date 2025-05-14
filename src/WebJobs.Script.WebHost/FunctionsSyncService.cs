@@ -21,10 +21,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly IScriptHostManager _scriptHostManager;
         private readonly IPrimaryHostStateProvider _primaryHostStateProvider;
         private readonly IFunctionsSyncManager _functionsSyncManager;
+        private readonly IEnvironment _environment;
         private Timer _syncTimer;
         private bool _disposed = false;
 
-        public FunctionsSyncService(ILoggerFactory loggerFactory, IScriptHostManager scriptHostManager, IPrimaryHostStateProvider primaryHostStateProvider, IFunctionsSyncManager functionsSyncManager)
+        public FunctionsSyncService(ILoggerFactory loggerFactory, IScriptHostManager scriptHostManager, IPrimaryHostStateProvider primaryHostStateProvider, IFunctionsSyncManager functionsSyncManager, IEnvironment environment)
         {
             ArgumentNullException.ThrowIfNull(loggerFactory);
 
@@ -32,6 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _scriptHostManager = scriptHostManager;
             _primaryHostStateProvider = primaryHostStateProvider;
             _functionsSyncManager = functionsSyncManager;
+            _environment = environment;
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
         }
 
@@ -43,7 +45,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             get
             {
                 return _primaryHostStateProvider.IsPrimary &&
-                       (_scriptHostManager.State == ScriptHostState.Running);
+                       (_scriptHostManager.State == ScriptHostState.Running) &&
+                       !_environment.IsInValidationMode();
             }
         }
 

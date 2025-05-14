@@ -1,0 +1,112 @@
+parameters:
+- name: functionAppName
+  type: string
+- name: description
+  type: string
+- name: os
+  type: string
+  default: Windows
+  values:
+    - Windows
+    - Linux
+- name: runInstances
+  type: object
+
+jobs:
+- job: ${{ parameters.functionAppName }}${{ parameters.os }}
+  displayName: ${{ parameters.description }}(${{ parameters.os }})
+
+  pool:
+    name: 1es-pool-azfunc-benchmarking
+    image: 1es-windows-2022-benchmark-runner-vanilla
+    os: windows
+
+  variables:
+    resultsJsonPath: $(Build.ArtifactStagingDirectory)/ColdStartResults/coldstart_$(Build.BuildNumber)_${{ parameters.os }}_${{ parameters.functionAppName }}.json
+    artifactName: coldstart_${{ parameters.os }}_${{ parameters.functionAppName }}
+
+    ${{ each r in parameters.runInstances.items }}:
+      latencies${{ r }}: $[stageDependencies.Run${{ parameters.os }}.${{ parameters.functionAppName }}_${{ r }}.outputs['Record.coldStartLatency']]
+
+  templateContext:
+    outputParentDirectory: $(Build.ArtifactStagingDirectory)
+    outputs:
+    - output: pipelineArtifact
+      displayName: Publish ColdStart results
+      path: $(resultsJsonPath)
+      artifact: $(artifactName)
+
+  steps:
+  - checkout: none
+  - pwsh: |
+        $sampleSize = $env:SAMPLE_SIZE
+        $values = @()
+        for ($i = 1; $i -le $sampleSize; $i++) {
+          $latencyValue = [System.Environment]::GetEnvironmentVariable("LATENCY$i")
+          $values += [double]$latencyValue
+        }
+
+        $values = $values | Sort-Object
+
+        $p50 = $values[[math]::Ceiling($values.Count * 0.5) - 1]
+        $p75 = $values[[math]::Ceiling($values.Count * 0.75) - 1]
+        $p99 = $values[[math]::Ceiling($values.Count * 0.99) - 1]
+
+        $json = @{
+            values = $values
+            p50 = $p50
+            p75 = $p75
+            p99 = $p99
+            sourceVersion = $env:BUILD_SOURCEVERSION
+            buildId = $env:BUILD_BUILDID
+            buildNumber = $env:BUILD_BUILDNUMBER 
+            os = $env:OS
+            processorCount = $env:NUMBER_OF_PROCESSORS
+        } | ConvertTo-Json -Depth 2
+
+        Write-Host "$json"
+        
+        $directory = Split-Path -Path $(resultsJsonPath) -Parent
+        New-Item -Path $directory -ItemType Directory | Out-Null
+
+        $json | Set-Content -Path $(resultsJsonPath)
+
+        # Generate and upload a summary file to add a new tab in the pipeline run summary UI.
+        $summaryContent = @"
+          | Metric  | Value     |
+          | :------ | :-------- |
+          | P50     | $p50 ms   |
+          | P75     | $p75 ms   |
+          | P99     | $p99 ms   |
+        "@
+        $summaryFilePath = "$(Build.ArtifactStagingDirectory)/summary.md"
+        $summaryContent | Out-File -FilePath $summaryFilePath
+        $summaryName = "ColdStart latency - $($env:OS) $($env:FUNCTION_APP_NAME)"
+        Write-Host "##vso[task.addattachment type=Distributedtask.Core.Summary;name=$summaryName;]$summaryFilePath"
+
+    displayName: Process results
+    env:
+      ${{ each i in parameters.runInstances.items }}:
+        LATENCY${{ i }}: $(latencies${{ i }})
+      SAMPLE_SIZE: ${{ length(parameters.runInstances.items) }}
+      FUNCTION_APP_NAME: ${{ parameters.functionAppName }}
+      OS: ${{ parameters.os }}
+
+  - task: AzureCLI@2
+    inputs:
+      azureSubscription: $(ServiceConnection)
+      scriptType: 'pscore'
+      scriptLocation: 'inlineScript'
+      inlineScript: |
+        $json = Get-Content -Path $(resultsJsonPath) -Raw
+        $dateTimeUtc = [datetimeoffset]::UtcNow
+
+        $query = @"
+        INSERT INTO ColdStart (DateTimeUtc, OS, Description, Document)
+        VALUES ('$dateTimeUtc', '${{ parameters.os }}', '${{ parameters.description }}', '$json')
+        "@
+
+        Invoke-Sqlcmd -ConnectionString "$(ColdStartResultsSqlConnectionString)" -Query $query
+
+    displayName: Persist results
+    condition: eq(variables['Build.Reason'], 'Schedule')

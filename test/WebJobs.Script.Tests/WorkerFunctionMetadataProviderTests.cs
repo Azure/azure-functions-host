@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
@@ -29,11 +30,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var mockScriptHostManager = new Mock<IScriptHostManager>();
 
             _workerFunctionMetadataProvider = new WorkerFunctionMetadataProvider(
-             mockScriptOptions.Object,
-             mockLogger.Object,
-             mockEnvironment.Object,
-             mockChannelManager.Object,
-             mockScriptHostManager.Object);
+                mockScriptOptions.Object,
+                mockLogger.Object,
+                mockEnvironment.Object,
+                mockChannelManager.Object,
+                mockScriptHostManager.Object);
         }
 
         [Fact]
@@ -64,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 _workerFunctionMetadataProvider.ValidateBindings(rawBindings, functionMetadata);
             });
 
-            Assert.Equal("Multiple bindings with name 'dupe' discovered. Binding names must be unique.", ex.Message);
+            Assert.Equal($"{nameof(WorkerFunctionDescriptorProvider)}: Multiple bindings with name 'dupe' discovered. Binding names must be unique.", ex.Message);
         }
 
         [Fact]
@@ -85,7 +86,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Theory]
         [InlineData(null)]
         [InlineData("")]
-        [InlineData("_binding")]
         [InlineData("binding-test")]
         [InlineData("binding name")]
         public void ValidateBindings_InvalidName_Throws(string bindingName)
@@ -100,10 +100,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 _workerFunctionMetadataProvider.ValidateBindings(rawBindings, functionMetadata);
             });
 
-            Assert.Equal($"The binding name {bindingName} is invalid. Please assign a valid name to the binding.", ex.Message);
+            Assert.Equal($"The binding name {bindingName} is invalid. Please assign a valid name to the binding. See https://aka.ms/azure-functions-binding-name-rules for more details.", ex.Message);
         }
 
         [Theory]
+        [InlineData("__")]
+        [InlineData("__binding")]
+        [InlineData("binding__")]
+        [InlineData("bind__ing")]
+        [InlineData("__binding__")]
+        [InlineData("_binding")]
+        [InlineData("binding_")]
+        [InlineData("_binding_")]
+        [InlineData("_another_binding_test_")]
+        [InlineData("long_binding_name_that_is_valid")]
+        [InlineData("binding_name")]
+        [InlineData("_")]
         [InlineData("bindingName")]
         [InlineData("binding1")]
         [InlineData(ScriptConstants.SystemReturnParameterBindingName)]
@@ -209,6 +221,75 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var function = _workerFunctionMetadataProvider.ValidateBindings(rawBindings, functionMetadata);
             Assert.Equal(isoString, function.Bindings.FirstOrDefault().Raw["startFromTime"].ToString());
+        }
+
+        [Fact]
+        public async Task GetFunctionMetadataAsync_Idempotent()
+        {
+            var mockFunctionMetadataProvider = new Mock<IWorkerFunctionMetadataProvider>(MockBehavior.Strict);
+            var mockChannelManager = new Mock<IWebHostRpcWorkerChannelManager>(MockBehavior.Strict);
+            var mockScriptHostManager = new Mock<IScriptHostManager>(MockBehavior.Strict);
+            var mockOptionsMonitor = new Mock<IOptionsMonitor<ScriptApplicationHostOptions>>(MockBehavior.Strict);
+            var scriptOptions = new ScriptApplicationHostOptions
+            {
+                IsFileSystemReadOnly = true
+            };
+            mockOptionsMonitor.Setup(m => m.CurrentValue).Returns(scriptOptions);
+
+            var testEnvironment = new TestEnvironment();
+            testEnvironment.SetEnvironmentVariable("FUNCTIONS_WORKER_RUNTIME", "node");
+
+            var mockRpcWorkerChannel = new Mock<IRpcWorkerChannel>(MockBehavior.Strict);
+            var rawFunctionMetadataList = new List<RawFunctionMetadata>
+            {
+                new RawFunctionMetadata
+                {
+                    Metadata = new FunctionMetadata { Name = "TestFunction" },
+                    Bindings = ["{\"type\": \"httpTrigger\", \"name\": \"req\", \"direction\": \"in\"}"],
+                    UseDefaultMetadataIndexing = false
+                }
+            };
+            mockRpcWorkerChannel.Setup(m => m.GetFunctionMetadata()).ReturnsAsync(rawFunctionMetadataList);
+
+            var tcs = new TaskCompletionSource<IRpcWorkerChannel>();
+            tcs.SetResult(mockRpcWorkerChannel.Object);
+            var channels = new Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>>
+            {
+                { "testWorkerId", tcs }
+            };
+
+            mockChannelManager.Setup(m => m.GetChannels("node")).Returns(channels);
+
+            var provider = new WorkerFunctionMetadataProvider(
+                mockOptionsMonitor.Object,
+                NullLogger<WorkerFunctionMetadataProvider>.Instance,
+                testEnvironment,
+                mockChannelManager.Object,
+                mockScriptHostManager.Object);
+
+            var workerConfigs = new List<RpcWorkerConfig>();
+
+            // Calling this twice should return the same data
+            var result1 = await provider.GetFunctionMetadataAsync(workerConfigs, true);
+            var result2 = await provider.GetFunctionMetadataAsync(workerConfigs, true);
+
+            var function1 = result1.Functions.Single();
+            var function2 = result2.Functions.Single();
+
+            static void AssertFunction(FunctionMetadata function)
+            {
+                Assert.Equal("TestFunction", function.Name);
+                Assert.Equal("node", function.Language);
+                Assert.Collection(function.Bindings, binding =>
+                {
+                    Assert.Equal("httpTrigger", binding.Type);
+                    Assert.Equal("req", binding.Name);
+                    Assert.Equal(BindingDirection.In, binding.Direction);
+                });
+            }
+
+            AssertFunction(function1);
+            AssertFunction(function2);
         }
     }
 }

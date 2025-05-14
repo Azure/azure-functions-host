@@ -92,9 +92,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
         }
 
-        public async Task<SyncTriggersResult> TrySyncTriggersAsync(bool isBackgroundSync = false)
+        public async Task<TriggersOperationResult> TrySyncTriggersAsync(bool isBackgroundSync = false)
         {
-            var result = new SyncTriggersResult
+            var result = new TriggersOperationResult
             {
                 Success = true
             };
@@ -111,10 +111,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             {
                 await _syncSemaphore.WaitAsync();
 
-                PrepareSyncTriggers();
-
                 var hashBlobClient = await GetHashBlobAsync();
-                if (isBackgroundSync && hashBlobClient == null && !_environment.IsKubernetesManagedHosting())
+                if (isBackgroundSync && hashBlobClient == null && !_environment.IsAnyKubernetesEnvironment())
                 {
                     // short circuit before doing any work in background sync
                     // cases where we need to check/update hash but don't have
@@ -135,7 +133,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
                 bool shouldSyncTriggers = true;
                 string newHash = null;
-                if (isBackgroundSync && !_environment.IsKubernetesManagedHosting())
+                if (isBackgroundSync && hashBlobClient != null)
                 {
                     newHash = await CheckHashAsync(hashBlobClient, payload.Content);
                     shouldSyncTriggers = newHash != null;
@@ -308,6 +306,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         private async Task<SyncTriggersPayload> GetSyncTriggersPayload()
         {
+            PrepareSyncTriggers();
+
             var hostOptions = _applicationHostOptions.CurrentValue.ToHostOptions();
             var functionsMetadata = _functionMetadataManager.GetFunctionMetadata().Where(m => !m.IsProxy());
 
@@ -339,7 +339,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
             // Add all listable functions details to the payload
             var listableFunctions = _functionMetadataManager.GetFunctionMetadata().Where(m => !m.IsCodeless());
-            var functionDetails = await WebFunctionsManager.GetFunctionMetadataResponse(listableFunctions, hostOptions, _hostNameProvider);
+            var functionDetails = await WebFunctionsManager.GetFunctionMetadataResponse(listableFunctions, hostOptions, _hostNameProvider, excludeTestData: _hostingConfigOptions.Value.IsTestDataSuppressionEnabled);
             result.Add("functions", new JArray(functionDetails.Select(p => JObject.FromObject(p))));
 
             // TEMP: refactor this code to properly add extensions in all scenario(#7394)
@@ -784,6 +784,26 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     return (false, message);
                 }
             }
+        }
+
+        public async Task<TriggersResult> GetTriggersAsync()
+        {
+            var result = new TriggersResult
+            {
+                Success = true
+            };
+
+            if (!IsSyncTriggersEnvironment(_webHostEnvironment, _environment))
+            {
+                result.Success = false;
+                result.Error = "Invalid environment for GetTriggers operation.";
+                _logger.LogWarning(result.Error);
+                return result;
+            }
+
+            var payload = await GetSyncTriggersPayload();
+            result.Content = payload.Content;
+            return result;
         }
 
         public void Dispose()

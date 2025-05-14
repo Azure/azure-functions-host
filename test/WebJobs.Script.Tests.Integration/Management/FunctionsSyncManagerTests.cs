@@ -257,6 +257,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         }
 
         [Fact]
+        public async Task GetTriggersAsync_ReturnsExpectedContent()
+        {
+            // Act
+            var result = await _functionsSyncManager.GetTriggersAsync();
+
+            // Assert
+            Assert.True(result.Success);
+            Assert.Null(result.Error);
+            Assert.NotNull(result.Content);
+
+            var content = JObject.Parse(result.Content);
+            var triggers = content["triggers"];
+            Assert.Equal(GetExpectedTriggersPayload(durableVersion: "V1"), triggers.ToString(Formatting.None));
+        }
+
+        [Fact]
         public async Task TrySyncTriggers_StandbyMode_ReturnsFalse()
         {
             using (var env = new TestScopedEnvironmentVariable(_vars))
@@ -289,7 +305,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
                 Assert.Equal(3, syncContent.Count);
                 Assert.Equal("testhostid123", syncContent["hostId"]);
-                
+
                 JArray triggers = (JArray)syncContent["triggers"];
                 Assert.Equal(2, triggers.Count);
 
@@ -308,6 +324,62 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 Assert.False(result.Success);
                 var expectedMessage = "Invalid environment for SyncTriggers operation.";
                 Assert.Equal(expectedMessage, result.Error);
+            }
+        }
+
+        [Fact]
+        public async Task TrySyncTriggers_ManagedAppEnv_WithNo_AzureWebJobsStorage_ReturnsTrue()
+        {
+            _vars.Add("AzureWebJobsStorage", null);
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteArmCacheEnabled)).Returns("0");
+
+            using (var env = new TestScopedEnvironmentVariable(_vars))
+            {
+                _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.ManagedEnvironment)).Returns("true");
+                _mockEnvironment.Setup(p => p.GetEnvironmentVariable("FUNCTIONS_API_SERVER")).Returns("https://appname.azurewebsites.net");
+                _mockEnvironment.Setup(p => p.GetEnvironmentVariable("CONTAINER_APP_NAME")).Returns("appname");
+                _mockEnvironment.Setup(p => p.GetEnvironmentVariable("CONTAINER_APP_NAMESPACE")).Returns("appns");
+                _mockEnvironment.Setup(p => p.GetEnvironmentVariable("CONTAINER_APP_REVISION")).Returns("appname--r1");
+
+                // _functionsSyncManager is initialized in the constructor with all the secrets from environment,
+                // so HostAzureBlobStorageProvider will have AzureWebJobsStorage defined in both ActiveHostConfigurationSource
+                // and the WebHost IConfiguration source from DI.
+                // The TestScopedEnvironmentVariable only changes the WebHost level IConfiguration
+                // When it is set to empty/null, the connection string from the ActiveHostConfigurationSource wins (never changed since it is set in
+                // constructor as mentioned).
+                // Therefore, we need to force refresh the configuration with an ActiveHostChanged event. This is because setting an empty/null environment variable
+                // removes it, but will not remove it from the ActiveHostConfigurationSource.
+                _scriptHostManager.OnActiveHostChanged();
+                var result = await _functionsSyncManager.TrySyncTriggersAsync(isBackgroundSync: true);
+                Assert.True(result.Success);
+                VerifyResultWithCacheOff(durableVersion: "V1");
+            }
+        }
+
+        [Fact]
+        public async Task TrySyncTriggers_KubernetesManagedEnv_WithNo_AzureWebJobsStorage_ReturnsTrue()
+        {
+            _vars.Add("AzureWebJobsStorage", null);
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteArmCacheEnabled)).Returns("0");
+
+            using (var env = new TestScopedEnvironmentVariable(_vars))
+            {
+                _mockEnvironment.Setup(p => p.GetEnvironmentVariable("FUNCTIONS_API_SERVER")).Returns("https://appname.azurewebsites.net");
+                _mockEnvironment.Setup(p => p.GetEnvironmentVariable("KUBERNETES_SERVICE_HOST")).Returns("kubhost");
+                _mockEnvironment.Setup(p => p.GetEnvironmentVariable("POD_NAMESPACE")).Returns("podns");
+
+                // _functionsSyncManager is initialized in the constructor with all the secrets from environment,
+                // so HostAzureBlobStorageProvider will have AzureWebJobsStorage defined in both ActiveHostConfigurationSource
+                // and the WebHost IConfiguration source from DI.
+                // The TestScopedEnvironmentVariable only changes the WebHost level IConfiguration
+                // When it is set to empty/null, the connection string from the ActiveHostConfigurationSource wins (never changed since it is set in
+                // constructor as mentioned).
+                // Therefore, we need to force refresh the configuration with an ActiveHostChanged event. This is because setting an empty/null environment variable
+                // removes it, but will not remove it from the ActiveHostConfigurationSource.
+                _scriptHostManager.OnActiveHostChanged();
+                var result = await _functionsSyncManager.TrySyncTriggersAsync(isBackgroundSync: true);
+                Assert.True(result.Success);
+                VerifyResultWithCacheOff(durableVersion: "V1");
             }
         }
 
@@ -350,7 +422,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 {
                     Assert.False(_mockHttpHandler.LastRequest.Headers.Contains(ScriptConstants.SiteRestrictedTokenHeaderName));
                 }
-                
+
                 Assert.NotEmpty(_mockHttpHandler.LastRequest.Headers.GetValues(ScriptConstants.SiteTokenHeaderName));
 
                 if (cacheEnabled)
@@ -419,7 +491,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.Equal("testhostid123", logObject["hostId"]);
             Assert.Equal(expectedTriggersPayload, logObject["triggers"].ToString(Formatting.None));
             Assert.False(triggersLog.Contains("secrets"));
-            
+
             // verify hostConfig by spot checking a couple properties
             var hostConfig = result["hostConfig"];
             Assert.Equal(2, hostConfig["extensions"]["testExtension2"]["p2"]);

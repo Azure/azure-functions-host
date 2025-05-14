@@ -44,30 +44,46 @@ extends:
     - stage: Setup
       displayName: Setup & start agents
       jobs:
+      # WINDOWS
+      - template: /eng/ci/templates/official/jobs/setup-benchmark-agents.yml@self
+        parameters:
+          functionAppName: HelloHttpNet9
+      - template: /eng/ci/templates/official/jobs/setup-benchmark-agents.yml@self
+        parameters:
+          functionAppName: HelloHttpNet9NoProxy
+
+      # LINUX
       - template: /eng/ci/templates/official/jobs/setup-benchmark-agents.yml@self
         parameters:
           functionAppName: HelloHttpNet9 
-          agentName: HelloHttpNet9_APP
+          os: Linux
       - template: /eng/ci/templates/official/jobs/setup-benchmark-agents.yml@self
         parameters:
-          agentName: HelloHttpNet9NoProxy_APP
-          functionAppName: HelloHttpNet9NoProxy 
+          functionAppName: HelloHttpNet9NoProxy
+          os: Linux
 
     - stage: Run
       displayName: Run Benchmarks
       dependsOn: [] # Force this stage to run independently and in parallel with other stages.
       jobs:
+      # WINDOWS
       - template: /eng/ci/templates/official/jobs/run-benchmarks.yml@self
         parameters:
           description: .NET9 Web Application
           functionAppName: HelloHttpNet9  # App with ASP.NET Integration
-          additionalCrankArgs: $(AdditionalCrankArguments)  # Pipeline variable to pass additional arguments to crank command.
-          storeResultsInDatabase: ${{ variables.storeBenchmarkResultsInDatabase }}
-          agentName: HelloHttpNet9_APP
       - template: /eng/ci/templates/official/jobs/run-benchmarks.yml@self
         parameters:
           description: .NET9 Worker Application
           functionAppName: HelloHttpNet9NoProxy # App without ASP.NET Integration
-          additionalCrankArgs: $(AdditionalCrankArguments)
-          storeResultsInDatabase: ${{ variables.storeBenchmarkResultsInDatabase }}
-          agentName: HelloHttpNet9NoProxy_APP
+
+      # LINUX
+      - template: /eng/ci/templates/official/jobs/run-benchmarks.yml@self
+        parameters:
+          description: .NET9 Web Application
+          functionAppName: HelloHttpNet9  
+          os: Linux
+      - template: /eng/ci/templates/official/jobs/run-benchmarks.yml@self
+        parameters:
+          description: .NET9 Worker Application
+          functionAppName: HelloHttpNet9NoProxy 
+          os: Linux

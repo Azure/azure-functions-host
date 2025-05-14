@@ -1,12 +1,10 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
-
-namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
+namespace Microsoft.Azure.WebJobs.Script.Models
 {
-    public class MemoryActivity : ActivityBase
+    public sealed class ExtensionReferences
     {
-        public long CommitSizeInBytes { get; set; }
+        public ExtensionReference[] Extensions { get; init; } = [];
     }
 }

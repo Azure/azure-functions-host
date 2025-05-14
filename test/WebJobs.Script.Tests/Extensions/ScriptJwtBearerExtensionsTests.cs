@@ -14,47 +14,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
     public class ScriptJwtBearerExtensionsTests
     {
         [Theory]
-        [InlineData(true, true)]
-        [InlineData(true, false)]
-        [InlineData(false, true)]
-        [InlineData(false, false)]
-        public void CreateTokenValidationParameters_HasExpectedAudiences(bool isPlaceholderModeEnabled, bool isLinuxConsumptionOnLegion)
+        [InlineData(true, "FlexConsumption", null, "1", "RandomPodName", "", "RandomPodName")] // Placeholder mode Flex Consumption
+        [InlineData(true, "Dynamic", null, "1", null, "RandomContainerName", "RandomContainerName")] // Placeholder mode Linux Consumption on Legion
+        [InlineData(true, "Dynamic", null, null, null, "RandomContainerName", "RandomContainerName")] // Placeholder mode Linux Consumption on Atlas
+        [InlineData(false, "FlexConsumption", null, "1", "RandomPodName", null, "https://RandomSiteName.azurewebsites.net/azurefunctions,https://RandomSiteName.azurewebsites.net")]
+        [InlineData(false, "Dynamic", null, null, null, "RandomContainerName", "https://RandomSiteName.azurewebsites.net/azurefunctions,https://RandomSiteName.azurewebsites.net")]
+        [InlineData(false, "Dynamic", "123", null, null, null, "https://RandomSiteName.azurewebsites.net/azurefunctions,https://RandomSiteName.azurewebsites.net")]
+        public void CreateTokenValidationParameters_HasExpectedAudiences(bool isPlaceholderModeEnabled, string sku,
+            string websiteInstanceId, string legionServiceHost, string podName, string containerName, string expectedAudiences)
         {
-            var podName = "RandomPodName";
-            var containerName = "RandomContainerName";
             var siteName = "RandomSiteName";
-
-            var expectedWithSiteName = new string[]
-            {
-                string.Format(ScriptConstants.SiteAzureFunctionsUriFormat, siteName),
-                string.Format(ScriptConstants.SiteUriFormat, siteName)
-            };
-            var expectedWithPodName = new string[] { podName };
-            var expectedWithContainerName = Array.Empty<string>();
-
             var testData = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
                 [AzureWebsiteName] = siteName,
                 [WebsitePodName] = podName,
-                [ContainerName] = string.Empty
+                [ContainerName] = containerName,
+                [AzureWebsiteSku] = sku,
+                [LegionServiceHost] = legionServiceHost,
+                [AzureWebsiteInstanceId] = websiteInstanceId
             };
 
             if (isPlaceholderModeEnabled)
             {
                 testData[AzureWebsitePlaceholderMode] = "1";
-            }
-
-            if (isLinuxConsumptionOnLegion)
-            {
-                testData[AzureWebsiteInstanceId] = string.Empty;
-                testData[WebsitePodName] = podName;
-                testData[LegionServiceHost] = "1";
-            }
-            else
-            {
-                expectedWithContainerName = new string[] { containerName };
-                testData[AzureWebsiteInstanceId] = string.Empty;
-                testData[ContainerName] = containerName;
             }
 
             testData[ContainerEncryptionKey] = Convert.ToBase64String(TestHelpers.GenerateKeyBytes());
@@ -63,22 +45,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
                 var tokenValidationParameters = ScriptJwtBearerExtensions.CreateTokenValidationParameters();
                 var audiences = tokenValidationParameters.ValidAudiences.ToList();
 
-                if (isPlaceholderModeEnabled &&
-                    isLinuxConsumptionOnLegion)
+                string[] parsedAudiences = expectedAudiences.Split(',');
+                Assert.Equal(audiences.Count, parsedAudiences.Length);
+                for (int i = 0; i < audiences.Count; i++)
                 {
-                    Assert.Equal(audiences.Count, expectedWithPodName.Length);
-                    Assert.Equal(audiences[0], expectedWithPodName[0]);
-                }
-                else if (isPlaceholderModeEnabled)
-                {
-                    Assert.Equal(audiences.Count, expectedWithContainerName.Length);
-                    Assert.Equal(audiences[0], expectedWithContainerName[0]);
-                }
-                else
-                {
-                    Assert.Equal(audiences.Count, expectedWithSiteName.Length);
-                    Assert.True(audiences.Contains(expectedWithSiteName[0]));
-                    Assert.True(audiences.Contains(expectedWithSiteName[1]));
+                    Assert.Equal(audiences[i], parsedAudiences[i]);
                 }
             }
         }

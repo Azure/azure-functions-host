@@ -1,13 +1,11 @@
+using System;
+using System.IO;
+using System.Net;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.WebJobs.Script.Tests;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using System;
-using System.IO;
-using System.Net;
-using System.Threading;
-using System.Threading.Tasks;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
@@ -21,13 +19,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         {
             // Validate the drain state is "Disabled" initially
             var response = await SamplesTestHelpers.InvokeDrainStatus(this);
-            var responseString = response.Content.ReadAsStringAsync().Result;
+            var responseString = await response.Content.ReadAsStringAsync();
             var drainStatus = JsonConvert.DeserializeObject<DrainModeStatus>(responseString);
 
             Assert.Equal(drainStatus.State, DrainModeState.Disabled);
 
             // Capture pre-drain instance ID
-            var originalInstanceId = this.HostInstanceId;
+            var originalInstanceId = await GetActiveHostInstanceIdAsync();
 
             // Validate ability to call HttpTrigger without issues
             response = await SamplesTestHelpers.InvokeHttpTrigger(this, "HttpTrigger");
@@ -38,21 +36,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             // Validate the drain state is changed to "Completed"
             response = await SamplesTestHelpers.InvokeDrainStatus(this);
-            responseString = response.Content.ReadAsStringAsync().Result;
+            responseString = await response.Content.ReadAsStringAsync();
             drainStatus = JsonConvert.DeserializeObject<DrainModeStatus>(responseString);
 
             Assert.Equal(DrainModeState.Completed, drainStatus.State);
 
             // Validate host is "Running" after resume is called
             response = await SamplesTestHelpers.InvokeResume(this);
-            responseString = response.Content.ReadAsStringAsync().Result;
+            responseString = await response.Content.ReadAsStringAsync();
             var resumeStatus = JsonConvert.DeserializeObject<ResumeStatus>(responseString);
 
             Assert.Equal(ScriptHostState.Running, resumeStatus.State);
 
             // Validate the drain state is changed to "Disabled"
             response = await SamplesTestHelpers.InvokeDrainStatus(this);
-            responseString = response.Content.ReadAsStringAsync().Result;
+            responseString = await response.Content.ReadAsStringAsync();
             drainStatus = JsonConvert.DeserializeObject<DrainModeStatus>(responseString);
 
             Assert.Equal(DrainModeState.Disabled, drainStatus.State);
@@ -62,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
             // Validate the instance ID has changed
-            Assert.NotEqual(originalInstanceId, this.HostInstanceId);
+            Assert.NotEqual(originalInstanceId, await GetActiveHostInstanceIdAsync());
         }
 
         [Fact]
@@ -70,14 +68,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         {
             // Validate the drain state is "Disabled" initially
             var response = await SamplesTestHelpers.InvokeDrainStatus(this);
-            var responseString = response.Content.ReadAsStringAsync().Result;
+            var responseString = await response.Content.ReadAsStringAsync();
             var drainStatus = JsonConvert.DeserializeObject<DrainModeStatus>(responseString);
 
             Assert.Equal(drainStatus.State, DrainModeState.Disabled);
 
             // Validate host is "Running" after resume is called and drain mode is not active
             response = await SamplesTestHelpers.InvokeResume(this);
-            responseString = response.Content.ReadAsStringAsync().Result;
+            responseString = await response.Content.ReadAsStringAsync();
             var resumeStatus = JsonConvert.DeserializeObject<ResumeStatus>(responseString);
 
             Assert.Equal(ScriptHostState.Running, resumeStatus.State);

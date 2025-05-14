@@ -476,6 +476,10 @@
       "resolutionPolicy": "private"
     },
     {
+      "name": "Microsoft.Azure.Functions.Platform.Metrics.LinuxConsumption",
+      "resolutionPolicy": "private"
+    },
+    {
       "name": "Microsoft.Azure.Cosmos.Table",
       "resolutionPolicy": "private"
     },
@@ -941,6 +945,14 @@
     },
     {
       "name": "OpenTelemetry.Instrumentation.Http",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "OpenTelemetry.Instrumentation.Process",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "OpenTelemetry.Instrumentation.Runtime",
       "resolutionPolicy": "private"
     },
     {

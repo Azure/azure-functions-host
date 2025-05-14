@@ -109,8 +109,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     }
                     throw new ApplicationException(error);
                 }
-        }
             }
+        }
 
         public static async Task RetryFailedTest(Func<Task> test, int retries, ITestOutputHelper output = null)
         {
@@ -362,6 +362,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
         }
 
+        public static IList<RpcWorkerConfig> GetTestWorkerConfigsWithExecutableWorkingDirectory()
+        {
+            return new List<RpcWorkerConfig>()
+            {
+                new RpcWorkerConfig
+                {
+                    Description = new RpcWorkerDescription
+                    {
+                        Extensions = new List<string>()
+                        {
+                            { ".jar" }
+                        },
+                        Language = "java",
+                        WorkerDirectory = "testDir",
+                        ExecutableWorkingDirectory = "executableDirectory"
+                    }
+                },
+            };
+        }
+
         public static string CreateOfflineFile()
         {
             // create a test offline file
@@ -519,18 +539,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             return services;
         }
 
-        public static IAzureTableStorageProvider GetAzureTableStorageProvider(IConfiguration configuration, IEnvironment environment = default)
+        public static IAzureTableStorageProvider GetAzureTableStorageProvider(IConfiguration webHostConfiguration, IConfiguration jobHostConfiguration = null, IEnvironment environment = default)
         {
             environment ??= new TestEnvironment();
 
             IHost tempHost = new HostBuilder()
                 .ConfigureServices(services =>
                 {
-                    AddTestAzureTableStorageProvider(services, configuration, environment);
+                    AddTestAzureTableStorageProvider(services, jobHostConfiguration ?? webHostConfiguration, environment);
                 })
                 .ConfigureAppConfiguration(c =>
                 {
-                    c.AddConfiguration(configuration);
+                    c.AddConfiguration(webHostConfiguration);
                 })
                 .Build();
 
@@ -538,10 +558,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             return azureTableStorageProvider;
         }
 
-        public static IServiceCollection AddTestAzureTableStorageProvider(IServiceCollection services, IConfiguration configuration, IEnvironment environment)
+        public static IServiceCollection AddTestAzureTableStorageProvider(IServiceCollection services, IConfiguration configuration, IEnvironment environment, IScriptHostManager scriptHostManager = null)
         {
             // Adds necessary Azure services to create clients
             services.AddAzureClientsCore();
+
+            if (scriptHostManager == null)
+            {
+                scriptHostManager = new TestScriptHostService(configuration);
+            }
+
+            services.AddSingleton<IScriptHostManager>(scriptHostManager);
+
             services.AddSingleton<IAzureTableStorageProvider, HostAzureTableStorageProvider>();
 
             return services;

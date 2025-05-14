@@ -11,6 +11,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureWebsiteOwnerName = "WEBSITE_OWNER_NAME";
         public const string AzureWebsiteInstanceId = "WEBSITE_INSTANCE_ID";
         public const string AzureWebsiteSku = "WEBSITE_SKU";
+        public const string AzureWebsiteSkuName = "WEBSITE_SKU_NAME";
         public const string RemoteDebuggingPort = "REMOTEDEBUGGINGPORT";
         public const string AzureWebsitePlaceholderMode = "WEBSITE_PLACEHOLDER_MODE";
         public const string AzureWebsiteUsePlaceholderDotNetIsolated = "WEBSITE_USE_PLACEHOLDER_DOTNETISOLATED";
@@ -145,6 +146,9 @@ namespace Microsoft.Azure.WebJobs.Script
         // Antares version settings
         public const string AntaresPlatformVersionWindows = "WEBSITE_PLATFORM_VERSION";
         public const string AntaresPlatformVersionLinux = "PLATFORM_VERSION";
+
+        // Antares Release Channel / RU Feed Settings
+        public const string AntaresPlatformReleaseChannel = "WEBSITE_PlatformReleaseChannel";
 
         // Machine identifier
         public const string AntaresComputerName = "COMPUTERNAME";
