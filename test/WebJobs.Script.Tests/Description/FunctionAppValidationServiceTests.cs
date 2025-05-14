@@ -27,18 +27,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public FunctionAppValidationServiceTests()
         {
-            _scriptOptionsMock = new Mock<IOptions<ScriptJobHostOptions>>();
-
             _scriptJobHostOptions = new ScriptJobHostOptions
             {
                 RootScriptPath = "test-root-path",
                 IsDefaultHostConfig = false
             };
 
+            _scriptOptionsMock = new Mock<IOptions<ScriptJobHostOptions>>();
             _scriptOptionsMock.Setup(o => o.Value).Returns(_scriptJobHostOptions);
 
             _testLoggerProvider = new TestLoggerProvider();
-            LoggerFactory factory = new LoggerFactory();
+            var factory = new LoggerFactory();
             factory.AddProvider(_testLoggerProvider);
             _testLogger = factory.CreateLogger<FunctionAppValidationService>();
         }
@@ -123,9 +122,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task StartAsync_MissingAzureFunctionsFolder_LogsWarning()
         {
             _testLoggerProvider.ClearAllLogMessages();
-            Directory.CreateDirectory("test-root-path");
 
             // Arrange
+
+            Directory.CreateDirectory("test-root-path");
             var functionMetadataList = ImmutableArray.Create(new FunctionMetadata());
 
             var environment = new TestEnvironment();

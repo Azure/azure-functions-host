@@ -877,12 +877,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task Specialization_DotnetIsolatedApp_MissingAzureFunctionsDir_Logs()
         {
+            Guid guid = Guid.NewGuid();
             var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetIsolatedInvalidAppPath, "HttpRequestFunction");
             var path = Path.Combine(_dotnetIsolatedInvalidAppPath, ".azurefunctions");
+            var updatedPath = Path.Combine(_dotnetIsolatedInvalidAppPath, ".azurefunctions_temp" + guid.ToString());
 
             if (Directory.Exists(path))
             {
-                Directory.Move(path, Path.Combine(_dotnetIsolatedInvalidAppPath, ".azurefunctions_temp"));
+                Directory.Move(path, updatedPath);
             }
 
             using var testServer = new TestServer(builder);
@@ -892,6 +894,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "dotnet-isolated");
+            SystemEnvironment.Instance.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
 
             await standbyManager.SpecializeHostAsync();
@@ -901,7 +904,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.NotNull(scriptHostManager);
             Assert.Equal(ScriptHostState.Running, scriptHostManager.State);
 
-            await Task.Delay(TimeSpan.FromSeconds(5));
+            await Task.Delay(TimeSpan.FromSeconds(6));
 
             var log = _loggerProvider.GetLog();
             Assert.Contains("UsePlaceholderDotNetIsolated: True", log);
