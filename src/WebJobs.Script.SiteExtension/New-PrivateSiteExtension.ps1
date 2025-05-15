@@ -17,6 +17,9 @@
     .PARAMETER NoZip
     [Switch] Include to produce site extension as a folder and not a zip.
 
+    .PARAMETER AppendOutputName
+    [Switch] Used when supplying OutputPath to append the name of the private site extension to the OutputPath.
+
     .PARAMETER Force
     [Switch] Include to overwrite existing files.
 
@@ -32,6 +35,7 @@ param (
     [string] $OutputPath = $null,
     [ValidateSet('x64', '64bit', 'x86', '32bit')][string] $Bitness = '64bit',
     [switch] $NoZip,
+    [switch] $AppendOutputName,
     [switch] $Force
 )
 
@@ -61,12 +65,13 @@ if (-not (Join-Path $InputPath "extension.xml" | Test-Path))
     exit 1
 }
 
-if (-not $OutputPath)
+if ($AppendOutputName || !$OutputPath)
 {
     $runtime = $Bitness -eq '32bit' ? 'win-x86' : 'win-x64'
     $leaf = (Split-Path $InputPath -Leaf)
     $split = $leaf.IndexOf('.')
-    $OutputPath = "$($leaf.Substring(0, $split)).Private.$($leaf.Substring($split + 1)).$runtime"
+    $OutputPath = [System.IO.Path]::Combine(
+        $OutputPath, "$($leaf.Substring(0, $split)).Private.$($leaf.Substring($split + 1)).$runtime")
 }
 
 function New-TemporaryDirectory {
