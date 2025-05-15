@@ -70,9 +70,9 @@ namespace Microsoft.Azure.WebJobs.Script.Host
                     }
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                _logger.LogTrace("Unable to validate deployed function app payload");
+                _logger.LogTrace("Unable to validate deployed function app payload", ex);
             }
         }
     }
