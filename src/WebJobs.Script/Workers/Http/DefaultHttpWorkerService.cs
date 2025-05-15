@@ -211,13 +211,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
         private void AddProxyingHeaders(HttpRequest httpRequest, string invocationId)
         {
-            httpRequest.Headers.TryAdd(HttpWorkerConstants.HostVersionHeaderName, ScriptHost.Version);
-
-            if (!httpRequest.Headers.TryAdd(HttpWorkerConstants.InvocationIdHeaderName, invocationId))
-            {
-                httpRequest.Headers[HttpWorkerConstants.InvocationIdHeaderName] = invocationId;
-            }
-
+            // if there are existing headers, override them
+            httpRequest.Headers[HttpWorkerConstants.HostVersionHeaderName] = ScriptHost.Version;
+            httpRequest.Headers[HttpWorkerConstants.InvocationIdHeaderName] = invocationId;
             httpRequest.Headers.UserAgent = _userAgentString;
         }
 
