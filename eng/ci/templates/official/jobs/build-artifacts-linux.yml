@@ -57,5 +57,6 @@ jobs:
       custom: publish
       publishWebProjects: false # we use our own publish logic
       zipAfterPublish: false # we use our own zip logic
+      modifyOutputPath: false
       projects: $(project)
       arguments: '$(build_args) -f net8.0 -p:MinorVersionPrefix=8 -o $(linux_drop_path)/host_net8.0'
