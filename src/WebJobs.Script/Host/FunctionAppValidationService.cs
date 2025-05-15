@@ -48,13 +48,13 @@ namespace Microsoft.Azure.WebJobs.Script.Host
         {
             try
             {
+                string azureFunctionsDirPath = Path.Combine(_scriptOptions.Value.RootScriptPath, ScriptConstants.AzureFunctionsSystemDirectoryName);
+
                 if (_scriptOptions.Value.RootScriptPath is not null &&
                     !_scriptOptions.Value.IsDefaultHostConfig &&
                     Utility.IsDotnetIsolatedApp(environment: _environment) &&
-                    !Directory.Exists(Path.Combine(_scriptOptions.Value.RootScriptPath, ScriptConstants.AzureFunctionsSystemDirectoryName)))
+                    !Directory.Exists(azureFunctionsDirPath))
                 {
-                    string azureFunctionsDirPath = Path.Combine(_scriptOptions.Value.RootScriptPath, ScriptConstants.AzureFunctionsSystemDirectoryName);
-
                     // Search for the .azurefunctions directory within nested directories to verify scenarios where it isn't located at the root. This situation occurs when a function app has been improperly zipped.
                     IEnumerable<string> azureFunctionsDirectories = Directory.GetDirectories(_scriptOptions.Value.RootScriptPath, ScriptConstants.AzureFunctionsSystemDirectoryName, SearchOption.AllDirectories)
                         .Where(dir => !dir.Equals(azureFunctionsDirPath, StringComparison.OrdinalIgnoreCase));
@@ -72,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.Host
             }
             catch
             {
-                // Ignore any exceptions.
+                // Ignore any exceptions such as if the path in RootScriptPath is invalid or unavailable, the recursive directory search may throw an exception
             }
         }
     }
