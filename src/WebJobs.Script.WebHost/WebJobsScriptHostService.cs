@@ -553,7 +553,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             State = ScriptHostState.Stopped;
         }
 
-        public async Task RestartHostAsync(CancellationToken cancellationToken)
+        public async Task RestartHostAsync(string reason, CancellationToken cancellationToken)
         {
             if (ShutdownRequested)
             {
@@ -570,7 +570,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     await _hostStarted;
                 }
 
-                _logger.EnteringRestart();
+                _logger.EnteringRestart(reason);
 
                 // If anything is mid-startup, cancel it.
                 _startupLoopTokenSource?.Cancel();
@@ -798,10 +798,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 // This periodic check allows us to break out of the host run
                 // loop. The health check performed in OnHostInitializing will then
-                // fail and we'll enter a restart loop (exponentially backing off)
-                // until the host is healthy again and we can resume host processing.
+                // fail, and we'll enter a restart loop (exponentially backing off)
+                // until the host is healthy again, and we can resume host processing.
                 _logger.UnhealthyRestart();
-                var tIgnore = RestartHostAsync(CancellationToken.None);
+                var tIgnore = RestartHostAsync("Host health check detected an unhealthy host.", CancellationToken.None);
             }
         }
 

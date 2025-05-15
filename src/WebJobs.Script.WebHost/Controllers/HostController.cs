@@ -290,7 +290,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 if (drainModeManager.IsDrainModeEnabled)
                 {
                     _logger.LogDebug("Starting a new host");
-                    await scriptHostManager.RestartHostAsync();
+                    await scriptHostManager.RestartHostAsync("Resuming from drain mode.", CancellationToken.None);
                 }
 
                 var status = new ResumeStatus { State = scriptHostManager.State };
@@ -451,7 +451,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
         public IActionResult Restart([FromServices] IScriptHostManager hostManager)
         {
-            Task ignore = hostManager.RestartHostAsync();
+            Task ignore = hostManager.RestartHostAsync("Restart API called.");
 
             var hostOptionsValue = _applicationHostOptions.Value;
             var response = new HostRestartResponse()

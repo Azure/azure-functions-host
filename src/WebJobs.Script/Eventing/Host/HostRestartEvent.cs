@@ -5,9 +5,12 @@ namespace Microsoft.Azure.WebJobs.Script.Eventing
 {
     public class HostRestartEvent : ScriptEvent
     {
-        public HostRestartEvent()
+        public HostRestartEvent(string reason)
             : base(nameof(HostRestartEvent), EventSources.Worker)
         {
+            Reason = reason;
         }
+
+        public string Reason { get; }
     }
 }

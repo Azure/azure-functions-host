@@ -176,13 +176,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             // If the compilation succeeded, AND:
             //  - We haven't cached a function (failed to compile on load), OR
-            //  - We're referencing local function types (i.e. POCOs defined in the function) AND Our our function signature has changed
+            //  - We're referencing local function types (i.e. POCOs defined in the function) AND our function signature has changed
             // Restart our host.
             if (compilationSucceeded &&
                 (_functionSignature == null ||
                 (_functionSignature.HasLocalTypeReference || !_functionSignature.Equals(signature))))
             {
-                await Host.RestartAsync().ConfigureAwait(false);
+                await Host.RestartAsync(".NET compilation.").ConfigureAwait(false);
             }
         }
 

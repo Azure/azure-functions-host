@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly ILogger _logger;
         private readonly ILogger<FileMonitoringService> _typedLogger;
         private readonly IList<IDisposable> _eventSubscriptions = new List<IDisposable>();
-        private readonly Func<Task> _restart;
+        private readonly Func<string, Task> _restart;
         private readonly Action _shutdown;
         private readonly ImmutableArray<string> _rootDirectorySnapshot;
         private AutoRecoveringFileSystemWatcher _debugModeFileWatcher;
@@ -112,12 +112,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 using (System.Threading.ExecutionContext.SuppressFlow())
                 {
                     _typedLogger.LogDebug("Resuming scheduled restart.");
-                    Task.Run(async () => await ScheduleRestartAsync());
+                    Task.Run(async () => await ScheduleRestartAsync("Running restart requested while in a restart suspension scope."));
                 }
             }
         }
 
-        private async Task ScheduleRestartAsync(bool shutdown)
+        private async Task ScheduleRestartAsync(string reason, bool shutdown)
         {
             _restartScheduled = true;
             if (shutdown)
@@ -125,10 +125,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 _shutdownScheduled = true;
             }
 
-            await ScheduleRestartAsync();
+            await ScheduleRestartAsync(reason);
         }
 
-        private async Task ScheduleRestartAsync()
+        private async Task ScheduleRestartAsync(string reason)
         {
             if (Interlocked.Read(ref _suspensionRequestsCount) > 0)
             {
@@ -142,7 +142,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 }
                 else
                 {
-                    await _restart();
+                    await _restart(reason);
                 }
             }
         }
@@ -164,12 +164,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
 
             _eventSubscriptions.Add(_eventManager.OfType<HostRestartEvent>()
-                    .Subscribe((msg) => ScheduleRestartAsync(false)
-                    .ContinueWith(t => _logger.LogCritical(t.Exception.Message),
-                        TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously)));
+                .Subscribe(HandleHostRestartEvent));
 
             // Delay starting up for logging and debug file watchers to avoid long start up times
             Utility.ExecuteAfterColdStartDelay(_environment, InitializeSecondaryFileWatchers);
+        }
+
+        private void HandleHostRestartEvent(HostRestartEvent restartEvent)
+        {
+            ScheduleRestartAsync($"Handling {nameof(HostRestartEvent)} ('{restartEvent.Name}':'{restartEvent.Source}'). Reason: {restartEvent.Reason}", false)
+                .ContinueWith(t => _logger.LogCritical(t.Exception?.Message), TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously);
         }
 
         /// <summary>
@@ -317,8 +321,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 }
 
                 TraceFileChangeRestart(changeDescription, e.ChangeType.ToString(), e.FullPath, shutdown);
-                ScheduleRestartAsync(shutdown).ContinueWith(t => _logger.LogError(t.Exception, $"Error restarting host (full shutdown: {shutdown})"),
-                    TaskContinuationOptions.ExecuteSynchronously | TaskContinuationOptions.OnlyOnFaulted);
+                ScheduleRestartAsync("Monitored file change detected.", shutdown)
+                    .ContinueWith(t => _logger.LogError(t.Exception, $"Error restarting host (full shutdown: {shutdown})"),
+                        TaskContinuationOptions.ExecuteSynchronously | TaskContinuationOptions.OnlyOnFaulted);
             }
         }
 
@@ -349,11 +354,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return string.Empty;
         }
 
-        private Task RestartAsync()
+        private Task RestartAsync(string reason)
         {
             if (!_shutdownScheduled && Interlocked.Exchange(ref _restartRequested, 1) == 0)
             {
-                return _scriptHostManager.RestartHostAsync();
+                return _scriptHostManager.RestartHostAsync(reason);
             }
 
             return Task.CompletedTask;

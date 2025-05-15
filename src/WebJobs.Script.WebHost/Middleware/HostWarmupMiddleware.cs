@@ -158,7 +158,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
         {
             if (request.Query.TryGetValue("restart", out StringValues value) && string.Compare("1", value) == 0)
             {
-                await _hostManager.RestartHostAsync(CancellationToken.None);
+                await _hostManager.RestartHostAsync("Host warmup call requested a restart.", CancellationToken.None);
 
                 // This call is here for sanity, but we should be fully initialized.
                 await _hostManager.DelayUntilHostReady();

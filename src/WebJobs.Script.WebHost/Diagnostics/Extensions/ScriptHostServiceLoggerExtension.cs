@@ -126,11 +126,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions
                 new EventId(518, nameof(ActiveHostChanging)),
                 "Active host changing from '{oldHostInstanceId}' to '{newHostInstanceId}'.");
 
-        private static readonly Action<ILogger, Exception> _enteringRestart =
-            LoggerMessage.Define(
+        private static readonly Action<ILogger, string, Exception> _enteringRestart =
+            LoggerMessage.Define<string>(
                 LogLevel.Debug,
                 new EventId(519, nameof(EnteringRestart)),
-                "Restart requested.");
+                "Restart requested. Reason '{restartReason}'");
 
         private static readonly Action<ILogger, Exception> _restartBeforeStart =
             LoggerMessage.Define(
@@ -321,9 +321,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions
             _activeHostChanging(logger, oldHostInstanceId, newHostInstanceId, null);
         }
 
-        public static void EnteringRestart(this ILogger logger)
+        public static void EnteringRestart(this ILogger logger, string reason)
         {
-            _enteringRestart(logger, null);
+            _enteringRestart(logger, reason, null);
         }
 
         public static void RestartBeforeStart(this ILogger logger)

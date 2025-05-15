@@ -96,7 +96,7 @@ namespace Microsoft.Azure.WebJobs.Script
                         // During the restart flow, GetFunctionMetadataAsync gets invoked
                         // again through a new script host initialization flow.
                         _logger.LogDebug("Host is running without any initialized channels, restarting the JobHost.");
-                        await _scriptHostManager.RestartHostAsync();
+                        await _scriptHostManager.RestartHostAsync("No initialized worker channels available.");
                     }
 
                     channels = _channelManager.GetChannels(_workerRuntime);

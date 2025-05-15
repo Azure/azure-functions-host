@@ -407,11 +407,9 @@ namespace Microsoft.Azure.WebJobs.Script
             return customAttributes;
         }
 
-        // TODO: DI (FACAVAL) Remove this method.
-        // all restart/shutdown requests should go through the
-        internal Task RestartAsync()
+        internal Task RestartAsync(string reason)
         {
-            _scriptHostManager.RestartHostAsync();
+            _scriptHostManager.RestartHostAsync(reason);
             return Task.CompletedTask;
         }
 
