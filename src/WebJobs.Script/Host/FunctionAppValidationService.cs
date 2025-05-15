@@ -17,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.Host
     /// <summary>
     /// A background service responsible for validating function app payload.
     /// </summary>
-    public sealed class FunctionAppValidationService : BackgroundService
+    internal sealed class FunctionAppValidationService : BackgroundService
     {
         private readonly IEnvironment _environment;
         private readonly ILogger<FunctionAppValidationService> _logger;
@@ -72,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.Host
             }
             catch
             {
-                // Ignore any exceptions such as if the path in RootScriptPath is invalid or unavailable, the recursive directory search may throw an exception
+                _logger.LogTrace("Unable to validate deployed function app payload");
             }
         }
     }
