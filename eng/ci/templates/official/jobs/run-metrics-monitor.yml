@@ -1,0 +1,167 @@
+parameters:
+- name: description
+  type: string
+- name: functionAppName
+  type: string
+- name: os
+  type: string
+  default: Windows
+  values:
+    - Windows
+    - Linux
+- name: azureMonitorConnectionString
+  type: string
+
+jobs:
+- job: ${{ parameters.functionAppName }}_${{ parameters.os }}
+  displayName: ${{ parameters.os }} ${{ parameters.description }}
+  pool:
+    name: 1es-pool-azfunc-benchmarking
+    ${{ if eq(parameters.os, 'Linux') }}:
+      image: 1es-ubuntu-22.04-benchmark-runner-vanilla
+      os: linux 
+    ${{ else }}:
+      image: 1es-windows-2022-benchmark-runner-vanilla
+      os: windows
+
+  variables:
+    functionAppOutputPath: $(Build.BinariesDirectory)/Published/${{ parameters.functionAppName }}
+    hostOutputPath: $(Build.BinariesDirectory)/Published/HostRuntime
+    hostAssemblyPath: $(hostOutputPath)/Microsoft.Azure.WebJobs.Script.WebHost.dll
+    logsDirectory: $(Build.ArtifactStagingDirectory)/Logs
+    stdOutLogsFilePath: $(logsDirectory)/std_out_logs.txt
+    stdErrorLogsFilePath: $(logsDirectory)/std_error_logs.txt
+    FUNCTIONS_WORKER_RUNTIME: 'dotnet-isolated'
+    FUNCTIONS_WORKER_RUNTIME_VERSION: '9.0'
+    AzureFunctionsWebHost__hostid: '${{ parameters.functionAppName }}_${{ parameters.os }}'
+    AzureWebJobsScriptRoot: '$(functionAppOutputPath)'
+    ${{ if eq(parameters.os, 'Linux') }}:
+      publishRid: linux-x64
+    ${{ if eq(parameters.os, 'Windows') }}:
+      publishRid: win-x64
+
+  steps:
+  - template: /eng/ci/templates/install-dotnet.yml@self
+
+  - task: CopyFiles@2
+    displayName: Copy benchmark apps to temp location
+    inputs:
+      SourceFolder: '$(Build.SourcesDirectory)/test/Performance/Apps'
+      Contents: '**/*'
+      TargetFolder: '$(Build.ArtifactStagingDirectory)/PerformanceTestApps'
+      CleanTargetFolder: true
+
+  - task: DotNetCoreCLI@2
+    displayName: Publish function app
+    inputs:
+      command: publish
+      publishWebProjects: false
+      zipAfterPublish: false
+      modifyOutputPath: false
+      projects: '$(Build.ArtifactStagingDirectory)/PerformanceTestApps/${{ parameters.functionAppName }}/App.csproj'
+      arguments: -c Release -o $(functionAppOutputPath) -f net9.0 -r $(publishRid)
+      workingDirectory: $(Build.ArtifactStagingDirectory)/PerformanceTestApps/${{ parameters.functionAppName }}
+
+  - task: DotNetCoreCLI@2
+    displayName: Publish host
+    inputs:
+      command: publish
+      publishWebProjects: false
+      zipAfterPublish: false
+      modifyOutputPath: false
+      projects: '$(Build.SourcesDirectory)/src/WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj'
+      arguments: -c Release -o $(hostOutputPath) -r $(publishRid) -f net8.0 -p:PlaceholderSimulation=true
+      workingDirectory: $(Build.SourcesDirectory)/src/WebJobs.Script.WebHost
+
+  - pwsh: |
+      Write-Host "Creating log directory: $(logsDirectory)"
+      New-Item -ItemType Directory -Path $(logsDirectory)
+    displayName: Create log directories
+
+  - ${{ if eq(parameters.os, 'Windows') }}:
+    - pwsh: |
+        $env:APPLICATIONINSIGHTS_CONNECTION_STRING = "${env:AZ_MON_CONNECTION_STRING}"
+        $errorLogFilePath = "$(Build.ArtifactStagingDirectory)/Logs/std_err_logs.txt"
+        $process = Start-Process -FilePath "$(hostOutputPath)/Microsoft.Azure.WebJobs.Script.WebHost.exe" -RedirectStandardOutput $(stdOutLogsFilePath) -RedirectStandardError $(stdErrorLogsFilePath) -PassThru
+        Write-Host "Started process ID: $($process.Id)"
+        echo $process.Id > $(Build.ArtifactStagingDirectory)/hostProcessId.txt
+      displayName: Start functions host
+      env:
+        AZ_MON_CONNECTION_STRING: ${{ parameters.azureMonitorConnectionString }}
+  - ${{ else }}:
+    - script: |
+        # In Azure DevOps, when variables convert into environment variables, variable names become uppercase, and periods turn into underscores.
+        # This works for windows when getting the env variable value, but fails on linux. So we need to pass the variable value using correct case.
+        # https://learn.microsoft.com/en-us/azure/devops/pipelines/process/variables?view=azure-devops&tabs=yaml%2Cbatch#environment-variables
+        export AzureWebJobsScriptRoot="$(functionAppOutputPath)"
+        export APPLICATIONINSIGHTS_CONNECTION_STRING="$AZ_MON_CONNECTION_STRING"
+        nohup dotnet $(hostAssemblyPath) > $(stdOutLogsFilePath) 2> $(stdErrorLogsFilePath) &
+        echo $! > $(Build.ArtifactStagingDirectory)/hostProcessId.txt
+      displayName: Start functions host 
+      env:
+        AZ_MON_CONNECTION_STRING: ${{ parameters.azureMonitorConnectionString }}
+
+  - pwsh: |
+      $url = "http://localhost:5000/api/warmup"
+      Write-Host "Checking if host is ready at $url..."
+      $maxAttempts = 5
+
+      for ($attempt = 0; $attempt -lt $maxAttempts; $attempt++) {
+          try {
+              $response = Invoke-RestMethod -Uri $url -Method Get -TimeoutSec 5 -ErrorAction Stop
+              Write-Host "Response: $response"
+              break
+          } catch {
+              Write-Host "Attempt $($attempt+1) failed: $_.Exception.Message. Retrying in 10 seconds..."
+              Start-Sleep -Seconds 10
+          }
+      }
+    displayName: Wait until host is ready
+
+  - pwsh: |
+      $helloUrl = "http://localhost:5000?forcespecialization=1"
+      Write-Host "Calling $helloUrl"
+      Invoke-WebRequest -Uri $helloUrl -Method Get -ErrorAction Stop
+    displayName: Specialize
+
+  - pwsh: |
+      $appRunDurationInSeconds = $env:RUN_DURATION_IN_SECONDS
+      Start-Sleep -Seconds $appRunDurationInSeconds
+    displayName: Run for $(APP_RUN_DURATION_IN_SECONDS) seconds
+    env:
+      RUN_DURATION_IN_SECONDS: $(APP_RUN_DURATION_IN_SECONDS)
+
+  - ${{ if eq(parameters.os, 'Windows') }}:
+    - pwsh: |
+        $processIdFile = "$(Build.ArtifactStagingDirectory)/hostProcessId.txt"
+        if (Test-Path $processIdFile) {
+            $processId = Get-Content $processIdFile
+            Write-Host "Stop functions host process with process ID: $processId"
+            Stop-Process -Id $processId -Force
+        } else {
+            Write-Host "Process ID file not found."
+        }
+      displayName: Stop host process
+      condition: always()
+
+  - ${{ if eq(parameters.os, 'Linux') }}:
+    - script: |
+        processIdFile="$(Build.ArtifactStagingDirectory)/hostProcessId.txt"
+        if [ -f "$processIdFile" ]; then
+            processId=$(cat $processIdFile)
+            echo "Sending SIGTERM to functions host process process ID: $processId"
+            kill -SIGTERM $processId
+        else
+            echo "Process ID file not found."
+        fi
+      displayName: Stop host process
+      condition: always()
+
+  - pwsh: |
+      Write-Host "Logs:"
+      Get-Content $(stdOutLogsFilePath)
+      Write-Host "----"
+      Write-Host "Error logs:"
+      Get-Content $(stdErrorLogsFilePath)
+    displayName: Print logs
+    condition: always()

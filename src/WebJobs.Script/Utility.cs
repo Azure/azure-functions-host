@@ -671,6 +671,12 @@ namespace Microsoft.Azure.WebJobs.Script
             return ContainsFunctionWithWorkerRuntime(filteredFunctions, workerRuntime);
         }
 
+        internal static bool IsDotnetIsolatedApp(IEnvironment environment, IEnumerable<FunctionMetadata> functions = null)
+        {
+            string workerRuntime = GetWorkerRuntime(functions, environment);
+            return workerRuntime?.Equals(RpcWorkerConstants.DotNetIsolatedLanguageWorkerName, StringComparison.OrdinalIgnoreCase) ?? false;
+        }
+
         internal static string GetWorkerRuntime(IEnumerable<FunctionMetadata> functions, IEnvironment environment = null)
         {
             if (environment != null)

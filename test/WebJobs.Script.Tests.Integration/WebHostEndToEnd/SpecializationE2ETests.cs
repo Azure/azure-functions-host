@@ -874,6 +874,46 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task Specialization_DotnetIsolatedApp_MissingAzureFunctionsDir_Logs()
+        {
+            Guid guid = Guid.NewGuid();
+            string path = "test-path" + guid.ToString();
+
+            if (!Directory.Exists(path))
+            {
+                Directory.CreateDirectory(path);
+            }
+
+            string json = "{\r\n  \"version\": \"2.0\",\r\n  \"isDefaultHostConfig\": false\r\n}";
+            File.WriteAllText(Path.Combine(path, "host.json"), json);
+
+            var builder = InitializeDotNetIsolatedPlaceholderBuilder(path);
+
+            using var testServer = new TestServer(builder);
+
+            var standbyManager = testServer.Services.GetService<IStandbyManager>();
+            Assert.NotNull(standbyManager);
+
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "dotnet-isolated");
+            SystemEnvironment.Instance.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+
+            await standbyManager.SpecializeHostAsync();
+
+            // Assert: Verify that the host has specialized
+            var scriptHostManager = testServer.Services.GetService<IScriptHostManager>();
+            Assert.NotNull(scriptHostManager);
+            Assert.Equal(ScriptHostState.Running, scriptHostManager.State);
+
+            await TestHelpers.Await(() =>
+            {
+                int completed = _loggerProvider.GetAllLogMessages().Count(p => p.FormattedMessage.Contains("Could not find the .azurefunctions folder in the deployed artifacts of a .NET isolated function app."));
+                return completed > 0;
+            });
+        }
+
+        [Fact]
         public async Task DotNetIsolated_PlaceholderHit_WithProxies()
         {
             // This test ensures that capabilities are correctly applied in EnvironmentReload during

@@ -184,14 +184,24 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
             "Referenced bundle {bundleId} of version {bundleVersion} does not meet the required minimum version of {minimumVersion}. Update your extension bundle reference in host.json to reference {minimumVersion2} or later.");
 
         private static readonly Action<ILogger, string, Exception> _hostJsonZipDeploymentIssue =
-    LoggerMessage.Define<string>(LogLevel.Error,
-        new EventId(338, nameof(HostJsonZipDeploymentIssue)),
-        "No functions were found. A valid host.json file wasn't found in the package root. However, one was located at: {hostJsonFilesPath}. This state indicates that your deployment package was created incorrectly. For deployment package requirements, see https://aka.ms/deployment-zip-push.");
+            LoggerMessage.Define<string>(LogLevel.Error,
+            new EventId(338, nameof(HostJsonZipDeploymentIssue)),
+            "No functions were found. A valid host.json file wasn't found in the package root. However, one was located at: {hostJsonFilesPath}. This state indicates that your deployment package was created incorrectly. For deployment package requirements, see https://aka.ms/deployment-zip-push.");
 
         private static readonly Action<ILogger, Exception> _noHostJsonFile =
-    LoggerMessage.Define(LogLevel.Information,
-        new EventId(339, nameof(NoHostJsonFile)),
-        "No functions were found. This can occur before you deploy code to your function app or when the host.json file is missing from the most recent deployment. Make sure that your deployment package includes the host.json file in the root of the package. For deployment package requirements, see https://aka.ms/functions-deployment-technologies.");
+            LoggerMessage.Define(LogLevel.Information,
+            new EventId(339, nameof(NoHostJsonFile)),
+            "No functions were found. This can occur before you deploy code to your function app or when the host.json file is missing from the most recent deployment. Make sure that your deployment package includes the host.json file in the root of the package. For deployment package requirements, see https://aka.ms/functions-deployment-technologies.");
+
+        private static readonly Action<ILogger, string, Exception> _missingAzureFunctionsFolder =
+            LoggerMessage.Define<string>(LogLevel.Warning,
+            new EventId(340, nameof(MissingAzureFunctionsFolder)),
+            "Could not find the .azurefunctions folder in the deployed artifacts of a .NET isolated function app. Make sure that your deployment package includes the .azurefunctions folder at the root of the package. For deployment package requirements, see https://aka.ms/functions-deployment-technologies. If this is not intended to be a .NET isolated app, please ensure that the {functionWorkerRuntime} app setting is configured correctly.");
+
+        private static readonly Action<ILogger, string, string, Exception> _incorrectAzureFunctionsFolderPath =
+            LoggerMessage.Define<string, string>(LogLevel.Warning,
+            new EventId(341, nameof(IncorrectAzureFunctionsFolderPath)),
+            "Could not find the .azurefunctions folder in the deployed artifacts of a .NET isolated function app. However, it is found to be located at: {path}. Make sure that your deployment package includes the .azurefunctions folder at the root of the package. For deployment package requirements, see https://aka.ms/functions-deployment-technologies. If this is not intended to be a .NET isolated app, please ensure that the {functionWorkerRuntime} app setting is configured correctly.");
 
         private static readonly Action<ILogger, string, Exception> _publishingMetrics =
             LoggerMessage.Define<string>(LogLevel.Debug, new EventId(338, nameof(PublishingMetrics)), "{metrics}");
@@ -386,6 +396,16 @@ Lock file hash: {currentLockFileHash}";
         public static void NoHostJsonFile(this ILogger logger)
         {
             _noHostJsonFile(logger, null);
+        }
+
+        public static void MissingAzureFunctionsFolder(this ILogger logger)
+        {
+            _missingAzureFunctionsFolder(logger, EnvironmentSettingNames.FunctionWorkerRuntime, null);
+        }
+
+        public static void IncorrectAzureFunctionsFolderPath(this ILogger logger, string path)
+        {
+            _incorrectAzureFunctionsFolderPath(logger, path, EnvironmentSettingNames.FunctionWorkerRuntime, null);
         }
     }
 }
