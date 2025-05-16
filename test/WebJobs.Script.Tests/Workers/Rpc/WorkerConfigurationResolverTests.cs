@@ -3,6 +3,7 @@
 
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Microsoft.Azure.AppService.Proxy.Common.Policies.Transform.Settings;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -31,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
 
         [Theory]
         [InlineData("java", "LATEST", "2.19.0")]
-        [InlineData("java", "STANDARD", "2.18.1")]
+        [InlineData("java", "STANDARD", "2.18.0")]
         [InlineData("node", "STANDARD", "3.10.1")]
         public void GetWorkerConfigs_ReturnsExpectedConfigs(string languageWorker, string releaseChannel, string version)
         {
@@ -50,6 +51,59 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             // Assert
             Assert.Single(result);
             Assert.Contains("C:\\FunctionsRepos\\Host\\azure-functions-host\\test\\TestWorkers\\ProbingPaths\\workers\\" + languageWorker + "\\" + version, result);
+
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime)).Returns((string)null);
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel)).Returns((string)null);
+        }
+
+        [Theory]
+        [InlineData("LATEST", "java\\2.19.0", "node\\3.10.1", "powershell\\7.4")]
+        [InlineData("STANDARD", "java\\2.18.0", "node\\3.10.1", "powershell\\7.2")]
+        public void GetWorkerConfigs_MultiLanguageWorker_ReturnsExpectedConfigs(string releaseChannel, string java, string node, string powershell)
+        {
+            // Arrange
+            var probingPaths = new List<string> { "C:\\FunctionsRepos\\Host\\azure-functions-host\\test\\TestWorkers\\ProbingPaths\\workers\\" };
+            var fallbackPath = "C:\\FunctionsRepos\\Host\\azure-functions-host\\test\\TestWorkers\\FallbackPath\\workers\\";
+
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel)).Returns(releaseChannel);
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AppKind)).Returns("workflowapp");
+
+            // Act
+            var workerConfigurationResolver = new WorkerConfigurationResolver(_mockConfig.Object, _mockLogger.Object, _mockEnvironment.Object, _mockProfileManager.Object);
+
+            var result = workerConfigurationResolver.GetWorkerConfigs(probingPaths, fallbackPath);
+
+            // Assert
+            Assert.Equal(result.Count, 3);
+            Assert.True(result.Any(r => r.Contains("C:\\FunctionsRepos\\Host\\azure-functions-host\\test\\TestWorkers\\ProbingPaths\\workers\\" + java)));
+            Assert.True(result.Any(r => r.Contains("C:\\FunctionsRepos\\Host\\azure-functions-host\\test\\TestWorkers\\ProbingPaths\\workers\\" + node)));
+            Assert.True(result.Any(r => r.Contains("C:\\FunctionsRepos\\Host\\azure-functions-host\\test\\TestWorkers\\ProbingPaths\\workers\\" + powershell)));
+
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime)).Returns((string)null);
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel)).Returns((string)null);
+        }
+
+        [Fact]
+     //   [InlineData("java", "LATEST", "2.19.0")]
+       // [InlineData("java", "STANDARD", "2.18.1")]
+      //  [InlineData("node", "STANDARD", "3.10.1")]
+        public void GetWorkerConfigs_CompatibilityCheck_ReturnsExpectedConfigs() //string languageWorker, string releaseChannel, string version)
+        {
+            // Arrange
+            var probingPaths = new List<string> { "C:\\FunctionsRepos\\Host\\azure-functions-host\\test\\TestWorkers\\ProbingPaths\\workers\\" };
+            var fallbackPath = "C:\\FunctionsRepos\\Host\\azure-functions-host\\test\\TestWorkers\\FallbackPath\\workers\\";
+
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime)).Returns("java");
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel)).Returns("STANDARD");
+
+            // Act
+            var workerConfigurationResolver = new WorkerConfigurationResolver(_mockConfig.Object, _mockLogger.Object, _mockEnvironment.Object, _mockProfileManager.Object);
+
+            var result = workerConfigurationResolver.GetWorkerConfigs(probingPaths, fallbackPath);
+
+            // Assert
+            Assert.Single(result);
+            Assert.Contains("C:\\FunctionsRepos\\Host\\azure-functions-host\\test\\TestWorkers\\ProbingPaths\\workers\\java\\2.18.0", result);
 
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime)).Returns((string)null);
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel)).Returns((string)null);

@@ -161,6 +161,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             // static capability resolution
             bool doesHostRequirementMeet = DoesHostRequirementMeet(workerConfig);
 
+            if (!doesHostRequirementMeet)
+            {
+                return false;
+            }
+
             // profiles evaluation
             RpcWorkerDescription workerDescription = WorkerConfigurationHelper.GetWorkerDescription(
                 workerConfig,

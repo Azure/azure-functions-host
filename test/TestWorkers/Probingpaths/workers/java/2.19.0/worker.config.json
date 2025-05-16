@@ -6,6 +6,7 @@
         "defaultWorkerPath": "azure-functions-java-worker.jar",
         "arguments": ["-XX:+TieredCompilation -XX:TieredStopAtLevel=1 -noverify -Djava.net.preferIPv4Stack=true -jar", "%JAVA_OPTS%", "%AZURE_FUNCTIONS_MESH_JAVA_OPTS%"]
     },
+    "hostRequirements": [],
     "profiles":
     [
         {
