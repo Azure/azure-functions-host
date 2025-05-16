@@ -7,37 +7,19 @@ using System.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.ExtensionRequirements
 {
-    internal sealed class ExtensionRequirementsInfo
+    internal sealed class ExtensionRequirementsInfo(BundleRequirement[] bundles, ExtensionStartupTypeRequirement[] types)
     {
         private Dictionary<string, BundleRequirement> _bundleRequirementsById;
         private Dictionary<string, ExtensionStartupTypeRequirement> _extensionRequirementsByStartupType;
-        private BundleRequirement[] _bundles = [];
-        private ExtensionStartupTypeRequirement[] _types = [];
 
-        public BundleRequirement[] Bundles
-        {
-            get => _bundles;
-            set
-            {
-                _bundles = value ?? [];
-                _bundleRequirementsById = null;
-            }
-        }
+        public BundleRequirement[] Bundles { get; } = bundles;
 
-        public ExtensionStartupTypeRequirement[] Types
-        {
-            get => _types;
-            set
-            {
-                _types = value ?? [];
-                _extensionRequirementsByStartupType = null;
-            }
-        }
+        public ExtensionStartupTypeRequirement[] Types { get; } = types;
 
-        public Dictionary<string, BundleRequirement> BundleRequirementsByBundleId =>
+        internal Dictionary<string, BundleRequirement> BundleRequirementsByBundleId =>
             _bundleRequirementsById ??= Bundles.ToDictionary(b => b.Id, StringComparer.OrdinalIgnoreCase);
 
-        public Dictionary<string, ExtensionStartupTypeRequirement> ExtensionRequirementsByStartupType =>
+        internal Dictionary<string, ExtensionStartupTypeRequirement> ExtensionRequirementsByStartupType =>
             _extensionRequirementsByStartupType ??= Types.ToDictionary(t => t.Name, StringComparer.OrdinalIgnoreCase);
     }
 }
