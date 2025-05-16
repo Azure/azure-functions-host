@@ -1,0 +1,77 @@
+﻿{
+  "description": {
+    "language": "dotnet-isolated",
+    "extensions": [ ".dll" ],
+    "workerIndexing": "true"
+  },
+  "profiles": [
+    {
+      "profileName": "DotnetIsolatedLinuxPlaceholder",
+      "conditions": [
+        {
+          "conditionType": "hostProperty",
+          "conditionName": "platform",
+          "conditionExpression": "LINUX"
+        },
+        {
+          "conditionType": "environment",
+          "conditionName": "WEBSITE_PLACEHOLDER_MODE",
+          "conditionExpression": "1"
+        }
+      ],
+      "description": {
+        "defaultExecutablePath": "%FUNCTIONS_WORKER_DIRECTORY%/bin/FunctionsNetHost",
+        "defaultWorkerPath": "bin/FunctionsNetHost"
+      }
+    },
+    {
+      "profileName": "DotnetIsolatedWindowsPlaceholder",
+      "conditions": [
+        {
+          "conditionType": "hostProperty",
+          "conditionName": "platform",
+          "conditionExpression": "WINDOWS"
+        },
+        {
+          "conditionType": "environment",
+          "conditionName": "WEBSITE_PLACEHOLDER_MODE",
+          "conditionExpression": "1"
+        }
+      ],
+      "description": {
+        "defaultExecutablePath": "%FUNCTIONS_WORKER_DIRECTORY%/bin/FunctionsNetHost.exe",
+        "defaultWorkerPath": "bin/FunctionsNetHost.exe"
+      }
+    },
+    {
+      "profileName": "WindowsFallbackDisabledWorker",
+      "conditions": [
+        {
+          "conditionType": "hostProperty",
+          "conditionName": "platform",
+          "conditionExpression": "WINDOWS"
+        }
+      ],
+      "description": {
+        "defaultExecutablePath": "%FUNCTIONS_WORKER_DIRECTORY%/bin/FunctionsNetHost.exe",
+        "defaultWorkerPath": "bin/FunctionsNetHost.exe",
+        "isDisabled": true
+      }
+    },
+    {
+      "profileName": "LinuxFallbackDisabledWorker",
+      "conditions": [
+        {
+          "conditionType": "hostProperty",
+          "conditionName": "platform",
+          "conditionExpression": "LINUX"
+        }
+      ],
+      "description": {
+        "defaultExecutablePath": "%FUNCTIONS_WORKER_DIRECTORY%/bin/FunctionsNetHost",
+        "defaultWorkerPath": "bin/FunctionsNetHost",
+        "isDisabled": true
+      }
+    }
+  ]
+}

@@ -57,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 });
 
             var workerConfigurationResolver = new WorkerConfigurationResolver(configuration, NullLoggerFactory.Instance.CreateLogger("test"), testEnvironment, testProfileManager.Object);
-            LanguageWorkerOptionsSetup setup = new LanguageWorkerOptionsSetup(configuration, NullLoggerFactory.Instance, testEnvironment, testMetricLogger, testProfileManager.Object, testScriptHostManager.Object, workerConfigurationResolver);
+            LanguageWorkerOptionsSetup setup = new LanguageWorkerOptionsSetup(configuration, NullLoggerFactory.Instance, testEnvironment, testMetricLogger, testProfileManager.Object, testScriptHostManager.Object);
             LanguageWorkerOptions options = new LanguageWorkerOptions();
 
             setup.Configure(options);

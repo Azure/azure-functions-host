@@ -1,0 +1,11 @@
+{
+    "description":{
+        "language":"powershell",
+        "extensions":[".ps1", ".psm1"],
+        "defaultExecutablePath":"dotnet",
+        "defaultWorkerPath":"%FUNCTIONS_WORKER_RUNTIME_VERSION%/Microsoft.Azure.Functions.PowerShellWorker.dll",
+        "supportedRuntimeVersions":["7", "7.2", "7.4"],
+        "defaultRuntimeVersion": "7.4",
+        "sanitizeRuntimeVersionRegex":"\\d+\\.?\\d*"
+    }
+}

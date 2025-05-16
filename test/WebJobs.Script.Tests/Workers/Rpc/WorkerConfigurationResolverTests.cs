@@ -3,6 +3,7 @@
 
 using System.Collections.Generic;
 using System.IO;
+using Microsoft.Azure.AppService.Proxy.Common.Policies.Transform.Settings;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
@@ -28,19 +29,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             _mockLogger = new Mock<ILogger>();
         }
 
-        [Fact]
-        public void GetWorkerConfigs_ReturnsExpectedConfigs()
+        [Theory]
+        [InlineData("java", "LATEST", "2.19.0")]
+        [InlineData("java", "STANDARD", "2.18.1")]
+        [InlineData("node", "STANDARD", "3.10.1")]
+        public void GetWorkerConfigs_ReturnsExpectedConfigs(string languageWorker, string releaseChannel, string version)
         {
             // Arrange
-            var probingPaths = new List<string> { "C:\\FunctionsRepos\\Host\\azure-functions-host\\src\\WebJobs.Script\\TestWorkers\\ProbingPaths\\workers\\" };
-            var fallbackPath = "C:\\FunctionsRepos\\Host\\azure-functions-host\\src\\WebJobs.Script\\TestWorkers\\FallbackPath\\workers\\";
-            //_mockEnvironment.Setup(e => e.GetEnvironmentVariable(It.IsAny<string>())).Returns("test-value");
-            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime)).Returns("java");
-            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel)).Returns("LATEST");
+            var probingPaths = new List<string> { "C:\\FunctionsRepos\\Host\\azure-functions-host\\test\\TestWorkers\\ProbingPaths\\workers\\" };
+            var fallbackPath = "C:\\FunctionsRepos\\Host\\azure-functions-host\\test\\TestWorkers\\FallbackPath\\workers\\";
 
-            // Mock directory structure
-            //    Directory.CreateDirectory("c:\\testfolder\\workers\\java\\1.1");
-            //    File.WriteAllText("c:\\testfolder\\workers\\java\\1.1\\worker.config.json", "{}");
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime)).Returns(languageWorker);
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel)).Returns(releaseChannel);
 
             // Act
             var workerConfigurationResolver = new WorkerConfigurationResolver(_mockConfig.Object, _mockLogger.Object, _mockEnvironment.Object, _mockProfileManager.Object);
@@ -49,21 +49,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
 
             // Assert
             Assert.Single(result);
-            Assert.Contains("C:\\FunctionsRepos\\Host\\azure-functions-host\\src\\WebJobs.Script\\TestWorkers\\ProbingPaths\\workers\\java", result);
+            Assert.Contains("C:\\FunctionsRepos\\Host\\azure-functions-host\\test\\TestWorkers\\ProbingPaths\\workers\\" + languageWorker + "\\" + version, result);
 
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime)).Returns((string)null);
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel)).Returns((string)null);
-
-            // Cleanup
-            Directory.Delete("c:\\testfolder", true);
         }
 
         [Fact]
         public void GetWorkerConfigs_ReturnsExpectedConfigs1()
         {
             // Arrange
-            var probingPaths = new List<string> { "c:\\testfolder\\probingpaths\\workers\\" };
-            var fallbackPath = "c:\\testfolder\\fallback\\workers\\";
+            var probingPaths = new List<string> { "C:\\FunctionsRepos\\Host\\azure-functions-host\\test\\TestWorkers\\ProbingPaths\\workers\\" };
+            var fallbackPath = "C:\\FunctionsRepos\\Host\\azure-functions-host\\test\\TestWorkers\\FallbackPath\\workers\\";
 
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime)).Returns("java");
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel)).Returns("LATEST");
@@ -93,7 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel)).Returns((string)null);
 
             // Cleanup
-            Directory.Delete("c:\\testfolder", true);
+          //  Directory.Delete("c:\\testfolder", true);
         }
 
         [Fact]
@@ -104,12 +101,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             var workerConfigPath = "c:\\testfolder\\workers\\java\\1.1\\worker.config.json";
             var workerDir = "c:\\testfolder\\workers\\java\\1.1";
 
+            string text = @"
+                {
+                    ""hostRequirements"": [""test-capability-1"", ""test-capability-2""],
+                    ""description"": { ""language"": ""java"", ""defaultExecutablePath"": ""%JAVA_HOME%/bin/java"" }
+                }";
+
             Directory.CreateDirectory(workerDir);
-            File.WriteAllText(workerConfigPath, @"
-        {
-            ""hostRequirements"": [""test-capability-1"", ""test-capability-2""],
-            ""description"": { ""language"": ""java"" }
-        }");
+            File.WriteAllText(workerConfigPath, text);
 
             _mockProfileManager.Setup(p => p.LoadWorkerDescriptionFromProfiles(It.IsAny<RpcWorkerDescription>(), out It.Ref<RpcWorkerDescription>.IsAny))
                 .Callback((RpcWorkerDescription _, out RpcWorkerDescription desc) =>
@@ -126,7 +125,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             Assert.True(result);
 
             // Cleanup
-            Directory.Delete("c:\\testfolder", true);
+          //  Directory.Delete("c:\\testfolder", true);
         }
 
         [Fact]
@@ -137,12 +136,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             var workerConfigPath = "c:\\testfolder\\workers\\java\\1.1\\worker.config.json";
             var workerDir = "c:\\testfolder\\workers\\java\\1.1";
 
+            string text = @"
+                {
+                    ""hostRequirements"": [""test-capability-1"", ""test-capability-2""],
+                    ""description"": { ""language"": ""java"", ""defaultExecutablePath"": ""%JAVA_HOME%/bin/java"" }
+                }";
+
             Directory.CreateDirectory(workerDir);
-            File.WriteAllText(workerConfigPath, @"
-        {
-            ""hostRequirements"": [""test-capability-1"", ""test-capability-2""],
-            ""description"": { ""language"": ""java"" }
-        }");
+            File.WriteAllText(workerConfigPath, text);
 
             // Act
             var workerConfigurationResolver = new WorkerConfigurationResolver(_mockConfig.Object, _mockLogger.Object, _mockEnvironment.Object, _mockProfileManager.Object);
@@ -153,7 +154,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             Assert.False(result);
 
             // Cleanup
-            Directory.Delete("c:\\testfolder", true);
+         //   Directory.Delete("c:\\testfolder", true);
         }
 
         public static void CopyDirectory(string sourceDir, string destinationDir)
