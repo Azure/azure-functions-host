@@ -46,53 +46,63 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             // check worker release channel
             string releaseChannel = Utility.GetPlatformReleaseChannel(_environment);
 
-            foreach (var probingPath in probingPaths)
+            if (probingPaths is not null)
             {
-                foreach (var languageWorkerPath in Directory.EnumerateDirectories(probingPath))
+                foreach (var probingPath in probingPaths)
                 {
-                    string languageWorkerFolder = Path.GetFileName(languageWorkerPath);
-
-                    // Only skip worker directories that don't match the current runtime.
-                    // Do not skip non-worker directories like the function app payload directory
-                    if (!_environment.IsMultiLanguageRuntimeEnvironment() && !workerRuntime.Equals(languageWorkerFolder, StringComparison.OrdinalIgnoreCase)) // && languageWorkerPath.StartsWith(fallbackPath))
+                    foreach (var languageWorkerPath in Directory.EnumerateDirectories(probingPath))
                     {
-                        continue;
-                    }
+                        string languageWorkerFolder = Path.GetFileName(languageWorkerPath);
 
-                    IEnumerable<string> workerVersions = Directory.EnumerateDirectories(languageWorkerPath);
-                    var versionsList = ParseWorkerVersions(workerVersions);
-                    var versions = versionsList.OrderDescending();
-
-                    int found = 0;
-
-                    if (outputDict.ContainsKey(languageWorkerFolder))
-                    {
-                        continue;
-                    }
-
-                    // language worker version
-                    foreach (Version versionFolder in versions)
-                    {
-                        string languageWorkerVersionPath = Path.Combine(languageWorkerPath, versionFolder.ToString());
-                        if (IsCompatibleWithHost(languageWorkerVersionPath))
+                        // Only skip worker directories that don't match the current runtime.
+                        // Do not skip non-worker directories like the function app payload directory
+                        if (!_environment.IsMultiLanguageRuntimeEnvironment() && workerRuntime is not null && !workerRuntime.Equals(languageWorkerFolder, StringComparison.OrdinalIgnoreCase)) // && languageWorkerPath.StartsWith(fallbackPath))
                         {
-                            found++;
-                            outputDict[languageWorkerFolder] = languageWorkerVersionPath;
+                            continue;
+                        }
 
-                            if (string.IsNullOrEmpty(releaseChannel) || !releaseChannel.Equals(ScriptConstants.StandardPlatformChannelNameUpper))
-                            {
-                                // latest version is the default
-                                break;
-                            }
+                        IEnumerable<string> workerVersions = Directory.EnumerateDirectories(languageWorkerPath);
+                        var versionsList = ParseWorkerVersions(workerVersions);
+                        var versions = versionsList.OrderDescending();
 
-                            if (found > 1 && releaseChannel.Equals(ScriptConstants.StandardPlatformChannelNameUpper))
+                        int found = 0;
+
+                        if (outputDict.ContainsKey(languageWorkerFolder))
+                        {
+                            continue;
+                        }
+
+                        // language worker version
+                        foreach (Version versionFolder in versions)
+                        {
+                            string languageWorkerVersionPath = Path.Combine(languageWorkerPath, versionFolder.ToString());
+                            if (IsCompatibleWithHost(languageWorkerVersionPath))
                             {
+                                found++;
                                 outputDict[languageWorkerFolder] = languageWorkerVersionPath;
-                                break;
+
+                                if (string.IsNullOrEmpty(releaseChannel) || !releaseChannel.Equals(ScriptConstants.StandardPlatformChannelNameUpper))
+                                {
+                                    // latest version is the default
+                                    break;
+                                }
+
+                                if (found > 1 && releaseChannel.Equals(ScriptConstants.StandardPlatformChannelNameUpper))
+                                {
+                                    outputDict[languageWorkerFolder] = languageWorkerVersionPath;
+                                    break;
+                                }
                             }
                         }
                     }
                 }
+            }
+
+            if (!_environment.IsMultiLanguageRuntimeEnvironment() &&
+                workerRuntime is not null &&
+                outputDict.ContainsKey(workerRuntime))
+            {
+                return outputDict.Values.ToList();
             }
 
             // fallback path
@@ -110,7 +120,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 {
                     string workerFolder = Path.GetFileName(workerDir);
 
-                    if (outputDict.ContainsKey(workerFolder) || !workerRuntime.Equals(workerFolder, StringComparison.OrdinalIgnoreCase)) // && languageWorkerPath.StartsWith(fallbackPath))
+                    if (outputDict.ContainsKey(workerFolder) ||
+                        (!_environment.IsMultiLanguageRuntimeEnvironment() &&
+                        workerRuntime is not null &&
+                        !workerRuntime.Equals(workerFolder, StringComparison.OrdinalIgnoreCase)))
                     {
                         continue;
                     }
@@ -119,6 +132,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                     if (File.Exists(workerConfigPath))
                     {
                         outputDict[workerFolder] = workerDir;
+                    }
+
+                    if (!_environment.IsMultiLanguageRuntimeEnvironment() &&
+                        workerRuntime is not null &&
+                        outputDict.ContainsKey(workerRuntime))
+                    {
+                        break;
                     }
                 }
             }
