@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using Microsoft.Azure.AppService.Proxy.Common.Extensions;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
@@ -46,51 +47,56 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             // check worker release channel
             string releaseChannel = Utility.GetPlatformReleaseChannel(_environment);
 
-            if (probingPaths is not null)
+            if (!probingPaths.IsNullOrEmpty())
             {
                 foreach (var probingPath in probingPaths)
                 {
-                    foreach (var languageWorkerPath in Directory.EnumerateDirectories(probingPath))
+                    if (!string.IsNullOrEmpty(probingPath) && Directory.Exists(probingPath))
                     {
-                        string languageWorkerFolder = Path.GetFileName(languageWorkerPath);
-
-                        // Only skip worker directories that don't match the current runtime.
-                        // Do not skip non-worker directories like the function app payload directory
-                        if (!_environment.IsMultiLanguageRuntimeEnvironment() && workerRuntime is not null && !workerRuntime.Equals(languageWorkerFolder, StringComparison.OrdinalIgnoreCase)) // && languageWorkerPath.StartsWith(fallbackPath))
+                        foreach (var languageWorkerPath in Directory.EnumerateDirectories(probingPath))
                         {
-                            continue;
-                        }
+                            string languageWorkerFolder = Path.GetFileName(languageWorkerPath);
 
-                        IEnumerable<string> workerVersions = Directory.EnumerateDirectories(languageWorkerPath);
-                        var versionsList = ParseWorkerVersions(workerVersions);
-                        var versions = versionsList.OrderDescending();
-
-                        int found = 0;
-
-                        if (outputDict.ContainsKey(languageWorkerFolder))
-                        {
-                            continue;
-                        }
-
-                        // language worker version
-                        foreach (Version versionFolder in versions)
-                        {
-                            string languageWorkerVersionPath = Path.Combine(languageWorkerPath, versionFolder.ToString());
-                            if (IsCompatibleWithHost(languageWorkerVersionPath))
+                            // Only skip worker directories that don't match the current runtime.
+                            // Do not skip non-worker directories like the function app payload directory
+                            if (!_environment.IsMultiLanguageRuntimeEnvironment() &&
+                                workerRuntime is not null &&
+                                !workerRuntime.Equals(languageWorkerFolder, StringComparison.OrdinalIgnoreCase)) // && languageWorkerPath.StartsWith(fallbackPath))
                             {
-                                found++;
-                                outputDict[languageWorkerFolder] = languageWorkerVersionPath;
+                                continue;
+                            }
 
-                                if (string.IsNullOrEmpty(releaseChannel) || !releaseChannel.Equals(ScriptConstants.StandardPlatformChannelNameUpper))
-                                {
-                                    // latest version is the default
-                                    break;
-                                }
+                            IEnumerable<string> workerVersions = Directory.EnumerateDirectories(languageWorkerPath);
+                            var versionsList = ParseWorkerVersions(workerVersions);
+                            var versions = versionsList.OrderDescending();
 
-                                if (found > 1 && releaseChannel.Equals(ScriptConstants.StandardPlatformChannelNameUpper))
+                            int found = 0;
+
+                            if (outputDict.ContainsKey(languageWorkerFolder))
+                            {
+                                continue;
+                            }
+
+                            // language worker version
+                            foreach (Version versionFolder in versions)
+                            {
+                                string languageWorkerVersionPath = Path.Combine(languageWorkerPath, versionFolder.ToString());
+                                if (IsCompatibleWithHost(languageWorkerVersionPath))
                                 {
+                                    found++;
                                     outputDict[languageWorkerFolder] = languageWorkerVersionPath;
-                                    break;
+
+                                    if (string.IsNullOrEmpty(releaseChannel) || !releaseChannel.Equals(ScriptConstants.StandardPlatformChannelNameUpper))
+                                    {
+                                        // latest version is the default
+                                        break;
+                                    }
+
+                                    if (found > 1 && releaseChannel.Equals(ScriptConstants.StandardPlatformChannelNameUpper))
+                                    {
+                                        outputDict[languageWorkerFolder] = languageWorkerVersionPath;
+                                        break;
+                                    }
                                 }
                             }
                         }
