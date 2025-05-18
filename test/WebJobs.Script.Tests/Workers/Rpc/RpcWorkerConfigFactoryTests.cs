@@ -13,6 +13,7 @@ using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
+using Moq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
@@ -146,6 +147,37 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var javaPath = workerConfigs.FirstOrDefault(c => c.Description.Language.Equals("java", StringComparison.OrdinalIgnoreCase)).Description.DefaultExecutablePath;
             Assert.DoesNotContain(@"%JAVA_HOME%", javaPath);
             Assert.Contains(@"/bin/java", javaPath);
+        }
+
+        [Fact]
+        public void JavaPath_ProbingPaths_FromEnvVars()
+        {
+            string probingPath1 = Path.GetFullPath("..\\..\\..\\..\\test\\TestWorkers\\ProbingPaths\\workers\\");
+            string fallbackPath = Path.GetFullPath("..\\..\\..\\..\\test\\TestWorkers\\FallbackPath\\workers\\");
+
+            var mockEnvironment = new Mock<IEnvironment>();
+            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags)).Returns(ScriptConstants.FeatureFlagEnableWorkerProbingPaths);
+            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime)).Returns("node");
+
+            var inMemorySettings = new Dictionary<string, string>
+            {
+                ["languageWorkers:probingPaths:0"] = probingPath1,
+            };
+
+            IConfiguration config = new ConfigurationBuilder()
+                .AddInMemoryCollection(inMemorySettings)
+                .Build();
+
+            var scriptSettingsManager = new ScriptSettingsManager(config);
+            var testLogger = new TestLogger("test");
+            var workerConfigurationResolver = new WorkerConfigurationResolver(config, testLogger, mockEnvironment.Object, _testWorkerProfileManager);
+            var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, mockEnvironment.Object, new TestMetricsLogger(), _testWorkerProfileManager, workerConfigurationResolver);
+            var workerConfigs = configFactory.GetConfigs();
+
+            // check log messages
+            var logs = testLogger.GetLogMessages();
+            Assert.Equal(1, workerConfigs.Count);
+            Assert.True(logs.Any(p => p.FormattedMessage.Contains("Workers Directory set to: probingPaths = " + probingPath1)));
         }
 
         [Fact]
@@ -322,6 +354,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 ["languageWorkers:probingPaths:0"] = @"C:\workers\path1",
                 ["languageWorkers:probingPaths:1"] = @"C:\workers\path2"
             };
+
             IConfiguration config = new ConfigurationBuilder()
                 .AddInMemoryCollection(inMemorySettings)
                 .Build();
@@ -337,6 +370,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.Equal(2, result.Count);
             Assert.Contains(@"C:\workers\path1", result);
             Assert.Contains(@"C:\workers\path2", result);
+        }
+
+        [Theory]
+        [InlineData("languageWorkers:probingPaths:0", "", 1)]
+        [InlineData("languageWorkers:probingPaths", "C:\\workers\\path1", 0)]
+        [InlineData("languageWorkers", "C:\\workers\\path1", 0)]
+        public void GetWorkerProbingPaths_InvalidProbingPaths_ReturnsEmptyList(string key, string value, int count)
+        {
+            // Arrange
+            var inMemorySettings = new Dictionary<string, string>
+            {
+                [key] = value,
+            };
+
+            IConfiguration config = new ConfigurationBuilder()
+                .AddInMemoryCollection(inMemorySettings)
+                .Build();
+
+            var testLogger = new TestLogger("test");
+            var workerConfigurationResolver = new WorkerConfigurationResolver(config, testLogger, _testEnvironment, _testWorkerProfileManager);
+            RpcWorkerConfigFactory rpcWorkerConfigFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger(), _testWorkerProfileManager, workerConfigurationResolver);
+
+            // Act
+            var result = rpcWorkerConfigFactory.GetWorkerProbingPaths(config);
+
+            // Assert
+            Assert.Equal(count, result.Count);
         }
 
         private static JsonElement CreateWorkerConfig(int processCount, int maxProcessCount, string processStartupInterval, bool setProcessCountToCores)

@@ -8,10 +8,12 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
@@ -97,7 +99,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             {
                 List<string> probingPaths = GetWorkerProbingPaths(_config);
 
-                _logger.LogDebug("Workers Directory set to: probingPaths = {probingPaths} and fallback path = {WorkersDirPath}", probingPaths.ToString(), WorkersDirPath);
+                _logger.LogDebug("Workers Directory set to: probingPaths = {probingPaths} and fallback path = {WorkersDirPath}", string.Join(", ", probingPaths), WorkersDirPath);
 
                 List<string> workerConfigs = _workerConfigurationResolver.GetWorkerConfigs(probingPaths, WorkersDirPath);
 
@@ -316,7 +318,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal bool AreProbingPathsEnabled()
         {
-            return true;
+            return FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableWorkerProbingPaths, _environment);
         }
 
         private void ReadLanguageWorkerFile(string workerPath)
