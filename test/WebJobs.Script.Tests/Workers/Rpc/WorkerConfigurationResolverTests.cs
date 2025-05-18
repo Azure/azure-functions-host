@@ -27,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _mockConfig = new Mock<IConfiguration>();
             _mockLogger = new Mock<ILogger>();
 
-            _probingPaths = new List<string> { _probingPath1, string.Empty, null, "path-not-exists"};
+            _probingPaths = new List<string> { _probingPath1, string.Empty, null, "path-not-exists" };
         }
 
         [Theory]

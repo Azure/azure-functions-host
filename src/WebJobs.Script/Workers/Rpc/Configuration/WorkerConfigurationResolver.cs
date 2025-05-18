@@ -59,9 +59,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
                             // Only skip worker directories that don't match the current runtime.
                             // Do not skip non-worker directories like the function app payload directory
+                            // && languageWorkerPath.StartsWith(fallbackPath))
                             if (!_environment.IsMultiLanguageRuntimeEnvironment() &&
                                 workerRuntime is not null &&
-                                !workerRuntime.Equals(languageWorkerFolder, StringComparison.OrdinalIgnoreCase)) // && languageWorkerPath.StartsWith(fallbackPath))
+                                !workerRuntime.Equals(languageWorkerFolder, StringComparison.OrdinalIgnoreCase))
                             {
                                 continue;
                             }
