@@ -117,7 +117,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             return outputDict.Values.ToList();
         }
 
-        internal void GetWorkerConfigsFromWithinHost(string fallbackPath, string workerRuntime, ConcurrentDictionary<string, string> outputDict)
+        private void GetWorkerConfigsFromWithinHost(string fallbackPath, string workerRuntime, ConcurrentDictionary<string, string> outputDict)
         {
             // fallback path
             if (Directory.Exists(fallbackPath))
@@ -150,7 +150,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             }
         }
 
-        internal List<Version> ParseWorkerVersions(IEnumerable<string> workerVersions)
+        private List<Version> ParseWorkerVersions(IEnumerable<string> workerVersions)
         {
             var versions = new List<Version>();
 
@@ -167,14 +167,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             return versions;
         }
 
-        internal HashSet<string> GetHostCapabilities()
+        private HashSet<string> GetHostCapabilities()
         {
             HashSet<string> hostCapabilites = ["test-capability-1", "test-capability-2"];
 
             return hostCapabilites;
         }
 
-        internal bool IsCompatibleWithHost(string workerDir)
+        private bool IsCompatibleWithHost(string workerDir)
         {
             string workerConfigPath = Path.Combine(workerDir, RpcWorkerConstants.WorkerConfigFileName);
             if (!File.Exists(workerConfigPath))
@@ -209,7 +209,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             return true;
         }
 
-        internal HashSet<string> GetHostRequirements(JsonElement workerConfig)
+        private HashSet<string> GetHostRequirements(JsonElement workerConfig)
         {
             HashSet<string> hostRequirements = new HashSet<string>();
 
@@ -226,7 +226,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             return hostRequirements;
         }
 
-        internal bool DoesHostRequirementMeet(JsonElement workerConfig)
+        private bool DoesHostRequirementMeet(JsonElement workerConfig)
         {
             HashSet<string> hostRequirements = GetHostRequirements(workerConfig);
 

@@ -6,6 +6,7 @@
         "defaultWorkerPath": "dist/src/nodejsWorker.js",
         "workerIndexing": "true"
     },
+    "hostRequirements": ["test-capability-1", "test-capability-2"],
     "processOptions": {
         "initializationTimeout": "00:02:00",
         "environmentReloadTimeout": "00:02:00"
