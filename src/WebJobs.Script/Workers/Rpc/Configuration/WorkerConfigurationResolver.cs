@@ -71,35 +71,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                             var versionsList = ParseWorkerVersions(workerVersions);
                             var versions = versionsList.OrderDescending();
 
-                            int found = 0;
-
                             if (outputDict.ContainsKey(languageWorkerFolder))
                             {
                                 continue;
                             }
 
-                            // language worker version
-                            foreach (Version versionFolder in versions)
-                            {
-                                string languageWorkerVersionPath = Path.Combine(languageWorkerPath, versionFolder.ToString());
-                                if (IsCompatibleWithHost(languageWorkerVersionPath))
-                                {
-                                    found++;
-                                    outputDict[languageWorkerFolder] = languageWorkerVersionPath;
-
-                                    if (string.IsNullOrEmpty(releaseChannel) || !releaseChannel.Equals(ScriptConstants.StandardPlatformChannelNameUpper))
-                                    {
-                                        // latest version is the default
-                                        break;
-                                    }
-
-                                    if (found > 1 && releaseChannel.Equals(ScriptConstants.StandardPlatformChannelNameUpper))
-                                    {
-                                        outputDict[languageWorkerFolder] = languageWorkerVersionPath;
-                                        break;
-                                    }
-                                }
-                            }
+                            GetWorkerConfigsFromProbingPaths(versions, languageWorkerPath, languageWorkerFolder, releaseChannel, outputDict);
                         }
                     }
                 }
@@ -116,6 +93,34 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             GetWorkerConfigsFromWithinHost(fallbackPath, workerRuntime, outputDict);
 
             return outputDict.Values.ToList();
+        }
+
+        private void GetWorkerConfigsFromProbingPaths(IEnumerable<Version> versions, string languageWorkerPath, string languageWorkerFolder, string releaseChannel, ConcurrentDictionary<string, string> outputDict)
+        {
+            int found = 0;
+
+            // language worker version
+            foreach (Version versionFolder in versions)
+            {
+                string languageWorkerVersionPath = Path.Combine(languageWorkerPath, versionFolder.ToString());
+                if (IsCompatibleWithHost(languageWorkerVersionPath))
+                {
+                    found++;
+                    outputDict[languageWorkerFolder] = languageWorkerVersionPath;
+
+                    if (string.IsNullOrEmpty(releaseChannel) || !releaseChannel.Equals(ScriptConstants.StandardPlatformChannelNameUpper))
+                    {
+                        // latest version is the default
+                        break;
+                    }
+
+                    if (found > 1 && releaseChannel.Equals(ScriptConstants.StandardPlatformChannelNameUpper))
+                    {
+                        outputDict[languageWorkerFolder] = languageWorkerVersionPath;
+                        break;
+                    }
+                }
+            }
         }
 
         private void GetWorkerConfigsFromWithinHost(string fallbackPath, string workerRuntime, ConcurrentDictionary<string, string> outputDict)

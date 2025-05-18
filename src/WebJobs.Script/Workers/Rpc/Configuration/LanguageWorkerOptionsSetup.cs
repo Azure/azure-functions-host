@@ -95,29 +95,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         public string ReadJsonFileAsString(string filePath)
         {
-            if (string.IsNullOrEmpty(filePath))
+            string jsonString = null;
+
+            if (File.Exists(filePath))
             {
-                throw new ArgumentNullException(nameof(filePath), "File path cannot be null or empty.");
+                jsonString = File.ReadAllText(filePath);
             }
-
-            if (!File.Exists(filePath))
-            {
-                throw new FileNotFoundException($"The file at path '{filePath}' does not exist.");
-            }
-
-            string jsonString = File.ReadAllText(filePath);
-
-            /*
-            JsonDocument jsonDocument = JsonDocument.Parse(jsonString);
-
-            string languageWorkersConfigString = null;
-
-            if (_environment.IsWindowsConsumption())
-            {
-                var languageWorkersSection = jsonDocument.RootElement.GetProperty("windowsConsumption");
-                languageWorkersConfigString = languageWorkersSection.ToString();
-            }
-            */
 
             return jsonString;
         }
