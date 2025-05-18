@@ -288,18 +288,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             return true;
         }
 
-        private void ReadLanguageWorkerFile(string workerPath)
-        {
-            if (_environment.IsPlaceholderModeEnabled()
-                && !string.IsNullOrEmpty(_workerRuntime)
-                && File.Exists(workerPath))
-            {
-                // Read language worker file to avoid disk reads during specialization. This is only to page-in bytes.
-                File.ReadAllBytes(workerPath);
-            }
-        }
-
-        private List<string> GetWorkerProbingPaths(IConfiguration config)
+        internal List<string> GetWorkerProbingPaths(IConfiguration config)
         {
             List<string> probingPaths = new List<string>();
 
@@ -325,9 +314,20 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             return probingPaths;
         }
 
-        private bool AreProbingPathsEnabled()
+        internal bool AreProbingPathsEnabled()
         {
             return true;
+        }
+
+        private void ReadLanguageWorkerFile(string workerPath)
+        {
+            if (_environment.IsPlaceholderModeEnabled()
+                && !string.IsNullOrEmpty(_workerRuntime)
+                && File.Exists(workerPath))
+            {
+                // Read language worker file to avoid disk reads during specialization. This is only to page-in bytes.
+                File.ReadAllBytes(workerPath);
+            }
         }
     }
 }

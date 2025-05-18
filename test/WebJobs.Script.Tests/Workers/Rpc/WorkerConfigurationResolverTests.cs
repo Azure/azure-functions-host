@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
@@ -17,8 +18,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         private readonly Mock<IWorkerProfileManager> _mockProfileManager;
         private readonly Mock<IConfiguration> _mockConfig;
         private readonly Mock<ILogger> _mockLogger;
-        private readonly string _probingPath1 = "C:\\FunctionsRepos\\Host\\azure-functions-host\\test\\TestWorkers\\ProbingPaths\\workers\\";
-        private readonly string _fallbackPath = "C:\\FunctionsRepos\\Host\\azure-functions-host\\test\\TestWorkers\\FallbackPath\\workers\\";
+        private readonly string _probingPath1 = Path.GetFullPath("..\\..\\..\\..\\test\\TestWorkers\\ProbingPaths\\workers\\");
+        private readonly string _fallbackPath = Path.GetFullPath("..\\..\\..\\..\\test\\TestWorkers\\FallbackPath\\workers\\");
         private List<string> _probingPaths;
 
         public WorkerConfigurationResolverTests()

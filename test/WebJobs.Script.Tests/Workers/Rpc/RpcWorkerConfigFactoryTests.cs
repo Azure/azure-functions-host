@@ -313,6 +313,32 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.Contains("value could not be converted to System.TimeSpan", resultEx3.Message);
         }
 
+        [Fact]
+        public void GetWorkerProbingPaths_ReturnsExpectedPaths()
+        {
+            // Arrange
+            var inMemorySettings = new Dictionary<string, string>
+            {
+                ["languageWorkers:probingPaths:0"] = @"C:\workers\path1",
+                ["languageWorkers:probingPaths:1"] = @"C:\workers\path2"
+            };
+            IConfiguration config = new ConfigurationBuilder()
+                .AddInMemoryCollection(inMemorySettings)
+                .Build();
+
+            var testLogger = new TestLogger("test");
+            var workerConfigurationResolver = new WorkerConfigurationResolver(config, testLogger, _testEnvironment, _testWorkerProfileManager);
+            RpcWorkerConfigFactory rpcWorkerConfigFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger(), _testWorkerProfileManager, workerConfigurationResolver);
+
+            // Act
+            var result = rpcWorkerConfigFactory.GetWorkerProbingPaths(config);
+
+            // Assert
+            Assert.Equal(2, result.Count);
+            Assert.Contains(@"C:\workers\path1", result);
+            Assert.Contains(@"C:\workers\path2", result);
+        }
+
         private static JsonElement CreateWorkerConfig(int processCount, int maxProcessCount, string processStartupInterval, bool setProcessCountToCores)
         {
             using var stream = new MemoryStream();
