@@ -150,7 +150,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
-        public void JavaPath_ProbingPaths_FromEnvVars()
+        public void GetConfigs_ProbingPaths()
         {
             string probingPath1 = Path.GetFullPath("..\\..\\..\\..\\test\\TestWorkers\\ProbingPaths\\workers\\");
             string fallbackPath = Path.GetFullPath("..\\..\\..\\..\\test\\TestWorkers\\FallbackPath\\workers\\");
