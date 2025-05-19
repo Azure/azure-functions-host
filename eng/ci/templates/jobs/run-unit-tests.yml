@@ -5,9 +5,9 @@ jobs:
   variables:
   - name: test_projects
     value: |
-      **\ExtensionsMetadataGeneratorTests.csproj
-      **\WebJobs.Script.Tests.csproj
-      
+      **/ExtensionsMetadataGeneratorTests.csproj
+      **/WebJobs.Script.Tests.csproj
+
   templateContext:
     outputParentDirectory: $(Build.ArtifactStagingDirectory)
     outputs:
