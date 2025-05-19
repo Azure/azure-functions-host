@@ -76,6 +76,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 }
             }
 
+            // If Env variable is present, read from there (works for linux)
+            // If windows, read it from file
             var jsonString = ReadJsonFileAsString("C:\\testData\\test-config.json");
 
             if (jsonString is not null)
