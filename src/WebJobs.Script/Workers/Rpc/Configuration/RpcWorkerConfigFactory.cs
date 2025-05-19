@@ -318,7 +318,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal bool AreProbingPathsEnabled()
         {
-            return FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableWorkerProbingPaths, _environment);
+            return true;
+           // return FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableWorkerProbingPaths, _environment);
         }
 
         private void ReadLanguageWorkerFile(string workerPath)

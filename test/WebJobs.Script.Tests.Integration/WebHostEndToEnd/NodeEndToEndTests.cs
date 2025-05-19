@@ -78,6 +78,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             string invocationId = (string)testResult["invocationId"];
             Guid.Parse(invocationId);
+
+            var logs = await TestHelpers.GetHostLogsAsync();
+            List<string> result = logs.Where(s => s != null && s.Contains("Found required workerConfig c:\\testData\\workers\\node\\3.10.1\\")).ToList();
         }
 
         [Fact]

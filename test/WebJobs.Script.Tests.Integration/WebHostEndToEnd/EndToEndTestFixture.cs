@@ -43,6 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private int _workerProcessCount;
         private string _functionsWorkerRuntimeVersion;
         private bool _addTestSettings;
+        private string _enableProbingPaths;
 
         protected EndToEndTestFixture(
             string rootPath,
@@ -50,7 +51,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string functionsWorkerRuntime,
             int workerProcessesCount = 1,
             string functionsWorkerRuntimeVersion = null,
-            bool addTestSettings = true)
+            bool addTestSettings = true,
+            string enableProbingPaths = null)
         {
             FixtureId = testId;
             _rootPath = rootPath;
@@ -58,6 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _workerProcessCount = workerProcessesCount;
             _functionsWorkerRuntimeVersion = functionsWorkerRuntimeVersion;
             _addTestSettings = addTestSettings;
+            _enableProbingPaths = enableProbingPaths;
         }
 
         public CloudBlobContainer TestInputContainer { get; private set; }

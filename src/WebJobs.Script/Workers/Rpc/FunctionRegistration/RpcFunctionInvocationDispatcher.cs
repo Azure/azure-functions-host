@@ -277,6 +277,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
 
             var workerConfig = _workerConfigs.FirstOrDefault(c => c.Description.Language.Equals(_workerRuntime, StringComparison.InvariantCultureIgnoreCase));
+            _logger.LogInformation("Found required workerConfig {path}", workerConfig.Arguments.WorkerPath);
 
             // For other OOP workers, workerconfigs are present inside "workers" folder of host bin directory and is used to populate "_workerConfigs".
             // For dotnet-isolated _workerConfigs is populated by reading workerconfig.json from the deployed payload(customer function app code).
