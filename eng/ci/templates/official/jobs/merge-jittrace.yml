@@ -50,7 +50,7 @@ jobs:
         $files = Get-ChildItem -Path "$(Pipeline.Workspace)/${{ parameters.os }}_jittrace" -Recurse -Filter *.jittrace
         Write-Host "Merging the following .jittrace files:"
         $files | ForEach-Object { Write-Host $_.FullName }
-        $files | Get-Content | Sort-Object | Get-Unique | Set-Content $output
+        $files | Get-Content | Sort-Object -Unique | Set-Content $output
         $lineCount = (Get-Content $output | Measure-Object -Line).Lines
         Write-Host "Final merged file line count: $lineCount"
       displayName: Merge all .jittrace files ${{ parameters.os }}
