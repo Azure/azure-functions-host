@@ -9,6 +9,7 @@ using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Newtonsoft.Json.Linq;
+using OpenTelemetry.Trace;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -20,22 +21,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 {
     public class DecoupleWorkers_NodeEndToEndTests : NodeEndToEndTestsBase<DecoupleWorkers_NodeEndToEndTests.TestFixture>
     {
-        private TestFixture Fixture1 { get; }
+        private readonly string ProbingPath = Path.GetFullPath("..\\..\\..\\..\\test\\TestWorkers\\ProbingPaths\\workers\\");
 
         public DecoupleWorkers_NodeEndToEndTests(TestFixture fixture) : base(fixture)
         {
-            this.Fixture1 = fixture;
         }
 
         public class TestFixture() : EndToEndTestFixture(rootPath, "node", RpcWorkerConstants.NodeLanguageWorkerName)
         {
             private static readonly string rootPath = Path.Combine("TestScripts", "Node");
+            private readonly string ProbingPath = Path.GetFullPath("..\\..\\..\\..\\test\\TestWorkers\\ProbingPaths\\workers\\");
 
             public override void ConfigureWebHost(IServiceCollection services)
             {
                 base.ConfigureWebHost(services);
-
+                
                 Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerProbingPaths);
+                Environment.SetEnvironmentVariable(EnvironmentSettingNames.WorkerProbingPaths, $"{ProbingPath};");
             }
 
             public override void ConfigureScriptHost(IWebJobsBuilder webJobsBuilder)
@@ -74,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         public async Task CheckLogs()
         {
             var logs = await TestHelpers.GetHostLogsAsync();
-            List<string> result = logs.Where(s => s != null && s.Contains("Found required workerConfig c:\\testData\\workers\\node\\3.10.1\\")).ToList();
+            List<string> result = logs.Where(s => s != null && s.Contains($"Found required workerConfig {ProbingPath}node\\3.10.1")).ToList();
             Assert.True(result.Any());
         }
     }

@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -76,9 +77,22 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 }
             }
 
+            var probingPathsRaw = _environment.GetEnvironmentVariableOrDefault(EnvironmentSettingNames.WorkerProbingPaths, null);
+            List<string> probingPaths = probingPathsRaw?.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList() ?? new List<string>();
+
+            var jsonObj = new
+            {
+                languageWorkers = new
+                {
+                    Probingpaths = probingPaths
+                }
+            };
+
+            string jsonString = JsonSerializer.Serialize(jsonObj, new JsonSerializerOptions { WriteIndented = true });
+
             // If Env variable is present, read from there (works for linux)
             // If windows, read it from file
-            var jsonString = ReadJsonFileAsString("C:\\testData\\test-config.json");
+         //   var jsonString = ReadJsonFileAsString("C:\\testData\\test-config.json");
 
             if (jsonString is not null)
             {
