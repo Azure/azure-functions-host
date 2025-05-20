@@ -1,5 +1,6 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
+
 using Microsoft.Azure.Storage.Blob;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Tests;
@@ -17,13 +18,25 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 {
-    public class NodeEndToEndTests : NodeEndToEndTestsBase<NodeEndToEndTests.TestFixture>
+    public class DecoupleWorkers_NodeEndToEndTests : NodeEndToEndTestsBase<DecoupleWorkers_NodeEndToEndTests.TestFixture>
     {
-        public NodeEndToEndTests(TestFixture fixture) : base(fixture) { }
+        private TestFixture Fixture1 { get; }
+
+        public DecoupleWorkers_NodeEndToEndTests(TestFixture fixture) : base(fixture)
+        {
+            this.Fixture1 = fixture;
+        }
 
         public class TestFixture() : EndToEndTestFixture(rootPath, "node", RpcWorkerConstants.NodeLanguageWorkerName)
         {
             private static readonly string rootPath = Path.Combine("TestScripts", "Node");
+
+            public override void ConfigureWebHost(IServiceCollection services)
+            {
+                base.ConfigureWebHost(services);
+
+                Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerProbingPaths);
+            }
 
             public override void ConfigureScriptHost(IWebJobsBuilder webJobsBuilder)
             {
@@ -61,7 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         public async Task CheckLogs()
         {
             var logs = await TestHelpers.GetHostLogsAsync();
-            List<string> result = logs.Where(s => s != null && s.Contains("C:\\FunctionsRepos\\Host\\azure-functions-host\\out\\bin\\WebJobs.Script.Tests.Integration\\debug\\workers\\node\\")).ToList();
+            List<string> result = logs.Where(s => s != null && s.Contains("Found required workerConfig c:\\testData\\workers\\node\\3.10.1\\")).ToList();
             Assert.True(result.Any());
         }
     }
