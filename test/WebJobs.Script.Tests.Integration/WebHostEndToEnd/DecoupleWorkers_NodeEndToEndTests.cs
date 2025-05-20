@@ -35,7 +35,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             public override void ConfigureWebHost(IServiceCollection services)
             {
                 base.ConfigureWebHost(services);
-                
+
+              //  CopyDirectory(Path.GetFullPath("workers")+"\\node", ProbingPath+"node\\3.10.1");
+
                 Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerProbingPaths);
                 Environment.SetEnvironmentVariable(EnvironmentSettingNames.WorkerProbingPaths, $"{ProbingPath};");
             }
@@ -69,6 +71,44 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                             "Scenarios"
                         ];
                     });
+            }
+
+            public static void CopyDirectory(string sourceDir, string destDir)
+            {
+                // Create destination directory if it doesn't exist
+                Directory.CreateDirectory(destDir);
+
+                // Copy all files
+                foreach (var file in Directory.GetFiles(sourceDir))
+                {
+                    var destFile = Path.Combine(destDir, Path.GetFileName(file));
+                    File.Copy(file, destFile, overwrite: true);
+                }
+
+                // Recursively copy subdirectories
+                foreach (var dir in Directory.GetDirectories(sourceDir))
+                {
+                    var destSubDir = Path.Combine(destDir, Path.GetFileName(dir));
+                    CopyDirectory(dir, destSubDir);
+                }
+            }
+
+            public static void DeleteDirectoryContents(string dir)
+            {
+                if (!Directory.Exists(dir))
+                    return;
+
+                // Delete all files
+                foreach (var file in Directory.GetFiles(dir))
+                {
+                    File.Delete(file);
+                }
+
+                // Delete all subdirectories and their contents
+                foreach (var subDir in Directory.GetDirectories(dir))
+                {
+                    Directory.Delete(subDir, recursive: true);
+                }
             }
         }
 
