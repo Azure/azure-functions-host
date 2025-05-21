@@ -2,11 +2,13 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Extensions.Configuration;
@@ -357,13 +359,43 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         private void ReadLanguageWorkerFile(string workerPath)
         {
-            if (_environment.IsPlaceholderModeEnabled()
-                && !string.IsNullOrEmpty(_workerRuntime)
-                && File.Exists(workerPath))
+            if (!_environment.IsPlaceholderModeEnabled()
+                || string.IsNullOrWhiteSpace(_workerRuntime)
+                || !File.Exists(workerPath))
             {
-                // Read language worker file to avoid disk reads during specialization. This is only to page-in bytes.
-                File.ReadAllBytes(workerPath);
+                return;
             }
+
+            // Reads the file to warm up the operating system's file cache. Can run in the background.
+            _ = Task.Run(() =>
+            {
+                const int bufferSize = 4096;
+                var buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
+
+                try
+                {
+                    using var fs = new FileStream(
+                        workerPath,
+                        FileMode.Open,
+                        FileAccess.Read,
+                        FileShare.Read,
+                        bufferSize,
+                        FileOptions.SequentialScan);
+
+                    while (fs.Read(buffer, 0, bufferSize) > 0)
+                    {
+                        // Do nothing. The goal is to read the file into the OS cache.
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Unexpected error warming up worker file: {filePath}", workerPath);
+                }
+                finally
+                {
+                    ArrayPool<byte>.Shared.Return(buffer);
+                }
+            });
         }
     }
 }
