@@ -79,11 +79,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Theory]
-        [InlineData(null, "LATEST", "java", "node", "powershell", "dotnet-isolated")]
-        [InlineData(null, "STANDARD", "java", "node", "powershell", "dotnet-isolated")]
-        [InlineData("Empty", "LATEST", "java", "node", "powershell", "dotnet-isolated")]
-        [InlineData("Empty", "STANDARD", "java", "node", "powershell", "dotnet-isolated")]
-        public void GetWorkerConfigs_MultiLanguageWorker_NullOREmptyProbingPath_ReturnsExpectedConfigs(string probingPathValue, string releaseChannel, string java, string node, string powershell, string dotnetIsolated)
+        [InlineData(null, "LATEST")]
+        [InlineData(null, "STANDARD")]
+        [InlineData("Empty", "LATEST")]
+        [InlineData("Empty", "STANDARD")]
+        public void GetWorkerConfigs_MultiLanguageWorker_NullOREmptyProbingPath_ReturnsExpectedConfigs(string probingPathValue, string releaseChannel)
         {
             // Arrange
             var mockEnvironment = new Mock<IEnvironment>();
