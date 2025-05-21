@@ -283,6 +283,16 @@ namespace Microsoft.Azure.WebJobs.Script
             return string.Equals(value, ScriptConstants.ElasticPremiumSku, StringComparison.OrdinalIgnoreCase);
         }
 
+        /// <summary>
+        /// Gets a value indicating whether the application is running in a Windows App Service environment.
+        /// </summary>
+        /// <param name="environment">The environment to verify.</param>
+        /// <returns><see cref="true"/> if running in a Windows App Service app; otherwise, false.</returns>
+        public static bool IsAnyWindows(this IEnvironment environment)
+        {
+            return environment.IsWindowsAzureManagedHosting() || environment.IsWindowsConsumption() || environment.IsWindowsElasticPremium();
+        }
+
         public static bool IsDynamicSku(this IEnvironment environment)
         {
             return environment.IsConsumptionSku() || environment.IsWindowsElasticPremium();

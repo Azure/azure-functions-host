@@ -77,24 +77,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 }
             }
 
-            var probingPathsRaw = _environment.GetEnvironmentVariableOrDefault(EnvironmentSettingNames.WorkerProbingPaths, null);
-            List<string> probingPaths = probingPathsRaw?.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList() ?? new List<string>();
+            string jsonString = GetWorkerProbingPaths();
 
-            var jsonObj = new
-            {
-                languageWorkers = new
-                {
-                    Probingpaths = probingPaths
-                }
-            };
-
-            string jsonString = JsonSerializer.Serialize(jsonObj, new JsonSerializerOptions { WriteIndented = true });
-
-            // If Env variable is present, read from there (works for linux)
-            // If windows, read it from file
-         //   var jsonString = ReadJsonFileAsString("C:\\testData\\test-config.json");
-
-            if (jsonString is not null)
+            if (!string.IsNullOrEmpty(jsonString))
             {
                 using var jsonStream = new MemoryStream(Encoding.UTF8.GetBytes(jsonString));
 
@@ -109,16 +94,41 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             options.WorkerConfigs = configFactory.GetConfigs();
         }
 
-        public string ReadJsonFileAsString(string filePath)
+        public string GetWorkerProbingPaths()
         {
-            string jsonString = null;
+            var probingPaths = new List<string>();
+            string output = string.Empty;
 
-            if (File.Exists(filePath))
+            // If Env variable is available, read from there (works for linux)
+            var probingPathsEnvValue = _environment.GetEnvironmentVariableOrDefault(EnvironmentSettingNames.WorkerProbingPaths, null);
+
+            if (!string.IsNullOrEmpty(probingPathsEnvValue))
             {
-                jsonString = File.ReadAllText(filePath);
+                probingPaths = probingPathsEnvValue.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList() ?? new List<string>();
+            }
+            else
+            {
+                if (_environment.IsAnyWindows())
+                {
+                    // Harcoded site extensions path (C:\\SiteExtensions) for Windows until Antares starts setting this as Environment variable.
+                    probingPaths.Add("c:\\testData\\workers");
+                }
             }
 
-            return jsonString;
+            if (probingPaths.Any())
+            {
+                var jsonObj = new
+                {
+                    languageWorkers = new
+                    {
+                        Probingpaths = probingPaths
+                    }
+                };
+
+                output = JsonSerializer.Serialize(jsonObj, new JsonSerializerOptions { WriteIndented = true });
+            }
+
+            return output;
         }
     }
 
