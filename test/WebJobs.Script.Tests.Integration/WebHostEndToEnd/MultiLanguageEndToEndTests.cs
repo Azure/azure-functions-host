@@ -32,13 +32,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
         /// <summary>
         /// Runs tests with multiple language provider function.
         /// </summary>
-        [Fact]
-        public async Task CodelessFunction_CanUse_MultipleLanguageProviders()
+        [Theory]
+        [InlineData("..\\..\\..\\..\\test\\TestWorkers\\ProbingPaths\\workers\\", "EnableProbingPaths")]
+        [InlineData("", "")]
+        public async Task CodelessFunction_CanUse_MultipleLanguageProviders(string path, string flag)
         {
             var sourceFunctionApp = Path.Combine(Environment.CurrentDirectory, "TestScripts", "Node");
+            var a = Path.GetFullPath(path);
+
             var settings = new Dictionary<string, string>()
             {
                 [EnvironmentSettingNames.AppKind] = "workflowApp",
+                [EnvironmentSettingNames.WorkerProbingPaths] = $"{path}"
             };
             var testEnvironment = new TestEnvironment(settings);
 
@@ -78,7 +83,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
         /// <summary>
         /// Runs tests with Java language provider function.
         /// </summary>
-        [Fact]
+        [Theory]
+        [InlineData("..\\..\\..\\..\\test\\TestWorkers\\ProbingPaths\\workers\\", "EnableProbingPaths")]
+        [InlineData("", "")]
         public async Task CodelessFunction_CanUse_SingleJavaLanguageProviders()
         {
             var sourceFunctionApp = Path.Combine(Environment.CurrentDirectory, "TestScripts", "NoFunction");
@@ -117,7 +124,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
         /// <summary>
         /// Runs tests with Node language provider function.
         /// </summary>
-        [Fact]
+        [Theory]
+        [InlineData("..\\..\\..\\..\\test\\TestWorkers\\ProbingPaths\\workers\\", "EnableProbingPaths")]
+        [InlineData("", "")]
         public async Task CodelessFunction_CanUse_SingleJavascriptLanguageProviders()
         {
             var sourceFunctionApp = Path.Combine(Environment.CurrentDirectory, "TestScripts", "NoFunction");
@@ -156,7 +165,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
         /// <summary>
         /// Runs tests with no language provider function.
         /// </summary>
-        [Fact]
+        [Theory]
+        [InlineData("..\\..\\..\\..\\test\\TestWorkers\\ProbingPaths\\workers\\", "EnableProbingPaths")]
+        [InlineData("", "")]
         public async Task CodelessFunction_CanUse_NoLanguageProviders()
         {
             var sourceFunctionApp = Path.Combine(Environment.CurrentDirectory, "TestScripts", "NoFunction");
