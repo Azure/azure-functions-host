@@ -38,12 +38,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
         public async Task CodelessFunction_CanUse_MultipleLanguageProviders(string path, string value)
         {
             var sourceFunctionApp = Path.Combine(Environment.CurrentDirectory, "TestScripts", "Node");
-            var a = Path.GetFullPath(path);
+            var probingPath = string.IsNullOrEmpty(path) ? path : Path.GetFullPath(path);
 
             var settings = new Dictionary<string, string>()
             {
                 [EnvironmentSettingNames.AppKind] = "workflowApp",
-                [EnvironmentSettingNames.WorkerProbingPaths] = $"{path}",
+                [EnvironmentSettingNames.WorkerProbingPaths] = $"{probingPath}",
                 [EnvironmentSettingNames.AzureWebJobsFeatureFlags] = $"{value}"
             };
             var testEnvironment = new TestEnvironment(settings);
@@ -89,11 +89,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
         [InlineData("", "")]
         public async Task CodelessFunction_CanUse_SingleJavaLanguageProviders(string path, string value)
         {
+            var probingPath = string.IsNullOrEmpty(path) ? path : Path.GetFullPath(path);
             var sourceFunctionApp = Path.Combine(Environment.CurrentDirectory, "TestScripts", "NoFunction");
             var settings = new Dictionary<string, string>()
             {
                 [EnvironmentSettingNames.AppKind] = "workflowApp",
-                [EnvironmentSettingNames.WorkerProbingPaths] = $"{path}",
+                [EnvironmentSettingNames.WorkerProbingPaths] = $"{probingPath}",
                 [EnvironmentSettingNames.AzureWebJobsFeatureFlags] = $"{value}"
             };
             var testEnvironment = new TestEnvironment(settings);
@@ -132,11 +133,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
         [InlineData("", "")]
         public async Task CodelessFunction_CanUse_SingleJavascriptLanguageProviders(string path, string value)
         {
+            var probingPath = string.IsNullOrEmpty(path) ? path : Path.GetFullPath(path);
             var sourceFunctionApp = Path.Combine(Environment.CurrentDirectory, "TestScripts", "NoFunction");
             var settings = new Dictionary<string, string>()
             {
                 [EnvironmentSettingNames.AppKind] = "workflowApp",
-                [EnvironmentSettingNames.WorkerProbingPaths] = $"{path}",
+                [EnvironmentSettingNames.WorkerProbingPaths] = $"{probingPath}",
                 [EnvironmentSettingNames.AzureWebJobsFeatureFlags] = $"{value}"
             };
             var testEnvironment = new TestEnvironment(settings);
@@ -175,11 +177,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
         [InlineData("", "")]
         public async Task CodelessFunction_CanUse_NoLanguageProviders(string path, string value)
         {
+            var probingPath = string.IsNullOrEmpty(path) ? path : Path.GetFullPath(path);
             var sourceFunctionApp = Path.Combine(Environment.CurrentDirectory, "TestScripts", "NoFunction");
             var settings = new Dictionary<string, string>()
             {
                 [EnvironmentSettingNames.AppKind] = "workflowApp",
-                [EnvironmentSettingNames.WorkerProbingPaths] = $"{path}",
+                [EnvironmentSettingNames.WorkerProbingPaths] = $"{probingPath}",
                 [EnvironmentSettingNames.AzureWebJobsFeatureFlags] = $"{value}"
             };
             var testEnvironment = new TestEnvironment(settings);
