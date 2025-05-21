@@ -27,13 +27,13 @@
           "Microsoft.Azure.Functions.Platform.Metrics.LinuxConsumption": "1.0.5",
           "Microsoft.Azure.Functions.PowerShellWorker.PS7.0": "4.0.3148",
           "Microsoft.Azure.Functions.PowerShellWorker.PS7.2": "4.0.4025",
-          "Microsoft.Azure.Functions.PowerShellWorker.PS7.4": "4.0.4206",
-          "Microsoft.Azure.Functions.PythonWorker": "4.36.1",
+          "Microsoft.Azure.Functions.PowerShellWorker.PS7.4": "4.0.4134",
+          "Microsoft.Azure.Functions.PythonWorker": "4.35.0",
           "Microsoft.Azure.Storage.File": "11.1.7",
           "Microsoft.Azure.WebJobs": "3.0.41",
           "Microsoft.Azure.WebJobs.Host.Storage": "5.0.1",
-          "Microsoft.Azure.WebJobs.Script": "4.1040.100-pr.25225.8",
-          "Microsoft.Azure.WebJobs.Script.Grpc": "4.1040.100-pr.25225.8",
+          "Microsoft.Azure.WebJobs.Script": "4.1039.100-dev",
+          "Microsoft.Azure.WebJobs.Script.Grpc": "4.1039.100-dev",
           "Microsoft.Azure.WebSites.DataProtection": "2.1.91-alpha",
           "Microsoft.IdentityModel.Protocols.OpenIdConnect": "6.35.0",
           "Microsoft.IdentityModel.Tokens": "6.35.0",
@@ -840,8 +840,8 @@
       },
       "Microsoft.Azure.Functions.PowerShellWorker.PS7.0/4.0.3148": {},
       "Microsoft.Azure.Functions.PowerShellWorker.PS7.2/4.0.4025": {},
-      "Microsoft.Azure.Functions.PowerShellWorker.PS7.4/4.0.4206": {},
-      "Microsoft.Azure.Functions.PythonWorker/4.36.1": {},
+      "Microsoft.Azure.Functions.PowerShellWorker.PS7.4/4.0.4134": {},
+      "Microsoft.Azure.Functions.PythonWorker/4.35.0": {},
       "Microsoft.Azure.KeyVault.Core/2.0.4": {
         "dependencies": {
           "System.Runtime": "4.3.1",
@@ -1017,7 +1017,7 @@
         "runtime": {
           "lib/netstandard2.0/Microsoft.Azure.WebJobs.Script.Abstractions.dll": {
             "assemblyVersion": "1.0.0.0",
-            "fileVersion": "1.0.21220.0"
+            "fileVersion": "1.0.19706.0"
           }
         }
       },
@@ -2077,7 +2077,7 @@
           }
         }
       },
-      "OpenTelemetry.PersistentStorage.Abstractions/1.0.1": {
+      "OpenTelemetry.PersistentStorage.Abstractions/1.0.0": {
         "runtime": {
           "lib/netstandard2.0/OpenTelemetry.PersistentStorage.Abstractions.dll": {
             "assemblyVersion": "1.0.1.378",
@@ -2956,7 +2956,7 @@
           }
         }
       },
-      "Microsoft.Azure.WebJobs.Script/4.1040.100-pr.25225.8": {
+      "Microsoft.Azure.WebJobs.Script/4.1039.100-dev": {
         "dependencies": {
           "Azure.Core": "1.45.0",
           "Azure.Data.Tables": "12.8.3",
@@ -2984,13 +2984,11 @@
           "Mono.Posix.NETStandard": "1.0.0",
           "Newtonsoft.Json": "13.0.3",
           "NuGet.ProjectModel": "5.11.6",
-          "OpenTelemetry.Exporter.OpenTelemetryProtocol": "1.11.2",
-          "OpenTelemetry.Extensions.Hosting": "1.11.2",
-          "OpenTelemetry.Instrumentation.AspNetCore": "1.11.1",
-          "OpenTelemetry.Instrumentation.Http": "1.11.1",
-          "OpenTelemetry.Instrumentation.Process": "1.11.0-beta.2",
-          "OpenTelemetry.Instrumentation.Runtime": "1.11.1",
-          "System.Diagnostics.DiagnosticSource": "9.0.4",
+          "OpenTelemetry.Exporter.OpenTelemetryProtocol": "1.9.0",
+          "OpenTelemetry.Extensions.Hosting": "1.9.0",
+          "OpenTelemetry.Instrumentation.AspNetCore": "1.9.0",
+          "OpenTelemetry.Instrumentation.Http": "1.9.0",
+          "System.Diagnostics.DiagnosticSource": "8.0.0",
           "System.Drawing.Common": "8.0.0",
           "System.Formats.Asn1": "6.0.1",
           "System.IO.Abstractions": "2.1.0.227",
@@ -3006,10 +3004,13 @@
           "System.Threading.Channels": "8.0.0"
         },
         "runtime": {
-          "Microsoft.Azure.WebJobs.Script.dll": {}
+          "Microsoft.Azure.WebJobs.Script.dll": {
+            "assemblyVersion": "4.1039.100-dev",
+            "fileVersion": ""
+          }
         }
       },
-      "Microsoft.Azure.WebJobs.Script.Grpc/4.1040.100-pr.25225.8": {
+      "Microsoft.Azure.WebJobs.Script.Grpc/4.1039.100-dev": {
         "dependencies": {
           "Grpc.AspNetCore": "2.55.0",
           "Microsoft.ApplicationInsights": "2.22.0",
@@ -3018,13 +3019,16 @@
           "Microsoft.ApplicationInsights.WindowsServer": "2.22.0",
           "Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel": "2.22.0",
           "Microsoft.Azure.WebJobs.Rpc.Core": "3.0.37",
-          "Microsoft.Azure.WebJobs.Script": "4.1040.100-pr.25225.8",
+          "Microsoft.Azure.WebJobs.Script": "4.1039.100-dev",
           "System.IO.FileSystem.Primitives": "4.3.0",
           "System.Threading.Channels": "8.0.0",
           "Yarp.ReverseProxy": "2.0.1"
         },
         "runtime": {
-          "Microsoft.Azure.WebJobs.Script.Grpc.dll": {}
+          "Microsoft.Azure.WebJobs.Script.Grpc.dll": {
+            "assemblyVersion": "4.1039.100-dev",
+            "fileVersion": ""
+          }
         }
       },
       "Microsoft.Azure.WebJobs.Script.Reference/4.1040.0.0": {
@@ -3046,7 +3050,7 @@
     }
   },
   "libraries": {
-    "Microsoft.Azure.WebJobs.Script.WebHost/4.1040.100-pr.25225.8": {
+    "Microsoft.Azure.WebJobs.Script.WebHost/4.1039.100-dev": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
@@ -3646,12 +3650,12 @@
       "path": "microsoft.azure.functions.powershellworker.ps7.4/4.0.4206",
       "hashPath": "microsoft.azure.functions.powershellworker.ps7.4.4.0.4206.nupkg.sha512"
     },
-    "Microsoft.Azure.Functions.PythonWorker/4.36.1": {
+    "Microsoft.Azure.Functions.PythonWorker/4.35.0": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-k5XitXh60UV6ppKQi+VxyREocG61xZ5dOcg71aXNnW5EM1t69Zo8IljiFOeZeWHq3Jhm2E2LzU7I2EBuGLZGNA==",
-      "path": "microsoft.azure.functions.pythonworker/4.36.1",
-      "hashPath": "microsoft.azure.functions.pythonworker.4.36.1.nupkg.sha512"
+      "sha512": "sha512-zkQWdqBEx47jzUjQZd/+v3tJ/3VW1hWAiDjVgG6Z6OVrAoCoS8J5r9kzYXapg63M/9VULHy7jTo3xY8zwmso6Q==",
+      "path": "microsoft.azure.functions.pythonworker/4.35.0",
+      "hashPath": "microsoft.azure.functions.pythonworker.4.35.0.nupkg.sha512"
     },
     "Microsoft.Azure.KeyVault.Core/2.0.4": {
       "type": "package",
@@ -3733,7 +3737,7 @@
     "Microsoft.Azure.WebJobs.Script.Abstractions/1.0.4-preview": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-+f2iWeAdES4X4HtvgWoIHPXfTxXeX7UlQDbWMkSuxWdt1vHVJf164IEUZxG7Gtfh42ircV9jy7F1zPhuaWNamQ==",
+      "sha512": "sha512-mvgXnFKwh4/Gw8BXc99ZJd2iQ8DQJTCotvY9PZ9Y2UHa4KiOsYaEW4kuZ5RFBD9KqGO2vXG56w3wMFVyxmaA2g==",
       "path": "microsoft.azure.webjobs.script.abstractions/1.0.4-preview",
       "hashPath": "microsoft.azure.webjobs.script.abstractions.1.0.4-preview.nupkg.sha512"
     },
@@ -4297,7 +4301,7 @@
       "path": "opentelemetry.instrumentation.runtime/1.11.1",
       "hashPath": "opentelemetry.instrumentation.runtime.1.11.1.nupkg.sha512"
     },
-    "OpenTelemetry.PersistentStorage.Abstractions/1.0.1": {
+    "OpenTelemetry.PersistentStorage.Abstractions/1.0.0": {
       "type": "package",
       "serviceable": true,
       "sha512": "sha512-LfXI2EoO7t2ku3hN6rIcUgqrdmNxKPG4pkgVa7Cakb9rlkmHYcqzMavLU5vy+G/txT+ZmLW9Z7TlptTqnrGEXg==",
@@ -5046,12 +5050,12 @@
       "path": "yarp.reverseproxy/2.0.1",
       "hashPath": "yarp.reverseproxy.2.0.1.nupkg.sha512"
     },
-    "Microsoft.Azure.WebJobs.Script/4.1040.100-pr.25225.8": {
+    "Microsoft.Azure.WebJobs.Script/4.1039.100-dev": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
     },
-    "Microsoft.Azure.WebJobs.Script.Grpc/4.1040.100-pr.25225.8": {
+    "Microsoft.Azure.WebJobs.Script.Grpc/4.1039.100-dev": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
