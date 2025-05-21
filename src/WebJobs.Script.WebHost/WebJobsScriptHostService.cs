@@ -6,8 +6,11 @@ using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Identity;
+using Azure.Monitor.OpenTelemetry.Exporter;
 using Microsoft.ApplicationInsights.AspNetCore;
 using Microsoft.ApplicationInsights.AspNetCore.Extensions;
 using Microsoft.ApplicationInsights.DependencyCollector;
@@ -36,6 +39,7 @@ using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
 using static Microsoft.Azure.WebJobs.Script.EnvironmentSettingNames;
+using AppInsightsCredentialOptions = Microsoft.Azure.WebJobs.Logging.ApplicationInsights.TokenCredentialOptions;
 using IApplicationLifetime = Microsoft.AspNetCore.Hosting.IApplicationLifetime;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
@@ -224,7 +228,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
-        private void CheckFileSystem()
+        private async Task CheckFileSystemAsync()
         {
             if (_environment.ZipDeploymentAppSettingsExist())
             {
@@ -247,7 +251,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     }
                     finally
                     {
-                        _logger.LogError(errorPrefix + errorSuffix);
+                        var errorMessage = $"{errorPrefix}{errorSuffix}";
+
+                        _logger.LogError(errorMessage);
+                        await LogErrorWithTransientOtelLoggerAsync(errorMessage);
                     }
                     _applicationLifetime.StopApplication();
                 }
@@ -319,7 +326,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         /// </summary>
         private async Task UnsynchronizedStartHostAsync(ScriptHostStartupOperation activeOperation, int attemptCount = 0, JobHostStartupMode startupMode = JobHostStartupMode.Normal)
         {
-            CheckFileSystem();
+            await CheckFileSystemAsync();
             if (ShutdownRequested)
             {
                 return;
@@ -736,7 +743,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             // Attempt to get the host logger with JobHost configuration applied
             // using the default logger as a fallback
-            return hostLoggerFactory?.CreateLogger(LogCategories.Startup) ?? _logger;
+            if (hostLoggerFactory is not null)
+            {
+                return hostLoggerFactory?.CreateLogger(LogCategories.Startup);
+            }
+
+            // An error occurred before the host was built; a minimal logger factory is being created to send telemetry to AppInsights/Otel.
+            var otelLoggerFactory = BuildOtelLoggerFactory();
+
+            // If the Otel logger factory is null, use the fallback logger instead. These logs will not be accessible in AppInsights/Otel.
+            if (otelLoggerFactory is null)
+            {
+                return _logger;
+            }
+            return new CompositeLogger(_logger, otelLoggerFactory.CreateLogger(LogCategories.Startup));
         }
 
         private void LogInitialization(IHost host, bool isOffline, int attemptCount, int startCount, Guid operationId)
@@ -1045,6 +1065,87 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
 
             _logger.StartupOperationCompleted(operation.Id);
+        }
+
+        private async Task LogErrorWithTransientOtelLoggerAsync(string log)
+        {
+            var loggerFactory = BuildOtelLoggerFactory();
+
+            if (loggerFactory is not null)
+            {
+                var logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
+                logger.LogError(log);
+
+                // Delay increases the chance that the log is sent to AppInsights/Otel before the logger factory is disposed
+                await Task.Delay(2000);
+                // Do a force flush as the host is shutting down and we want to ensure the logs are sent before disposing the logger factory
+                ForceFlush(loggerFactory);
+                // Give some time for the logger to flush
+                await Task.Delay(4000);
+            }
+        }
+
+        private ILoggerFactory BuildOtelLoggerFactory()
+        {
+            var appInsightsConnStr = GetConfigurationValue(AppInsightsConnectionString, _config);
+            var otlpEndpoint = GetConfigurationValue(OtlpEndpoint, _config);
+            if (appInsightsConnStr is not { Length: > 0 } && otlpEndpoint is not { Length: > 0 })
+            {
+                return null; // Nothing configured
+            }
+
+            // Create a minimal logger factory with OpenTelemetry and Azure Monitor exporter
+            return LoggerFactory.Create(builder =>
+            {
+                builder.AddOpenTelemetry(logging =>
+                {
+                    logging.IncludeScopes = true;
+                    logging.IncludeFormattedMessage = true;
+
+                    if (appInsightsConnStr is { Length: > 0 })
+                    {
+                        logging.AddAzureMonitorLogExporter(options =>
+                        {
+                            options.ConnectionString = appInsightsConnStr;
+
+                            var appInsightsAuthStr = GetConfigurationValue(AppInsightsAuthenticationString, _config);
+                            if (appInsightsAuthStr is { Length: > 0 })
+                            {
+                                var credOptions = AppInsightsCredentialOptions.ParseAuthenticationString(appInsightsAuthStr);
+                                options.Credential = new ManagedIdentityCredential(credOptions.ClientId);
+                            }
+                        });
+                    }
+
+                    if (otlpEndpoint is { Length: > 0 })
+                    {
+                        logging.AddOtlpExporter();
+                    }
+                });
+            });
+        }
+
+        private void ForceFlush(ILoggerFactory loggerFactory)
+        {
+            var serviceProvider = (IServiceProvider)loggerFactory.GetType()
+            .GetField("_serviceProvider", BindingFlags.NonPublic | BindingFlags.Instance)
+            .GetValue(loggerFactory);
+
+            // Get all logger providers from the service provider
+            var providers = serviceProvider?.GetServices<ILoggerProvider>() ?? Enumerable.Empty<ILoggerProvider>();
+
+            foreach (var provider in providers)
+            {
+                if (provider is OpenTelemetryLoggerProvider otelProvider)
+                {
+                    otelProvider.Dispose();
+                }
+            }
+        }
+
+        private static string GetConfigurationValue(string key, IConfiguration configuration = null)
+        {
+            return configuration?[key] ?? Environment.GetEnvironmentVariable(key);
         }
 
         protected virtual void Dispose(bool disposing)
