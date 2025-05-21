@@ -7,3 +7,4 @@
 - Fix invocation timeout when incoming request contains "x-ms-invocation-id" header (#10980)
 - Warn if .azurefunctions folder does not exist (#10967)
 - Memory allocation & CPU optimizations in `GrpcMessageExtensionUtilities.ConvertFromHttpMessageToExpando` (#11054)
+- Replace `Timer` with `while`-loop in `FlexConsumptionMetricsPublisher` (#11071)
