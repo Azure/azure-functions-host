@@ -33,9 +33,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
         /// Runs tests with multiple language provider function.
         /// </summary>
         [Theory]
-        [InlineData("..\\..\\..\\..\\test\\TestWorkers\\ProbingPaths\\workers\\", "EnableProbingPaths")]
+        [InlineData("..\\..\\..\\..\\test\\TestWorkers\\ProbingPaths\\workers\\", "EnableWorkerProbingPaths")]
         [InlineData("", "")]
-        public async Task CodelessFunction_CanUse_MultipleLanguageProviders(string path, string flag)
+        public async Task CodelessFunction_CanUse_MultipleLanguageProviders(string path, string value)
         {
             var sourceFunctionApp = Path.Combine(Environment.CurrentDirectory, "TestScripts", "Node");
             var a = Path.GetFullPath(path);
@@ -43,7 +43,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             var settings = new Dictionary<string, string>()
             {
                 [EnvironmentSettingNames.AppKind] = "workflowApp",
-                [EnvironmentSettingNames.WorkerProbingPaths] = $"{path}"
+                [EnvironmentSettingNames.WorkerProbingPaths] = $"{path}",
+                [EnvironmentSettingNames.AzureWebJobsFeatureFlags] = $"{value}"
             };
             var testEnvironment = new TestEnvironment(settings);
 
@@ -84,14 +85,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
         /// Runs tests with Java language provider function.
         /// </summary>
         [Theory]
-        [InlineData("..\\..\\..\\..\\test\\TestWorkers\\ProbingPaths\\workers\\", "EnableProbingPaths")]
+        [InlineData("..\\..\\..\\..\\test\\TestWorkers\\ProbingPaths\\workers\\", "EnableWorkerProbingPaths")]
         [InlineData("", "")]
-        public async Task CodelessFunction_CanUse_SingleJavaLanguageProviders()
+        public async Task CodelessFunction_CanUse_SingleJavaLanguageProviders(string path, string value)
         {
             var sourceFunctionApp = Path.Combine(Environment.CurrentDirectory, "TestScripts", "NoFunction");
             var settings = new Dictionary<string, string>()
             {
                 [EnvironmentSettingNames.AppKind] = "workflowApp",
+                [EnvironmentSettingNames.WorkerProbingPaths] = $"{path}",
+                [EnvironmentSettingNames.AzureWebJobsFeatureFlags] = $"{value}"
             };
             var testEnvironment = new TestEnvironment(settings);
 
@@ -125,14 +128,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
         /// Runs tests with Node language provider function.
         /// </summary>
         [Theory]
-        [InlineData("..\\..\\..\\..\\test\\TestWorkers\\ProbingPaths\\workers\\", "EnableProbingPaths")]
+        [InlineData("..\\..\\..\\..\\test\\TestWorkers\\ProbingPaths\\workers\\", "EnableWorkerProbingPaths")]
         [InlineData("", "")]
-        public async Task CodelessFunction_CanUse_SingleJavascriptLanguageProviders()
+        public async Task CodelessFunction_CanUse_SingleJavascriptLanguageProviders(string path, string value)
         {
             var sourceFunctionApp = Path.Combine(Environment.CurrentDirectory, "TestScripts", "NoFunction");
             var settings = new Dictionary<string, string>()
             {
                 [EnvironmentSettingNames.AppKind] = "workflowApp",
+                [EnvironmentSettingNames.WorkerProbingPaths] = $"{path}",
+                [EnvironmentSettingNames.AzureWebJobsFeatureFlags] = $"{value}"
             };
             var testEnvironment = new TestEnvironment(settings);
 
@@ -166,14 +171,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
         /// Runs tests with no language provider function.
         /// </summary>
         [Theory]
-        [InlineData("..\\..\\..\\..\\test\\TestWorkers\\ProbingPaths\\workers\\", "EnableProbingPaths")]
+        [InlineData("..\\..\\..\\..\\test\\TestWorkers\\ProbingPaths\\workers\\", "EnableWorkerProbingPaths")]
         [InlineData("", "")]
-        public async Task CodelessFunction_CanUse_NoLanguageProviders()
+        public async Task CodelessFunction_CanUse_NoLanguageProviders(string path, string value)
         {
             var sourceFunctionApp = Path.Combine(Environment.CurrentDirectory, "TestScripts", "NoFunction");
             var settings = new Dictionary<string, string>()
             {
                 [EnvironmentSettingNames.AppKind] = "workflowApp",
+                [EnvironmentSettingNames.WorkerProbingPaths] = $"{path}",
+                [EnvironmentSettingNames.AzureWebJobsFeatureFlags] = $"{value}"
             };
             var testEnvironment = new TestEnvironment(settings);
 

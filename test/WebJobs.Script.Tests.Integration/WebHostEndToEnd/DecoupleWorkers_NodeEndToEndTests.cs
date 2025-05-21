@@ -1,15 +1,9 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using Microsoft.Azure.Storage.Blob;
-using Microsoft.Azure.WebJobs.Script;
-using Microsoft.Azure.WebJobs.Script.Tests;
-using Microsoft.Azure.WebJobs.Script.Tests.EndToEnd;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Newtonsoft.Json.Linq;
-using OpenTelemetry.Trace;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -35,8 +29,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             public override void ConfigureWebHost(IServiceCollection services)
             {
                 base.ConfigureWebHost(services);
-
-              //  CopyDirectory(Path.GetFullPath("workers")+"\\node", ProbingPath+"node\\3.10.1");
 
                 Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerProbingPaths);
                 Environment.SetEnvironmentVariable(EnvironmentSettingNames.WorkerProbingPaths, $"{ProbingPath};");
