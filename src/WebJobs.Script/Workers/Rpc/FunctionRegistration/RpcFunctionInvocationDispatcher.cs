@@ -281,7 +281,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             if (workerConfig is not null)
             {
                 // it will be null for dotnet isolated case
-                _logger.LogInformation("Found required workerConfig {path}", workerConfig?.Arguments.WorkerPath);
+                _logger.LogInformation("Found required workerConfig {path}", workerConfig?.Arguments?.WorkerPath);
             }
 
             // For other OOP workers, workerconfigs are present inside "workers" folder of host bin directory and is used to populate "_workerConfigs".
