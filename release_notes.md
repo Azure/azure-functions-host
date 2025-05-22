@@ -8,3 +8,4 @@
 - Memory allocation optimizations in `ReadLanguageWorkerFile` by reading files in buffered chunks, preventing LOH allocations (#11069)
 - Enhancing the capability to send startup failure logs to AppInsights/Otel. (#11055)
 - Added support for collecting cross-platform perf traces and generating PGO JIT traces (#11062)
+- Memory allocation optimizations in `FeatureFlags.IsEnabled` by adopting zero-allocation `ContainsToken` for efficient delimited token search (#11075)
