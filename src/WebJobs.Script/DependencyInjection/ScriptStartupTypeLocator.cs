@@ -30,6 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
     public sealed class ScriptStartupTypeLocator : IWebJobsStartupTypeLocator
     {
         private const string ApplicationInsightsStartupType = "Microsoft.Azure.WebJobs.Extensions.ApplicationInsights.ApplicationInsightsWebJobsStartup, Microsoft.Azure.WebJobs.Extensions.ApplicationInsights, Version=1.0.0.0, Culture=neutral, PublicKeyToken=9475d07f10cb09df";
+        
         private readonly string _rootScriptPath;
         private readonly ILogger _logger;
         private readonly IExtensionBundleManager _extensionBundleManager;

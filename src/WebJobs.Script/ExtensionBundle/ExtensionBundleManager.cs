@@ -50,6 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
                 }
 
                 _extensionBundleVersion = _extensionBundleVersion ?? await GetLatestMatchingBundleVersionAsync();
+
                 return new ExtensionBundleDetails()
                 {
                     Id = _options.Id,
