@@ -4,6 +4,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Azure.WebJobs.Script.Extensions;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 {
@@ -47,6 +48,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
                 if (Interlocked.CompareExchange(ref _specialized, 1, 0) == 0)
                 {
+                    // For Flex environments, set the cold start header during specialization
+                    // since it's not automatically set by the platform like in Windows Consumption
+                    if (_environment.IsFlexConsumptionSku())
+                    {
+                        httpContext.Request.Headers[ScriptConstants.AntaresColdStartHeaderName] = "1";
+                    }
+
                     Interlocked.Exchange(ref _invoke, _next);
                 }
             }
