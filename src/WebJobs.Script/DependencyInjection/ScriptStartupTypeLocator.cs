@@ -82,10 +82,9 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
             // dotnet app precompiled -> Do not use bundles
             ExtensionRequirementsInfo extensionRequirements = GetExtensionRequirementsInfo();
             ImmutableArray<FunctionMetadata> functionMetadataCollection = ImmutableArray<FunctionMetadata>.Empty;
-            ExtensionBundleDetails bundleDetails = null;
             if (bundleConfigured)
             {
-                bundleDetails = await _extensionBundleManager.GetExtensionBundleDetails();
+                ExtensionBundleDetails bundleDetails = await _extensionBundleManager.GetExtensionBundleDetails();
                 ValidateBundleRequirements(bundleDetails, extensionRequirements);
 
                 functionMetadataCollection = _functionMetadataManager.GetFunctionMetadata(forceRefresh: true, includeCustomProviders: false);
@@ -125,8 +124,6 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
                 }
 
                 _logger.ScriptStartUpLoadingExtensionBundle(extensionsMetadataPath);
-
-                _extensionBundleManager.CompareWithLatestMajorVersion();
             }
             else
             {

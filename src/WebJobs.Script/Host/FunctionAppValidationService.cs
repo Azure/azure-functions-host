@@ -8,6 +8,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
+using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -22,15 +23,18 @@ namespace Microsoft.Azure.WebJobs.Script.Host
         private readonly IEnvironment _environment;
         private readonly ILogger<FunctionAppValidationService> _logger;
         private readonly IOptions<ScriptJobHostOptions> _scriptOptions;
+        private readonly IExtensionBundleManager _extensionBundleManager;
 
         public FunctionAppValidationService(
             ILogger<FunctionAppValidationService> logger,
             IOptions<ScriptJobHostOptions> scriptOptions,
+            IExtensionBundleManager extensionBundleManager,
             IEnvironment environment)
         {
             _scriptOptions = scriptOptions ?? throw new ArgumentNullException(nameof(scriptOptions));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
+            _extensionBundleManager = extensionBundleManager ?? throw new ArgumentNullException(nameof(extensionBundleManager));
         }
 
         protected override async Task ExecuteAsync(CancellationToken cancellationToken)
@@ -41,6 +45,8 @@ namespace Microsoft.Azure.WebJobs.Script.Host
                 Utility.ExecuteAfterColdStartDelay(_environment, Validate, cancellationToken);
             }
 
+            // Validate the extension bundle and throw warning for outdated bundles
+            _extensionBundleManager.CompareWithLatestMajorVersion();
             await Task.CompletedTask;
         }
 

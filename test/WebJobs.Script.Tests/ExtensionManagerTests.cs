@@ -193,6 +193,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 _isLegacyExtensionBundle = isLegacyExtensionBundle;
             }
 
+            public void CompareWithLatestMajorVersion()
+            {
+                // No-op for test stub. This can be extended for test verifications if needed.
+            }
+
             public Task<string> GetExtensionBundleBinPathAsync()
             {
                 return Task.FromResult(Path.Combine(_bundlePath, "bin"));

@@ -1,13 +1,15 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
-
 using System;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Host;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -21,8 +23,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     {
         private readonly ILogger<FunctionAppValidationService> _testLogger;
         private readonly Mock<IOptions<ScriptJobHostOptions>> _scriptOptionsMock;
+        private readonly IExtensionBundleManager _extensionBundleManager;
         private readonly ScriptJobHostOptions _scriptJobHostOptions;
         private readonly TestLoggerProvider _testLoggerProvider;
+        private readonly ILoggerFactory _loggerFactory;
 
         public FunctionAppValidationServiceTests()
         {
@@ -36,9 +40,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _scriptOptionsMock.Setup(o => o.Value).Returns(_scriptJobHostOptions);
 
             _testLoggerProvider = new TestLoggerProvider();
-            var factory = new LoggerFactory();
-            factory.AddProvider(_testLoggerProvider);
-            _testLogger = factory.CreateLogger<FunctionAppValidationService>();
+            _loggerFactory = new LoggerFactory();
+            _loggerFactory.AddProvider(_testLoggerProvider);
+            _testLogger = _loggerFactory.CreateLogger<FunctionAppValidationService>();
+            _extensionBundleManager = new Mock<IExtensionBundleManager>().Object;
         }
 
         [Fact]
@@ -49,6 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var service = new FunctionAppValidationService(
                 _testLogger,
                 _scriptOptionsMock.Object,
+                _extensionBundleManager,
                 new TestEnvironment());
 
             // Act
@@ -72,6 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var service = new FunctionAppValidationService(
                 _testLogger,
                 _scriptOptionsMock.Object,
+                _extensionBundleManager,
                 environment);
 
             // Act
@@ -105,6 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var service = new FunctionAppValidationService(
                 _testLogger,
                 scriptOptionsMock.Object,
+                _extensionBundleManager,
                 environment);
 
             // Act
@@ -136,6 +144,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var service = new FunctionAppValidationService(
                 _testLogger,
                 _scriptOptionsMock.Object,
+                _extensionBundleManager,
                 environment);
 
             // Act
@@ -146,6 +155,39 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 int completed = _testLoggerProvider.GetAllLogMessages().Count(p => p.FormattedMessage.Contains("Could not find the .azurefunctions folder in the deployed artifacts of a .NET isolated function app."));
                 return completed > 0;
             });
+        }
+
+        [Theory]
+        [InlineData("Microsoft.Azure.Functions.ExtensionBundle", "3.36.0", true)]
+        [InlineData("Microsoft.Azure.Functions.ExtensionBundle", "2.25.0", true)]
+        [InlineData("Microsoft.Azure.Functions.ExtensionBundle", "4.22.0", false)]
+        [InlineData("Microsoft.Azure.Functions.ExtensionBundle.Preview", "4.29.0", false)]
+        [InlineData("Microsoft.Azure.Functions.ExtensionBundle.Preview", "3.2.0", false)]
+        public void CompareWithLatestMajorVersion_LogsExpectedDiagnosticEvents(string bundleId, string bundleVersion, bool shouldLogEvent)
+        {
+            // Arrange
+            _testLoggerProvider.ClearAllLogMessages();
+
+            var options = new ExtensionBundleOptions { Id = bundleId };
+            var env = new TestEnvironment();
+            var config = new FunctionsHostingConfigOptions();
+            var manager = new ExtensionBundleManager(options, env, _loggerFactory, config);
+
+            // Set the private _extensionBundleVersion field using reflection
+            typeof(ExtensionBundleManager)
+                .GetField("_extensionBundleVersion", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                .SetValue(manager, bundleVersion);
+
+            // Act
+            manager.CompareWithLatestMajorVersion();
+
+            // Assert
+            var logMessages = _testLoggerProvider.GetAllLogMessages();
+            bool hasOutdatedBundleLog = logMessages.Any(m => m.FormattedMessage.Contains(bundleVersion) &&
+                m.FormattedMessage.Contains("outdated version") &&
+                m.FormattedMessage.Contains("of the extension bundle"));
+
+            Assert.Equal(shouldLogEvent, hasOutdatedBundleLog);
         }
     }
 }
