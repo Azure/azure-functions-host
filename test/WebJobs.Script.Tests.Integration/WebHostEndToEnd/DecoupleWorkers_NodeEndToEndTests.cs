@@ -1,6 +1,7 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -30,39 +31,48 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             {
                 base.ConfigureWebHost(services);
 
-                Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerProbingPaths);
+                //Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagDisableWorkerProbingPaths);
                 Environment.SetEnvironmentVariable(EnvironmentSettingNames.WorkerProbingPaths, $"{ProbingPath};");
             }
+
+            // Fix for CS1061: 'IServiceCollection' does not contain a definition for 'Services'.
+            // The issue is that 'IServiceCollection' does not have a 'Services' property. Instead, the 'Configure' method should be called directly on the 'IServiceCollection' instance.
 
             public override void ConfigureScriptHost(IWebJobsBuilder webJobsBuilder)
             {
                 base.ConfigureScriptHost(webJobsBuilder);
 
-                webJobsBuilder.AddAzureStorage()
-                    .Services.Configure<ScriptJobHostOptions>(o =>
+                webJobsBuilder.AddAzureStorage();
+
+                webJobsBuilder.Services.Configure<FunctionsHostingConfigOptions>(o =>
+                {
+                    o.Features.Add(RpcWorkerConstants.EnableProbingPathsForWorkers, "node");
+                });
+
+                webJobsBuilder.Services.Configure<ScriptJobHostOptions>(o =>
+                {
+                    o.Functions = new List<string>
                     {
-                        o.Functions =
-                        [
-                            "BlobTriggerToBlob",
-                            "HttpTrigger",
-                            "HttpTrigger-Scenarios",
-                            "HttpTriggerExpressApi",
-                            "HttpTriggerPromise",
-                            "HttpTriggerToBlob",
-                            "Invalid",
-                            "ManualTrigger",
-                            "MultipleExports",
-                            "MultipleOutputs",
-                            "MultipleInputs",
-                            "QueueTriggerByteArray",
-                            "QueueTriggerToBlob",
-                            "SingleNamedExport",
-                            "TableIn",
-                            "TableOut",
-                            "TimerTrigger",
-                            "Scenarios"
-                        ];
-                    });
+                        "BlobTriggerToBlob",
+                        "HttpTrigger",
+                        "HttpTrigger-Scenarios",
+                        "HttpTriggerExpressApi",
+                        "HttpTriggerPromise",
+                        "HttpTriggerToBlob",
+                        "Invalid",
+                        "ManualTrigger",
+                        "MultipleExports",
+                        "MultipleOutputs",
+                        "MultipleInputs",
+                        "QueueTriggerByteArray",
+                        "QueueTriggerToBlob",
+                        "SingleNamedExport",
+                        "TableIn",
+                        "TableOut",
+                        "TimerTrigger",
+                        "Scenarios"
+                    };
+                });
             }
 
             public static void CopyDirectory(string sourceDir, string destDir)

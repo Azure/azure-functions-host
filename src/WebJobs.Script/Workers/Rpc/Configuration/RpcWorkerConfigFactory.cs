@@ -6,11 +6,13 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
@@ -25,6 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly string _workerRuntime;
         private readonly IEnvironment _environment;
         private readonly IWorkerConfigurationResolver _workerConfigurationResolver;
+        private readonly FunctionsHostingConfigOptions _functionsHostingConfigOptions;
         private readonly JsonSerializerOptions _jsonSerializerOptions = new()
         {
             PropertyNameCaseInsensitive = true
@@ -38,7 +41,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                                         IEnvironment environment,
                                         IMetricsLogger metricsLogger,
                                         IWorkerProfileManager workerProfileManager,
-                                        IWorkerConfigurationResolver workerConfigurationResolver)
+                                        IWorkerConfigurationResolver workerConfigurationResolver,
+                                        IOptions<FunctionsHostingConfigOptions> functionsHostingConfigOptions)
         {
             _config = config ?? throw new ArgumentNullException(nameof(config));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -48,6 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _profileManager = workerProfileManager ?? throw new ArgumentNullException(nameof(workerProfileManager));
             _workerRuntime = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
             _workerConfigurationResolver = workerConfigurationResolver ?? throw new ArgumentNullException(nameof(workerConfigurationResolver));
+            _functionsHostingConfigOptions = functionsHostingConfigOptions.Value;
 
             WorkersDirPath = GetDefaultWorkersDirectory(Directory.Exists);
             var workersDirectorySection = _config.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}:{WorkerConstants.WorkersDirectorySectionName}");
@@ -205,7 +210,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                         _workerDescriptionDictionary[workerDescription.Language] = rpcWorkerConfig;
                         ReadLanguageWorkerFile(arguments.WorkerPath);
 
-                        _logger.LogDebug("Added WorkerConfig for language: {language}", workerDescription.Language);
+                        _logger.LogDebug("Added WorkerConfig for language: {language} from path: {path}", workerDescription.Language, workerDescription.DefaultWorkerPath);
                     }
                 }
                 catch (Exception ex) when (!ex.IsFatal())
@@ -314,8 +319,24 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal bool AreProbingPathsEnabled()
         {
-            return true;
-           // return FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableWorkerProbingPaths, _environment);
+            bool isFeatureFlagDisabled = FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagDisableWorkerProbingPaths, _environment);
+
+            if (isFeatureFlagDisabled)
+            {
+                return false;
+            }
+
+            HashSet<string> probingPathsEnabledWorkersViaHostingConfig = _functionsHostingConfigOptions.EnableProbingPathsForWorkers.ToLowerInvariant().Split("|").ToHashSet();
+
+            if (!_environment.IsMultiLanguageRuntimeEnvironment())
+            {
+                if (!string.IsNullOrWhiteSpace(_workerRuntime))
+                {
+                    return probingPathsEnabledWorkersViaHostingConfig.Contains(_workerRuntime);
+                }
+            }
+
+            return probingPathsEnabledWorkersViaHostingConfig.Any() ? true : false;
         }
 
         private void ReadLanguageWorkerFile(string workerPath)

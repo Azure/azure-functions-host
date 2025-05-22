@@ -8,9 +8,11 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using Microsoft.Azure.AppService.Proxy.Common.Extensions;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 {
@@ -20,20 +22,27 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         private readonly ILogger _logger;
         private readonly IWorkerProfileManager _profileManager;
         private readonly IEnvironment _environment;
+        private readonly FunctionsHostingConfigOptions _functionsHostingConfigOptions;
         private readonly JsonSerializerOptions _jsonSerializerOptions = new()
         {
             PropertyNameCaseInsensitive = true
         };
 
+        private HashSet<string> _probingPathsEnabledWorkersViaHostingConfig;
+
         public WorkerConfigurationResolver(IConfiguration config,
                                         ILogger logger,
                                         IEnvironment environment,
-                                        IWorkerProfileManager workerProfileManager)
+                                        IWorkerProfileManager workerProfileManager,
+                                        IOptions<FunctionsHostingConfigOptions> functionsHostingConfigOptions)
         {
             _config = config ?? throw new ArgumentNullException(nameof(config));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _profileManager = workerProfileManager ?? throw new ArgumentNullException(nameof(workerProfileManager));
+            _functionsHostingConfigOptions = functionsHostingConfigOptions?.Value ?? throw new ArgumentNullException(nameof(functionsHostingConfigOptions));
+
+            _probingPathsEnabledWorkersViaHostingConfig = _functionsHostingConfigOptions.EnableProbingPathsForWorkers.ToLowerInvariant().Split("|").ToHashSet();
         }
 
         public List<string> GetWorkerConfigs(List<string> probingPaths, string fallbackPath)
@@ -59,9 +68,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                             // Only skip worker directories that don't match the current runtime.
                             // Do not skip non-worker directories like the function app payload directory
                             // && languageWorkerPath.StartsWith(fallbackPath))
-                            if (!_environment.IsMultiLanguageRuntimeEnvironment() &&
+                            if (!_probingPathsEnabledWorkersViaHostingConfig.Contains(languageWorkerFolder) ||
+                                (!_environment.IsMultiLanguageRuntimeEnvironment() &&
                                 workerRuntime is not null &&
-                                !workerRuntime.Equals(languageWorkerFolder, StringComparison.OrdinalIgnoreCase))
+                                !workerRuntime.Equals(languageWorkerFolder, StringComparison.OrdinalIgnoreCase)))
                             {
                                 continue;
                             }

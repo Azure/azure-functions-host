@@ -278,12 +278,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             var workerConfig = _workerConfigs.FirstOrDefault(c => c.Description.Language.Equals(_workerRuntime, StringComparison.InvariantCultureIgnoreCase));
 
-            if (workerConfig is not null)
-            {
-                // it will be null for dotnet isolated case
-                _logger.LogInformation("Found required workerConfig {path}", workerConfig?.Arguments?.WorkerPath);
-            }
-
             // For other OOP workers, workerconfigs are present inside "workers" folder of host bin directory and is used to populate "_workerConfigs".
             // For dotnet-isolated _workerConfigs is populated by reading workerconfig.json from the deployed payload(customer function app code).
             // So if workerConfig is null and worker runtime is dotnet-isolated, that means isolated function code was not deployed yet.
