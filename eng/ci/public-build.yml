@@ -1,5 +1,11 @@
 # This build is used for public PR and CI builds.
 
+parameters:
+- name: privateSiteExt
+  displayName: Build private site extension
+  type: boolean
+  default: false
+
 trigger:
   batch: true
   branches:
@@ -64,3 +70,9 @@ extends:
     - stage: Test
       jobs:
       - template: /eng/ci/templates/jobs/run-unit-tests.yml@self
+
+    - ${{ if eq(parameters.privateSiteExt, true) }}:
+      - stage: Build
+        dependsOn: []
+        jobs:
+        - template: /eng/ci/templates/jobs/build-private-site-ext.yml@self
