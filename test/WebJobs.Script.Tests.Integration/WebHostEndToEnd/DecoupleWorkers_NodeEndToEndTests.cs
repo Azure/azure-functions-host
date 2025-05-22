@@ -31,6 +31,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             {
                 base.ConfigureWebHost(services);
 
+                services.Configure<FunctionsHostingConfigOptions>(o => o.Features.Add(RpcWorkerConstants.EnableProbingPathsForWorkers, "node"));
+
                 //Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagDisableWorkerProbingPaths);
                 Environment.SetEnvironmentVariable(EnvironmentSettingNames.WorkerProbingPaths, $"{ProbingPath};");
             }
@@ -43,11 +45,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 base.ConfigureScriptHost(webJobsBuilder);
 
                 webJobsBuilder.AddAzureStorage();
-
-                webJobsBuilder.Services.Configure<FunctionsHostingConfigOptions>(o =>
-                {
-                    o.Features.Add(RpcWorkerConstants.EnableProbingPathsForWorkers, "node");
-                });
 
                 webJobsBuilder.Services.Configure<ScriptJobHostOptions>(o =>
                 {
