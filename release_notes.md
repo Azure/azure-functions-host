@@ -15,3 +15,4 @@
 - Disable Diagnostic Events when Table Storage is not accessible (#10996)
 - Update flex metric publisher to publish every 30 seconds (regardless of actvity) (#11019)
 - Add JitTrace Files for v4.1040
+- Fix Instance Manager for CV1 Migration (#11072)
