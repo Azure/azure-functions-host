@@ -343,7 +343,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
         private ExtensionRequirementsInfo GetExtensionRequirementsInfo()
         {
             ExtensionRequirementsInfo requirementsInfo = _extensionRequirementOptions.Value.Bundles != null || _extensionRequirementOptions.Value.Extensions != null
-                ? new ExtensionRequirementsInfo(_extensionRequirementOptions.Value.Bundles, _extensionRequirementOptions.Value.Extensions)
+                ? new ExtensionRequirementsInfo(_extensionRequirementOptions.Value.Bundles?.ToArray() ?? [], _extensionRequirementOptions.Value.Extensions?.ToArray() ?? [])
                 : DependencyHelper.GetExtensionRequirements();
             return requirementsInfo;
         }

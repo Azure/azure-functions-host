@@ -2,41 +2,33 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.IO;
 using System.IO.Abstractions;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
-using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 {
-    public class FlexConsumptionMetricsPublisher : IMetricsPublisher, IDisposable
+    public sealed partial class FlexConsumptionMetricsPublisher : IMetricsPublisher, IDisposable
     {
         private readonly IOptionsMonitor<StandbyOptions> _standbyOptions;
         private readonly FlexConsumptionMetricsPublisherOptions _options;
         private readonly IEnvironment _environment;
         private readonly ILogger<FlexConsumptionMetricsPublisher> _logger;
         private readonly IHostMetricsProvider _metricsProvider;
-        private readonly object _lock = new object();
+        private readonly object _lock = new();
         private readonly IFileSystem _fileSystem;
         private readonly LegionMetricsFileManager _metricsFileManager;
 
-        private Timer _metricsPublisherTimer;
-        private bool _started = false;
         private DateTime _currentActivityIntervalStart;
         private DateTime _activityIntervalHighWatermark = DateTime.MinValue;
-        private ValueStopwatch _intervalStopwatch;
         private IDisposable _standbyOptionsOnChangeSubscription;
-        private TimeSpan _metricPublishInterval;
-        private TimeSpan _initialPublishDelay;
         private DateTime _lastPublishTime = DateTime.UtcNow;
+        private Lifecycle _lifecycle;
 
         public FlexConsumptionMetricsPublisher(IEnvironment environment, IOptionsMonitor<StandbyOptions> standbyOptions, IOptions<FlexConsumptionMetricsPublisherOptions> options,
             ILogger<FlexConsumptionMetricsPublisher> logger, IFileSystem fileSystem, IHostMetricsProvider metricsProvider)
@@ -71,29 +63,43 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 
         internal LegionMetricsFileManager MetricsFileManager => _metricsFileManager;
 
+        private bool IsStarted => _lifecycle is not null;
+
         public void Start()
         {
-            Initialize();
+            if (_lifecycle is not null)
+            {
+                return;
+            }
 
-            _logger.LogInformation($"Starting metrics publisher (AlwaysReady={IsAlwaysReady}, MetricsPath='{_metricsFileManager.MetricsFilePath}').");
+            lock (_lock)
+            {
+                if (_lifecycle is not null)
+                {
+                    return;
+                }
 
-            _metricsPublisherTimer = new Timer(OnFunctionMetricsPublishTimer, null, _initialPublishDelay, _metricPublishInterval);
-            _started = true;
+                IsAlwaysReady = _environment
+                    .GetEnvironmentVariable(EnvironmentSettingNames.FunctionsAlwaysReadyInstance) == "1";
+
+                _logger.LogInformation(
+                    $"Starting metrics publisher (AlwaysReady={IsAlwaysReady},"
+                    + $" MetricsPath='{_metricsFileManager.MetricsFilePath}').");
+
+                _lifecycle = new(
+                    this,
+                    TimeSpan.FromMilliseconds(_options.InitialPublishDelayMS),
+                    TimeSpan.FromMilliseconds(_options.MetricsPublishIntervalMS));
+            }
         }
 
-        /// <summary>
-        /// Initialize any environmentally derived state after specialization, prior to starting the publisher.
-        /// </summary>
-        internal void Initialize()
+        public void Dispose()
         {
-            _metricPublishInterval = TimeSpan.FromMilliseconds(_options.MetricsPublishIntervalMS);
-            _initialPublishDelay = TimeSpan.FromMilliseconds(_options.InitialPublishDelayMS);
-            _intervalStopwatch = ValueStopwatch.StartNew();
-
-            IsAlwaysReady = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsAlwaysReadyInstance) == "1";
+            Interlocked.Exchange(ref _lifecycle, null)?.Dispose();
+            Interlocked.Exchange(ref _standbyOptionsOnChangeSubscription, null)?.Dispose();
         }
 
-        internal async Task OnPublishMetrics(DateTime now)
+        internal async Task OnPublishMetrics(DateTime now, ValueStopwatch stopwatch)
         {
             try
             {
@@ -122,7 +128,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
                 {
                     metrics = new Metrics
                     {
-                        TotalTimeMS = (long)_intervalStopwatch.GetElapsedTime().TotalMilliseconds,
+                        TotalTimeMS = (long)stopwatch.GetElapsedTime().TotalMilliseconds,
                         ExecutionCount = FunctionExecutionCount,
                         ExecutionTimeMS = FunctionExecutionTimeMS,
                         IsAlwaysReady = IsAlwaysReady,
@@ -149,15 +155,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
                 // ensure no background exceptions escape
                 _logger.LogError(ex, $"Error publishing metrics.");
             }
-            finally
-            {
-                _intervalStopwatch = ValueStopwatch.StartNew();
-            }
-        }
-
-        private async void OnFunctionMetricsPublishTimer(object state)
-        {
-            await OnPublishMetrics(DateTime.UtcNow);
         }
 
         private void OnStandbyOptionsChange()
@@ -175,7 +172,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 
         internal void OnFunctionStarted(string functionName, string invocationId, DateTime now)
         {
-            if (!_started)
+            if (!IsStarted)
             {
                 return;
             }
@@ -199,7 +196,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 
         internal void OnFunctionCompleted(string functionName, string invocationId, DateTime now)
         {
-            if (!_started)
+            if (!IsStarted)
             {
                 return;
             }
@@ -265,15 +262,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         private static double RoundUp(double metric, int granularity)
         {
             return Math.Ceiling(metric / granularity) * granularity;
-        }
-
-        public void Dispose()
-        {
-            _metricsPublisherTimer?.Dispose();
-            _metricsPublisherTimer = null;
-
-            _standbyOptionsOnChangeSubscription?.Dispose();
-            _standbyOptionsOnChangeSubscription = null;
         }
 
         internal class Metrics
