@@ -10,3 +10,4 @@
 - Enhancing the capability to send startup failure logs to AppInsights/Otel. (#11055)
 - Added support for collecting cross-platform perf traces and generating PGO JIT traces (#11062)
 - Memory allocation optimizations in `DependencyHelper.GetExtensionRequirements` (#11022)
+- Fix Instance Manager for CV1 Migration (#11072)
