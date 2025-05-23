@@ -76,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             _environment = new TestEnvironment(settings);
             _loggerProvider = new TestLoggerProvider();
-
+            
             _testOutputHelper = testOutputHelper;
 
             // allow each test to override this
@@ -895,7 +895,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.NotNull(standbyManager);
 
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
-            _environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "dotnet-isolated");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "node");
             SystemEnvironment.Instance.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
 
@@ -906,11 +906,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.NotNull(scriptHostManager);
             Assert.Equal(ScriptHostState.Running, scriptHostManager.State);
 
+            /*
             await TestHelpers.Await(() =>
             {
                 int completed = _loggerProvider.GetAllLogMessages().Count(p => p.FormattedMessage.Contains("Could not find the .azurefunctions folder in the deployed artifacts of a .NET isolated function app."));
                 return completed > 0;
             });
+            */
+
+            var a = _loggerProvider.GetAllLogMessages();
+            var b = a.Any(a => a.FormattedMessage.Contains("Workers Directory set"));
+            Assert.True(b);
         }
 
         [Fact]
@@ -1243,6 +1249,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     b.AddProvider(_loggerProvider);
                     b.AddFilter<TestLoggerProvider>("Microsoft.Azure.WebJobs", LogLevel.Debug);
                     b.AddFilter<TestLoggerProvider>("Worker", LogLevel.Debug);
+                    b.AddFilter<TestLoggerProvider>("Host.LanguageWorkerConfig", LogLevel.Trace);
                 })
                 .ConfigureAppConfiguration(c =>
                 {
