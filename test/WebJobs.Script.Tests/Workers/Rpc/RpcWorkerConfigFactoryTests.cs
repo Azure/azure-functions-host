@@ -1,11 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text.Json;
+using Google.Protobuf.WellKnownTypes;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
@@ -15,6 +11,11 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text.Json;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
@@ -219,12 +220,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.Equal("7.4", powershellWorkerConfig.Description.DefaultRuntimeVersion);
         }
 
-        [Fact]
-        public void DefaultWorkerConfigs_Overrides_VersionAppSetting()
+        [Theory]
+        [InlineData("7.4", "7.4", null, null)]
+        [InlineData(null, "7.4", null, null)]
+        [InlineData("7.4", "7.4", "..\\..\\..\\..\\test\\TestWorkers\\ProbingPaths\\workers\\", "EnableWorkerProbingPaths")]
+        [InlineData(null, "7.4", "..\\..\\..\\..\\test\\TestWorkers\\ProbingPaths\\workers\\", "EnableWorkerProbingPaths")]
+        [InlineData("7.2", "7.2", null, null)]
+        [InlineData("7.2", "7.2", "..\\..\\..\\..\\test\\TestWorkers\\ProbingPaths\\workers\\", "EnableWorkerProbingPaths")]
+        [InlineData("7", "7", null, null)]
+        [InlineData("7", "7", "..\\..\\..\\..\\test\\TestWorkers\\ProbingPaths\\workers\\", "EnableWorkerProbingPaths")]
+        public void DefaultWorkerConfigs_Overrides_VersionAppSetting(string runtimeSettingVersion, string outputVersion, string probingPathValue, string enableProbingPath)
         {
+            var probingPath = string.IsNullOrEmpty(probingPathValue) ? probingPathValue : Path.GetFullPath(probingPathValue);
+
             var testEnvironment = new TestEnvironment();
-            testEnvironment.SetEnvironmentVariable("FUNCTIONS_WORKER_RUNTIME_VERSION", "7.4");
+            testEnvironment.SetEnvironmentVariable("FUNCTIONS_WORKER_RUNTIME_VERSION", runtimeSettingVersion);
             testEnvironment.SetEnvironmentVariable("FUNCTIONS_WORKER_RUNTIME", "powerShell");
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.WorkerProbingPaths, $"{probingPath}");
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, enableProbingPath);
+
             var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder();
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
@@ -236,7 +250,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var powershellWorkerConfig = workerConfigs.FirstOrDefault(w => w.Description.Language.Equals("powershell", StringComparison.OrdinalIgnoreCase));
             Assert.Equal(1, workerConfigs.Count);
             Assert.NotNull(powershellWorkerConfig);
-            Assert.Equal("7.4", powershellWorkerConfig.Description.DefaultRuntimeVersion);
+            Assert.Equal(outputVersion, powershellWorkerConfig.Description.DefaultRuntimeVersion);
         }
 
         [Theory]
