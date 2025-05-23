@@ -314,6 +314,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
         public class TestFixture : EndToEndTestFixture
         {
+            private readonly string ProbingPath = Path.GetFullPath("..\\..\\..\\..\\test\\TestWorkers\\ProbingPaths\\workers\\");
+
             static TestFixture()
             {
                 Environment.SetEnvironmentVariable("AzureWebJobs.HttpTrigger-Disabled.Disabled", "1");
@@ -336,6 +338,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                         Version = "4.3.0"
                     }
                 };
+            }
+
+            public override void ConfigureWebHost(IServiceCollection services)
+            {
+                base.ConfigureWebHost(services);
+
+                services.Configure<FunctionsHostingConfigOptions>(o => o.Features.Add(RpcWorkerConstants.EnableProbingPathsForWorkers, "node"));
+
+                Environment.SetEnvironmentVariable(EnvironmentSettingNames.WorkerProbingPaths, $"{ProbingPath};");
             }
 
             public override void ConfigureScriptHost(IWebJobsBuilder webJobsBuilder)

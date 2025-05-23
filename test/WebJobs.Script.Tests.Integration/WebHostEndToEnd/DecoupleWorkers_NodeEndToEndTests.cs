@@ -33,7 +33,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
                 services.Configure<FunctionsHostingConfigOptions>(o => o.Features.Add(RpcWorkerConstants.EnableProbingPathsForWorkers, "node"));
 
-                //Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagDisableWorkerProbingPaths);
                 Environment.SetEnvironmentVariable(EnvironmentSettingNames.WorkerProbingPaths, $"{ProbingPath};");
             }
 

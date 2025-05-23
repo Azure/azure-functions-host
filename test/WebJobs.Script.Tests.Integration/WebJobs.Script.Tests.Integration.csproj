@@ -96,7 +96,9 @@
 
   <Import Project="..\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems" Label="Shared" />
 
+	<!--
   <Target Name="RunMyScript" AfterTargets="Build">
     <Exec Command="powershell.exe -ExecutionPolicy Bypass -File $(ProjectDir)myscript.ps1" />
   </Target>
+  -->
 </Project>

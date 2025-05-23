@@ -1,6 +1,10 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.WebJobs.Script.Tests;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -10,9 +14,6 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.WebJobs.Script.Tests;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
@@ -126,6 +127,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
         private class MultipleProcessesTestFixture : EndToEndTestFixture
         {
+            private readonly string ProbingPath = Path.GetFullPath("..\\..\\..\\..\\test\\TestWorkers\\ProbingPaths\\workers\\");
+
             public MultipleProcessesTestFixture()
                 : base(Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "sample", "node"), "samples", RpcWorkerConstants.NodeLanguageWorkerName, 3)
             {
@@ -136,6 +139,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 // not needed
                 return Task.CompletedTask;
             }
+
+            public override void ConfigureWebHost(IServiceCollection services)
+            {
+                base.ConfigureWebHost(services);
+
+                services.Configure<FunctionsHostingConfigOptions>(o => o.Features.Add(RpcWorkerConstants.EnableProbingPathsForWorkers, "node"));
+
+                Environment.SetEnvironmentVariable(EnvironmentSettingNames.WorkerProbingPaths, $"{ProbingPath};");
+            }
+
 
             public override void ConfigureScriptHost(IWebJobsBuilder webJobsBuilder)
             {

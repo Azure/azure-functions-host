@@ -326,6 +326,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 return false;
             }
 
+            bool isFeatureFlagEnabled = FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableWorkerProbingPaths, _environment);
+
+            if (isFeatureFlagDisabled)
+            {
+                return true;
+            }
+
             HashSet<string> probingPathsEnabledWorkersViaHostingConfig = _functionsHostingConfigOptions.EnableProbingPathsForWorkers.ToLowerInvariant().Split("|").ToHashSet();
 
             if (!_environment.IsMultiLanguageRuntimeEnvironment())
