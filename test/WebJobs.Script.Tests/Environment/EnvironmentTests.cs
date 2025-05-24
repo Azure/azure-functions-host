@@ -3,6 +3,7 @@
 
 using System;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 using Microsoft.WebJobs.Script.Tests;
 using Xunit;
 using static Microsoft.Azure.WebJobs.Script.EnvironmentSettingNames;
@@ -242,6 +243,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(isLinuxConsumptionOnAtlas || isLinuxConsumptionOnLegion, testEnvironment.IsConsumptionSku());
             Assert.Equal(isLinuxConsumptionOnAtlas || isLinuxConsumptionOnLegion, testEnvironment.IsDynamicSku());
             Assert.False(isLinuxConsumptionOnAtlas ? isLinuxConsumptionOnLegion : isLinuxConsumptionOnAtlas);
+        }
+
+        [Theory]
+        [InlineData(ScriptConstants.DynamicSku, "containerName", "", "", false)]
+        [InlineData(ScriptConstants.DynamicSku, "containerName", "podName", "", false)]
+        [InlineData(ScriptConstants.DynamicSku, "containerName", "podName", "legionServiceHost", true)]
+        [InlineData(ScriptConstants.DynamicSku, "containerName", "", "legionServiceHost", true)]
+        public void Returns_AtlasOrLegionConsumption(string sku, string containerName, string podName, string legionServiceHost, bool legion)
+        {
+            var testEnvironment = new TestEnvironment();
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId, string.Empty);
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, sku);
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, containerName);
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.PodName, podName);
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.LegionServiceHost, legionServiceHost);
+
+            Assert.Equal(legion, testEnvironment.IsLinuxConsumptionOnLegion());
+            Assert.Equal(!legion, testEnvironment.IsLinuxConsumptionOnAtlas());
         }
 
         [Theory]
