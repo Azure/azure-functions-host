@@ -4,8 +4,14 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Text.Json;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -21,13 +27,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly IMetricsLogger _metricsLogger;
         private readonly IWorkerProfileManager _workerProfileManager;
         private readonly IScriptHostManager _scriptHostManager;
+        private readonly IOptions<FunctionsHostingConfigOptions> _functionsHostingConfigOptions;
 
         public LanguageWorkerOptionsSetup(IConfiguration configuration,
                                           ILoggerFactory loggerFactory,
                                           IEnvironment environment,
                                           IMetricsLogger metricsLogger,
                                           IWorkerProfileManager workerProfileManager,
-                                          IScriptHostManager scriptHostManager)
+                                          IScriptHostManager scriptHostManager,
+                                          IOptions<FunctionsHostingConfigOptions> functionsHostingConfigOptions)
         {
             if (loggerFactory is null)
             {
@@ -39,6 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _metricsLogger = metricsLogger ?? throw new ArgumentNullException(nameof(metricsLogger));
             _workerProfileManager = workerProfileManager ?? throw new ArgumentNullException(nameof(workerProfileManager));
+            _functionsHostingConfigOptions = functionsHostingConfigOptions ?? throw new ArgumentNullException(nameof(functionsHostingConfigOptions));
 
             _logger = loggerFactory.CreateLogger("Host.LanguageWorkerConfig");
         }
@@ -72,8 +81,65 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 }
             }
 
-            var configFactory = new RpcWorkerConfigFactory(configuration, _logger, SystemRuntimeInformation.Instance, _environment, _metricsLogger, _workerProfileManager);
+            string jsonString = GetWorkerProbingPaths();
+
+            if (!string.IsNullOrEmpty(jsonString))
+            {
+                using var jsonStream = new MemoryStream(Encoding.UTF8.GetBytes(jsonString));
+
+                configuration = new ConfigurationBuilder()
+                    .AddConfiguration(configuration)
+                    .AddJsonStream(jsonStream)
+                    .Build();
+            }
+
+            var workerConfigurationResolver = new WorkerConfigurationResolver(configuration, _logger, _environment, _workerProfileManager, _functionsHostingConfigOptions);
+            var configFactory = new RpcWorkerConfigFactory(configuration, _logger, SystemRuntimeInformation.Instance, _environment, _metricsLogger, _workerProfileManager, workerConfigurationResolver, _functionsHostingConfigOptions);
             options.WorkerConfigs = configFactory.GetConfigs();
+        }
+
+        public string GetWorkerProbingPaths()
+        {
+            var probingPaths = new List<string>();
+            string output = string.Empty;
+
+            // If Env variable is available, read from there (works for linux)
+            var probingPathsEnvValue = _environment.GetEnvironmentVariableOrDefault(EnvironmentSettingNames.WorkerProbingPaths, null);
+
+            if (!string.IsNullOrEmpty(probingPathsEnvValue))
+            {
+                probingPaths = probingPathsEnvValue.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList() ?? new List<string>();
+            }
+            else
+            {
+                if (_environment.IsAnyWindows())
+                {
+                    // Harcoded site extensions path ("c:\\home\\SiteExtensions\\workers") for Windows until Antares starts setting this as Environment variable.
+                    //  probingPaths.Add("c:\\testData\\workers");
+
+#pragma warning disable SYSLIB0012 // Type or member is obsolete
+                    string assemblyLocalPath = Path.GetDirectoryName(new Uri(typeof(LanguageWorkerOptionsSetup).Assembly.CodeBase).LocalPath);
+#pragma warning restore SYSLIB0012 // Type or member is obsolete
+                    string workersDirPath = Path.Combine(assemblyLocalPath, "ProbingPaths");
+                    probingPaths.Add(workersDirPath);
+                    _logger.LogInformation($"ProbingPaths setup via options: {workersDirPath}");
+                }
+            }
+
+            if (probingPaths.Any())
+            {
+                var jsonObj = new
+                {
+                    languageWorkers = new
+                    {
+                        probingPaths
+                    }
+                };
+
+                output = JsonSerializer.Serialize(jsonObj, new JsonSerializerOptions { WriteIndented = true });
+            }
+
+            return output;
         }
     }
 

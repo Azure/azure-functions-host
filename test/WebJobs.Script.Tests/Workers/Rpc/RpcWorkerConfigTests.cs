@@ -12,8 +12,10 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
 
@@ -282,10 +284,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 Extensions = new List<string>(),
                 DefaultExecutablePath = defaultExecutablePath,
                 FileExists = path =>
-                                {
-                                    Assert.Equal(expectedExecutablePath, path);
-                                    return true;
-                                }
+                {
+                    Assert.Equal(expectedExecutablePath, path);
+                    return true;
+                }
             };
 
             workerDescription.ApplyDefaultsAndValidate(Directory.GetCurrentDirectory(), testLogger);
@@ -313,10 +315,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 Extensions = new List<string>(),
                 DefaultExecutablePath = defaultExecutablePath,
                 FileExists = path =>
-                                {
-                                    Assert.Equal(expectedExecutablePath, path);
-                                    return false;
-                                }
+                {
+                    Assert.Equal(expectedExecutablePath, path);
+                    return false;
+                }
             };
 
             workerDescription.ApplyDefaultsAndValidate(Directory.GetCurrentDirectory(), testLogger);
@@ -341,10 +343,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 Extensions = new List<string>(),
                 DefaultExecutablePath = defaultExecutablePath,
                 FileExists = path =>
-                                {
-                                    Assert.True(false, "FileExists should not be called");
-                                    return false;
-                                }
+                {
+                    Assert.True(false, "FileExists should not be called");
+                    return false;
+                }
             };
 
             workerDescription.ApplyDefaultsAndValidate(Directory.GetCurrentDirectory(), testLogger);
@@ -683,7 +685,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 var scriptHostOptions = new ScriptJobHostOptions();
                 var scriptSettingsManager = new ScriptSettingsManager(config);
                 var workerProfileManager = new Mock<IWorkerProfileManager>();
-                var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, testMetricsLogger, workerProfileManager.Object);
+                var hostingOptions = new OptionsWrapper<FunctionsHostingConfigOptions>(new FunctionsHostingConfigOptions());
+                var workerConfigurationResolver = new WorkerConfigurationResolver(config, testLogger, _testEnvironment, workerProfileManager.Object, hostingOptions);
+                var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, testMetricsLogger, workerProfileManager.Object, workerConfigurationResolver, hostingOptions);
 
                 if (appSvcEnv)
                 {

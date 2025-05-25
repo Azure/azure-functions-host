@@ -124,6 +124,17 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         }
 
         /// <summary>
+        /// Gets a string delimited by '|' that contains the name of the apps with worker indexing disabled.
+        /// </summary>
+        internal string EnableProbingPathsForWorkers
+        {
+            get
+            {
+                return GetFeature(RpcWorkerConstants.EnableProbingPathsForWorkers) ?? string.Empty;
+            }
+        }
+
+        /// <summary>
         /// Gets a value indicating whether Linux Log Backoff is disabled in the hosting config.
         /// </summary>
         internal bool DisableLinuxAppServiceLogBackoff

@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
         public override bool UseStdErrorStreamForErrorsOnly { get; set; } = true;
 
-        public override void ApplyDefaultsAndValidate(string inputWorkerDirectory, ILogger logger)
+        public override void ApplyDefaultsAndValidate(string inputWorkerDirectory, ILogger logger, bool probingPathEnabled = false)
         {
             if (inputWorkerDirectory == null)
             {

@@ -87,7 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         public override bool UseStdErrorStreamForErrorsOnly { get; set; } = false;
 
-        public override void ApplyDefaultsAndValidate(string workerDirectory, ILogger logger)
+        public override void ApplyDefaultsAndValidate(string workerDirectory, ILogger logger, bool probingPathsEnabled = false)
         {
             if (workerDirectory == null)
             {
@@ -97,7 +97,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             WorkerDirectory = WorkerDirectory ?? workerDirectory;
             if (!string.IsNullOrEmpty(DefaultWorkerPath) && !Path.IsPathRooted(DefaultWorkerPath))
             {
-                DefaultWorkerPath = Path.Combine(WorkerDirectory, DefaultWorkerPath);
+                if (probingPathsEnabled && DefaultWorkerPath.Contains(RpcWorkerConstants.RuntimeVersionPlaceholder))
+                {
+                    var versionDir = Path.GetFileName(WorkerDirectory);
+                    WorkerDirectory = WorkerDirectory.Replace(versionDir, string.Empty);
+                }
             }
             if (string.IsNullOrEmpty(Language))
             {

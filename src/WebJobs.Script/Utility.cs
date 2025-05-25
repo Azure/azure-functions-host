@@ -1127,6 +1127,11 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
+        public static string GetPlatformReleaseChannel(IEnvironment environment)
+        {
+            return environment.GetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel) ?? ScriptConstants.LatestPlatformChannelNameUpper;
+        }
+
         public static bool TryReadAsBool(IDictionary<string, object> properties, string propertyKey, out bool result)
         {
             if (properties.TryGetValue(propertyKey, out object valueObject))
