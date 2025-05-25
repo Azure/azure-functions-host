@@ -100,7 +100,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 if (probingPathsEnabled && DefaultWorkerPath.Contains(RpcWorkerConstants.RuntimeVersionPlaceholder))
                 {
                     var versionDir = Path.GetFileName(WorkerDirectory);
-                    WorkerDirectory.Replace(versionDir, string.Empty);
+                    WorkerDirectory = WorkerDirectory.Replace(versionDir, string.Empty);
                 }
 
                 DefaultWorkerPath = Path.Combine(WorkerDirectory, DefaultWorkerPath);

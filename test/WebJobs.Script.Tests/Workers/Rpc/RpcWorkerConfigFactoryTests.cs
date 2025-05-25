@@ -219,16 +219,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Theory]
-      //  [InlineData("7.4", "7.4", null, null)]
-      //  [InlineData(null, "7.4", null, null)]
+        [InlineData("7.4", "7.4", null, null)]
+        [InlineData(null, "7.4", null, null)]
         [InlineData("7.4", "7.4", "..\\..\\..\\..\\test\\TestWorkers\\ProbingPaths\\workers\\", "EnableWorkerProbingPaths")]
-      /*
         [InlineData(null, "7.4", "..\\..\\..\\..\\test\\TestWorkers\\ProbingPaths\\workers\\", "EnableWorkerProbingPaths")]
         [InlineData("7.2", "7.2", null, null)]
         [InlineData("7.2", "7.2", "..\\..\\..\\..\\test\\TestWorkers\\ProbingPaths\\workers\\", "EnableWorkerProbingPaths")]
         [InlineData("7", "7", null, null)]
         [InlineData("7", "7", "..\\..\\..\\..\\test\\TestWorkers\\ProbingPaths\\workers\\", "EnableWorkerProbingPaths")]
-      */
         public void DefaultWorkerConfigs_Overrides_VersionAppSetting(string runtimeSettingVersion, string outputVersion, string probingPathValue, string enableProbingPath)
         {
             var probingPath = string.IsNullOrEmpty(probingPathValue) ? probingPathValue : Path.GetFullPath(probingPathValue);
@@ -255,6 +253,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.Equal(1, workerConfigs.Count);
             Assert.NotNull(powershellWorkerConfig);
             Assert.Equal(outputVersion, powershellWorkerConfig.Description.DefaultRuntimeVersion);
+
+            if (probingPath is not null)
+            {
+                Assert.True(powershellWorkerConfig.Arguments.WorkerPath.Contains(probingPath));
+            }
         }
 
         [Theory]
