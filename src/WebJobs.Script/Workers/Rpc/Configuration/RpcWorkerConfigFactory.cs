@@ -341,7 +341,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 return true;
             }
 
-            HashSet<string> probingPathsEnabledWorkersViaHostingConfig = _functionsHostingConfigOptions.EnableProbingPathsForWorkers.ToLowerInvariant().Split("|").ToHashSet();
+            HashSet<string> probingPathsEnabledWorkersViaHostingConfig = _functionsHostingConfigOptions.EnableProbingPathsForWorkers.ToLowerInvariant().Split("|", StringSplitOptions.RemoveEmptyEntries).ToHashSet();
 
             if (!_environment.IsMultiLanguageRuntimeEnvironment())
             {
