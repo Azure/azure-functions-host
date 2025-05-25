@@ -115,7 +115,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 if (_environment.IsAnyWindows())
                 {
                     // Harcoded site extensions path ("c:\\home\\SiteExtensions\\workers") for Windows until Antares starts setting this as Environment variable.
-                    probingPaths.Add("c:\\testData\\workers");
+                  //  probingPaths.Add("c:\\testData\\workers");
+
+#pragma warning disable SYSLIB0012 // Type or member is obsolete
+                    string assemblyLocalPath = Path.GetDirectoryName(new Uri(typeof(LanguageWorkerOptionsSetup).Assembly.CodeBase).LocalPath);
+#pragma warning restore SYSLIB0012 // Type or member is obsolete
+                    string workersDirPath = Path.Combine(assemblyLocalPath, "ProbingPaths");
+                    probingPaths.Add(workersDirPath);
+                    _logger.LogInformation($"ProbingPaths setup via options: {workersDirPath}");
                 }
             }
 
@@ -125,7 +132,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 {
                     languageWorkers = new
                     {
-                        Probingpaths = probingPaths
+                        probingPaths
                     }
                 };
 

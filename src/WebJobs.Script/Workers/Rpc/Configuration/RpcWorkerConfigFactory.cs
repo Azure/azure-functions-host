@@ -60,6 +60,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             WorkersDirPath = GetDefaultWorkersDirectory(Directory.Exists);
             var workersDirectorySection = _config.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}:{WorkerConstants.WorkersDirectorySectionName}");
 
+            ProbingPathsEnabled = AreProbingPathsEnabled();
+
             if (!string.IsNullOrEmpty(workersDirectorySection.Value))
             {
                 WorkersDirPath = workersDirectorySection.Value;
@@ -67,6 +69,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         }
 
         public string WorkersDirPath { get; }
+
+        internal bool ProbingPathsEnabled { get; }
 
         public IList<RpcWorkerConfig> GetConfigs()
         {
@@ -99,7 +103,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal void AddProviders()
         {
-            if (AreProbingPathsEnabled())
+            if (ProbingPathsEnabled)
             {
                 List<string> probingPaths = GetWorkerProbingPaths(_config);
 
@@ -175,6 +179,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                                                                                             workerConfig,
                                                                                             _jsonSerializerOptions,
                                                                                             workerDir,
+                                                                                            ProbingPathsEnabled,
                                                                                             _profileManager,
                                                                                             _config,
                                                                                             _logger);
@@ -331,7 +336,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             bool isFeatureFlagEnabled = FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableWorkerProbingPaths, _environment);
 
-            if (isFeatureFlagDisabled)
+            if (isFeatureFlagEnabled)
             {
                 return true;
             }

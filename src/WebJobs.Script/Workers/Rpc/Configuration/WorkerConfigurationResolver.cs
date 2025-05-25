@@ -65,10 +65,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                         {
                             string languageWorkerFolder = Path.GetFileName(languageWorkerPath);
 
+                            _logger.LogInformation("Probing for language worker in path: {LanguageWorkerPath}", languageWorkerPath);
+
                             // Only skip worker directories that don't match the current runtime.
                             // Do not skip non-worker directories like the function app payload directory
                             // && languageWorkerPath.StartsWith(fallbackPath))
-                            if (!_probingPathsEnabledWorkersViaHostingConfig.Contains(languageWorkerFolder) ||
+                            if (//!_probingPathsEnabledWorkersViaHostingConfig.Contains(languageWorkerFolder) ||
                                 (!_environment.IsMultiLanguageRuntimeEnvironment() &&
                                 workerRuntime is not null &&
                                 !workerRuntime.Equals(languageWorkerFolder, StringComparison.OrdinalIgnoreCase)))
@@ -86,6 +88,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                             }
 
                             GetWorkerConfigsFromProbingPaths(versions, languageWorkerPath, languageWorkerFolder, releaseChannel, outputDict);
+
+                            _logger.LogInformation("Found worker config for {LanguageWorkerFolder} at {LanguageWorkerPath}", languageWorkerFolder, outputDict.GetValueOrDefault(languageWorkerFolder));
                         }
                     }
                 }
@@ -134,6 +138,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
         private void GetWorkerConfigsFromWithinHost(string fallbackPath, string workerRuntime, ConcurrentDictionary<string, string> outputDict)
         {
+            _logger.LogInformation("Searching for worker configs in fallback path: {FallbackPath}", fallbackPath);
+
             // fallback path
             if (Directory.Exists(fallbackPath))
             {
@@ -153,6 +159,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                     if (File.Exists(workerConfigPath))
                     {
                         outputDict[workerFolder] = workerDir;
+                        _logger.LogInformation("Found worker in fallback path workerfolder = {workerFolder} and dir = {workerDir}", workerFolder, workerDir);
                     }
 
                     if (!_environment.IsMultiLanguageRuntimeEnvironment() &&
@@ -173,9 +180,18 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             {
                 string versionFolder = Path.GetFileName(workerVersion);
 
+                if (versionFolder.Length == 1)
+                {
+                    versionFolder = versionFolder + ".0"; // Handle single digit versions like '1' as '1.0'
+                }
+
                 if (Version.TryParse(versionFolder, out Version version))
                 {
                     versions.Add(version);
+                }
+                else
+                {
+                    Console.WriteLine($"Failed to parse version: '{versionFolder}'");
                 }
             }
 
@@ -212,6 +228,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 workerConfig,
                 _jsonSerializerOptions,
                 workerDir,
+                true,
                 _profileManager,
                 _config,
                 _logger);
