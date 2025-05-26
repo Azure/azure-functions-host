@@ -284,10 +284,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 Extensions = new List<string>(),
                 DefaultExecutablePath = defaultExecutablePath,
                 FileExists = path =>
-                {
-                    Assert.Equal(expectedExecutablePath, path);
-                    return true;
-                }
+                                {
+                                    Assert.Equal(expectedExecutablePath, path);
+                                    return true;
+                                }
             };
 
             workerDescription.ApplyDefaultsAndValidate(Directory.GetCurrentDirectory(), testLogger);
@@ -315,10 +315,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 Extensions = new List<string>(),
                 DefaultExecutablePath = defaultExecutablePath,
                 FileExists = path =>
-                {
-                    Assert.Equal(expectedExecutablePath, path);
-                    return false;
-                }
+                                {
+                                    Assert.Equal(expectedExecutablePath, path);
+                                    return false;
+                                }
             };
 
             workerDescription.ApplyDefaultsAndValidate(Directory.GetCurrentDirectory(), testLogger);
@@ -343,10 +343,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 Extensions = new List<string>(),
                 DefaultExecutablePath = defaultExecutablePath,
                 FileExists = path =>
-                {
-                    Assert.True(false, "FileExists should not be called");
-                    return false;
-                }
+                                {
+                                    Assert.True(false, "FileExists should not be called");
+                                    return false;
+                                }
             };
 
             workerDescription.ApplyDefaultsAndValidate(Directory.GetCurrentDirectory(), testLogger);

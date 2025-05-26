@@ -44,7 +44,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                                         IMetricsLogger metricsLogger,
                                         IWorkerProfileManager workerProfileManager,
                                         IWorkerConfigurationResolver workerConfigurationResolver,
-                                        bool probingPathsEnabled = false)
+                                        bool probingPathsEnabled = false,
+                                        List<string> probingPaths = null)
         {
             _config = config ?? throw new ArgumentNullException(nameof(config));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -59,6 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             var workersDirectorySection = _config.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}:{WorkerConstants.WorkersDirectorySectionName}");
 
             ProbingPathsEnabled = probingPathsEnabled;
+            WorkerProbingPaths = probingPaths;
 
             if (!string.IsNullOrEmpty(workersDirectorySection.Value))
             {
@@ -69,6 +71,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public string WorkersDirPath { get; }
 
         internal bool ProbingPathsEnabled { get; }
+
+        internal List<string> WorkerProbingPaths { get; }
 
         public IList<RpcWorkerConfig> GetConfigs()
         {
@@ -101,13 +105,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal void AddProviders()
         {
-            if (ProbingPathsEnabled)
+            if (ProbingPathsEnabled && WorkerProbingPaths is not null)
             {
-                List<string> probingPaths = GetWorkerProbingPaths(_config);
+                _logger.LogDebug("Probing paths set to: {probingPaths} and Workers Directory set as fallback path: {WorkersDirPath}", string.Join(", ", WorkerProbingPaths), WorkersDirPath);
 
-                _logger.LogDebug("Probing paths set to: {probingPaths} and Workers Directory set as fallback path: {WorkersDirPath}", string.Join(", ", probingPaths), WorkersDirPath);
-
-                List<string> workerConfigs = _workerConfigurationResolver.GetWorkerConfigs(probingPaths, WorkersDirPath);
+                List<string> workerConfigs = _workerConfigurationResolver.GetWorkerConfigs(WorkerProbingPaths, WorkersDirPath);
 
                 foreach (var workerConfig in workerConfigs)
                 {
@@ -298,32 +300,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
 
             return true;
-        }
-
-        internal List<string> GetWorkerProbingPaths(IConfiguration config)
-        {
-            List<string> probingPaths = new List<string>();
-
-            IConfigurationSection probingPathsSection = config?.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}")
-                                                                ?.GetSection($"{RpcWorkerConstants.WorkerProbingPathsSectionName}");
-
-            var probingPathsList = probingPathsSection?.AsEnumerable();
-
-            if (probingPathsList is null || probingPathsSection is null)
-            {
-                return probingPaths;
-            }
-
-            for (int item = 0; item < probingPathsList.Count(); item++)
-            {
-                var path = probingPathsSection.GetSection($"{item}")?.Value;
-                if (path is not null)
-                {
-                    probingPaths.Add(path);
-                }
-            }
-
-            return probingPaths;
         }
 
         private void ReadLanguageWorkerFile(string workerPath)

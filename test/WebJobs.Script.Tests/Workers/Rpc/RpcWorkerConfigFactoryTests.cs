@@ -12,7 +12,6 @@ using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
 
@@ -365,60 +364,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             workerConfig = CreateWorkerConfig(10, 10, "-800", false);
             var resultEx3 = Assert.Throws<JsonException>(() => rpcWorkerConfigFactory.GetWorkerProcessCount(workerConfig));
             Assert.Contains("value could not be converted to System.TimeSpan", resultEx3.Message);
-        }
-
-        [Fact]
-        public void GetWorkerProbingPaths_ReturnsExpectedPaths()
-        {
-            // Arrange
-            var inMemorySettings = new Dictionary<string, string>
-            {
-                ["languageWorkers:probingPaths:0"] = @"C:\workers\path1",
-                ["languageWorkers:probingPaths:1"] = @"C:\workers\path2"
-            };
-
-            IConfiguration config = new ConfigurationBuilder()
-                .AddInMemoryCollection(inMemorySettings)
-                .Build();
-
-            var testLogger = new TestLogger("test");
-            var workerConfigurationResolver = new WorkerConfigurationResolver(config, testLogger, _testEnvironment, _testWorkerProfileManager, new HashSet<string>());
-            var rpcWorkerConfigFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger(), _testWorkerProfileManager, workerConfigurationResolver);
-
-            // Act
-            var result = rpcWorkerConfigFactory.GetWorkerProbingPaths(config);
-
-            // Assert
-            Assert.Equal(2, result.Count);
-            Assert.Contains(@"C:\workers\path1", result);
-            Assert.Contains(@"C:\workers\path2", result);
-        }
-
-        [Theory]
-        [InlineData("languageWorkers:probingPaths:0", "", 1)]
-        [InlineData("languageWorkers:probingPaths", "C:\\workers\\path1", 0)]
-        [InlineData("languageWorkers", "C:\\workers\\path1", 0)]
-        public void GetWorkerProbingPaths_InvalidProbingPaths_ReturnsEmptyList(string key, string value, int count)
-        {
-            // Arrange
-            var inMemorySettings = new Dictionary<string, string>
-            {
-                [key] = value,
-            };
-
-            IConfiguration config = new ConfigurationBuilder()
-                .AddInMemoryCollection(inMemorySettings)
-                .Build();
-
-            var testLogger = new TestLogger("test");
-            var workerConfigurationResolver = new WorkerConfigurationResolver(config, testLogger, _testEnvironment, _testWorkerProfileManager, new HashSet<string>());
-            var rpcWorkerConfigFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger(), _testWorkerProfileManager, workerConfigurationResolver);
-
-            // Act
-            var result = rpcWorkerConfigFactory.GetWorkerProbingPaths(config);
-
-            // Assert
-            Assert.Equal(count, result.Count);
         }
 
         private static JsonElement CreateWorkerConfig(int processCount, int maxProcessCount, string processStartupInterval, bool setProcessCountToCores)

@@ -82,25 +82,30 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 }
             }
 
-            HashSet<string> probingPathsEnabledWorkersViaHostingConfig = _functionsHostingConfigOptions.Value
-                                                                            ?.EnableProbingPathsForWorkers
-                                                                            ?.ToLowerInvariant()
-                                                                            ?.Split("|", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                                                                            ?.ToHashSet();
-
+            HashSet<string> probingPathsEnabledWorkersViaHostingConfig = GetWorkersEnabledViaHostingConfig();
             bool probingPathsEnabled = Utility.AreWorkerProbingPathsEnabled(_environment, probingPathsEnabledWorkersViaHostingConfig, workerRuntime);
+            List<string> probingPaths = null;
+
             if (probingPathsEnabled)
             {
-                string probingPathsString = GetWorkerProbingPaths();
-                configuration = AddProbingPathsToConfiguration(configuration, probingPathsString);
+                probingPaths = GetWorkerProbingPaths();
             }
 
             var workerConfigurationResolver = new WorkerConfigurationResolver(configuration, _logger, _environment, _workerProfileManager, probingPathsEnabledWorkersViaHostingConfig);
-            var configFactory = new RpcWorkerConfigFactory(configuration, _logger, SystemRuntimeInformation.Instance, _environment, _metricsLogger, _workerProfileManager, workerConfigurationResolver, probingPathsEnabled);
+            var configFactory = new RpcWorkerConfigFactory(configuration, _logger, SystemRuntimeInformation.Instance, _environment, _metricsLogger, _workerProfileManager, workerConfigurationResolver, probingPathsEnabled, probingPaths);
             options.WorkerConfigs = configFactory.GetConfigs();
         }
 
-        internal string GetWorkerProbingPaths()
+        internal HashSet<string> GetWorkersEnabledViaHostingConfig()
+        {
+            return _functionsHostingConfigOptions.Value
+                        ?.EnableProbingPathsForWorkers
+                        ?.ToLowerInvariant()
+                        ?.Split("|", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                        ?.ToHashSet();
+        }
+
+        internal List<string> GetWorkerProbingPaths()
         {
             var probingPaths = new List<string>();
             string probingPathsString = string.Empty;
@@ -120,29 +125,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 }
             }
 
-            if (probingPaths.Any())
-            {
-                probingPathsString = $"{{ \"{RpcWorkerConstants.LanguageWorkersSectionName}\": " +
-                                     $"{{ \"{RpcWorkerConstants.WorkerProbingPathsSectionName}\": " +
-                                     $"\"{probingPaths}\" }} }}";
-            }
-
-            return probingPathsString;
-        }
-
-        internal IConfiguration AddProbingPathsToConfiguration(IConfiguration configuration, string probingPathsString)
-        {
-            if (!string.IsNullOrEmpty(probingPathsString))
-            {
-                using var jsonStream = new MemoryStream(Encoding.UTF8.GetBytes(probingPathsString));
-
-                configuration = new ConfigurationBuilder()
-                    .AddConfiguration(configuration)
-                    .AddJsonStream(jsonStream)
-                    .Build();
-            }
-
-            return configuration;
+            return probingPaths;
         }
     }
 
