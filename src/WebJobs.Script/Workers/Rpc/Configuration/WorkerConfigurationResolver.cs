@@ -21,10 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         private readonly IWorkerProfileManager _profileManager;
         private readonly IEnvironment _environment;
         private readonly HashSet<string> _probingPathsEnabledWorkersViaHostingConfig;
-        private readonly JsonSerializerOptions _jsonSerializerOptions = new()
-        {
-            PropertyNameCaseInsensitive = true
-        };
+        private readonly JsonSerializerOptions _jsonSerializerOptions = new() { PropertyNameCaseInsensitive = true };
 
         public WorkerConfigurationResolver(IConfiguration config,
                                         ILogger logger,

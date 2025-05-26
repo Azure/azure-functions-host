@@ -160,7 +160,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var testLogger = new TestLogger("test");
 
             var workerConfigurationResolver = new WorkerConfigurationResolver(config, testLogger, mockEnvironment.Object, _testWorkerProfileManager, new HashSet<string>() { "java" });
-            var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, mockEnvironment.Object, new TestMetricsLogger(), _testWorkerProfileManager, workerConfigurationResolver, true, new List<string> () { probingPath1 });
+            var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, mockEnvironment.Object, new TestMetricsLogger(), _testWorkerProfileManager, workerConfigurationResolver, true, new List<string>() { probingPath1 });
             var workerConfigs = configFactory.GetConfigs();
 
             // check log messages

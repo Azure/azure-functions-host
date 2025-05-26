@@ -2,12 +2,16 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.IO;
+using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Xunit;
 
@@ -75,12 +79,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         }
 
         [Theory]
-        [InlineData("DotNet")]
-        [InlineData("dotnet")]
-        [InlineData(null)]
-        [InlineData("node")]
-        public void LanguageWorkerOptions_ProbingPaths_Expected_ListOfConfigs(string workerRuntime)
+        [InlineData("java", "EnableWorkerProbingPaths", "java", "..\\..\\..\\..\\test\\TestWorkers\\ProbingPaths\\workers\\", "LATEST", "2.19.0")]
+        public void LanguageWorkerOptions_ProbingPaths_Expected_ListOfConfigs(string workerRuntime, string enableProbingPaths, string hostingOptionsSetting, string probingPath, string releaseChannel, string expectedVersion)
         {
+            var loggerProvider = new TestLoggerProvider();
+            var loggerFactory = new LoggerFactory();
+            loggerFactory.AddProvider(loggerProvider);
+
             var testEnvironment = new TestEnvironment();
             var testMetricLogger = new TestMetricsLogger();
             var configurationBuilder = new ConfigurationBuilder()
@@ -88,33 +93,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var configuration = configurationBuilder.Build();
             var testProfileManager = new Mock<IWorkerProfileManager>();
             var testScriptHostManager = new Mock<IScriptHostManager>();
+            string probingPath1 = Path.GetFullPath(probingPath);
 
-            if (!string.IsNullOrEmpty(workerRuntime))
-            {
-                testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, workerRuntime);
-            }
-            else
-            {
-                // The dotnet-isolated worker only runs in placeholder mode. Setting the placeholder environment to 1 for the test.
-                testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
-            }
+            testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, workerRuntime);
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, enableProbingPaths);
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel, releaseChannel);
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.WorkerProbingPaths, probingPath1);
 
-            testProfileManager.Setup(pm => pm.LoadWorkerDescriptionFromProfiles(It.IsAny<RpcWorkerDescription>(), out It.Ref<RpcWorkerDescription>.IsAny))
-                .Callback((RpcWorkerDescription defaultDescription, out RpcWorkerDescription outDescription) =>
-                {
-                    // dotnet-isolated worker config does not have "DefaultExecutablePath" in the parent level.So, we should set it from a profile.
-                    if (defaultDescription.Language == "dotnet-isolated")
-                    {
-                        outDescription = new RpcWorkerDescription() { DefaultExecutablePath = "testPath", Language = "dotnet-isolated" };
-                    }
-                    else
-                    {
-                        // for other workers, we should return the default description as they have the "DefaultExecutablePath" in the parent level.
-                        outDescription = defaultDescription;
-                    }
-                });
+            var hostingOptions = new FunctionsHostingConfigOptions();
+            hostingOptions.Features.Add(RpcWorkerConstants.EnableProbingPathsForWorkers, hostingOptionsSetting);
 
-            LanguageWorkerOptionsSetup setup = new LanguageWorkerOptionsSetup(configuration, NullLoggerFactory.Instance, testEnvironment, testMetricLogger, testProfileManager.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(new FunctionsHostingConfigOptions()));
+            LanguageWorkerOptionsSetup setup = new LanguageWorkerOptionsSetup(configuration, loggerFactory, testEnvironment, testMetricLogger, testProfileManager.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
             LanguageWorkerOptions options = new LanguageWorkerOptions();
 
             setup.Configure(options);
@@ -130,6 +119,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             else
             {
                 Assert.Equal(1, options.WorkerConfigs.Count);
+                Assert.True(options.WorkerConfigs.First().Arguments.WorkerPath.Contains(expectedVersion));
+
+                var logs = loggerProvider.GetAllLogMessages();
             }
         }
     }
