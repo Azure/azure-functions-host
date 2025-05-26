@@ -95,6 +95,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
             Arguments = Arguments ?? new List<string>();
             WorkerDirectory = WorkerDirectory ?? workerDirectory;
+
             if (!string.IsNullOrEmpty(DefaultWorkerPath) && !Path.IsPathRooted(DefaultWorkerPath))
             {
                 if (probingPathsEnabled && DefaultWorkerPath.Contains(RpcWorkerConstants.RuntimeVersionPlaceholder))
@@ -102,7 +103,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     var versionDir = Path.GetFileName(WorkerDirectory);
                     WorkerDirectory = WorkerDirectory.Replace(versionDir, string.Empty);
                 }
+
+                DefaultWorkerPath = Path.Combine(WorkerDirectory, DefaultWorkerPath);
             }
+
             if (string.IsNullOrEmpty(Language))
             {
                 throw new ValidationException($"WorkerDescription {nameof(Language)} cannot be empty");
