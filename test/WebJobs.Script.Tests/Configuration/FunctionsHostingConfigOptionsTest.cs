@@ -75,6 +75,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 yield return [nameof(FunctionsHostingConfigOptions.IsDotNetInProcDisabled), "DotNetInProcDisabled=1", true];
                 yield return [nameof(FunctionsHostingConfigOptions.IsDotNetInProcDisabled), "DotNetInProcDisabled=0", false];
 
+                yield return [nameof(FunctionsHostingConfigOptions.EnableProbingPathsForWorkers), "EnableProbingPathsForWorkers=java|node", "java|node"];
+                yield return [nameof(FunctionsHostingConfigOptions.EnableProbingPathsForWorkers), "EnableProbingPathsForWorkers=java", "java"];
+
                 yield return [nameof(FunctionsHostingConfigOptions.IsTestDataSuppressionEnabled), "EnableTestDataSuppression=1", true];
                 yield return [nameof(FunctionsHostingConfigOptions.IsCGroupMemoryMetricsEnabled), "EnableCGroupMemoryMetrics=1", true];
 

@@ -283,7 +283,6 @@ namespace Microsoft.Azure.WebJobs.Script
             return string.Equals(value, ScriptConstants.ElasticPremiumSku, StringComparison.OrdinalIgnoreCase);
         }
 
-
         /// <summary>
         /// Gets a value indicating whether the application is running in a Windows App Service environment.
         /// </summary>

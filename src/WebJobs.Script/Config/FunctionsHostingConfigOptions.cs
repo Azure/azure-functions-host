@@ -124,7 +124,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         }
 
         /// <summary>
-        /// Gets a string delimited by '|' that contains the name of the apps with worker indexing disabled.
+        /// Gets a string delimited by '|' that contains the names of the language workers available through Probing paths outside of the Host.
         /// </summary>
         internal string EnableProbingPathsForWorkers
         {

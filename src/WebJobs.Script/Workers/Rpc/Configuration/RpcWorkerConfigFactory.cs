@@ -60,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             WorkersDirPath = GetDefaultWorkersDirectory(Directory.Exists);
             var workersDirectorySection = _config.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}:{WorkerConstants.WorkersDirectorySectionName}");
 
-            ProbingPathsEnabled = AreProbingPathsEnabled();
+            ProbingPathsEnabled = Utility.AreWorkerProbingPathsEnabled(_environment, _functionsHostingConfigOptions, _workerRuntime);
 
             if (!string.IsNullOrEmpty(workersDirectorySection.Value))
             {
@@ -323,35 +323,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
 
             return probingPaths;
-        }
-
-        internal bool AreProbingPathsEnabled()
-        {
-            bool isFeatureFlagDisabled = FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagDisableWorkerProbingPaths, _environment);
-
-            if (isFeatureFlagDisabled)
-            {
-                return false;
-            }
-
-            bool isFeatureFlagEnabled = FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableWorkerProbingPaths, _environment);
-
-            if (isFeatureFlagEnabled)
-            {
-                return true;
-            }
-
-            HashSet<string> probingPathsEnabledWorkersViaHostingConfig = _functionsHostingConfigOptions.EnableProbingPathsForWorkers.ToLowerInvariant().Split("|", StringSplitOptions.RemoveEmptyEntries).ToHashSet();
-
-            if (!_environment.IsMultiLanguageRuntimeEnvironment())
-            {
-                if (!string.IsNullOrWhiteSpace(_workerRuntime))
-                {
-                    return probingPathsEnabledWorkersViaHostingConfig.Contains(_workerRuntime);
-                }
-            }
-
-            return probingPathsEnabledWorkersViaHostingConfig.Any() ? true : false;
         }
 
         private void ReadLanguageWorkerFile(string workerPath)

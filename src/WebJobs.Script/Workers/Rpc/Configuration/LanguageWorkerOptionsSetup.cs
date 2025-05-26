@@ -21,6 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
     internal class LanguageWorkerOptionsSetup : IConfigureOptions<LanguageWorkerOptions>
     {
+        private const string _windowsWorkerProbingPath = "c:\\home\\SiteExtensions\\workers"; // Harcoded site extensions path for Windows until Antares starts setting this as Environment variable.
         private readonly IConfiguration _configuration;
         private readonly ILogger _logger;
         private readonly IEnvironment _environment;
@@ -81,16 +82,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 }
             }
 
-            string jsonString = GetWorkerProbingPaths();
-
-            if (!string.IsNullOrEmpty(jsonString))
+            if (Utility.AreWorkerProbingPathsEnabled(_environment, _functionsHostingConfigOptions.Value, workerRuntime))
             {
-                using var jsonStream = new MemoryStream(Encoding.UTF8.GetBytes(jsonString));
-
-                configuration = new ConfigurationBuilder()
-                    .AddConfiguration(configuration)
-                    .AddJsonStream(jsonStream)
-                    .Build();
+                string probingPathsString = GetWorkerProbingPaths();
+                configuration = AddProbingPathsToConfiguration(configuration, probingPathsString);
             }
 
             var workerConfigurationResolver = new WorkerConfigurationResolver(configuration, _logger, _environment, _workerProfileManager, _functionsHostingConfigOptions);
@@ -98,48 +93,49 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             options.WorkerConfigs = configFactory.GetConfigs();
         }
 
-        public string GetWorkerProbingPaths()
+        internal string GetWorkerProbingPaths()
         {
             var probingPaths = new List<string>();
-            string output = string.Empty;
+            string probingPathsString = string.Empty;
 
-            // If Env variable is available, read from there (works for linux)
-            var probingPathsEnvValue = _environment.GetEnvironmentVariableOrDefault(EnvironmentSettingNames.WorkerProbingPaths, null);
+            // If Environment variable is set, read probing paths (works for linux)
+            string probingPathsEnvValue = _environment.GetEnvironmentVariableOrDefault(EnvironmentSettingNames.WorkerProbingPaths, null);
 
             if (!string.IsNullOrEmpty(probingPathsEnvValue))
             {
-                probingPaths = probingPathsEnvValue.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList() ?? new List<string>();
+                probingPaths = probingPathsEnvValue.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
             }
             else
             {
                 if (_environment.IsAnyWindows())
                 {
-                    // Harcoded site extensions path ("c:\\home\\SiteExtensions\\workers") for Windows until Antares starts setting this as Environment variable.
-                    //  probingPaths.Add("c:\\testData\\workers");
-
-#pragma warning disable SYSLIB0012 // Type or member is obsolete
-                    string assemblyLocalPath = Path.GetDirectoryName(new Uri(typeof(LanguageWorkerOptionsSetup).Assembly.CodeBase).LocalPath);
-#pragma warning restore SYSLIB0012 // Type or member is obsolete
-                    string workersDirPath = Path.Combine(assemblyLocalPath, "ProbingPaths");
-                    probingPaths.Add(workersDirPath);
-                    _logger.LogInformation($"ProbingPaths setup via options: {workersDirPath}");
+                    probingPaths.Add(_windowsWorkerProbingPath);
                 }
             }
 
             if (probingPaths.Any())
             {
-                var jsonObj = new
-                {
-                    languageWorkers = new
-                    {
-                        probingPaths
-                    }
-                };
-
-                output = JsonSerializer.Serialize(jsonObj, new JsonSerializerOptions { WriteIndented = true });
+                probingPathsString = $"{{ {RpcWorkerConstants.LanguageWorkersSectionName}: " +
+                                            $"{{ {RpcWorkerConstants.WorkerProbingPathsSectionName} : " +
+                                                $"{probingPaths} }} }}";
             }
 
-            return output;
+            return probingPathsString;
+        }
+
+        internal IConfiguration AddProbingPathsToConfiguration(IConfiguration configuration, string probingPathsString)
+        {
+            if (!string.IsNullOrEmpty(probingPathsString))
+            {
+                using var jsonStream = new MemoryStream(Encoding.UTF8.GetBytes(probingPathsString));
+
+                configuration = new ConfigurationBuilder()
+                    .AddConfiguration(configuration)
+                    .AddJsonStream(jsonStream)
+                    .Build();
+            }
+
+            return configuration;
         }
     }
 

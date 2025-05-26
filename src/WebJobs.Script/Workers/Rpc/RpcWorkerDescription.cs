@@ -98,6 +98,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             if (!string.IsNullOrEmpty(DefaultWorkerPath) && !Path.IsPathRooted(DefaultWorkerPath))
             {
+                // If probing paths are enabled and DefaultWorkerPath contains FunctionWorkerRuntimeVersionSettingName
+                // then version becomes redundant in the path. Replacing version with an empty string to avoid deuplication.
                 if (probingPathsEnabled && DefaultWorkerPath.Contains(RpcWorkerConstants.RuntimeVersionPlaceholder))
                 {
                     var versionDir = Path.GetFileName(WorkerDirectory);
