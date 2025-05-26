@@ -82,14 +82,21 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 }
             }
 
-            if (Utility.AreWorkerProbingPathsEnabled(_environment, _functionsHostingConfigOptions.Value, workerRuntime))
+            HashSet<string> probingPathsEnabledWorkersViaHostingConfig = _functionsHostingConfigOptions.Value
+                                                                            ?.EnableProbingPathsForWorkers
+                                                                            ?.ToLowerInvariant()
+                                                                            ?.Split("|", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                                                                            ?.ToHashSet();
+
+            bool probingPathsEnabled = Utility.AreWorkerProbingPathsEnabled(_environment, probingPathsEnabledWorkersViaHostingConfig, workerRuntime);
+            if (probingPathsEnabled)
             {
                 string probingPathsString = GetWorkerProbingPaths();
                 configuration = AddProbingPathsToConfiguration(configuration, probingPathsString);
             }
 
-            var workerConfigurationResolver = new WorkerConfigurationResolver(configuration, _logger, _environment, _workerProfileManager, _functionsHostingConfigOptions);
-            var configFactory = new RpcWorkerConfigFactory(configuration, _logger, SystemRuntimeInformation.Instance, _environment, _metricsLogger, _workerProfileManager, workerConfigurationResolver, _functionsHostingConfigOptions);
+            var workerConfigurationResolver = new WorkerConfigurationResolver(configuration, _logger, _environment, _workerProfileManager, probingPathsEnabledWorkersViaHostingConfig);
+            var configFactory = new RpcWorkerConfigFactory(configuration, _logger, SystemRuntimeInformation.Instance, _environment, _metricsLogger, _workerProfileManager, workerConfigurationResolver, probingPathsEnabled);
             options.WorkerConfigs = configFactory.GetConfigs();
         }
 
@@ -115,9 +122,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             if (probingPaths.Any())
             {
-                probingPathsString = $"{{ {RpcWorkerConstants.LanguageWorkersSectionName}: " +
-                                            $"{{ {RpcWorkerConstants.WorkerProbingPathsSectionName} : " +
-                                                $"{probingPaths} }} }}";
+                probingPathsString = $"{{ \"{RpcWorkerConstants.LanguageWorkersSectionName}\": " +
+                                     $"{{ \"{RpcWorkerConstants.WorkerProbingPathsSectionName}\": " +
+                                     $"\"{probingPaths}\" }} }}";
             }
 
             return probingPathsString;

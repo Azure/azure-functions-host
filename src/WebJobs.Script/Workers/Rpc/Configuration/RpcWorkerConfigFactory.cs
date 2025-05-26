@@ -30,7 +30,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly string _workerRuntime;
         private readonly IEnvironment _environment;
         private readonly IWorkerConfigurationResolver _workerConfigurationResolver;
-        private readonly FunctionsHostingConfigOptions _functionsHostingConfigOptions;
         private readonly JsonSerializerOptions _jsonSerializerOptions = new()
         {
             PropertyNameCaseInsensitive = true
@@ -45,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                                         IMetricsLogger metricsLogger,
                                         IWorkerProfileManager workerProfileManager,
                                         IWorkerConfigurationResolver workerConfigurationResolver,
-                                        IOptions<FunctionsHostingConfigOptions> functionsHostingConfigOptions)
+                                        bool probingPathsEnabled = false)
         {
             _config = config ?? throw new ArgumentNullException(nameof(config));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -55,12 +54,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _profileManager = workerProfileManager ?? throw new ArgumentNullException(nameof(workerProfileManager));
             _workerRuntime = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
             _workerConfigurationResolver = workerConfigurationResolver ?? throw new ArgumentNullException(nameof(workerConfigurationResolver));
-            _functionsHostingConfigOptions = functionsHostingConfigOptions.Value;
 
             WorkersDirPath = GetDefaultWorkersDirectory(Directory.Exists);
             var workersDirectorySection = _config.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}:{WorkerConstants.WorkersDirectorySectionName}");
 
-            ProbingPathsEnabled = Utility.AreWorkerProbingPathsEnabled(_environment, _functionsHostingConfigOptions, _workerRuntime);
+            ProbingPathsEnabled = probingPathsEnabled;
 
             if (!string.IsNullOrEmpty(workersDirectorySection.Value))
             {
@@ -107,7 +105,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             {
                 List<string> probingPaths = GetWorkerProbingPaths(_config);
 
-                _logger.LogDebug("Workers Directory set to: probingPaths = {probingPaths} and fallback path = {WorkersDirPath}", string.Join(", ", probingPaths), WorkersDirPath);
+                _logger.LogDebug("Probing paths set to: {probingPaths} and Workers Directory set as fallback path: {WorkersDirPath}", string.Join(", ", probingPaths), WorkersDirPath);
 
                 List<string> workerConfigs = _workerConfigurationResolver.GetWorkerConfigs(probingPaths, WorkersDirPath);
 
@@ -152,7 +150,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 try
                 {
                     // After specialization, load worker config only for the specified runtime unless it's a multi-language app.
-                    if (!string.IsNullOrWhiteSpace(_workerRuntime) && !_environment.IsPlaceholderModeEnabled() && !_environment.IsMultiLanguageRuntimeEnvironment())
+                    if (!string.IsNullOrWhiteSpace(_workerRuntime) &&
+                        !_environment.IsPlaceholderModeEnabled() &&
+                        !_environment.IsMultiLanguageRuntimeEnvironment() &&
+                        !ProbingPathsEnabled)
                     {
                         string workerRuntime = Path.GetFileName(workerDir);
                         // Only skip worker directories that don't match the current runtime.
@@ -218,7 +219,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                         _workerDescriptionDictionary[workerDescription.Language] = rpcWorkerConfig;
                         ReadLanguageWorkerFile(arguments.WorkerPath);
 
-                        _logger.LogDebug("Added WorkerConfig for language: {language} from path: {path}", workerDescription.Language, workerDescription.DefaultWorkerPath);
+                        _logger.LogDebug("Added WorkerConfig for language: {language} with DefaultWorkerPath: {path}", workerDescription.Language, workerDescription.DefaultWorkerPath);
                     }
                 }
                 catch (Exception ex) when (!ex.IsFatal())
@@ -303,7 +304,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         {
             List<string> probingPaths = new List<string>();
 
-            IConfigurationSection probingPathsSection = config.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}")
+            IConfigurationSection probingPathsSection = config?.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}")
                                                                 ?.GetSection($"{RpcWorkerConstants.WorkerProbingPathsSectionName}");
 
             var probingPathsList = probingPathsSection?.AsEnumerable();
@@ -313,9 +314,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 return probingPaths;
             }
 
-            for (int i = 0; i < probingPathsList.Count(); i++)
+            for (int item = 0; item < probingPathsList.Count(); item++)
             {
-                var path = probingPathsSection.GetSection($"{i}").Value;
+                var path = probingPathsSection.GetSection($"{item}")?.Value;
                 if (path is not null)
                 {
                     probingPaths.Add(path);

@@ -49,9 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             // Act
             var hostingOptionsValue = new FunctionsHostingConfigOptions();
             hostingOptionsValue.Features.Add(RpcWorkerConstants.EnableProbingPathsForWorkers, languageWorker);
-            var hostingOptions = new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptionsValue);
-
-            var workerConfigurationResolver = new WorkerConfigurationResolver(_mockConfig.Object, _mockLogger.Object, mockEnvironment.Object, _mockProfileManager.Object, hostingOptions);
+            var workerConfigurationResolver = new WorkerConfigurationResolver(_mockConfig.Object, _mockLogger.Object, mockEnvironment.Object, _mockProfileManager.Object, new HashSet<string>() { languageWorker });
 
             var result = workerConfigurationResolver.GetWorkerConfigs(_probingPaths, _fallbackPath);
 
@@ -71,12 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AppKind)).Returns(ScriptConstants.WorkFlowAppKind);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime)).Returns((string)null);
 
-            // Act
-            var hostingOptionsValue = new FunctionsHostingConfigOptions();
-            hostingOptionsValue.Features.Add(RpcWorkerConstants.EnableProbingPathsForWorkers, "java|node|powershell");
-            var hostingOptions = new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptionsValue);
-
-            var workerConfigurationResolver = new WorkerConfigurationResolver(_mockConfig.Object, _mockLogger.Object, mockEnvironment.Object, _mockProfileManager.Object, hostingOptions);
+            var workerConfigurationResolver = new WorkerConfigurationResolver(_mockConfig.Object, _mockLogger.Object, mockEnvironment.Object, _mockProfileManager.Object, new HashSet<string>() { "java", "node", "powershell" });
 
             var result = workerConfigurationResolver.GetWorkerConfigs(_probingPaths, _fallbackPath);
 
@@ -110,11 +103,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             }
 
             // Act
-            var hostingOptionsValue = new FunctionsHostingConfigOptions();
-            hostingOptionsValue.Features.Add(RpcWorkerConstants.EnableProbingPathsForWorkers, "java|node|powershell");
-            var hostingOptions = new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptionsValue);
-
-            var workerConfigurationResolver = new WorkerConfigurationResolver(_mockConfig.Object, _mockLogger.Object, mockEnvironment.Object, _mockProfileManager.Object, hostingOptions);
+            var workerConfigurationResolver = new WorkerConfigurationResolver(_mockConfig.Object, _mockLogger.Object, mockEnvironment.Object, _mockProfileManager.Object, new HashSet<string>() { "java", "node", "powershell" });
 
             var result = workerConfigurationResolver.GetWorkerConfigs(probingPaths, _fallbackPath);
 
@@ -156,11 +145,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             }
 
             // Act
-            var hostingOptionsValue = new FunctionsHostingConfigOptions();
-            hostingOptionsValue.Features.Add(RpcWorkerConstants.EnableProbingPathsForWorkers, "java|node|powershell");
-            var hostingOptions = new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptionsValue);
-
-            var workerConfigurationResolver = new WorkerConfigurationResolver(_mockConfig.Object, _mockLogger.Object, mockEnvironment.Object, _mockProfileManager.Object, hostingOptions);
+            var workerConfigurationResolver = new WorkerConfigurationResolver(_mockConfig.Object, _mockLogger.Object, mockEnvironment.Object, _mockProfileManager.Object, new HashSet<string>() { "java", "node", "powershell" });
 
             var result = workerConfigurationResolver.GetWorkerConfigs(probingPaths, _fallbackPath);
 

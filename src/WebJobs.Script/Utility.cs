@@ -1,20 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using Microsoft.AspNetCore.Http;
-using Microsoft.Azure.WebJobs.Logging;
-using Microsoft.Azure.WebJobs.Script.Config;
-using Microsoft.Azure.WebJobs.Script.Description;
-using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
-using Microsoft.Azure.WebJobs.Script.Models;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
-using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
@@ -30,6 +16,20 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
+using Microsoft.Azure.WebJobs.Script.Models;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
+using Newtonsoft.Json.Linq;
 using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
 
 namespace Microsoft.Azure.WebJobs.Script
@@ -1069,7 +1069,7 @@ namespace Microsoft.Azure.WebJobs.Script
         // Worker probing paths can be enabled or disabled via feature flags or hosting config options. Feature flags take precedence over hosting config options.
         // Users can enable or disable probing paths via setting the appropriate feature flags.
         // Probing paths can also be enabled for specific workers at stamp level via the hosting config options.
-        public static bool AreWorkerProbingPathsEnabled(IEnvironment environment, FunctionsHostingConfigOptions functionsHostingConfigOptions, string workerRuntime)
+        public static bool AreWorkerProbingPathsEnabled(IEnvironment environment, HashSet<string> probingPathsEnabledWorkersViaHostingConfig, string workerRuntime)
         {
             bool areProbingPathsDisabled = FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagDisableWorkerProbingPaths, environment);
 
@@ -1084,12 +1084,6 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 return true;
             }
-
-            HashSet<string> probingPathsEnabledWorkersViaHostingConfig = functionsHostingConfigOptions
-                                                                            .EnableProbingPathsForWorkers
-                                                                            ?.ToLowerInvariant()
-                                                                            ?.Split("|", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                                                                            ?.ToHashSet();
 
             if (!environment.IsMultiLanguageRuntimeEnvironment() && !string.IsNullOrWhiteSpace(workerRuntime))
             {
