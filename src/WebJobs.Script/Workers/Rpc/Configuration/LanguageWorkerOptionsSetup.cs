@@ -82,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 }
             }
 
-            HashSet<string> probingPathsEnabledWorkersViaHostingConfig = GetWorkersEnabledViaHostingConfig();
+            HashSet<string> probingPathsEnabledWorkersViaHostingConfig = GetProbingPathsEnabledWorkersFromHostingConfig();
             bool probingPathsEnabled = Utility.AreWorkerProbingPathsEnabled(_environment, probingPathsEnabledWorkersViaHostingConfig, workerRuntime);
             List<string> probingPaths = null;
 
@@ -96,7 +96,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             options.WorkerConfigs = configFactory.GetConfigs();
         }
 
-        internal HashSet<string> GetWorkersEnabledViaHostingConfig()
+        internal HashSet<string> GetProbingPathsEnabledWorkersFromHostingConfig()
         {
             return _functionsHostingConfigOptions.Value
                         ?.EnableProbingPathsForWorkers
