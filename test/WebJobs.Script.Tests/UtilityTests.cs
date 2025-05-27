@@ -1050,7 +1050,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData("node", "node", "workflowapp", true)]
         [InlineData("java|node", null, "workflowapp", true)]
         [InlineData("| ", null, "workflowapp", false)]
-        public void AreProbingPathsEnabled_WorkerRuntimeAndMultiLanguage_WorksAsExpected(string hostingConfigSetting, string workerRuntime, string multilanguageApp , bool expected)
+        public void AreProbingPathsEnabled_WorkerRuntimeAndMultiLanguage_WorksAsExpected(string hostingConfigSetting, string workerRuntime, string multilanguageApp, bool expected)
         {
             var testEnvironment = new TestEnvironment();
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AppKind, multilanguageApp);
