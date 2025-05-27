@@ -28,9 +28,8 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
     {
         internal static void ConfigureOpenTelemetry(this ILoggingBuilder loggingBuilder, HostBuilderContext context, TelemetryMode telemetryMode)
         {
-            var (otlpEndpoint, azMonConnectionString) = (
-                GetConfigurationValue(EnvironmentSettingNames.OtlpEndpoint, context.Configuration),
-                GetConfigurationValue(EnvironmentSettingNames.AppInsightsConnectionString, context.Configuration));
+            var otlpEndpoint = GetConfigurationValue(EnvironmentSettingNames.OtlpEndpoint, context.Configuration);
+            var azMonConnectionString = GetConfigurationValue(EnvironmentSettingNames.AppInsightsConnectionString, context.Configuration);
 
             bool enableOtlp = !string.IsNullOrWhiteSpace(otlpEndpoint);
             bool enableAzureMonitor = !string.IsNullOrWhiteSpace(azMonConnectionString);
@@ -43,8 +42,9 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
                 return;
             }
 
-            loggingBuilder
-                .ConfigureLogging(enableOtlp, enableAzureMonitor, azMonConnectionString, credential, telemetryMode).Services
+            loggingBuilder.ConfigureLogging(enableOtlp, enableAzureMonitor, azMonConnectionString, credential, telemetryMode);
+
+            loggingBuilder.Services
                 .AddOpenTelemetry()
                 .ConfigureResource(r => ConfigureResource(r))
                 .ConfigureMetrics(enableOtlp, enableAzureMonitor, azMonConnectionString, credential, telemetryMode)
