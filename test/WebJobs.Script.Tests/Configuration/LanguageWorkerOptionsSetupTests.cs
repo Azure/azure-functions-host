@@ -82,11 +82,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         }
 
         [Theory]
-        [InlineData("java", "EnableWorkerProbingPaths", "java", "..\\..\\..\\..\\test\\TestWorkers\\ProbingPaths\\workers\\", "LATEST", "2.19.0")]
-        [InlineData("java", "EnableWorkerProbingPaths", "java", "..\\..\\..\\..\\test\\TestWorkers\\ProbingPaths\\workers\\", "STANDARD", "2.18.0")]
-        [InlineData("node", "EnableWorkerProbingPaths", "node", "..\\..\\..\\..\\test\\TestWorkers\\ProbingPaths\\workers\\", "LATEST", "3.10.1")]
-        [InlineData("node", "EnableWorkerProbingPaths", "java|node", "..\\..\\..\\..\\test\\TestWorkers\\ProbingPaths\\workers\\", "STANDARD", "3.10.1")]
-        public void LanguageWorkerOptions_ProbingPaths_Expected_ListOfConfigs(string workerRuntime, string enableProbingPaths, string hostingOptionsSetting, string probingPath, string releaseChannel, string expectedVersion)
+        [InlineData("java", "EnableWorkerProbingPaths", "java", "LATEST", "2.19.0")]
+        [InlineData("java", "EnableWorkerProbingPaths", "java", "STANDARD", "2.18.0")]
+        [InlineData("node", "EnableWorkerProbingPaths", "node", "LATEST", "3.10.1")]
+        [InlineData("node", "EnableWorkerProbingPaths", "java|node", "STANDARD", "3.10.1")]
+        public void LanguageWorkerOptions_ProbingPaths_Expected_ListOfConfigs(string workerRuntime, string enableProbingPaths, string hostingOptionsSetting, string releaseChannel, string expectedVersion)
         {
             var loggerProvider = new TestLoggerProvider();
             var loggerFactory = new LoggerFactory();
@@ -99,7 +99,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var configuration = configurationBuilder.Build();
             var testProfileManager = new Mock<IWorkerProfileManager>();
             var testScriptHostManager = new Mock<IScriptHostManager>();
-            string probingPathValue = string.Join(';', _probingPath1, string.Empty, "path-not-exists" );
+            string probingPathValue = string.Join(';', _probingPath1, string.Empty, "path-not-exists");
 
             testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, workerRuntime);
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, enableProbingPaths);
@@ -123,6 +123,90 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             string expectedLog = $"Added WorkerConfig for language: {workerRuntime} with DefaultWorkerPath: {path}";
             Assert.True(logs.Any(l => l.FormattedMessage.Contains(expectedLog)));
             Assert.True(logs.Any(l => l.FormattedMessage.Contains("Probing paths set to:")));
+        }
+
+        [Theory]
+        [InlineData("java", "EnableWorkerProbingPaths", "java", "LATEST")]
+        [InlineData("java", "EnableWorkerProbingPaths", "java", "STANDARD")]
+        [InlineData("node", "EnableWorkerProbingPaths", "node", "LATEST")]
+        [InlineData("node", "EnableWorkerProbingPaths", "java|node", "STANDARD")]
+        public void LanguageWorkerOptions_FallbackPath_Expected_ListOfConfigs(string workerRuntime, string enableProbingPaths, string hostingOptionsSetting, string releaseChannel)
+        {
+            var loggerProvider = new TestLoggerProvider();
+            var loggerFactory = new LoggerFactory();
+            loggerFactory.AddProvider(loggerProvider);
+
+            var testEnvironment = new TestEnvironment();
+            var testMetricLogger = new TestMetricsLogger();
+            var configurationBuilder = new ConfigurationBuilder()
+                .Add(new ScriptEnvironmentVariablesConfigurationSource());
+            var configuration = configurationBuilder.Build();
+            var testProfileManager = new Mock<IWorkerProfileManager>();
+            var testScriptHostManager = new Mock<IScriptHostManager>();
+            string probingPathValue = null;
+
+            testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, workerRuntime);
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, enableProbingPaths);
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel, releaseChannel);
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.WorkerProbingPaths, probingPathValue);
+
+            var hostingOptions = new FunctionsHostingConfigOptions();
+            hostingOptions.Features.Add(RpcWorkerConstants.EnableProbingPathsForWorkers, hostingOptionsSetting);
+
+            LanguageWorkerOptionsSetup setup = new LanguageWorkerOptionsSetup(configuration, loggerFactory, testEnvironment, testMetricLogger, testProfileManager.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
+            LanguageWorkerOptions options = new LanguageWorkerOptions();
+
+            setup.Configure(options);
+
+            Assert.Equal(1, options.WorkerConfigs.Count);
+
+            var logs = loggerProvider.GetAllLogMessages();
+
+            string path = Path.Combine(_fallbackPath, workerRuntime);
+            string expectedLog = $"Added WorkerConfig for language: {workerRuntime} with DefaultWorkerPath: {path}";
+            Assert.True(logs.Any(l => l.FormattedMessage.Contains(expectedLog)));
+            Assert.True(logs.Any(l => l.FormattedMessage.Contains("Probing paths set to:")));
+        }
+
+        [Theory]
+        [InlineData("java", "LATEST")]
+        [InlineData("java", "STANDARD")]
+        [InlineData("node", "LATEST")]
+        [InlineData("node", "STANDARD")]
+        public void LanguageWorkerOptions_DisabledProbingPaths_Expected_ListOfConfigs(string workerRuntime, string releaseChannel)
+        {
+            var loggerProvider = new TestLoggerProvider();
+            var loggerFactory = new LoggerFactory();
+            loggerFactory.AddProvider(loggerProvider);
+
+            var testEnvironment = new TestEnvironment();
+            var testMetricLogger = new TestMetricsLogger();
+            var configurationBuilder = new ConfigurationBuilder()
+                .Add(new ScriptEnvironmentVariablesConfigurationSource());
+            var configuration = configurationBuilder.Build();
+            var testProfileManager = new Mock<IWorkerProfileManager>();
+            var testScriptHostManager = new Mock<IScriptHostManager>();
+            string probingPathValue = null;
+
+            testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, workerRuntime);
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel, releaseChannel);
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.WorkerProbingPaths, probingPathValue);
+
+            var hostingOptions = new FunctionsHostingConfigOptions();
+
+            LanguageWorkerOptionsSetup setup = new LanguageWorkerOptionsSetup(configuration, loggerFactory, testEnvironment, testMetricLogger, testProfileManager.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
+            LanguageWorkerOptions options = new LanguageWorkerOptions();
+
+            setup.Configure(options);
+
+            Assert.Equal(1, options.WorkerConfigs.Count);
+
+            var logs = loggerProvider.GetAllLogMessages();
+
+            string path = Path.Combine(_fallbackPath, workerRuntime);
+            string expectedLog = $"Added WorkerConfig for language: {workerRuntime} with DefaultWorkerPath: {path}";
+            Assert.True(logs.Any(l => l.FormattedMessage.Contains(expectedLog)));
+            Assert.True(logs.Any(l => l.FormattedMessage.Contains("Workers Directory set to:")));
         }
     }
 }
