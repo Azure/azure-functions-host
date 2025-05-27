@@ -11,3 +11,4 @@
 - Added support for collecting cross-platform perf traces and generating PGO JIT traces (#11062)
 - Memory allocation optimizations in `DependencyHelper.GetExtensionRequirements` (#11022)
 - Fix Instance Manager for CV1 Migration (#11072)
+- Avoid setting up OTel and AzMon exporter in the placeholder mode. (#11090)
