@@ -1069,7 +1069,7 @@ namespace Microsoft.Azure.WebJobs.Script
         // Worker probing paths can be enabled or disabled via feature flags or hosting config options. Feature flags take precedence over hosting config options.
         // Users can enable or disable probing paths via setting the appropriate feature flags.
         // Probing paths can also be enabled for specific workers at stamp level via the hosting config options.
-        public static bool AreWorkerProbingPathsEnabled(IEnvironment environment, HashSet<string> probingPathsEnabledWorkersViaHostingConfig, string workerRuntime)
+        public static bool AreWorkerProbingPathsEnabled(IEnvironment environment, HashSet<string> probingPathsEnabledWorkersViaHostingConfig)
         {
             bool areProbingPathsDisabled = FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagDisableWorkerProbingPaths, environment);
 
@@ -1085,12 +1085,14 @@ namespace Microsoft.Azure.WebJobs.Script
                 return true;
             }
 
+            string workerRuntime = environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
+
             if (!environment.IsMultiLanguageRuntimeEnvironment() && !string.IsNullOrWhiteSpace(workerRuntime))
             {
-                return probingPathsEnabledWorkersViaHostingConfig.Contains(workerRuntime);
+                return probingPathsEnabledWorkersViaHostingConfig?.Contains(workerRuntime) ?? false;
             }
 
-            return probingPathsEnabledWorkersViaHostingConfig is not null ? probingPathsEnabledWorkersViaHostingConfig.Any() : false;
+            return probingPathsEnabledWorkersViaHostingConfig?.Any() ?? false;
         }
 
         public static void LogAutorestGeneratedJsonIfExists(string rootScriptPath, ILogger logger)

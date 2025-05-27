@@ -1038,7 +1038,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var testEnvironment = new TestEnvironment();
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, featureFlagValue);
 
-            bool result = Utility.AreWorkerProbingPathsEnabled(testEnvironment, hostingConfigEnabledWorkers, null);
+            bool result = Utility.AreWorkerProbingPathsEnabled(testEnvironment, hostingConfigEnabledWorkers);
 
             Assert.Equal(expected, result);
         }
@@ -1054,10 +1054,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var testEnvironment = new TestEnvironment();
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AppKind, multilanguageApp);
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, workerRuntime);
 
             HashSet<string> hostingConfigEnabledWorkers = hostingConfigSetting?.Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToHashSet();
 
-            bool result = Utility.AreWorkerProbingPathsEnabled(testEnvironment, hostingConfigEnabledWorkers, workerRuntime);
+            bool result = Utility.AreWorkerProbingPathsEnabled(testEnvironment, hostingConfigEnabledWorkers);
 
             Assert.Equal(expected, result);
         }

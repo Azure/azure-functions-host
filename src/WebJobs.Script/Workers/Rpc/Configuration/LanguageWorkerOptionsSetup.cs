@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
     internal class LanguageWorkerOptionsSetup : IConfigureOptions<LanguageWorkerOptions>
     {
-        private const string _windowsWorkerProbingPath = "c:\\home\\SiteExtensions\\workers"; // Harcoded site extensions path for Windows until Antares starts setting this as Environment variable.
+        private const string _windowsWorkerProbingPath = "c:\\home\\SiteExtensions\\workers"; // Harcoded site extensions path for Windows until sets it as an Environment variable.
         private readonly IConfiguration _configuration;
         private readonly ILogger _logger;
         private readonly IEnvironment _environment;
@@ -83,7 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
 
             HashSet<string> probingPathsEnabledWorkersViaHostingConfig = GetProbingPathsEnabledWorkersFromHostingConfig();
-            bool probingPathsEnabled = Utility.AreWorkerProbingPathsEnabled(_environment, probingPathsEnabledWorkersViaHostingConfig, workerRuntime);
+            bool probingPathsEnabled = Utility.AreWorkerProbingPathsEnabled(_environment, probingPathsEnabledWorkersViaHostingConfig);
             List<string> probingPaths = null;
 
             if (probingPathsEnabled)
@@ -101,16 +101,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             return _functionsHostingConfigOptions.Value
                         ?.EnableProbingPathsForWorkers
                         ?.ToLowerInvariant()
-                        ?.Split("|", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                        ?.ToHashSet();
+                        .Split("|", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                        .ToHashSet();
         }
 
         internal List<string> GetWorkerProbingPaths()
         {
             var probingPaths = new List<string>();
-            string probingPathsString = string.Empty;
 
-            // If Environment variable is set, read probing paths (works for linux)
+            // If Environment variable is set, read probing paths from Env (works for linux)
             string probingPathsEnvValue = _environment.GetEnvironmentVariableOrDefault(EnvironmentSettingNames.WorkerProbingPaths, null);
 
             if (!string.IsNullOrEmpty(probingPathsEnvValue))
