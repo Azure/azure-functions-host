@@ -1,9 +1,10 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
-using System.Collections.Immutable;
 using NuGet.Versioning;
+using System;
+using System.Collections.Generic;
+using System.Collections.Immutable;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -251,6 +252,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public static readonly long DefaultMaxRequestBodySize = 104857600;
 
         public static readonly ImmutableArray<string> SystemLogCategoryPrefixes = ImmutableArray.Create("Microsoft.Azure.WebJobs.", "Function.", "Worker.", "Host.");
+        public static readonly HashSet<string> HostCapabilities = [];
 
         public static readonly string FunctionMetadataDirectTypeKey = "DirectType";
         public static readonly string LiveLogsSessionAIKey = "#AzFuncLiveLogsSessionId";

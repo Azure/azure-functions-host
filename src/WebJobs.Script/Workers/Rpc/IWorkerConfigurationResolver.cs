@@ -13,6 +13,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
     /// <returns> A list of paths to worker configuration files. </returns>
     public interface IWorkerConfigurationResolver
     {
-        internal List<string> GetWorkerConfigs(List<string> probingPaths, string fallbackPath);
+         List<string> GetWorkerConfigs(List<string> probingPaths, string fallbackPath);
     }
 }

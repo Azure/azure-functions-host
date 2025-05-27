@@ -1017,6 +1017,52 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
+        [InlineData(null, "node", true)]
+        [InlineData(null, "java|node", true)]
+        [InlineData(null, "", false)]
+        [InlineData(null, "| ", false)]
+        [InlineData(null, null, false)]
+        [InlineData(ScriptConstants.FeatureFlagEnableWorkerProbingPaths, "node", true)]
+        [InlineData(ScriptConstants.FeatureFlagEnableWorkerProbingPaths, "java|node", true)]
+        [InlineData(ScriptConstants.FeatureFlagEnableWorkerProbingPaths, "", true)]
+        [InlineData(ScriptConstants.FeatureFlagEnableWorkerProbingPaths, "| ", true)]
+        [InlineData(ScriptConstants.FeatureFlagEnableWorkerProbingPaths, null, true)]
+        [InlineData(ScriptConstants.FeatureFlagDisableWorkerProbingPaths, "node", false)]
+        [InlineData(ScriptConstants.FeatureFlagDisableWorkerProbingPaths, "java|node", false)]
+        [InlineData(ScriptConstants.FeatureFlagDisableWorkerProbingPaths, "| ", false)]
+
+        public void AreProbingPathsEnabled_HostingConfigAndFeatureFlags_WorksAsExpected(string featureFlagValue, string hostingConfigSetting, bool expected)
+        {
+            HashSet<string> hostingConfigEnabledWorkers = hostingConfigSetting?.Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToHashSet();
+
+            var testEnvironment = new TestEnvironment();
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, featureFlagValue);
+
+            bool result = Utility.AreWorkerProbingPathsEnabled(testEnvironment, hostingConfigEnabledWorkers, null);
+
+            Assert.Equal(expected, result);
+        }
+
+        [Theory]
+        [InlineData("node", "node", null, true)]
+        [InlineData("node", "java", null, false)]
+        [InlineData("java|node", null, null, true)]
+        [InlineData("node", "node", "workflowapp", true)]
+        [InlineData("java|node", null, "workflowapp", true)]
+        [InlineData("| ", null, "workflowapp", false)]
+        public void AreProbingPathsEnabled_WorkerRuntimeAndMultiLanguage_WorksAsExpected(string hostingConfigSetting, string workerRuntime, string multilanguageApp , bool expected)
+        {
+            var testEnvironment = new TestEnvironment();
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AppKind, multilanguageApp);
+
+            HashSet<string> hostingConfigEnabledWorkers = hostingConfigSetting?.Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToHashSet();
+
+            bool result = Utility.AreWorkerProbingPathsEnabled(testEnvironment, hostingConfigEnabledWorkers, workerRuntime);
+
+            Assert.Equal(expected, result);
+        }
+
+        [Theory]
         [InlineData("True", true, true)]
         [InlineData("False", false, true)]
         [InlineData(true, true, true)]
