@@ -4,9 +4,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -34,30 +32,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Theory]
-    //    [InlineData("java", "LATEST", "2.19.0")]
-    //    [InlineData("java", "STANDARD", "2.18.0")]
-        [InlineData("node", "STANDARD", "3.10.1")]
-        public void GetWorkerConfigs_ReturnsExpectedConfigs(string languageWorker, string releaseChannel, string version)
-        {
-            // Arrange
-            var mockEnvironment = new Mock<IEnvironment>();
-            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime)).Returns(languageWorker);
-            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel)).Returns(releaseChannel);
-            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AppKind)).Returns((string)null);
-
-            // Act
-            var hostingOptionsValue = new FunctionsHostingConfigOptions();
-            hostingOptionsValue.Features.Add(RpcWorkerConstants.EnableProbingPathsForWorkers, languageWorker);
-            var workerConfigurationResolver = new WorkerConfigurationResolver(_mockConfig.Object, _mockLogger.Object, mockEnvironment.Object, _mockProfileManager.Object, new HashSet<string>() { languageWorker });
-
-            var result = workerConfigurationResolver.GetWorkerConfigs(_probingPaths, _fallbackPath);
-
-            // Assert
-            Assert.Single(result);
-            Assert.Contains(_probingPath1 + languageWorker + "\\" + version, result);
-        }
-
-        [Theory]
         [InlineData("LATEST", "java\\2.19.0", "node\\3.10.1", "powershell\\7.4", "dotnet-isolated", "python")]
         [InlineData("STANDARD", "java\\2.18.0", "node\\3.10.1", "powershell\\7.2", "dotnet-isolated", "python")]
         public void GetWorkerConfigs_MultiLanguageWorker_ReturnsExpectedConfigs(string releaseChannel, string java, string node, string powershell, string dotnetIsolated, string python)
@@ -74,11 +48,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             // Assert
             Assert.Equal(result.Count, 5);
-            Assert.True(result.Any(r => r.Contains(_probingPath1 + java)));
-            Assert.True(result.Any(r => r.Contains(_probingPath1 + node)));
-            Assert.True(result.Any(r => r.Contains(_probingPath1 + powershell)));
-            Assert.True(result.Any(r => r.Contains(_fallbackPath + "\\" + dotnetIsolated)));
-            Assert.True(result.Any(r => r.Contains(_fallbackPath + "\\" + python)));
+            Assert.True(result.Any(r => r.Contains(Path.Combine(_probingPath1, java))));
+            Assert.True(result.Any(r => r.Contains(Path.Combine(_probingPath1, node))));
+            Assert.True(result.Any(r => r.Contains(Path.Combine(_probingPath1, powershell))));
+            Assert.True(result.Any(r => r.Contains(Path.Combine(_fallbackPath, dotnetIsolated))));
+            Assert.True(result.Any(r => r.Contains(Path.Combine(_fallbackPath, python))));
         }
 
         [Theory]
@@ -108,11 +82,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             // Assert
             Assert.Equal(result.Count, 5);
-            Assert.True(result.Any(r => r.Contains(_fallbackPath + "\\java")));
-            Assert.True(result.Any(r => r.Contains(_fallbackPath + "\\node")));
-            Assert.True(result.Any(r => r.Contains(_fallbackPath + "\\powershell")));
-            Assert.True(result.Any(r => r.Contains(_fallbackPath + "\\dotnet-isolated")));
-            Assert.True(result.Any(r => r.Contains(_fallbackPath + "\\python")));
+            Assert.True(result.Any(r => r.Contains(Path.Combine(_fallbackPath, "java"))));
+            Assert.True(result.Any(r => r.Contains(Path.Combine(_fallbackPath, "node"))));
+            Assert.True(result.Any(r => r.Contains(Path.Combine(_fallbackPath, "powershell"))));
+            Assert.True(result.Any(r => r.Contains(Path.Combine(_fallbackPath, "dotnet-isolated"))));
+            Assert.True(result.Any(r => r.Contains(Path.Combine(_fallbackPath, "python"))));
         }
 
         [Theory]
@@ -150,7 +124,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             // Assert
             Assert.Equal(result.Count, 1);
-            Assert.True(result.Any(r => r.Contains(_fallbackPath + "\\" + languageWorker)));
+            Assert.True(result.Any(r => r.Contains(Path.Combine(_fallbackPath, languageWorker))));
         }
     }
 }

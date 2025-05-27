@@ -19,6 +19,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 {
     public class LanguageWorkerOptionsSetupTests
     {
+        private readonly string _probingPath1 = Path.GetFullPath("..\\..\\..\\..\\test\\TestWorkers\\ProbingPaths\\workers\\");
+        private readonly string _fallbackPath = Path.GetFullPath("workers");
+
         [Theory]
         [InlineData("DotNet")]
         [InlineData("dotnet")]
@@ -80,6 +83,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
         [Theory]
         [InlineData("java", "EnableWorkerProbingPaths", "java", "..\\..\\..\\..\\test\\TestWorkers\\ProbingPaths\\workers\\", "LATEST", "2.19.0")]
+        [InlineData("java", "EnableWorkerProbingPaths", "java", "..\\..\\..\\..\\test\\TestWorkers\\ProbingPaths\\workers\\", "STANDARD", "2.18.0")]
+        [InlineData("node", "EnableWorkerProbingPaths", "node", "..\\..\\..\\..\\test\\TestWorkers\\ProbingPaths\\workers\\", "LATEST", "3.10.1")]
+        [InlineData("node", "EnableWorkerProbingPaths", "java|node", "..\\..\\..\\..\\test\\TestWorkers\\ProbingPaths\\workers\\", "STANDARD", "3.10.1")]
         public void LanguageWorkerOptions_ProbingPaths_Expected_ListOfConfigs(string workerRuntime, string enableProbingPaths, string hostingOptionsSetting, string probingPath, string releaseChannel, string expectedVersion)
         {
             var loggerProvider = new TestLoggerProvider();
@@ -93,12 +99,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var configuration = configurationBuilder.Build();
             var testProfileManager = new Mock<IWorkerProfileManager>();
             var testScriptHostManager = new Mock<IScriptHostManager>();
-            string fullProbingPath = Path.GetFullPath(probingPath);
+            string probingPathValue = string.Join(';', _probingPath1, string.Empty, "path-not-exists" );
 
             testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, workerRuntime);
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, enableProbingPaths);
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel, releaseChannel);
-            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.WorkerProbingPaths, fullProbingPath);
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.WorkerProbingPaths, probingPathValue);
 
             var hostingOptions = new FunctionsHostingConfigOptions();
             hostingOptions.Features.Add(RpcWorkerConstants.EnableProbingPathsForWorkers, hostingOptionsSetting);
@@ -113,9 +119,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             var logs = loggerProvider.GetAllLogMessages();
 
-            string path = Path.Combine(fullProbingPath, workerRuntime, expectedVersion);
+            string path = Path.Combine(_probingPath1, workerRuntime, expectedVersion);
             string expectedLog = $"Added WorkerConfig for language: {workerRuntime} with DefaultWorkerPath: {path}";
             Assert.True(logs.Any(l => l.FormattedMessage.Contains(expectedLog)));
+            Assert.True(logs.Any(l => l.FormattedMessage.Contains("Probing paths set to:")));
         }
     }
 }
