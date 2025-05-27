@@ -93,12 +93,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var configuration = configurationBuilder.Build();
             var testProfileManager = new Mock<IWorkerProfileManager>();
             var testScriptHostManager = new Mock<IScriptHostManager>();
-            string probingPath1 = Path.GetFullPath(probingPath);
+            string fullProbingPath = Path.GetFullPath(probingPath);
 
             testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, workerRuntime);
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, enableProbingPaths);
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel, releaseChannel);
-            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.WorkerProbingPaths, probingPath1);
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.WorkerProbingPaths, fullProbingPath);
 
             var hostingOptions = new FunctionsHostingConfigOptions();
             hostingOptions.Features.Add(RpcWorkerConstants.EnableProbingPathsForWorkers, hostingOptionsSetting);
@@ -108,21 +108,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             setup.Configure(options);
 
-            if (string.IsNullOrEmpty(workerRuntime))
-            {
-                Assert.Equal(5, options.WorkerConfigs.Count);
-            }
-            else if (workerRuntime.Equals(RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
-            {
-                Assert.Empty(options.WorkerConfigs);
-            }
-            else
-            {
-                Assert.Equal(1, options.WorkerConfigs.Count);
-                Assert.True(options.WorkerConfigs.First().Arguments.WorkerPath.Contains(expectedVersion));
+            Assert.Equal(1, options.WorkerConfigs.Count);
+            Assert.True(options.WorkerConfigs.First().Arguments.WorkerPath.Contains(expectedVersion));
 
-                var logs = loggerProvider.GetAllLogMessages();
-            }
+            var logs = loggerProvider.GetAllLogMessages();
+
+            string path = Path.Combine(fullProbingPath, workerRuntime, expectedVersion);
+            string expectedLog = $"Added WorkerConfig for language: {workerRuntime} with DefaultWorkerPath: {path}";
+            Assert.True(logs.Any(l => l.FormattedMessage.Contains(expectedLog)));
         }
     }
 }

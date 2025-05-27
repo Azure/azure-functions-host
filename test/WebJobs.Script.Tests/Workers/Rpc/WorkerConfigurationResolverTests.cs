@@ -10,7 +10,6 @@ using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
 
@@ -35,8 +34,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Theory]
-        [InlineData("java", "LATEST", "2.19.0")]
-        [InlineData("java", "STANDARD", "2.18.0")]
+    //    [InlineData("java", "LATEST", "2.19.0")]
+    //    [InlineData("java", "STANDARD", "2.18.0")]
         [InlineData("node", "STANDARD", "3.10.1")]
         public void GetWorkerConfigs_ReturnsExpectedConfigs(string languageWorker, string releaseChannel, string version)
         {

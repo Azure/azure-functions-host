@@ -3,7 +3,7 @@
         "language": "java",
         "extensions": [".jar"],
         "defaultExecutablePath": "%JAVA_HOME%/bin/java",
-        "defaultWorkerPath": "azure-functions-java-worker.jar",
+        "defaultWorkerPath": "testfile.txt",
         "arguments": []
     },
     "hostRequirements": [],

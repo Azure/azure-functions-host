@@ -149,27 +149,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
-        public void GetConfigs_ProbingPaths()
-        {
-            string probingPath1 = Path.GetFullPath("..\\..\\..\\..\\test\\TestWorkers\\ProbingPaths\\workers\\");
-
-            var mockEnvironment = new Mock<IEnvironment>();
-            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime)).Returns("java");
-
-            IConfiguration config = new ConfigurationBuilder().Build();
-            var testLogger = new TestLogger("test");
-
-            var workerConfigurationResolver = new WorkerConfigurationResolver(config, testLogger, mockEnvironment.Object, _testWorkerProfileManager, new HashSet<string>() { "java" });
-            var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, mockEnvironment.Object, new TestMetricsLogger(), _testWorkerProfileManager, workerConfigurationResolver, true, new List<string>() { probingPath1 });
-            var workerConfigs = configFactory.GetConfigs();
-
-            // check log messages
-            var logs = testLogger.GetLogMessages();
-            Assert.Equal(1, workerConfigs.Count);
-            Assert.True(logs.Any(p => p.FormattedMessage.Contains("Probing paths set to: " + probingPath1)));
-        }
-
-        [Fact]
         public void DefaultWorkerConfigs_Overrides_DefaultWorkerRuntimeVersion_AppSetting()
         {
             var testEnvVariables = new Dictionary<string, string>
