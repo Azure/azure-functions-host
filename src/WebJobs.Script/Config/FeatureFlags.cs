@@ -1,8 +1,8 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using Microsoft.Azure.WebJobs.Script.Extensions;
 using System;
-using Microsoft.Azure.WebJobs.Script.Utils;
 
 namespace Microsoft.Azure.WebJobs.Script.Config
 {
@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
                 return false;
             }
 
-            return StringUtils.ContainsToken(featureFlags, name, separator: ',', comparisonType: StringComparison.OrdinalIgnoreCase);
+            return featureFlags.ContainsToken(name, separator: ',', StringComparison.OrdinalIgnoreCase);
         }
     }
 }
