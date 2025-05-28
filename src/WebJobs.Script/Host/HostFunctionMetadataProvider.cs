@@ -9,6 +9,7 @@ using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -135,7 +136,11 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 foreach (JObject binding in bindingArray)
                 {
-                    BindingMetadata bindingMetadata = BindingMetadata.Create(binding);
+                    // Sanitize the binding JSON to remove any sensitive information before creating BindingMetadata
+                    var sanitizedBindingJson = Sanitizer.Sanitize(binding.ToString(Newtonsoft.Json.Formatting.None));
+                    var sanitizedJObject = JObject.Parse(sanitizedBindingJson);
+
+                    BindingMetadata bindingMetadata = BindingMetadata.Create(sanitizedJObject);
                     functionMetadata.Bindings.Add(bindingMetadata);
                 }
             }

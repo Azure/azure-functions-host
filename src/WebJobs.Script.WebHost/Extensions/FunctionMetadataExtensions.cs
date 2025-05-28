@@ -5,6 +5,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Management.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
@@ -175,7 +176,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
 
         private static async Task<JObject> GetFunctionConfigFromFile(string path)
         {
-            return JObject.Parse(await FileUtility.ReadAsync(path));
+            return JObject.Parse(Sanitizer.Sanitize(await FileUtility.ReadAsync(path)));
         }
 
         private static JObject GetFunctionConfigFromMetadata(FunctionMetadata metadata)

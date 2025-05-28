@@ -8,6 +8,7 @@ using System.IO.Abstractions;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -257,7 +258,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             foreach (string binding in rawBindings)
             {
-                var deserializedObj = JsonConvert.DeserializeObject<JObject>(binding, _dateTimeSerializerSettings);
+                var deserializedObj = JsonConvert.DeserializeObject<JObject>(Sanitizer.Sanitize(binding), _dateTimeSerializerSettings);
                 var functionBinding = BindingMetadata.Create(deserializedObj);
 
                 Utility.ValidateBinding(functionBinding);
