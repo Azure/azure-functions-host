@@ -14,7 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
         /// </summary>
         /// <param name="source">The string containing one or more tokens separated by a delimiter (e.g., "FeatureA,FeatureB").</param>
         /// <param name="token">The token to search for. Must not contain the separator character. A match is determined using the specified comparison type.</param>
-        /// <param name="separator">The character used to separate tokens in the string. Defaults to ','.</param>
+        /// <param name="separator">The character used to separate tokens in the string. Example ','.</param>
         /// <param name="comparisonType">The string comparison type to use. Defaults to OrdinalIgnoreCase.</param>
         /// <returns>
         /// <c>true</c> if the token is found as an exact match in the delimited string; otherwise, <c>false</c>.
@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
         /// <remarks>
         /// If <paramref name="source"/> is empty or <paramref name="token"/> is empty, the method returns <c>false</c>.
         /// </remarks>
-        public static bool ContainsToken(this string source, string token, char separator = ',', StringComparison comparisonType = StringComparison.OrdinalIgnoreCase)
+        public static bool ContainsToken(this string source, string token, char separator, StringComparison comparisonType = StringComparison.OrdinalIgnoreCase)
         {
             if (string.IsNullOrEmpty(source) || string.IsNullOrEmpty(token))
             {
@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
         /// </summary>
         /// <param name="source">The span containing one or more tokens separated by a delimiter (e.g., "FeatureA,FeatureB").</param>
         /// <param name="token">The token to search for. Must not contain the separator character. A match is determined using the specified comparison type.</param>
-        /// <param name="separator">The character used to separate tokens in the span. Defaults to ','.</param>
+        /// <param name="separator">The character used to separate tokens in the span. Example ','.</param>
         /// <param name="comparisonType">The string comparison type to use. Defaults to OrdinalIgnoreCase.</param>
         /// <returns>
         /// <c>true</c> if the token is found as an exact match in the delimited span; otherwise, <c>false</c>.
@@ -53,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
         /// <remarks>
         /// If <paramref name="source"/> is empty or <paramref name="token"/> is empty, the method returns <c>false</c>.
         /// </remarks>
-        public static bool ContainsToken(this ReadOnlySpan<char> source, ReadOnlySpan<char> token, char separator = ',', StringComparison comparisonType = StringComparison.OrdinalIgnoreCase)
+        public static bool ContainsToken(this ReadOnlySpan<char> source, ReadOnlySpan<char> token, char separator, StringComparison comparisonType = StringComparison.OrdinalIgnoreCase)
         {
             if (token.IsEmpty)
             {
