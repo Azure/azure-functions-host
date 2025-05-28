@@ -22,6 +22,9 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
         /// <exception cref="ArgumentException">
         /// Thrown if <paramref name="token"/> contains the separator character.
         /// </exception>
+        /// <remarks>
+        /// If <paramref name="source"/> is empty or <paramref name="token"/> is empty, the method returns <c>false</c>.
+        /// </remarks>
         public static bool ContainsToken(this string source, string token, char separator = ',', StringComparison comparisonType = StringComparison.OrdinalIgnoreCase)
         {
             if (string.IsNullOrEmpty(source) || string.IsNullOrEmpty(token))
@@ -47,6 +50,9 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
         /// <exception cref="ArgumentException">
         /// Thrown if <paramref name="token"/> contains the separator character.
         /// </exception>
+        /// <remarks>
+        /// If <paramref name="source"/> is empty or <paramref name="token"/> is empty, the method returns <c>false</c>.
+        /// </remarks>
         public static bool ContainsToken(this ReadOnlySpan<char> source, ReadOnlySpan<char> token, char separator = ',', StringComparison comparisonType = StringComparison.OrdinalIgnoreCase)
         {
             if (token.IsEmpty)
