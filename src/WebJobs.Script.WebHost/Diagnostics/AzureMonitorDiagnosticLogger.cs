@@ -29,6 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly IEventGenerator _eventGenerator;
         private readonly IEnvironment _environment;
         private readonly IExternalScopeProvider _scopeProvider;
+        private bool _isAzureMonitorLoggingEnabled;
         private IOptionsMonitor<AppServiceOptions> _appServiceOptionsMonitor;
 
         public AzureMonitorDiagnosticLogger(string category, string hostInstanceId, IEventGenerator eventGenerator, IEnvironment environment, IExternalScopeProvider scopeProvider,
@@ -41,6 +42,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _scopeProvider = scopeProvider ?? throw new ArgumentNullException(nameof(scopeProvider));
             _hostNameProvider = hostNameProvider ?? throw new ArgumentNullException(nameof(hostNameProvider));
             _appServiceOptionsMonitor = appServiceOptionsMonitor ?? throw new ArgumentNullException(nameof(appServiceOptionsMonitor));
+            UpdateAppServiceOptions(_appServiceOptionsMonitor.CurrentValue);
+            _appServiceOptionsMonitor.OnChange(UpdateAppServiceOptions);
 
             _roleInstance = _environment.GetInstanceId();
 
@@ -51,12 +54,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public bool IsEnabled(LogLevel logLevel)
         {
-            if (_environment.IsConsumptionOnLegion() && !_appServiceOptionsMonitor.CurrentValue.IsAzureMonitorLoggingEnabled)
-            {
-                return false;
-            }
             // We want to instantiate this Logger in placeholder mode to warm it up, but do not want to log anything.
-            return !string.IsNullOrEmpty(_hostNameProvider.Value) && !_environment.IsPlaceholderModeEnabled();
+            return _isAzureMonitorLoggingEnabled && !string.IsNullOrEmpty(_hostNameProvider.Value) && !_environment.IsPlaceholderModeEnabled();
         }
 
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
@@ -135,6 +134,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             }
 
             _eventGenerator.LogAzureMonitorDiagnosticLogEvent(logLevel, _hostNameProvider.Value, AzureMonitorOperationName, AzureMonitorCategoryName, _regionName, sw.ToString());
+        }
+
+        private void UpdateAppServiceOptions(AppServiceOptions appServiceOptions)
+        {
+            _isAzureMonitorLoggingEnabled = !(_environment.IsConsumptionOnLegion() && !_appServiceOptionsMonitor.CurrentValue.IsAzureMonitorLoggingEnabled);
         }
 
         private static void WritePropertyIfNotNull<T>(JsonTextWriter writer, string propertyName, T propertyValue)
