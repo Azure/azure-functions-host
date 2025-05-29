@@ -203,7 +203,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 }
                 catch (Exception ex)
                 {
+                    // We failed to connect to the table storage account. This could be due to a transient error or a configuration issue (e.g., network problems).
+                    // To avoid repeatedly retrying in a potentially unhealthy state, we will disable the service.
+                    // The operation may succeed in a future instance if the underlying issue is resolved.
                     Logger.ErrorPurgingDiagnosticEventVersions(_logger, ex);
+                    DisableService();
+                    Logger.ServiceDisabledUnableToConnectToStorage(_logger, ex);
                 }
             }, maxRetries: 5, retryInterval: TimeSpan.FromSeconds(5));
 
@@ -254,12 +259,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 Logger.UnableToGetTableReferenceOrCreateTable(_logger, ex);
                 DisableService();
                 Logger.ServiceDisabledUnauthorizedClient(_logger, ex);
+                return;
             }
             catch (Exception ex)
             {
+                // We failed to connect to the table storage account. This could be due to a transient error or a configuration issue (e.g., network problems).
+                // To avoid repeatedly retrying in a potentially unhealthy state, we will disable the service.
+                // The operation may succeed in a future instance if the underlying issue is resolved.
                 Logger.UnableToGetTableReferenceOrCreateTable(_logger, ex);
-                // Clearing the memory cache to avoid memory build up.
-                _events.Clear();
+                DisableService();
+                Logger.ServiceDisabledUnableToConnectToStorage(_logger, ex);
                 return;
             }
 
@@ -301,6 +310,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             catch (Exception ex)
             {
                 Logger.UnableToWriteDiagnosticEvents(_logger, ex);
+                DisableService();
+                Logger.ServiceDisabledUnableToConnectToStorage(_logger, ex);
             }
         }
 
