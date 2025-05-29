@@ -107,7 +107,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         {
             get
             {
-                if (!_environment.IsPlaceholderModeEnabled() && string.IsNullOrEmpty(_hostId))
+                if (string.IsNullOrEmpty(_hostId) && !_environment.IsPlaceholderModeEnabled())
                 {
                     _hostId = _hostIdProvider?.GetHostIdAsync(CancellationToken.None).GetAwaiter().GetResult();
                 }
