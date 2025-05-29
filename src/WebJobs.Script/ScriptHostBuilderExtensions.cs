@@ -290,11 +290,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 // Core WebJobs/Script Host services
                 services.AddSingleton<ScriptHost>();
 
-                // Add http proxying services - this is used with http streaming workers and custom handlers when enabled
-                // http streaming capabilities are known following worker initialization so that info isn't available at this stage
-                services.AddHttpForwarder();
-                services.AddSingleton<IHttpProxyService, DefaultHttpProxyService>();
-
                 // HTTP Worker
                 services.AddSingleton<IHttpWorkerProcessFactory, HttpWorkerProcessFactory>();
                 services.AddSingleton<IHttpWorkerChannelFactory, HttpWorkerChannelFactory>();
