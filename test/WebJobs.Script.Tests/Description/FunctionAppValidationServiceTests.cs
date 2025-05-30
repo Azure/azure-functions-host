@@ -1,5 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
+
 using System;
 using System.Collections.Immutable;
 using System.IO;
@@ -23,7 +24,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     {
         private readonly ILogger<FunctionAppValidationService> _testLogger;
         private readonly Mock<IOptions<ScriptJobHostOptions>> _scriptOptionsMock;
-        private readonly IExtensionBundleManager _extensionBundleManager;
         private readonly ScriptJobHostOptions _scriptJobHostOptions;
         private readonly TestLoggerProvider _testLoggerProvider;
         private readonly ILoggerFactory _loggerFactory;
@@ -43,7 +43,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _loggerFactory = new LoggerFactory();
             _loggerFactory.AddProvider(_testLoggerProvider);
             _testLogger = _loggerFactory.CreateLogger<FunctionAppValidationService>();
-            _extensionBundleManager = new Mock<IExtensionBundleManager>().Object;
         }
 
         [Fact]
@@ -51,18 +50,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             _testLoggerProvider.ClearAllLogMessages();
 
+            var mockValidator = new Mock<IFunctionAppValidator>();
+            // No-op validator
             var service = new FunctionAppValidationService(
                 _testLogger,
                 _scriptOptionsMock.Object,
-                _extensionBundleManager,
-                new TestEnvironment());
+                new TestEnvironment(),
+                [mockValidator.Object]);
 
             // Act
             await service.StartAsync(CancellationToken.None);
 
             //Assert
             var traces = _testLoggerProvider.GetAllLogMessages();
-            var traceMessage = traces.FirstOrDefault(val => val.EventId.Name.Equals("MissingAzureFunctionsFolder"));
+            var traceMessage = traces.FirstOrDefault(val => string.Equals(val.EventId.Name, "MissingAzureFunctionsFolder"));
 
             Assert.Null(traceMessage);
         }
@@ -75,18 +76,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var environment = new TestEnvironment();
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
 
+            var mockValidator = new Mock<IFunctionAppValidator>();
             var service = new FunctionAppValidationService(
                 _testLogger,
                 _scriptOptionsMock.Object,
-                _extensionBundleManager,
-                environment);
+                environment,
+                [mockValidator.Object]);
 
             // Act
             await service.StartAsync(CancellationToken.None);
 
             //Assert
             var traces = _testLoggerProvider.GetAllLogMessages();
-            var traceMessage = traces.FirstOrDefault(val => val.EventId.Name.Equals("MissingAzureFunctionsFolder"));
+            var traceMessage = traces.FirstOrDefault(val => string.Equals(val.EventId.Name, "MissingAzureFunctionsFolder"));
 
             Assert.Null(traceMessage);
         }
@@ -109,18 +111,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             scriptOptionsMock.Setup(o => o.Value).Returns(scriptJobHostOptions);
 
+            var mockValidator = new Mock<IFunctionAppValidator>();
             var service = new FunctionAppValidationService(
                 _testLogger,
                 scriptOptionsMock.Object,
-                _extensionBundleManager,
-                environment);
+                environment,
+                [mockValidator.Object]);
 
             // Act
             await service.StartAsync(CancellationToken.None);
 
             //Assert
             var traces = _testLoggerProvider.GetAllLogMessages();
-            var traceMessage = traces.FirstOrDefault(val => val.EventId.Name.Equals("MissingAzureFunctionsFolder"));
+            var traceMessage = traces.FirstOrDefault(val => string.Equals(val.EventId.Name, "MissingAzureFunctionsFolder"));
 
             Assert.Null(traceMessage);
         }
@@ -141,11 +144,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var environment = new TestEnvironment();
             environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "dotnet-isolated");
 
+            // Use the real validator for folder check
+            var folderValidator = new MissingAzureFunctionsFolderValidator();
             var service = new FunctionAppValidationService(
                 _testLogger,
                 _scriptOptionsMock.Object,
-                _extensionBundleManager,
-                environment);
+                environment,
+                [folderValidator]);
 
             // Act
             await service.StartAsync(CancellationToken.None);
@@ -178,14 +183,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 .GetField("_extensionBundleVersion", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
                 .SetValue(manager, bundleVersion);
 
+            var validator = new ExtensionBundleManagerValidator(manager);
+            var service = new FunctionAppValidationService(
+                _testLogger,
+                _scriptOptionsMock.Object,
+                env,
+                [validator]);
+
             // Act
-            manager.CompareWithLatestMajorVersion();
+            validator.Validate(_scriptJobHostOptions, env, _testLogger);
 
             // Assert
-            var logMessages = _testLoggerProvider.GetAllLogMessages();
-            bool hasOutdatedBundleLog = logMessages.Any(m => m.FormattedMessage.Contains(bundleVersion) &&
-                m.FormattedMessage.Contains("outdated version") &&
-                m.FormattedMessage.Contains("of the extension bundle"));
+            var logMessage = _testLoggerProvider.GetAllLogMessages().Single(m => m.Level == LogLevel.Warning);
+            Assert.Contains(DiagnosticEventConstants.OutdatedBundlesVersionHelpLink, logMessage.FormattedMessage);
+            bool hasOutdatedBundleLog = logMessage.FormattedMessage.Contains(bundleVersion) &&
+                logMessage.FormattedMessage.Contains("outdated version") &&
+                logMessage.FormattedMessage.Contains("of the extension bundle");
 
             Assert.Equal(shouldLogEvent, hasOutdatedBundleLog);
         }

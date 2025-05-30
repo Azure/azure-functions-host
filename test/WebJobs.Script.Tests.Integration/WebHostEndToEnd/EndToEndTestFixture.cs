@@ -359,6 +359,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private class TestExtensionBundleManager : IExtensionBundleManager
         {
+            public void CompareWithLatestMajorVersion()
+            {
+                // no operation in this test fixture
+            }
+
             public Task<string> GetExtensionBundleBinPathAsync() => Task.FromResult<string>(null);
             public Task<ExtensionBundleDetails> GetExtensionBundleDetails() => Task.FromResult<ExtensionBundleDetails>(null);
 

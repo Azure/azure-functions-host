@@ -210,7 +210,7 @@ namespace Microsoft.Azure.WebJobs.Script.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to You are currently using an outdated version - {0} of the extension bundle. To ensure optimal performance and access to the latest features, please update to the latest version range: [{1}.*, {2}.0.0).
+        ///   Looks up a localized string similar to You are currently using an outdated version — {0} — of the extension bundle, which is deprecated as of 2026-05-30. To ensure optimal performance and access to the latest features, please update to a supported version range: [{1}.*, {2}.0.0)..
         /// </summary>
         internal static string OutdatedExtensionBundlesVersionInfoFormat {
             get {
