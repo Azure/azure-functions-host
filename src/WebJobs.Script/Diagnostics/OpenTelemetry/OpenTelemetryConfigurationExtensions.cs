@@ -28,42 +28,34 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
     {
         internal static void ConfigureOpenTelemetry(this ILoggingBuilder loggingBuilder, HostBuilderContext context, TelemetryMode telemetryMode)
         {
-            var connectionString = GetConfigurationValue(EnvironmentSettingNames.AppInsightsConnectionString, context.Configuration);
-            var (azMonConnectionString, credential, enableOtlp, enableAzureMonitor) = telemetryMode switch
-            {
-                // Initializing OTel services during placeholder mode as well to avoid the cost of JITting these objects during specialization.
-                // Azure Monitor Exporter requires a connection string to be initialized. Use placeholder connection string if in placeholder mode.
-                TelemetryMode.Placeholder => (
-                    "InstrumentationKey=00000000-0000-0000-0000-000000000000;",
-                    null,
-                    true,
-                    true),
-                _ => (
-                    connectionString,
-                    GetTokenCredential(context.Configuration),
-                    !string.IsNullOrEmpty(GetConfigurationValue(EnvironmentSettingNames.OtlpEndpoint, context.Configuration)),
-                    !string.IsNullOrEmpty(connectionString))
-            };
+            var otlpEndpoint = GetConfigurationValue(EnvironmentSettingNames.OtlpEndpoint, context.Configuration);
+            var azMonConnectionString = GetConfigurationValue(EnvironmentSettingNames.AppInsightsConnectionString, context.Configuration);
 
-            // If neither OTLP nor Azure Monitor is enabled, don't configure OpenTelemetry.
-            if (!enableOtlp && !enableAzureMonitor)
+            bool enableOtlp = !string.IsNullOrWhiteSpace(otlpEndpoint);
+            bool enableAzureMonitor = !string.IsNullOrWhiteSpace(azMonConnectionString);
+
+            TokenCredential credential = enableAzureMonitor ? GetTokenCredential(context.Configuration) : null;
+
+            // If placeholder mode is disabled and both OTLP and Azure Monitor are not enabled, avoid configuring OpenTelemetry.
+            if (!enableOtlp && !enableAzureMonitor && telemetryMode != TelemetryMode.Placeholder)
             {
                 return;
             }
 
-            loggingBuilder
-                .ConfigureLogging(enableOtlp, enableAzureMonitor, azMonConnectionString, credential).Services
+            loggingBuilder.ConfigureLogging(enableOtlp, enableAzureMonitor, azMonConnectionString, credential, telemetryMode);
+
+            loggingBuilder.Services
                 .AddOpenTelemetry()
                 .ConfigureResource(r => ConfigureResource(r))
-                .ConfigureMetrics(enableOtlp, enableAzureMonitor, azMonConnectionString, credential)
-                .ConfigureTracing(enableOtlp, enableAzureMonitor, azMonConnectionString, credential)
+                .ConfigureMetrics(enableOtlp, enableAzureMonitor, azMonConnectionString, credential, telemetryMode)
+                .ConfigureTracing(enableOtlp, enableAzureMonitor, azMonConnectionString, credential, telemetryMode)
                 .ConfigureEventLogLevel(context.Configuration);
 
             // Azure SDK instrumentation is experimental.
             AppContext.SetSwitch("Azure.Experimental.EnableActivitySource", true);
         }
 
-        private static IOpenTelemetryBuilder ConfigureMetrics(this IOpenTelemetryBuilder builder, bool enableOtlp, bool enableAzureMonitor, string azMonConnectionString, TokenCredential credential)
+        private static IOpenTelemetryBuilder ConfigureMetrics(this IOpenTelemetryBuilder builder, bool enableOtlp, bool enableAzureMonitor, string azMonConnectionString, TokenCredential credential, TelemetryMode telemetryMode)
         {
             return builder.WithMetrics(builder =>
             {
@@ -76,18 +68,22 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
                     Boundaries = new double[] { 0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10 }
                 });
 
-                if (enableOtlp)
+                // Avoid configuring the exporter in placeholder mode, as it will default to sending telemetry to the predefined endpoint. These transmissions will be unsuccessful and create unnecessary noise.
+                if (telemetryMode != TelemetryMode.Placeholder)
                 {
-                    builder.AddOtlpExporter();
-                }
-                if (enableAzureMonitor)
-                {
-                    builder.AddAzureMonitorMetricExporter(opt => ConfigureAzureMonitorOptions(opt, azMonConnectionString, credential));
+                    if (enableOtlp)
+                    {
+                        builder.AddOtlpExporter();
+                    }
+                    if (enableAzureMonitor)
+                    {
+                        builder.AddAzureMonitorMetricExporter(opt => ConfigureAzureMonitorOptions(opt, azMonConnectionString, credential));
+                    }
                 }
             });
         }
 
-        private static IOpenTelemetryBuilder ConfigureTracing(this IOpenTelemetryBuilder builder, bool enableOtlp, bool enableAzureMonitor, string azMonConnectionString, TokenCredential credential)
+        private static IOpenTelemetryBuilder ConfigureTracing(this IOpenTelemetryBuilder builder, bool enableOtlp, bool enableAzureMonitor, string azMonConnectionString, TokenCredential credential, TelemetryMode telemetryMode)
         {
             return builder.WithTracing(builder =>
             {
@@ -113,34 +109,44 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
                     };
                 });
 
-                if (enableOtlp)
+                // Avoid configuring the exporter in placeholder mode, as it will default to sending telemetry to the predefined endpoint. These transmissions will be unsuccessful and create unnecessary noise.
+                if (telemetryMode != TelemetryMode.Placeholder)
                 {
-                    builder.AddOtlpExporter();
-                }
+                    if (enableOtlp)
+                    {
+                        builder.AddOtlpExporter();
+                    }
 
-                if (enableAzureMonitor)
-                {
-                    builder.AddAzureMonitorTraceExporter(opt => ConfigureAzureMonitorOptions(opt, azMonConnectionString, credential));
-                    builder.AddLiveMetrics(opt => ConfigureAzureMonitorOptions(opt, azMonConnectionString, credential));
+                    if (enableAzureMonitor)
+                    {
+                        builder.AddAzureMonitorTraceExporter(opt => ConfigureAzureMonitorOptions(opt, azMonConnectionString, credential));
+                        builder.AddLiveMetrics(opt => ConfigureAzureMonitorOptions(opt, azMonConnectionString, credential));
+                    }
                 }
 
                 builder.AddProcessor(ActivitySanitizingProcessor.Instance);
             });
         }
 
-        private static ILoggingBuilder ConfigureLogging(this ILoggingBuilder builder, bool enableOtlp, bool enableAzureMonitor, string azMonConnectionString, TokenCredential credential)
+        private static ILoggingBuilder ConfigureLogging(this ILoggingBuilder builder, bool enableOtlp, bool enableAzureMonitor, string azMonConnectionString, TokenCredential credential, TelemetryMode telemetryMode)
         {
             builder.AddOpenTelemetry(o =>
             {
                 o.SetResourceBuilder(ConfigureResource(ResourceBuilder.CreateDefault()));
-                if (enableOtlp)
+
+                // Avoid configuring the exporter in placeholder mode, as it will default to sending telemetry to the predefined endpoint. These transmissions will be unsuccessful and create unnecessary noise.
+                if (telemetryMode != TelemetryMode.Placeholder)
                 {
-                    o.AddOtlpExporter();
+                    if (enableOtlp)
+                    {
+                        o.AddOtlpExporter();
+                    }
+                    if (enableAzureMonitor)
+                    {
+                        o.AddAzureMonitorLogExporter(options => ConfigureAzureMonitorOptions(options, azMonConnectionString, credential));
+                    }
                 }
-                if (enableAzureMonitor)
-                {
-                    o.AddAzureMonitorLogExporter(options => ConfigureAzureMonitorOptions(options, azMonConnectionString, credential));
-                }
+
                 o.IncludeFormattedMessage = true;
                 o.IncludeScopes = false;
             });

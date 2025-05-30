@@ -7,17 +7,19 @@ using System.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.ExtensionRequirements
 {
-    internal sealed class ExtensionRequirementsInfo
+    internal sealed class ExtensionRequirementsInfo(BundleRequirement[] bundles, ExtensionStartupTypeRequirement[] types)
     {
-        public ExtensionRequirementsInfo(IEnumerable<BundleRequirement> bundleRequirements, IEnumerable<ExtensionStartupTypeRequirement> extensionRequirements)
-        {
-            BundleRequirementsByBundleId = bundleRequirements?.ToDictionary(a => a.Id, StringComparer.OrdinalIgnoreCase);
+        private Dictionary<string, BundleRequirement> _bundleRequirementsById;
+        private Dictionary<string, ExtensionStartupTypeRequirement> _extensionRequirementsByStartupType;
 
-            ExtensionRequirementsByStartupType = extensionRequirements?.ToDictionary(a => a.Name, StringComparer.OrdinalIgnoreCase);
-        }
+        public BundleRequirement[] Bundles { get; } = bundles;
 
-        public Dictionary<string, BundleRequirement> BundleRequirementsByBundleId { get; private set; }
+        public ExtensionStartupTypeRequirement[] Types { get; } = types;
 
-        public Dictionary<string, ExtensionStartupTypeRequirement> ExtensionRequirementsByStartupType { get; private set; }
+        internal Dictionary<string, BundleRequirement> BundleRequirementsByBundleId =>
+            _bundleRequirementsById ??= Bundles.ToDictionary(b => b.Id, StringComparer.OrdinalIgnoreCase);
+
+        internal Dictionary<string, ExtensionStartupTypeRequirement> ExtensionRequirementsByStartupType =>
+            _extensionRequirementsByStartupType ??= Types.ToDictionary(t => t.Name, StringComparer.OrdinalIgnoreCase);
     }
 }

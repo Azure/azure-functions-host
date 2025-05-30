@@ -1,0 +1,56 @@
+parameters:
+- name: os
+  type: string
+  default: Windows
+  values:
+    - Windows
+    - Linux
+- name: functionAppNames
+  type: object
+  default:
+    - HelloHttpNet9
+    - HelloHttpNet9NoProxy
+    - HelloHttpNode
+
+jobs:
+- job: ${{ parameters.os }}
+  pool:
+    name: 1es-pool-azfunc-benchmarking-large
+    image: 1es-windows-2022-benchmark-runner-vanilla
+    os: windows
+
+  variables:
+    mergedJitTraceOutputDirectory: $(Build.ArtifactStagingDirectory)/MergedJitTraces
+    mergedJitTraceFilePath: $(mergedJitTraceOutputDirectory)/$(Build.BuildNumber)_${{ parameters.os }}_coldstart.jittrace
+
+  templateContext:
+    outputParentDirectory: $(Build.ArtifactStagingDirectory)
+    outputs:
+    - output: pipelineArtifact
+      displayName: Publish benchmark results
+      path: $(mergedJitTraceFilePath)
+      artifact: Functions_JitTrace_${{ parameters.os }}
+
+  steps:
+    - pwsh: |
+        New-Item -ItemType Directory -Path $(mergedJitTraceOutputDirectory)
+      displayName: Create directories
+
+    - ${{ each functionApp in parameters.functionAppNames }}:
+      - task: DownloadPipelineArtifact@2
+        displayName: Download PerfTraceData artifacts for ${{ parameters.os }} ${{ functionApp }}
+        inputs:
+          artifact: AzFunc_${{ parameters.os }}_${{ functionApp }}
+          patterns: '**/*.jittrace'
+          path: '$(Pipeline.Workspace)/${{ parameters.os }}_jittrace/${{ functionApp }}'
+        continueOnError: true
+
+    - pwsh: |
+        $output = "$(mergedJitTraceFilePath)"
+        $files = Get-ChildItem -Path "$(Pipeline.Workspace)/${{ parameters.os }}_jittrace" -Recurse -Filter *.jittrace
+        Write-Host "Merging the following .jittrace files:"
+        $files | ForEach-Object { Write-Host $_.FullName }
+        $files | Get-Content | Sort-Object -Unique | Set-Content $output
+        $lineCount = (Get-Content $output | Measure-Object -Line).Lines
+        Write-Host "Final merged file line count: $lineCount"
+      displayName: Merge all .jittrace files ${{ parameters.os }}
