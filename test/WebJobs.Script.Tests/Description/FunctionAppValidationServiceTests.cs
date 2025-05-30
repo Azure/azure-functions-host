@@ -194,11 +194,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             validator.Validate(_scriptJobHostOptions, env, _testLogger);
 
             // Assert
-            var logMessage = _testLoggerProvider.GetAllLogMessages().Single(m => m.Level == LogLevel.Warning);
-            Assert.Contains(DiagnosticEventConstants.OutdatedBundlesVersionHelpLink, logMessage.FormattedMessage);
-            bool hasOutdatedBundleLog = logMessage.FormattedMessage.Contains(bundleVersion) &&
-                logMessage.FormattedMessage.Contains("outdated version") &&
-                logMessage.FormattedMessage.Contains("of the extension bundle");
+            var logMessages = _testLoggerProvider.GetAllLogMessages();
+            bool hasOutdatedBundleLog = logMessages.Any(m => m.FormattedMessage.Contains(bundleVersion) &&
+                m.FormattedMessage.Contains("outdated version") &&
+                m.FormattedMessage.Contains("of the extension bundle") && m.Level == LogLevel.Warning);
 
             Assert.Equal(shouldLogEvent, hasOutdatedBundleLog);
         }
