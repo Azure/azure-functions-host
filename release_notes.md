@@ -11,4 +11,6 @@
 - Added support for collecting cross-platform perf traces and generating PGO JIT traces (#11062)
 - Memory allocation optimizations in `DependencyHelper.GetExtensionRequirements` (#11022)
 - Fix Instance Manager for CV1 Migration (#11072)
+- Avoid setting up OTel and AzMon exporter in the placeholder mode. (#11090)
 - Update Java Worker Version to [2.19.1](https://github.com/Azure/azure-functions-java-worker/releases/tag/2.19.1)
+- Memory allocation optimizations in `FeatureFlags.IsEnabled` by adopting zero-allocation `ContainsToken` for efficient delimited token search (#11075)
