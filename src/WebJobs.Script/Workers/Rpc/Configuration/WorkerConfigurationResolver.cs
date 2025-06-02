@@ -6,7 +6,6 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Text.Json;
 using Microsoft.Azure.AppService.Proxy.Common.Extensions;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
@@ -39,8 +38,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
         public List<string> GetWorkerConfigs(List<string> probingPaths, string fallbackPath)
         {
-            // Dictionary of { language-name : path of workerConfig }
+            // Dictionary of { FUNCTIONS_WORKER_RUNTIME environment variable value : path of workerConfig }
             ConcurrentDictionary<string, string> outputDict = new ConcurrentDictionary<string, string>();
+
             var workerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
             string releaseChannel = Utility.GetPlatformReleaseChannel(_environment);
 

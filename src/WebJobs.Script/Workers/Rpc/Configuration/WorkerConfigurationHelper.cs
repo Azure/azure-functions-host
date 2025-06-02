@@ -65,11 +65,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             return doc.RootElement.Clone();
         }
 
-        private static List<WorkerDescriptionProfile> ReadWorkerDescriptionProfiles(
-            JsonElement profilesElement,
-            JsonSerializerOptions jsonSerializerOptions,
-            IWorkerProfileManager profileManager,
-            ILogger logger)
+        private static List<WorkerDescriptionProfile> ReadWorkerDescriptionProfiles(JsonElement profilesElement,
+                                                                            JsonSerializerOptions jsonSerializerOptions,
+                                                                            IWorkerProfileManager profileManager,
+                                                                            ILogger logger)
         {
             var profiles = profilesElement.Deserialize<IList<WorkerProfileDescriptor>>(jsonSerializerOptions);
 
