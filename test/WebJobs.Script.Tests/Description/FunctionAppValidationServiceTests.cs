@@ -198,10 +198,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // Check for both possible resource strings (future and past deprecation)
             bool hasFutureWarning = logMessages.Any(m => m.FormattedMessage.Contains(bundleVersion)
-                && m.FormattedMessage.Contains("will reach end of support on 2026-05-30 (UTC)")
+                && m.FormattedMessage.Contains("will reach end of support on May 30, 2026.")
                 && m.Level == LogLevel.Warning);
             bool hasPastWarning = logMessages.Any(m => m.FormattedMessage.Contains(bundleVersion)
-                && m.FormattedMessage.Contains("has reached end of support on 2026-05-30 (UTC). ")
+                && m.FormattedMessage.Contains("has reached end of support on May 30, 2026. ")
                 && m.Level == LogLevel.Warning);
             bool hasOutdatedBundleLog = hasFutureWarning || hasPastWarning;
 
