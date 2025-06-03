@@ -195,9 +195,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // Assert
             var logMessages = _testLoggerProvider.GetAllLogMessages();
-            bool hasOutdatedBundleLog = logMessages.Any(m => m.FormattedMessage.Contains(bundleVersion) &&
-                m.FormattedMessage.Contains("outdated version") &&
-                m.FormattedMessage.Contains("of the extension bundle") && m.Level == LogLevel.Warning);
+
+            // Check for both possible resource strings (future and past deprecation)
+            bool hasFutureWarning = logMessages.Any(m => m.FormattedMessage.Contains(bundleVersion)
+                && m.FormattedMessage.Contains("will reach end of support on 2026-05-30 (UTC)")
+                && m.Level == LogLevel.Warning);
+            bool hasPastWarning = logMessages.Any(m => m.FormattedMessage.Contains(bundleVersion)
+                && m.FormattedMessage.Contains("has reached end of support on 2026-05-30 (UTC). ")
+                && m.Level == LogLevel.Warning);
+            bool hasOutdatedBundleLog = hasFutureWarning || hasPastWarning;
 
             Assert.Equal(shouldLogEvent, hasOutdatedBundleLog);
         }

@@ -388,7 +388,19 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
                 && majorVersion != 0
                 && majorVersion < latestMajorVersion)
             {
-                string message = string.Format(Resources.OutdatedExtensionBundlesVersionInfoFormat, _extensionBundleVersion, latestMajorVersion, latestMajorVersion + 1);
+                DateTime currentTime = DateTime.UtcNow;
+                DateTime deprecationDate = new(2026, 5, 31, 0, 0, 0, DateTimeKind.Utc);
+                string outdatedMessage;
+                if (currentTime >= deprecationDate)
+                {
+                    outdatedMessage = Resources.OutdatedExtensionBundlesPastVersionInfoFormat; // This message is shown after the deprecation date
+                }
+                else
+                {
+                    outdatedMessage = Resources.OutdatedExtensionBundlesFutureVersionInfoFormat;
+                }
+
+                string message = string.Format(outdatedMessage, _extensionBundleVersion, latestMajorVersion, latestMajorVersion + 1);
                 _logger.LogDiagnosticEventWarning(DiagnosticEventConstants.OutdatedBundlesVersionErrorCode, message, DiagnosticEventConstants.OutdatedBundlesVersionHelpLink, null);
             }
         }

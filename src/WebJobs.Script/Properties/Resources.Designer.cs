@@ -210,11 +210,20 @@ namespace Microsoft.Azure.WebJobs.Script.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to You are currently using an outdated version - {0} - of the extension bundle, which is deprecated as of 2026-05-30. To ensure optimal performance and access to the latest features, please update to a supported version range: [{1}.*, {2}.0.0)..
+        ///   Looks up a localized string similar to Your current bundle version {0} will reach end of support on 2026-05-30 (UTC). Upgrade to [{1}.*, {2}.0.0).
         /// </summary>
-        internal static string OutdatedExtensionBundlesVersionInfoFormat {
+        internal static string OutdatedExtensionBundlesFutureVersionInfoFormat {
             get {
-                return ResourceManager.GetString("OutdatedExtensionBundlesVersionInfoFormat", resourceCulture);
+                return ResourceManager.GetString("OutdatedExtensionBundlesFutureVersionInfoFormat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Your current bundle version {0} has reached end of support on 2026-05-30 (UTC). Upgrade to [{1}.*, {2}.0.0).
+        /// </summary>
+        internal static string OutdatedExtensionBundlesPastVersionInfoFormat {
+            get {
+                return ResourceManager.GetString("OutdatedExtensionBundlesPastVersionInfoFormat", resourceCulture);
             }
         }
         
