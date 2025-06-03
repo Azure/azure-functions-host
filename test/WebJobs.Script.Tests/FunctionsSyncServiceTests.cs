@@ -48,8 +48,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.CoreToolsEnvironment)).Returns((string)null);
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsTargetGroup)).Returns((string)null);
 
-            _syncService = new FunctionsSyncService(_loggerFactory, _mockScriptHostManager.Object, _mockPrimaryHostStateProviderMock.Object, _mockSyncManager.Object, _mockEnvironment.Object);
-            _syncService.DueTime = _testDueTime;
+            _syncService = new(
+                _loggerFactory,
+                _mockScriptHostManager.Object,
+                _mockPrimaryHostStateProviderMock.Object,
+                _mockSyncManager.Object,
+                _mockEnvironment.Object)
+            {
+                DueTime = _testDueTime
+            };
         }
 
         [Theory]
@@ -103,7 +110,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task StartAsync_TokenCancelledBeforeTimeout_DoesNotSyncTriggers()
+        public async Task StartAsync_TokenCancelledBeforeCall_DoesNotSyncTriggers()
         {
             using CancellationTokenSource cts = new();
             cts.Cancel();
@@ -111,6 +118,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await Task.Delay(2 * _testDueTime);
 
             _mockSyncManager.Verify(p => p.TrySyncTriggersAsync(true), Times.Never);
+        }
+
+        [Fact]
+        public async Task StartAsync_TokenCancelledBeforeTimeout_DoesNotSyncTriggers()
+        {
+            using CancellationTokenSource cts = new();
+            TaskCompletionSource firstCall = new();
+            _mockSyncManager
+                .Setup(m => m.TrySyncTriggersAsync(true))
+                .Callback(() =>
+                {
+                    cts.Cancel();
+                    firstCall.SetResult();
+                });
+
+            await _syncService.StartAsync(cts.Token);
+            await firstCall.Task;
+            await Task.Delay(2 * _testDueTime);
+
+            _mockSyncManager.Verify(p => p.TrySyncTriggersAsync(true), Times.Once());
         }
 
         [Fact]
