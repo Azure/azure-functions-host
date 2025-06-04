@@ -47,7 +47,6 @@ jobs:
   variables:
     functionAppOutputPath: $(Build.BinariesDirectory)/Published/${{ parameters.functionAppName }}
     hostOutputPath: $(Build.BinariesDirectory)/Published/HostRuntime
-    hostAssemblyPath: $(hostOutputPath)/Microsoft.Azure.WebJobs.Script.WebHost.dll
     logsDirectory: $(Build.ArtifactStagingDirectory)/Logs
     stdOutLogsFilePath: $(logsDirectory)/std_out_logs.txt
     stdErrorLogsFilePath: $(logsDirectory)/std_error_logs.txt
@@ -66,8 +65,7 @@ jobs:
     traceFileZipName: $(traceFileName).zip
     traceFilePath: $(traceDirectory)/$(traceFileName)
     traceZipFilePath: $(traceDirectory)/$(traceFileZipName)
-    traceAnalysisResultsDirectory: $(netTraceDirectory)/results
-    traceAnalysisResultMarkdownFilePath: $(traceAnalysisResultsDirectory)/$(traceFileNameWithoutExtension).md
+    traceAnalysisResultMarkdownFilePath: $(traceDirectory)/results/$(traceFileNameWithoutExtension).md
     traceLogPath: $(logsDirectory)/logs.log
     ${{ if eq(parameters.os, 'Linux') }}:
       publishRid: linux-x64
@@ -112,12 +110,8 @@ jobs:
 
   - template: /eng/ci/templates/install-dotnet.yml@self
 
-  - task: UseDotNet@2 
-    displayName: Install .NET 10
-    inputs:
-      packageType: sdk
-      version: 10.x
-      includePreviewVersions: true
+  - script: dotnet --info
+    displayName: "Print .NET Environment Info"
 
   - ${{ if eq(parameters.functionAppName, 'HelloHttpNode') }}:
     - task: CopyFiles@2
@@ -216,7 +210,6 @@ jobs:
 
   - ${{ if and(eq(parameters.collectPerfViewProfileOnWindows, true), eq(parameters.instanceId, '1')) }}: # collect profile only on the first instance
     - pwsh: |
-        New-Item -ItemType Directory -Path $(traceDirectory)
         if (Test-Path $(perfViewPath)) {
             $collectArguments = ${env:COLLECT_ARGUMENTS}
             Write-Host "PerfView.exe found. Executing with arguments '$collectArguments'"
@@ -280,8 +273,14 @@ jobs:
         $attempt = 0
 
         while ($attempt -lt $maxAttempts) {
-            $files = Get-ChildItem -Path $(traceDirectory)
+            $files = Get-ChildItem -Path $(traceDirectory) -File
             $fileCount = $files.Count
+
+            Write-Host "Found $fileCount file(s) in $(traceDirectory):"
+            foreach ($file in $files) {
+                Write-Host "  - $($file.Name)"
+            }
+            
             if ($fileCount -eq 1 -and $files[0].Name -eq '$(traceFileZipName)') {
                 break
             } else {
