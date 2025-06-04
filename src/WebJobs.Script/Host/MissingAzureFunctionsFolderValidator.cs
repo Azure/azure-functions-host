@@ -10,7 +10,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Host
 {
-    internal class MissingAzureFunctionsFolderValidator : IFunctionAppValidator
+    internal sealed class MissingAzureFunctionsFolderValidator : IFunctionAppValidator
     {
         public void Validate(ScriptJobHostOptions options, IEnvironment environment, ILogger logger)
         {

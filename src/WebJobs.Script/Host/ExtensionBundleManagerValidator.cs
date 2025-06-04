@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Host
 {
-    internal class ExtensionBundleManagerValidator : IFunctionAppValidator
+    internal sealed class ExtensionBundleManagerValidator : IFunctionAppValidator
     {
         private readonly IExtensionBundleManager _extensionBundleManager;
 
@@ -17,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.Host
 
         public void Validate(ScriptJobHostOptions options, IEnvironment environment, ILogger logger)
         {
-            _extensionBundleManager.CompareWithLatestMajorVersion();
+            _extensionBundleManager.VerifyAndWarnIfBundleOutdated();
         }
     }
 }

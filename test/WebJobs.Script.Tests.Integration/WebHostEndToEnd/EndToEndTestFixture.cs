@@ -359,7 +359,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private class TestExtensionBundleManager : IExtensionBundleManager
         {
-            public void CompareWithLatestMajorVersion()
+            public void VerifyAndWarnIfBundleOutdated()
             {
                 // no operation in this test fixture
             }

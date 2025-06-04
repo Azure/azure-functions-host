@@ -210,7 +210,7 @@ namespace Microsoft.Azure.WebJobs.Script.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Your current bundle version {0} will reach end of support on May 30, 2026. Upgrade to [{1}.*, {2}.0.0).
+        ///   Looks up a localized string similar to Your current bundle version {0} will reach end of support on May 30, 2026. Upgrade to [{1}.*, {2}.0.0). For more information, see https://aka.ms/functions-outdated-bundles.
         /// </summary>
         internal static string OutdatedExtensionBundlesFutureVersionInfoFormat {
             get {
@@ -219,7 +219,7 @@ namespace Microsoft.Azure.WebJobs.Script.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Your current bundle version {0} has reached end of support on May 30, 2026. Upgrade to [{1}.*, {2}.0.0).
+        ///   Looks up a localized string similar to Your current bundle version {0} has reached end of support on May 30, 2026. Upgrade to [{1}.*, {2}.0.0). For more information, see https://aka.ms/functions-outdated-bundles.
         /// </summary>
         internal static string OutdatedExtensionBundlesPastVersionInfoFormat {
             get {

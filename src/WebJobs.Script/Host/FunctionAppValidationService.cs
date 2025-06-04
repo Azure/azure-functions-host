@@ -53,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Host
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogTrace($"Validator {validator.GetType().Name} failed", ex);
+                    _logger.LogTrace(ex, "Validator {ValidatorType} failed", validator.GetType().Name);
                 }
             }
         }

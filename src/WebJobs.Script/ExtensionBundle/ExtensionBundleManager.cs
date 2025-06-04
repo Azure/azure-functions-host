@@ -378,30 +378,36 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
             return FileUtility.DirectoryExists(binPath) ? binPath : null;
         }
 
-        public void CompareWithLatestMajorVersion()
+        public void VerifyAndWarnIfBundleOutdated()
         {
-            string majorVersionStr = _extensionBundleVersion?.Split('.')?.FirstOrDefault() ?? string.Empty;
-            int majorVersion = int.TryParse(majorVersionStr, out int result) ? result : 0;
+            if (string.IsNullOrEmpty(_extensionBundleVersion))
+            {
+                return;
+            }
+
+            // Extract the major version number from the version string
+            int dotIndex = _extensionBundleVersion.IndexOf('.');
+            if (dotIndex <= 0 || !int.TryParse(_extensionBundleVersion.AsSpan(0, dotIndex), out var majorVersion) || majorVersion == 0)
+            {
+                return;
+            }
 
             int latestMajorVersion = ScriptConstants.ExtensionBundleV4MajorVersion;
-            if (string.Compare(_options?.Id, ScriptConstants.DefaultExtensionBundleId, StringComparison.OrdinalIgnoreCase) == 0
-                && majorVersion != 0
+
+            // Only show warnings for the default extension bundle when it's outdated
+            if (string.Equals(_options?.Id, ScriptConstants.DefaultExtensionBundleId, StringComparison.OrdinalIgnoreCase)
                 && majorVersion < latestMajorVersion)
             {
-                DateTime currentTime = DateTime.UtcNow;
-                DateTime deprecationDate = new(2026, 5, 31, 0, 0, 0, DateTimeKind.Utc);
-                string outdatedMessage;
-                if (currentTime >= deprecationDate)
-                {
-                    outdatedMessage = Resources.OutdatedExtensionBundlesPastVersionInfoFormat; // This message is shown after the deprecation date
-                }
-                else
-                {
-                    outdatedMessage = Resources.OutdatedExtensionBundlesFutureVersionInfoFormat;
-                }
+                var currentTime = DateTime.UtcNow;
+                var deprecationDate = new DateTime(2026, 5, 31, 0, 0, 0, DateTimeKind.Utc);
+
+                // Select the appropriate message based on whether the deprecation date has passed
+                string outdatedMessage = currentTime >= deprecationDate
+                    ? Resources.OutdatedExtensionBundlesPastVersionInfoFormat
+                    : Resources.OutdatedExtensionBundlesFutureVersionInfoFormat;
 
                 string message = string.Format(outdatedMessage, _extensionBundleVersion, latestMajorVersion, latestMajorVersion + 1);
-                _logger.LogDiagnosticEventWarning(DiagnosticEventConstants.OutdatedBundlesVersionErrorCode, message, DiagnosticEventConstants.OutdatedBundlesVersionHelpLink, null);
+                _logger.LogWarning(message);
             }
         }
     }
