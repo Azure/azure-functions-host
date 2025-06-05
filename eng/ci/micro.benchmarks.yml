@@ -1,0 +1,24 @@
+jobs:
+  benchmarks:
+    sources:
+      micro:
+        localFolder: ./../..
+    project: ./../../benchmarks/WebJobs.Script.Benchmarks/Microsoft.Azure.WebJobs.Script.Benchmarks.csproj
+    variables:
+      filterArg: "*"
+      jobArg: short
+    arguments: --job {{jobArg}} --filter {{filterArg}} --memory -v d
+    options:
+      benchmarkDotNet: true
+    
+scenarios:
+  Md5VsSha256:
+    application:
+      job: benchmarks
+
+profiles:
+  local:
+    jobs: 
+      application:
+        endpoints: 
+          - http://localhost:5010
