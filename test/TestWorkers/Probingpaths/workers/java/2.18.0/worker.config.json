@@ -3,7 +3,7 @@
         "language": "java",
         "extensions": [".jar"],
         "defaultExecutablePath": "%JAVA_HOME%/bin/java",
-        "defaultWorkerPath": "testfile.txt",
+        "defaultWorkerPath": "worker.config.json",
         "arguments": []
     },
     "profiles": []

@@ -1,1 +1,0 @@
-This is an empty file used for running tests, as the code checks if the file path specified in DefaultWorkerPath exists before loading the workerconfig.

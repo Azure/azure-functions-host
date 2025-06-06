@@ -3,7 +3,7 @@
         "language": "node",
         "extensions": [".js", ".mjs", ".cjs"],
         "defaultExecutablePath": "node",
-        "defaultWorkerPath": "testfile.txt",
+        "defaultWorkerPath": "worker.config.json",
         "workerIndexing": "true"
     },
     "hostRequirements": [],

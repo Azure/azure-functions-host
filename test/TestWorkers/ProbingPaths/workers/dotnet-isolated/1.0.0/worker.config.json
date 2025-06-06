@@ -1,0 +1,8 @@
+﻿{
+  "description": {
+    "language": "dotnet-isolated",
+    "extensions": [ ".dll" ],
+    "workerIndexing": "true",
+    "defaultExecutablePath": "worker.config.json"
+  }
+}

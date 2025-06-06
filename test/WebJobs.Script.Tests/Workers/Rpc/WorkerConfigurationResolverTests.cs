@@ -56,6 +56,30 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Theory]
+        [InlineData("LATEST", "java\\2.19.0", "node\\3.10.1", "powershell\\7.4", "dotnet-isolated\\1.0.0", "python")]
+        [InlineData("STANDARD", "java\\2.18.0", "node\\3.10.1", "powershell\\7.2", "dotnet-isolated\\1.0.0", "python")]
+        public void GetWorkerConfigs_MultiLanguageWorker_Dotnet_ReturnsExpectedConfigs(string releaseChannel, string java, string node, string powershell, string dotnetIsolated, string python)
+        {
+            // Arrange
+            var mockEnvironment = new Mock<IEnvironment>();
+            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel)).Returns(releaseChannel);
+            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AppKind)).Returns(ScriptConstants.WorkFlowAppKind);
+            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime)).Returns((string)null);
+
+            var workerConfigurationResolver = new WorkerConfigurationResolver(_mockConfig.Object, _mockLogger.Object, mockEnvironment.Object, _mockProfileManager.Object, new HashSet<string>() { "java", "node", "powershell", "dotnet-isolated" });
+
+            var result = workerConfigurationResolver.GetWorkerConfigs(_probingPaths, _fallbackPath);
+
+            // Assert
+            Assert.Equal(result.Count, 5);
+            Assert.True(result.Any(r => r.Contains(Path.Combine(_probingPath1, java))));
+            Assert.True(result.Any(r => r.Contains(Path.Combine(_probingPath1, node))));
+            Assert.True(result.Any(r => r.Contains(Path.Combine(_probingPath1, powershell))));
+            Assert.True(result.Any(r => r.Contains(Path.Combine(_probingPath1, dotnetIsolated))));
+            Assert.True(result.Any(r => r.Contains(Path.Combine(_fallbackPath, python))));
+        }
+
+        [Theory]
         [InlineData(null, "LATEST")]
         [InlineData(null, "STANDARD")]
         [InlineData("Empty", "LATEST")]
