@@ -89,9 +89,9 @@ jobs:
       benchmarkAppBuildConstants: ""
     # Publish with full debug symbols and source link enabled when collecting traces.
     ${{ if and(or(eq(parameters.collectPerfViewProfileOnWindows, true), eq(parameters.collectNetTrace, true)), eq(parameters.instanceId, '1')) }}:
-      hostPublishExtraArgs: "-p:DebugType=full -p:DebugSymbols=true -p:PublishRepositoryUrl=true -p:EmbedUntrackedSources=true -p:EnableSourceLink=true -p:IncludeSourceLinkPackage=true"
+      hostPublishExtraArgs: "-p:DebugType=full -p:DebugSymbols=true -p:PublishRepositoryUrl=true -p:EmbedUntrackedSources=true -p:EnableSourceLink=true -p:IncludeSourceLinkPackage=true -p:PlaceholderSimulation=true -p:PublishReadyToRun=true -p:PublishReadyToRunEmitSymbols=true"
     ${{ if not(and(or(eq(parameters.collectPerfViewProfileOnWindows, true), eq(parameters.collectNetTrace, true)), eq(parameters.instanceId, '1'))) }}:
-      hostPublishExtraArgs: ""
+      hostPublishExtraArgs: "-p:PlaceholderSimulation=true"
 
   ${{ if and(or(eq(parameters.collectPerfViewProfileOnWindows, true), eq(parameters.collectNetTrace, true)), eq(parameters.instanceId, '1')) }}:
     templateContext:
@@ -165,7 +165,7 @@ jobs:
       zipAfterPublish: false
       modifyOutputPath: false
       projects: '$(Build.SourcesDirectory)/src/WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj'
-      arguments: -c Release -o $(hostOutputPath) -r $(publishRid) -f net8.0 -p:PlaceholderSimulation=true $(hostPublishExtraArgs)
+      arguments: -c Release -o $(hostOutputPath) -r $(publishRid) -f net8.0 $(hostPublishExtraArgs)
       workingDirectory: $(Build.SourcesDirectory)/src/WebJobs.Script.WebHost
 
   - pwsh: |
