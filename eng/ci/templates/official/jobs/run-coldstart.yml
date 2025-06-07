@@ -87,8 +87,11 @@ jobs:
       warmupApiUrl: http://localhost:5000/api/warmup?restart=1
       functionInvocationUrl: http://localhost:5000/api/Hello?forcespecialization=1
       benchmarkAppBuildConstants: ""
+    # Publish with full debug symbols and source link enabled when collecting traces.
     ${{ if and(or(eq(parameters.collectPerfViewProfileOnWindows, true), eq(parameters.collectNetTrace, true)), eq(parameters.instanceId, '1')) }}:
       hostPublishExtraArgs: "-p:DebugType=full -p:DebugSymbols=true -p:PublishRepositoryUrl=true -p:EmbedUntrackedSources=true -p:EnableSourceLink=true -p:IncludeSourceLinkPackage=true"
+    ${{ if not(and(or(eq(parameters.collectPerfViewProfileOnWindows, true), eq(parameters.collectNetTrace, true)), eq(parameters.instanceId, '1'))) }}:
+      hostPublishExtraArgs: ""
 
   ${{ if and(or(eq(parameters.collectPerfViewProfileOnWindows, true), eq(parameters.collectNetTrace, true)), eq(parameters.instanceId, '1')) }}:
     templateContext:
