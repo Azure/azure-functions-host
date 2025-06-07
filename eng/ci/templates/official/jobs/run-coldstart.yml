@@ -180,10 +180,10 @@ jobs:
       displayName: Create PDB output directory
 
     - task: CopyFiles@2
-      displayName: Copy PDB files
+      displayName: Copy DLL and PDB files
       inputs:
         SourceFolder: '$(hostOutputPath)'
-        Contents: '**/*.pdb'
+        Contents: '**/*.dll\n**/*.pdb'
         TargetFolder: '$(traceDirectory)/PDBs'
         CleanTargetFolder: true
 
