@@ -50,6 +50,7 @@ jobs:
     logsDirectory: $(Build.ArtifactStagingDirectory)/Logs
     stdOutLogsFilePath: $(logsDirectory)/std_out_logs.txt
     stdErrorLogsFilePath: $(logsDirectory)/std_error_logs.txt
+    pdbOutputPath: $(Build.ArtifactStagingDirectory)/PDBs
     ${{ if or(eq(parameters.functionAppName, 'HelloHttpNet9'), eq(parameters.functionAppName, 'HelloHttpNet9NoProxy')) }}:
       FUNCTIONS_WORKER_RUNTIME: 'dotnet-isolated'
       FUNCTIONS_WORKER_RUNTIME_VERSION: '9.0'
@@ -86,6 +87,8 @@ jobs:
       warmupApiUrl: http://localhost:5000/api/warmup?restart=1
       functionInvocationUrl: http://localhost:5000/api/Hello?forcespecialization=1
       benchmarkAppBuildConstants: ""
+    ${{ if and(or(eq(parameters.collectPerfViewProfileOnWindows, true), eq(parameters.collectNetTrace, true)), eq(parameters.instanceId, '1')) }}:
+      hostPublishExtraArgs: "-p:DebugType=full -p:DebugSymbols=true -p:PublishRepositoryUrl=true -p:EmbedUntrackedSources=true -p:EnableSourceLink=true -p:IncludeSourceLinkPackage=true"
 
   ${{ if and(or(eq(parameters.collectPerfViewProfileOnWindows, true), eq(parameters.collectNetTrace, true)), eq(parameters.instanceId, '1')) }}:
     templateContext:
@@ -159,13 +162,22 @@ jobs:
       zipAfterPublish: false
       modifyOutputPath: false
       projects: '$(Build.SourcesDirectory)/src/WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj'
-      arguments: -c Release -o $(hostOutputPath) -r $(publishRid) -f net8.0 -p:PlaceholderSimulation=true 
+      arguments: -c Release -o $(hostOutputPath) -r $(publishRid) -f net8.0 -p:PlaceholderSimulation=true $(hostPublishExtraArgs)
       workingDirectory: $(Build.SourcesDirectory)/src/WebJobs.Script.WebHost
+
+  - task: CopyFiles@2
+    displayName: Copy PDB files
+    inputs:
+      SourceFolder: '$(hostOutputPath)'
+      Contents: '**/*.pdb'
+      TargetFolder: '$(traceDirectory)/PDBs'
+      CleanTargetFolder: true
 
   - pwsh: |
       New-Item -ItemType Directory -Path $(logsDirectory)
       New-Item -ItemType Directory -Path $(traceDirectory)
       New-Item -ItemType Directory -Path $(netTraceDirectory)
+      New-Item -ItemType Directory -Path $(pdbOutputPath)
     displayName: Create directories
 
   - ${{ if eq(parameters.os, 'Windows') }}:
