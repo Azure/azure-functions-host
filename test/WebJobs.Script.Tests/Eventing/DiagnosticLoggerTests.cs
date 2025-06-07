@@ -228,6 +228,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Eventing
             }
 
             _appServiceOptionsWrapper.CurrentValue.IsAzureMonitorLoggingEnabled = isAzureMonitorEnabled;
+            _appServiceOptionsWrapper.InvokeChanged();
 
             Assert.Equal(isDisabled, _logger.IsEnabled(LogLevel.Information));
             _mockEventGenerator.Verify(m => m.LogAzureMonitorDiagnosticLogEvent(It.IsAny<LogLevel>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
