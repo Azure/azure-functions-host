@@ -168,20 +168,24 @@ jobs:
       arguments: -c Release -o $(hostOutputPath) -r $(publishRid) -f net8.0 -p:PlaceholderSimulation=true $(hostPublishExtraArgs)
       workingDirectory: $(Build.SourcesDirectory)/src/WebJobs.Script.WebHost
 
-  - task: CopyFiles@2
-    displayName: Copy PDB files
-    inputs:
-      SourceFolder: '$(hostOutputPath)'
-      Contents: '**/*.pdb'
-      TargetFolder: '$(traceDirectory)/PDBs'
-      CleanTargetFolder: true
-
   - pwsh: |
       New-Item -ItemType Directory -Path $(logsDirectory)
       New-Item -ItemType Directory -Path $(traceDirectory)
       New-Item -ItemType Directory -Path $(netTraceDirectory)
-      New-Item -ItemType Directory -Path $(pdbOutputPath)
     displayName: Create directories
+
+  - ${{ if and(or(eq(parameters.collectPerfViewProfileOnWindows, true), eq(parameters.collectNetTrace, true)), eq(parameters.instanceId, '1')) }}:
+    - pwsh: |
+        New-Item -ItemType Directory -Path $(pdbOutputPath)
+      displayName: Create PDB output directory
+
+    - task: CopyFiles@2
+      displayName: Copy PDB files
+      inputs:
+        SourceFolder: '$(hostOutputPath)'
+        Contents: '**/*.pdb'
+        TargetFolder: '$(traceDirectory)/PDBs'
+        CleanTargetFolder: true
 
   - ${{ if eq(parameters.os, 'Windows') }}:
     - pwsh: |
