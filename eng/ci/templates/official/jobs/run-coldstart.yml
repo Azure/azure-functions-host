@@ -176,14 +176,23 @@ jobs:
 
   - ${{ if and(or(eq(parameters.collectPerfViewProfileOnWindows, true), eq(parameters.collectNetTrace, true)), eq(parameters.instanceId, '1')) }}:
     - pwsh: |
+        Write-Host "Listing contents of $(hostOutputPath) before copying DLLs and PDBs:"
+        Get-ChildItem -Path $(hostOutputPath) -Recurse | Select-Object FullName
+      displayName: List contents of hostOutputPath
+
+    - pwsh: |
+        Write-Host "Resolved hostOutputPath: $(hostOutputPath)"
+      displayName: Print hostOutputPath variable
+
+    - pwsh: |
         New-Item -ItemType Directory -Path $(pdbOutputPath)
       displayName: Create PDB output directory
 
     - task: CopyFiles@2
-      displayName: Copy DLL and PDB files
+      displayName: Copy all host output files
       inputs:
         SourceFolder: '$(hostOutputPath)'
-        Contents: '**/*.dll\n**/*.pdb'
+        Contents: '**/*'
         TargetFolder: '$(traceDirectory)/PDBs'
         CleanTargetFolder: true
 
