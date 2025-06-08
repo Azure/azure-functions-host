@@ -65,6 +65,11 @@ resources:
 variables:
   - template: /eng/ci/templates/variables/coldstart.yml@self
   - template: /ci/variables/cfs.yml@eng
+  - name: shouldCollectPerfViewProfileOnWindows
+    ${{ if eq(variables['Build.Reason'], 'Schedule') }}:  # We always collect PerfView profile on nightly runs.
+      value: true
+    ${{ if ne(variables['Build.Reason'], 'Schedule') }}:
+      value: ${{ parameters.collectPerfViewProfileOnWindows }}
 
 extends:
   template: v1/1ES.Unofficial.PipelineTemplate.yml@1es
@@ -85,7 +90,7 @@ extends:
               description: .NET9 Web Application
               functionAppName: HelloHttpNet9
               instanceId: ${{ appId }} 
-              collectPerfViewProfileOnWindows: ${{ parameters.collectPerfViewProfileOnWindows }}
+              collectPerfViewProfileOnWindows: ${{ variables.shouldCollectPerfViewProfileOnWindows }}
               perfViewCollectArguments: ${{ parameters.perfViewCollectArguments }}
               netTraceCollectArguments: ${{ parameters.netTraceCollectArguments }}
               collectNetTrace: ${{ parameters.collectNetTrace }}
@@ -96,7 +101,7 @@ extends:
               description: .NET9 Worker Application
               functionAppName: HelloHttpNet9NoProxy
               instanceId: ${{ appId }}
-              collectPerfViewProfileOnWindows: ${{ parameters.collectPerfViewProfileOnWindows }}
+              collectPerfViewProfileOnWindows: ${{ variables.shouldCollectPerfViewProfileOnWindows }}
               perfViewCollectArguments: ${{ parameters.perfViewCollectArguments }}
               netTraceCollectArguments: ${{ parameters.netTraceCollectArguments }}
               collectNetTrace: ${{ parameters.collectNetTrace }}
@@ -107,7 +112,7 @@ extends:
               description: Node Application
               functionAppName: HelloHttpNode
               instanceId: ${{ appId }}
-              collectPerfViewProfileOnWindows: ${{ parameters.collectPerfViewProfileOnWindows }}
+              collectPerfViewProfileOnWindows: ${{ variables.shouldCollectPerfViewProfileOnWindows }}
               perfViewCollectArguments: ${{ parameters.perfViewCollectArguments }}
               netTraceCollectArguments: ${{ parameters.netTraceCollectArguments }}
               collectNetTrace: ${{ parameters.collectNetTrace }}
