@@ -69,6 +69,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
 
             DiagnosticEventTableStorageRepository repository = mockDiagnosticEventTableStorageRepository.Object;
 
+            // Write a diagnostic event to trigger the timer
+            mockDiagnosticEventTableStorageRepository.Object.WriteDiagnosticEvent(DateTime.UtcNow, "eh1", LogLevel.Information, "This is the message", "https://fwlink/", new Exception("exception message"));
+
             int numFlushes = 0;
             mockDiagnosticEventTableStorageRepository.Protected().Setup("OnFlushLogs", ItExpr.IsAny<object>())
                 .Callback<object>((state) =>
@@ -79,6 +82,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             await TestHelpers.Await(() => numFlushes >= 5, timeout: 2000, pollingInterval: 100, userMessageCallback: () => $"Expected numFlushes >= 5; Actual: {numFlushes}");
 
             mockDiagnosticEventTableStorageRepository.VerifyAll();
+        }
+
+        [Fact]
+        public void TimerFlush_NotStartedWithRepositoryDisabled()
+        {
+            IEnvironment testEnvironment = new TestEnvironment();
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+
+            var configuration = new ConfigurationBuilder().Build();
+            var localStorageProvider = TestHelpers.GetAzureTableStorageProvider(configuration);
+            DiagnosticEventTableStorageRepository repository =
+                new DiagnosticEventTableStorageRepository(_hostIdProvider, testEnvironment, _scriptHostMock.Object, localStorageProvider, _logger);
+
+            repository.WriteDiagnosticEvent(DateTime.UtcNow, "eh1", LogLevel.Information, "This is the message", "https://fwlink/", new Exception("exception message"));
+
+            var flushLogsTimerField = typeof(DiagnosticEventTableStorageRepository)
+            .GetField("_flushLogsTimer", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var lazyTimer = flushLogsTimerField.GetValue(repository) as Lazy<Timer>;
+
+            Assert.False(repository.IsEnabled());
+            Assert.False(lazyTimer.IsValueCreated, "Timer should not be created when repository is disabled");
         }
 
         [Fact]
