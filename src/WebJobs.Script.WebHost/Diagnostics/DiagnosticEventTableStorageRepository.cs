@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private const int LogFlushInterval = 1000 * 60 * 10; // 10 minutes
         private const int TableCreationMaxRetryCount = 5;
 
-        private readonly Timer _flushLogsTimer;
+        private readonly Lazy<Timer> _flushLogsTimer;
         private readonly IHostIdProvider _hostIdProvider;
         private readonly IEnvironment _environment;
         private readonly IAzureTableStorageProvider _azureTableStorageProvider;
@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _environment = environment;
             _serviceProvider = scriptHostManager as IServiceProvider;
             _logger = logger;
-            _flushLogsTimer = new Timer(OnFlushLogs, null, logFlushInterval, logFlushInterval);
+            _flushLogsTimer = new Lazy<Timer>(() => new Timer(OnFlushLogs, null, logFlushInterval, logFlushInterval));
             _azureTableStorageProvider = azureTableStorageProvider;
         }
 
@@ -107,7 +107,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         {
             get
             {
-                if (!_environment.IsPlaceholderModeEnabled() && string.IsNullOrEmpty(_hostId))
+                if (string.IsNullOrEmpty(_hostId) && !_environment.IsPlaceholderModeEnabled())
                 {
                     _hostId = _hostIdProvider?.GetHostIdAsync(CancellationToken.None).GetAwaiter().GetResult();
                 }
@@ -192,9 +192,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
                     _purged = true;
                 }
+                catch (RequestFailedException ex) when (ex.Status == (int)HttpStatusCode.Forbidden)
+                {
+                    // If we reach this point, we already checked for permissions on TableClient initialization.
+                    // It is possible that the permissions changed after the initialization, any firewall/network rules were changed or it's a custom role where we don't have permissions to query entities.
+                    // We will log the error and disable the service.
+                    Logger.ErrorPurgingDiagnosticEventVersions(_logger, ex);
+                    DisableService();
+                    Logger.ServiceDisabledUnauthorizedClient(_logger, ex);
+                }
                 catch (Exception ex)
                 {
+                    // We failed to connect to the table storage account. This could be due to a transient error or a configuration issue (e.g., network problems).
+                    // To avoid repeatedly retrying in a potentially unhealthy state, we will disable the service.
+                    // The operation may succeed in a future instance if the underlying issue is resolved.
                     Logger.ErrorPurgingDiagnosticEventVersions(_logger, ex);
+                    DisableService();
+                    Logger.ServiceDisabledUnableToConnectToStorage(_logger, ex);
                 }
             }, maxRetries: 5, retryInterval: TimeSpan.FromSeconds(5));
 
@@ -245,12 +259,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 Logger.UnableToGetTableReferenceOrCreateTable(_logger, ex);
                 DisableService();
                 Logger.ServiceDisabledUnauthorizedClient(_logger, ex);
+                return;
             }
             catch (Exception ex)
             {
+                // We failed to connect to the table storage account. This could be due to a transient error or a configuration issue (e.g., network problems).
+                // To avoid repeatedly retrying in a potentially unhealthy state, we will disable the service.
+                // The operation may succeed in a future instance if the underlying issue is resolved.
                 Logger.UnableToGetTableReferenceOrCreateTable(_logger, ex);
-                // Clearing the memory cache to avoid memory build up.
-                _events.Clear();
+                DisableService();
+                Logger.ServiceDisabledUnableToConnectToStorage(_logger, ex);
                 return;
             }
 
@@ -292,12 +310,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             catch (Exception ex)
             {
                 Logger.UnableToWriteDiagnosticEvents(_logger, ex);
+                DisableService();
+                Logger.ServiceDisabledUnableToConnectToStorage(_logger, ex);
             }
         }
 
         public void WriteDiagnosticEvent(DateTime timestamp, string errorCode, LogLevel level, string message, string helpLink, Exception exception)
         {
-            if (TableClient is null || string.IsNullOrEmpty(HostId))
+            if (TableClient is null || string.IsNullOrEmpty(HostId) || !IsEnabled())
             {
                 return;
             }
@@ -320,6 +340,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     _events[errorCode].HitCount++;
                 }
             }
+
+            EnsureFlushLogsTimerInitialized();
+        }
+
+        internal void EnsureFlushLogsTimerInitialized()
+        {
+            if (_disposed || !IsEnabled())
+            {
+                return;
+            }
+
+            _ = _flushLogsTimer.Value;
         }
 
         public bool IsEnabled()
@@ -341,8 +373,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         private void StopTimer()
         {
+            if (!_flushLogsTimer.IsValueCreated)
+            {
+                return;
+            }
+
             Logger.StoppingFlushLogsTimer(_logger);
-            _flushLogsTimer?.Change(Timeout.Infinite, Timeout.Infinite);
+            _flushLogsTimer?.Value?.Change(Timeout.Infinite, Timeout.Infinite);
         }
 
         protected virtual void Dispose(bool disposing)
@@ -351,9 +388,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             {
                 if (disposing)
                 {
-                    if (_flushLogsTimer != null)
+                    if (_flushLogsTimer?.Value != null)
                     {
-                        _flushLogsTimer.Dispose();
+                        _flushLogsTimer?.Value?.Dispose();
                     }
 
                     FlushLogs().GetAwaiter().GetResult();
