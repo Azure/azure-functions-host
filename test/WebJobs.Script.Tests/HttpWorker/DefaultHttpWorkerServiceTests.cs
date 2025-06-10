@@ -15,7 +15,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Exceptions;
 using Microsoft.Azure.WebJobs.Script.Extensions;
-using Microsoft.Azure.WebJobs.Script.HttpProxyService;
+using Microsoft.Azure.WebJobs.Script.Http;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Extensions.Azure;

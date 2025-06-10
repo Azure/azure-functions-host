@@ -5,7 +5,7 @@ using System.Net.Http;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script.HttpProxyService;
+using Microsoft.Azure.WebJobs.Script.Http;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 

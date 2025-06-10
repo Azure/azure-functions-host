@@ -13,7 +13,7 @@ using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Extensions;
-using Microsoft.Azure.WebJobs.Script.HttpProxyService;
+using Microsoft.Azure.WebJobs.Script.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -26,7 +26,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         private readonly ILogger _logger;
         private readonly bool _enableRequestTracing;
         private readonly IHttpProxyService _httpProxyService;
-        private readonly ScriptInvocationResult _successfulInvocationResult;
         private readonly Uri _destinationPrefix;
         private readonly string _userAgentString;
 
@@ -55,11 +54,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 // Set 1 minute greater than FunctionTimeout to ensure invoction failure due to timeout is raised before httpClient raises operation cancelled exception
                 _httpClient.Timeout = scriptHostOptions.Value.FunctionTimeout.Value.Add(TimeSpan.FromMinutes(1));
             }
-
-            _successfulInvocationResult = new ScriptInvocationResult()
-            {
-                Outputs = new Dictionary<string, object>()
-            };
 
             _destinationPrefix = new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port).Uri;
             _userAgentString = $"{HttpWorkerConstants.UserAgentHeaderValue}/{ScriptHost.Version}";
@@ -106,8 +100,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 // YARP only requires the destination prefix. The path and query string are added by the YARP proxy during SendAsync using info from the HttpContext.
                 _httpProxyService.StartForwarding(scriptInvocationContext, _destinationPrefix);
 
-                await _httpProxyService.EnsureSuccessfulForwardingAsync(scriptInvocationContext);
-                scriptInvocationContext.ResultSource.SetResult(_successfulInvocationResult);
+                await _httpProxyService.EnsureSuccessfulForwardingAsync(scriptInvocationContext); // this will throw if forwarding is unsuccessful
+                scriptInvocationContext.ResultSource.SetResult(ScriptInvocationResult.Success);
             }
             catch (Exception exc)
             {

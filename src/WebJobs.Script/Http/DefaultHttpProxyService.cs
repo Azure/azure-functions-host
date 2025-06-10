@@ -12,7 +12,7 @@ using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.Logging;
 using Yarp.ReverseProxy.Forwarder;
 
-namespace Microsoft.Azure.WebJobs.Script.HttpProxyService
+namespace Microsoft.Azure.WebJobs.Script.Http
 {
     internal class DefaultHttpProxyService : IHttpProxyService, IDisposable
     {
