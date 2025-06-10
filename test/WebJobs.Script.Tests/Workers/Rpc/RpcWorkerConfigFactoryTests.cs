@@ -185,6 +185,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.Equal("7.4", powershellWorkerConfig.Description.DefaultRuntimeVersion);
         }
 
+        [Fact]
+        public void LogicApps_Overrides_PowershellVersionSetting()
+        {
+            var testEnvironment = new TestEnvironment();
+            testEnvironment.SetEnvironmentVariable("APP_KIND", "workflowapp");
+            testEnvironment.SetEnvironmentVariable("FUNCTIONS_WORKER_RUNTIME_VERSION", "7.2");
+            testEnvironment.SetEnvironmentVariable("LOGIC_APPS_POWERSHELL_VERSION", "7.4");
+            var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder();
+            var config = configBuilder.Build();
+            var scriptSettingsManager = new ScriptSettingsManager(config);
+            var testLogger = new TestLogger("test");
+            var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, testEnvironment, new TestMetricsLogger(), _testWorkerProfileManager);
+            var workerConfigs = configFactory.GetConfigs();
+            var powershellWorkerConfig = workerConfigs.FirstOrDefault(w => w.Description.Language.Equals("powershell", StringComparison.OrdinalIgnoreCase));
+            Assert.Equal(4, workerConfigs.Count);
+            Assert.NotNull(powershellWorkerConfig);
+            Assert.Equal("7.4", powershellWorkerConfig.Description.DefaultRuntimeVersion);
+        }
+
         [Theory]
         [InlineData("python", "Python", false, true)]
         [InlineData("python", "NOde", false, false)]

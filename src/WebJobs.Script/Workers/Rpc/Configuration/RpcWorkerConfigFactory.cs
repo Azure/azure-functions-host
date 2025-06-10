@@ -144,7 +144,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
                     // Check if any app settings are provided for that language
                     var languageSection = _config.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}:{workerDescription.Language}");
-                    workerDescription.Arguments = workerDescription.Arguments ?? new List<string>();
+                    workerDescription.Arguments ??= new List<string>();
                     GetWorkerDescriptionFromAppSettings(workerDescription, languageSection);
                     AddArgumentsFromAppSettings(workerDescription, languageSection);
 
