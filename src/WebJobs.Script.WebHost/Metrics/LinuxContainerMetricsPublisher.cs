@@ -38,7 +38,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         private readonly TimeSpan _timerStartDelay = TimeSpan.FromSeconds(2);
         private readonly IOptionsMonitor<StandbyOptions> _standbyOptions;
         private readonly IDisposable _standbyOptionsOnChangeListener;
-        private readonly IDisposable _hostingConfigOptionsOnChangeListener;
         private readonly string _requestUri;
         private readonly IEnvironment _environment;
         private readonly IOptionsMonitor<FunctionsHostingConfigOptions> _hostingConfigOptions;
@@ -66,7 +65,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         private int _errorCount = 0;
         private string _stampName;
         private bool _initialized = false;
-        private bool _isCGroupMemoryMetricsEnabled = false;
 
         public LinuxContainerMetricsPublisher(IEnvironment environment, IOptionsMonitor<StandbyOptions> standbyOptions, ILogger<LinuxContainerMetricsPublisher> logger, HostNameProvider hostNameProvider, IOptionsMonitor<FunctionsHostingConfigOptions> functionsHostingConfigOptions, HttpClient httpClient = null)
         {
@@ -94,17 +92,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
             else
             {
                 Start();
-            }
-
-            _hostingConfigOptionsOnChangeListener = _hostingConfigOptions.OnChange(OnHostingConfigOptionsChanged);
-        }
-
-        private void OnHostingConfigOptionsChanged(FunctionsHostingConfigOptions newOptions)
-        {
-            if (newOptions.IsCGroupMemoryMetricsEnabled != _isCGroupMemoryMetricsEnabled)
-            {
-                _logger.LogInformation("CGroup memory metrics enabled: {Enabled}", newOptions.IsCGroupMemoryMetricsEnabled);
-                _isCGroupMemoryMetricsEnabled = newOptions.IsCGroupMemoryMetricsEnabled;
             }
         }
 
@@ -278,16 +265,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         {
             try
             {
-                long memoryUsageInBytes;
-                if (_hostingConfigOptions.CurrentValue.IsCGroupMemoryMetricsEnabled)
-                {
-                    memoryUsageInBytes = CgroupMemoryUsageHelper.GetMemoryUsageInBytes(_logger);
-                }
-                else
-                {
-                    _process.Refresh();
-                    memoryUsageInBytes = _process.WorkingSet64;
-                }
+                long memoryUsageInBytes = CgroupMemoryUsageHelper.GetMemoryUsageInBytes(_logger);
 
                 if (memoryUsageInBytes != 0)
                 {
@@ -339,7 +317,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         public void Dispose()
         {
             _standbyOptionsOnChangeListener?.Dispose();
-            _hostingConfigOptionsOnChangeListener?.Dispose();
             _processMonitorTimer?.Dispose();
             _metricsPublisherTimer?.Dispose();
             _httpClient?.Dispose();
