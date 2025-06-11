@@ -81,8 +81,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 {
                     return ProcessHttpInAndOutInvocationRequest(scriptInvocationContext);
                 }
-                return ProcessDefaultInvocationRequest(scriptInvocationContext);
             }
+
             return ProcessDefaultInvocationRequest(scriptInvocationContext);
         }
 
