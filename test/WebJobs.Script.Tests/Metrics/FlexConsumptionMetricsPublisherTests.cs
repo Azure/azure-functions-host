@@ -8,6 +8,7 @@ using System.IO.Abstractions;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.Metrics;
@@ -47,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
                 _metricsFilePath = null;
             }
 
-            var publisher = CreatePublisher(inStandbyMode: true);
+            using var publisher = CreatePublisher(inStandbyMode: true);
 
             var logs = _logger.GetLogMessages();
             var log = logs.Single();
@@ -62,32 +63,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             Assert.NotNull(log);
         }
 
-        private FlexConsumptionMetricsPublisher CreatePublisher(TimeSpan? metricsPublishInterval = null, bool inStandbyMode = false)
-        {
-            _standbyOptions = new StandbyOptions { InStandbyMode = inStandbyMode };
-            _standbyOptionsMonitor = new TestOptionsMonitor<StandbyOptions>(_standbyOptions);
-            _options = new FlexConsumptionMetricsPublisherOptions
-            {
-                // for these unit tests we don't want the publish timer running -
-                // we want to publish manually
-                InitialPublishDelayMS = Timeout.Infinite,
-                MetricsFilePath = _metricsFilePath,
-                MaxFileCount = 5
-            };
-            if (metricsPublishInterval != null)
-            {
-                _options.MetricsPublishIntervalMS = (int)metricsPublishInterval.Value.TotalMilliseconds;
-            }
-            var optionsWrapper = new OptionsWrapper<FlexConsumptionMetricsPublisherOptions>(_options);
-            _logger = new TestLogger<FlexConsumptionMetricsPublisher>();
-            var serviceProvider = new Mock<IServiceProvider>();
-            var hostMetricsLogger = new TestLogger<HostMetricsProvider>();
-            _metricsProvider = new HostMetricsProvider(serviceProvider.Object, _standbyOptionsMonitor, hostMetricsLogger, _environment);
-            var publisher = new FlexConsumptionMetricsPublisher(_environment, _standbyOptionsMonitor, optionsWrapper, _logger, new FileSystem(), _metricsProvider);
-
-            return publisher;
-        }
-
         [Theory]
         [InlineData(false)]
         [InlineData(true)]
@@ -100,12 +75,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
                 _environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsAlwaysReadyInstance, "1");
             }
 
-            var publisher = CreatePublisher();
+            using var publisher = CreatePublisher();
 
             int delay = 100;
             await Task.Delay(delay);
 
-            await publisher.OnPublishMetrics(DateTime.UtcNow);
+            await publisher.OnPublishMetrics(DateTime.UtcNow, ValueStopwatch.StartNew());
 
             FileInfo[] files = GetMetricsFilesSafe(_metricsFilePath);
 
@@ -138,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             delay = (int)executionDurationMS + 100;
             await Task.Delay(delay);
 
-            await publisher.OnPublishMetrics(DateTime.UtcNow);
+            await publisher.OnPublishMetrics(DateTime.UtcNow, ValueStopwatch.StartNew());
 
             files = GetMetricsFilesSafe(_metricsFilePath);
             Assert.Equal(1, files.Length);
@@ -172,7 +147,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
                 await Task.Delay(50);
             }
 
-            var publisher = CreatePublisher();
+            using var publisher = CreatePublisher();
 
             int executionDurationMS = 5678;
             publisher.FunctionExecutionCount = 123;
@@ -181,18 +156,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             int delay = (int)executionDurationMS + 100;
             await Task.Delay(delay);
 
-            await publisher.OnPublishMetrics(DateTime.UtcNow);
+            await publisher.OnPublishMetrics(DateTime.UtcNow, ValueStopwatch.StartNew());
 
             FileInfo[] files = GetMetricsFilesSafe(_metricsFilePath);
             Assert.Equal(5, files.Length);
 
             // we expect the oldest 4 of the initial files to be retained,
             // along with the last file written
-            var expectedfiles = metricsFiles.Skip(6).Take(4).ToArray();
+            var expectedFiles = metricsFiles.Skip(6).Take(4).ToArray();
 
             for (int i = 0; i < 4; i++)
             {
-                Assert.Equal(expectedfiles[i], files[i].Name);
+                Assert.Equal(expectedFiles[i], files[i].Name);
             }
 
             var logs = _logger.GetLogMessages().ToArray();
@@ -221,7 +196,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
         [Fact]
         public void FunctionsStartStop_CorrectCountsAreMaintained()
         {
-            var publisher = CreatePublisher(metricsPublishInterval: TimeSpan.FromHours(1), inStandbyMode: false);
+            using var publisher = CreatePublisher(metricsPublishInterval: TimeSpan.FromHours(1), inStandbyMode: false);
 
             Assert.Equal(0, publisher.ActiveFunctionCount);
             Assert.Equal(0, publisher.FunctionExecutionCount);
@@ -257,7 +232,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
         [Fact]
         public void FunctionsStartStop_MinimumActivityIntervals_Scenario1()
         {
-            var publisher = CreatePublisher(metricsPublishInterval: TimeSpan.FromHours(1), inStandbyMode: false);
+            using var publisher = CreatePublisher(metricsPublishInterval: TimeSpan.FromHours(1), inStandbyMode: false);
 
             Assert.Equal(1000, _options.MinimumActivityIntervalMS);
 
@@ -334,7 +309,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
         [Fact]
         public void FunctionsStartStop_MinimumActivityIntervals_Scenario2()
         {
-            var publisher = CreatePublisher(metricsPublishInterval: TimeSpan.FromHours(1), inStandbyMode: false);
+            using var publisher = CreatePublisher(metricsPublishInterval: TimeSpan.FromHours(1), inStandbyMode: false);
 
             Assert.Equal(1000, _options.MinimumActivityIntervalMS);
 
@@ -361,7 +336,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
         [Fact]
         public void FunctionsStartStop_MinimumActivityIntervals_Scenario3()
         {
-            var publisher = CreatePublisher(metricsPublishInterval: TimeSpan.FromHours(1), inStandbyMode: false);
+            using var publisher = CreatePublisher(metricsPublishInterval: TimeSpan.FromHours(1), inStandbyMode: false);
 
             Assert.Equal(1000, _options.MinimumActivityIntervalMS);
 
@@ -442,8 +417,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
         public async Task OnPublishMetrics_OutstandingActivityIsPublished()
         {
             CleanupMetricsFiles();
-
-            var publisher = CreatePublisher(metricsPublishInterval: TimeSpan.FromHours(1), inStandbyMode: false);
+            using var publisher = CreatePublisher(metricsPublishInterval: TimeSpan.FromHours(1), inStandbyMode: false);
 
             Assert.Equal(1000, _options.MinimumActivityIntervalMS);
 
@@ -459,7 +433,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             publisher.OnFunctionStarted("foo", "0", now);
 
             now += TimeSpan.FromMilliseconds(1800);
-            await publisher.OnPublishMetrics(now);
+            await publisher.OnPublishMetrics(now, ValueStopwatch.StartNew());
 
             FileInfo[] files = GetMetricsFilesSafe(_metricsFilePath);
             var metrics = await ReadMetricsAsync(files[0].FullName, deleteFile: true);
@@ -490,7 +464,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
 
             // wait another 300ms then simulate the end of the interval
             now += TimeSpan.FromMilliseconds(300);
-            await publisher.OnPublishMetrics(now);
+            await publisher.OnPublishMetrics(now, ValueStopwatch.StartNew());
 
             files = GetMetricsFilesSafe(_metricsFilePath);
             metrics = await ReadMetricsAsync(files[0].FullName, deleteFile: true);
@@ -516,13 +490,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
 
             // another function starts and continues running past the
             // end of the second interval
-            // at the end of thie interval, while the function has only
+            // at the end of the interval, while the function has only
             // ran for 700ms this gets rounded up to 1000ms
             now += TimeSpan.FromMilliseconds(400);
             publisher.OnFunctionStarted("foo", "4", now);
             now += TimeSpan.FromMilliseconds(700);
 
-            await publisher.OnPublishMetrics(now);
+            await publisher.OnPublishMetrics(now, ValueStopwatch.StartNew());
 
             files = GetMetricsFilesSafe(_metricsFilePath);
             metrics = await ReadMetricsAsync(files[0].FullName, deleteFile: true);
@@ -537,20 +511,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
         {
             CleanupMetricsFiles();
 
-            var publisher = CreatePublisher();
+            using var publisher = CreatePublisher();
 
             DateTime now = DateTime.UtcNow;
 
-            // Should not publish because there is no activity and keepalive internal has not passed
-            await publisher.OnPublishMetrics(now);
+            // Should not publish because there is no activity and keep-alive internal has not passed
+            await publisher.OnPublishMetrics(now, ValueStopwatch.StartNew());
             var files = GetMetricsFilesSafe(_metricsFilePath);
             Assert.Equal(0, files.Length);
 
             // Simulate 31 seconds passing with no function activity
             now = now.AddSeconds(31);
 
-            // Should publish as keepalive interval has passed
-            await publisher.OnPublishMetrics(now);
+            // Should publish as keep-alive interval has passed
+            await publisher.OnPublishMetrics(now, ValueStopwatch.StartNew());
             files = GetMetricsFilesSafe(_metricsFilePath);
             Assert.Equal(1, files.Length);
 
@@ -564,7 +538,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
         [Fact]
         public void OnFunctionCompleted_NoOutstandingInvocations_IgnoresEvent()
         {
-            var publisher = CreatePublisher(metricsPublishInterval: TimeSpan.FromHours(1), inStandbyMode: false);
+            using var publisher = CreatePublisher(metricsPublishInterval: TimeSpan.FromHours(1), inStandbyMode: false);
 
             Assert.Equal(1000, _options.MinimumActivityIntervalMS);
             Assert.Equal(0, publisher.ActiveFunctionCount);
@@ -597,6 +571,32 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             }
         }
 
+        private FlexConsumptionMetricsPublisher CreatePublisher(TimeSpan? metricsPublishInterval = null, bool inStandbyMode = false)
+        {
+            _standbyOptions = new StandbyOptions { InStandbyMode = inStandbyMode };
+            _standbyOptionsMonitor = new TestOptionsMonitor<StandbyOptions>(_standbyOptions);
+            _options = new FlexConsumptionMetricsPublisherOptions
+            {
+                // for these unit tests we don't want the publish timer running -
+                // we want to publish manually
+                InitialPublishDelayMS = Timeout.Infinite,
+                MetricsFilePath = _metricsFilePath,
+                MaxFileCount = 5
+            };
+            if (metricsPublishInterval != null)
+            {
+                _options.MetricsPublishIntervalMS = (int)metricsPublishInterval.Value.TotalMilliseconds;
+            }
+            var optionsWrapper = new OptionsWrapper<FlexConsumptionMetricsPublisherOptions>(_options);
+            _logger = new TestLogger<FlexConsumptionMetricsPublisher>();
+            var serviceProvider = new Mock<IServiceProvider>();
+            var hostMetricsLogger = new TestLogger<HostMetricsProvider>();
+            _metricsProvider = new HostMetricsProvider(serviceProvider.Object, _standbyOptionsMonitor, hostMetricsLogger, _environment);
+            var publisher = new FlexConsumptionMetricsPublisher(_environment, _standbyOptionsMonitor, optionsWrapper, _logger, new FileSystem(), _metricsProvider);
+
+            return publisher;
+        }
+
         private static async Task<FlexConsumptionMetricsPublisher.Metrics> ReadMetricsAsync(string metricsFilePath, bool deleteFile = false)
         {
             string content = await File.ReadAllTextAsync(metricsFilePath);
@@ -617,10 +617,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
                 return directory.GetFiles().OrderBy(p => p.CreationTime).ToArray();
             }
 
-            return new FileInfo[0];
+            return [];
         }
 
-        private void ValidateTotalTime(long value, long delay)
+        private static void ValidateTotalTime(long value, long delay)
         {
             // Ensure the measured total time for the timer interval is within
             // the expected range (plus a small margin of error)
