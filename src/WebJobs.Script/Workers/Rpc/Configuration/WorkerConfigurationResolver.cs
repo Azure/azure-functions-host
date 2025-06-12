@@ -20,20 +20,20 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         private readonly ILogger _logger;
         private readonly IWorkerProfileManager _profileManager;
         private readonly IEnvironment _environment;
-        private readonly HashSet<string> _probingPathsEnabledWorkersViaHostingConfig;
+        private readonly HashSet<string> _workersAvailableForResolutionViaHostingConfig;
         private readonly JsonSerializerOptions _jsonSerializerOptions = new() { PropertyNameCaseInsensitive = true };
 
         public WorkerConfigurationResolver(IConfiguration config,
                                         ILogger logger,
                                         IEnvironment environment,
                                         IWorkerProfileManager workerProfileManager,
-                                        HashSet<string> probingPathsEnabledWorkersViaHostingConfig)
+                                        HashSet<string> workersAvailableForResolutionViaHostingConfig)
         {
             _config = config ?? throw new ArgumentNullException(nameof(config));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _profileManager = workerProfileManager ?? throw new ArgumentNullException(nameof(workerProfileManager));
-            _probingPathsEnabledWorkersViaHostingConfig = probingPathsEnabledWorkersViaHostingConfig;
+            _workersAvailableForResolutionViaHostingConfig = workersAvailableForResolutionViaHostingConfig;
         }
 
         public List<string> GetWorkerConfigs(List<string> probingPaths, string fallbackPath)
@@ -65,8 +65,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                             // Do not skip non-worker directories like the function app payload directory
                             if (languageWorkerPath.StartsWith(fallbackPath) || languageWorkerPath.StartsWith(probingPath))
                             {
-                                if ((_probingPathsEnabledWorkersViaHostingConfig is not null &&
-                                    !_probingPathsEnabledWorkersViaHostingConfig.Contains(languageWorkerDir)) ||
+                                if ((_workersAvailableForResolutionViaHostingConfig is not null &&
+                                    !_workersAvailableForResolutionViaHostingConfig.Contains(languageWorkerDir)) ||
                                     (!_environment.IsMultiLanguageRuntimeEnvironment() &&
                                     workerRuntime is not null &&
                                     !workerRuntime.Equals(languageWorkerDir, StringComparison.OrdinalIgnoreCase)))

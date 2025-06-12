@@ -126,11 +126,11 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         /// <summary>
         /// Gets a string delimited by '|' that contains the names of the language workers available through Probing paths outside of the Host.
         /// </summary>
-        internal string EnableProbingPathsForWorkers
+        internal string WorkersAvailableForDynamicResolution
         {
             get
             {
-                return GetFeature(RpcWorkerConstants.EnableProbingPathsForWorkers) ?? string.Empty;
+                return GetFeature(RpcWorkerConstants.WorkersAvailableForDynamicResolution) ?? string.Empty;
             }
         }
 

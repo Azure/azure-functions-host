@@ -1022,23 +1022,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData(null, "", false)]
         [InlineData(null, "| ", false)]
         [InlineData(null, null, false)]
-        [InlineData(ScriptConstants.FeatureFlagEnableWorkerProbingPaths, "node", true)]
-        [InlineData(ScriptConstants.FeatureFlagEnableWorkerProbingPaths, "java|node", true)]
-        [InlineData(ScriptConstants.FeatureFlagEnableWorkerProbingPaths, "", true)]
-        [InlineData(ScriptConstants.FeatureFlagEnableWorkerProbingPaths, "| ", true)]
-        [InlineData(ScriptConstants.FeatureFlagEnableWorkerProbingPaths, null, true)]
-        [InlineData(ScriptConstants.FeatureFlagDisableWorkerProbingPaths, "node", false)]
-        [InlineData(ScriptConstants.FeatureFlagDisableWorkerProbingPaths, "java|node", false)]
-        [InlineData(ScriptConstants.FeatureFlagDisableWorkerProbingPaths, "| ", false)]
+        [InlineData(ScriptConstants.FeatureFlagEnableDynamicWorkerResolution, "node", true)]
+        [InlineData(ScriptConstants.FeatureFlagEnableDynamicWorkerResolution, "java|node", true)]
+        [InlineData(ScriptConstants.FeatureFlagEnableDynamicWorkerResolution, "", true)]
+        [InlineData(ScriptConstants.FeatureFlagEnableDynamicWorkerResolution, "| ", true)]
+        [InlineData(ScriptConstants.FeatureFlagEnableDynamicWorkerResolution, null, true)]
+        [InlineData(ScriptConstants.FeatureFlagDisableDynamicWorkerResolution, "node", false)]
+        [InlineData(ScriptConstants.FeatureFlagDisableDynamicWorkerResolution, "java|node", false)]
+        [InlineData(ScriptConstants.FeatureFlagDisableDynamicWorkerResolution, "| ", false)]
 
-        public void AreProbingPathsEnabled_HostingConfigAndFeatureFlags_WorksAsExpected(string featureFlagValue, string hostingConfigSetting, bool expected)
+        public void IsDynamicWorkerResolutionEnabled_HostingConfigAndFeatureFlags_WorksAsExpected(string featureFlagValue, string hostingConfigSetting, bool expected)
         {
             HashSet<string> hostingConfigEnabledWorkers = hostingConfigSetting?.Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToHashSet();
 
             var testEnvironment = new TestEnvironment();
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, featureFlagValue);
 
-            bool result = Utility.AreWorkerProbingPathsEnabled(testEnvironment, hostingConfigEnabledWorkers);
+            bool result = Utility.IsDynamicWorkerResolutionEnabled(testEnvironment, hostingConfigEnabledWorkers);
 
             Assert.Equal(expected, result);
         }
@@ -1050,7 +1050,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData("node", "node", "workflowapp", true)]
         [InlineData("java|node", null, "workflowapp", true)]
         [InlineData("| ", null, "workflowapp", false)]
-        public void AreProbingPathsEnabled_WorkerRuntimeAndMultiLanguage_WorksAsExpected(string hostingConfigSetting, string workerRuntime, string multilanguageApp, bool expected)
+        public void IsDynamicWorkerResolutionEnabled_WorkerRuntimeAndMultiLanguage_WorksAsExpected(string hostingConfigSetting, string workerRuntime, string multilanguageApp, bool expected)
         {
             var testEnvironment = new TestEnvironment();
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AppKind, multilanguageApp);
@@ -1058,7 +1058,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             HashSet<string> hostingConfigEnabledWorkers = hostingConfigSetting?.Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToHashSet();
 
-            bool result = Utility.AreWorkerProbingPathsEnabled(testEnvironment, hostingConfigEnabledWorkers);
+            bool result = Utility.IsDynamicWorkerResolutionEnabled(testEnvironment, hostingConfigEnabledWorkers);
 
             Assert.Equal(expected, result);
         }

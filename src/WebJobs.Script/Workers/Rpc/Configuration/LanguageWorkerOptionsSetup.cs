@@ -82,24 +82,24 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 }
             }
 
-            HashSet<string> probingPathsEnabledWorkersViaHostingConfig = GetProbingPathsEnabledWorkersFromHostingConfig();
-            bool probingPathsEnabled = Utility.AreWorkerProbingPathsEnabled(_environment, probingPathsEnabledWorkersViaHostingConfig);
+            HashSet<string> workers = GetWorkersAvailableForResolutionViaHostingConfig();
+            bool dynamicWorkerResolutionEnabled = Utility.IsDynamicWorkerResolutionEnabled(_environment, workers);
             List<string> probingPaths = null;
 
-            if (probingPathsEnabled)
+            if (dynamicWorkerResolutionEnabled)
             {
                 probingPaths = GetWorkerProbingPaths();
             }
 
-            var workerConfigurationResolver = new WorkerConfigurationResolver(configuration, _logger, _environment, _workerProfileManager, probingPathsEnabledWorkersViaHostingConfig);
-            var configFactory = new RpcWorkerConfigFactory(configuration, _logger, SystemRuntimeInformation.Instance, _environment, _metricsLogger, _workerProfileManager, workerConfigurationResolver, probingPathsEnabled, probingPaths);
+            var workerConfigurationResolver = new WorkerConfigurationResolver(configuration, _logger, _environment, _workerProfileManager, workers);
+            var configFactory = new RpcWorkerConfigFactory(configuration, _logger, SystemRuntimeInformation.Instance, _environment, _metricsLogger, _workerProfileManager, workerConfigurationResolver, dynamicWorkerResolutionEnabled, probingPaths);
             options.WorkerConfigs = configFactory.GetConfigs();
         }
 
-        internal HashSet<string> GetProbingPathsEnabledWorkersFromHostingConfig()
+        internal HashSet<string> GetWorkersAvailableForResolutionViaHostingConfig()
         {
             return _functionsHostingConfigOptions.Value
-                        ?.EnableProbingPathsForWorkers
+                        ?.WorkersAvailableForDynamicResolution
                         ?.ToLowerInvariant()
                         .Split("|", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                         .ToHashSet();

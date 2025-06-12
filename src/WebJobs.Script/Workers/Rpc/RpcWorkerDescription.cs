@@ -87,7 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         public override bool UseStdErrorStreamForErrorsOnly { get; set; } = false;
 
-        public override void ApplyDefaultsAndValidate(string workerDirectory, ILogger logger, bool probingPathsEnabled = false)
+        public override void ApplyDefaultsAndValidate(string workerDirectory, ILogger logger, bool dynamicWorkerResolutionEnabled = false)
         {
             if (workerDirectory == null)
             {
@@ -98,9 +98,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             if (!string.IsNullOrEmpty(DefaultWorkerPath) && !Path.IsPathRooted(DefaultWorkerPath))
             {
-                // If probing paths are enabled and DefaultWorkerPath contains FunctionWorkerRuntimeVersionSettingName
+                // If dynamic worker resolution  enabled and DefaultWorkerPath contains FunctionWorkerRuntimeVersionSettingName
                 // then version becomes redundant in the path. Replacing version with an empty string to avoid duplication.
-                if (probingPathsEnabled && DefaultWorkerPath.Contains(RpcWorkerConstants.RuntimeVersionPlaceholder))
+                if (dynamicWorkerResolutionEnabled && DefaultWorkerPath.Contains(RpcWorkerConstants.RuntimeVersionPlaceholder))
                 {
                     var versionDir = Path.GetFileName(WorkerDirectory);
                     WorkerDirectory = WorkerDirectory.Replace(versionDir, string.Empty);

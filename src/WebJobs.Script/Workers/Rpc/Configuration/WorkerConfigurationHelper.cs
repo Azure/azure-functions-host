@@ -18,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             JsonElement workerConfig,
             JsonSerializerOptions jsonSerializerOptions,
             string workerDir,
-            bool probingPathsEnabled,
+            bool dynamicWorkerResolutionEnabled,
             IWorkerProfileManager profileManager,
             IConfiguration config,
             ILogger logger)
@@ -45,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             AddArgumentsFromAppSettings(workerDescription, languageSection);
 
             // Validate workerDescription
-            workerDescription.ApplyDefaultsAndValidate(Directory.GetCurrentDirectory(), logger, probingPathsEnabled);
+            workerDescription.ApplyDefaultsAndValidate(Directory.GetCurrentDirectory(), logger, dynamicWorkerResolutionEnabled);
 
             return workerDescription;
         }

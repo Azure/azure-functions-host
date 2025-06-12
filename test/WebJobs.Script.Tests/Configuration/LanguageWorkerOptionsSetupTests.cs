@@ -82,10 +82,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         }
 
         [Theory]
-        [InlineData("java", "EnableWorkerProbingPaths", "java", "LATEST", "2.19.0")]
-        [InlineData("java", "EnableWorkerProbingPaths", "java", "STANDARD", "2.18.0")]
-        [InlineData("node", "EnableWorkerProbingPaths", "node", "LATEST", "3.10.1")]
-        [InlineData("node", "EnableWorkerProbingPaths", "java|node", "STANDARD", "3.10.1")]
+        [InlineData("java", ScriptConstants.FeatureFlagEnableDynamicWorkerResolution, "java", "LATEST", "2.19.0")]
+        [InlineData("java", ScriptConstants.FeatureFlagEnableDynamicWorkerResolution, "java", "STANDARD", "2.18.0")]
+        [InlineData("node", ScriptConstants.FeatureFlagEnableDynamicWorkerResolution, "node", "LATEST", "3.10.1")]
+        [InlineData("node", ScriptConstants.FeatureFlagEnableDynamicWorkerResolution, "java|node", "STANDARD", "3.10.1")]
         public void LanguageWorkerOptions_ProbingPaths_Expected_ListOfConfigs(string workerRuntime, string enableProbingPaths, string hostingOptionsSetting, string releaseChannel, string expectedVersion)
         {
             var loggerProvider = new TestLoggerProvider();
@@ -107,7 +107,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.WorkerProbingPaths, probingPathValue);
 
             var hostingOptions = new FunctionsHostingConfigOptions();
-            hostingOptions.Features.Add(RpcWorkerConstants.EnableProbingPathsForWorkers, hostingOptionsSetting);
+            hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, hostingOptionsSetting);
 
             LanguageWorkerOptionsSetup setup = new LanguageWorkerOptionsSetup(configuration, loggerFactory, testEnvironment, testMetricLogger, testProfileManager.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
             LanguageWorkerOptions options = new LanguageWorkerOptions();
@@ -126,10 +126,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         }
 
         [Theory]
-        [InlineData("java", "EnableWorkerProbingPaths", "java", "LATEST")]
-        [InlineData("java", "EnableWorkerProbingPaths", "java", "STANDARD")]
-        [InlineData("node", "EnableWorkerProbingPaths", "node", "LATEST")]
-        [InlineData("node", "EnableWorkerProbingPaths", "java|node", "STANDARD")]
+        [InlineData("java", ScriptConstants.FeatureFlagEnableDynamicWorkerResolution, "java", "LATEST")]
+        [InlineData("java", ScriptConstants.FeatureFlagEnableDynamicWorkerResolution, "java", "STANDARD")]
+        [InlineData("node", ScriptConstants.FeatureFlagEnableDynamicWorkerResolution, "node", "LATEST")]
+        [InlineData("node", ScriptConstants.FeatureFlagEnableDynamicWorkerResolution, "java|node", "STANDARD")]
         public void LanguageWorkerOptions_FallbackPath_Expected_ListOfConfigs(string workerRuntime, string enableProbingPaths, string hostingOptionsSetting, string releaseChannel)
         {
             var loggerProvider = new TestLoggerProvider();
@@ -151,7 +151,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.WorkerProbingPaths, probingPathValue);
 
             var hostingOptions = new FunctionsHostingConfigOptions();
-            hostingOptions.Features.Add(RpcWorkerConstants.EnableProbingPathsForWorkers, hostingOptionsSetting);
+            hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, hostingOptionsSetting);
 
             LanguageWorkerOptionsSetup setup = new LanguageWorkerOptionsSetup(configuration, loggerFactory, testEnvironment, testMetricLogger, testProfileManager.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
             LanguageWorkerOptions options = new LanguageWorkerOptions();

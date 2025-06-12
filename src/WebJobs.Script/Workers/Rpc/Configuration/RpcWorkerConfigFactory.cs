@@ -44,8 +44,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                                         IMetricsLogger metricsLogger,
                                         IWorkerProfileManager workerProfileManager,
                                         IWorkerConfigurationResolver workerConfigurationResolver,
-                                        bool probingPathsEnabled = false,
-                                        List<string> probingPaths = null)
+                                        bool dynamicWorkerResolutionEnabled = false,
+                                        List<string> workerProbingPaths = null)
         {
             _config = config ?? throw new ArgumentNullException(nameof(config));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -59,8 +59,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             WorkersDirPath = GetDefaultWorkersDirectory(Directory.Exists);
             var workersDirectorySection = _config.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}:{WorkerConstants.WorkersDirectorySectionName}");
 
-            ProbingPathsEnabled = probingPathsEnabled;
-            WorkerProbingPaths = probingPaths;
+            DynamicWorkerResolutionEnabled = dynamicWorkerResolutionEnabled;
+            WorkerProbingPaths = workerProbingPaths;
 
             if (!string.IsNullOrEmpty(workersDirectorySection.Value))
             {
@@ -70,7 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         public string WorkersDirPath { get; }
 
-        internal bool ProbingPathsEnabled { get; }
+        internal bool DynamicWorkerResolutionEnabled { get; }
 
         internal List<string> WorkerProbingPaths { get; }
 
@@ -105,7 +105,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal void AddProviders()
         {
-            if (ProbingPathsEnabled && WorkerProbingPaths is not null)
+            if (DynamicWorkerResolutionEnabled && WorkerProbingPaths is not null)
             {
                 _logger.LogDebug("Probing paths set to: {probingPaths} and Workers Directory set as fallback path: {WorkersDirPath}", string.Join(", ", WorkerProbingPaths), WorkersDirPath);
 
@@ -155,7 +155,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     if (!string.IsNullOrWhiteSpace(_workerRuntime) &&
                         !_environment.IsPlaceholderModeEnabled() &&
                         !_environment.IsMultiLanguageRuntimeEnvironment() &&
-                        !ProbingPathsEnabled)
+                        !DynamicWorkerResolutionEnabled)
                     {
                         string workerRuntime = Path.GetFileName(workerDir);
                         // Only skip worker directories that don't match the current runtime.
@@ -182,7 +182,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                                                                                             workerConfig,
                                                                                             _jsonSerializerOptions,
                                                                                             workerDir,
-                                                                                            ProbingPathsEnabled,
+                                                                                            DynamicWorkerResolutionEnabled,
                                                                                             _profileManager,
                                                                                             _config,
                                                                                             _logger);

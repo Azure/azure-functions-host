@@ -1066,21 +1066,21 @@ namespace Microsoft.Azure.WebJobs.Script
             return workerIndexingEnabled && workerIndexingAvailable;
         }
 
-        // Worker probing paths can be enabled or disabled via feature flags or hosting config options. Feature flags take precedence over hosting config options.
-        // Users can enable or disable probing paths via setting the appropriate feature flags.
-        // Probing paths can also be enabled for specific workers at stamp level via the hosting config options.
-        public static bool AreWorkerProbingPathsEnabled(IEnvironment environment, HashSet<string> probingPathsEnabledWorkersViaHostingConfig)
+        // Dynamic Worker Resolution can be enabled or disabled via feature flags or hosting config options. Feature flags take precedence over hosting config options.
+        // Users can enable or disable worker resolution via setting the appropriate feature flags.
+        // Worker resolution can also be enabled for specific workers at stamp level via the hosting config options.
+        public static bool IsDynamicWorkerResolutionEnabled(IEnvironment environment, HashSet<string> workersAvailableForResolutionViaHostingConfig)
         {
-            bool areProbingPathsDisabled = FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagDisableWorkerProbingPaths, environment);
+            bool isDynamicWorkerResolutionDisabled = FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagDisableDynamicWorkerResolution, environment);
 
-            if (areProbingPathsDisabled)
+            if (isDynamicWorkerResolutionDisabled)
             {
                 return false;
             }
 
-            bool areProbingPathsEnabled = FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableWorkerProbingPaths, environment);
+            bool isDynamicWorkerResolutionEnabled = FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableDynamicWorkerResolution, environment);
 
-            if (areProbingPathsEnabled)
+            if (isDynamicWorkerResolutionEnabled)
             {
                 return true;
             }
@@ -1089,10 +1089,10 @@ namespace Microsoft.Azure.WebJobs.Script
 
             if (!environment.IsMultiLanguageRuntimeEnvironment() && !string.IsNullOrWhiteSpace(workerRuntime))
             {
-                return probingPathsEnabledWorkersViaHostingConfig?.Contains(workerRuntime) ?? false;
+                return workersAvailableForResolutionViaHostingConfig?.Contains(workerRuntime) ?? false;
             }
 
-            return probingPathsEnabledWorkersViaHostingConfig?.Any() ?? false;
+            return workersAvailableForResolutionViaHostingConfig?.Any() ?? false;
         }
 
         public static void LogAutorestGeneratedJsonIfExists(string rootScriptPath, ILogger logger)

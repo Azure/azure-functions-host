@@ -74,8 +74,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 yield return [nameof(FunctionsHostingConfigOptions.IsDotNetInProcDisabled), "DotNetInProcDisabled=True", true];
                 yield return [nameof(FunctionsHostingConfigOptions.IsDotNetInProcDisabled), "DotNetInProcDisabled=1", true];
                 yield return [nameof(FunctionsHostingConfigOptions.IsDotNetInProcDisabled), "DotNetInProcDisabled=0", false];
-                yield return [nameof(FunctionsHostingConfigOptions.EnableProbingPathsForWorkers), "ENABLE_PROBING_PATHS_FOR_WORKERS=java|node", "java|node"];
-                yield return [nameof(FunctionsHostingConfigOptions.EnableProbingPathsForWorkers), "ENABLE_PROBING_PATHS_FOR_WORKERS=java", "java"];
+                yield return [nameof(FunctionsHostingConfigOptions.WorkersAvailableForDynamicResolution), "WORKERS_AVAILABLE_FOR_DYNAMIC_RESOLUTION=java|node", "java|node"];
+                yield return [nameof(FunctionsHostingConfigOptions.WorkersAvailableForDynamicResolution), "WORKERS_AVAILABLE_FOR_DYNAMIC_RESOLUTION=java", "java"];
                 yield return [nameof(FunctionsHostingConfigOptions.IsTestDataSuppressionEnabled), "EnableTestDataSuppression=1", true];
                 yield return [nameof(FunctionsHostingConfigOptions.IsCGroupMemoryMetricsEnabled), "EnableCGroupMemoryMetrics=1", true];
 #pragma warning restore SA1011 // Closing square brackets should be spaced correctly
