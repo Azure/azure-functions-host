@@ -17,3 +17,4 @@
 - Improvements to coldstart pipeline (#11102).
 - Update Python Worker Version to [4.38.0](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.38.0)
 - Only start the Diagnostic Events flush logs timer when events are present, preventing unnecessary flush attempts (#11100).
+- Switched memory usage reporting to use CGroup metrics by default for Linux consumption (#11114)
