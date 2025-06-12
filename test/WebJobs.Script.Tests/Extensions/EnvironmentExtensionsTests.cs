@@ -62,6 +62,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         [InlineData(null, true)]
         [InlineData("", false)]
         [InlineData("Foo,FunctionAppLogs,Bar", true)]
+        [InlineData("FunctionAppLogs", true)]
+        [InlineData("None", false)]
         [InlineData("Foo,Bar", false)]
         public void IsAzureMonitorEnabled_ReturnsExpectedResult(string value, bool expected)
         {

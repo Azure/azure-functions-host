@@ -142,7 +142,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string FeatureFlagDisableOrderedInvocationMessages = "DisableOrderedInvocationMessages";
         public const string FeatureFlagEnableAzureMonitorTimeIsoFormat = "EnableAzureMonitorTimeIsoFormat";
         public const string FeatureFlagEnableTestDataSuppression = "EnableTestDataSuppression";
-        public const string FeatureFlagEnableCGroupMemoryMetrics = "EnableCGroupMemoryMetrics";
         public const string HostingConfigDisableLinuxAppServiceDetailedExecutionEvents = "DisableLinuxExecutionDetails";
         public const string HostingConfigDisableLinuxAppServiceExecutionEventLogBackoff = "DisableLinuxLogBackoff";
         public const string FeatureFlagEnableLegacyDurableVersionCheck = "EnableLegacyDurableVersionCheck";
@@ -227,6 +226,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string ExtendedPlatformChannelNameUpper = "EXTENDED";
 
         public const string AzureMonitorTraceCategory = "FunctionAppLogs";
+        public const string DefaultAzureMonitorCategories = "None";
 
         public const string KubernetesManagedAppName = "K8SE_APP_NAME";
         public const string KubernetesManagedAppNamespace = "K8SE_APP_NAMESPACE";
