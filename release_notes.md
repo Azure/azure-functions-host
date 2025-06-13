@@ -19,3 +19,4 @@
 - Only start the Diagnostic Events flush logs timer when events are present, preventing unnecessary flush attempts (#11100).
 - Enable HTTP proxying for custom handlers (#11035)
 - Switched memory usage reporting to use CGroup metrics by default for Linux consumption (#11114)
+- Add JitTrace files for v4.1040
