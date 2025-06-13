@@ -73,7 +73,7 @@
         "runtime": {
           "lib/net8.0/Azure.Core.dll": {
             "assemblyVersion": "1.46.2.0",
-            "fileVersion": "1.4600.25.10604"
+            "fileVersion": "1.4600.225.30510"
           }
         }
       },
@@ -102,7 +102,7 @@
         "runtime": {
           "lib/netstandard2.0/Azure.Identity.dll": {
             "assemblyVersion": "1.13.1.0",
-            "fileVersion": "1.1300.124.31005"
+            "fileVersion": "1.1300.124.52405"
           }
         }
       },
@@ -1332,7 +1332,7 @@
         "runtime": {
           "lib/netstandard2.0/Microsoft.Extensions.Azure.dll": {
             "assemblyVersion": "1.12.0.0",
-            "fileVersion": "1.1200.23.52701"
+            "fileVersion": "1.1200.25.31204"
           }
         }
       },
@@ -3016,7 +3016,7 @@
     "Azure.Core/1.46.2": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-v8B1OgKLFq5U/rYA7hPZcUjO8oSdLYKYzQUdJY0nnFVGODiWOdJvHR6eKmFjG6HFkFqD5Ln4vAD3S4j7aRtEUw==",
+      "sha512": "sha512-HFcvd1besmgBFPIZ7iSFHZOgzGfHTZNTzG8gWYdIP8ZJQySrb+vAdArcmFw7je3kFRMDbbtMoWKNVGj2vvH1sw==",
       "path": "azure.core/1.46.2",
       "hashPath": "azure.core.1.46.2.nupkg.sha512"
     },
@@ -3030,7 +3030,7 @@
     "Azure.Identity/1.13.1": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-RP92jl/Hy5fFJjMcBDNEJ3z8W1U+k9W6Z0jY+qnKcpDVLJ1p3+KYhcFf1gSoZkgJVaJyy8Q/4lhO5lQJqnmSDg==",
+      "sha512": "sha512-4eeK9XztjTmvA4WN+qAvlUCSxSv45+LqTMeC8XT2giGGZHKthTMU2IuXcHjAOf5VLH3wE3Bo6EwhIcJxVB8RmQ==",
       "path": "azure.identity/1.13.1",
       "hashPath": "azure.identity.1.13.1.nupkg.sha512"
     },
@@ -3779,7 +3779,7 @@
     "Microsoft.Extensions.Azure/1.12.0": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-wL5yRn8+C0CW5N/lACdN6CvfxQRLTFM7EJKGItFq/bXfIrqhbT/NLFYtVPOk8Tl2Tx8CmvdE5Q5YxFTzNbhDZw==",
+      "sha512": "sha512-3sIvazPesPdEn5t2yT+pwVWKm1LyN/LB31Wh52giRNf2ckcKmaxW2KOA5uNZHSaqABhMDPAYGMeGBFQreZ7uUg==",
       "path": "microsoft.extensions.azure/1.12.0",
       "hashPath": "microsoft.extensions.azure.1.12.0.nupkg.sha512"
     },
