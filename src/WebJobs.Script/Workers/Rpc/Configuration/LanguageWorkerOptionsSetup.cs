@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
     internal class LanguageWorkerOptionsSetup : IConfigureOptions<LanguageWorkerOptions>
     {
-        private const string _windowsWorkerProbingPath = "c:\\home\\SiteExtensions\\workers"; // Harcoded site extensions path for Windows until Antares sets it as an Environment variable.
+        private const string _windowsWorkerProbingPath = "C:\\home\\SiteExtensions\\workers"; // Harcoded site extensions path for Windows until Antares sets it as an Environment variable.
         private readonly IConfiguration _configuration;
         private readonly ILogger _logger;
         private readonly IEnvironment _environment;

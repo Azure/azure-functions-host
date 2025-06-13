@@ -107,7 +107,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         {
             if (DynamicWorkerResolutionEnabled && WorkerProbingPaths is not null)
             {
-                _logger.LogDebug("Probing paths set to: {probingPaths} and Workers Directory set as fallback path: {WorkersDirPath}", string.Join(", ", WorkerProbingPaths), WorkersDirPath);
+                _logger.LogDebug("Worker probing paths set to: {probingPaths} and Workers Directory set as fallback path: {WorkersDirPath}", string.Join(", ", WorkerProbingPaths), WorkersDirPath);
 
                 List<string> workerConfigs = _workerConfigurationResolver.GetWorkerConfigs(WorkerProbingPaths, WorkersDirPath);
 
