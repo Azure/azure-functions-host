@@ -208,7 +208,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             // if there are existing headers, override them
             httpRequest.Headers[HttpWorkerConstants.HostVersionHeaderName] = ScriptHost.Version;
             httpRequest.Headers[HttpWorkerConstants.InvocationIdHeaderName] = invocationId;
-            httpRequest.Headers.UserAgent = _userAgentString;
         }
 
         internal string GetPathValue(HttpWorkerOptions httpWorkerOptions, string functionName, HttpRequest httpRequest)
