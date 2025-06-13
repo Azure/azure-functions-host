@@ -4,13 +4,14 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -32,6 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly Mock<IDebugStateProvider> _debugStateProvider;
         private readonly IEnvironment _environment;
         private readonly IOptionsMonitor<AppServiceOptions> _appServiceOptions;
+        private readonly IOptionsMonitor<FunctionsHostingConfigOptions> _hostingConfigOptions;
         private readonly TestChangeTokenSource<StandbyOptions> _changeTokenSource;
         private readonly string _slotName = "production";
         private readonly string _runtimeSiteName = "test";
@@ -63,13 +65,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 .Build();
 
             _appServiceOptions = host.Services.GetService<IOptionsMonitor<AppServiceOptions>>();
+            _hostingConfigOptions = new TestOptionsMonitor<FunctionsHostingConfigOptions>(new FunctionsHostingConfigOptions());
             _mockEventGenerator = new Mock<IEventGenerator>(MockBehavior.Strict);
             _inDiagnosticMode = false;
             _category = LogCategories.CreateFunctionCategory(_functionName);
             _debugStateProvider = new Mock<IDebugStateProvider>(MockBehavior.Strict);
             _debugStateProvider.Setup(p => p.InDiagnosticMode).Returns(() => _inDiagnosticMode);
 
-            _logger = new SystemLogger(_hostInstanceId, _category, _mockEventGenerator.Object, _environment, _debugStateProvider.Object, null, new LoggerExternalScopeProvider(), _appServiceOptions);
+            _logger = new SystemLogger(_hostInstanceId, _category, _mockEventGenerator.Object, _environment, _debugStateProvider.Object, null, new LoggerExternalScopeProvider(), _appServiceOptions, _hostingConfigOptions);
         }
 
         [Fact]
@@ -161,7 +164,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(LogLevel.Error, _subscriptionId, _websiteName, functionName, eventName, string.Empty, functionException.ToFormattedString(), functionException.Message, functionException.InnerException.GetType().ToString(), functionException.InnerException.Message, functionInvocationId, _hostInstanceId, activityId, _runtimeSiteName, _slotName, It.IsAny<DateTime>()));
 
-            ILogger localLogger = new SystemLogger(_hostInstanceId, string.Empty, _mockEventGenerator.Object, _environment, _debugStateProvider.Object, null, new LoggerExternalScopeProvider(), _appServiceOptions);
+            ILogger localLogger = new SystemLogger(_hostInstanceId, string.Empty, _mockEventGenerator.Object, _environment, _debugStateProvider.Object, null, new LoggerExternalScopeProvider(), _appServiceOptions, _hostingConfigOptions);
             localLogger.LogError(functionException, functionException.Message);
 
             _mockEventGenerator.VerifyAll();
@@ -193,10 +196,58 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public void Log_RpcException()
+        {
+            string secretReplacement = "[Hidden Credential]";
+            string secretString = "{ \"AzureWebJobsStorage\": \"DefaultEndpointsProtocol=https;AccountName=testAccount1;AccountKey=mykey1;EndpointSuffix=core.windows.net\", \"AnotherKey\": \"AnotherValue\" }";
+            string sanitizedString = $"{{ \"AzureWebJobsStorage\": \"{secretReplacement}\", \"AnotherKey\": \"AnotherValue\" }}";
+
+            string sanitizedDetails = "An exception occurred during invocation, but its details are redacted. Customers with AppInsights or OTel enabled can access full exception details.";
+            string sanitizedExceptionMessage = string.Empty;
+
+            string eventName = string.Empty;
+            string functionInvocationId = string.Empty;
+            string activityId = string.Empty;
+
+            var ex = new RpcException("result", "stack", "type");
+
+            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(LogLevel.Error, _subscriptionId, _websiteName, _functionName, eventName, _category, sanitizedDetails, sanitizedString, ex.GetType().ToString(), sanitizedExceptionMessage, functionInvocationId, _hostInstanceId, activityId, _runtimeSiteName, _slotName, It.IsAny<DateTime>()));
+
+            // it's the caller's responsibility to pre-sanitize any details in the log entries
+            _logger.LogError(ex, Sanitizer.Sanitize(secretString));
+
+            _mockEventGenerator.VerifyAll();
+        }
+
+        [Fact]
+        public void Log_NonRpcException()
+        {
+            string secretReplacement = "[Hidden Credential]";
+            string secretString = "{ \"AzureWebJobsStorage\": \"DefaultEndpointsProtocol=https;AccountName=testAccount1;AccountKey=mykey1;EndpointSuffix=core.windows.net\", \"AnotherKey\": \"AnotherValue\" }";
+            string sanitizedString = $"{{ \"AzureWebJobsStorage\": \"{secretReplacement}\", \"AnotherKey\": \"AnotherValue\" }}";
+
+            string sanitizedDetails = "System.ArgumentNullException : Value cannot be null. (Parameter 'result')";
+            string sanitizedExceptionMessage = "Value cannot be null. (Parameter 'result')";
+
+            string eventName = string.Empty;
+            string functionInvocationId = string.Empty;
+            string activityId = string.Empty;
+
+            var ex = new ArgumentNullException("result");
+
+            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(LogLevel.Error, _subscriptionId, _websiteName, _functionName, eventName, _category, sanitizedDetails, sanitizedString, ex.GetType().ToString(), sanitizedExceptionMessage, functionInvocationId, _hostInstanceId, activityId, _runtimeSiteName, _slotName, It.IsAny<DateTime>()));
+
+            // it's the caller's responsibility to pre-sanitize any details in the log entries
+            _logger.LogError(ex, Sanitizer.Sanitize(secretString));
+
+            _mockEventGenerator.VerifyAll();
+        }
+
+        [Fact]
         public void Log_Ignores_FunctionUserCategory()
         {
             // Create a logger with the Function.{FunctionName}.User category, which is what determines user logs.
-            ILogger logger = new SystemLogger(Guid.NewGuid().ToString(), LogCategories.CreateFunctionUserCategory(_functionName), _mockEventGenerator.Object, new TestEnvironment(), _debugStateProvider.Object, null, new LoggerExternalScopeProvider(), _appServiceOptions);
+            ILogger logger = new SystemLogger(Guid.NewGuid().ToString(), LogCategories.CreateFunctionUserCategory(_functionName), _mockEventGenerator.Object, new TestEnvironment(), _debugStateProvider.Object, null, new LoggerExternalScopeProvider(), _appServiceOptions, _hostingConfigOptions);
             logger.LogDebug("TestMessage");
 
             // Make sure it's never been called.
@@ -247,7 +298,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 [key] = "TestFunction2"
             };
 
-            var localLogger = new SystemLogger(_hostInstanceId, "Not.A.Function", _mockEventGenerator.Object, _environment, _debugStateProvider.Object, null, new LoggerExternalScopeProvider(), _appServiceOptions);
+            var localLogger = new SystemLogger(_hostInstanceId, "Not.A.Function", _mockEventGenerator.Object, _environment, _debugStateProvider.Object, null, new LoggerExternalScopeProvider(), _appServiceOptions, _hostingConfigOptions);
 
             _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(LogLevel.Debug, It.IsAny<string>(), It.IsAny<string>(), "TestFunction2", It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTime>()));
             localLogger.Log(LogLevel.Debug, 0, logState, null, (s, e) => "TestMessage");
@@ -266,7 +317,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 [key] = "TestFunction3"
             };
 
-            var localLogger = new SystemLogger(_hostInstanceId, "Not.A.Function", _mockEventGenerator.Object, _environment, _debugStateProvider.Object, null, new LoggerExternalScopeProvider(), _appServiceOptions);
+            var localLogger = new SystemLogger(_hostInstanceId, "Not.A.Function", _mockEventGenerator.Object, _environment, _debugStateProvider.Object, null, new LoggerExternalScopeProvider(), _appServiceOptions, _hostingConfigOptions);
 
             _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(LogLevel.Debug, It.IsAny<string>(), It.IsAny<string>(), "TestFunction3", It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTime>()));
 
@@ -282,7 +333,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void AppEnvironment_Reset_OnSpecialization()
         {
             var testEventGenerator = new TestEventGenerator();
-            var localLogger = new SystemLogger(_hostInstanceId, "Test", testEventGenerator, _environment, _debugStateProvider.Object, null, new LoggerExternalScopeProvider(), _appServiceOptions);
+            var localLogger = new SystemLogger(_hostInstanceId, "Test", testEventGenerator, _environment, _debugStateProvider.Object, null, new LoggerExternalScopeProvider(), _appServiceOptions, _hostingConfigOptions);
 
             localLogger.LogInformation("test");
 

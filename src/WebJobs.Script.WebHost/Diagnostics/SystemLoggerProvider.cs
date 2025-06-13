@@ -3,6 +3,7 @@
 
 using System;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Workers;
@@ -20,14 +21,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly IDebugStateProvider _debugStateProvider;
         private readonly IScriptEventManager _eventManager;
         private readonly IOptionsMonitor<AppServiceOptions> _appServiceOptions;
+        private readonly IOptionsMonitor<FunctionsHostingConfigOptions> _hostingConfigOptions;
         private IExternalScopeProvider _scopeProvider;
 
-        public SystemLoggerProvider(IOptions<ScriptJobHostOptions> scriptOptions, IEventGenerator eventGenerator, IEnvironment environment, IDebugStateProvider debugStateProvider, IScriptEventManager eventManager, IOptionsMonitor<AppServiceOptions> appServiceOptions)
-            : this(scriptOptions.Value.InstanceId, eventGenerator, environment, debugStateProvider, eventManager, appServiceOptions)
+        public SystemLoggerProvider(IOptions<ScriptJobHostOptions> scriptOptions, IEventGenerator eventGenerator, IEnvironment environment, IDebugStateProvider debugStateProvider, IScriptEventManager eventManager, IOptionsMonitor<AppServiceOptions> appServiceOptions, IOptionsMonitor<FunctionsHostingConfigOptions> functionsHostingConfigOptions)
+            : this(scriptOptions.Value.InstanceId, eventGenerator, environment, debugStateProvider, eventManager, appServiceOptions, functionsHostingConfigOptions)
         {
         }
 
-        protected SystemLoggerProvider(string hostInstanceId, IEventGenerator eventGenerator, IEnvironment environment, IDebugStateProvider debugStateProvider, IScriptEventManager eventManager, IOptionsMonitor<AppServiceOptions> appServiceOptions)
+        protected SystemLoggerProvider(string hostInstanceId, IEventGenerator eventGenerator, IEnvironment environment, IDebugStateProvider debugStateProvider, IScriptEventManager eventManager, IOptionsMonitor<AppServiceOptions> appServiceOptions, IOptionsMonitor<FunctionsHostingConfigOptions> functionsHostingConfigOptions)
         {
             _eventGenerator = eventGenerator;
             _environment = environment;
@@ -35,6 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _debugStateProvider = debugStateProvider;
             _eventManager = eventManager;
             _appServiceOptions = appServiceOptions;
+            _hostingConfigOptions = functionsHostingConfigOptions ?? throw new ArgumentNullException(nameof(functionsHostingConfigOptions));
         }
 
         public ILogger CreateLogger(string categoryName)
@@ -44,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 // The SystemLogger is not used for user logs.
                 return NullLogger.Instance;
             }
-            return new SystemLogger(_hostInstanceId, categoryName, _eventGenerator, _environment, _debugStateProvider, _eventManager, _scopeProvider, _appServiceOptions);
+            return new SystemLogger(_hostInstanceId, categoryName, _eventGenerator, _environment, _debugStateProvider, _eventManager, _scopeProvider, _appServiceOptions, _hostingConfigOptions);
         }
 
         private bool IsUserLogCategory(string categoryName)

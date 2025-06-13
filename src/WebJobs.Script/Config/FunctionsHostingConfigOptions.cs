@@ -221,6 +221,22 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         }
 
         /// <summary>
+        /// Gets or sets a value indicating whether to log Rpc exception details returned by the worker.
+        /// </summary>
+        internal bool LogRpcExceptionDetails
+        {
+            get
+            {
+                return GetFeatureAsBooleanOrDefault(ScriptConstants.HostingConfigLogRpcExceptionDetails, false);
+            }
+
+            set
+            {
+                _features[ScriptConstants.HostingConfigLogRpcExceptionDetails] = value ? "1" : "0";
+            }
+        }
+
+        /// <summary>
         /// Gets feature by name.
         /// </summary>
         /// <param name="name">Feature name.</param>

@@ -3,6 +3,7 @@
 
 using System.IO;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.Logging;
@@ -33,7 +34,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             debugStateProvider.Setup(p => p.InDiagnosticMode).Returns(() => _inDiagnosticMode);
 
             var appServiceOptions = new TestOptionsMonitor<AppServiceOptions>(new AppServiceOptions());
-            _provider = new SystemLoggerProvider(_options, null, _environment, debugStateProvider.Object, null, appServiceOptions);
+            var testHostingConfigOptions = new TestOptionsMonitor<FunctionsHostingConfigOptions>(new FunctionsHostingConfigOptions());
+
+            _provider = new SystemLoggerProvider(_options, null, _environment, debugStateProvider.Object, null, appServiceOptions, testHostingConfigOptions);
         }
 
         [Fact]

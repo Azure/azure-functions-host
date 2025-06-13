@@ -7,6 +7,7 @@ using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors.Internal;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Extensions.Logging;
@@ -14,22 +15,27 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
-    public class SystemLogger : ILogger
+    public class SystemLogger : ILogger, IDisposable
     {
         private readonly string _categoryName;
         private readonly string _functionName;
         private readonly string _hostInstanceId;
         private readonly bool _isUserFunction;
+        private readonly string _rpcExceptionName = "Microsoft.Azure.WebJobs.Script.Workers.Rpc.RpcException";
         private readonly LogLevel _logLevel;
         private readonly IEnvironment _environment;
         private readonly IEventGenerator _eventGenerator;
         private readonly IDebugStateProvider _debugStateProvider;
         private readonly IScriptEventManager _eventManager;
         private readonly IExternalScopeProvider _scopeProvider;
+        private readonly IDisposable _hostingConfigOptionsOnChangeListener;
+        private readonly IOptionsMonitor<FunctionsHostingConfigOptions> _hostingConfigOptions;
+        private readonly IDisposable _appServiceOptionsOnChangeListener;
         private AppServiceOptions _appServiceOptions;
+        private bool _logRpcExceptionDetails = false;
 
         public SystemLogger(string hostInstanceId, string categoryName, IEventGenerator eventGenerator, IEnvironment environment, IDebugStateProvider debugStateProvider,
-           IScriptEventManager eventManager, IExternalScopeProvider scopeProvider, IOptionsMonitor<AppServiceOptions> appServiceOptionsMonitor)
+           IScriptEventManager eventManager, IExternalScopeProvider scopeProvider, IOptionsMonitor<AppServiceOptions> appServiceOptionsMonitor, IOptionsMonitor<FunctionsHostingConfigOptions> hostingConfigOptions)
         {
             _environment = environment;
             _eventGenerator = eventGenerator;
@@ -42,8 +48,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _eventManager = eventManager;
             _scopeProvider = scopeProvider;
 
-            appServiceOptionsMonitor.OnChange(newOptions => _appServiceOptions = newOptions);
+            _appServiceOptionsOnChangeListener = appServiceOptionsMonitor.OnChange(newOptions => _appServiceOptions = newOptions);
             _appServiceOptions = appServiceOptionsMonitor.CurrentValue;
+
+            _hostingConfigOptions = hostingConfigOptions ?? throw new ArgumentNullException(nameof(hostingConfigOptions));
+            _logRpcExceptionDetails = hostingConfigOptions.CurrentValue.LogRpcExceptionDetails;
+            _hostingConfigOptionsOnChangeListener = _hostingConfigOptions.OnChange(newOptions =>
+            {
+                if (newOptions.LogRpcExceptionDetails != _logRpcExceptionDetails)
+                {
+                    _logRpcExceptionDetails = newOptions.LogRpcExceptionDetails;
+                }
+            });
         }
 
         public IDisposable BeginScope<TState>(TState state) => _scopeProvider.Push(state);
@@ -57,7 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
         {
-            if (!IsEnabled(logLevel) || _isUserFunction || FunctionInvoker.CurrentScope == FunctionInvocationScope.User)
+            if (_isUserFunction || !IsEnabled(logLevel) || FunctionInvoker.CurrentScope == FunctionInvocationScope.User)
             {
                 return;
             }
@@ -173,12 +189,29 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     functionName = string.IsNullOrEmpty(fex.MethodName) ? string.Empty : fex.MethodName.Replace("Host.Functions.", string.Empty);
                 }
 
-                (innerExceptionType, innerExceptionMessage, details) = exception.GetExceptionDetails();
-                formattedMessage = Sanitizer.Sanitize(formattedMessage);
-                innerExceptionMessage = innerExceptionMessage ?? string.Empty;
+                var exceptionDetails = exception.GetExceptionDetails();
+
+                if (_logRpcExceptionDetails || !exceptionDetails.ExceptionType.Equals(_rpcExceptionName, StringComparison.Ordinal))
+                {
+                    // If _logExceptionDetails is true or the exception isn't an RPC exception, full details are logged.
+                    details = exceptionDetails.ExceptionDetails;
+                    innerExceptionType = exceptionDetails.ExceptionType;
+                    innerExceptionMessage = exceptionDetails.ExceptionMessage;
+                }
+                else
+                {
+                    details = "An exception occurred during invocation, but its details are redacted. Customers with AppInsights or OTel enabled can access full exception details.";
+                    innerExceptionType = exceptionDetails.ExceptionType;
+                }
             }
 
             _eventGenerator.LogFunctionTraceEvent(logLevel, subscriptionId, appName, functionName, eventName, source, details, formattedMessage, innerExceptionType, innerExceptionMessage, invocationId, _hostInstanceId, activityId, runtimeSiteName, slotName, DateTime.UtcNow);
+        }
+
+        public void Dispose()
+        {
+            _appServiceOptionsOnChangeListener?.Dispose();
+            _hostingConfigOptionsOnChangeListener?.Dispose();
         }
     }
 }
