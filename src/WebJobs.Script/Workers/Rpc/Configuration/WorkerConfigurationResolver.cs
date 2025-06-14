@@ -68,6 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                                 if ((_workersAvailableForResolutionViaHostingConfig is not null &&
                                     !_workersAvailableForResolutionViaHostingConfig.Contains(languageWorkerDir)) ||
                                     (!_environment.IsMultiLanguageRuntimeEnvironment() &&
+                                    !_environment.IsPlaceholderModeEnabled() &&
                                     workerRuntime is not null &&
                                     !workerRuntime.Equals(languageWorkerDir, StringComparison.OrdinalIgnoreCase)))
                                 {
