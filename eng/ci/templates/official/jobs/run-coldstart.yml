@@ -110,6 +110,13 @@ jobs:
 
   - template: /eng/ci/templates/install-dotnet.yml@self
 
+  - ${{ if and(eq(parameters.os, 'Windows'), eq(parameters.createJitTrace, true), eq(parameters.instanceId, '1')) }}:
+    - pwsh: |
+        cd C:\azure_functions_temp
+        git checkout v9.0.6
+        ./build.cmd -subset clr -configuration Debug
+      displayName: Build CLR (Windows)
+
   - script: dotnet --info
     displayName: "Print .NET Environment Info"
 
@@ -395,3 +402,5 @@ jobs:
       env:
         FUNCTION_APP_NAME: ${{ parameters.functionAppName }}
         OS: ${{ parameters.os }}
+
+
