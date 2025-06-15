@@ -213,10 +213,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 workerConfig,
                 _jsonSerializerOptions,
                 workerDir,
-                true,
                 _profileManager,
                 _config,
-                _logger);
+                _logger,
+                true,
+                _workersAvailableForResolutionViaHostingConfig);
 
             if (workerDescription.IsDisabled == true)
             {

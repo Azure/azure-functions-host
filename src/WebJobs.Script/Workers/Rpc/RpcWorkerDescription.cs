@@ -87,7 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         public override bool UseStdErrorStreamForErrorsOnly { get; set; } = false;
 
-        public override void ApplyDefaultsAndValidate(string workerDirectory, ILogger logger, bool dynamicWorkerResolutionEnabled = false)
+        public override void ApplyDefaultsAndValidate(string workerDirectory, ILogger logger, bool dynamicWorkerResolutionEnabled = false, HashSet<string> workersAvailableForResolutionViaHostingConfig = null)
         {
             if (workerDirectory == null)
             {
@@ -100,7 +100,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             {
                 // If dynamic worker resolution  enabled and DefaultWorkerPath contains FunctionWorkerRuntimeVersionSettingName
                 // then version becomes redundant in the path. Replacing version with an empty string to avoid duplication.
-                if (dynamicWorkerResolutionEnabled && DefaultWorkerPath.Contains(RpcWorkerConstants.RuntimeVersionPlaceholder))
+                if (dynamicWorkerResolutionEnabled &&
+                    workersAvailableForResolutionViaHostingConfig.Contains(Language) &&
+                    DefaultWorkerPath.Contains(RpcWorkerConstants.RuntimeVersionPlaceholder))
                 {
                     var versionDir = Path.GetFileName(WorkerDirectory);
                     WorkerDirectory = WorkerDirectory.Replace(versionDir, string.Empty);

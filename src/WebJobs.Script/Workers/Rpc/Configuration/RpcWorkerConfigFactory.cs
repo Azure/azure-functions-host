@@ -30,12 +30,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly string _workerRuntime;
         private readonly IEnvironment _environment;
         private readonly IWorkerConfigurationResolver _workerConfigurationResolver;
+        private readonly HashSet<string> _workersAvailableForResolutionViaHostingConfig;
+        private readonly bool _dynamicWorkerResolutionEnabled;
         private readonly JsonSerializerOptions _jsonSerializerOptions = new()
         {
             PropertyNameCaseInsensitive = true
         };
 
         private Dictionary<string, RpcWorkerConfig> _workerDescriptionDictionary = new Dictionary<string, RpcWorkerConfig>();
+        private List<string> _workerProbingPaths;
 
         public RpcWorkerConfigFactory(IConfiguration config,
                                         ILogger logger,
@@ -45,7 +48,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                                         IWorkerProfileManager workerProfileManager,
                                         IWorkerConfigurationResolver workerConfigurationResolver,
                                         bool dynamicWorkerResolutionEnabled = false,
-                                        List<string> workerProbingPaths = null)
+                                        List<string> workerProbingPaths = null,
+                                        HashSet<string> workersAvailableForResolutionViaHostingConfig = null)
         {
             _config = config ?? throw new ArgumentNullException(nameof(config));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -59,8 +63,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             WorkersDirPath = GetDefaultWorkersDirectory(Directory.Exists);
             var workersDirectorySection = _config.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}:{WorkerConstants.WorkersDirectorySectionName}");
 
-            DynamicWorkerResolutionEnabled = dynamicWorkerResolutionEnabled;
-            WorkerProbingPaths = workerProbingPaths;
+            _workerProbingPaths = workerProbingPaths;
+            _dynamicWorkerResolutionEnabled = dynamicWorkerResolutionEnabled;
+            _workersAvailableForResolutionViaHostingConfig = workersAvailableForResolutionViaHostingConfig;
 
             if (!string.IsNullOrEmpty(workersDirectorySection.Value))
             {
@@ -69,10 +74,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         }
 
         public string WorkersDirPath { get; }
-
-        internal bool DynamicWorkerResolutionEnabled { get; }
-
-        internal List<string> WorkerProbingPaths { get; }
 
         public IList<RpcWorkerConfig> GetConfigs()
         {
@@ -105,11 +106,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal void AddProviders()
         {
-            if (DynamicWorkerResolutionEnabled && WorkerProbingPaths is not null)
+            if (_dynamicWorkerResolutionEnabled)
             {
-                _logger.LogDebug("Workers probing paths set to: {probingPaths} and Workers Directory set as fallback path: {WorkersDirPath}", string.Join(", ", WorkerProbingPaths), WorkersDirPath);
+                _logger.LogDebug("Workers probing paths set to: {probingPaths} and Workers Directory set as fallback path: {WorkersDirPath}", string.Join(", ", _workerProbingPaths), WorkersDirPath);
 
-                List<string> workerConfigs = _workerConfigurationResolver.GetWorkerConfigs(WorkerProbingPaths, WorkersDirPath);
+                List<string> workerConfigs = _workerConfigurationResolver.GetWorkerConfigs(_workerProbingPaths, WorkersDirPath);
 
                 foreach (var workerConfig in workerConfigs)
                 {
@@ -155,7 +156,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     if (!string.IsNullOrWhiteSpace(_workerRuntime) &&
                         !_environment.IsPlaceholderModeEnabled() &&
                         !_environment.IsMultiLanguageRuntimeEnvironment() &&
-                        !DynamicWorkerResolutionEnabled)
+                        !_dynamicWorkerResolutionEnabled)
                     {
                         string workerRuntime = Path.GetFileName(workerDir);
                         // Only skip worker directories that don't match the current runtime.
@@ -182,10 +183,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                                                                                             workerConfig,
                                                                                             _jsonSerializerOptions,
                                                                                             workerDir,
-                                                                                            DynamicWorkerResolutionEnabled,
                                                                                             _profileManager,
                                                                                             _config,
-                                                                                            _logger);
+                                                                                            _logger,
+                                                                                            _dynamicWorkerResolutionEnabled,
+                                                                                            _workersAvailableForResolutionViaHostingConfig);
 
                     if (workerDescription.IsDisabled == true)
                     {

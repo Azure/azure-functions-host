@@ -18,10 +18,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             JsonElement workerConfig,
             JsonSerializerOptions jsonSerializerOptions,
             string workerDir,
-            bool dynamicWorkerResolutionEnabled,
             IWorkerProfileManager profileManager,
             IConfiguration config,
-            ILogger logger)
+            ILogger logger,
+            bool dynamicWorkerResolutionEnabled,
+            HashSet<string> workersAvailableForResolutionViaHostingConfig)
         {
             var workerDescriptionElement = workerConfig.GetProperty(WorkerConstants.WorkerDescription);
             var workerDescription = workerDescriptionElement.Deserialize<RpcWorkerDescription>(jsonSerializerOptions);
@@ -45,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             AddArgumentsFromAppSettings(workerDescription, languageSection);
 
             // Validate workerDescription
-            workerDescription.ApplyDefaultsAndValidate(Directory.GetCurrentDirectory(), logger, dynamicWorkerResolutionEnabled);
+            workerDescription.ApplyDefaultsAndValidate(Directory.GetCurrentDirectory(), logger, dynamicWorkerResolutionEnabled, workersAvailableForResolutionViaHostingConfig);
 
             return workerDescription;
         }
