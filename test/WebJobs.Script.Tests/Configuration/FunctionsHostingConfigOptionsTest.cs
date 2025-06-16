@@ -77,7 +77,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 yield return [nameof(FunctionsHostingConfigOptions.WorkersAvailableForDynamicResolution), "WORKERS_AVAILABLE_FOR_DYNAMIC_RESOLUTION=java|node", "java|node"];
                 yield return [nameof(FunctionsHostingConfigOptions.WorkersAvailableForDynamicResolution), "WORKERS_AVAILABLE_FOR_DYNAMIC_RESOLUTION=java", "java"];
                 yield return [nameof(FunctionsHostingConfigOptions.IsTestDataSuppressionEnabled), "EnableTestDataSuppression=1", true];
-                yield return [nameof(FunctionsHostingConfigOptions.IsCGroupMemoryMetricsEnabled), "EnableCGroupMemoryMetrics=1", true];
+
 #pragma warning restore SA1011 // Closing square brackets should be spaced correctly
 #pragma warning restore SA1010 // Opening square brackets should be spaced correctly
             }
