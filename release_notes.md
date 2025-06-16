@@ -18,4 +18,5 @@
 - Only start the Diagnostic Events flush logs timer when events are present, preventing unnecessary flush attempts (#11100).
 - Enable HTTP proxying for custom handlers (#11035)
 - Switched memory usage reporting to use CGroup metrics by default for Linux consumption (#11114)
+- Add JitTrace files for v4.1040 (#11117)
 - Update Java Worker Version to [2.19.2](https://github.com/Azure/azure-functions-java-worker/releases/tag/2.19.2)
