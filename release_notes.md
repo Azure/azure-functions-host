@@ -1,7 +1,6 @@
 <!-- Please add your release notes in the following format:
 - My change description (#PR)
 -->
-- Update Java Worker Version to [2.19.2](https://github.com/Azure/azure-functions-java-worker/releases/tag/2.19.2)
 - Memory allocation optimizations in `ScriptStartupTypeLocator.GetExtensionsStartupTypesAsync` (#11012)
 - Fix invocation timeout when incoming request contains "x-ms-invocation-id" header (#10980)
 - Warn if .azurefunctions folder does not exist (#10967)
@@ -13,10 +12,10 @@
 - Memory allocation optimizations in `DependencyHelper.GetExtensionRequirements` (#11022)
 - Fix Instance Manager for CV1 Migration (#11072)
 - Avoid setting up OTel and AzMon exporter in the placeholder mode. (#11090)
-- Update Java Worker Version to [2.19.1](https://github.com/Azure/azure-functions-java-worker/releases/tag/2.19.1)
 - Memory allocation optimizations in `FeatureFlags.IsEnabled` by adopting zero-allocation `ContainsToken` for efficient delimited token search (#11075)
 - Improvements to coldstart pipeline (#11102).
 - Update Python Worker Version to [4.38.0](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.38.0)
 - Only start the Diagnostic Events flush logs timer when events are present, preventing unnecessary flush attempts (#11100).
 - Enable HTTP proxying for custom handlers (#11035)
 - Switched memory usage reporting to use CGroup metrics by default for Linux consumption (#11114)
+- Update Java Worker Version to [2.19.2](https://github.com/Azure/azure-functions-java-worker/releases/tag/2.19.2)
