@@ -192,7 +192,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             var testLogger = new TestLogger("test");
             var workerConfigurationResolver = new WorkerConfigurationResolver(config, testLogger, testEnvironment, _testWorkerProfileManager, new HashSet<string>() { "powershell" });
-            var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, testEnvironment, new TestMetricsLogger(), _testWorkerProfileManager, workerConfigurationResolver, enableProbingPath is null ? false : true, new List<string>() { probingPath });
+            var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, testEnvironment, new TestMetricsLogger(), _testWorkerProfileManager, workerConfigurationResolver, enableProbingPath is null ? false : true, new List<string>() { probingPath }, new HashSet<string>() { "powershell" });
             var workerConfigs = configFactory.GetConfigs();
             var powershellWorkerConfig = workerConfigs.FirstOrDefault(w => w.Description.Language.Equals("powershell", StringComparison.OrdinalIgnoreCase));
 

@@ -122,7 +122,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             string path = Path.Combine(_probingPath1, workerRuntime, expectedVersion);
             string expectedLog = $"Added WorkerConfig for language: {workerRuntime} with DefaultWorkerPath: {path}";
             Assert.True(logs.Any(l => l.FormattedMessage.Contains(expectedLog)));
-            Assert.True(logs.Any(l => l.FormattedMessage.Contains("Probing paths set to:")));
+            Assert.True(logs.Any(l => l.FormattedMessage.Contains("Workers probing paths set to:")));
         }
 
         [Theory]
@@ -165,7 +165,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             string path = Path.Combine(_fallbackPath, workerRuntime);
             string expectedLog = $"Added WorkerConfig for language: {workerRuntime} with DefaultWorkerPath: {path}";
             Assert.True(logs.Any(l => l.FormattedMessage.Contains(expectedLog)));
-            Assert.True(logs.Any(l => l.FormattedMessage.Contains("Probing paths set to:")));
+            Assert.True(logs.Any(l => l.FormattedMessage.Contains("Workers probing paths set to:")));
         }
 
         [Theory]
