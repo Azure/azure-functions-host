@@ -1,6 +1,6 @@
 <Project>
   <PropertyGroup>
-    <VersionPrefix>4.$(MinorVersionPrefix)41.100</VersionPrefix>
+    <VersionPrefix>4.$(MinorVersionPrefix)42.100</VersionPrefix>
     <UpdateBuildNumber>true</UpdateBuildNumber>
   </PropertyGroup>
 </Project>
