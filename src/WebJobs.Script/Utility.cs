@@ -1145,6 +1145,22 @@ namespace Microsoft.Azure.WebJobs.Script
             return result = false;
         }
 
+        public static bool IsAzureMonitorLoggingEnabled(string azureMonitorcategoriesSubscribed)
+        {
+            if (azureMonitorcategoriesSubscribed == null)
+            {
+                return true;
+            }
+            if (string.Equals(ScriptConstants.DefaultAzureMonitorCategories, azureMonitorcategoriesSubscribed, StringComparison.Ordinal))
+            {
+                // Default value for the env variable is None.
+                // This is set when customer does not subscribe any category.
+                return false;
+            }
+            string[] categories = azureMonitorcategoriesSubscribed.Split(',');
+            return categories.Contains(ScriptConstants.AzureMonitorTraceCategory);
+        }
+
         private class FilteredExpandoObjectConverter : ExpandoObjectConverter
         {
             public override bool CanWrite => true;

@@ -7,12 +7,12 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
-using Microsoft.Azure.WebJobs.Script.Grpc.Exceptions;
+using Microsoft.Azure.WebJobs.Script.Exceptions;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.Logging;
 using Yarp.ReverseProxy.Forwarder;
 
-namespace Microsoft.Azure.WebJobs.Script.Grpc
+namespace Microsoft.Azure.WebJobs.Script.Http
 {
     internal class DefaultHttpProxyService : IHttpProxyService, IDisposable
     {

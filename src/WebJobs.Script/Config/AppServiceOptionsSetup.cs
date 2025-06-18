@@ -2,6 +2,8 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using Microsoft.Extensions.Options;
+using static Microsoft.Azure.WebJobs.Script.EnvironmentSettingNames;
+using static Microsoft.Azure.WebJobs.Script.Utility;
 
 namespace Microsoft.Azure.WebJobs.Script.Configuration
 {
@@ -20,6 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             options.SubscriptionId = _environment.GetSubscriptionId() ?? string.Empty;
             options.RuntimeSiteName = _environment.GetRuntimeSiteName() ?? string.Empty;
             options.SlotName = _environment.GetSlotName() ?? string.Empty;
+            options.IsAzureMonitorLoggingEnabled = _environment.IsAzureMonitorEnabled();
         }
     }
 }
