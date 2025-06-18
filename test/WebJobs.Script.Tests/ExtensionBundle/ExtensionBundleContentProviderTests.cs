@@ -143,11 +143,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
                 _isLegacyExtensionBundle = isLegacyExtensionBundle;
             }
 
-            public void VerifyAndWarnIfBundleOutdated()
-            {
-                // No-op for test stub. This can be extended for test verifications if needed.
-            }
-
             public Task<string> GetExtensionBundleBinPathAsync()
             {
                 return Task.FromResult(Path.Combine(_bundlePath, "bin"));
@@ -162,6 +157,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
             public bool IsExtensionBundleConfigured() => _isExtensionBundleConfigured;
 
             public bool IsLegacyExtensionBundle() => _isLegacyExtensionBundle;
+
+            public string GetOutdatedBundleWarningMessage()
+            {
+                // No-op for test stub. This can be extended for test verifications if needed.
+                return string.Empty;
+            }
         }
     }
 }

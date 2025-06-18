@@ -206,6 +206,11 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
         private static readonly Action<ILogger, string, Exception> _publishingMetrics =
             LoggerMessage.Define<string>(LogLevel.Debug, new EventId(338, nameof(PublishingMetrics)), "{metrics}");
 
+        private static readonly Action<ILogger, string, Exception> _outdatedExtensionBundle =
+           LoggerMessage.Define<string>(LogLevel.Warning,
+           new EventId(342, nameof(OutdatedExtensionBundle)),
+           "{message}");
+
         public static void PublishingMetrics(this ILogger logger, string metrics)
         {
             _publishingMetrics(logger, metrics, null);
@@ -406,6 +411,11 @@ Lock file hash: {currentLockFileHash}";
         public static void IncorrectAzureFunctionsFolderPath(this ILogger logger, string path)
         {
             _incorrectAzureFunctionsFolderPath(logger, path, EnvironmentSettingNames.FunctionWorkerRuntime, null);
+        }
+
+        public static void OutdatedExtensionBundle(this ILogger logger, string message)
+        {
+            _outdatedExtensionBundle(logger, message, null);
         }
     }
 }

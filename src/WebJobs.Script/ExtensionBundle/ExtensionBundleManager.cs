@@ -378,18 +378,18 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
             return FileUtility.DirectoryExists(binPath) ? binPath : null;
         }
 
-        public void VerifyAndWarnIfBundleOutdated()
+        public string GetOutdatedBundleWarningMessage()
         {
             if (string.IsNullOrEmpty(_extensionBundleVersion))
             {
-                return;
+                return string.Empty;
             }
 
             // Extract the major version number from the version string
             int dotIndex = _extensionBundleVersion.IndexOf('.');
             if (dotIndex <= 0 || !int.TryParse(_extensionBundleVersion.AsSpan(0, dotIndex), out var majorVersion) || majorVersion == 0)
             {
-                return;
+                return string.Empty;
             }
 
             int latestMajorVersion = ScriptConstants.ExtensionBundleV4MajorVersion;
@@ -407,8 +407,10 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
                     : Resources.OutdatedExtensionBundlesFutureVersionInfoFormat;
 
                 string message = string.Format(outdatedMessage, _extensionBundleVersion, latestMajorVersion, latestMajorVersion + 1);
-                _logger.LogWarning(message);
+                return message;
             }
+
+            return string.Empty;
         }
     }
 }
