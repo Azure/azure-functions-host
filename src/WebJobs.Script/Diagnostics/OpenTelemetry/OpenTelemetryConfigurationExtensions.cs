@@ -91,7 +91,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
                 .AddSource("Azure.*")
                 .AddSource("Microsoft.Azure.Webjobs.Extensions.*")
                 .AddSource("WebJobs.Extensions.DurableTask")
-                .AddSource("DurableTask.Core")
+                .AddSource("DurableTask.*")
                 .AddAspNetCoreInstrumentation(o =>
                 {
                     o.EnrichWithHttpResponse = (activity, httpResponse) =>
