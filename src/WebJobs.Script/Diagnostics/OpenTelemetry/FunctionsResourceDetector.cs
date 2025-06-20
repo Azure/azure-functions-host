@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Reflection;
 using OpenTelemetry.Resources;
 
 namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
@@ -22,7 +21,6 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
                 attributeList.Add(new KeyValuePair<string, object>(ResourceSemanticConventions.ServiceVersion, version));
                 attributeList.Add(new KeyValuePair<string, object>(ResourceSemanticConventions.AISDKPrefix, $@"{OpenTelemetryConstants.SDKPrefix}:{version}"));
                 attributeList.Add(new KeyValuePair<string, object>(ResourceSemanticConventions.ProcessId, Process.GetCurrentProcess().Id));
-                attributeList.Add(new KeyValuePair<string, object>(ResourceSemanticConventions.FaaSVersion, version));
 
                 // Add these attributes only if running in Azure.
                 if (!string.IsNullOrEmpty(serviceName))

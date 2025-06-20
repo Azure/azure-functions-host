@@ -6,7 +6,8 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
     internal enum TelemetryMode
     {
         None = 0, // or Default
-        ApplicationInsights = 1,
-        OpenTelemetry = 2
+        Placeholder = 1,
+        ApplicationInsights = 2,
+        OpenTelemetry = 3
     }
 }
