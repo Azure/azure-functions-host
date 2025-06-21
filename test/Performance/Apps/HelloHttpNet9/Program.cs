@@ -4,6 +4,7 @@ internal class Program
 {
     private static async Task Main(string[] args)
     {
+        Console.WriteLine("Starting the Azure Functions Benchmarks SQL Writer...");
         try
         {
             await WriteResultsToSql(DateTime.UtcNow,
