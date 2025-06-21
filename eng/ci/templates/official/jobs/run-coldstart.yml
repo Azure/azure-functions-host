@@ -108,6 +108,22 @@ jobs:
         SecretsFilter: PGO-APP-AZURE-WEBJOBS-STORAGE
         RunAsPreJob: false
 
+  - task: AzureCLI@2
+    inputs:
+      azureSubscription: $(ServiceConnection)
+      scriptType: 'pscore'
+      scriptLocation: 'inlineScript'
+      inlineScript: |
+        $json = Get-Content -Path $(resultsJsonPath) -Raw
+        $dateTimeUtc = [datetimeoffset]::UtcNow
+
+        $query = @"
+        INSERT INTO ColdStart (DateTimeUtc, OS, Description, Document)
+        VALUES ('$dateTimeUtc', 'Test', 'TestDesc', '{}')
+        "@
+
+        Invoke-Sqlcmd -ConnectionString "$(ColdStartResultsSqlConnectionString)" -Query $query
+
   - template: /eng/ci/templates/install-dotnet.yml@self
 
   - script: dotnet --info
