@@ -114,7 +114,6 @@ jobs:
       scriptType: 'pscore'
       scriptLocation: 'inlineScript'
       inlineScript: |
-        $json = Get-Content -Path $(resultsJsonPath) -Raw
         $dateTimeUtc = [datetimeoffset]::UtcNow
 
         $query = @"
