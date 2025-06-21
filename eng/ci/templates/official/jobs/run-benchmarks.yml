@@ -56,6 +56,21 @@ jobs:
 
   - template: /eng/ci/templates/install-dotnet.yml@self
 
+  - task: AzureCLI@2
+    inputs:
+      azureSubscription: $(ServiceConnection)
+      scriptType: 'pscore'
+      scriptLocation: 'inlineScript'
+      inlineScript: |
+        $dateTimeUtc = [datetimeoffset]::UtcNow
+
+        $query = @"
+        INSERT INTO HttpBenchmarks (Excluded, DateTimeUtc, Session, Scenario, Description, Document)
+        VALUES (0, '$dateTimeUtc', 'TestSession', 'TestScenario', 'TestDesc', '{}')
+        "@
+
+        Invoke-Sqlcmd -ConnectionString "$(ColdStartResultsSqlConnectionString)" -Query $query
+
   - script: dotnet tool install -g Microsoft.Crank.Agent --version "0.2.0-*"
     displayName: Install Microsoft.Crank.Agent tool
 
