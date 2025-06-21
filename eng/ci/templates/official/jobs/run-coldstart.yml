@@ -123,6 +123,11 @@ jobs:
 
   #       Invoke-Sqlcmd -ConnectionString "$(ColdStartResultsSqlConnectionString)" -Query $query
 
+  - template: /eng/ci/templates/install-dotnet.yml@self
+
+  - script: dotnet --info
+    displayName: "Print .NET Environment Info"
+
   - task: AzureCLI@2
     inputs:
       azureSubscription: $(ServiceConnection)
@@ -136,12 +141,7 @@ jobs:
         VALUES (0, '$dateTimeUtc', 'TestSessionAdo', 'TestScenario', 'TestDesc', '{}')
         "@
 
-        Invoke-Sqlcmd -ConnectionString "$(ColdStartResultsSqlConnectionString)" -Query $query
-
-  - template: /eng/ci/templates/install-dotnet.yml@self
-
-  - script: dotnet --info
-    displayName: "Print .NET Environment Info"
+        Invoke-Sqlcmd -ConnectionString "$(ColdStartResultsSqlConnectionString)" -Query $query -Verbose
 
   - ${{ if eq(parameters.functionAppName, 'HelloHttpNode') }}:
     - task: CopyFiles@2
