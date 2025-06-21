@@ -123,20 +123,20 @@ jobs:
 
   #       Invoke-Sqlcmd -ConnectionString "$(ColdStartResultsSqlConnectionString)" -Query $query
 
-  - task: AzureCLI@2
-    inputs:
-      azureSubscription: $(ServiceConnection)
-      scriptType: 'pscore'
-      scriptLocation: 'inlineScript'
-      inlineScript: |
-        $dateTimeUtc = [datetimeoffset]::UtcNow
+  # - task: AzureCLI@2
+  #   inputs:
+  #     azureSubscription: $(ServiceConnection)
+  #     scriptType: 'pscore'
+  #     scriptLocation: 'inlineScript'
+  #     inlineScript: |
+  #       $dateTimeUtc = [datetimeoffset]::UtcNow
 
-        $query = @"
-        INSERT INTO HttpBenchmarks (Excluded, DateTimeUtc, Session, Scenario, Description, Document)
-        VALUES (0, '$dateTimeUtc', 'TestSession', 'TestScenario', 'TestDesc', '{}')
-        "@
+  #       $query = @"
+  #       INSERT INTO HttpBenchmarks (Excluded, DateTimeUtc, Session, Scenario, Description, Document)
+  #       VALUES (0, '$dateTimeUtc', 'TestSession', 'TestScenario', 'TestDesc', '{}')
+  #       "@
 
-        Invoke-Sqlcmd -ConnectionString "$(ColdStartResultsSqlConnectionString)" -Query $query
+  #       Invoke-Sqlcmd -ConnectionString "$(ColdStartResultsSqlConnectionString)" -Query $query
 
   - template: /eng/ci/templates/install-dotnet.yml@self
 
@@ -169,6 +169,15 @@ jobs:
         Contents: '**/*'
         TargetFolder: '$(Build.ArtifactStagingDirectory)/PerformanceTestApps'
         CleanTargetFolder: true
+
+    - task: DotNetCoreCLI@2
+      displayName: Run HelloHttp project
+      inputs:
+        command: custom
+        custom: run
+        projects: '$(Build.ArtifactStagingDirectory)/PerformanceTestApps/HelloHttp/HelloHttp.csproj'
+        arguments: ''
+        workingDirectory: '$(Build.ArtifactStagingDirectory)/PerformanceTestApps/HelloHttp'
 
     - task: DotNetCoreCLI@2
       displayName: Publish benchmark app
