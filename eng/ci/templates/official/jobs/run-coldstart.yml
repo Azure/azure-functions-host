@@ -175,9 +175,9 @@ jobs:
       inputs:
         command: custom
         custom: run
-        projects: '$(Build.ArtifactStagingDirectory)/PerformanceTestApps/HelloHttp/HelloHttp.csproj'
+        projects: '$(Build.ArtifactStagingDirectory)/PerformanceTestApps/HelloHttpNet9/HelloHttp.csproj'
         arguments: ''
-        workingDirectory: '$(Build.ArtifactStagingDirectory)/PerformanceTestApps/HelloHttp'
+        workingDirectory: '$(Build.ArtifactStagingDirectory)/PerformanceTestApps/HelloHttpNet9'
 
     - task: DotNetCoreCLI@2
       displayName: Publish benchmark app
