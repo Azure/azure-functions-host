@@ -1,6 +1,4 @@
-using Microsoft.Azure.Functions.Worker.Builder;
 using Microsoft.Data.SqlClient;
-using Microsoft.Extensions.Hosting;
 
 internal class Program
 {
