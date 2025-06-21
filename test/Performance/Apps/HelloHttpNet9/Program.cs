@@ -9,7 +9,7 @@ internal class Program
         {
             await WriteResultsToSql(DateTime.UtcNow,
                 @"Server=tcp:azure-functions-benchmarks-dbs1.database.windows.net,1433;Initial Catalog=azure-functions-benchmarks-db;Persist Security Info=False;Authentication=Active Directory Default; User Id=Azure-Functions-Host-Performance-CI-MI; MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;", 
-                "YourSession", 
+                "YourSessionLocal", 
                 "YourScenario", 
                 "YourDescription", 
                 "YourDocument");
