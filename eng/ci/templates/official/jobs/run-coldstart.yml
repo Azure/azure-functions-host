@@ -123,6 +123,21 @@ jobs:
 
         Invoke-Sqlcmd -ConnectionString "$(ColdStartResultsSqlConnectionString)" -Query $query
 
+  - task: AzureCLI@2
+    inputs:
+      azureSubscription: $(ServiceConnection)
+      scriptType: 'pscore'
+      scriptLocation: 'inlineScript'
+      inlineScript: |
+        $dateTimeUtc = [datetimeoffset]::UtcNow
+
+        $query = @"
+        INSERT INTO HttpBenchmarks (Excluded, DateTimeUtc, Session, Scenario, Description, Document)
+        VALUES (0, '$dateTimeUtc', 'TestSession', 'TestScenario', 'TestDesc', '{}')
+        "@
+
+        Invoke-Sqlcmd -ConnectionString "$(ColdStartResultsSqlConnectionString)" -Query $query
+
   - template: /eng/ci/templates/install-dotnet.yml@self
 
   - script: dotnet --info
