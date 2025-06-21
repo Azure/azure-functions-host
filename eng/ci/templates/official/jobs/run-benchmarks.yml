@@ -69,7 +69,7 @@ jobs:
         VALUES (0, '$dateTimeUtc', 'TestSession', 'TestScenario', 'TestDesc', '{}')
         "@
 
-        Invoke-Sqlcmd -ConnectionString "$(ColdStartResultsSqlConnectionString)" -Query $query
+        Invoke-Sqlcmd -ConnectionString "$(BenchmarkResultsSqlConnectionString)" -Query $query
 
   - script: dotnet tool install -g Microsoft.Crank.Agent --version "0.2.0-*"
     displayName: Install Microsoft.Crank.Agent tool
