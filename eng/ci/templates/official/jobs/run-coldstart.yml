@@ -108,20 +108,20 @@ jobs:
         SecretsFilter: PGO-APP-AZURE-WEBJOBS-STORAGE
         RunAsPreJob: false
 
-  - task: AzureCLI@2
-    inputs:
-      azureSubscription: $(ServiceConnection)
-      scriptType: 'pscore'
-      scriptLocation: 'inlineScript'
-      inlineScript: |
-        $dateTimeUtc = [datetimeoffset]::UtcNow
+  # - task: AzureCLI@2
+  #   inputs:
+  #     azureSubscription: $(ServiceConnection)
+  #     scriptType: 'pscore'
+  #     scriptLocation: 'inlineScript'
+  #     inlineScript: |
+  #       $dateTimeUtc = [datetimeoffset]::UtcNow
 
-        $query = @"
-        INSERT INTO ColdStart (DateTimeUtc, OS, Description, Document)
-        VALUES ('$dateTimeUtc', 'Test', 'TestDesc', '{}')
-        "@
+  #       $query = @"
+  #       INSERT INTO ColdStart (DateTimeUtc, OS, Description, Document)
+  #       VALUES ('$dateTimeUtc', 'Test', 'TestDesc', '{}')
+  #       "@
 
-        Invoke-Sqlcmd -ConnectionString "$(ColdStartResultsSqlConnectionString)" -Query $query
+  #       Invoke-Sqlcmd -ConnectionString "$(ColdStartResultsSqlConnectionString)" -Query $query
 
   - task: AzureCLI@2
     inputs:
