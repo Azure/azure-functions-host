@@ -82,11 +82,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         }
 
         [Theory]
-        [InlineData("java", ScriptConstants.FeatureFlagEnableDynamicWorkerResolution, "java", "LATEST", "2.19.0")]
-        [InlineData("java", ScriptConstants.FeatureFlagEnableDynamicWorkerResolution, "java", "STANDARD", "2.18.0")]
-        [InlineData("node", ScriptConstants.FeatureFlagEnableDynamicWorkerResolution, "node", "LATEST", "3.10.1")]
-        [InlineData("node", ScriptConstants.FeatureFlagEnableDynamicWorkerResolution, "java|node", "STANDARD", "3.10.1")]
-        public void LanguageWorkerOptions_ProbingPaths_Expected_ListOfConfigs(string workerRuntime, string enableProbingPaths, string hostingOptionsSetting, string releaseChannel, string expectedVersion)
+        [InlineData("java", "java", "LATEST", "2.19.0")]
+        [InlineData("java", "java", "STANDARD", "2.18.0")]
+        [InlineData("node", "node", "LATEST", "3.10.1")]
+        [InlineData("node", "java|node", "STANDARD", "3.10.1")]
+        [InlineData("java", "java", "EXTENDED", "2.18.0")]
+        [InlineData("node", "java|node", "EXTENDED", "3.10.1")]
+        public void LanguageWorkerOptions_EnabledWorkerResolution_Expected_ListOfConfigs(string workerRuntime, string hostingOptionsSetting, string releaseChannel, string expectedVersion)
         {
             var loggerProvider = new TestLoggerProvider();
             var loggerFactory = new LoggerFactory();
@@ -102,7 +104,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             string probingPathValue = string.Join(';', _probingPath1, string.Empty, "path-not-exists");
 
             testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, workerRuntime);
-            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, enableProbingPaths);
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableDynamicWorkerResolution);
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel, releaseChannel);
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.WorkerProbingPaths, probingPathValue);
 
@@ -120,17 +122,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var logs = loggerProvider.GetAllLogMessages();
 
             string path = Path.Combine(_probingPath1, workerRuntime, expectedVersion);
-            string expectedLog = $"Added WorkerConfig for language: {workerRuntime} with DefaultWorkerPath: {path}";
+            string expectedLog = $"Added WorkerConfig for language: {workerRuntime} with Worker Path: {path}";
             Assert.True(logs.Any(l => l.FormattedMessage.Contains(expectedLog)));
             Assert.True(logs.Any(l => l.FormattedMessage.Contains("Workers probing paths set to:")));
         }
 
         [Theory]
-        [InlineData("java", ScriptConstants.FeatureFlagEnableDynamicWorkerResolution, "java", "LATEST")]
-        [InlineData("java", ScriptConstants.FeatureFlagEnableDynamicWorkerResolution, "java", "STANDARD")]
-        [InlineData("node", ScriptConstants.FeatureFlagEnableDynamicWorkerResolution, "node", "LATEST")]
-        [InlineData("node", ScriptConstants.FeatureFlagEnableDynamicWorkerResolution, "java|node", "STANDARD")]
-        public void LanguageWorkerOptions_FallbackPath_Expected_ListOfConfigs(string workerRuntime, string enableProbingPaths, string hostingOptionsSetting, string releaseChannel)
+        [InlineData("java", "java", "LATEST")]
+        [InlineData("java", "java", "STANDARD")]
+        [InlineData("node", "node", "LATEST")]
+        [InlineData("node", "java|node", "STANDARD")]
+        public void LanguageWorkerOptions_FallbackPath_Expected_ListOfConfigs(string workerRuntime, string hostingOptionsSetting, string releaseChannel)
         {
             var loggerProvider = new TestLoggerProvider();
             var loggerFactory = new LoggerFactory();
@@ -146,7 +148,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             string probingPathValue = null;
 
             testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, workerRuntime);
-            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, enableProbingPaths);
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableDynamicWorkerResolution);
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel, releaseChannel);
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.WorkerProbingPaths, probingPathValue);
 
@@ -163,9 +165,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var logs = loggerProvider.GetAllLogMessages();
 
             string path = Path.Combine(_fallbackPath, workerRuntime);
-            string expectedLog = $"Added WorkerConfig for language: {workerRuntime} with DefaultWorkerPath: {path}";
+            string expectedLog = $"Added WorkerConfig for language: {workerRuntime} with Worker Path: {path}";
             Assert.True(logs.Any(l => l.FormattedMessage.Contains(expectedLog)));
             Assert.True(logs.Any(l => l.FormattedMessage.Contains("Workers probing paths set to:")));
+            Assert.True(logs.Any(l => l.FormattedMessage.Contains("Searching for worker configs in the fallback directory.")));
         }
 
         [Theory]
@@ -173,7 +176,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         [InlineData("java", "STANDARD")]
         [InlineData("node", "LATEST")]
         [InlineData("node", "STANDARD")]
-        public void LanguageWorkerOptions_DisabledProbingPaths_Expected_ListOfConfigs(string workerRuntime, string releaseChannel)
+        public void LanguageWorkerOptions_DisabledWorkerResolution_Expected_ListOfConfigs(string workerRuntime, string releaseChannel)
         {
             var loggerProvider = new TestLoggerProvider();
             var loggerFactory = new LoggerFactory();
@@ -204,9 +207,50 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var logs = loggerProvider.GetAllLogMessages();
 
             string path = Path.Combine(_fallbackPath, workerRuntime);
-            string expectedLog = $"Added WorkerConfig for language: {workerRuntime} with DefaultWorkerPath: {path}";
+            string expectedLog = $"Added WorkerConfig for language: {workerRuntime} with Worker Path: {path}";
             Assert.True(logs.Any(l => l.FormattedMessage.Contains(expectedLog)));
             Assert.True(logs.Any(l => l.FormattedMessage.Contains("Workers Directory set to:")));
+        }
+
+        [Theory]
+        [InlineData("java")]
+        [InlineData("node")]
+        public void LanguageWorkerOptions_FallbackPath_NullHostingConfig(string workerRuntime)
+        {
+            var loggerProvider = new TestLoggerProvider();
+            var loggerFactory = new LoggerFactory();
+            loggerFactory.AddProvider(loggerProvider);
+
+            var testEnvironment = new TestEnvironment();
+            var testMetricLogger = new TestMetricsLogger();
+            var configurationBuilder = new ConfigurationBuilder()
+                .Add(new ScriptEnvironmentVariablesConfigurationSource());
+            var configuration = configurationBuilder.Build();
+            var testProfileManager = new Mock<IWorkerProfileManager>();
+            var testScriptHostManager = new Mock<IScriptHostManager>();
+            string probingPathValue = null;
+
+            testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, workerRuntime);
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableDynamicWorkerResolution);
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.WorkerProbingPaths, probingPathValue);
+
+            var hostingOptions = new FunctionsHostingConfigOptions();
+            hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, null);
+
+            LanguageWorkerOptionsSetup setup = new LanguageWorkerOptionsSetup(configuration, loggerFactory, testEnvironment, testMetricLogger, testProfileManager.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
+            LanguageWorkerOptions options = new LanguageWorkerOptions();
+
+            setup.Configure(options);
+
+            Assert.Equal(1, options.WorkerConfigs.Count);
+
+            var logs = loggerProvider.GetAllLogMessages();
+
+            string path = Path.Combine(_fallbackPath, workerRuntime);
+            string expectedLog = $"Added WorkerConfig for language: {workerRuntime} with Worker Path: {path}";
+            Assert.True(logs.Any(l => l.FormattedMessage.Contains(expectedLog)));
+            Assert.True(logs.Any(l => l.FormattedMessage.Contains("Workers probing paths set to:")));
+            Assert.True(logs.Any(l => l.FormattedMessage.Contains("Searching for worker configs in the fallback directory.")));
         }
     }
 }

@@ -101,6 +101,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 // If dynamic worker resolution  enabled and DefaultWorkerPath contains FunctionWorkerRuntimeVersionSettingName
                 // then version becomes redundant in the path. Replacing version with an empty string to avoid duplication.
                 if (dynamicWorkerResolutionEnabled &&
+                    workersAvailableForResolutionViaHostingConfig is not null &&
                     workersAvailableForResolutionViaHostingConfig.Contains(Language) &&
                     DefaultWorkerPath.Contains(RpcWorkerConstants.RuntimeVersionPlaceholder))
                 {

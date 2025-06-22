@@ -92,6 +92,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 return outputDict.Values.ToList();
             }
 
+            _logger.LogDebug("Searching for worker configs in the fallback directory.");
+
             // Search in fallback path if worker cannot be found in probing paths
             GetWorkerConfigsFromWithinHost(fallbackPath, workerRuntime, outputDict);
 
@@ -112,13 +114,17 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                     found++;
                     outputDict[languageWorkerFolder] = languageWorkerVersionPath;
 
-                    if (string.IsNullOrEmpty(releaseChannel) || !releaseChannel.Equals(ScriptConstants.StandardPlatformChannelNameUpper))
+                    if (string.IsNullOrEmpty(releaseChannel) ||
+                        !(releaseChannel.Equals(ScriptConstants.StandardPlatformChannelNameUpper) ||
+                        releaseChannel.Equals(ScriptConstants.ExtendedPlatformChannelNameUpper)))
                     {
                         // latest version is the default
                         break;
                     }
 
-                    if (found > 1 && releaseChannel.Equals(ScriptConstants.StandardPlatformChannelNameUpper))
+                    if (found > 1 &&
+                        (releaseChannel.Equals(ScriptConstants.StandardPlatformChannelNameUpper) ||
+                        releaseChannel.Equals(ScriptConstants.ExtendedPlatformChannelNameUpper)))
                     {
                         outputDict[languageWorkerFolder] = languageWorkerVersionPath;
                         break;

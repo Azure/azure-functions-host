@@ -34,6 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Theory]
         [InlineData("LATEST", "java\\2.19.0", "node\\3.10.1", "powershell\\7.4", "dotnet-isolated", "python")]
         [InlineData("STANDARD", "java\\2.18.0", "node\\3.10.1", "powershell\\7.4", "dotnet-isolated", "python")]
+        [InlineData("EXTENDED", "java\\2.18.0", "node\\3.10.1", "powershell\\7.4", "dotnet-isolated", "python")]
         public void GetWorkerConfigs_MultiLanguageWorker_ReturnsExpectedConfigs(string releaseChannel, string java, string node, string powershell, string dotnetIsolated, string python)
         {
             // Arrange
