@@ -292,12 +292,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
             request.Headers.Add(HostNameHeader, _hostNameProvider.Value);
             request.Headers.Add(StampNameHeader, _stampName);
 
-            if (_hostingConfigOptions.CurrentValue.SwtIssuerEnabled)
-            {
-                string swtToken = SimpleWebTokenHelper.CreateToken(DateTime.UtcNow.AddMinutes(5));
-                request.Headers.Add(ScriptConstants.SiteRestrictedTokenHeaderName, swtToken);
-            }
-
             string jwtToken = JwtTokenHelper.CreateToken(DateTime.UtcNow.AddMinutes(5));
             request.Headers.Add(ScriptConstants.SiteTokenHeaderName, jwtToken);
 
