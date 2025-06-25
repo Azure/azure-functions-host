@@ -209,12 +209,12 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
         private static readonly Action<ILogger, string, int, int, Exception> _outdatedExtensionBundleFuture =
            LoggerMessage.Define<string, int, int>(LogLevel.Warning,
            new EventId(342, nameof(OutdatedExtensionBundle)),
-           "Your current bundle version {currentVersion} will reach end of support on July 31, 2026. Upgrade to [{suggestedMinVersion}.*, {suggestedMaxVersion}.0.0). For more information, see https://aka.ms/functions-outdated-bundles");
+           "Your current bundle version {currentVersion} will reach end of support on Aug 4, 2026. Upgrade to [{suggestedMinVersion}.*, {suggestedMaxVersion}.0.0). For more information, see https://aka.ms/functions-outdated-bundles");
 
         private static readonly Action<ILogger, string, int, int, Exception> _outdatedExtensionBundlePast =
            LoggerMessage.Define<string, int, int>(LogLevel.Warning,
            new EventId(342, nameof(OutdatedExtensionBundle)),
-           "Your current bundle version {currentVersion} has reached end of support on July 31, 2026. Upgrade to [{suggestedMinVersion}.*, {suggestedMaxVersion}.0.0). For more information, see https://aka.ms/functions-outdated-bundles");
+           "Your current bundle version {currentVersion} has reached end of support on Aug 4, 2026. Upgrade to [{suggestedMinVersion}.*, {suggestedMaxVersion}.0.0). For more information, see https://aka.ms/functions-outdated-bundles");
 
         public static void PublishingMetrics(this ILogger logger, string metrics)
         {
@@ -426,7 +426,7 @@ Lock file hash: {currentLockFileHash}";
             }
 
             var currentTime = DateTime.UtcNow;
-            var deprecationDate = new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc);
+            var deprecationDate = new DateTime(2026, 8, 5, 0, 0, 0, DateTimeKind.Utc);
 
             if (currentTime >= deprecationDate)
             {
