@@ -206,10 +206,15 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
         private static readonly Action<ILogger, string, Exception> _publishingMetrics =
             LoggerMessage.Define<string>(LogLevel.Debug, new EventId(338, nameof(PublishingMetrics)), "{metrics}");
 
-        private static readonly Action<ILogger, string, Exception> _outdatedExtensionBundle =
-           LoggerMessage.Define<string>(LogLevel.Warning,
+        private static readonly Action<ILogger, string, int, int, Exception> _outdatedExtensionBundleFuture =
+           LoggerMessage.Define<string, int, int>(LogLevel.Warning,
            new EventId(342, nameof(OutdatedExtensionBundle)),
-           "{message}");
+           "Your current bundle version {currentVersion} will reach end of support on July 31, 2026. Upgrade to [{suggestedMinVersion}.*, {suggestedMaxVersion}.0.0). For more information, see https://aka.ms/functions-outdated-bundles");
+
+        private static readonly Action<ILogger, string, int, int, Exception> _outdatedExtensionBundlePast =
+           LoggerMessage.Define<string, int, int>(LogLevel.Warning,
+           new EventId(342, nameof(OutdatedExtensionBundle)),
+           "Your current bundle version {currentVersion} has reached end of support on July 31, 2026. Upgrade to [{suggestedMinVersion}.*, {suggestedMaxVersion}.0.0). For more information, see https://aka.ms/functions-outdated-bundles");
 
         public static void PublishingMetrics(this ILogger logger, string metrics)
         {
@@ -413,9 +418,24 @@ Lock file hash: {currentLockFileHash}";
             _incorrectAzureFunctionsFolderPath(logger, path, EnvironmentSettingNames.FunctionWorkerRuntime, null);
         }
 
-        public static void OutdatedExtensionBundle(this ILogger logger, string message)
+        public static void OutdatedExtensionBundle(this ILogger logger, string currentVersion, int suggestedMinVersion, int suggestedMaxVersion)
         {
-            _outdatedExtensionBundle(logger, message, null);
+            if (!logger.IsEnabled(LogLevel.Warning))
+            {
+                return;
+            }
+
+            var currentTime = DateTime.UtcNow;
+            var deprecationDate = new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc);
+
+            if (currentTime >= deprecationDate)
+            {
+                _outdatedExtensionBundlePast(logger, currentVersion, suggestedMinVersion, suggestedMaxVersion, null);
+            }
+            else
+            {
+                _outdatedExtensionBundleFuture(logger, currentVersion, suggestedMinVersion, suggestedMaxVersion, null);
+            }
         }
     }
 }

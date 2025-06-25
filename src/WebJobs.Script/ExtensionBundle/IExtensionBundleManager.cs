@@ -21,6 +21,6 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
 
         Task<ExtensionBundleDetails> GetExtensionBundleDetails();
 
-        string GetOutdatedBundleWarningMessage();
+        string GetOutdatedBundleVersion();
     }
 }

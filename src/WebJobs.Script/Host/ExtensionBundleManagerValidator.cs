@@ -18,10 +18,16 @@ namespace Microsoft.Azure.WebJobs.Script.Host
 
         public void Validate(ScriptJobHostOptions options, IEnvironment environment, ILogger logger)
         {
-            string message = _extensionBundleManager.GetOutdatedBundleWarningMessage();
-            if (!string.IsNullOrEmpty(message))
+            if (!logger.IsEnabled(LogLevel.Warning))
             {
-                logger.OutdatedExtensionBundle(message);
+                return;
+            }
+
+            string outdatedBundleVersion = _extensionBundleManager.GetOutdatedBundleVersion();
+            if (!string.IsNullOrEmpty(outdatedBundleVersion))
+            {
+                int latestMajorVersion = ScriptConstants.ExtensionBundleV4MajorVersion;
+                logger.OutdatedExtensionBundle(outdatedBundleVersion, latestMajorVersion, latestMajorVersion + 1);
             }
         }
     }

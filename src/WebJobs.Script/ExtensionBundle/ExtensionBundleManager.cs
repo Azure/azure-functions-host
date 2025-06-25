@@ -378,7 +378,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
             return FileUtility.DirectoryExists(binPath) ? binPath : null;
         }
 
-        public string GetOutdatedBundleWarningMessage()
+        public string GetOutdatedBundleVersion()
         {
             if (string.IsNullOrEmpty(_extensionBundleVersion))
             {
@@ -398,16 +398,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
             if (string.Equals(_options?.Id, ScriptConstants.DefaultExtensionBundleId, StringComparison.OrdinalIgnoreCase)
                 && majorVersion < latestMajorVersion)
             {
-                var currentTime = DateTime.UtcNow;
-                var deprecationDate = new DateTime(2026, 5, 31, 0, 0, 0, DateTimeKind.Utc);
-
-                // Select the appropriate message based on whether the deprecation date has passed
-                string outdatedMessage = currentTime >= deprecationDate
-                    ? Resources.OutdatedExtensionBundlesPastVersionInfoFormat
-                    : Resources.OutdatedExtensionBundlesFutureVersionInfoFormat;
-
-                string message = string.Format(outdatedMessage, _extensionBundleVersion, latestMajorVersion, latestMajorVersion + 1);
-                return message;
+                return _extensionBundleVersion;
             }
 
             return string.Empty;
