@@ -75,7 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                             IEnumerable<string> workerVersions = Directory.EnumerateDirectories(languageWorkerPath);
                             var versions = GetWorkerVersionsDescending(workerVersions);
 
-                            GetWorkerConfigsFromProbingPaths(versions, languageWorkerPath, languageWorkerDir, releaseChannel, outputDict);
+                            outputDict = GetWorkerConfigsFromProbingPaths(versions, languageWorkerPath, languageWorkerDir, releaseChannel, outputDict);
                         }
                     }
                 }
@@ -91,12 +91,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             _logger.LogDebug("Searching for worker configs in the fallback directory.");
 
             // Search in fallback path if worker cannot be found in probing paths
-            GetWorkerConfigsFromWithinHost(fallbackPath, workerRuntime, outputDict);
+            outputDict = GetWorkerConfigsFromWithinHost(fallbackPath, workerRuntime, outputDict);
 
             return outputDict.Values.ToList();
         }
 
-        private void GetWorkerConfigsFromProbingPaths(IEnumerable<Version> versions, string languageWorkerPath, string languageWorkerFolder, string releaseChannel, Dictionary<string, string> outputDict)
+        private Dictionary<string, string> GetWorkerConfigsFromProbingPaths(IEnumerable<Version> versions, string languageWorkerPath, string languageWorkerFolder, string releaseChannel, Dictionary<string, string> outputDict)
         {
             int found = 0;
 
@@ -127,9 +127,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                     }
                 }
             }
+
+            return outputDict;
         }
 
-        private void GetWorkerConfigsFromWithinHost(string fallbackPath, string workerRuntime, Dictionary<string, string> outputDict)
+        private Dictionary<string, string> GetWorkerConfigsFromWithinHost(string fallbackPath, string workerRuntime, Dictionary<string, string> outputDict)
         {
             if (Directory.Exists(fallbackPath))
             {
@@ -159,6 +161,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                     }
                 }
             }
+
+            return outputDict;
         }
 
         private static IEnumerable<Version> GetWorkerVersionsDescending(IEnumerable<string> workerVersions)
