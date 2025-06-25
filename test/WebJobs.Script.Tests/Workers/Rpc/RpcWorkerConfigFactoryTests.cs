@@ -186,7 +186,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             var testEnvironment = new TestEnvironment();
             testEnvironment.SetEnvironmentVariable("FUNCTIONS_WORKER_RUNTIME_VERSION", runtimeSettingVersion);
-            testEnvironment.SetEnvironmentVariable("FUNCTIONS_WORKER_RUNTIME", "powershell");
+            testEnvironment.SetEnvironmentVariable("FUNCTIONS_WORKER_RUNTIME", "powerShell");
 
             var config = ScriptSettingsManager.CreateDefaultConfigurationBuilder().Build();
 

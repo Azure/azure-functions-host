@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         public List<string> GetWorkerConfigs(List<string> probingPaths, string fallbackPath)
         {
             // Dictionary of { FUNCTIONS_WORKER_RUNTIME environment variable value : path of workerConfig }
-            ConcurrentDictionary<string, string> outputDict = new ConcurrentDictionary<string, string>();
+            Dictionary<string, string> outputDict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
             var workerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
             string releaseChannel = Utility.GetPlatformReleaseChannel(_environment);
@@ -53,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                     {
                         foreach (var languageWorkerPath in Directory.EnumerateDirectories(probingPath))
                         {
-                            string languageWorkerDir = Path.GetFileName(languageWorkerPath).ToLower();
+                            string languageWorkerDir = Path.GetFileName(languageWorkerPath);
 
                             // If probing paths are malformed and have duplicate directories of the same language worker (eg. due to different casing)
                             if (outputDict.ContainsKey(languageWorkerDir))
@@ -62,22 +62,18 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                             }
 
                             // Only skip worker directories that don't match the current runtime or are not enabled via hosting config
-                            // Do not skip non-worker directories like the function app payload directory
-                            if (languageWorkerPath.StartsWith(fallbackPath) || languageWorkerPath.StartsWith(probingPath))
+                            if ((_workersAvailableForResolutionViaHostingConfig is not null &&
+                                !_workersAvailableForResolutionViaHostingConfig.Contains(languageWorkerDir)) ||
+                                (!_environment.IsMultiLanguageRuntimeEnvironment() &&
+                                !_environment.IsPlaceholderModeEnabled() &&
+                                workerRuntime is not null &&
+                                !workerRuntime.Equals(languageWorkerDir, StringComparison.OrdinalIgnoreCase)))
                             {
-                                if ((_workersAvailableForResolutionViaHostingConfig is not null &&
-                                    !_workersAvailableForResolutionViaHostingConfig.Contains(languageWorkerDir)) ||
-                                    (!_environment.IsMultiLanguageRuntimeEnvironment() &&
-                                    !_environment.IsPlaceholderModeEnabled() &&
-                                    workerRuntime is not null &&
-                                    !workerRuntime.Equals(languageWorkerDir, StringComparison.OrdinalIgnoreCase)))
-                                {
-                                    continue;
-                                }
+                                continue;
                             }
 
                             IEnumerable<string> workerVersions = Directory.EnumerateDirectories(languageWorkerPath);
-                            var versions = ParseWorkerVersionsInDescending(workerVersions);
+                            var versions = GetWorkerVersionsDescending(workerVersions);
 
                             GetWorkerConfigsFromProbingPaths(versions, languageWorkerPath, languageWorkerDir, releaseChannel, outputDict);
                         }
@@ -100,7 +96,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             return outputDict.Values.ToList();
         }
 
-        private void GetWorkerConfigsFromProbingPaths(IEnumerable<Version> versions, string languageWorkerPath, string languageWorkerFolder, string releaseChannel, ConcurrentDictionary<string, string> outputDict)
+        private void GetWorkerConfigsFromProbingPaths(IEnumerable<Version> versions, string languageWorkerPath, string languageWorkerFolder, string releaseChannel, Dictionary<string, string> outputDict)
         {
             int found = 0;
 
@@ -133,7 +129,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             }
         }
 
-        private void GetWorkerConfigsFromWithinHost(string fallbackPath, string workerRuntime, ConcurrentDictionary<string, string> outputDict)
+        private void GetWorkerConfigsFromWithinHost(string fallbackPath, string workerRuntime, Dictionary<string, string> outputDict)
         {
             if (Directory.Exists(fallbackPath))
             {
@@ -141,15 +137,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 {
                     string workerDir = Path.GetFileName(workerPath).ToLower();
 
-                    if (workerPath.StartsWith(fallbackPath))
+                    if (outputDict.ContainsKey(workerDir) ||
+                    (!_environment.IsMultiLanguageRuntimeEnvironment() &&
+                    workerRuntime is not null &&
+                    !workerRuntime.Equals(workerDir, StringComparison.OrdinalIgnoreCase)))
                     {
-                        if (outputDict.ContainsKey(workerDir) ||
-                        (!_environment.IsMultiLanguageRuntimeEnvironment() &&
-                        workerRuntime is not null &&
-                        !workerRuntime.Equals(workerDir, StringComparison.OrdinalIgnoreCase)))
-                        {
-                            continue;
-                        }
+                        continue;
                     }
 
                     string workerConfigPath = Path.Combine(workerPath, RpcWorkerConstants.WorkerConfigFileName);
@@ -168,8 +161,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             }
         }
 
-        private static IEnumerable<Version> ParseWorkerVersionsInDescending(IEnumerable<string> workerVersions)
+        private static IEnumerable<Version> GetWorkerVersionsDescending(IEnumerable<string> workerVersions)
         {
+            if (!workerVersions.Any())
+            {
+                return Enumerable.Empty<Version>();
+            }
+
             var versions = new List<Version>();
 
             foreach (var workerVersion in workerVersions)
@@ -216,14 +214,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
             // profiles evaluation
             RpcWorkerDescription workerDescription = WorkerConfigurationHelper.GetWorkerDescription(
-                workerConfig,
-                _jsonSerializerOptions,
-                workerDir,
-                _profileManager,
-                _config,
-                _logger,
-                true,
-                _workersAvailableForResolutionViaHostingConfig);
+                workerConfig: workerConfig,
+                jsonSerializerOptions: _jsonSerializerOptions,
+                workerDir: workerDir,
+                profileManager: _profileManager,
+                config: _config,
+                logger: _logger,
+                dynamicWorkerResolutionEnabled: true,
+                workersAvailableForResolutionViaHostingConfig: _workersAvailableForResolutionViaHostingConfig);
 
             if (workerDescription.IsDisabled == true)
             {
@@ -233,6 +231,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             return true;
         }
 
+        /// <summary>
+        /// Extracts host requirements from the worker configuration JSON element.
+        /// </summary>
+        /// <param name="workerConfig"> Worker config: { "hostRequirements": [ "test-capability1", "test-capability2" ] }. </param>
+        /// <returns> HashSet { "test-capability1", "test-capability2" }. </returns>
         private HashSet<string> GetHostRequirements(JsonElement workerConfig)
         {
             HashSet<string> hostRequirements = new HashSet<string>();

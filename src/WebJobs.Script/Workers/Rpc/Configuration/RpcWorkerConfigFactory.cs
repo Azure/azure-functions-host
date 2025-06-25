@@ -180,14 +180,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     var workerConfig = WorkerConfigurationHelper.GetWorkerConfigJsonElement(workerConfigPath);
 
                     RpcWorkerDescription workerDescription = WorkerConfigurationHelper.GetWorkerDescription(
-                                                                                            workerConfig,
-                                                                                            _jsonSerializerOptions,
-                                                                                            workerDir,
-                                                                                            _profileManager,
-                                                                                            _config,
-                                                                                            _logger,
-                                                                                            _dynamicWorkerResolutionEnabled,
-                                                                                            _workersAvailableForResolutionViaHostingConfig);
+                        workerConfig: workerConfig,
+                        jsonSerializerOptions: _jsonSerializerOptions,
+                        workerDir: workerDir,
+                        profileManager: _profileManager,
+                        config: _config,
+                        logger: _logger,
+                        dynamicWorkerResolutionEnabled: _dynamicWorkerResolutionEnabled,
+                        workersAvailableForResolutionViaHostingConfig: _workersAvailableForResolutionViaHostingConfig);
 
                     if (workerDescription.IsDisabled == true)
                     {
