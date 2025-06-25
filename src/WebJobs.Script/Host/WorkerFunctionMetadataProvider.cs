@@ -83,9 +83,11 @@ namespace Microsoft.Azure.WebJobs.Script
                 // Start up GRPC channels if they are not already running.
                 if (channels?.Any() != true)
                 {
+                    // Note: Error can mean transient error, so we want to attempt a normal startup.
                     if (_scriptHostManager.State is ScriptHostState.Default
                         || _scriptHostManager.State is ScriptHostState.Starting
-                        || _scriptHostManager.State is ScriptHostState.Initialized)
+                        || _scriptHostManager.State is ScriptHostState.Initialized
+                        || _scriptHostManager.State is ScriptHostState.Error)
                     {
                         // We don't need to restart if the host hasn't even been created yet.
                         _logger.LogDebug("Host is starting up, initializing language worker channel");
