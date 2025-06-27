@@ -129,6 +129,20 @@ jobs:
     displayName: "Print .NET Environment Info"
 
   - task: AzureCLI@2
+    displayName: "Install SqlServer PowerShell Module"
+    inputs:
+      azureSubscription: $(ServiceConnection)
+      scriptType: 'pscore'
+      scriptLocation: 'inlineScript'
+      inlineScript: |
+        Write-Host "Installing latest SqlServer PowerShell module..."
+        Install-Module -Name SqlServer -Force -AllowClobber -Scope CurrentUser -Repository PSGallery
+        Import-Module SqlServer -Force
+        
+        Write-Host "SqlServer module version: $((Get-Module SqlServer).Version)"
+        Write-Host "Available authentication methods: $((Get-Command Invoke-Sqlcmd).Parameters.Keys -join ', ')"
+
+  - task: AzureCLI@2
     inputs:
       azureSubscription: $(ServiceConnection)
       scriptType: 'pscore'
