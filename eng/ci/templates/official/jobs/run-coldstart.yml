@@ -143,6 +143,7 @@ jobs:
         Write-Host "Available authentication methods: $((Get-Command Invoke-Sqlcmd).Parameters.Keys -join ', ')"
 
   - task: AzureCLI@2
+    displayName: "Persist results with fallback"
     inputs:
       azureSubscription: $(ServiceConnection)
       scriptType: 'pscore'
@@ -155,7 +156,37 @@ jobs:
         VALUES (0, '$dateTimeUtc', 'TestSessionAdo', 'TestScenario', 'TestDesc', '{}')
         "@
 
-        Invoke-Sqlcmd -ConnectionString "$(ColdStartResultsSqlConnectionString)" -Query $query -Verbose
+        # Try PowerShell SqlServer module first
+        try {
+            Write-Host "Attempting to connect to database with Invoke-Sqlcmd..."
+            Invoke-Sqlcmd -ConnectionString "$(ColdStartResultsSqlConnectionString)" -Query $query -Verbose
+            Write-Host "✅ Successfully inserted benchmark data using PowerShell SqlServer module."
+        }
+        catch {
+            Write-Host "❌ PowerShell SqlServer module failed: $($_.Exception.Message)"
+            Write-Host "🔄 Falling back to .NET SqlClient approach..."
+            
+            # Fallback to .NET SqlClient
+            try {
+                Add-Type -AssemblyName "System.Data.Common"
+                Add-Type -AssemblyName "System.Data.SqlClient"
+                
+                $connection = New-Object System.Data.SqlClient.SqlConnection("$(ColdStartResultsSqlConnectionString)")
+                $connection.Open()
+                Write-Host "✅ Successfully opened database connection using .NET SqlClient."
+                
+                $command = New-Object System.Data.SqlClient.SqlCommand($query, $connection)
+                $rowsAffected = $command.ExecuteNonQuery()
+                $connection.Close()
+                
+                Write-Host "✅ Successfully inserted benchmark data using .NET SqlClient fallback. Rows affected: $rowsAffected"
+            }
+            catch {
+                Write-Host "❌ .NET SqlClient fallback also failed: $($_.Exception.Message)"
+                Write-Host "Inner Exception: $($_.Exception.InnerException?.Message)"
+                throw "Both PowerShell and .NET SqlClient approaches failed."
+            }
+        }
 
   - ${{ if eq(parameters.functionAppName, 'HelloHttpNode') }}:
     - task: CopyFiles@2
