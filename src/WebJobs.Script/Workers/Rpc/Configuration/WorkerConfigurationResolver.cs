@@ -75,7 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                             IEnumerable<string> workerVersions = Directory.EnumerateDirectories(languageWorkerPath);
                             var versions = GetWorkerVersionsDescending(workerVersions);
 
-                            outputDict = GetWorkerConfigsFromProbingPaths(versions, languageWorkerPath, languageWorkerDir, releaseChannel, outputDict);
+                            PopulateWorkerConfigsFromProbingPaths(versions, languageWorkerPath, languageWorkerDir, releaseChannel, outputDict);
                         }
                     }
                 }
@@ -91,14 +91,19 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             _logger.LogDebug("Searching for worker configs in the fallback directory.");
 
             // Search in fallback path if worker cannot be found in probing paths
-            outputDict = GetWorkerConfigsFromWithinHost(fallbackPath, workerRuntime, outputDict);
+            PopulateWorkerConfigsFromWithinHost(fallbackPath, workerRuntime, outputDict);
 
             return outputDict.Values.ToList();
         }
 
-        private Dictionary<string, string> GetWorkerConfigsFromProbingPaths(IEnumerable<Version> versions, string languageWorkerPath, string languageWorkerFolder, string releaseChannel, Dictionary<string, string> outputDict)
+        private void PopulateWorkerConfigsFromProbingPaths(IEnumerable<Version> versions, string languageWorkerPath, string languageWorkerFolder, string releaseChannel, Dictionary<string, string> outputDict)
         {
-            int found = 0;
+            int compatibleWorkerCount = 0;
+
+            bool isStandardOrExtendedChannel =
+                        releaseChannel != null &&
+                        (releaseChannel.Equals(ScriptConstants.StandardPlatformChannelNameUpper) ||
+                        releaseChannel.Equals(ScriptConstants.ExtendedPlatformChannelNameUpper));
 
             // language worker version
             foreach (Version versionFolder in versions)
@@ -107,20 +112,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
                 if (IsWorkerCompatibleWithHost(languageWorkerVersionPath))
                 {
-                    found++;
+                    compatibleWorkerCount++;
                     outputDict[languageWorkerFolder] = languageWorkerVersionPath;
 
-                    if (string.IsNullOrEmpty(releaseChannel) ||
-                        !(releaseChannel.Equals(ScriptConstants.StandardPlatformChannelNameUpper) ||
-                        releaseChannel.Equals(ScriptConstants.ExtendedPlatformChannelNameUpper)))
+                    if (string.IsNullOrEmpty(releaseChannel) || !isStandardOrExtendedChannel)
                     {
-                        // latest version is the default
-                        break;
+                        break; // latest version is the default
                     }
 
-                    if (found > 1 &&
-                        (releaseChannel.Equals(ScriptConstants.StandardPlatformChannelNameUpper) ||
-                        releaseChannel.Equals(ScriptConstants.ExtendedPlatformChannelNameUpper)))
+                    if (compatibleWorkerCount > 1 && isStandardOrExtendedChannel)
                     {
                         outputDict[languageWorkerFolder] = languageWorkerVersionPath;
                         break;
@@ -131,7 +131,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             return outputDict;
         }
 
-        private Dictionary<string, string> GetWorkerConfigsFromWithinHost(string fallbackPath, string workerRuntime, Dictionary<string, string> outputDict)
+        private void PopulateWorkerConfigsFromWithinHost(string fallbackPath, string workerRuntime, Dictionary<string, string> outputDict)
         {
             if (Directory.Exists(fallbackPath))
             {
@@ -182,6 +182,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 if (Version.TryParse(formattedVersion, out Version version))
                 {
                     versions.Add(version);
+                }
+                else
+                {
+                    _logger.LogTrace("Failed to parse worker version '{versionDir}' as a valid version.", versionDir);
                 }
             }
 
