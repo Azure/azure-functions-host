@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -33,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _profileManager = workerProfileManager ?? throw new ArgumentNullException(nameof(workerProfileManager));
-            _workersAvailableForResolutionViaHostingConfig = workersAvailableForResolutionViaHostingConfig;
+            _workersAvailableForResolutionViaHostingConfig = workersAvailableForResolutionViaHostingConfig ?? throw new ArgumentNullException(nameof(workersAvailableForResolutionViaHostingConfig));
         }
 
         public List<string> GetWorkerConfigs(List<string> probingPaths, string fallbackPath)
@@ -46,36 +45,34 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
             if (!probingPaths.IsNullOrEmpty())
             {
-                // probing path directory structure is: <probingPath>/<workerRuntime>/<version>/<worker.config.json>
+                // probing path directory structure is: <probingPath>/<workerRuntimeDir>/<workerVersion>/<worker.config.json>
                 foreach (var probingPath in probingPaths)
                 {
                     if (!string.IsNullOrEmpty(probingPath) && Directory.Exists(probingPath))
                     {
-                        foreach (var languageWorkerPath in Directory.EnumerateDirectories(probingPath))
+                        foreach (var workerRuntimePath in Directory.EnumerateDirectories(probingPath))
                         {
-                            string languageWorkerDir = Path.GetFileName(languageWorkerPath);
+                            string workerRuntimeDir = Path.GetFileName(workerRuntimePath);
 
                             // If probing paths are malformed and have duplicate directories of the same language worker (eg. due to different casing)
-                            if (outputDict.ContainsKey(languageWorkerDir))
+                            if (outputDict.ContainsKey(workerRuntimeDir))
                             {
                                 continue;
                             }
 
                             // Only skip worker directories that don't match the current runtime or are not enabled via hosting config
-                            if ((_workersAvailableForResolutionViaHostingConfig is not null &&
-                                !_workersAvailableForResolutionViaHostingConfig.Contains(languageWorkerDir)) ||
-                                (!_environment.IsMultiLanguageRuntimeEnvironment() &&
-                                !_environment.IsPlaceholderModeEnabled() &&
-                                workerRuntime is not null &&
-                                !workerRuntime.Equals(languageWorkerDir, StringComparison.OrdinalIgnoreCase)))
+                            if (!_workersAvailableForResolutionViaHostingConfig.Contains(workerRuntimeDir) ||
+                                    (!_environment.IsMultiLanguageRuntimeEnvironment() &&
+                                    !_environment.IsPlaceholderModeEnabled() &&
+                                    IsRequiredWorkerRuntime(workerRuntime, workerRuntimeDir)))
                             {
                                 continue;
                             }
 
-                            IEnumerable<string> workerVersions = Directory.EnumerateDirectories(languageWorkerPath);
+                            IEnumerable<string> workerVersions = Directory.EnumerateDirectories(workerRuntimeDir);
                             var versions = GetWorkerVersionsDescending(workerVersions);
 
-                            PopulateWorkerConfigsFromProbingPaths(versions, languageWorkerPath, languageWorkerDir, releaseChannel, outputDict);
+                            PopulateWorkerConfigsFromProbingPaths(versions, workerRuntimeDir, workerRuntimeDir, releaseChannel, outputDict);
                         }
                     }
                 }
@@ -127,8 +124,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                     }
                 }
             }
-
-            return outputDict;
         }
 
         private void PopulateWorkerConfigsFromWithinHost(string fallbackPath, string workerRuntime, Dictionary<string, string> outputDict)
@@ -140,9 +135,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                     string workerDir = Path.GetFileName(workerPath).ToLower();
 
                     if (outputDict.ContainsKey(workerDir) ||
-                    (!_environment.IsMultiLanguageRuntimeEnvironment() &&
-                    workerRuntime is not null &&
-                    !workerRuntime.Equals(workerDir, StringComparison.OrdinalIgnoreCase)))
+                            (!_environment.IsMultiLanguageRuntimeEnvironment() &&
+                            IsRequiredWorkerRuntime(workerRuntime, workerDir)))
                     {
                         continue;
                     }
@@ -161,11 +155,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                     }
                 }
             }
-
-            return outputDict;
         }
 
-        private static IEnumerable<Version> GetWorkerVersionsDescending(IEnumerable<string> workerVersions)
+        private IEnumerable<Version> GetWorkerVersionsDescending(IEnumerable<string> workerVersions)
         {
             if (!workerVersions.Any())
             {
@@ -275,6 +267,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             }
 
             return true;
+        }
+
+        private bool IsRequiredWorkerRuntime(string workerRuntime, string workerDir)
+        {
+            return workerRuntime is not null && !workerRuntime.Equals(workerDir, StringComparison.OrdinalIgnoreCase);
         }
     }
 }
