@@ -7,6 +7,7 @@ using System.ComponentModel.DataAnnotations;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Workers;
@@ -685,7 +686,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 var scriptHostOptions = new ScriptJobHostOptions();
                 var scriptSettingsManager = new ScriptSettingsManager(config);
                 var workerProfileManager = new Mock<IWorkerProfileManager>();
-                var workerConfigurationResolver = new WorkerConfigurationResolver(config, testLogger, _testEnvironment, workerProfileManager.Object, new HashSet<string>());
+                var workerConfigurationResolver = new WorkerConfigurationResolver(config, testLogger, _testEnvironment, FileUtility.Instance, workerProfileManager.Object, new HashSet<string>());
                 var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger(), workerProfileManager.Object, workerConfigurationResolver);
 
                 if (appSvcEnv)

@@ -91,7 +91,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 probingPaths = GetWorkerProbingPaths();
             }
 
-            var workerConfigurationResolver = new WorkerConfigurationResolver(configuration, _logger, _environment, _workerProfileManager, workers);
+            var workerConfigurationResolver = new WorkerConfigurationResolver(configuration, _logger, _environment, FileUtility.Instance, _workerProfileManager, workers);
             var configFactory = new RpcWorkerConfigFactory(configuration, _logger, SystemRuntimeInformation.Instance, _environment, _metricsLogger, _workerProfileManager, workerConfigurationResolver, dynamicWorkerResolutionEnabled, probingPaths, workers);
             options.WorkerConfigs = configFactory.GetConfigs();
         }

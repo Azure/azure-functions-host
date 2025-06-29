@@ -4,6 +4,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
 using Microsoft.Extensions.Configuration;
@@ -43,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AppKind)).Returns(ScriptConstants.WorkFlowAppKind);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime)).Returns((string)null);
 
-            var workerConfigurationResolver = new WorkerConfigurationResolver(_mockConfig.Object, _mockLogger.Object, mockEnvironment.Object, _mockProfileManager.Object, new HashSet<string>() { "java", "node", "powershell" });
+            var workerConfigurationResolver = new WorkerConfigurationResolver(_mockConfig.Object, _mockLogger.Object, mockEnvironment.Object, FileUtility.Instance, _mockProfileManager.Object, new HashSet<string>() { "java", "node", "powershell" });
 
             var result = workerConfigurationResolver.GetWorkerConfigs(_probingPaths, _fallbackPath);
 
@@ -77,7 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             }
 
             // Act
-            var workerConfigurationResolver = new WorkerConfigurationResolver(_mockConfig.Object, _mockLogger.Object, mockEnvironment.Object, _mockProfileManager.Object, new HashSet<string>() { "java", "node", "powershell" });
+            var workerConfigurationResolver = new WorkerConfigurationResolver(_mockConfig.Object, _mockLogger.Object, mockEnvironment.Object, FileUtility.Instance, _mockProfileManager.Object, new HashSet<string>() { "java", "node", "powershell" });
 
             var result = workerConfigurationResolver.GetWorkerConfigs(probingPaths, _fallbackPath);
 
@@ -122,7 +123,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var mockLogger = new Mock<ILogger>();
 
             // Act
-            var workerConfigurationResolver = new WorkerConfigurationResolver(mockConfig.Object, mockLogger.Object, mockEnv.Object, mockProfileManager.Object, new HashSet<string>() { "java", "node", "powershell" });
+            var workerConfigurationResolver = new WorkerConfigurationResolver(mockConfig.Object, mockLogger.Object, mockEnv.Object, FileUtility.Instance, mockProfileManager.Object, new HashSet<string>() { "java", "node", "powershell" });
 
             var result = workerConfigurationResolver.GetWorkerConfigs(probingPaths, _fallbackPath);
 

@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Abstractions;
 using System.Linq;
 using System.Text.Json;
 using Microsoft.Azure.AppService.Proxy.Common.Extensions;
@@ -19,18 +20,21 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         private readonly ILogger _logger;
         private readonly IWorkerProfileManager _profileManager;
         private readonly IEnvironment _environment;
+        private readonly IFileSystem _fileSystem;
         private readonly HashSet<string> _workersAvailableForResolutionViaHostingConfig;
         private readonly JsonSerializerOptions _jsonSerializerOptions = new() { PropertyNameCaseInsensitive = true };
 
         public WorkerConfigurationResolver(IConfiguration config,
                                         ILogger logger,
                                         IEnvironment environment,
+                                        IFileSystem fileSystem,
                                         IWorkerProfileManager workerProfileManager,
                                         HashSet<string> workersAvailableForResolutionViaHostingConfig)
         {
             _config = config ?? throw new ArgumentNullException(nameof(config));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
+            _fileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
             _profileManager = workerProfileManager ?? throw new ArgumentNullException(nameof(workerProfileManager));
             _workersAvailableForResolutionViaHostingConfig = workersAvailableForResolutionViaHostingConfig ?? throw new ArgumentNullException(nameof(workersAvailableForResolutionViaHostingConfig));
         }
@@ -48,9 +52,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 // probing path directory structure is: <probingPath>/<workerRuntimeDir>/<workerVersion>/<worker.config.json>
                 foreach (var probingPath in probingPaths)
                 {
-                    if (!string.IsNullOrEmpty(probingPath) && Directory.Exists(probingPath))
+                    if (!string.IsNullOrEmpty(probingPath) && _fileSystem.Directory.Exists(probingPath))
                     {
-                        foreach (var workerRuntimePath in Directory.EnumerateDirectories(probingPath))
+                        foreach (var workerRuntimePath in _fileSystem.Directory.EnumerateDirectories(probingPath))
                         {
                             string workerRuntimeDir = Path.GetFileName(workerRuntimePath);
 
@@ -69,10 +73,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                                 continue;
                             }
 
-                            IEnumerable<string> workerVersions = Directory.EnumerateDirectories(workerRuntimeDir);
+                            IEnumerable<string> workerVersions = _fileSystem.Directory.EnumerateDirectories(workerRuntimePath);
                             var versions = GetWorkerVersionsDescending(workerVersions);
 
-                            PopulateWorkerConfigsFromProbingPaths(versions, workerRuntimeDir, workerRuntimeDir, releaseChannel, outputDict);
+                            PopulateWorkerConfigsFromProbingPaths(versions, workerRuntimePath, workerRuntimeDir, releaseChannel, outputDict);
                         }
                     }
                 }
@@ -128,9 +132,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
         private void PopulateWorkerConfigsFromWithinHost(string fallbackPath, string workerRuntime, Dictionary<string, string> outputDict)
         {
-            if (Directory.Exists(fallbackPath))
+            if (_fileSystem.Directory.Exists(fallbackPath))
             {
-                foreach (var workerPath in Directory.EnumerateDirectories(fallbackPath))
+                foreach (var workerPath in _fileSystem.Directory.EnumerateDirectories(fallbackPath))
                 {
                     string workerDir = Path.GetFileName(workerPath).ToLower();
 
