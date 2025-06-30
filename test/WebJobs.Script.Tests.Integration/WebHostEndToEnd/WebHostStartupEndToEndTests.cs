@@ -30,23 +30,28 @@ public class WebHostStartupEndToEndTests
 
         var fixture = new WebHostStartupEndToEndTestFixture(ThrowOnFirstBuild);
 
-        await fixture.InitializeAsync();
-
-        // This should recover as the second call to BuildHost should succeed
-        await TestHelpers.Await(async () =>
+        try
         {
-            var result = await fixture.Host.HttpClient.GetAsync("/api/HttpRequestDataFunction");
-            return result.IsSuccessStatusCode && await result.Content.ReadAsStringAsync() == "Welcome to Azure Functions!";
+            await fixture.InitializeAsync();
 
-        }, 10000, userMessageCallback: fixture.Host.GetLog);
+            // This should recover as the second call to BuildHost should succeed
+            await TestHelpers.Await(async () =>
+            {
+                var result = await fixture.Host.HttpClient.GetAsync("/api/HttpRequestDataFunction");
+                return result.IsSuccessStatusCode && await result.Content.ReadAsStringAsync() == "Welcome to Azure Functions!";
 
-        var debugMsg = fixture.Host.GetWebHostLogMessages("Microsoft.Azure.WebJobs.Script.WorkerFunctionMetadataProvider")
-            .Where(m => m.Level == Microsoft.Extensions.Logging.LogLevel.Debug)
-            .Where(m => m.FormattedMessage.StartsWith("JobHost is starting with state"));
-        Assert.Single(debugMsg);
-        Assert.Contains("'Error'", debugMsg.Single().FormattedMessage);
+            }, 10000, userMessageCallback: fixture.Host.GetLog);
 
-        await fixture.DisposeAsync();
+            var debugMsg = fixture.Host.GetWebHostLogMessages("Microsoft.Azure.WebJobs.Script.WorkerFunctionMetadataProvider")
+                .Where(m => m.Level == Microsoft.Extensions.Logging.LogLevel.Debug)
+                .Where(m => m.FormattedMessage.StartsWith("JobHost is starting with state"));
+            Assert.Single(debugMsg);
+            Assert.Contains("'Error'", debugMsg.Single().FormattedMessage);
+        }
+        finally
+        {
+            await fixture.DisposeAsync();
+        }
     }
 
     private class WebHostStartupEndToEndTestFixture : EndToEndTestFixture
