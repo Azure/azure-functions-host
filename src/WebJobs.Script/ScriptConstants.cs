@@ -269,5 +269,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public static readonly string CancellationTokenRegistration = "CancellationTokenRegistration";
 
         internal const string MasterKeyName = "_master";
+
+        public static readonly ImmutableArray<string> SensitiveMetadataBindingPropertyNames = ["connection"];
     }
 }

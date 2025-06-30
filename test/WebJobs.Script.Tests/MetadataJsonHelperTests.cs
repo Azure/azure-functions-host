@@ -1,0 +1,99 @@
+// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+
+using System;
+using System.Collections.Generic;
+using Newtonsoft.Json.Linq;
+using Xunit;
+
+namespace Microsoft.Azure.WebJobs.Script.Tests
+{
+    public sealed class MetadataJsonHelperTests
+    {
+        [Fact]
+        public void CreateJObjectWithSanitizedPropertyValue_NullJsonObject_ThrowsArgumentNullException()
+        {
+            JObject jsonObject = null;
+            var propertyNames = new[] { "sensitiveProperty" };
+
+            Assert.Throws<ArgumentNullException>(() => MetadataJsonHelper.CreateJObjectWithSanitizedPropertyValue(jsonObject, propertyNames));
+        }
+
+        [Fact]
+        public void CreateJObjectWithSanitizedPropertyValue_NullPropertyNames_ThrowsArgumentNullException()
+        {
+            var jsonObject = new JObject();
+            IEnumerable<string> propertyNames = null;
+
+            Assert.Throws<ArgumentNullException>(() => MetadataJsonHelper.CreateJObjectWithSanitizedPropertyValue(jsonObject, propertyNames));
+        }
+
+        [Fact]
+        public void CreateJObjectWithSanitizedPropertyValue_ValidInput_SanitizesMatchingProperties()
+        {
+            var jsonObject = new JObject
+            {
+                { "sensitiveProperty1", "AccountKey=foo" },
+                { "sensitiveProperty2", "MyConnection" },
+                { "SENSITIVEPROPERTY3", "AccountKey=bar" },
+                { "otherProperty", "value2" }
+            };
+            var sensitiveBindingPropertyNames = new[] { "sensitiveProperty1", "sensitiveproperty2", "sensitiveproperty3" };
+
+            var result = MetadataJsonHelper.CreateJObjectWithSanitizedPropertyValue(jsonObject, sensitiveBindingPropertyNames);
+
+            Assert.Equal("[Hidden Credential]", result["sensitiveProperty1"].ToString());
+            Assert.Equal("MyConnection", result["sensitiveProperty2"].ToString());
+            Assert.Equal("[Hidden Credential]", result["SENSITIVEPROPERTY3"].ToString());
+            Assert.Equal("value2", result["otherProperty"].ToString());
+        }
+
+        [Fact]
+        public void CreateJObjectWithSanitizedPropertyValue_NoMatchingProperties_DoesNotSanitize()
+        {
+            var jsonObject = new JObject
+            {
+                { "otherProperty1", "value1" },
+                { "otherProperty2", "value2" },
+                { "otherProperty3", "AccountKey=foo" }
+            };
+            var sensitiveBindingPropertyNames = new[] { "sensitiveProperty" };
+
+            var result = MetadataJsonHelper.CreateJObjectWithSanitizedPropertyValue(jsonObject, sensitiveBindingPropertyNames);
+
+            Assert.Equal("value1", result["otherProperty1"].ToString());
+            Assert.Equal("value2", result["otherProperty2"].ToString());
+            Assert.Equal("AccountKey=foo", result["otherProperty3"].ToString());
+        }
+
+        [Fact]
+        public void CreateJObjectWithSanitizedPropertyValue_StringInput_NullOrEmptyJson_ThrowsArgumentException()
+        {
+            string json = null;
+            var propertyNames = new[] { "sensitiveProperty" };
+
+            Assert.Throws<ArgumentException>(() => MetadataJsonHelper.CreateJObjectWithSanitizedPropertyValue(json, propertyNames));
+        }
+
+        [Fact]
+        public void CreateJObjectWithSanitizedPropertyValue_StringInput_InvalidJson_ThrowsJsonReaderException()
+        {
+            var json = "invalid json";
+            var propertyNames = new[] { "sensitiveProperty" };
+
+            Assert.Throws<Newtonsoft.Json.JsonReaderException>(() => MetadataJsonHelper.CreateJObjectWithSanitizedPropertyValue(json, propertyNames));
+        }
+
+        [Fact]
+        public void CreateJObjectWithSanitizedPropertyValue_StringInput_ValidJson_SanitizesMatchingProperties()
+        {
+            var json = "{ \"SensitiveProperty\": \"pwd=12345\", \"otherProperty\": \"value2\" }";
+            var propertyNames = new[] { "sensitiveproperty" };
+
+            var result = MetadataJsonHelper.CreateJObjectWithSanitizedPropertyValue(json, propertyNames);
+
+            Assert.Equal("[Hidden Credential]", result["SensitiveProperty"].ToString());
+            Assert.Equal("value2", result["otherProperty"].ToString());
+        }
+    }
+}

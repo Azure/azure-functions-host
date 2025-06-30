@@ -258,8 +258,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
             foreach (string binding in rawBindings)
             {
-                var deserializedObj = JsonConvert.DeserializeObject<JObject>(Sanitizer.Sanitize(binding), _dateTimeSerializerSettings);
-                var functionBinding = BindingMetadata.Create(deserializedObj);
+                var sanitizedBinding = MetadataJsonHelper.CreateJObjectWithSanitizedPropertyValue(binding, ScriptConstants.SensitiveMetadataBindingPropertyNames);
+                var functionBinding = BindingMetadata.Create(sanitizedBinding);
 
                 Utility.ValidateBinding(functionBinding);
 

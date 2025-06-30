@@ -176,7 +176,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
 
         private static async Task<JObject> GetFunctionConfigFromFile(string path)
         {
-            return JObject.Parse(Sanitizer.Sanitize(await FileUtility.ReadAsync(path)));
+            var fileContent = await FileUtility.ReadAsync(path);
+            var jObject = JObject.Parse(fileContent);
+
+            if (jObject.TryGetValue("bindings", StringComparison.OrdinalIgnoreCase, out JToken bindingsToken) && bindingsToken is JArray bindings)
+            {
+                var bindingObjects = bindings.OfType<JObject>().ToList();
+
+                foreach (var binding in bindingObjects)
+                {
+                    var sanitizedBinding = MetadataJsonHelper.CreateJObjectWithSanitizedPropertyValue(binding, ScriptConstants.SensitiveMetadataBindingPropertyNames);
+                    binding.Replace(sanitizedBinding);
+                }
+            }
+
+            return jObject;
         }
 
         private static JObject GetFunctionConfigFromMetadata(FunctionMetadata metadata)
