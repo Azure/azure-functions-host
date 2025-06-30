@@ -73,10 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                                 continue;
                             }
 
-                            IEnumerable<string> workerVersions = _fileSystem.Directory.EnumerateDirectories(workerRuntimePath);
-                            var versions = GetWorkerVersionsDescending(workerVersions);
-
-                            PopulateWorkerConfigsFromProbingPaths(versions, workerRuntimePath, workerRuntimeDir, releaseChannel, outputDict);
+                            PopulateWorkerConfigsFromProbingPaths(workerRuntimePath, workerRuntimeDir, releaseChannel, outputDict);
                         }
                     }
                 }
@@ -97,8 +94,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             return outputDict.Values.ToList();
         }
 
-        private void PopulateWorkerConfigsFromProbingPaths(IEnumerable<Version> versions, string languageWorkerPath, string languageWorkerFolder, string releaseChannel, Dictionary<string, string> outputDict)
+        private void PopulateWorkerConfigsFromProbingPaths(string languageWorkerPath, string languageWorkerFolder, string releaseChannel, Dictionary<string, string> outputDict)
         {
+            var versionsDir = _fileSystem.Directory.EnumerateDirectories(languageWorkerPath);
+            var versionPathMap = GetWorkerVersionsDescending(versionsDir);
+
             int compatibleWorkerCount = 0;
 
             bool isStandardOrExtendedChannel =
@@ -107,9 +107,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                         releaseChannel.Equals(ScriptConstants.ExtendedPlatformChannelNameUpper));
 
             // language worker version
-            foreach (Version versionFolder in versions)
+            foreach (var versionPair in versionPathMap)
             {
-                string languageWorkerVersionPath = Path.Combine(languageWorkerPath, versionFolder.ToString());
+                string languageWorkerVersionPath = versionPair.Value;
 
                 if (IsWorkerCompatibleWithHost(languageWorkerVersionPath))
                 {
@@ -161,23 +161,23 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             }
         }
 
-        private IEnumerable<Version> GetWorkerVersionsDescending(IEnumerable<string> workerVersions)
+        private SortedList<Version, string> GetWorkerVersionsDescending(IEnumerable<string> workerVersionPaths)
         {
-            if (!workerVersions.Any())
+            var versionPathMap = new SortedList<Version, string>(new DescendingVersionComparer());
+
+            if (!workerVersionPaths.Any())
             {
-                return Enumerable.Empty<Version>();
+                return versionPathMap;
             }
 
-            var versions = new List<Version>();
-
-            foreach (var workerVersion in workerVersions)
+            foreach (var workerVersionPath in workerVersionPaths)
             {
-                string versionDir = Path.GetFileName(workerVersion);
+                string versionDir = Path.GetFileName(workerVersionPath);
                 string formattedVersion = FormatVersion(versionDir);
 
                 if (Version.TryParse(formattedVersion, out Version version))
                 {
-                    versions.Add(version);
+                    versionPathMap[version] = workerVersionPath;
                 }
                 else
                 {
@@ -185,17 +185,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 }
             }
 
-            return versions.OrderDescending();
-        }
-
-        private static string FormatVersion(string version)
-        {
-            if (!version.Contains('.'))
-            {
-                version = version + ".0"; // Handle versions like '1' as '1.0'
-            }
-
-            return version;
+            return versionPathMap;
         }
 
         private bool IsWorkerCompatibleWithHost(string workerDir)
@@ -276,6 +266,24 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         private bool IsRequiredWorkerRuntime(string workerRuntime, string workerDir)
         {
             return workerRuntime is not null && !workerRuntime.Equals(workerDir, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private string FormatVersion(string version)
+        {
+            if (!version.Contains('.'))
+            {
+                version = version + ".0"; // Handle versions like '1' as '1.0'
+            }
+
+            return version;
+        }
+
+        private class DescendingVersionComparer : IComparer<Version>
+        {
+            public int Compare(Version x, Version y)
+            {
+                return y.CompareTo(x); // Inverted comparison for descending order
+            }
         }
     }
 }

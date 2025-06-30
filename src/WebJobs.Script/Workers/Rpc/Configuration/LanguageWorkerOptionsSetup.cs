@@ -21,7 +21,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
     internal class LanguageWorkerOptionsSetup : IConfigureOptions<LanguageWorkerOptions>
     {
-        private const string _windowsWorkerProbingPath = "C:\\home\\SiteExtensions\\workers"; // Harcoded site extensions path for Windows until Antares sets it as an Environment variable.
         private readonly IConfiguration _configuration;
         private readonly ILogger _logger;
         private readonly IEnvironment _environment;
@@ -120,7 +119,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             {
                 if (_environment.IsAnyWindows())
                 {
-                    probingPaths.Add(_windowsWorkerProbingPath);
+                    // Harcoded site extensions path for Windows until Antares sets it as an Environment variable.
+                    var assemblyPath = System.Reflection.Assembly.GetExecutingAssembly().Location;
+                    var assemblyDir = Path.GetDirectoryName(assemblyPath);
+                    var parentDir = Directory.GetParent(assemblyDir).FullName;
+
+                    var windowsWorkerFullProbingPath = Path.Combine(parentDir, RpcWorkerConstants.DefaultWorkersDirectoryName);
+                    probingPaths.Add(windowsWorkerFullProbingPath);
+                    _logger.LogTrace("Windows worker probing path: {windowsWorkerFullProbingPath}", windowsWorkerFullProbingPath);
                 }
             }
 
