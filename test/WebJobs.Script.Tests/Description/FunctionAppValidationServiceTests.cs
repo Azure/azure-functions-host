@@ -168,6 +168,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData("Microsoft.Azure.Functions.ExtensionBundle", "4.22.0", false)]
         [InlineData("Microsoft.Azure.Functions.ExtensionBundle.Preview", "4.29.0", false)]
         [InlineData("Microsoft.Azure.Functions.ExtensionBundle.Preview", "3.2.0", false)]
+        [InlineData(null, null, false)]
+        [InlineData("", "", false)]
         public void GetOutdatedBundleWarningMessage_LogsWarning(string bundleId, string bundleVersion, bool shouldLogEvent)
         {
             // Arrange

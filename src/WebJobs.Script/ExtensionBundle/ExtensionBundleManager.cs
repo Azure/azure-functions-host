@@ -380,7 +380,10 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
 
         public string GetOutdatedBundleVersion()
         {
-            if (string.IsNullOrEmpty(_extensionBundleVersion))
+            // If the extension bundle version is not set or if the extension bundle is not the default one,
+            // return empty string
+            if (string.IsNullOrEmpty(_extensionBundleVersion) ||
+                !string.Equals(_options?.Id, ScriptConstants.DefaultExtensionBundleId, StringComparison.OrdinalIgnoreCase))
             {
                 return string.Empty;
             }
@@ -394,9 +397,8 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
 
             int latestMajorVersion = ScriptConstants.ExtensionBundleV4MajorVersion;
 
-            // Only show warnings for the default extension bundle when it's outdated
-            if (string.Equals(_options?.Id, ScriptConstants.DefaultExtensionBundleId, StringComparison.OrdinalIgnoreCase)
-                && majorVersion < latestMajorVersion)
+            // Return the version if it's outdated
+            if (majorVersion < latestMajorVersion)
             {
                 return _extensionBundleVersion;
             }
