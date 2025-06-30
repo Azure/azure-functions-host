@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Extensions.DependencyInjection;
@@ -38,6 +39,11 @@ public class WebHostStartupEndToEndTests
             return result.IsSuccessStatusCode && await result.Content.ReadAsStringAsync() == "Welcome to Azure Functions!";
 
         }, 10000, userMessageCallback: fixture.Host.GetLog);
+
+        var debugMsg = fixture.Host.GetWebHostLogMessages("Microsoft.Azure.WebJobs.Script.WorkerFunctionMetadataProvider")
+            .Where(m => m.Level == Microsoft.Extensions.Logging.LogLevel.Debug)
+            .Where(m => m.FormattedMessage == "Host is starting up with state 'Error'. Initializing worker channel.");
+        Assert.Single(debugMsg);
 
         await fixture.DisposeAsync();
     }
