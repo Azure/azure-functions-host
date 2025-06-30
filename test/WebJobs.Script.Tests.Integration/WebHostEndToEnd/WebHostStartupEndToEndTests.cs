@@ -42,8 +42,9 @@ public class WebHostStartupEndToEndTests
 
         var debugMsg = fixture.Host.GetWebHostLogMessages("Microsoft.Azure.WebJobs.Script.WorkerFunctionMetadataProvider")
             .Where(m => m.Level == Microsoft.Extensions.Logging.LogLevel.Debug)
-            .Where(m => m.FormattedMessage == "Host is starting up with state 'Error'. Initializing worker channel.");
+            .Where(m => m.FormattedMessage.StartsWith("JobHost is starting with state"));
         Assert.Single(debugMsg);
+        Assert.Contains("'Error'", debugMsg.Single().FormattedMessage);
 
         await fixture.DisposeAsync();
     }
