@@ -38,16 +38,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 LoggerMessage.Define<string>(LogLevel.Debug, new EventId(6, nameof(DeletingTableWithOutdatedEventVersion)), "Deleting table '{tableName}' as it contains records with an outdated EventVersion.");
 
             private static readonly Action<ILogger, Exception> _errorPurgingDiagnosticEventVersions =
-                LoggerMessage.Define(LogLevel.Error, new EventId(7, nameof(ErrorPurgingDiagnosticEventVersions)), "Error occurred when attempting to purge previous diagnostic event versions.");
+                LoggerMessage.Define(LogLevel.Warning, new EventId(7, nameof(ErrorPurgingDiagnosticEventVersions)), "Error occurred when attempting to purge previous diagnostic event versions.");
 
             private static readonly Action<ILogger, Exception> _unableToGetTableReference =
-                LoggerMessage.Define(LogLevel.Error, new EventId(8, nameof(UnableToGetTableReference)), "Unable to get table reference. Aborting write operation.");
+                LoggerMessage.Define(LogLevel.Warning, new EventId(8, nameof(UnableToGetTableReference)), "Unable to get table reference. Aborting write operation.");
 
             private static readonly Action<ILogger, Exception> _unableToGetTableReferenceOrCreateTable =
-                LoggerMessage.Define(LogLevel.Error, new EventId(9, nameof(UnableToGetTableReferenceOrCreateTable)), "Unable to get table reference or create table. Aborting write operation.");
+                LoggerMessage.Define(LogLevel.Warning, new EventId(9, nameof(UnableToGetTableReferenceOrCreateTable)), "Unable to get table reference or create table. Aborting write operation.");
 
             private static readonly Action<ILogger, Exception> _unableToWriteDiagnosticEvents =
-                LoggerMessage.Define(LogLevel.Error, new EventId(10, nameof(UnableToWriteDiagnosticEvents)), "Unable to write diagnostic events to table storage.");
+                LoggerMessage.Define(LogLevel.Warning, new EventId(10, nameof(UnableToWriteDiagnosticEvents)), "Unable to write diagnostic events to table storage.");
 
             private static readonly Action<ILogger, Exception> _primaryHostStateProviderNotAvailable =
                 LoggerMessage.Define(LogLevel.Debug, new EventId(11, nameof(PrimaryHostStateProviderNotAvailable)), "PrimaryHostStateProvider is not available. Skipping the check for primary host.");
