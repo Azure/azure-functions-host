@@ -134,7 +134,7 @@ jobs:
         $connectionString = "$(ColdStartResultsSqlConnectionString)"
         
         Write-Host "Executing HelloHttpNet9.exe with connection string as argument..."
-        & $exePath --sqlConnectionString $connectionString
+        & $exePath $connectionString
 
   - task: AzureCLI@2
     displayName: "Persist results to SQL database using Azure CLI"
