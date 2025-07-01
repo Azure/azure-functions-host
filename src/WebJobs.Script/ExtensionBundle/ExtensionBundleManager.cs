@@ -385,14 +385,14 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
             if (string.IsNullOrEmpty(_extensionBundleVersion) ||
                 !string.Equals(_options?.Id, ScriptConstants.DefaultExtensionBundleId, StringComparison.OrdinalIgnoreCase))
             {
-                return string.Empty;
+                return null;
             }
 
             // Extract the major version number from the version string
             int dotIndex = _extensionBundleVersion.IndexOf('.');
             if (dotIndex <= 0 || !int.TryParse(_extensionBundleVersion.AsSpan(0, dotIndex), out var majorVersion) || majorVersion == 0)
             {
-                return string.Empty;
+                return null;
             }
 
             int latestMajorVersion = ScriptConstants.ExtensionBundleV4MajorVersion;
@@ -403,7 +403,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
                 return _extensionBundleVersion;
             }
 
-            return string.Empty;
+            return null;
         }
     }
 }
