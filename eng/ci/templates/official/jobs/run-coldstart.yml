@@ -30,7 +30,7 @@ jobs:
 - job: ${{ parameters.functionAppName }}_${{ parameters.instanceId }}
   displayName: ${{ parameters.description }} ${{ parameters.instanceId }}
   pool:
-    name: 1es-pool-azfunc-benchmarking
+    name: 1es-pool-azfunc-benchmarking-large
     ${{ if eq(parameters.os, 'Linux') }}:
       os: linux
       ${{ if and(eq(parameters.createJitTrace, true), eq(parameters.instanceId, '1')) }}:
