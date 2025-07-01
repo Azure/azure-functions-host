@@ -48,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // explicitly in order to pass the timeout.
             // Task ignoreTask = _hostManager.StopAsync();
             // Give the manager and all running tasks some time to shut down gracefully.
-            //await Task.Delay(timeoutGracePeriod);
+            // await Task.Delay(timeoutGracePeriod);
             IFunctionInvocationDispatcher functionInvocationDispatcher = _functionInvocationDispatcherFactory.GetFunctionDispatcher();
             if (!functionInvocationDispatcher.State.Equals(FunctionInvocationDispatcherState.Default))
             {

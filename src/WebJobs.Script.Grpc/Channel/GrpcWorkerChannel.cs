@@ -22,6 +22,7 @@ using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Exceptions;
 using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.Grpc.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc.Extensions;
@@ -1555,21 +1556,24 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             return _executingInvocations.ContainsKey(invocationId);
         }
 
-        public bool TryFailExecutions(Exception workerException)
+        public void Shutdown(Exception workerException)
         {
-            if (workerException == null)
+            WorkerShutdownException shutdownException = new WorkerShutdownException("Worker encountered a fatal error and is shutting down.");
+
+            if (workerException is not null)
             {
-                return false;
+                shutdownException.Reason = workerException.Message;
             }
 
             foreach (var invocation in _executingInvocations?.Values)
             {
                 string invocationId = invocation.Context?.ExecutionContext?.InvocationId.ToString();
                 _workerChannelLogger.LogDebug("Worker '{workerId}' encountered a fatal error. Failing invocation: '{invocationId}'", _workerId, invocationId);
-                invocation.Context?.ResultSource?.TrySetException(workerException);
+
+                invocation.Context?.ResultSource?.TrySetException(shutdownException);
+
                 RemoveExecutingInvocation(invocationId);
             }
-            return true;
         }
 
         /// <summary>
