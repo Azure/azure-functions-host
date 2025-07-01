@@ -45,7 +45,7 @@ jobs:
         image: 1es-windows-2022-benchmark-runner-vanilla
 
   variables:
-    functionAppOutputPath: $(Build.BinariesDirectory)/Published/${{ parameters.functionAppName }}
+    functionAppOutputPath: $(Build.BinariesDirectory)/Published/HelloHttpNet9
     hostOutputPath: $(Build.BinariesDirectory)/Published/HostRuntime
     logsDirectory: $(Build.ArtifactStagingDirectory)/Logs
     stdOutLogsFilePath: $(logsDirectory)/std_out_logs.txt
@@ -104,6 +104,38 @@ jobs:
   - script: dotnet --info
     displayName: "Print .NET Environment Info"
 
+  - task: CopyFiles@2
+    displayName: Copy benchmark apps to temp location
+    inputs:
+      SourceFolder: '$(Build.SourcesDirectory)/test/Performance/Apps'
+      Contents: '**/*'
+      TargetFolder: '$(Build.ArtifactStagingDirectory)/PerformanceTestApps'
+      CleanTargetFolder: true
+
+  - task: DotNetCoreCLI@2
+    displayName: Publish benchmark app
+    inputs:
+      command: publish
+      publishWebProjects: false
+      zipAfterPublish: false
+      modifyOutputPath: false
+      projects: '$(Build.ArtifactStagingDirectory)/PerformanceTestApps/HelloHttpNet9/HelloHttp.csproj'
+      arguments: -c Release -o $(functionAppOutputPath) -f net9.0 -r $(publishRid)
+      workingDirectory: $(Build.ArtifactStagingDirectory)/PerformanceTestApps/HelloHttpNet9
+
+  - task: AzureCLI@2
+    displayName: "Run HelloHttpNet9"
+    inputs:
+      azureSubscription: $(ServiceConnection)
+      scriptType: 'pscore'
+      scriptLocation: 'inlineScript'
+      inlineScript: |
+        $exePath = "$(functionAppOutputPath)/HelloHttp.exe"
+        $connectionString = "$(ColdStartResultsSqlConnectionString)"
+        
+        Write-Host "Executing HelloHttpNet9.exe with connection string as argument..."
+        & $exePath --sqlConnectionString $connectionString
+
   - task: AzureCLI@2
     displayName: "Persist results to SQL database using Azure CLI"
     inputs:
@@ -116,6 +148,8 @@ jobs:
         Import-Module SqlServer -Force        
         Write-Host "SqlServer module version: $((Get-Module SqlServer).Version)"
 
+        $connectionString = "$(ColdStartResultsSqlConnectionString)"
+
         $dateTimeUtc = [datetimeoffset]::UtcNow
 
         $query = @"
@@ -125,7 +159,7 @@ jobs:
 
         Write-Host "Attempting to connect to database using Invoke-Sqlcmd..."
         try {
-            Invoke-Sqlcmd -ConnectionString "Server=tcp:azure-functions-benchmarks-dbs1.database.windows.net,1433;Initial Catalog=azure-functions-benchmarks-db;Persist Security Info=False;Authentication=Active Directory Default; User Id=Azure-Functions-Host-Performance-CI-MI; MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;" -Query $query -Verbose
+            Invoke-Sqlcmd -ConnectionString $connectionString -Query $query -Verbose
             Write-Host "✅ Successfully inserted benchmark data."
         } catch {
             Write-Host "❌ Failed to insert benchmark data: $($_.Exception.Message)"

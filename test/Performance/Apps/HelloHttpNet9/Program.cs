@@ -4,14 +4,16 @@ internal class Program
 {
     private static async Task Main(string[] args)
     {
+        var connectionString = args[0];
         Console.WriteLine("Starting the Azure Functions Benchmarks SQL Writer...");
+        Console.WriteLine($"Connection String: {connectionString}");
         try
         {
             await WriteResultsToSql(DateTime.UtcNow,
-                @"Server=tcp:azure-functions-benchmarks-dbs1.database.windows.net,1433;Initial Catalog=azure-functions-benchmarks-db;Persist Security Info=False;Authentication=Active Directory Default; User Id=Azure-Functions-Host-Performance-CI-MI; MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;", 
-                "YourSessionLocal", 
-                "YourScenario", 
-                "YourDescription", 
+                connectionString,
+                "YourSessionC#AdoTask",
+                "YourScenario",
+                "YourDescription",
                 "YourDocument");
         }
         catch (Exception ex)
