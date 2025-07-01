@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -120,13 +121,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 if (_environment.IsAnyWindows())
                 {
                     // Harcoded site extensions path for Windows until Antares sets it as an Environment variable.
-                    var assemblyPath = System.Reflection.Assembly.GetExecutingAssembly().Location;
+                    var assemblyPath = Assembly.GetExecutingAssembly().Location;
                     var assemblyDir = Path.GetDirectoryName(assemblyPath);
-                    var parentDir = Directory.GetParent(assemblyDir).FullName;
+                    var parentDir = Directory.GetParent(assemblyDir)?.Parent?.FullName; //Move 2 directories up to get to the SiteExtensions directory
 
                     var windowsWorkerFullProbingPath = Path.Combine(parentDir, RpcWorkerConstants.DefaultWorkersDirectoryName);
                     probingPaths.Add(windowsWorkerFullProbingPath);
-                    _logger.LogTrace("Windows worker probing path: {windowsWorkerFullProbingPath}", windowsWorkerFullProbingPath);
                 }
             }
 

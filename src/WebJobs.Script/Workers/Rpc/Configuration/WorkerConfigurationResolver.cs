@@ -64,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                                 continue;
                             }
 
-                            // Only skip worker directories that don't match the current runtime or are not enabled via hosting config
+                            // Skip worker directories that don't match the current runtime or are not enabled via hosting config
                             if (!_workersAvailableForResolutionViaHostingConfig.Contains(workerRuntimeDir) ||
                                     (!_environment.IsMultiLanguageRuntimeEnvironment() &&
                                     !_environment.IsPlaceholderModeEnabled() &&
