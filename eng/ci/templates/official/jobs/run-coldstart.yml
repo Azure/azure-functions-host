@@ -120,7 +120,7 @@ jobs:
       zipAfterPublish: false
       modifyOutputPath: false
       projects: '$(Build.ArtifactStagingDirectory)/PerformanceTestApps/HelloHttpNet9/HelloHttp.csproj'
-      arguments: -c Release -o $(functionAppOutputPath) -f net9.0 -r $(publishRid)
+      arguments: -c Release -o $(functionAppOutputPath) -f net8.0 -r $(publishRid)
       workingDirectory: $(Build.ArtifactStagingDirectory)/PerformanceTestApps/HelloHttpNet9
 
   - task: AzureCLI@2
