@@ -124,7 +124,7 @@ jobs:
       workingDirectory: $(Build.ArtifactStagingDirectory)/PerformanceTestApps/HelloHttpNet9
 
   - task: AzureCLI@2
-    displayName: "Run HelloHttpNet9"
+    displayName: "Persist (C#)"
     inputs:
       azureSubscription: $(ServiceConnection)
       scriptType: 'pscore'
@@ -137,7 +137,6 @@ jobs:
         & $exePath $connectionString
 
   - task: AzureCLI@2
-    displayName: "Persist"
     inputs:
       azureSubscription: $(ServiceConnection)
       scriptType: 'pscore'
@@ -145,24 +144,11 @@ jobs:
       inlineScript: |
         $dateTimeUtc = [datetimeoffset]::UtcNow
         $query = @"
-        INSERT INTO [dbo].HttpBenchmarks (Excluded, DateTimeUtc, Session, Scenario, Description, Document)
-        VALUES (0, '$dateTimeUtc', 'TestSessionAdo', 'TestScenario', 'TestDesc', '{}')
+        INSERT INTO [dbo].ColdStart (DateTimeUtc, OS, Description, Document)
+        VALUES ('$dateTimeUtc', 'foo', 'bar', '{}')
         "@
 
-        $connectionString = "$(ColdStartResultsSqlConnectionString)"
+        Invoke-Sqlcmd -ConnectionString "$(ColdStartResultsSqlConnectionString)" -Query $query
 
-        try {
-            $connection = New-Object System.Data.SqlClient.SqlConnection
-            $connection.ConnectionString = $connectionString
-            $command = $connection.CreateCommand()
-            $command.CommandText = $query
-
-            $connection.Open()
-            $rowsAffected = $command.ExecuteNonQuery()
-            Write-Host "Query executed. Rows affected: $rowsAffected"
-            $connection.Close()
-        } catch {
-            Write-Error "Failed to execute query: $_"
-            exit 1
-        }
+    displayName: Persist (PS)
 
