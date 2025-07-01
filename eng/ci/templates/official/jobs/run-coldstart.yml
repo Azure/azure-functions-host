@@ -137,28 +137,32 @@ jobs:
         & $exePath $connectionString
 
   - task: AzureCLI@2
-    displayName: "Persist results to SQL database using Azure CLI"
+    displayName: "Persist"
     inputs:
       azureSubscription: $(ServiceConnection)
       scriptType: 'pscore'
       scriptLocation: 'inlineScript'
       inlineScript: |
-        Write-Host "Installing latest SqlServer PowerShell module..."
-        Install-Module -Name SqlServer -Force -AllowClobber -Scope CurrentUser -Repository PSGallery
-        Import-Module SqlServer -Force        
-        Write-Host "SqlServer module version: $((Get-Module SqlServer).Version)"
-
-        $connectionString = "$(ColdStartResultsSqlConnectionString)"
-        Write-Host "connectionString: $connectionString"        
-
         $dateTimeUtc = [datetimeoffset]::UtcNow
-
         $query = @"
         INSERT INTO [dbo].HttpBenchmarks (Excluded, DateTimeUtc, Session, Scenario, Description, Document)
         VALUES (0, '$dateTimeUtc', 'TestSessionAdo', 'TestScenario', 'TestDesc', '{}')
         "@
 
-        Write-Host "Attempting to connect to database using Invoke-Sqlcmd..."
-        Invoke-Sqlcmd -ConnectionString $connectionString -Query $query -Verbose
-        Write-Host "✅ Successfully inserted benchmark data."        
+        $connectionString = "$(ColdStartResultsSqlConnectionString)"
+
+        try {
+            $connection = New-Object System.Data.SqlClient.SqlConnection
+            $connection.ConnectionString = $connectionString
+            $command = $connection.CreateCommand()
+            $command.CommandText = $query
+
+            $connection.Open()
+            $rowsAffected = $command.ExecuteNonQuery()
+            Write-Host "Query executed. Rows affected: $rowsAffected"
+            $connection.Close()
+        } catch {
+            Write-Error "Failed to execute query: $_"
+            exit 1
+        }
 

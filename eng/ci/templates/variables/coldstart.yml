@@ -1,4 +1,4 @@
 variables:
 # This controls how many cold start samples are collected for each app+OS combination.
 - name: runInstances
-  value: "1,2,3"
+  value: "1"
