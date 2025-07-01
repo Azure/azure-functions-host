@@ -7,20 +7,14 @@ internal class Program
         var connectionString = args[0];
         Console.WriteLine("Starting the Azure Functions Benchmarks SQL Writer...");
         Console.WriteLine($"Connection String: {connectionString}");
-        try
-        {
+
             await WriteResultsToSql(DateTime.UtcNow,
                 connectionString,
                 "YourSessionC#AdoTask",
                 "YourScenario",
                 "YourDescription",
                 "YourDocument");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"An error occurred: {ex.Message}");
-            //Environment.Exit(1);
-        }
+       
     }
 
 

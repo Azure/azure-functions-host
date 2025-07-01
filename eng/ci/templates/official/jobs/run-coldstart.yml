@@ -149,6 +149,7 @@ jobs:
         Write-Host "SqlServer module version: $((Get-Module SqlServer).Version)"
 
         $connectionString = "$(ColdStartResultsSqlConnectionString)"
+        Write-Host "connectionString: $connectionString"        
 
         $dateTimeUtc = [datetimeoffset]::UtcNow
 
@@ -158,10 +159,6 @@ jobs:
         "@
 
         Write-Host "Attempting to connect to database using Invoke-Sqlcmd..."
-        try {
-            Invoke-Sqlcmd -ConnectionString $connectionString -Query $query -Verbose
-            Write-Host "✅ Successfully inserted benchmark data."
-        } catch {
-            Write-Host "❌ Failed to insert benchmark data: $($_.Exception.Message)"
-        }
+        Invoke-Sqlcmd -ConnectionString $connectionString -Query $query -Verbose
+        Write-Host "✅ Successfully inserted benchmark data."        
 
