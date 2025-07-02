@@ -70,6 +70,11 @@ namespace Microsoft.Azure.WebJobs.Script.Http
 
                     currentDelay = Math.Min(currentDelay * 2, MaximumDelay);
                 }
+                catch (WorkerShutdownException)
+                {
+                    _logger.LogInformation("Language worker channel is shutting down. Request will not be retried.");
+                    throw;
+                }
                 catch (Exception ex)
                 {
                     var message = attemptCount == MaxRetries
