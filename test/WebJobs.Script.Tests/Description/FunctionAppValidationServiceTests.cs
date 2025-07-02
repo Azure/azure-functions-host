@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class FunctionAppValidationServiceTests
     {
-        private readonly ILogger<FunctionAppValidationService> _testLogger;
+        private readonly ILogger _testLogger;
         private readonly Mock<IOptions<ScriptJobHostOptions>> _scriptOptionsMock;
         private readonly ScriptJobHostOptions _scriptJobHostOptions;
         private readonly TestLoggerProvider _testLoggerProvider;
@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _testLoggerProvider = new TestLoggerProvider();
             _loggerFactory = new LoggerFactory();
             _loggerFactory.AddProvider(_testLoggerProvider);
-            _testLogger = _loggerFactory.CreateLogger<FunctionAppValidationService>();
+            _testLogger = _loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
         }
 
         [Fact]
@@ -53,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var mockValidator = new Mock<IFunctionAppValidator>();
             // No-op validator
             var service = new FunctionAppValidationService(
-                _testLogger,
+                _loggerFactory,
                 _scriptOptionsMock.Object,
                 new TestEnvironment(),
                 [mockValidator.Object]);
@@ -78,7 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var mockValidator = new Mock<IFunctionAppValidator>();
             var service = new FunctionAppValidationService(
-                _testLogger,
+                _loggerFactory,
                 _scriptOptionsMock.Object,
                 environment,
                 [mockValidator.Object]);
@@ -113,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var mockValidator = new Mock<IFunctionAppValidator>();
             var service = new FunctionAppValidationService(
-                _testLogger,
+                _loggerFactory,
                 scriptOptionsMock.Object,
                 environment,
                 [mockValidator.Object]);
@@ -147,7 +147,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // Use the real validator for folder check
             var folderValidator = new MissingAzureFunctionsFolderValidator();
             var service = new FunctionAppValidationService(
-                _testLogger,
+                _loggerFactory,
                 _scriptOptionsMock.Object,
                 environment,
                 [folderValidator]);
@@ -187,7 +187,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var validator = new ExtensionBundleManagerValidator(manager);
             var service = new FunctionAppValidationService(
-                _testLogger,
+                _loggerFactory,
                 _scriptOptionsMock.Object,
                 env,
                 [validator]);

@@ -17,18 +17,18 @@ namespace Microsoft.Azure.WebJobs.Script.Host
     internal sealed class FunctionAppValidationService : BackgroundService
     {
         private readonly IEnvironment _environment;
-        private readonly ILogger<FunctionAppValidationService> _logger;
+        private readonly ILogger _logger;
         private readonly IOptions<ScriptJobHostOptions> _scriptOptions;
         private readonly IEnumerable<IFunctionAppValidator> _validators;
 
         public FunctionAppValidationService(
-            ILogger<FunctionAppValidationService> logger,
+            ILoggerFactory loggerFactory,
             IOptions<ScriptJobHostOptions> scriptOptions,
             IEnvironment environment,
             IEnumerable<IFunctionAppValidator> validators)
         {
             _scriptOptions = scriptOptions ?? throw new ArgumentNullException(nameof(scriptOptions));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral) ?? throw new ArgumentNullException(nameof(loggerFactory));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _validators = validators ?? throw new ArgumentNullException(nameof(validators));
         }

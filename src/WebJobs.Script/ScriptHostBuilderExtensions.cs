@@ -170,12 +170,15 @@ namespace Microsoft.Azure.WebJobs.Script
 
             builder.ConfigureServices((context, services) =>
             {
-                // Register all validators here
-                services.AddSingleton<IFunctionAppValidator, ExtensionBundleManagerValidator>();
-                services.AddSingleton<IFunctionAppValidator, MissingAzureFunctionsFolderValidator>();
+                if (!SystemEnvironment.Instance.IsPlaceholderModeEnabled())
+                {
+                    // Register all validators here
+                    services.AddSingleton<IFunctionAppValidator, ExtensionBundleManagerValidator>();
+                    services.AddSingleton<IFunctionAppValidator, MissingAzureFunctionsFolderValidator>();
 
-                // Add more validators as needed
-                services.AddHostedService<FunctionAppValidationService>();
+                    // Add more validators as needed
+                    services.AddHostedService<FunctionAppValidationService>();
+                }
 
                 services.AddSingleton<ExternalConfigurationStartupValidator>();
                 services.AddSingleton<IHostedService>(s =>

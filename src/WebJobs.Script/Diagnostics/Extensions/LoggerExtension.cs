@@ -420,11 +420,6 @@ Lock file hash: {currentLockFileHash}";
 
         public static void OutdatedExtensionBundle(this ILogger logger, string currentVersion, int suggestedMinVersion, int suggestedMaxVersion)
         {
-            if (!logger.IsEnabled(LogLevel.Warning))
-            {
-                return;
-            }
-
             var currentTime = DateTime.UtcNow;
             var deprecationDate = new DateTime(2026, 8, 5, 0, 0, 0, DateTimeKind.Utc);
 
