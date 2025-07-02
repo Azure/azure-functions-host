@@ -11,6 +11,8 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
@@ -18,7 +20,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
-    internal class WorkerFunctionMetadataProvider : IWorkerFunctionMetadataProvider
+    internal class WorkerFunctionMetadataProvider : IWorkerFunctionMetadataProvider, IDisposable
     {
         private const string _metadataProviderName = "Worker";
         private readonly Dictionary<string, ICollection<string>> _functionErrors = new Dictionary<string, ICollection<string>>();
@@ -30,6 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly JsonSerializerSettings _dateTimeSerializerSettings;
         private string _workerRuntime;
         private ImmutableArray<FunctionMetadata> _functions;
+        private IHost _currentJobHost = null;
 
         public WorkerFunctionMetadataProvider(
             IOptionsMonitor<ScriptApplicationHostOptions> scriptOptions,
@@ -45,6 +48,8 @@ namespace Microsoft.Azure.WebJobs.Script
             _scriptHostManager = scriptHostManager;
             _workerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
             _dateTimeSerializerSettings = new JsonSerializerSettings { DateParseHandling = DateParseHandling.None };
+
+            _scriptHostManager.ActiveHostChanged += OnHostChanged;
         }
 
         public ImmutableDictionary<string, ImmutableArray<string>> FunctionErrors
@@ -83,19 +88,14 @@ namespace Microsoft.Azure.WebJobs.Script
                 // Start up GRPC channels if they are not already running.
                 if (channels?.Any() != true)
                 {
-                    if (_scriptHostManager.State is ScriptHostState.Default
-                        || _scriptHostManager.State is ScriptHostState.Starting
-                        || _scriptHostManager.State is ScriptHostState.Initialized)
+                    if (IsJobHostStarting())
                     {
-                        // We don't need to restart if the host hasn't even been created yet.
-                        _logger.LogDebug("Host is starting up, initializing language worker channel");
+                        _logger.LogDebug("JobHost is starting with state '{State}'. Initializing worker channel.", _scriptHostManager.State);
                         await _channelManager.InitializeChannelAsync(workerConfigs, _workerRuntime);
                     }
                     else
                     {
-                        // During the restart flow, GetFunctionMetadataAsync gets invoked
-                        // again through a new script host initialization flow.
-                        _logger.LogDebug("Host is running without any initialized channels, restarting the JobHost.");
+                        _logger.LogDebug("JobHost has started and has state '{State}' without any worker channels. Restarting host to reinitialize.", _scriptHostManager.State);
                         await _scriptHostManager.RestartHostAsync();
                     }
 
@@ -147,6 +147,38 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             return new FunctionMetadataResult(useDefaultMetadataIndexing: false, _functions);
+        }
+
+        private void OnHostChanged(object sender, ActiveHostChangedEventArgs args)
+        {
+            // Track the current host so we can get state later if needed.
+            _currentJobHost = args.NewHost;
+        }
+
+        private bool IsJobHostStarting()
+        {
+            if (_scriptHostManager.State is ScriptHostState.Default
+                || _scriptHostManager.State is ScriptHostState.Starting
+                || _scriptHostManager.State is ScriptHostState.Initialized)
+            {
+                return true;
+            }
+
+            // The Error state can occur when the host is in a "final" state after completely starting,
+            // or during a retry of a transient error. This check allows us to determine the difference. If
+            // the host has not completely started, it means that it is still in the process of starting.
+            if (_currentJobHost is not null && _scriptHostManager.State == ScriptHostState.Error)
+            {
+                var lifetime = _currentJobHost.Services?.GetService<IHostApplicationLifetime>();
+
+                if (lifetime is not null &&
+                    !lifetime.ApplicationStarted.IsCancellationRequested)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         internal void ValidateFunctionAppFormat(string scriptPath, ILogger logger, IEnvironment environment, IFileSystem fileSystem = null)
@@ -297,6 +329,11 @@ namespace Microsoft.Azure.WebJobs.Script
                 return true;
             }
             return false;
+        }
+
+        public void Dispose()
+        {
+            _scriptHostManager.ActiveHostChanged -= OnHostChanged;
         }
     }
 }

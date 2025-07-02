@@ -99,16 +99,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             Assert.Equal(request.Headers.GetValues(LinuxContainerMetricsPublisher.ContainerNameHeader).Single(), _containerName);
             Assert.Equal(request.Headers.GetValues(LinuxContainerMetricsPublisher.HostNameHeader).Single(), _testHostName);
             Assert.Equal(request.Headers.GetValues(LinuxContainerMetricsPublisher.StampNameHeader).Single(), _testStampName);
-
-            if (_hostingConfigOptions.SwtIssuerEnabled)
-            {
-                Assert.NotEmpty(request.Headers.GetValues(ScriptConstants.SiteRestrictedTokenHeaderName));
-            }
-            else
-            {
-                Assert.False(request.Headers.Contains(ScriptConstants.SiteRestrictedTokenHeaderName));
-            }
-
             Assert.NotEmpty(request.Headers.GetValues(ScriptConstants.SiteTokenHeaderName));
 
             Assert.Equal(request.RequestUri.Host, _testIpAddress);
@@ -142,13 +132,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             }
         }
 
-        [Theory]
-        [InlineData(true)]
-        [InlineData(false)]
-        public void PublishFunctionActivity_SendsRequestHeaders(bool swtIssuerEnabled)
+        [Fact]
+        public void PublishFunctionActivity_SendsRequestHeaders()
         {
-            _hostingConfigOptions.SwtIssuerEnabled = swtIssuerEnabled;
-
             _metricsPublisher.Initialize();
             _metricsPublisher.AddFunctionExecutionActivity(
                 _testFunctionActivity.FunctionName,
