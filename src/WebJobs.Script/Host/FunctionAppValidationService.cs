@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Host
             IEnumerable<IFunctionAppValidator> validators)
         {
             _scriptOptions = scriptOptions ?? throw new ArgumentNullException(nameof(scriptOptions));
-            _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral) ?? throw new ArgumentNullException(nameof(loggerFactory));
+            _logger = loggerFactory?.CreateLogger(ScriptConstants.LogCategoryHostGeneral) ?? throw new ArgumentNullException(nameof(loggerFactory));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _validators = validators ?? throw new ArgumentNullException(nameof(validators));
         }
