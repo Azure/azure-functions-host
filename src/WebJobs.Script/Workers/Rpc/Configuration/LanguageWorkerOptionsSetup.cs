@@ -84,15 +84,19 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             HashSet<string> workers = GetWorkersAvailableForResolutionViaHostingConfig();
             bool dynamicWorkerResolutionEnabled = Utility.IsDynamicWorkerResolutionEnabled(_environment, workers);
-            List<string> probingPaths = null;
+            IWorkerConfigurationResolver workerConfigurationResolver = null;
 
             if (dynamicWorkerResolutionEnabled)
             {
-                probingPaths = GetWorkerProbingPaths();
+                List<string> probingPaths = GetWorkerProbingPaths();
+                workerConfigurationResolver = new DynamicWorkerConfigurationResolver(configuration, _logger, _environment, FileUtility.Instance, _workerProfileManager, workers, probingPaths);
+            }
+            else
+            {
+                workerConfigurationResolver = new StaticWorkerConfigurationResolver(configuration, _logger);
             }
 
-            var workerConfigurationResolver = new WorkerConfigurationResolver(configuration, _logger, _environment, FileUtility.Instance, _workerProfileManager, workers);
-            var configFactory = new RpcWorkerConfigFactory(configuration, _logger, SystemRuntimeInformation.Instance, _environment, _metricsLogger, _workerProfileManager, workerConfigurationResolver, dynamicWorkerResolutionEnabled, probingPaths, workers);
+            var configFactory = new RpcWorkerConfigFactory(configuration, _logger, SystemRuntimeInformation.Instance, _environment, _metricsLogger, _workerProfileManager, workerConfigurationResolver, dynamicWorkerResolutionEnabled, workers);
             options.WorkerConfigs = configFactory.GetConfigs();
         }
 

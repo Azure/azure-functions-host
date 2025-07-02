@@ -14,7 +14,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 {
-    internal sealed class WorkerConfigurationResolver : IWorkerConfigurationResolver
+    internal sealed class DynamicWorkerConfigurationResolver : IWorkerConfigurationResolver
     {
         private readonly IConfiguration _config;
         private readonly ILogger _logger;
@@ -22,14 +22,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         private readonly IEnvironment _environment;
         private readonly IFileSystem _fileSystem;
         private readonly HashSet<string> _workersAvailableForResolutionViaHostingConfig;
+        private readonly List<string> _workerProbingPaths;
         private readonly JsonSerializerOptions _jsonSerializerOptions = new() { PropertyNameCaseInsensitive = true };
 
-        public WorkerConfigurationResolver(IConfiguration config,
+        public DynamicWorkerConfigurationResolver(IConfiguration config,
                                         ILogger logger,
                                         IEnvironment environment,
                                         IFileSystem fileSystem,
                                         IWorkerProfileManager workerProfileManager,
-                                        HashSet<string> workersAvailableForResolutionViaHostingConfig)
+                                        HashSet<string> workersAvailableForResolutionViaHostingConfig,
+                                        List<string> workerProbingPaths)
         {
             _config = config ?? throw new ArgumentNullException(nameof(config));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -37,20 +39,24 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             _fileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
             _profileManager = workerProfileManager ?? throw new ArgumentNullException(nameof(workerProfileManager));
             _workersAvailableForResolutionViaHostingConfig = workersAvailableForResolutionViaHostingConfig ?? throw new ArgumentNullException(nameof(workersAvailableForResolutionViaHostingConfig));
+            _workerProbingPaths = workerProbingPaths;
         }
 
-        public List<string> GetWorkerConfigs(List<string> probingPaths, string fallbackPath)
+        public List<string> GetWorkerConfigs()
         {
+            string probingPaths = _workerProbingPaths is not null ? string.Join(", ", _workerProbingPaths) : null;
+            _logger.LogDebug("Workers probing paths set to: {probingPaths}.", probingPaths);
+
             // Dictionary of { FUNCTIONS_WORKER_RUNTIME environment variable value : path of workerConfig }
             Dictionary<string, string> outputDict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
             var workerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
             string releaseChannel = Utility.GetPlatformReleaseChannel(_environment);
 
-            if (!probingPaths.IsNullOrEmpty())
+            if (_workerProbingPaths is not null)
             {
                 // probing path directory structure is: <probingPath>/<workerRuntimeDir>/<workerVersion>/<worker.config.json>
-                foreach (var probingPath in probingPaths)
+                foreach (var probingPath in _workerProbingPaths)
                 {
                     if (!string.IsNullOrEmpty(probingPath) && _fileSystem.Directory.Exists(probingPath))
                     {
@@ -86,10 +92,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 return outputDict.Values.ToList();
             }
 
-            _logger.LogDebug("Searching for worker configs in the fallback directory.");
-
             // Search in fallback path if worker cannot be found in probing paths
-            PopulateWorkerConfigsFromWithinHost(fallbackPath, workerRuntime, outputDict);
+            PopulateWorkerConfigsFromWithinHost(workerRuntime, outputDict);
 
             return outputDict.Values.ToList();
         }
@@ -130,9 +134,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             }
         }
 
-        private void PopulateWorkerConfigsFromWithinHost(string fallbackPath, string workerRuntime, Dictionary<string, string> outputDict)
+        private void PopulateWorkerConfigsFromWithinHost(string workerRuntime, Dictionary<string, string> outputDict)
         {
-            if (_fileSystem.Directory.Exists(fallbackPath))
+            var fallbackPath = WorkerConfigurationHelper.GetWorkersDirPath(_config);
+
+            _logger.LogDebug("Searching for worker configs in the fallback directory: {fallbackPath}", fallbackPath);
+
+            if (fallbackPath != null && _fileSystem.Directory.Exists(fallbackPath))
             {
                 foreach (var workerPath in _fileSystem.Directory.EnumerateDirectories(fallbackPath))
                 {

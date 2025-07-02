@@ -168,7 +168,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             string expectedLog = $"Added WorkerConfig for language: {workerRuntime} with Worker Path: {path}";
             Assert.True(logs.Any(l => l.FormattedMessage.Contains(expectedLog)));
             Assert.True(logs.Any(l => l.FormattedMessage.Contains("Workers probing paths set to:")));
-            Assert.True(logs.Any(l => l.FormattedMessage.Contains("Searching for worker configs in the fallback directory.")));
+            Assert.True(logs.Any(l => l.FormattedMessage.Contains("Searching for worker configs in the fallback directory")));
         }
 
         [Theory]
@@ -250,7 +250,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             string expectedLog = $"Added WorkerConfig for language: {workerRuntime} with Worker Path: {path}";
             Assert.True(logs.Any(l => l.FormattedMessage.Contains(expectedLog)));
             Assert.True(logs.Any(l => l.FormattedMessage.Contains("Workers probing paths set to:")));
-            Assert.True(logs.Any(l => l.FormattedMessage.Contains("Searching for worker configs in the fallback directory.")));
+            Assert.True(logs.Any(l => l.FormattedMessage.Contains("Searching for worker configs in the fallback directory")));
         }
     }
 }

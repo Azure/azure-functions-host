@@ -7,15 +7,12 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
@@ -38,7 +35,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         };
 
         private Dictionary<string, RpcWorkerConfig> _workerDescriptionDictionary = new Dictionary<string, RpcWorkerConfig>();
-        private List<string> _workerProbingPaths;
 
         public RpcWorkerConfigFactory(IConfiguration config,
                                         ILogger logger,
@@ -48,7 +44,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                                         IWorkerProfileManager workerProfileManager,
                                         IWorkerConfigurationResolver workerConfigurationResolver,
                                         bool dynamicWorkerResolutionEnabled = false,
-                                        List<string> workerProbingPaths = null,
                                         HashSet<string> workersAvailableForResolutionViaHostingConfig = null)
         {
             _config = config ?? throw new ArgumentNullException(nameof(config));
@@ -60,17 +55,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _workerRuntime = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
             _workerConfigurationResolver = workerConfigurationResolver ?? throw new ArgumentNullException(nameof(workerConfigurationResolver));
 
-            WorkersDirPath = GetDefaultWorkersDirectory(Directory.Exists);
-            var workersDirectorySection = _config.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}:{WorkerConstants.WorkersDirectorySectionName}");
-
-            _workerProbingPaths = workerProbingPaths;
             _dynamicWorkerResolutionEnabled = dynamicWorkerResolutionEnabled;
             _workersAvailableForResolutionViaHostingConfig = workersAvailableForResolutionViaHostingConfig;
-
-            if (!string.IsNullOrEmpty(workersDirectorySection.Value))
-            {
-                WorkersDirPath = workersDirectorySection.Value;
-            }
+            WorkersDirPath = WorkerConfigurationHelper.GetWorkersDirPath(config);
         }
 
         public string WorkersDirPath { get; }
@@ -84,20 +71,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
         }
 
-        internal static string GetDefaultWorkersDirectory(Func<string, bool> directoryExists)
-        {
-#pragma warning disable SYSLIB0012 // Type or member is obsolete
-            string assemblyLocalPath = Path.GetDirectoryName(new Uri(typeof(RpcWorkerConfigFactory).Assembly.CodeBase).LocalPath);
-#pragma warning restore SYSLIB0012 // Type or member is obsolete
-            string workersDirPath = Path.Combine(assemblyLocalPath, RpcWorkerConstants.DefaultWorkersDirectoryName);
-            if (!directoryExists(workersDirPath))
-            {
-                // Site Extension. Default to parent directory
-                workersDirPath = Path.Combine(Directory.GetParent(assemblyLocalPath).FullName, RpcWorkerConstants.DefaultWorkersDirectoryName);
-            }
-            return workersDirPath;
-        }
-
         internal void BuildWorkerProviderDictionary()
         {
             AddProviders();
@@ -106,29 +79,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal void AddProviders()
         {
-            if (_dynamicWorkerResolutionEnabled)
+            List<string> workerConfigs = _workerConfigurationResolver.GetWorkerConfigs();
+
+            foreach (var workerConfig in workerConfigs)
             {
-                _logger.LogDebug("Workers probing paths set to: {probingPaths} and Workers Directory set as fallback path: {workersDirPath}", string.Join(", ", _workerProbingPaths), WorkersDirPath);
-
-                List<string> workerConfigs = _workerConfigurationResolver.GetWorkerConfigs(_workerProbingPaths, WorkersDirPath);
-
-                foreach (var workerConfig in workerConfigs)
-                {
-                    AddProvider(workerConfig);
-                }
-            }
-            else
-            {
-                _logger.LogDebug("Workers Directory set to: {WorkersDirPath}", WorkersDirPath);
-
-                foreach (var workerDir in Directory.EnumerateDirectories(WorkersDirPath))
-                {
-                    string workerConfigPath = Path.Combine(workerDir, RpcWorkerConstants.WorkerConfigFileName);
-                    if (File.Exists(workerConfigPath))
-                    {
-                        AddProvider(workerDir);
-                    }
-                }
+                AddProvider(workerConfig);
             }
         }
 
