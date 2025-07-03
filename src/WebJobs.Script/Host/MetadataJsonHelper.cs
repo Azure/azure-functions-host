@@ -3,8 +3,10 @@
 
 using System;
 using System.Collections.Immutable;
+using System.IO;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Logging;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script
@@ -54,15 +56,18 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <summary>
         /// Parses the input JSON string into a <see cref="JObject"/> and sanitizes the values of top-level properties
         /// whose names match any in the provided collection, using case-insensitive comparison.
-        /// The original property casing is preserved.
+        /// The original property casing is preserved. Allows customization of JSON date parsing behavior.
         /// </summary>
         /// <param name="json">The JSON string to parse and sanitize.</param>
-        /// <param name="propertyNames">A collection of top-level property names to sanitize.</param>
+        /// <param name="propertyNames">A collection of top-level property names to sanitize. Case-insensitive matching is used.</param>
+        /// <param name="dateParseHandling">
+        /// Specifies how date strings should be parsed. Defaults to <see cref="DateParseHandling.None"/> to avoid automatic date conversion.
+        /// </param>
         /// <returns>
         /// A <see cref="JObject"/> representing the parsed JSON, with the specified properties' values sanitized if found.
         /// </returns>
         /// <exception cref="ArgumentException">
-        /// Thrown if <paramref name="json"/> is <c>null</c> or empty.
+        /// Thrown if <paramref name="json"/> is <c>null</c>, empty, or whitespace.
         /// </exception>
         /// <exception cref="ArgumentNullException">
         /// Thrown if <paramref name="propertyNames"/> is <c>null</c>.
@@ -70,7 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <exception cref="JsonReaderException">
         /// Thrown if <paramref name="json"/> is not a valid JSON string.
         /// </exception>
-        public static JObject CreateJObjectWithSanitizedPropertyValue(string json, ImmutableHashSet<string> propertyNames)
+        public static JObject CreateJObjectWithSanitizedPropertyValue(string json, ImmutableHashSet<string> propertyNames, DateParseHandling dateParseHandling = DateParseHandling.None)
         {
             if (string.IsNullOrWhiteSpace(json))
             {
@@ -79,7 +84,13 @@ namespace Microsoft.Azure.WebJobs.Script
 
             ArgumentNullException.ThrowIfNull(propertyNames, nameof(propertyNames));
 
-            var jsonObject = JObject.Parse(json);
+            using var stringReader = new StringReader(json);
+            using var jsonReader = new JsonTextReader(stringReader)
+            {
+                DateParseHandling = dateParseHandling
+            };
+
+            var jsonObject = JObject.Load(jsonReader);
 
             return CreateJObjectWithSanitizedPropertyValue(jsonObject, propertyNames);
         }
