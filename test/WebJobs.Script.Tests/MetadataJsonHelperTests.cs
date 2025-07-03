@@ -102,14 +102,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var jsonObject = new JObject
             {
                 { "connection", null },
-                { "otherProperty", "value2" }
+                { "otherProperty1", "value1" },
+                { "otherProperty2", "" }
             };
-            var propertyNames = ImmutableHashSet.Create("connection");
+            var propertyNames = ImmutableHashSet.Create("connection", "otherProperty2");
 
             var result = MetadataJsonHelper.CreateJObjectWithSanitizedPropertyValue(jsonObject, propertyNames);
 
-            Assert.Null(result["connection"]); // Ensure null remains null
-            Assert.Equal("value2", result["otherProperty"].ToString());
+            Assert.Equal(JTokenType.Null, result["connection"].Type); // Ensure null remains null
+            Assert.Equal("value1", result["otherProperty1"].ToString());
+            Assert.Equal("", result["otherProperty2"].ToString()); // Ensure empty string remains empty
         }
     }
 }

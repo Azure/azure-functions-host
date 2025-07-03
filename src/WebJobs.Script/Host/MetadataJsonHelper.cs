@@ -38,6 +38,11 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 if (propertyNames.Contains(prop.Name, StringComparer.OrdinalIgnoreCase))
                 {
+                    if (prop.Value.Type == JTokenType.Null)
+                    {
+                        continue;
+                    }
+
                     var valueToSanitize = prop.Value.Type == JTokenType.String ? (string)prop.Value : prop.Value.ToString();
                     jsonObject[prop.Name] = Sanitizer.Sanitize(valueToSanitize);
                 }
