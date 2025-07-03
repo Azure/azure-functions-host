@@ -6,22 +6,11 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
-using Microsoft.AspNetCore.Authentication;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Security
 {
-    public static class SimpleWebTokenHelper
+    public static class EncryptionHelper
     {
-        /// <summary>
-        /// A SWT or a Simple Web Token is a token that's made of key=value pairs separated
-        /// by &. We only specify expiration in ticks from now (exp={ticks})
-        /// The SWT is then returned as an encrypted string.
-        /// </summary>
-        /// <param name="validUntil">Datetime for when the token should expire.</param>
-        /// <param name="key">Optional key to encrypt the token with.</param>
-        /// <returns>a SWT signed by this app.</returns>
-        public static string CreateToken(DateTime validUntil, byte[] key = null) => Encrypt($"exp={validUntil.Ticks}", key);
-
         internal static string Encrypt(string value, byte[] key = null, IEnvironment environment = null, bool includesSignature = false)
         {
             key = key ?? SecretsUtility.GetEncryptionKey(environment);
@@ -51,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security
                     }
                     else
                     {
-                        // return {iv}.{swt}.{sha236(key)}
+                        // return {iv}.{content}.{sha236(key)}
                         return string.Format("{0}.{1}.{2}", iv, Convert.ToBase64String(cipherStream.ToArray()), GetSHA256Base64String(aes.Key));
                     }
                 }
@@ -103,33 +92,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security
         {
             byte[] key = SecretsUtility.GetEncryptionKey(environment);
             return Decrypt(key, value);
-        }
-
-        public static bool TryValidateToken(string token, ISystemClock systemClock)
-        {
-            try
-            {
-                return ValidateToken(token, systemClock);
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        public static bool ValidateToken(string token, ISystemClock systemClock, IEnvironment environment = null)
-        {
-            var data = Decrypt(token, environment);
-
-            var parsedToken = data
-                // token = key1=value1;key2=value2
-                .Split(';', StringSplitOptions.RemoveEmptyEntries)
-                 // ["key1=value1", "key2=value2"]
-                 .Select(v => v.Split('=', StringSplitOptions.RemoveEmptyEntries))
-                 // [["key1", "value1"], ["key2", "value2"]]
-                 .ToDictionary(k => k[0], v => v[1]);
-
-            return parsedToken.ContainsKey("exp") && systemClock.UtcNow.UtcDateTime < new DateTime(long.Parse(parsedToken["exp"]));
         }
 
         private static string GetSHA256Base64String(byte[] key)

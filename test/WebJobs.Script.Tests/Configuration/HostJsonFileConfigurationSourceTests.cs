@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         }
 
         [Fact]
-        public void MissingHostJson_CreatesHostJson_withDefaultExtensionBundleId()
+        public void MissingHostJson_GeneratesExpectedDefaultConfigFile()
         {
             Assert.False(File.Exists(_hostJsonFile));
             TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
@@ -58,14 +58,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             AreExpectedMetricsGenerated(testMetricsLogger);
 
+            // verify actual file content
             Assert.Equal(_hostJsonWithBundles, File.ReadAllText(_hostJsonFile));
 
-            var log = _loggerProvider.GetAllLogMessages().Single(l => l.FormattedMessage == "No host configuration file found. Creating a default host.json file.");
-            Assert.Equal(LogLevel.Information, log.Level);
+            // verify log messages
+            var logs = _loggerProvider.GetAllLogMessages();
+            Assert.Single(logs.Where(l => l.Level == LogLevel.Information && l.FormattedMessage == "No host configuration file found. Creating a default host.json file."));
+            VerifySanitizedHostConfigLog(logs, ScriptConstants.DefaultExtensionBundleId, ScriptConstants.DefaultExtensionBundleVersion);
         }
 
         [Fact]
-        public void MissingHostJson_CreatesHostJson_withWorkFlowExtensionBundleId()
+        public void MissingHostJson_WorkflowApp_GeneratesExpectedDefaultConfigFile()
         {
             var environment = new TestEnvironment(new Dictionary<string, string>
             {
@@ -79,10 +82,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             AreExpectedMetricsGenerated(testMetricsLogger);
 
+            // verify actual file content
             Assert.Equal(_hostJsonWithWorkFlowBundle, File.ReadAllText(_hostJsonFile));
 
-            var log = _loggerProvider.GetAllLogMessages().Single(l => l.FormattedMessage == "No host configuration file found. Creating a default host.json file.");
-            Assert.Equal(LogLevel.Information, log.Level);
+            // verify log messages
+            var logs = _loggerProvider.GetAllLogMessages();
+            Assert.Single(logs.Where(l => l.Level == LogLevel.Information && l.FormattedMessage == "No host configuration file found. Creating a default host.json file."));
+            VerifySanitizedHostConfigLog(logs, ScriptConstants.WorkFlowExtensionBundleId, ScriptConstants.LogicAppDefaultExtensionBundleVersion);
         }
 
         [Theory]
@@ -278,6 +284,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             return metricsLogger.EventsBegan.Contains(MetricEventNames.LoadHostConfigurationSource) && metricsLogger.EventsEnded.Contains(MetricEventNames.LoadHostConfigurationSource)
                     && metricsLogger.EventsBegan.Contains(MetricEventNames.LoadHostConfiguration) && metricsLogger.EventsEnded.Contains(MetricEventNames.LoadHostConfiguration)
                     && metricsLogger.EventsBegan.Contains(MetricEventNames.InitializeHostConfiguration) && metricsLogger.EventsEnded.Contains(MetricEventNames.InitializeHostConfiguration);
+        }
+
+        private static void VerifySanitizedHostConfigLog(IList<LogMessage> logs, string expectedBundleId, string expectedBundleVersionSpec)
+        {
+            var hostJsonLog = logs.Single(p => p.EventId.Name == "HostConfigRead");
+            Assert.Equal(LogLevel.Information, hostJsonLog.Level);
+            string sanitizedJson = (string)hostJsonLog.State.ToDictionary()["sanitizedJson"];
+            var jo = JObject.Parse(sanitizedJson);
+
+            Assert.Equal(3, jo.Count);
+            Assert.Equal("2.0", jo["version"]);
+            Assert.Equal(true, jo["isDefaultHostConfig"]);
+
+            var bundleConfig = jo["extensionBundle"];
+            Assert.Equal(expectedBundleId, bundleConfig["id"]);
+            Assert.Equal(expectedBundleVersionSpec, bundleConfig["version"]);
         }
     }
 }

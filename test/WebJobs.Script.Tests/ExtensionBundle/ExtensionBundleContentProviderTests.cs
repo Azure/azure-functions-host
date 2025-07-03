@@ -157,6 +157,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
             public bool IsExtensionBundleConfigured() => _isExtensionBundleConfigured;
 
             public bool IsLegacyExtensionBundle() => _isLegacyExtensionBundle;
+
+            public string GetOutdatedBundleVersion()
+            {
+                // No-op for test stub. This can be extended for test verifications if needed.
+                return string.Empty;
+            }
         }
     }
 }

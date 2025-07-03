@@ -206,35 +206,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Eventing
             Assert.True(JToken.DeepEquals(actual, expected), $"Actual: {actual.ToString()}{Environment.NewLine}Expected: {expected.ToString()}");
         }
 
-        [Fact]
-        public void Log_DisabledIfPlaceholder()
+        [Theory]
+        [InlineData(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1", false, false, false)] // Placeholder
+        [InlineData(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1", true, false, false)] // Placeholder
+        [InlineData(EnvironmentSettingNames.AzureWebsiteHostName, null, false, false, false)] // NoSiteName
+        [InlineData(EnvironmentSettingNames.AzureWebsiteHostName, null, true, false, false)] // NoSiteName
+        [InlineData(EnvironmentSettingNames.AzureWebsiteHostName, "host", false, false, true)]
+        [InlineData(EnvironmentSettingNames.AzureWebsiteHostName, "host", true, false, false)]
+        [InlineData(EnvironmentSettingNames.AzureWebsiteHostName, "host", true, true, true)]
+        public void Log_IsEnabled(string envVariableName, string envVariableVale, bool isConsumptionOnLegion, bool isAzureMonitorEnabled,  bool isDisabled)
         {
-            string message = "TestMessage";
             string functionInvocationId = Guid.NewGuid().ToString();
             string activityId = Guid.NewGuid().ToString();
 
-            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+            _environment.SetEnvironmentVariable(envVariableName, envVariableVale);
+            if (isConsumptionOnLegion)
+            {
+                _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId, string.Empty);
+                _environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, "containername");
+                _environment.SetEnvironmentVariable(EnvironmentSettingNames.LegionServiceHost, "legionhost");
+            }
 
-            _logger.LogInformation(message);
+            _appServiceOptionsWrapper.CurrentValue.IsAzureMonitorLoggingEnabled = isAzureMonitorEnabled;
+            _appServiceOptionsWrapper.InvokeChanged();
 
-            Assert.False(_logger.IsEnabled(LogLevel.Information));
-            _mockEventGenerator.Verify(m => m.LogAzureMonitorDiagnosticLogEvent(It.IsAny<LogLevel>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
-        }
-
-        [Fact]
-        public void Log_DisabledIfNoSiteName()
-        {
-            string message = "TestMessage";
-            string functionInvocationId = Guid.NewGuid().ToString();
-            string activityId = Guid.NewGuid().ToString();
-            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName, null);
-
-            // Recreate the logger was we cache the site name in the constructor
-            ILogger logger = new AzureMonitorDiagnosticLogger(_category, _hostInstanceId, _mockEventGenerator.Object, _environment, new LoggerExternalScopeProvider(), _hostNameProvider, _appServiceOptionsWrapper);
-
-            logger.LogInformation(message);
-
-            Assert.False(logger.IsEnabled(LogLevel.Information));
+            Assert.Equal(isDisabled, _logger.IsEnabled(LogLevel.Information));
             _mockEventGenerator.Verify(m => m.LogAzureMonitorDiagnosticLogEvent(It.IsAny<LogLevel>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
         }
 

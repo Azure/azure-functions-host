@@ -55,13 +55,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 yield return [nameof(FunctionsHostingConfigOptions.ShutdownWebhostWorkerChannelsOnHostShutdown), "ShutdownWebhostWorkerChannelsOnHostShutdown=unparseable", true]; // default
                 yield return [nameof(FunctionsHostingConfigOptions.ShutdownWebhostWorkerChannelsOnHostShutdown), string.Empty, true]; // default
 
-                // Supports True/False/1/0
-                yield return [nameof(FunctionsHostingConfigOptions.SwtIssuerEnabled), "SwtIssuerEnabled=False", false];
-                yield return [nameof(FunctionsHostingConfigOptions.SwtIssuerEnabled), "SwtIssuerEnabled=True", true];
-                yield return [nameof(FunctionsHostingConfigOptions.SwtIssuerEnabled), "SwtIssuerEnabled=0", false];
-                yield return [nameof(FunctionsHostingConfigOptions.SwtIssuerEnabled), "SwtIssuerEnabled=unparseable", true]; //default
-                yield return [nameof(FunctionsHostingConfigOptions.SwtIssuerEnabled), string.Empty, true]; // default
-
                 yield return [nameof(FunctionsHostingConfigOptions.ThrowOnMissingFunctionsWorkerRuntime), "THROW_ON_MISSING_FUNCTIONS_WORKER_RUNTIME=1", true];
                 yield return [nameof(FunctionsHostingConfigOptions.WorkerIndexingDisabledApps), "WORKER_INDEXING_DISABLED_APPS=teststring", "teststring"];
                 yield return [nameof(FunctionsHostingConfigOptions.WorkerIndexingEnabled), "WORKER_INDEXING_ENABLED=1", true];
@@ -76,7 +69,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 yield return [nameof(FunctionsHostingConfigOptions.IsDotNetInProcDisabled), "DotNetInProcDisabled=0", false];
 
                 yield return [nameof(FunctionsHostingConfigOptions.IsTestDataSuppressionEnabled), "EnableTestDataSuppression=1", true];
-                yield return [nameof(FunctionsHostingConfigOptions.IsCGroupMemoryMetricsEnabled), "EnableCGroupMemoryMetrics=1", true];
 
 #pragma warning restore SA1011 // Closing square brackets should be spaced correctly
 #pragma warning restore SA1010 // Opening square brackets should be spaced correctly
@@ -205,23 +197,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             {
                 return testService.Monitor.CurrentValue.GetFeature("feature1") == "value1_updated";
             });
-        }
-
-        [Fact]
-        public void SwtIssuerEnabled_ReturnsExpectedValue()
-        {
-            FunctionsHostingConfigOptions options = new();
-
-            // defaults to true
-            Assert.True(options.SwtIssuerEnabled);
-
-            // returns true when explicitly enabled
-            options.Features[ScriptConstants.HostingConfigSwtIssuerEnabled] = "1";
-            Assert.True(options.SwtIssuerEnabled);
-
-            // returns false when disabled
-            options.Features[ScriptConstants.HostingConfigSwtIssuerEnabled] = "0";
-            Assert.False(options.SwtIssuerEnabled);
         }
 
         [Fact]

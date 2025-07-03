@@ -25,11 +25,13 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
 using Microsoft.Azure.WebJobs.Script.WebHost.Storage;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using static Microsoft.Azure.WebJobs.Script.Utility;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -91,6 +93,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     loggingBuilder.AddWebJobsSystem<SystemLoggerProvider>();
                     if (environment.IsAzureMonitorEnabled())
                     {
+                        if (environment.IsConsumptionOnLegion())
+                        {
+                            loggingBuilder.Services.AddOptions<LoggerFilterOptions>()
+                                .Configure<IOptionsMonitor<AppServiceOptions>>((filters, options) =>
+                                {
+                                    filters.AddFilter<AzureMonitorDiagnosticLoggerProvider>((category, level) =>
+                                    {
+                                        return options.CurrentValue.IsAzureMonitorLoggingEnabled;
+                                    });
+                                });
+                        }
                         loggingBuilder.Services.AddSingleton<ILoggerProvider, AzureMonitorDiagnosticLoggerProvider>();
                     }
 

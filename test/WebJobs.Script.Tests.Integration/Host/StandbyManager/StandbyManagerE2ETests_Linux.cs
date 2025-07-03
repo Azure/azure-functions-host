@@ -283,7 +283,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             string json = JsonConvert.SerializeObject(context);
             var encryptionKey = Convert.FromBase64String(key);
-            string encrypted = SimpleWebTokenHelper.Encrypt(json, encryptionKey);
+            string encrypted = EncryptionHelper.Encrypt(json, encryptionKey);
 
             return new EncryptedHostAssignmentContext { EncryptedContext = encrypted };
         }

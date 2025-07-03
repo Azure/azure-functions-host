@@ -78,7 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             hostAssignmentContext.Environment[EnvironmentSettingNames.MsiEndpoint] = "http://localhost:8081";
             hostAssignmentContext.Environment[EnvironmentSettingNames.MsiSecret] = "secret";
 
-            var encryptedHostAssignmentValue = SimpleWebTokenHelper.Encrypt(JsonConvert.SerializeObject(hostAssignmentContext), TestHelpers.EncryptionKey.ToKeyBytes());
+            var encryptedHostAssignmentValue = EncryptionHelper.Encrypt(JsonConvert.SerializeObject(hostAssignmentContext), TestHelpers.EncryptionKey.ToKeyBytes());
 
             var encryptedHostAssignmentContext = new EncryptedHostAssignmentContext()
             {
@@ -154,7 +154,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             hostAssignmentContext.Secrets = new FunctionAppSecrets();
             hostAssignmentContext.IsWarmupRequest = false; // non-warmup Request
 
-            var encryptedHostAssignmentValue = SimpleWebTokenHelper.Encrypt(JsonConvert.SerializeObject(hostAssignmentContext), TestHelpers.EncryptionKey.ToKeyBytes());
+            var encryptedHostAssignmentValue = EncryptionHelper.Encrypt(JsonConvert.SerializeObject(hostAssignmentContext), TestHelpers.EncryptionKey.ToKeyBytes());
 
             var encryptedHostAssignmentContext = new EncryptedHostAssignmentContext()
             {
@@ -207,7 +207,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             hostAssignmentContext.Secrets = new FunctionAppSecrets();
             hostAssignmentContext.IsWarmupRequest = true; // Warmup Request
 
-            var encryptedHostAssignmentValue = SimpleWebTokenHelper.Encrypt(JsonConvert.SerializeObject(hostAssignmentContext), TestHelpers.EncryptionKey.ToKeyBytes());
+            var encryptedHostAssignmentValue = EncryptionHelper.Encrypt(JsonConvert.SerializeObject(hostAssignmentContext), TestHelpers.EncryptionKey.ToKeyBytes());
 
             var encryptedHostAssignmentContext = new EncryptedHostAssignmentContext()
             {
@@ -247,7 +247,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             hostAssignmentContext.IsWarmupRequest = isWarmupRequest;
 
             var encryptedHostAssignmentValue =
-                SimpleWebTokenHelper.Encrypt(JsonConvert.SerializeObject(hostAssignmentContext),
+                EncryptionHelper.Encrypt(JsonConvert.SerializeObject(hostAssignmentContext),
                     TestHelpers.EncryptionKey.ToKeyBytes());
 
             var encryptedHostAssignmentContext = new EncryptedHostAssignmentContext()
