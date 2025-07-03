@@ -103,7 +103,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 { "connection", null },
                 { "otherProperty1", "value1" },
-                { "otherProperty2", "" }
+                { "otherProperty2", string.Empty }
             };
             var propertyNames = ImmutableHashSet.Create("connection", "otherProperty2");
 
@@ -111,7 +111,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.Equal(JTokenType.Null, result["connection"].Type); // Ensure null remains null
             Assert.Equal("value1", result["otherProperty1"].ToString());
-            Assert.Equal("", result["otherProperty2"].ToString()); // Ensure empty string remains empty
+            Assert.Equal(string.Empty, result["otherProperty2"].ToString()); // Ensure empty string remains empty
         }
 
         [Fact]
