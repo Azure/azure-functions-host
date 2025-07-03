@@ -179,14 +179,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
             var fileContent = await FileUtility.ReadAsync(path);
             var jObject = JObject.Parse(fileContent);
 
-            if (jObject.TryGetValue("bindings", StringComparison.OrdinalIgnoreCase, out JToken bindingsToken) && bindingsToken is JArray bindings)
+            if (jObject.TryGetValue("bindings", StringComparison.OrdinalIgnoreCase, out JToken bindingsToken) && bindingsToken is JArray bindingsArray)
             {
-                var bindingObjects = bindings.OfType<JObject>().ToList();
-
-                foreach (var binding in bindingObjects)
+                for (int i = 0; i < bindingsArray.Count; i++)
                 {
-                    var sanitizedBinding = MetadataJsonHelper.CreateJObjectWithSanitizedPropertyValue(binding, ScriptConstants.SensitiveMetadataBindingPropertyNames);
-                    binding.Replace(sanitizedBinding);
+                    if (bindingsArray[i] is JObject binding)
+                    {
+                        bindingsArray[i] = MetadataJsonHelper.CreateJObjectWithSanitizedPropertyValue(binding, ScriptConstants.SensitiveMetadataBindingPropertyNames);
+                    }
                 }
             }
 

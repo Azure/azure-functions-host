@@ -2,7 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
+using System.Collections.Immutable;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
@@ -14,7 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void CreateJObjectWithSanitizedPropertyValue_NullJsonObject_ThrowsArgumentNullException()
         {
             JObject jsonObject = null;
-            var propertyNames = new[] { "sensitiveProperty" };
+            ImmutableHashSet<string> propertyNames = ["sensitiveProperty"];
 
             Assert.Throws<ArgumentNullException>(() => MetadataJsonHelper.CreateJObjectWithSanitizedPropertyValue(jsonObject, propertyNames));
         }
@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void CreateJObjectWithSanitizedPropertyValue_NullPropertyNames_ThrowsArgumentNullException()
         {
             var jsonObject = new JObject();
-            IEnumerable<string> propertyNames = null;
+            ImmutableHashSet<string> propertyNames = null;
 
             Assert.Throws<ArgumentNullException>(() => MetadataJsonHelper.CreateJObjectWithSanitizedPropertyValue(jsonObject, propertyNames));
         }
@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 { "SENSITIVEPROPERTY3", "AccountKey=bar" },
                 { "otherProperty", "value2" }
             };
-            var sensitiveBindingPropertyNames = new[] { "sensitiveProperty1", "sensitiveproperty2", "sensitiveproperty3" };
+            var sensitiveBindingPropertyNames = ImmutableHashSet.Create("sensitiveProperty1", "sensitiveproperty2", "sensitiveproperty3");
 
             var result = MetadataJsonHelper.CreateJObjectWithSanitizedPropertyValue(jsonObject, sensitiveBindingPropertyNames);
 
@@ -57,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 { "otherProperty2", "value2" },
                 { "otherProperty3", "AccountKey=foo" }
             };
-            var sensitiveBindingPropertyNames = new[] { "sensitiveProperty" };
+            var sensitiveBindingPropertyNames = ImmutableHashSet.Create("sensitiveProperty");
 
             var result = MetadataJsonHelper.CreateJObjectWithSanitizedPropertyValue(jsonObject, sensitiveBindingPropertyNames);
 
@@ -70,7 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void CreateJObjectWithSanitizedPropertyValue_StringInput_NullOrEmptyJson_ThrowsArgumentException()
         {
             string json = null;
-            var propertyNames = new[] { "sensitiveProperty" };
+            var propertyNames = ImmutableHashSet.Create("sensitiveProperty");
 
             Assert.Throws<ArgumentException>(() => MetadataJsonHelper.CreateJObjectWithSanitizedPropertyValue(json, propertyNames));
         }
@@ -79,7 +79,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void CreateJObjectWithSanitizedPropertyValue_StringInput_InvalidJson_ThrowsJsonReaderException()
         {
             var json = "invalid json";
-            var propertyNames = new[] { "sensitiveProperty" };
+            var propertyNames = ImmutableHashSet.Create("sensitiveProperty");
 
             Assert.Throws<Newtonsoft.Json.JsonReaderException>(() => MetadataJsonHelper.CreateJObjectWithSanitizedPropertyValue(json, propertyNames));
         }
@@ -88,11 +88,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void CreateJObjectWithSanitizedPropertyValue_StringInput_ValidJson_SanitizesMatchingProperties()
         {
             var json = "{ \"SensitiveProperty\": \"pwd=12345\", \"otherProperty\": \"value2\" }";
-            var propertyNames = new[] { "sensitiveproperty" };
+            var propertyNames = ImmutableHashSet.Create("sensitiveproperty");
 
             var result = MetadataJsonHelper.CreateJObjectWithSanitizedPropertyValue(json, propertyNames);
 
             Assert.Equal("[Hidden Credential]", result["SensitiveProperty"].ToString());
+            Assert.Equal("value2", result["otherProperty"].ToString());
+        }
+
+        [Fact]
+        public void CreateJObjectWithSanitizedPropertyValue_NullSensitiveProperty_DoesNotThrow()
+        {
+            var jsonObject = new JObject
+            {
+                { "connection", null },
+                { "otherProperty", "value2" }
+            };
+            var propertyNames = ImmutableHashSet.Create("connection");
+
+            var result = MetadataJsonHelper.CreateJObjectWithSanitizedPropertyValue(jsonObject, propertyNames);
+
+            Assert.Null(result["connection"]); // Ensure null remains null
             Assert.Equal("value2", result["otherProperty"].ToString());
         }
     }

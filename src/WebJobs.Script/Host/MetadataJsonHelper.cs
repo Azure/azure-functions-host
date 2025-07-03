@@ -2,7 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Logging;
 using Newtonsoft.Json.Linq;
@@ -24,16 +24,22 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <exception cref="ArgumentNullException">
         /// Thrown if <paramref name="jsonObject"/> or <paramref name="propertyNames"/> is <c>null</c>.
         /// </exception>
-        public static JObject CreateJObjectWithSanitizedPropertyValue(JObject jsonObject, IEnumerable<string> propertyNames)
+        public static JObject CreateJObjectWithSanitizedPropertyValue(JObject jsonObject, ImmutableHashSet<string> propertyNames)
         {
             ArgumentNullException.ThrowIfNull(jsonObject, nameof(jsonObject));
             ArgumentNullException.ThrowIfNull(propertyNames, nameof(propertyNames));
+
+            if (propertyNames.Count == 0)
+            {
+                return jsonObject;
+            }
 
             foreach (var prop in jsonObject.Properties())
             {
                 if (propertyNames.Contains(prop.Name, StringComparer.OrdinalIgnoreCase))
                 {
-                    jsonObject[prop.Name] = Sanitizer.Sanitize(prop.Value.ToString());
+                    var valueToSanitize = prop.Value.Type == JTokenType.String ? (string)prop.Value : prop.Value.ToString();
+                    jsonObject[prop.Name] = Sanitizer.Sanitize(valueToSanitize);
                 }
             }
 
@@ -59,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <exception cref="JsonReaderException">
         /// Thrown if <paramref name="json"/> is not a valid JSON string.
         /// </exception>
-        public static JObject CreateJObjectWithSanitizedPropertyValue(string json, IEnumerable<string> propertyNames)
+        public static JObject CreateJObjectWithSanitizedPropertyValue(string json, ImmutableHashSet<string> propertyNames)
         {
             if (string.IsNullOrWhiteSpace(json))
             {

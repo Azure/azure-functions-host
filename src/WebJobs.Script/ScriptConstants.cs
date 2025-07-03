@@ -270,6 +270,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
         internal const string MasterKeyName = "_master";
 
-        public static readonly ImmutableArray<string> SensitiveMetadataBindingPropertyNames = ["connection"];
+        public static readonly ImmutableHashSet<string> SensitiveMetadataBindingPropertyNames = ImmutableHashSet.Create(StringComparer.OrdinalIgnoreCase, "connection");
     }
 }
