@@ -58,6 +58,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 jsonSpan = jsonSpan[3..]; // Skip UTF-8 Byte Order Mark (BOM) if present at the beginning of the file.
             }
 
+            if (jsonSpan.IsEmpty)
+            {
+                return default; // Return default JsonElement if the file is empty.
+            }
+
             var reader = new Utf8JsonReader(jsonSpan, isFinalBlock: true, state: default);
             using var doc = JsonDocument.ParseValue(ref reader);
 

@@ -210,6 +210,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
             JsonElement workerConfig = WorkerConfigurationHelper.GetWorkerConfigJsonElement(workerConfigPath);
 
+            if (workerConfig.ValueKind == JsonValueKind.Undefined)
+            {
+                return false;
+            }
+
             // static capability resolution
             bool doesHostRequirementMeet = DoesHostRequirementMeet(workerConfig);
 
