@@ -175,35 +175,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.Equal("7.4", powershellWorkerConfig.Description.DefaultRuntimeVersion);
         }
 
-        [Theory]
-        [InlineData("7.4", "7.4", null, null)]
-        [InlineData(null, "7.4", null, null)]
-        [InlineData("7.4", "7.4", "..\\..\\..\\..\\test\\TestWorkers\\ProbingPaths\\workers\\", ScriptConstants.FeatureFlagEnableDynamicWorkerResolution)]
-        [InlineData(null, "7.4", "..\\..\\..\\..\\test\\TestWorkers\\ProbingPaths\\workers\\", ScriptConstants.FeatureFlagEnableDynamicWorkerResolution)]
-        public void DefaultWorkerConfigs_Overrides_VersionAppSetting(string runtimeSettingVersion, string outputVersion, string probingPathValue, string enableProbingPath)
+        [Fact]
+        public void DefaultWorkerConfigs_Overrides_VersionAppSetting()
         {
-            var probingPath = string.IsNullOrEmpty(probingPathValue) ? probingPathValue : Path.GetFullPath(probingPathValue);
-
             var testEnvironment = new TestEnvironment();
-            testEnvironment.SetEnvironmentVariable("FUNCTIONS_WORKER_RUNTIME_VERSION", runtimeSettingVersion);
+            testEnvironment.SetEnvironmentVariable("FUNCTIONS_WORKER_RUNTIME_VERSION", "7.4");
             testEnvironment.SetEnvironmentVariable("FUNCTIONS_WORKER_RUNTIME", "powerShell");
-
-            var config = ScriptSettingsManager.CreateDefaultConfigurationBuilder().Build();
-
+            var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder();
+            var config = configBuilder.Build();
+            var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
-            var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(config, testLogger, testEnvironment, FileUtility.Instance, _testWorkerProfileManager, new HashSet<string>() { "powershell" }, new List<string>() { probingPath });
-            var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, testEnvironment, new TestMetricsLogger(), _testWorkerProfileManager, workerConfigurationResolver, enableProbingPath is null ? false : true, new HashSet<string>() { "powershell" });
+            var resolver = new StaticWorkerConfigurationResolver(config, testLogger);
+            var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, testEnvironment, new TestMetricsLogger(), _testWorkerProfileManager, resolver);
             var workerConfigs = configFactory.GetConfigs();
             var powershellWorkerConfig = workerConfigs.FirstOrDefault(w => w.Description.Language.Equals("powershell", StringComparison.OrdinalIgnoreCase));
-
             Assert.Equal(1, workerConfigs.Count);
             Assert.NotNull(powershellWorkerConfig);
-            Assert.Equal(outputVersion, powershellWorkerConfig.Description.DefaultRuntimeVersion);
-
-            if (probingPath is not null)
-            {
-                Assert.True(powershellWorkerConfig.Arguments.WorkerPath.Contains(probingPath));
-            }
+            Assert.Equal("7.4", powershellWorkerConfig.Description.DefaultRuntimeVersion);
         }
 
         [Theory]

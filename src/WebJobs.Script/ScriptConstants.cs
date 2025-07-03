@@ -134,7 +134,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string FeatureFlagDisableMergedWebHostScriptHostConfiguration = "DisableMergedConfiguration";
         public const string FeatureFlagEnableWorkerIndexing = "EnableWorkerIndexing";
         public const string FeatureFlagDisableDynamicWorkerResolution = "DisableDynamicWorkerResolution";
-        public const string FeatureFlagEnableDynamicWorkerResolution = "EnableDynamicWorkerResolution";
         public const string FeatureFlagEnableDebugTracing = "EnableDebugTracing";
         public const string FeatureFlagEnableProxies = "EnableProxies";
         public const string FeatureFlagStrictHISModeEnabled = "StrictHISModeEnabled";

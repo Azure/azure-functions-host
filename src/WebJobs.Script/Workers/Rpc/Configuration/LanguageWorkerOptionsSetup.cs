@@ -7,8 +7,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Text.Json;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
@@ -96,7 +94,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 workerConfigurationResolver = new StaticWorkerConfigurationResolver(configuration, _logger);
             }
 
-            var configFactory = new RpcWorkerConfigFactory(configuration, _logger, SystemRuntimeInformation.Instance, _environment, _metricsLogger, _workerProfileManager, workerConfigurationResolver, dynamicWorkerResolutionEnabled, workers);
+            var configFactory = new RpcWorkerConfigFactory(configuration, _logger, SystemRuntimeInformation.Instance, _environment, _metricsLogger, _workerProfileManager, workerConfigurationResolver, dynamicWorkerResolutionEnabled);
             options.WorkerConfigs = configFactory.GetConfigs();
         }
 
@@ -129,7 +127,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     var assemblyDir = Path.GetDirectoryName(assemblyPath);
                     var parentDir = Directory.GetParent(assemblyDir)?.Parent?.FullName; //Move 2 directories up to get to the SiteExtensions directory
 
+                    // Example probing path for Windows: "c:\\home\\SiteExtensions\\workers"
                     var windowsWorkerFullProbingPath = Path.Combine(parentDir, RpcWorkerConstants.DefaultWorkersDirectoryName);
+
                     probingPaths.Add(windowsWorkerFullProbingPath);
                 }
             }

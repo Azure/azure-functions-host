@@ -27,7 +27,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly string _workerRuntime;
         private readonly IEnvironment _environment;
         private readonly IWorkerConfigurationResolver _workerConfigurationResolver;
-        private readonly HashSet<string> _workersAvailableForResolutionViaHostingConfig;
         private readonly bool _dynamicWorkerResolutionEnabled;
         private readonly JsonSerializerOptions _jsonSerializerOptions = new()
         {
@@ -43,8 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                                         IMetricsLogger metricsLogger,
                                         IWorkerProfileManager workerProfileManager,
                                         IWorkerConfigurationResolver workerConfigurationResolver,
-                                        bool dynamicWorkerResolutionEnabled = false,
-                                        HashSet<string> workersAvailableForResolutionViaHostingConfig = null)
+                                        bool dynamicWorkerResolutionEnabled = false)
         {
             _config = config ?? throw new ArgumentNullException(nameof(config));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -56,7 +54,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _workerConfigurationResolver = workerConfigurationResolver ?? throw new ArgumentNullException(nameof(workerConfigurationResolver));
 
             _dynamicWorkerResolutionEnabled = dynamicWorkerResolutionEnabled;
-            _workersAvailableForResolutionViaHostingConfig = workersAvailableForResolutionViaHostingConfig;
             WorkersDirPath = WorkerConfigurationHelper.GetWorkersDirPath(config);
         }
 
@@ -134,15 +131,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
                     var workerConfig = WorkerConfigurationHelper.GetWorkerConfigJsonElement(workerConfigPath);
 
-                    RpcWorkerDescription workerDescription = WorkerConfigurationHelper.GetWorkerDescription(
-                        workerConfig: workerConfig,
-                        jsonSerializerOptions: _jsonSerializerOptions,
-                        workerDir: workerDir,
-                        profileManager: _profileManager,
-                        config: _config,
-                        logger: _logger,
-                        dynamicWorkerResolutionEnabled: _dynamicWorkerResolutionEnabled,
-                        workersAvailableForResolutionViaHostingConfig: _workersAvailableForResolutionViaHostingConfig);
+                    RpcWorkerDescription workerDescription = WorkerConfigurationHelper.GetWorkerDescription(workerConfig, _jsonSerializerOptions, workerDir, _profileManager, _config, _logger);
 
                     if (workerDescription.IsDisabled == true)
                     {

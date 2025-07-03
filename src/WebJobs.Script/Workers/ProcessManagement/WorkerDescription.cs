@@ -57,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         /// </summary>
         public bool? IsDisabled { get; set; }
 
-        public abstract void ApplyDefaultsAndValidate(string workerDirectory, ILogger logger, bool probingPathEnabled = false, HashSet<string> workersAvailableForResolutionViaHostingConfig = null);
+        public abstract void ApplyDefaultsAndValidate(string workerDirectory, ILogger logger);
 
         internal void ThrowIfFileNotExists(string inputFile, string paramName)
         {

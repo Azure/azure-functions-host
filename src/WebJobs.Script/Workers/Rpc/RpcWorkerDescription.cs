@@ -87,7 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         public override bool UseStdErrorStreamForErrorsOnly { get; set; } = false;
 
-        public override void ApplyDefaultsAndValidate(string workerDirectory, ILogger logger, bool dynamicWorkerResolutionEnabled = false, HashSet<string> workersAvailableForResolutionViaHostingConfig = null)
+        public override void ApplyDefaultsAndValidate(string workerDirectory, ILogger logger)
         {
             if (workerDirectory == null)
             {
@@ -95,23 +95,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
             Arguments = Arguments ?? new List<string>();
             WorkerDirectory = WorkerDirectory ?? workerDirectory;
-
             if (!string.IsNullOrEmpty(DefaultWorkerPath) && !Path.IsPathRooted(DefaultWorkerPath))
             {
-                // If dynamic worker resolution  enabled and DefaultWorkerPath contains FunctionWorkerRuntimeVersionSettingName
-                // then version becomes redundant in the path. Replacing version with an empty string to avoid duplication.
-                if (dynamicWorkerResolutionEnabled &&
-                    workersAvailableForResolutionViaHostingConfig is not null &&
-                    workersAvailableForResolutionViaHostingConfig.Contains(Language) &&
-                    DefaultWorkerPath.Contains(RpcWorkerConstants.RuntimeVersionPlaceholder))
-                {
-                    var versionDir = Path.GetFileName(WorkerDirectory);
-                    WorkerDirectory = WorkerDirectory.Replace(versionDir, string.Empty);
-                }
-
                 DefaultWorkerPath = Path.Combine(WorkerDirectory, DefaultWorkerPath);
             }
-
             if (string.IsNullOrEmpty(Language))
             {
                 throw new ValidationException($"WorkerDescription {nameof(Language)} cannot be empty");

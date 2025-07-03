@@ -1078,13 +1078,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 return false;
             }
 
-            bool isDynamicWorkerResolutionEnabled = FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableDynamicWorkerResolution, environment);
-
-            if (isDynamicWorkerResolutionEnabled)
-            {
-                return true;
-            }
-
             string workerRuntime = environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
 
             if (!environment.IsMultiLanguageRuntimeEnvironment() && !string.IsNullOrWhiteSpace(workerRuntime))

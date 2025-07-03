@@ -104,7 +104,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             string probingPathValue = string.Join(';', _probingPath1, string.Empty, "path-not-exists");
 
             testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, workerRuntime);
-            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableDynamicWorkerResolution);
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel, releaseChannel);
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.WorkerProbingPaths, probingPathValue);
 
@@ -148,7 +147,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             string probingPathValue = null;
 
             testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, workerRuntime);
-            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableDynamicWorkerResolution);
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel, releaseChannel);
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.WorkerProbingPaths, probingPathValue);
 
@@ -231,11 +229,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             string probingPathValue = null;
 
             testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, workerRuntime);
-            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableDynamicWorkerResolution);
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.WorkerProbingPaths, probingPathValue);
 
             var hostingOptions = new FunctionsHostingConfigOptions();
-            hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, null);
+            hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, workerRuntime);
 
             LanguageWorkerOptionsSetup setup = new LanguageWorkerOptionsSetup(configuration, loggerFactory, testEnvironment, testMetricLogger, testProfileManager.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
             LanguageWorkerOptions options = new LanguageWorkerOptions();

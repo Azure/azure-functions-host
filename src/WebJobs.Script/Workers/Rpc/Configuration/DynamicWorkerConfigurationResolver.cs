@@ -221,9 +221,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 workerDir: workerDir,
                 profileManager: _profileManager,
                 config: _config,
-                logger: _logger,
-                dynamicWorkerResolutionEnabled: true,
-                workersAvailableForResolutionViaHostingConfig: _workersAvailableForResolutionViaHostingConfig);
+                logger: _logger);
 
             if (workerDescription.IsDisabled == true)
             {
