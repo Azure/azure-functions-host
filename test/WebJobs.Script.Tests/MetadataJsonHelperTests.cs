@@ -87,7 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void CreateJObjectWithSanitizedPropertyValue_StringInput_ValidJson_SanitizesMatchingProperties()
         {
-            var json = "{ \"SensitiveProperty\": \"pwd=12345\", \"otherProperty\": \"value2\" }";
+            var json = """{ "SensitiveProperty": "pwd=12345", "otherProperty": "value2" }""";
             var propertyNames = ImmutableHashSet.Create("sensitiveproperty");
 
             var result = MetadataJsonHelper.CreateJObjectWithSanitizedPropertyValue(json, propertyNames);
@@ -112,6 +112,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(JTokenType.Null, result["connection"].Type); // Ensure null remains null
             Assert.Equal("value1", result["otherProperty1"].ToString());
             Assert.Equal("", result["otherProperty2"].ToString()); // Ensure empty string remains empty
+        }
+
+        [Fact]
+        public void CreateJObjectWithSanitizedPropertyValue_StringInput_DateTimeWithTimezoneOffset_RemainsUnchanged()
+        {
+            var json = """{ "timestamp": "2025-07-03T12:30:45+02:00", "otherProperty": "value2" }""";
+            var propertyNames = ImmutableHashSet.Create("sensitiveProperty");
+
+            var result = MetadataJsonHelper.CreateJObjectWithSanitizedPropertyValue(json, propertyNames);
+
+            Assert.Equal("2025-07-03T12:30:45+02:00", result["timestamp"].ToObject<string>());  // ensure the value remains unchanged(not parsed as DateTime)
+            Assert.Equal("value2", result["otherProperty"].ToString());
         }
     }
 }
