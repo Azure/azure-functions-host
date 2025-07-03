@@ -7,7 +7,6 @@ using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
 using System.Text.Json;
-using Microsoft.Azure.AppService.Proxy.Common.Extensions;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -38,20 +37,21 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _fileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
             _profileManager = workerProfileManager ?? throw new ArgumentNullException(nameof(workerProfileManager));
-            _workersAvailableForResolutionViaHostingConfig = workersAvailableForResolutionViaHostingConfig ?? throw new ArgumentNullException(nameof(workersAvailableForResolutionViaHostingConfig));
+            _workersAvailableForResolutionViaHostingConfig = workersAvailableForResolutionViaHostingConfig;
             _workerProbingPaths = workerProbingPaths;
         }
 
         public List<string> GetWorkerConfigs()
         {
             string probingPaths = _workerProbingPaths is not null ? string.Join(", ", _workerProbingPaths) : null;
-            _logger.LogDebug("Workers probing paths set to: {probingPaths}.", probingPaths);
-
-            // Dictionary of { FUNCTIONS_WORKER_RUNTIME environment variable value : path of workerConfig }
-            Dictionary<string, string> outputDict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            _logger.LogDebug("Workers probing paths set to: {probingPaths}", probingPaths);
 
             var workerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
             string releaseChannel = Utility.GetPlatformReleaseChannel(_environment);
+
+            // Dictionary of { FUNCTIONS_WORKER_RUNTIME environment variable value : path of workerConfig }
+            // Example: outputDict = {"java": "path1", "node": "path2", "dotnet-isolated": "path3"} for multilanguage worker scenario
+            Dictionary<string, string> outputDict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
             if (_workerProbingPaths is not null)
             {
@@ -70,11 +70,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                                 continue;
                             }
 
+                            bool workerUnavailableViaHostingConfig = _workersAvailableForResolutionViaHostingConfig is not null && !_workersAvailableForResolutionViaHostingConfig.Contains(workerRuntimeDir);
+
                             // Skip worker directories that don't match the current runtime or are not enabled via hosting config
-                            if (!_workersAvailableForResolutionViaHostingConfig.Contains(workerRuntimeDir) ||
+                            if (workerUnavailableViaHostingConfig ||
                                     (!_environment.IsMultiLanguageRuntimeEnvironment() &&
                                     !_environment.IsPlaceholderModeEnabled() &&
-                                    IsRequiredWorkerRuntime(workerRuntime, workerRuntimeDir)))
+                                    IsNotRequiredWorkerRuntime(workerRuntime, workerRuntimeDir)))
                             {
                                 continue;
                             }
@@ -100,8 +102,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
         private void PopulateWorkerConfigsFromProbingPaths(string languageWorkerPath, string languageWorkerFolder, string releaseChannel, Dictionary<string, string> outputDict)
         {
-            var versionsDir = _fileSystem.Directory.EnumerateDirectories(languageWorkerPath);
-            var versionPathMap = GetWorkerVersionsDescending(versionsDir);
+            var workerVersionPaths = _fileSystem.Directory.EnumerateDirectories(languageWorkerPath);
+
+            // Map of: (parsed worker version, worker path)
+            var versionPathMap = GetWorkerVersionsDescending(workerVersionPaths);
 
             int compatibleWorkerCount = 0;
 
@@ -110,7 +114,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                         (releaseChannel.Equals(ScriptConstants.StandardPlatformChannelNameUpper) ||
                         releaseChannel.Equals(ScriptConstants.ExtendedPlatformChannelNameUpper));
 
-            // language worker version
             foreach (var versionPair in versionPathMap)
             {
                 string languageWorkerVersionPath = versionPair.Value;
@@ -148,7 +151,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
                     if (outputDict.ContainsKey(workerDir) ||
                             (!_environment.IsMultiLanguageRuntimeEnvironment() &&
-                            IsRequiredWorkerRuntime(workerRuntime, workerDir)))
+                            IsNotRequiredWorkerRuntime(workerRuntime, workerDir)))
                     {
                         continue;
                     }
@@ -171,6 +174,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
         private SortedList<Version, string> GetWorkerVersionsDescending(IEnumerable<string> workerVersionPaths)
         {
+            // Map of: (parsed worker version, worker path)
             var versionPathMap = new SortedList<Version, string>(new DescendingVersionComparer());
 
             if (!workerVersionPaths.Any())
@@ -269,7 +273,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             return true;
         }
 
-        private bool IsRequiredWorkerRuntime(string workerRuntime, string workerDir)
+        private bool IsNotRequiredWorkerRuntime(string workerRuntime, string workerDir)
         {
             return workerRuntime is not null && !workerRuntime.Equals(workerDir, StringComparison.OrdinalIgnoreCase);
         }

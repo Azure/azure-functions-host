@@ -1067,8 +1067,8 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         // Dynamic Worker Resolution can be enabled or disabled via feature flags or hosting config options. Feature flags take precedence over hosting config options.
-        // Users can enable or disable worker resolution via setting the appropriate feature flags.
-        // Worker resolution can also be enabled for specific workers at stamp level via the hosting config options.
+        // Users can disable worker resolution via setting the appropriate feature flag.
+        // Worker resolution can be enabled for specific workers at stamp level via the hosting config options.
         public static bool IsDynamicWorkerResolutionEnabled(IEnvironment environment, HashSet<string> workersAvailableForResolutionViaHostingConfig)
         {
             bool isDynamicWorkerResolutionDisabled = FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagDisableDynamicWorkerResolution, environment);
