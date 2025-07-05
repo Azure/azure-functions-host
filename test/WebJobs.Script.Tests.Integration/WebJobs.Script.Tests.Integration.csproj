@@ -9,8 +9,9 @@
   </PropertyGroup>
 
   <Import Project="$(WorkersProps)" />
+  <Import Project="$(DecoupledWorkersProps)" />
 
-  <ItemGroup>
+	<ItemGroup>
     <Compile Remove="ScriptHostEndToEnd\ListenerFailureTests.cs" />
     <Compile Remove="ServiceBus\ServiceBusEndToEndTestBase.cs" />
     <Compile Remove="ServiceBus\ServiceBusTriggerCSharpEndToEndTests.cs" />
