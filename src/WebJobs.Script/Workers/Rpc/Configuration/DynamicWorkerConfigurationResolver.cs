@@ -76,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                             if (workerUnavailableViaHostingConfig ||
                                     (!_environment.IsMultiLanguageRuntimeEnvironment() &&
                                     !_environment.IsPlaceholderModeEnabled() &&
-                                    IsNotRequiredWorkerRuntime(workerRuntime, workerRuntimeDir)))
+                                    WorkerConfigurationHelper.ShouldSkipRuntime(workerRuntime, workerRuntimeDir)))
                             {
                                 continue;
                             }
@@ -111,8 +111,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
             bool isStandardOrExtendedChannel =
                         releaseChannel != null &&
-                        (releaseChannel.Equals(ScriptConstants.StandardPlatformChannelNameUpper) ||
-                        releaseChannel.Equals(ScriptConstants.ExtendedPlatformChannelNameUpper));
+                        (releaseChannel.Equals(ScriptConstants.StandardPlatformChannelNameUpper, StringComparison.OrdinalIgnoreCase) ||
+                        releaseChannel.Equals(ScriptConstants.ExtendedPlatformChannelNameUpper, StringComparison.OrdinalIgnoreCase));
 
             foreach (var versionPair in versionPathMap)
             {
@@ -151,7 +151,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
                     if (outputDict.ContainsKey(workerDir) ||
                             (!_environment.IsMultiLanguageRuntimeEnvironment() &&
-                            IsNotRequiredWorkerRuntime(workerRuntime, workerDir)))
+                            WorkerConfigurationHelper.ShouldSkipRuntime(workerRuntime, workerDir)))
                     {
                         continue;
                     }
@@ -216,9 +216,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             }
 
             // static capability resolution
-            bool doesHostRequirementMeet = DoesHostRequirementMeet(workerConfig);
+            bool hostHasRequiredCapabilities = DoesHostHasRequiredCapabilities(workerConfig);
 
-            if (!doesHostRequirementMeet)
+            if (!hostHasRequiredCapabilities)
             {
                 return false;
             }
@@ -245,9 +245,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         /// </summary>
         /// <param name="workerConfig"> Worker config: { "hostRequirements": [ "test-capability1", "test-capability2" ] }. </param>
         /// <returns> HashSet { "test-capability1", "test-capability2" }. </returns>
-        private HashSet<string> GetHostRequirements(JsonElement workerConfig)
+        private HashSet<string> GetHostRequirementsFromWorker(JsonElement workerConfig)
         {
-            HashSet<string> hostRequirements = new HashSet<string>();
+            HashSet<string> hostRequirements = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             if (workerConfig.TryGetProperty(RpcWorkerConstants.HostRequirementsSectionName, out JsonElement configSection))
             {
@@ -262,10 +262,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             return hostRequirements;
         }
 
-        private bool DoesHostRequirementMeet(JsonElement workerConfig)
+        private bool DoesHostHasRequiredCapabilities(JsonElement workerConfig)
         {
             HashSet<string> hostCapabilities = ScriptConstants.HostCapabilities;
-            HashSet<string> hostRequirements = GetHostRequirements(workerConfig);
+            HashSet<string> hostRequirements = GetHostRequirementsFromWorker(workerConfig);
 
             foreach (var hostRequirement in hostRequirements)
             {
@@ -276,11 +276,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             }
 
             return true;
-        }
-
-        private bool IsNotRequiredWorkerRuntime(string workerRuntime, string workerDir)
-        {
-            return workerRuntime is not null && !workerRuntime.Equals(workerDir, StringComparison.OrdinalIgnoreCase);
         }
 
         private string FormatVersion(string version)

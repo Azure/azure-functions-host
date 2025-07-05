@@ -167,7 +167,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                         _workerDescriptionDictionary[workerDescription.Language] = rpcWorkerConfig;
                         ReadLanguageWorkerFile(arguments.WorkerPath);
 
-                        _logger.LogDebug("Added WorkerConfig for language: {language} with Worker Path: {path}", workerDescription.Language, workerDescription.DefaultWorkerPath);
+                        _logger.LogDebug("Added WorkerConfig for language: {language} with worker path: {path}", workerDescription.Language, workerDescription.DefaultWorkerPath);
                     }
                 }
                 catch (Exception ex) when (!ex.IsFatal())

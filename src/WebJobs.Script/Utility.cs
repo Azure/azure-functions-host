@@ -1066,28 +1066,6 @@ namespace Microsoft.Azure.WebJobs.Script
             return workerIndexingEnabled && workerIndexingAvailable;
         }
 
-        // Dynamic Worker Resolution can be enabled or disabled via feature flags or hosting config options. Feature flags take precedence over hosting config options.
-        // Users can disable worker resolution via setting the appropriate feature flag.
-        // Worker resolution can be enabled for specific workers at stamp level via the hosting config options.
-        public static bool IsDynamicWorkerResolutionEnabled(IEnvironment environment, HashSet<string> workersAvailableForResolutionViaHostingConfig)
-        {
-            bool isDynamicWorkerResolutionDisabled = FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagDisableDynamicWorkerResolution, environment);
-
-            if (isDynamicWorkerResolutionDisabled)
-            {
-                return false;
-            }
-
-            string workerRuntime = environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
-
-            if (!environment.IsMultiLanguageRuntimeEnvironment() && !string.IsNullOrWhiteSpace(workerRuntime))
-            {
-                return workersAvailableForResolutionViaHostingConfig?.Contains(workerRuntime) ?? false;
-            }
-
-            return workersAvailableForResolutionViaHostingConfig?.Any() ?? false;
-        }
-
         public static void LogAutorestGeneratedJsonIfExists(string rootScriptPath, ILogger logger)
         {
             string autorestGeneratedJsonPath = Path.Combine(rootScriptPath, ScriptConstants.AutorestGeenratedMetadataFileName);

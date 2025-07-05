@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.WebJobs.Script.Tests;
@@ -547,6 +548,48 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             }
 
             Assert.Equal(expected, env.IsInValidationMode());
+        }
+
+        [Theory]
+        [InlineData(null, "node", true)]
+        [InlineData(null, "java|node", true)]
+        [InlineData(null, "", false)]
+        [InlineData(null, "| ", false)]
+        [InlineData(null, null, false)]
+        [InlineData(ScriptConstants.FeatureFlagDisableDynamicWorkerResolution, "node", false)]
+        [InlineData(ScriptConstants.FeatureFlagDisableDynamicWorkerResolution, "java|node", false)]
+        [InlineData(ScriptConstants.FeatureFlagDisableDynamicWorkerResolution, "| ", false)]
+
+        public void IsDynamicWorkerResolutionEnabled_HostingConfigAndFeatureFlags_WorksAsExpected(string featureFlagValue, string hostingConfigSetting, bool expected)
+        {
+            HashSet<string> hostingConfigEnabledWorkers = hostingConfigSetting?.Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToHashSet();
+
+            var testEnvironment = new TestEnvironment();
+            testEnvironment.SetEnvironmentVariable(AzureWebJobsFeatureFlags, featureFlagValue);
+
+            bool result = testEnvironment.IsDynamicWorkerResolutionEnabled(hostingConfigEnabledWorkers);
+
+            Assert.Equal(expected, result);
+        }
+
+        [Theory]
+        [InlineData("node", "node", null, true)]
+        [InlineData("node", "java", null, false)]
+        [InlineData("java|node", null, null, true)]
+        [InlineData("node", "node", "workflowapp", true)]
+        [InlineData("java|node", null, "workflowapp", true)]
+        [InlineData("| ", null, "workflowapp", false)]
+        public void IsDynamicWorkerResolutionEnabled_WorkerRuntimeAndMultiLanguage_WorksAsExpected(string hostingConfigSetting, string workerRuntime, string multilanguageApp, bool expected)
+        {
+            var testEnvironment = new TestEnvironment();
+            testEnvironment.SetEnvironmentVariable(AppKind, multilanguageApp);
+            testEnvironment.SetEnvironmentVariable(FunctionWorkerRuntime, workerRuntime);
+
+            HashSet<string> hostingConfigEnabledWorkers = hostingConfigSetting?.Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToHashSet();
+
+            bool result = testEnvironment.IsDynamicWorkerResolutionEnabled(hostingConfigEnabledWorkers);
+
+            Assert.Equal(expected, result);
         }
     }
 }

@@ -81,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
 
             HashSet<string> workers = GetWorkersAvailableForResolutionViaHostingConfig();
-            bool dynamicWorkerResolutionEnabled = Utility.IsDynamicWorkerResolutionEnabled(_environment, workers);
+            bool dynamicWorkerResolutionEnabled = _environment.IsDynamicWorkerResolutionEnabled(workers);
             IWorkerConfigurationResolver workerConfigurationResolver = null;
 
             if (dynamicWorkerResolutionEnabled)
@@ -98,14 +98,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             options.WorkerConfigs = configFactory.GetConfigs();
         }
 
-        internal HashSet<string> GetWorkersAvailableForResolutionViaHostingConfig()
-        {
-            return _functionsHostingConfigOptions.Value
-                        ?.WorkersAvailableForDynamicResolution
-                        ?.ToLowerInvariant()
-                        .Split("|", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                        .ToHashSet();
-        }
+        internal HashSet<string> GetWorkersAvailableForResolutionViaHostingConfig() =>
+                    (_functionsHostingConfigOptions.Value?.WorkersAvailableForDynamicResolution ?? string.Empty)
+                    .Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         internal List<string> GetWorkerProbingPaths()
         {
@@ -120,21 +116,30 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
             else
             {
-                if (_environment.IsAnyWindows())
+                if (_environment.IsWindowsEnvironment())
                 {
                     // Harcoded site extensions path for Windows until Antares sets it as an Environment variable.
-                    var assemblyPath = Assembly.GetExecutingAssembly().Location;
-                    var assemblyDir = Path.GetDirectoryName(assemblyPath);
-                    var parentDir = Directory.GetParent(assemblyDir)?.Parent?.FullName; //Move 2 directories up to get to the SiteExtensions directory
-
                     // Example probing path for Windows: "c:\\home\\SiteExtensions\\workers"
-                    var windowsWorkerFullProbingPath = Path.Combine(parentDir, RpcWorkerConstants.DefaultWorkersDirectoryName);
+                    string windowsSiteExtensionsPath = GetWindowsSiteExtensionsPath();
 
-                    probingPaths.Add(windowsWorkerFullProbingPath);
+                    if (string.IsNullOrWhiteSpace(windowsSiteExtensionsPath))
+                    {
+                        var windowsWorkerFullProbingPath = Path.Combine(windowsSiteExtensionsPath, RpcWorkerConstants.DefaultWorkersDirectoryName);
+                        probingPaths.Add(windowsWorkerFullProbingPath);
+                    }
                 }
             }
 
             return probingPaths;
+        }
+
+        internal string GetWindowsSiteExtensionsPath()
+        {
+            var assemblyPath = Assembly.GetExecutingAssembly().Location;
+            var assemblyDir = Path.GetDirectoryName(assemblyPath);
+
+            //Move 2 directories up to get to the SiteExtensions directory
+            return Directory.GetParent(assemblyDir)?.Parent?.FullName;
         }
     }
 

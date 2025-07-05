@@ -35,6 +35,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [InlineData("LATEST", "java\\2.19.0", "node\\3.10.1", "powershell\\7.4", "dotnet-isolated", "python")]
         [InlineData("STANDARD", "java\\2.18.0", "node\\3.10.1", "powershell\\7.4", "dotnet-isolated", "python")]
         [InlineData("EXTENDED", "java\\2.18.0", "node\\3.10.1", "powershell\\7.4", "dotnet-isolated", "python")]
+        [InlineData("laTest", "java\\2.19.0", "node\\3.10.1", "powershell\\7.4", "dotnet-isolated", "python")]
+        [InlineData("abc", "java\\2.19.0", "node\\3.10.1", "powershell\\7.4", "dotnet-isolated", "python")]
+        [InlineData("Standard", "java\\2.18.0", "node\\3.10.1", "powershell\\7.4", "dotnet-isolated", "python")]
         public void GetWorkerConfigs_MultiLanguageWorker_ReturnsExpectedConfigs(string releaseChannel, string java, string node, string powershell, string dotnetIsolated, string python)
         {
             // Arrange
@@ -60,7 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [InlineData(null, "LATEST")]
         [InlineData(null, "STANDARD")]
         [InlineData("Empty", "LATEST")]
-        [InlineData("Empty", "STANDARD")]
+        [InlineData("Empty", "abc")]
         public void GetWorkerConfigs_MultiLanguageWorker_NullOREmptyProbingPath_ReturnsExpectedConfigs(string probingPathValue, string releaseChannel)
         {
             // Arrange

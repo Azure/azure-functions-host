@@ -157,5 +157,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
             return workersDirPath;
         }
+
+        internal static bool ShouldSkipRuntime(string workerRuntime, string workerDir)
+        {
+            return workerRuntime is not null && !workerRuntime.Equals(workerDir, StringComparison.OrdinalIgnoreCase);
+        }
     }
 }

@@ -8,7 +8,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
     /// <summary>
     /// Interface to resolve the Worker Configs.
     /// </summary>
-    public interface IWorkerConfigurationResolver
+    internal interface IWorkerConfigurationResolver
     {
         List<string> GetWorkerConfigs();
     }
