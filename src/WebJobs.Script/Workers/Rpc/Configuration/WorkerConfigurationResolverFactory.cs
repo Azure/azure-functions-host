@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
         public IWorkerConfigurationResolver CreateResolver()
         {
-            HashSet<string> workersAvailableForResolution = WorkerConfigurationHelper.GetWorkersAvailableForResolutionViaHostingConfig(_functionsHostingConfigOptions);
+            HashSet<string> workersAvailableForResolution = GetWorkersAvailableForResolutionViaHostingConfig(_functionsHostingConfigOptions);
             List<string> probingPaths = GetWorkerProbingPaths();
             bool dynamicWorkerResolutionEnabled = _environment.IsDynamicWorkerResolutionEnabled(workersAvailableForResolution);
 
@@ -87,6 +87,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
             return probingPaths;
         }
+
+        internal static HashSet<string> GetWorkersAvailableForResolutionViaHostingConfig(IOptions<FunctionsHostingConfigOptions> functionsHostingConfigOptions) =>
+        (functionsHostingConfigOptions.Value?.WorkersAvailableForDynamicResolution ?? string.Empty)
+        .Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         internal static string GetWindowsSiteExtensionsPath()
         {
