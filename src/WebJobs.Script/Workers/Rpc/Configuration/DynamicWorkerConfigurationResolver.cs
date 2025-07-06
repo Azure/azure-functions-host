@@ -43,15 +43,34 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
         public List<string> GetWorkerConfigs()
         {
-            string probingPaths = _workerProbingPaths is not null ? string.Join(", ", _workerProbingPaths) : null;
-            _logger.LogDebug("Workers probing paths set to: {probingPaths}", probingPaths);
-
-            var workerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
-            string releaseChannel = Utility.GetPlatformReleaseChannel(_environment);
-
             // Dictionary of { FUNCTIONS_WORKER_RUNTIME environment variable value : path of workerConfig }
             // Example: outputDict = {"java": "path1", "node": "path2", "dotnet-isolated": "path3"} for multilanguage worker scenario
             Dictionary<string, string> outputDict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+            var workerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
+
+            // Search for worker configs in probing paths
+            ResolveWorkerConfigsFromProbingPaths(workerRuntime, outputDict);
+
+            if (!_environment.IsMultiLanguageRuntimeEnvironment() &&
+                workerRuntime is not null &&
+                outputDict.ContainsKey(workerRuntime))
+            {
+                return outputDict.Values.ToList();
+            }
+
+            // Search in fallback path if worker cannot be found in probing paths
+            ResolveWorkerConfigsFromWithinHost(workerRuntime, outputDict);
+
+            return outputDict.Values.ToList();
+        }
+
+        private void ResolveWorkerConfigsFromProbingPaths(string workerRuntime, Dictionary<string, string> outputDict)
+        {
+            string probingPaths = _workerProbingPaths is not null ? string.Join(", ", _workerProbingPaths) : null;
+            _logger.LogDebug("Workers probing paths set to: {probingPaths}", probingPaths);
+
+            string releaseChannel = Utility.GetPlatformReleaseChannel(_environment);
 
             if (_workerProbingPaths is not null)
             {
@@ -81,26 +100,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                                 continue;
                             }
 
-                            PopulateWorkerConfigsFromProbingPaths(workerRuntimePath, workerRuntimeDir, releaseChannel, outputDict);
+                            ResolveWorkerConfigsFromVersionsDirs(workerRuntimePath, workerRuntimeDir, releaseChannel, outputDict);
                         }
                     }
                 }
             }
-
-            if (!_environment.IsMultiLanguageRuntimeEnvironment() &&
-                workerRuntime is not null &&
-                outputDict.ContainsKey(workerRuntime))
-            {
-                return outputDict.Values.ToList();
-            }
-
-            // Search in fallback path if worker cannot be found in probing paths
-            PopulateWorkerConfigsFromWithinHost(workerRuntime, outputDict);
-
-            return outputDict.Values.ToList();
         }
 
-        private void PopulateWorkerConfigsFromProbingPaths(string languageWorkerPath, string languageWorkerFolder, string releaseChannel, Dictionary<string, string> outputDict)
+        private void ResolveWorkerConfigsFromVersionsDirs(string languageWorkerPath, string languageWorkerFolder, string releaseChannel, Dictionary<string, string> outputDict)
         {
             var workerVersionPaths = _fileSystem.Directory.EnumerateDirectories(languageWorkerPath);
 
@@ -137,7 +144,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             }
         }
 
-        private void PopulateWorkerConfigsFromWithinHost(string workerRuntime, Dictionary<string, string> outputDict)
+        private void ResolveWorkerConfigsFromWithinHost(string workerRuntime, Dictionary<string, string> outputDict)
         {
             var fallbackPath = WorkerConfigurationHelper.GetWorkersDirPath(_config);
 

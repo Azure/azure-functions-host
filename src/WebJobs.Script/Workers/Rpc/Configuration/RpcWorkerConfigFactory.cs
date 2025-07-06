@@ -27,7 +27,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly string _workerRuntime;
         private readonly IEnvironment _environment;
         private readonly IWorkerConfigurationResolver _workerConfigurationResolver;
-        private readonly bool _dynamicWorkerResolutionEnabled;
         private readonly JsonSerializerOptions _jsonSerializerOptions = new()
         {
             PropertyNameCaseInsensitive = true
@@ -41,8 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                                         IEnvironment environment,
                                         IMetricsLogger metricsLogger,
                                         IWorkerProfileManager workerProfileManager,
-                                        IWorkerConfigurationResolver workerConfigurationResolver,
-                                        bool dynamicWorkerResolutionEnabled = false)
+                                        IWorkerConfigurationResolver workerConfigurationResolver)
         {
             _config = config ?? throw new ArgumentNullException(nameof(config));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -53,7 +51,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _workerRuntime = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
             _workerConfigurationResolver = workerConfigurationResolver ?? throw new ArgumentNullException(nameof(workerConfigurationResolver));
 
-            _dynamicWorkerResolutionEnabled = dynamicWorkerResolutionEnabled;
             WorkersDirPath = WorkerConfigurationHelper.GetWorkersDirPath(config);
         }
 
@@ -107,8 +104,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     // After specialization, load worker config only for the specified runtime unless it's a multi-language app.
                     if (!string.IsNullOrWhiteSpace(_workerRuntime) &&
                         !_environment.IsPlaceholderModeEnabled() &&
-                        !_environment.IsMultiLanguageRuntimeEnvironment() &&
-                        !_dynamicWorkerResolutionEnabled)
+                        !_environment.IsMultiLanguageRuntimeEnvironment())
                     {
                         string workerRuntime = Path.GetFileName(workerDir);
                         // Only skip worker directories that don't match the current runtime.
