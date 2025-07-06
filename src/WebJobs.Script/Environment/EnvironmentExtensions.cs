@@ -697,8 +697,13 @@ namespace Microsoft.Azure.WebJobs.Script
             return string.IsNullOrEmpty(workerRuntime) || string.Equals(workerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase);
         }
 
+        public static string GetPlatformReleaseChannel(this IEnvironment environment)
+        {
+            return environment.GetEnvironmentVariable(AntaresPlatformReleaseChannel) ?? ScriptConstants.LatestPlatformChannelNameUpper;
+        }
+
         /// <summary>
-        /// Checks if Dynamic Worker Resolution feature is disabled via feature flag.
+        /// Checks if the Dynamic Worker Resolution feature is disabled via feature flag.
         /// Returns true if the feature is disabled, false otherwise.
         /// </summary>
         public static bool IsWorkerResolutionFeatureDisabled(this IEnvironment environment)
@@ -706,24 +711,26 @@ namespace Microsoft.Azure.WebJobs.Script
             return FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagDisableDynamicWorkerResolution, environment);
         }
 
-        // Dynamic Worker Resolution can be enabled or disabled via feature flags or hosting config options. Feature flags take precedence over hosting config options.
-        // Users can disable worker resolution via setting the appropriate feature flag.
-        // Worker resolution can be enabled for specific workers at stamp level via the hosting config options.
+        // Users can disable dynamic worker resolution via setting the appropriate feature flag.
+        // Worker resolution can be enabled for specific workers at the stamp level via hosting config options.
+        // Feature flag takes precedence over hosting config options.
         public static bool IsDynamicWorkerResolutionEnabled(this IEnvironment environment, HashSet<string> workersAvailableForResolutionViaHostingConfig)
         {
-            if (environment.IsWorkerResolutionFeatureDisabled())
+            if (environment.IsWorkerResolutionFeatureDisabled() || workersAvailableForResolutionViaHostingConfig is null)
             {
                 return false;
             }
 
             string workerRuntime = environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
 
-            if (!environment.IsMultiLanguageRuntimeEnvironment() && !string.IsNullOrWhiteSpace(workerRuntime))
+            if (!environment.IsMultiLanguageRuntimeEnvironment() &&
+                !string.IsNullOrWhiteSpace(workerRuntime) &&
+                !environment.IsPlaceholderModeEnabled())
             {
-                return workersAvailableForResolutionViaHostingConfig?.Contains(workerRuntime) ?? false;
+                return workersAvailableForResolutionViaHostingConfig.Contains(workerRuntime);
             }
 
-            return workersAvailableForResolutionViaHostingConfig?.Any() ?? false;
+            return workersAvailableForResolutionViaHostingConfig.Any();
         }
 
         public static bool IsApplicationInsightsAgentEnabled(this IEnvironment environment)

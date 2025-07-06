@@ -102,9 +102,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 try
                 {
                     // After specialization, load worker config only for the specified runtime unless it's a multi-language app.
-                    if (!string.IsNullOrWhiteSpace(_workerRuntime) &&
-                        !_environment.IsPlaceholderModeEnabled() &&
-                        !_environment.IsMultiLanguageRuntimeEnvironment())
+                    if (!string.IsNullOrWhiteSpace(_workerRuntime) && !_environment.IsPlaceholderModeEnabled() && !_environment.IsMultiLanguageRuntimeEnvironment())
                     {
                         string workerRuntime = Path.GetFileName(workerDir);
                         // Only skip worker directories that don't match the current runtime.

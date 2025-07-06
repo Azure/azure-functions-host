@@ -15,7 +15,7 @@ using Microsoft.Extensions.Options;
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 {
     /// <summary>
-    /// Factory for creating worker configuration resolvers based on current configuration.
+    /// Factory for creating worker configuration resolvers depending on if dynamic worker resolution is enabled or not.
     /// </summary>
     internal class WorkerConfigurationResolverFactory : IWorkerConfigurationResolverFactory
     {
@@ -46,17 +46,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
             if (dynamicWorkerResolutionEnabled)
             {
-                return new DynamicWorkerConfigurationResolver(
-                    _configuration,
-                    _logger,
-                    _environment,
-                    FileUtility.Instance,
-                    _workerProfileManager,
-                    workersAvailableForResolution,
-                    probingPaths);
+                return new DynamicWorkerConfigurationResolver(_configuration,
+                                                                _logger,
+                                                                _environment,
+                                                                FileUtility.Instance,
+                                                                _workerProfileManager,
+                                                                workersAvailableForResolution,
+                                                                probingPaths);
             }
 
-            return new StaticWorkerConfigurationResolver(_configuration, _logger);
+            return new DefaultWorkerConfigurationResolver(_configuration, _logger);
         }
 
         internal List<string> GetWorkerProbingPaths()
@@ -89,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             return probingPaths;
         }
 
-        internal string GetWindowsSiteExtensionsPath()
+        internal static string GetWindowsSiteExtensionsPath()
         {
             var assemblyPath = Assembly.GetExecutingAssembly().Location;
             var assemblyDir = Path.GetDirectoryName(assemblyPath);

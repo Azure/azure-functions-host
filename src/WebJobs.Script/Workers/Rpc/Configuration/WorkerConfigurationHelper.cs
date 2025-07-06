@@ -161,11 +161,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             return workersDirPath;
         }
 
-        internal static bool ShouldSkipRuntime(string workerRuntime, string workerDir)
-        {
-            return workerRuntime is not null && !workerRuntime.Equals(workerDir, StringComparison.OrdinalIgnoreCase);
-        }
-
         internal static HashSet<string> GetWorkersAvailableForResolutionViaHostingConfig(IOptions<FunctionsHostingConfigOptions> functionsHostingConfigOptions) =>
                 (functionsHostingConfigOptions.Value?.WorkersAvailableForDynamicResolution ?? string.Empty)
                 .Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)

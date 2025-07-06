@@ -13,6 +13,8 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 {
+    // This class resolves worker configurations dynamically based on the current environment and configuration settings.
+    // It searches for worker configs in specified probing paths and the fallback path, and returns a list of worker configuration paths.
     internal sealed class DynamicWorkerConfigurationResolver : IWorkerConfigurationResolver
     {
         private readonly IConfiguration _config;
@@ -70,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             string probingPaths = _workerProbingPaths is not null ? string.Join(", ", _workerProbingPaths) : null;
             _logger.LogDebug("Workers probing paths set to: {probingPaths}", probingPaths);
 
-            string releaseChannel = Utility.GetPlatformReleaseChannel(_environment);
+            string releaseChannel = EnvironmentExtensions.GetPlatformReleaseChannel(_environment);
 
             if (_workerProbingPaths is not null)
             {
@@ -95,7 +97,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                             if (workerUnavailableViaHostingConfig ||
                                     (!_environment.IsMultiLanguageRuntimeEnvironment() &&
                                     !_environment.IsPlaceholderModeEnabled() &&
-                                    WorkerConfigurationHelper.ShouldSkipRuntime(workerRuntime, workerRuntimeDir)))
+                                    ShouldSkipWorkerDirectory(workerRuntime, workerRuntimeDir)))
                             {
                                 continue;
                             }
@@ -158,7 +160,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
                     if (outputDict.ContainsKey(workerDir) ||
                             (!_environment.IsMultiLanguageRuntimeEnvironment() &&
-                            WorkerConfigurationHelper.ShouldSkipRuntime(workerRuntime, workerDir)))
+                            ShouldSkipWorkerDirectory(workerRuntime, workerDir)))
                     {
                         continue;
                     }
@@ -283,6 +285,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             }
 
             return true;
+        }
+
+        internal static bool ShouldSkipWorkerDirectory(string workerRuntime, string workerDir)
+        {
+            return workerRuntime is not null && !workerRuntime.Equals(workerDir, StringComparison.OrdinalIgnoreCase);
         }
 
         private string FormatVersion(string version)

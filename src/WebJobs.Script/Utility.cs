@@ -24,7 +24,6 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
@@ -1126,11 +1125,6 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 return FunctionAppContentEditingState.NotAllowed;
             }
-        }
-
-        public static string GetPlatformReleaseChannel(IEnvironment environment)
-        {
-            return environment.GetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel) ?? ScriptConstants.LatestPlatformChannelNameUpper;
         }
 
         public static bool TryReadAsBool(IDictionary<string, object> properties, string propertyKey, out bool result)
