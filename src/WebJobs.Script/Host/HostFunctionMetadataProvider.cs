@@ -135,7 +135,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 foreach (JObject binding in bindingArray)
                 {
-                    var sanitizedJObject = MetadataJsonHelper.CreateJObjectWithSanitizedPropertyValue(binding, ScriptConstants.SensitiveMetadataBindingPropertyNames);
+                    var sanitizedJObject = MetadataJsonHelper.SanitizeProperties(binding, ScriptConstants.SensitiveMetadataBindingPropertyNames);
 
                     BindingMetadata bindingMetadata = BindingMetadata.Create(sanitizedJObject);
                     functionMetadata.Bindings.Add(bindingMetadata);

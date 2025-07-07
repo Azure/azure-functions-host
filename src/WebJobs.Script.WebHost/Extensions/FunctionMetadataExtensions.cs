@@ -185,7 +185,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
                 {
                     if (bindingsArray[i] is JObject binding)
                     {
-                        bindingsArray[i] = MetadataJsonHelper.CreateJObjectWithSanitizedPropertyValue(binding, ScriptConstants.SensitiveMetadataBindingPropertyNames);
+                        bindingsArray[i] = MetadataJsonHelper.SanitizeProperties(binding, ScriptConstants.SensitiveMetadataBindingPropertyNames);
                     }
                 }
             }

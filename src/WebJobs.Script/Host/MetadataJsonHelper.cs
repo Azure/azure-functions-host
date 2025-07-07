@@ -17,16 +17,17 @@ namespace Microsoft.Azure.WebJobs.Script
         /// Sanitizes the values of top-level properties in the specified <see cref="JObject"/>
         /// whose names match any in the provided collection, using case-insensitive comparison.
         /// The original property casing is preserved.
+        /// <strong>Note:</strong> This method mutates the input <see cref="JObject"/> only if one or more property values are sanitized.
         /// </summary>
-        /// <param name="jsonObject">The <see cref="JObject"/> to sanitize.</param>
+        /// <param name="jsonObject">The <see cref="JObject"/> to sanitize. This object may be modified in place.</param>
         /// <param name="propertyNames">A collection of top-level property names to sanitize.</param>
         /// <returns>
-        /// A <see cref="JObject"/> with the specified properties' values sanitized if found.
+        /// The modified <see cref="JObject"/> with the specified properties' values sanitized if found.
         /// </returns>
         /// <exception cref="ArgumentNullException">
         /// Thrown if <paramref name="jsonObject"/> or <paramref name="propertyNames"/> is <c>null</c>.
         /// </exception>
-        public static JObject CreateJObjectWithSanitizedPropertyValue(JObject jsonObject, ImmutableHashSet<string> propertyNames)
+        public static JObject SanitizeProperties(JObject jsonObject, ImmutableHashSet<string> propertyNames)
         {
             ArgumentNullException.ThrowIfNull(jsonObject, nameof(jsonObject));
             ArgumentNullException.ThrowIfNull(propertyNames, nameof(propertyNames));
@@ -92,7 +93,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             var jsonObject = JObject.Load(jsonReader);
 
-            return CreateJObjectWithSanitizedPropertyValue(jsonObject, propertyNames);
+            return SanitizeProperties(jsonObject, propertyNames);
         }
     }
 }

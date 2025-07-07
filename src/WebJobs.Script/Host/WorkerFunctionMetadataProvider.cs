@@ -8,7 +8,6 @@ using System.IO.Abstractions;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -30,7 +29,6 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IEnvironment _environment;
         private readonly IWebHostRpcWorkerChannelManager _channelManager;
         private readonly IScriptHostManager _scriptHostManager;
-        private readonly JsonSerializerSettings _dateTimeSerializerSettings;
         private string _workerRuntime;
         private ImmutableArray<FunctionMetadata> _functions;
         private IHost _currentJobHost = null;
@@ -48,7 +46,6 @@ namespace Microsoft.Azure.WebJobs.Script
             _channelManager = webHostRpcWorkerChannelManager;
             _scriptHostManager = scriptHostManager;
             _workerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
-            _dateTimeSerializerSettings = new JsonSerializerSettings { DateParseHandling = DateParseHandling.None };
 
             _scriptHostManager.ActiveHostChanged += OnHostChanged;
         }
@@ -290,7 +287,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             foreach (string binding in rawBindings)
             {
-                var sanitizedBinding = MetadataJsonHelper.CreateJObjectWithSanitizedPropertyValue(binding, ScriptConstants.SensitiveMetadataBindingPropertyNames);
+                var sanitizedBinding = MetadataJsonHelper.CreateJObjectWithSanitizedPropertyValue(binding, ScriptConstants.SensitiveMetadataBindingPropertyNames, DateParseHandling.None);
                 var functionBinding = BindingMetadata.Create(sanitizedBinding);
 
                 Utility.ValidateBinding(functionBinding);

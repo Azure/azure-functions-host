@@ -16,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             JObject jsonObject = null;
             ImmutableHashSet<string> propertyNames = ["sensitiveProperty"];
 
-            Assert.Throws<ArgumentNullException>(() => MetadataJsonHelper.CreateJObjectWithSanitizedPropertyValue(jsonObject, propertyNames));
+            Assert.Throws<ArgumentNullException>(() => MetadataJsonHelper.SanitizeProperties(jsonObject, propertyNames));
         }
 
         [Fact]
@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var jsonObject = new JObject();
             ImmutableHashSet<string> propertyNames = null;
 
-            Assert.Throws<ArgumentNullException>(() => MetadataJsonHelper.CreateJObjectWithSanitizedPropertyValue(jsonObject, propertyNames));
+            Assert.Throws<ArgumentNullException>(() => MetadataJsonHelper.SanitizeProperties(jsonObject, propertyNames));
         }
 
         [Fact]
@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
             var sensitiveBindingPropertyNames = ImmutableHashSet.Create("sensitiveProperty1", "sensitiveproperty2", "sensitiveproperty3");
 
-            var result = MetadataJsonHelper.CreateJObjectWithSanitizedPropertyValue(jsonObject, sensitiveBindingPropertyNames);
+            var result = MetadataJsonHelper.SanitizeProperties(jsonObject, sensitiveBindingPropertyNames);
 
             Assert.Equal("[Hidden Credential]", result["sensitiveProperty1"].ToString());
             Assert.Equal("MyConnection", result["sensitiveProperty2"].ToString());
@@ -59,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
             var sensitiveBindingPropertyNames = ImmutableHashSet.Create("sensitiveProperty");
 
-            var result = MetadataJsonHelper.CreateJObjectWithSanitizedPropertyValue(jsonObject, sensitiveBindingPropertyNames);
+            var result = MetadataJsonHelper.SanitizeProperties(jsonObject, sensitiveBindingPropertyNames);
 
             Assert.Equal("value1", result["otherProperty1"].ToString());
             Assert.Equal("value2", result["otherProperty2"].ToString());
@@ -107,7 +107,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
             var propertyNames = ImmutableHashSet.Create("connection", "otherProperty2");
 
-            var result = MetadataJsonHelper.CreateJObjectWithSanitizedPropertyValue(jsonObject, propertyNames);
+            var result = MetadataJsonHelper.SanitizeProperties(jsonObject, propertyNames);
 
             Assert.Equal(JTokenType.Null, result["connection"].Type); // Ensure null remains null
             Assert.Equal("value1", result["otherProperty1"].ToString());
