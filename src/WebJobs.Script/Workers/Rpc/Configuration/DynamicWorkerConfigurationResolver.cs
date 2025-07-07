@@ -69,41 +69,42 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
         private void ResolveWorkerConfigsFromProbingPaths(string workerRuntime, Dictionary<string, string> outputDict)
         {
-            string probingPaths = _workerProbingPaths is not null ? string.Join(", ", _workerProbingPaths) : null;
-            _logger.LogDebug("Workers probing paths set to: {probingPaths}", probingPaths);
+            if (_workerProbingPaths is null)
+            {
+                return;
+            }
+
+            _logger.LogDebug("Workers probing paths set to: {probingPaths}", string.Join(", ", _workerProbingPaths));
 
             string releaseChannel = EnvironmentExtensions.GetPlatformReleaseChannel(_environment);
 
-            if (_workerProbingPaths is not null)
+            // probing path directory structure is: <probingPath>/<workerRuntimeDir>/<workerVersion>/<worker.config.json>
+            foreach (var probingPath in _workerProbingPaths)
             {
-                // probing path directory structure is: <probingPath>/<workerRuntimeDir>/<workerVersion>/<worker.config.json>
-                foreach (var probingPath in _workerProbingPaths)
+                if (!string.IsNullOrWhiteSpace(probingPath) && _fileSystem.Directory.Exists(probingPath))
                 {
-                    if (!string.IsNullOrEmpty(probingPath) && _fileSystem.Directory.Exists(probingPath))
+                    foreach (var workerRuntimePath in _fileSystem.Directory.EnumerateDirectories(probingPath))
                     {
-                        foreach (var workerRuntimePath in _fileSystem.Directory.EnumerateDirectories(probingPath))
+                        string workerRuntimeDir = Path.GetFileName(workerRuntimePath);
+
+                        // If probing paths are malformed and have duplicate directories of the same language worker (eg. due to different casing)
+                        if (outputDict.ContainsKey(workerRuntimeDir))
                         {
-                            string workerRuntimeDir = Path.GetFileName(workerRuntimePath);
-
-                            // If probing paths are malformed and have duplicate directories of the same language worker (eg. due to different casing)
-                            if (outputDict.ContainsKey(workerRuntimeDir))
-                            {
-                                continue;
-                            }
-
-                            bool workerUnavailableViaHostingConfig = _workersAvailableForResolutionViaHostingConfig is not null && !_workersAvailableForResolutionViaHostingConfig.Contains(workerRuntimeDir);
-
-                            // Skip worker directories that don't match the current runtime or are not enabled via hosting config
-                            if (workerUnavailableViaHostingConfig ||
-                                    (!_environment.IsMultiLanguageRuntimeEnvironment() &&
-                                    !_environment.IsPlaceholderModeEnabled() &&
-                                    ShouldSkipWorkerDirectory(workerRuntime, workerRuntimeDir)))
-                            {
-                                continue;
-                            }
-
-                            ResolveWorkerConfigsFromVersionsDirs(workerRuntimePath, workerRuntimeDir, releaseChannel, outputDict);
+                            continue;
                         }
+
+                        bool workerUnavailableViaHostingConfig = _workersAvailableForResolutionViaHostingConfig is not null && !_workersAvailableForResolutionViaHostingConfig.Contains(workerRuntimeDir);
+
+                        // Skip worker directories that don't match the current runtime or are not enabled via hosting config
+                        if (workerUnavailableViaHostingConfig ||
+                                (!_environment.IsMultiLanguageRuntimeEnvironment() &&
+                                !_environment.IsPlaceholderModeEnabled() &&
+                                ShouldSkipWorkerDirectory(workerRuntime, workerRuntimeDir)))
+                        {
+                            continue;
+                        }
+
+                        ResolveWorkerConfigsFromVersionsDirs(workerRuntimePath, workerRuntimeDir, releaseChannel, outputDict);
                     }
                 }
             }
@@ -119,7 +120,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             int compatibleWorkerCount = 0;
 
             bool isStandardOrExtendedChannel =
-                        releaseChannel != null &&
+                        !string.IsNullOrWhiteSpace(releaseChannel) &&
                         (releaseChannel.Equals(ScriptConstants.StandardPlatformChannelNameUpper, StringComparison.OrdinalIgnoreCase) ||
                         releaseChannel.Equals(ScriptConstants.ExtendedPlatformChannelNameUpper, StringComparison.OrdinalIgnoreCase));
 
@@ -152,15 +153,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
             _logger.LogDebug("Searching for worker configs in the fallback directory: {fallbackPath}", fallbackPath);
 
-            if (fallbackPath != null && _fileSystem.Directory.Exists(fallbackPath))
+            if (!string.IsNullOrEmpty(fallbackPath) && _fileSystem.Directory.Exists(fallbackPath))
             {
                 foreach (var workerPath in _fileSystem.Directory.EnumerateDirectories(fallbackPath))
                 {
                     string workerDir = Path.GetFileName(workerPath).ToLower();
 
                     if (outputDict.ContainsKey(workerDir) ||
-                            (!_environment.IsMultiLanguageRuntimeEnvironment() &&
-                            ShouldSkipWorkerDirectory(workerRuntime, workerDir)))
+                        (!_environment.IsMultiLanguageRuntimeEnvironment() &&
+                        ShouldSkipWorkerDirectory(workerRuntime, workerDir)))
                     {
                         continue;
                     }
