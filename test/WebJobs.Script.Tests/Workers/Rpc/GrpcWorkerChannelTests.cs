@@ -574,21 +574,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
-        public async Task InFlight_Functions_FailedWithException()
-        {
-            await CreateDefaultWorkerChannel();
-            var resultSource = new TaskCompletionSource<ScriptInvocationResult>();
-            ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(Guid.NewGuid(), resultSource);
-            await _workerChannel.SendInvocationRequest(scriptInvocationContext);
-            Assert.True(_workerChannel.IsExecutingInvocation(scriptInvocationContext.ExecutionContext.InvocationId.ToString()));
-            Exception workerException = new Exception("worker failed");
-            _workerChannel.Shutdown(workerException);
-            Assert.False(_workerChannel.IsExecutingInvocation(scriptInvocationContext.ExecutionContext.InvocationId.ToString()));
-            Assert.Equal(TaskStatus.Faulted, resultSource.Task.Status);
-            Assert.Equal(workerException, resultSource.Task.Exception.InnerException);
-        }
-
-        [Fact]
         public async Task SendLoadRequests_PublishesOutboundEvents()
         {
             await CreateDefaultWorkerChannel();
@@ -1567,7 +1552,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [InlineData(3, true)]
         [InlineData(1, false)]
         [InlineData(3, false)]
-        public async Task Shutdown_WithInFlightInvocations_FailsInvocation(int numberOfInvocations, bool hasFailureException)
+        public async Task Shutdown_FailsInFlightInvocations(int numberOfInvocations, bool hasFailureException)
         {
             await CreateDefaultWorkerChannel();
 

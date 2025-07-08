@@ -152,6 +152,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
         public void Shutdown(Exception exception)
         {
+            // Executions are no longer executing
+            _executingInvocations = new HashSet<string>();
             return;
         }
 
