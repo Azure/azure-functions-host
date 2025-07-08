@@ -142,13 +142,23 @@ jobs:
       scriptType: 'pscore'
       scriptLocation: 'inlineScript'
       inlineScript: |
+        Write-Host "=== [PowerShell Task] Setting Diagnostic Environment Variables ==="
+        $env:COMPlus_ForceLogging = "1"
+        $env:COMPlus_LogLevel = "9"
+        $env:COMPlus_LogToConsole = "1"
+
         $dateTimeUtc = [datetimeoffset]::UtcNow
         $query = @"
         INSERT INTO [dbo].ColdStart (DateTimeUtc, OS, Description, Document)
         VALUES ('$dateTimeUtc', 'foo', 'bar', '{}')
         "@
 
-        Invoke-Sqlcmd -ConnectionString "$(ColdStartResultsSqlConnectionString)" -Query $query
+        try {
+            Invoke-Sqlcmd -ConnectionString "$(ColdStartResultsSqlConnectionString)" -Query $query
+        } catch {
+            Write-Host "=== [PowerShell Task] Invoke-Sqlcmd failed ==="
+            Write-Host $_.Exception.Message
+        }
 
     displayName: Persist (PS)
 
