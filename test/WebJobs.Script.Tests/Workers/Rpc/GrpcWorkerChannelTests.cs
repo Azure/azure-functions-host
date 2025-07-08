@@ -1547,6 +1547,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.Equal(TaskStatus.RanToCompletion, resultSource.Task.Status);
         }
 
+        [Fact]
+        public async Task Shutdown_WithNoExecutingInvocations_DoesNotThrow()
+        {
+            await CreateDefaultWorkerChannel();
+            var workerException = new Exception("Worker process crashed");
+
+            // Should not throw even if there are no executing invocations
+            _workerChannel.Shutdown(workerException);
+        }
+
         [Theory]
         [InlineData(1, true)]
         [InlineData(3, true)]

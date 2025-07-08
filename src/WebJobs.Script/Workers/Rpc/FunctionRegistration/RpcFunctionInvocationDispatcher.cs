@@ -676,7 +676,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             Dispose(true);
         }
 
-        public async Task<bool> RestartWorkerWithInvocationIdAsync(string invocationId)
+        public async Task<bool> RestartWorkerWithInvocationIdAsync(string invocationId, Exception exception = null)
         {
             // Dispose and restart errored channel with the particular invocation id
             var channels = await GetInitializedWorkerChannelsAsync();
@@ -685,7 +685,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 if (channel.IsExecutingInvocation(invocationId))
                 {
                     _logger.LogDebug($"Restarting channel with workerId: '{channel.Id}' that is executing invocation: '{invocationId}' and timed out.");
-                    await DisposeAndRestartWorkerChannel(_workerRuntime, channel.Id);
+                    await DisposeAndRestartWorkerChannel(_workerRuntime, channel.Id, exception);
                     return true;
                 }
             }
