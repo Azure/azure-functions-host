@@ -147,18 +147,25 @@ jobs:
         $env:COMPlus_LogLevel = "9"
         $env:COMPlus_LogToConsole = "1"
 
+        $accessToken = az account get-access-token --resource https://database.windows.net/ --query accessToken -o tsv
+
+        # Create SQL connection
+        $connection = New-Object System.Data.SqlClient.SqlConnection
+        $connection.ConnectionString = "$(ColdStartResultsSqlConnectionString)"
+        $connection.AccessToken = $accessToken
+        $connection.Open()
+
         $dateTimeUtc = [datetimeoffset]::UtcNow
         $query = @"
         INSERT INTO [dbo].ColdStart (DateTimeUtc, OS, Description, Document)
         VALUES ('$dateTimeUtc', 'foo', 'bar', '{}')
         "@
 
-        try {
-            Invoke-Sqlcmd -ConnectionString "$(ColdStartResultsSqlConnectionString)" -Query $query
-        } catch {
-            Write-Host "=== [PowerShell Task] Invoke-Sqlcmd failed ==="
-            Write-Host $_.Exception.Message
-        }
+        # Execute command
+        $command = $connection.CreateCommand()
+        $command.CommandText = $query
+        $command.ExecuteNonQuery()
+        $connection.Close()
 
     displayName: Persist (PS)
 
