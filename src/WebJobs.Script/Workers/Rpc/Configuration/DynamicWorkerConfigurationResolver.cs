@@ -47,6 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         {
             // Dictionary of { FUNCTIONS_WORKER_RUNTIME environment variable value : path of workerConfig }
             // Example: outputDict = {"java": "path1", "node": "path2", "dotnet-isolated": "path3"} for multilanguage worker scenario
+            // Sample path: "<rootProbingPath>/<workerRuntimeDir>/<workerVersion>/"
             Dictionary<string, string> outputDict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
             var workerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
@@ -115,6 +116,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             var workerVersionPaths = _fileSystem.Directory.EnumerateDirectories(languageWorkerPath);
 
             // Map of: (parsed worker version, worker path)
+            // Example: [ (1.0.0, "<rootProbingPath>/java/1.0.0"), (2.0.0, "<rootProbingPath>/java/2.0.0") ]
             var versionPathMap = GetWorkerVersionsDescending(workerVersionPaths);
 
             int compatibleWorkerCount = 0;
@@ -135,13 +137,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
                     if (string.IsNullOrEmpty(releaseChannel) || !isStandardOrExtendedChannel)
                     {
-                        break; // latest version is the default
+                        return; // latest version is the default
                     }
 
                     if (compatibleWorkerCount > 1 && isStandardOrExtendedChannel)
                     {
                         outputDict[languageWorkerFolder] = languageWorkerVersionPath;
-                        break;
+                        return;
                     }
                 }
             }
@@ -176,7 +178,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                         workerRuntime is not null &&
                         outputDict.ContainsKey(workerRuntime))
                     {
-                        break;
+                        return;
                     }
                 }
             }
@@ -185,6 +187,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         private SortedList<Version, string> GetWorkerVersionsDescending(IEnumerable<string> workerVersionPaths)
         {
             // Map of: (parsed worker version, worker path)
+            // Example: [ (1.0.0, "<rootProbingPath>/java/1.0.0"), (2.0.0, "<rootProbingPath>/java/2.0.0") ]
             var versionPathMap = new SortedList<Version, string>(new DescendingVersionComparer());
 
             if (!workerVersionPaths.Any())
