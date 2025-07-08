@@ -1558,12 +1558,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         public void Shutdown(Exception workerException)
         {
-            WorkerShutdownException shutdownException = new WorkerShutdownException("Worker encountered a fatal error and is shutting down.");
-
-            if (workerException is not null)
-            {
-                shutdownException.Reason = workerException.Message;
-            }
+            WorkerShutdownException shutdownException = workerException is not null
+                ? new WorkerShutdownException("Worker encountered a fatal error and is shutting down.", workerException.Message)
+                : new WorkerShutdownException("Worker encountered a fatal error and is shutting down.");
 
             foreach (var invocation in _executingInvocations?.Values)
             {

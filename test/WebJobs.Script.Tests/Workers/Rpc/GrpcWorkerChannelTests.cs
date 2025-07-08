@@ -14,6 +14,7 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Exceptions;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
@@ -581,7 +582,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             await _workerChannel.SendInvocationRequest(scriptInvocationContext);
             Assert.True(_workerChannel.IsExecutingInvocation(scriptInvocationContext.ExecutionContext.InvocationId.ToString()));
             Exception workerException = new Exception("worker failed");
-            _workerChannel.TryFailExecutions(workerException);
+            _workerChannel.Shutdown(workerException);
             Assert.False(_workerChannel.IsExecutingInvocation(scriptInvocationContext.ExecutionContext.InvocationId.ToString()));
             Assert.Equal(TaskStatus.Faulted, resultSource.Task.Status);
             Assert.Equal(workerException, resultSource.Task.Exception.InnerException);
@@ -1559,6 +1560,62 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             await _workerChannel.InvokeResponse(BuildSuccessfulInvocationResponseWithNullOutputBinding(invocationId.ToString()));
 
             Assert.Equal(TaskStatus.RanToCompletion, resultSource.Task.Status);
+        }
+
+        [Theory]
+        [InlineData(1, true)]
+        [InlineData(3, true)]
+        [InlineData(1, false)]
+        [InlineData(3, false)]
+        public async Task Shutdown_WithInFlightInvocations_FailsInvocation(int numberOfInvocations, bool hasFailureException)
+        {
+            await CreateDefaultWorkerChannel();
+
+            var invocationContexts = new List<ScriptInvocationContext>();
+            var invocationIds = new List<Guid>();
+
+            for (int i = 0; i < numberOfInvocations; i++)
+            {
+                var invocationId = Guid.NewGuid();
+                var resultSource = new TaskCompletionSource<ScriptInvocationResult>();
+
+                var invocationContext = GetTestScriptInvocationContext(
+                    invocationId,
+                    resultSource,
+                    logger: _logger,
+                    scriptRootPath: _scriptRootPath);
+
+                await _workerChannel.SendInvocationRequest(invocationContext);
+
+                invocationContexts.Add(invocationContext);
+                invocationIds.Add(invocationId);
+            }
+
+            for (int i = 0; i < numberOfInvocations; i++)
+            {
+                Assert.True(_workerChannel.IsExecutingInvocation(invocationIds[i].ToString()),
+                    $"Invocation {i} should be executing");
+            }
+
+            var workerException = hasFailureException ? new Exception("Worker process crashed") : null;
+
+            _workerChannel.Shutdown(workerException);
+
+            for (int i = 0; i < numberOfInvocations; i++)
+            {
+                Assert.False(_workerChannel.IsExecutingInvocation(invocationIds[i].ToString()),
+                    $"Invocation {i} should no longer be executing");
+
+                var resultSource = invocationContexts[i].ResultSource;
+                Assert.Equal(TaskStatus.Faulted, resultSource.Task.Status);
+                Assert.IsType<WorkerShutdownException>(resultSource.Task.Exception.InnerException);
+
+                if (hasFailureException)
+                {
+                    var workerShutdownException = (WorkerShutdownException)resultSource.Task.Exception.InnerException;
+                    Assert.Contains(workerException.Message, workerShutdownException.Reason);
+                }
+            }
         }
 
         private static IEnumerable<FunctionMetadata> GetTestFunctionsList(string runtime, bool addWorkerProperties = false)
