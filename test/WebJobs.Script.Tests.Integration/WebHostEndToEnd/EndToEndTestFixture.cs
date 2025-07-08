@@ -359,6 +359,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private class TestExtensionBundleManager : IExtensionBundleManager
         {
+            public string GetOutdatedBundleVersion()
+            {
+                // no operation in this test fixture
+                return string.Empty;
+            }
+
             public Task<string> GetExtensionBundleBinPathAsync() => Task.FromResult<string>(null);
             public Task<ExtensionBundleDetails> GetExtensionBundleDetails() => Task.FromResult<ExtensionBundleDetails>(null);
 

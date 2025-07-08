@@ -42,7 +42,7 @@ param (
 $normalizeBitness = @{
     'x64' = '64bit'
     '64bit' = '64bit'
-    'x86' = '64bit'
+    'x86' = '32bit'
     '32bit' = '32bit'
 }
 
