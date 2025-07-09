@@ -283,7 +283,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         /// <param name="environment">The environment to verify.</param>
         /// <returns><see cref="true"/> if running in a Windows App Service app; otherwise, false.</returns>
-        public static bool IsAnyWindows(this IEnvironment environment)
+        public static bool IsWindowsEnvironment(this IEnvironment environment)
         {
             return environment.IsWindowsAzureManagedHosting() || environment.IsWindowsConsumption() || environment.IsWindowsElasticPremium();
         }
@@ -695,6 +695,42 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             return string.IsNullOrEmpty(workerRuntime) || string.Equals(workerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase);
+        }
+
+        public static string GetPlatformReleaseChannel(this IEnvironment environment)
+        {
+            return environment.GetEnvironmentVariable(AntaresPlatformReleaseChannel) ?? ScriptConstants.LatestPlatformChannelNameUpper;
+        }
+
+        /// <summary>
+        /// Checks if the Dynamic Worker Resolution feature is disabled via feature flag.
+        /// Returns true if the feature is disabled, false otherwise.
+        /// </summary>
+        public static bool IsWorkerResolutionFeatureDisabled(this IEnvironment environment)
+        {
+            return FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagDisableDynamicWorkerResolution, environment);
+        }
+
+        // Users can disable dynamic worker resolution via setting the appropriate feature flag.
+        // Worker resolution can be enabled for specific workers at the stamp level via hosting config options.
+        // Feature flag takes precedence over hosting config options.
+        public static bool IsDynamicWorkerResolutionEnabled(this IEnvironment environment, HashSet<string> workersAvailableForResolutionViaHostingConfig)
+        {
+            if (environment.IsWorkerResolutionFeatureDisabled() || workersAvailableForResolutionViaHostingConfig is null)
+            {
+                return false;
+            }
+
+            string workerRuntime = environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
+
+            if (!environment.IsMultiLanguageRuntimeEnvironment() &&
+                !string.IsNullOrWhiteSpace(workerRuntime) &&
+                !environment.IsPlaceholderModeEnabled())
+            {
+                return workersAvailableForResolutionViaHostingConfig.Contains(workerRuntime);
+            }
+
+            return workersAvailableForResolutionViaHostingConfig.Any();
         }
 
         public static bool IsApplicationInsightsAgentEnabled(this IEnvironment environment)

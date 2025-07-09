@@ -24,7 +24,6 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
@@ -1066,28 +1065,6 @@ namespace Microsoft.Azure.WebJobs.Script
             return workerIndexingEnabled && workerIndexingAvailable;
         }
 
-        // Dynamic Worker Resolution can be enabled or disabled via feature flags or hosting config options. Feature flags take precedence over hosting config options.
-        // Users can disable worker resolution via setting the appropriate feature flag.
-        // Worker resolution can be enabled for specific workers at stamp level via the hosting config options.
-        public static bool IsDynamicWorkerResolutionEnabled(IEnvironment environment, HashSet<string> workersAvailableForResolutionViaHostingConfig)
-        {
-            bool isDynamicWorkerResolutionDisabled = FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagDisableDynamicWorkerResolution, environment);
-
-            if (isDynamicWorkerResolutionDisabled)
-            {
-                return false;
-            }
-
-            string workerRuntime = environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
-
-            if (!environment.IsMultiLanguageRuntimeEnvironment() && !string.IsNullOrWhiteSpace(workerRuntime))
-            {
-                return workersAvailableForResolutionViaHostingConfig?.Contains(workerRuntime) ?? false;
-            }
-
-            return workersAvailableForResolutionViaHostingConfig?.Any() ?? false;
-        }
-
         public static void LogAutorestGeneratedJsonIfExists(string rootScriptPath, ILogger logger)
         {
             string autorestGeneratedJsonPath = Path.Combine(rootScriptPath, ScriptConstants.AutorestGeenratedMetadataFileName);
@@ -1148,11 +1125,6 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 return FunctionAppContentEditingState.NotAllowed;
             }
-        }
-
-        public static string GetPlatformReleaseChannel(IEnvironment environment)
-        {
-            return environment.GetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel) ?? ScriptConstants.LatestPlatformChannelNameUpper;
         }
 
         public static bool TryReadAsBool(IDictionary<string, object> properties, string propertyKey, out bool result)

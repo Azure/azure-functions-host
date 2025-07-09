@@ -4,9 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Reflection;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
@@ -80,61 +77,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 }
             }
 
-            HashSet<string> workers = GetWorkersAvailableForResolutionViaHostingConfig();
-            bool dynamicWorkerResolutionEnabled = Utility.IsDynamicWorkerResolutionEnabled(_environment, workers);
-            IWorkerConfigurationResolver workerConfigurationResolver = null;
+            var resolverFactory = new WorkerConfigurationResolverFactory(configuration, _logger, _environment, _workerProfileManager, _functionsHostingConfigOptions);
 
-            if (dynamicWorkerResolutionEnabled)
-            {
-                List<string> probingPaths = GetWorkerProbingPaths();
-                workerConfigurationResolver = new DynamicWorkerConfigurationResolver(configuration, _logger, _environment, FileUtility.Instance, _workerProfileManager, workers, probingPaths);
-            }
-            else
-            {
-                workerConfigurationResolver = new StaticWorkerConfigurationResolver(configuration, _logger);
-            }
+            IWorkerConfigurationResolver workerConfigurationResolver = resolverFactory.CreateResolver();
 
-            var configFactory = new RpcWorkerConfigFactory(configuration, _logger, SystemRuntimeInformation.Instance, _environment, _metricsLogger, _workerProfileManager, workerConfigurationResolver, dynamicWorkerResolutionEnabled);
+            var configFactory = new RpcWorkerConfigFactory(configuration, _logger, SystemRuntimeInformation.Instance, _environment, _metricsLogger, _workerProfileManager, workerConfigurationResolver);
             options.WorkerConfigs = configFactory.GetConfigs();
-        }
-
-        internal HashSet<string> GetWorkersAvailableForResolutionViaHostingConfig()
-        {
-            return _functionsHostingConfigOptions.Value
-                        ?.WorkersAvailableForDynamicResolution
-                        ?.ToLowerInvariant()
-                        .Split("|", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                        .ToHashSet();
-        }
-
-        internal List<string> GetWorkerProbingPaths()
-        {
-            var probingPaths = new List<string>();
-
-            // If Environment variable is set, read probing paths from Environment
-            string probingPathsEnvValue = _environment.GetEnvironmentVariableOrDefault(EnvironmentSettingNames.WorkerProbingPaths, null);
-
-            if (!string.IsNullOrEmpty(probingPathsEnvValue))
-            {
-                probingPaths = probingPathsEnvValue.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
-            }
-            else
-            {
-                if (_environment.IsAnyWindows())
-                {
-                    // Harcoded site extensions path for Windows until Antares sets it as an Environment variable.
-                    var assemblyPath = Assembly.GetExecutingAssembly().Location;
-                    var assemblyDir = Path.GetDirectoryName(assemblyPath);
-                    var parentDir = Directory.GetParent(assemblyDir)?.Parent?.FullName; //Move 2 directories up to get to the SiteExtensions directory
-
-                    // Example probing path for Windows: "c:\\home\\SiteExtensions\\workers"
-                    var windowsWorkerFullProbingPath = Path.Combine(parentDir, RpcWorkerConstants.DefaultWorkersDirectoryName);
-
-                    probingPaths.Add(windowsWorkerFullProbingPath);
-                }
-            }
-
-            return probingPaths;
         }
     }
 

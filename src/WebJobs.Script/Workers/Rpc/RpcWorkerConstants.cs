@@ -26,7 +26,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         // Section names in host.json or AppSettings
         public const string LanguageWorkersSectionName = "languageWorkers";
-        public const string WorkerProbingPathsSectionName = "probingPaths";
         public const string HostRequirementsSectionName = "hostRequirements";
 
         // Worker description constants

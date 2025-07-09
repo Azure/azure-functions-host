@@ -206,6 +206,16 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
         private static readonly Action<ILogger, string, Exception> _publishingMetrics =
             LoggerMessage.Define<string>(LogLevel.Debug, new EventId(338, nameof(PublishingMetrics)), "{metrics}");
 
+        private static readonly Action<ILogger, string, int, int, Exception> _outdatedExtensionBundleFuture =
+           LoggerMessage.Define<string, int, int>(LogLevel.Warning,
+           new EventId(342, nameof(OutdatedExtensionBundle)),
+           "Your current bundle version {currentVersion} will reach end of support on Aug 4, 2026. Upgrade to [{suggestedMinVersion}.*, {suggestedMaxVersion}.0.0). For more information, see https://aka.ms/FunctionsBundlesUpgrade");
+
+        private static readonly Action<ILogger, string, int, int, Exception> _outdatedExtensionBundlePast =
+           LoggerMessage.Define<string, int, int>(LogLevel.Warning,
+           new EventId(342, nameof(OutdatedExtensionBundle)),
+           "Your current bundle version {currentVersion} has reached end of support on Aug 4, 2026. Upgrade to [{suggestedMinVersion}.*, {suggestedMaxVersion}.0.0). For more information, see https://aka.ms/FunctionsBundlesUpgrade");
+
         public static void PublishingMetrics(this ILogger logger, string metrics)
         {
             _publishingMetrics(logger, metrics, null);
@@ -406,6 +416,21 @@ Lock file hash: {currentLockFileHash}";
         public static void IncorrectAzureFunctionsFolderPath(this ILogger logger, string path)
         {
             _incorrectAzureFunctionsFolderPath(logger, path, EnvironmentSettingNames.FunctionWorkerRuntime, null);
+        }
+
+        public static void OutdatedExtensionBundle(this ILogger logger, string currentVersion, int suggestedMinVersion, int suggestedMaxVersion)
+        {
+            var currentTime = DateTime.UtcNow;
+            var deprecationDate = new DateTime(2026, 8, 5, 0, 0, 0, DateTimeKind.Utc);
+
+            if (currentTime >= deprecationDate)
+            {
+                _outdatedExtensionBundlePast(logger, currentVersion, suggestedMinVersion, suggestedMaxVersion, null);
+            }
+            else
+            {
+                _outdatedExtensionBundleFuture(logger, currentVersion, suggestedMinVersion, suggestedMaxVersion, null);
+            }
         }
     }
 }

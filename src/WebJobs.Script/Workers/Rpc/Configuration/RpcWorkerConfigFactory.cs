@@ -27,7 +27,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly string _workerRuntime;
         private readonly IEnvironment _environment;
         private readonly IWorkerConfigurationResolver _workerConfigurationResolver;
-        private readonly bool _dynamicWorkerResolutionEnabled;
         private readonly JsonSerializerOptions _jsonSerializerOptions = new()
         {
             PropertyNameCaseInsensitive = true
@@ -41,8 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                                         IEnvironment environment,
                                         IMetricsLogger metricsLogger,
                                         IWorkerProfileManager workerProfileManager,
-                                        IWorkerConfigurationResolver workerConfigurationResolver,
-                                        bool dynamicWorkerResolutionEnabled = false)
+                                        IWorkerConfigurationResolver workerConfigurationResolver)
         {
             _config = config ?? throw new ArgumentNullException(nameof(config));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -53,7 +51,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _workerRuntime = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
             _workerConfigurationResolver = workerConfigurationResolver ?? throw new ArgumentNullException(nameof(workerConfigurationResolver));
 
-            _dynamicWorkerResolutionEnabled = dynamicWorkerResolutionEnabled;
             WorkersDirPath = WorkerConfigurationHelper.GetWorkersDirPath(config);
         }
 
@@ -76,7 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal void AddProviders()
         {
-            List<string> workerConfigs = _workerConfigurationResolver.GetWorkerConfigs();
+            List<string> workerConfigs = _workerConfigurationResolver.GetWorkerConfigPaths();
 
             foreach (var workerConfig in workerConfigs)
             {
@@ -105,10 +102,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 try
                 {
                     // After specialization, load worker config only for the specified runtime unless it's a multi-language app.
-                    if (!string.IsNullOrWhiteSpace(_workerRuntime) &&
-                        !_environment.IsPlaceholderModeEnabled() &&
-                        !_environment.IsMultiLanguageRuntimeEnvironment() &&
-                        !_dynamicWorkerResolutionEnabled)
+                    if (!string.IsNullOrWhiteSpace(_workerRuntime) && !_environment.IsPlaceholderModeEnabled() && !_environment.IsMultiLanguageRuntimeEnvironment())
                     {
                         string workerRuntime = Path.GetFileName(workerDir);
                         // Only skip worker directories that don't match the current runtime.
@@ -167,7 +161,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                         _workerDescriptionDictionary[workerDescription.Language] = rpcWorkerConfig;
                         ReadLanguageWorkerFile(arguments.WorkerPath);
 
-                        _logger.LogDebug("Added WorkerConfig for language: {language} with Worker Path: {path}", workerDescription.Language, workerDescription.DefaultWorkerPath);
+                        _logger.LogDebug("Added WorkerConfig for language: {language} with worker path: {path}", workerDescription.Language, workerDescription.DefaultWorkerPath);
                     }
                 }
                 catch (Exception ex) when (!ex.IsFatal())

@@ -9,21 +9,22 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 {
-    internal class StaticWorkerConfigurationResolver : IWorkerConfigurationResolver
+    // This class resolves worker configurations by scanning the "workers" directory within the Host for worker config files.
+    internal sealed class DefaultWorkerConfigurationResolver : IWorkerConfigurationResolver
     {
         private readonly ILogger _logger;
         private readonly IConfiguration _configuration;
 
-        public StaticWorkerConfigurationResolver(IConfiguration configuration, ILogger logger)
+        public DefaultWorkerConfigurationResolver(IConfiguration configuration, ILogger logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _configuration = configuration;
+            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         }
 
-        public List<string> GetWorkerConfigs()
+        public List<string> GetWorkerConfigPaths()
         {
-            string workersDirPath = WorkerConfigurationHelper.GetWorkersDirPath(_configuration);
-            _logger.LogDebug("Workers Directory set to: {WorkersDirPath}", workersDirPath);
+            var workersDirPath = WorkerConfigurationHelper.GetWorkersDirPath(_configuration);
+            _logger.LogDebug("Workers Directory set to: {workersDirPath}", workersDirPath);
 
             List<string> workerConfigs = new();
 
