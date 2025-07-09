@@ -716,7 +716,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-
         [Theory]
         [InlineData(false)]
         [InlineData(true)]
