@@ -33,12 +33,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Http
             httpContext.Request.Path = "/test";
             httpContext.Request.QueryString = new QueryString("?param=value");
 
-<<<<<<< HEAD
             var remoteAddress = "192.168.1.100";
             httpContext.Connection.RemoteIpAddress = System.Net.IPAddress.Parse(remoteAddress);
-=======
-            httpContext.Connection.RemoteIpAddress = System.Net.IPAddress.Parse("192.168.1.100");
->>>>>>> 31e0473ba (add-tests, pass function timeoutexception)
 
             if (includeScriptInvocationContext)
             {
@@ -61,17 +57,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Http
             Assert.True(proxyRequest.Headers.Contains("X-Forwarded-Proto"), "X-Forwarded-Proto header should be present");
 
             var forwardedFor = proxyRequest.Headers.GetValues("X-Forwarded-For");
-<<<<<<< HEAD
             Assert.Contains(remoteAddress, forwardedFor);
 
             var forwardedHost = proxyRequest.Headers.GetValues("X-Forwarded-Host");
             Assert.Contains("example.com:443", forwardedHost);
-=======
-            Assert.Contains("192.168.1.100", forwardedFor);
-
-            var forwardedHost = proxyRequest.Headers.GetValues("X-Forwarded-Host");
-            Assert.Contains("example.com", forwardedHost);
->>>>>>> 31e0473ba (add-tests, pass function timeoutexception)
+            Assert.Contains(remoteAddress, forwardedFor);
 
             var forwardedProto = proxyRequest.Headers.GetValues("X-Forwarded-Proto");
             Assert.Contains("https", forwardedProto);
@@ -83,11 +73,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Http
             var httpContext = new DefaultHttpContext();
             httpContext.Request.Scheme = "http";
             httpContext.Request.Host = new HostString("localhost", 7071);
-<<<<<<< HEAD
+
             var remoteAddress = "192.168.1.100";
             httpContext.Connection.RemoteIpAddress = System.Net.IPAddress.Parse(remoteAddress);
-=======
->>>>>>> 31e0473ba (add-tests, pass function timeoutexception)
 
             var scriptContext = new ScriptInvocationContext
             {
@@ -103,12 +91,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Http
             await _transformer.TransformRequestAsync(httpContext, proxyRequest, destinationPrefix, CancellationToken.None);
 
             Assert.True(proxyRequest.Options.TryGetValue(ScriptConstants.HttpProxyScriptInvocationContext, out ScriptInvocationContext contextValue));
-<<<<<<< HEAD
             Assert.Equal(scriptContext.ExecutionContext.InvocationId, contextValue.ExecutionContext.InvocationId);
-=======
             Assert.Equal(scriptContext, contextValue);
->>>>>>> 31e0473ba (add-tests, pass function timeoutexception)
-
             Assert.True(proxyRequest.Headers.Contains("X-Forwarded-For"));
             Assert.True(proxyRequest.Headers.Contains("X-Forwarded-Host"));
             Assert.True(proxyRequest.Headers.Contains("X-Forwarded-Proto"));
@@ -120,20 +104,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Http
             var httpContext = new DefaultHttpContext();
             httpContext.Request.Scheme = "https";
             httpContext.Request.Host = new HostString("proxy.example.com");
-<<<<<<< HEAD
+
             var requestRemoteAddress = "172.16.0.1";
             httpContext.Connection.RemoteIpAddress = System.Net.IPAddress.Parse(requestRemoteAddress);
 
             // Add existing X-Forwarded headers to simulate request through multiple proxies
             var originalFor = "203.0.113.195," + requestRemoteAddress;
             var originalHost = "proxy.example.com";
-=======
             httpContext.Connection.RemoteIpAddress = System.Net.IPAddress.Parse("172.16.0.1");
 
             // Add existing X-Forwarded headers to simulate request through multiple proxies
             var originalFor = "203.0.113.195, 172.16.0.1";
             var originalHost = "original.example.com";
->>>>>>> 31e0473ba (add-tests, pass function timeoutexception)
             var originalProto = "https";
             httpContext.Request.Headers["X-Forwarded-For"] = originalFor;
             httpContext.Request.Headers["X-Forwarded-Host"] = originalHost;
@@ -149,11 +131,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Http
             Assert.True(proxyRequest.Headers.Contains("X-Forwarded-Proto"));
 
             var forwardedFor = proxyRequest.Headers.GetValues("X-Forwarded-For");
-<<<<<<< HEAD
+
             Assert.Contains(requestRemoteAddress, forwardedFor);
-=======
             Assert.Contains(originalFor, forwardedFor);
->>>>>>> 31e0473ba (add-tests, pass function timeoutexception)
 
             var forwardedHost = proxyRequest.Headers.GetValues("X-Forwarded-Host");
             Assert.Contains(originalHost, forwardedHost);
@@ -161,7 +141,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Http
             var forwardedProto = proxyRequest.Headers.GetValues("X-Forwarded-Proto");
             Assert.Contains(originalProto, forwardedProto);
         }
-<<<<<<< HEAD
 
         [Fact]
         public async Task TransformRequestAsync_PreservesStandardRequestHeaders()
@@ -226,7 +205,5 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Http
             Assert.True(proxyRequest.Headers.Contains("X-Forwarded-Host"));
             Assert.True(proxyRequest.Headers.Contains("X-Forwarded-Proto"));
         }
-=======
->>>>>>> 31e0473ba (add-tests, pass function timeoutexception)
     }
 }
