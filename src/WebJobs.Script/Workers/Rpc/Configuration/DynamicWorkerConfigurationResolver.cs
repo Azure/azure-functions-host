@@ -70,12 +70,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
         private void ResolveWorkerConfigsFromProbingPaths(string workerRuntime, Dictionary<string, string> outputDict)
         {
+            _logger.LogDebug("Workers probing paths set to: {probingPaths}", _workerProbingPaths is null ? null : string.Join(", ", _workerProbingPaths));
+
             if (_workerProbingPaths is null)
             {
                 return;
             }
-
-            _logger.LogDebug("Workers probing paths set to: {probingPaths}", string.Join(", ", _workerProbingPaths));
 
             string releaseChannel = EnvironmentExtensions.GetPlatformReleaseChannel(_environment);
 

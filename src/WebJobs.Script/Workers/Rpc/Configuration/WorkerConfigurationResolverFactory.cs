@@ -77,7 +77,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                     // Example probing path for Windows: "c:\\home\\SiteExtensions\\workers"
                     string windowsSiteExtensionsPath = GetWindowsSiteExtensionsPath();
 
-                    if (string.IsNullOrWhiteSpace(windowsSiteExtensionsPath))
+                    if (!string.IsNullOrWhiteSpace(windowsSiteExtensionsPath))
                     {
                         var windowsWorkerFullProbingPath = Path.Combine(windowsSiteExtensionsPath, RpcWorkerConstants.DefaultWorkersDirectoryName);
                         probingPaths.Add(windowsWorkerFullProbingPath);
