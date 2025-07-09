@@ -17,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
     /// <summary>
     /// Factory for creating worker configuration resolvers depending on if dynamic worker resolution is enabled or not.
     /// </summary>
-    internal class WorkerConfigurationResolverFactory : IWorkerConfigurationResolverFactory
+    internal sealed class WorkerConfigurationResolverFactory : IWorkerConfigurationResolverFactory
     {
         private readonly IConfiguration _configuration;
         private readonly ILogger _logger;

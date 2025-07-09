@@ -48,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(_mockConfig.Object, _mockLogger.Object, mockEnvironment.Object, FileUtility.Instance, _mockProfileManager.Object, new HashSet<string>() { "java", "node", "powershell" }, _probingPaths);
 
-            var result = workerConfigurationResolver.GetWorkerConfigs();
+            var result = workerConfigurationResolver.GetWorkerConfigPaths();
 
             // Assert
             Assert.Equal(result.Count, 5);
@@ -82,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             // Act
             var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(_mockConfig.Object, _mockLogger.Object, mockEnvironment.Object, FileUtility.Instance, _mockProfileManager.Object, new HashSet<string>() { "java", "node", "powershell" }, probingPaths);
 
-            var result = workerConfigurationResolver.GetWorkerConfigs();
+            var result = workerConfigurationResolver.GetWorkerConfigPaths();
 
             // Assert
             Assert.Equal(result.Count, 5);
@@ -127,7 +127,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             // Act
             var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(mockConfig.Object, mockLogger.Object, mockEnv.Object, FileUtility.Instance, mockProfileManager.Object, new HashSet<string>() { "java", "node", "powershell" }, probingPaths);
 
-            var result = workerConfigurationResolver.GetWorkerConfigs();
+            var result = workerConfigurationResolver.GetWorkerConfigPaths();
 
             // Assert
             Assert.Equal(result.Count, 1);
