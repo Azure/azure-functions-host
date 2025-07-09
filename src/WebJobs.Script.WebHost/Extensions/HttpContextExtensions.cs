@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
                 // If the host is not ready, we'll wait a bit for it to initialize.
                 // This might happen if http requests come in while the host is starting
                 // up for the first time, or if it is restarting.
-                bool hostReady = await hostManager.DelayUntilHostReady(timeoutSeconds, pollingIntervalMilliseconds);
+                bool hostReady = await hostManager.DelayUntilHostReadyAsync(timeoutSeconds, pollingIntervalMilliseconds);
 
                 if (!hostReady)
                 {

@@ -69,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 // Extensions that are webhook providers create their default system keys
                 // as part of host initialization (when those keys aren't already present).
                 // So we must delay key retrieval until host initialization is complete.
-                await _hostManager.DelayUntilHostReady();
+                await _hostManager.DelayUntilHostReadyAsync();
             }
 
             Dictionary<string, string> keys = await GetHostSecretsByScope(hostKeyScope);

@@ -161,7 +161,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
                 await _hostManager.RestartHostAsync(CancellationToken.None);
 
                 // This call is here for sanity, but we should be fully initialized.
-                await _hostManager.DelayUntilHostReady();
+                await _hostManager.DelayUntilHostReadyAsync();
             }
         }
 

@@ -76,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
             HttpClient.BaseAddress = new Uri("https://localhost/");
 
             var manager = HttpServer.Host.Services.GetService<IScriptHostManager>();
-            await manager.DelayUntilHostReady();
+            await manager.DelayUntilHostReadyAsync();
         }
 
         public Task DisposeAsync()
