@@ -3,6 +3,7 @@
 
 using System;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.Azure.WebJobs.Hosting;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Http
@@ -34,7 +35,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
         public string Format()
         {
-            return JsonSerializer.Serialize(this, typeof(HttpWorkerOptions));
+            var options = new JsonObject
+            {
+                { nameof(Type), Type.ToString() },
+                { nameof(Port), Port },
+                { nameof(EnableForwardingHttpRequest), EnableForwardingHttpRequest },
+                { nameof(EnableProxyingHttpRequest), EnableProxyingHttpRequest },
+                { nameof(InitializationTimeout), InitializationTimeout.ToString() }
+            };
+
+            return options.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
         }
     }
 }
