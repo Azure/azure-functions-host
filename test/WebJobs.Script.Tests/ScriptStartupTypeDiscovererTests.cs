@@ -1174,7 +1174,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var binPath = Path.Combine(directory.Path, "bin");
             Directory.CreateDirectory(binPath);
 
-            // extensions.json file with an empty extensions array(simmulating extensions.json produced byin-proc app)
+            // extensions.json file with an empty extensions array(simulating extensions.json produced byin-proc app)
             string extensionJson = """
             {
               "extensions": []
