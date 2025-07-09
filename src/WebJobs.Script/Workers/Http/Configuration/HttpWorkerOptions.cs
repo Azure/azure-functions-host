@@ -2,10 +2,12 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Text.Json;
+using Microsoft.Azure.WebJobs.Hosting;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 {
-    public class HttpWorkerOptions
+    public class HttpWorkerOptions : IOptionsFormatter
     {
         public CustomHandlerType Type { get; set; }
 
@@ -29,5 +31,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         public bool EnableProxyingHttpRequest { get; set; }
 
         public TimeSpan InitializationTimeout { get; set; } = TimeSpan.FromSeconds(30);
+
+        public string Format()
+        {
+            return JsonSerializer.Serialize(this, typeof(HttpWorkerOptions));
+        }
     }
 }
