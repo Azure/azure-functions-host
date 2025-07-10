@@ -41,7 +41,5 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
     [JsonSourceGenerationOptions(WriteIndented = true)]
     [JsonSerializable(typeof(HttpWorkerOptions))]
-    internal partial class HttpWorkerOptionsJsonSerializerContext : JsonSerializerContext
-    {
-    }
+    internal partial class HttpWorkerOptionsJsonSerializerContext : JsonSerializerContext;
 }
