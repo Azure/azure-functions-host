@@ -61,6 +61,9 @@ resources:
     type: git
     name: engineering
     ref: refs/tags/release
+  pipelines:
+  - pipeline: AzFuncEngColdStartTools
+    source: coldstart-tools
 
 variables:
   - template: /eng/ci/templates/variables/coldstart.yml@self

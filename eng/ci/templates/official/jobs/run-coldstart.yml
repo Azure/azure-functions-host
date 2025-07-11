@@ -86,9 +86,16 @@ jobs:
       warmupApiUrl: http://localhost:5000/api/warmup?restart=1
       functionInvocationUrl: http://localhost:5000/api/Hello?forcespecialization=1
       benchmarkAppBuildConstants: ""
+      coldStartToolsDownloadDir: $(Pipeline.Workspace)/ColdStartTools
 
   ${{ if and(or(eq(parameters.collectPerfViewProfileOnWindows, true), eq(parameters.collectNetTrace, true)), eq(parameters.instanceId, '1')) }}:
     templateContext:
+      inputs:
+      - input: pipelineArtifact
+        artifactName: coldstartdatacollector_windows
+        pipeline: AzFuncEngColdStartTools
+        targetPath: $(coldStartToolsDownloadDir)
+
       outputParentDirectory: $(traceDirectory)
       outputs:
         - output: pipelineArtifact
@@ -124,17 +131,15 @@ jobs:
       workingDirectory: $(Build.ArtifactStagingDirectory)/PerformanceTestApps/HelloHttpNet9
 
   - task: AzureCLI@2
-    displayName: "Persist (C#)"
+    displayName: "Persist (ColdStartDataCollector)"
     inputs:
       azureSubscription: $(ServiceConnection)
       scriptType: 'pscore'
       scriptLocation: 'inlineScript'
       inlineScript: |
-        $exePath = "$(functionAppOutputPath)/HelloHttp.exe"
-        $connectionString = "$(ColdStartResultsSqlConnectionString)"
-        
-        Write-Host "Executing HelloHttpNet9.exe with connection string as argument..."
-        & $exePath $connectionString
+        $exePath = "$(coldStartToolsDownloadDir)/ColdStartDataCollector.exe"
+        Write-Host "Executing ColdStartDataCollector.exe with connection string as argument..."
+        & $exePath --description 'd1 test' --os windows --sql-connection-setting ColdStartResultsSqlConnectionString --document '{"foo": "bar"}'
 
   - task: AzureCLI@2
     inputs:
