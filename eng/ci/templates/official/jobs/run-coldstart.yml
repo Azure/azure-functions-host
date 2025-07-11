@@ -93,7 +93,7 @@ jobs:
       inputs:
       - input: pipelineArtifact
         artifactName: coldstartdatacollector_windows
-        pipeline: AzFuncEngColdStartTools
+        pipeline: AzFuncEngineeringTools_ColdStartDataCollector
         targetPath: $(coldStartToolsDownloadDir)
 
       outputParentDirectory: $(traceDirectory)

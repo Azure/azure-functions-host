@@ -62,7 +62,7 @@ resources:
     name: engineering
     ref: refs/tags/release
   pipelines:
-  - pipeline: AzFuncEngColdStartTools
+  - pipeline: AzFuncEngineeringTools_ColdStartDataCollector
     source: coldstart-tools
 
 variables:
