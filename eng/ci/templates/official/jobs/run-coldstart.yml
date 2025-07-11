@@ -111,25 +111,6 @@ jobs:
   - script: dotnet --info
     displayName: "Print .NET Environment Info"
 
-  - task: CopyFiles@2
-    displayName: Copy benchmark apps to temp location
-    inputs:
-      SourceFolder: '$(Build.SourcesDirectory)/test/Performance/Apps'
-      Contents: '**/*'
-      TargetFolder: '$(Build.ArtifactStagingDirectory)/PerformanceTestApps'
-      CleanTargetFolder: true
-
-  - task: DotNetCoreCLI@2
-    displayName: Publish benchmark app
-    inputs:
-      command: publish
-      publishWebProjects: false
-      zipAfterPublish: false
-      modifyOutputPath: false
-      projects: '$(Build.ArtifactStagingDirectory)/PerformanceTestApps/HelloHttpNet9/HelloHttp.csproj'
-      arguments: -c Release -o $(functionAppOutputPath) -f net8.0 -r $(publishRid)
-      workingDirectory: $(Build.ArtifactStagingDirectory)/PerformanceTestApps/HelloHttpNet9
-
   - task: AzureCLI@2
     displayName: "Persist (ColdStartDataCollector)"
     inputs:
