@@ -5,7 +5,6 @@
     <IsTestProject>true</IsTestProject>
     <AssemblyName>Microsoft.Azure.WebJobs.Script.Tests</AssemblyName>
     <RootNamespace>Microsoft.Azure.WebJobs.Script.Tests</RootNamespace>
-    <LangVersion>preview</LangVersion>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
@@ -21,13 +20,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="appinsights.testlogger" Version="1.0.0" />
+    <PackageReference Include="AwesomeAssertions" Version="9.0.0" />
+    <PackageReference Include="AwesomeAssertions.Analyzers" Version="9.0.0" />
     <PackageReference Include="Microsoft.ApplicationInsights" Version="2.22.0" />
     <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.22.0" />
     <PackageReference Include="Microsoft.ApplicationInsights.DependencyCollector" Version="2.22.0" />
     <PackageReference Include="Microsoft.ApplicationInsights.WindowsServer" Version="2.22.0" />
     <PackageReference Include="Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel" Version="2.22.0" />
-    <PackageReference Include="appinsights.testlogger" Version="1.0.0" />
-    <PackageReference Include="FluentAssertions" Version="5.9.0" />
     <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.Testing" Version="8.1.0" />
     <PackageReference Include="Microsoft.Azure.Functions.PythonWorker" Version="4.38.0" />
