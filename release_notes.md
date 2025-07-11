@@ -7,4 +7,6 @@
 - Add JitTrace Files for v4.1041
 - Fix startup deadlock on transient exceptions (#11142)
 - Add warning log for end of support bundle version, any bundle version < 4 (#11075), (#11160)
+- Handles loading extensions.json with empty extensions(#11174)
+- Update HttpWorkerOptions to implement IOptionsFormatter (#11175)
 - Improved metadata binding validation (#11101)
