@@ -60,6 +60,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
         internal List<string> GetWorkerProbingPaths()
         {
+      //      IConfigurationSection probingPathsSection = _configuration.GetSection($"languageWorkers")?.GetSection($"probingPaths");
+
             var probingPaths = new List<string>();
 
             // If Environment variable is set, read probing paths from Environment

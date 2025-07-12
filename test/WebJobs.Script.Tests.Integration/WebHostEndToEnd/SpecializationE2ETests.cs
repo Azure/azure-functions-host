@@ -23,6 +23,7 @@ using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Grpc;
@@ -92,7 +93,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // operation id of this request and all host logs would as well.
             var channel = new TestTelemetryChannel();
 
-            var builder = CreateStandbyHostBuilder("OneSecondTimer", "FunctionExecutionContext")
+            var builder = CreateStandbyHostBuilder(null, "OneSecondTimer", "FunctionExecutionContext")
                 .ConfigureScriptHostServices(s =>
                 {
                     s.AddSingleton<ITelemetryChannel>(_ => channel);
@@ -170,7 +171,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task Specialization_ThreadUtilization()
         {
-            var builder = CreateStandbyHostBuilder("FunctionExecutionContext");
+            var builder = CreateStandbyHostBuilder(null, "FunctionExecutionContext"); 
 
             // TODO: https://github.com/Azure/azure-functions-host/issues/4876
             using (var testServer = new TestServer(builder))
@@ -231,7 +232,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task Specialization_ResetsSharedLoadContext()
         {
-            var builder = CreateStandbyHostBuilder("FunctionExecutionContext");
+            var builder = CreateStandbyHostBuilder(null, "FunctionExecutionContext");
 
             using (var testServer = new TestServer(builder))
             {
@@ -262,7 +263,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "node");
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing);
 
-            var builder = CreateStandbyHostBuilder("HttpTriggerNoAuth");
+            var builder = CreateStandbyHostBuilder(null, "HttpTriggerNoAuth");
 
             builder.ConfigureAppConfiguration(config =>
             {
@@ -336,7 +337,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "node");
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing);
 
-            var builder = CreateStandbyHostBuilder("HttpTriggerNoAuth");
+            var builder = CreateStandbyHostBuilder(null, "HttpTriggerNoAuth");
 
             builder.ConfigureAppConfiguration(config =>
             {
@@ -379,7 +380,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "node");
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing);
 
-            var builder = CreateStandbyHostBuilder("HttpTriggerNoAuth");
+            var builder = CreateStandbyHostBuilder(null, "HttpTriggerNoAuth");
             string isFileSystemReadOnly = ConfigurationPath.Combine(ConfigurationSectionNames.WebHost, nameof(ScriptApplicationHostOptions.IsFileSystemReadOnly));
 
             builder.ConfigureAppConfiguration(config =>
@@ -420,7 +421,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "node");
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing);
 
-            var builder = CreateStandbyHostBuilder("HttpTriggerNoAuth");
+            var builder = CreateStandbyHostBuilder(null, "HttpTriggerNoAuth");
             string isFileSystemReadOnly = ConfigurationPath.Combine(ConfigurationSectionNames.WebHost, nameof(ScriptApplicationHostOptions.IsFileSystemReadOnly));
 
             builder.ConfigureAppConfiguration(config =>
@@ -462,7 +463,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task Specialization_GCMode()
         {
-            var builder = CreateStandbyHostBuilder("FunctionExecutionContext");
+            var builder = CreateStandbyHostBuilder(null, "FunctionExecutionContext");
 
             using (var testServer = new TestServer(builder))
             {
@@ -487,7 +488,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task Specialization_ResetsSecretManagerRepository()
         {
-            var builder = CreateStandbyHostBuilder("FunctionExecutionContext")
+            var builder = CreateStandbyHostBuilder(null, "FunctionExecutionContext")
                 .ConfigureLogging(logging =>
                 {
                     logging.AddFilter<TestLoggerProvider>(null, LogLevel.Debug);
@@ -590,7 +591,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // Add environment variables expected throughout the specialization (similar to how DWAS updates the environment)
             using (new TestScopedEnvironmentVariable("AzureWebJobsStorage", ""))
             {
-                var builder = CreateStandbyHostBuilder("FunctionExecutionContext")
+                var builder = CreateStandbyHostBuilder(null, "FunctionExecutionContext")
                 .ConfigureScriptHostWebJobsBuilder(s =>
                 {
                     if (!_environment.IsPlaceholderModeEnabled())
@@ -638,7 +639,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // Add environment variables expected throughout the specialization (similar to how DWAS updates the environment)
             using (new TestScopedEnvironmentVariable("AzureWebJobsStorage", ""))
             {
-                var builder = CreateStandbyHostBuilder("FunctionExecutionContext")
+                var builder = CreateStandbyHostBuilder(null, "FunctionExecutionContext")
                 .ConfigureScriptHostWebJobsBuilder(s =>
                 {
                     if (!_environment.IsPlaceholderModeEnabled())
@@ -687,7 +688,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // No AzureWebJobsStorage set in environment variables (App Settings from portal)
             using (new TestScopedEnvironmentVariable("AzureWebJobsStorage", ""))
             {
-                var builder = CreateStandbyHostBuilder("FunctionExecutionContext")
+                var builder = CreateStandbyHostBuilder(null, "FunctionExecutionContext")
                 .ConfigureScriptHostWebJobsBuilder(s =>
                 {
                     if (!_environment.IsPlaceholderModeEnabled())
@@ -751,7 +752,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             using (new TestScopedEnvironmentVariable("AzureFunctionsJobHost__InternalSasBlobContainer", ""))
             using (new TestScopedEnvironmentVariable("AzureWebJobsStorage", ""))
             {
-                var builder = CreateStandbyHostBuilder("FunctionExecutionContext")
+                var builder = CreateStandbyHostBuilder(null, "FunctionExecutionContext")
                 .ConfigureScriptHostWebJobsBuilder(s =>
                 {
                     if (!_environment.IsPlaceholderModeEnabled())
@@ -803,7 +804,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task DotNetIsolated_PlaceholderHit()
         {
-            var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetIsolated60Path, "HttpRequestDataFunction");
+            var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetIsolated60Path, null, "HttpRequestDataFunction");
 
             using var testServer = new TestServer(builder);
 
@@ -845,7 +846,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData("", null)]
         public async Task ResponseCompressionWorksAfterSpecialization(string acceptEncodingRequestHeaderValue, string expectedContentEncodingResponseHeaderValue)
         {
-            var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetIsolated60Path, "HttpRequestDataFunction");
+            var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetIsolated60Path, null, "HttpRequestDataFunction");
 
             using var testServer = new TestServer(builder);
 
@@ -887,7 +888,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string json = "{\r\n  \"version\": \"2.0\",\r\n  \"isDefaultHostConfig\": false\r\n}";
             File.WriteAllText(Path.Combine(path, "host.json"), json);
 
-            var builder = InitializeDotNetIsolatedPlaceholderBuilder(path);
+            var builder = InitializeDotNetIsolatedPlaceholderBuilder(path, null);
 
             using var testServer = new TestServer(builder);
 
@@ -914,11 +915,79 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task Specialization_DotnetIsolatedApp_WorkerProbingPaths_Logs()
+        {
+            var loggerProvider = new TestLoggerProvider();
+
+            Guid guid = Guid.NewGuid();
+            string path = "test-path" + guid.ToString();
+
+            if (!Directory.Exists(path))
+            {
+                Directory.CreateDirectory(path);
+            }
+
+            string json = "{\r\n  \"version\": \"2.0\",\r\n  \"isDefaultHostConfig\": false\r\n}";
+            File.WriteAllText(Path.Combine(path, "host.json"), json);
+
+            var builder = InitializeDotNetIsolatedPlaceholderBuilder(path, loggerProvider);
+
+            string fallbackPath = Path.Combine(Directory.GetCurrentDirectory(), "workers");
+            string workerProbingPath = Path.Combine(Directory.GetCurrentDirectory(), "DecoupledWorkers");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.WorkerProbingPaths, workerProbingPath);
+
+            builder.ConfigureServices(services =>
+            {
+                services.Configure<FunctionsHostingConfigOptions>(o => o.Features["WORKERS_AVAILABLE_FOR_DYNAMIC_RESOLUTION"] = "dotnet-isolated|java");
+            });
+
+            using var testServer = new TestServer(builder);
+
+            var standbyManager = testServer.Services.GetService<IStandbyManager>();
+            Assert.NotNull(standbyManager);
+
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "java");
+            SystemEnvironment.Instance.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+
+
+            var logs = loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage);
+
+            Assert.Contains("Placeholder mode is enabled: True", logs);
+
+            var javaLog = logs.FirstOrDefault(p => p.Contains("Added WorkerConfig for language: java with worker path:") && p.Contains("DecoupledWorkers"));
+            Assert.True(javaLog.Any());
+
+            var nodeLog = logs.FirstOrDefault(p => p.Contains("Added WorkerConfig for language: node with worker path:") && !p.Contains("DecoupledWorkers"));
+            Assert.True(nodeLog.Any());
+
+            loggerProvider.ClearAllLogMessages();
+
+            await standbyManager.SpecializeHostAsync();
+
+            // Assert: Verify that the host has specialized
+            var scriptHostManager = testServer.Services.GetService<IScriptHostManager>();
+            Assert.NotNull(scriptHostManager);
+            Assert.Equal(ScriptHostState.Running, scriptHostManager.State);
+
+            var newLogs = loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage);
+
+            Assert.Contains("Completed language worker channel specialization", newLogs);
+
+            var newJavaLog = newLogs.FirstOrDefault(p => p.Contains("Added WorkerConfig for language: java with worker path:") && p.Contains("DecoupledWorkers"));
+            Assert.True(newJavaLog.Any());
+
+            var newNodeLog = newLogs.FirstOrDefault(p => p.Contains("Added WorkerConfig for language: node with worker path:"));
+            Assert.Null(newNodeLog);
+        }
+
+        [Fact]
         public async Task DotNetIsolated_PlaceholderHit_WithProxies()
         {
             // This test ensures that capabilities are correctly applied in EnvironmentReload during
             // specialization
-            var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetIsolated60Path, "HttpRequestFunction");
+            var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetIsolated60Path, null, "HttpRequestFunction");
 
             using var testServer = new TestServer(builder);
 
@@ -1052,7 +1121,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await queue.CreateIfNotExistsAsync();
             await queue.ClearAsync();
 
-            var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetIsolated60Path, "HttpRequestDataFunction", "QueueFunction");
+            var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetIsolated60Path, null, "HttpRequestDataFunction", "QueueFunction");
 
             using var testServer = new TestServer(builder);
 
@@ -1128,7 +1197,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 s.AddSingleton<ILoggerProvider>(testLoggerProvider);
             };
 
-            var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetIsolated60Path, "HttpRequestDataFunction", "QueueFunction");
+            var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetIsolated60Path, null, "HttpRequestDataFunction", "QueueFunction");
             var storageValue = TestHelpers.GetTestConfiguration().GetWebJobsConnectionString("AzureWebJobsStorage");
 
             using var testServer = new TestServer(builder);
@@ -1167,7 +1236,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private async Task DotNetIsolatedPlaceholderMiss(string scriptRootPath, Action additionalSpecializedSetup = null)
         {
-            var builder = InitializeDotNetIsolatedPlaceholderBuilder(scriptRootPath, "HttpRequestDataFunction");
+            var builder = InitializeDotNetIsolatedPlaceholderBuilder(scriptRootPath, null, "HttpRequestDataFunction");
 
             // remove WEBSITE_USE_PLACEHOLDER_DOTNETISOLATED
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteUsePlaceholderDotNetIsolated, null);
@@ -1215,14 +1284,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        private IWebHostBuilder InitializeDotNetIsolatedPlaceholderBuilder(string scriptRootPath, params string[] functions)
+        private IWebHostBuilder InitializeDotNetIsolatedPlaceholderBuilder(string scriptRootPath, TestLoggerProvider loggerProvider = null, params string[] functions)
         {
             _environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "dotnet-isolated");
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteUsePlaceholderDotNetIsolated, "1");
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing);
             _environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, "6.0");
 
-            var builder = CreateStandbyHostBuilder(functions);
+            var builder = CreateStandbyHostBuilder(loggerProvider, functions);
 
             builder.ConfigureAppConfiguration(config =>
             {
@@ -1235,14 +1304,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             return builder;
         }
 
-        private IWebHostBuilder CreateStandbyHostBuilder(params string[] functions)
+        private IWebHostBuilder CreateStandbyHostBuilder(TestLoggerProvider loggerProvider = null, params string[] functions)
         {
+            loggerProvider = loggerProvider ?? _loggerProvider;
+
             var builder = Program.CreateWebHostBuilder()
                 .ConfigureLogging(b =>
                 {
-                    b.AddProvider(_loggerProvider);
+                    b.AddProvider(loggerProvider);
                     b.AddFilter<TestLoggerProvider>("Microsoft.Azure.WebJobs", LogLevel.Debug);
                     b.AddFilter<TestLoggerProvider>("Worker", LogLevel.Debug);
+                    b.AddFilter<TestLoggerProvider>("Host.LanguageWorkerConfig", LogLevel.Trace);
                 })
                 .ConfigureAppConfiguration(c =>
                 {
@@ -1265,7 +1337,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     s.AddLogging(logging =>
                     {
-                        logging.AddProvider(_loggerProvider);
+                        logging.AddProvider(loggerProvider);
                     });
 
                     s.PostConfigure<ScriptJobHostOptions>(o =>
