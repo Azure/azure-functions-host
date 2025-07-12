@@ -56,6 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             ResolveWorkerConfigsFromProbingPaths(workerRuntime, outputDict);
 
             if (!_environment.IsMultiLanguageRuntimeEnvironment() &&
+                !_environment.IsPlaceholderModeEnabled() &&
                 workerRuntime is not null &&
                 outputDict.ContainsKey(workerRuntime))
             {
@@ -169,6 +170,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
                     if (outputDict.ContainsKey(workerDir) ||
                         (!_environment.IsMultiLanguageRuntimeEnvironment() &&
+                        !_environment.IsPlaceholderModeEnabled() &&
                         ShouldSkipWorkerDirectory(workerRuntime, workerDir)))
                     {
                         continue;
@@ -181,6 +183,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                     }
 
                     if (!_environment.IsMultiLanguageRuntimeEnvironment() &&
+                        !_environment.IsPlaceholderModeEnabled() &&
                         workerRuntime is not null &&
                         outputDict.ContainsKey(workerRuntime))
                     {
