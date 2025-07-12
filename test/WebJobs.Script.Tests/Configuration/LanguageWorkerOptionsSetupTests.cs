@@ -2,8 +2,11 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
+using System.Text.Json;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -96,16 +99,30 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             var testEnvironment = new TestEnvironment();
             var testMetricLogger = new TestMetricsLogger();
-            var configurationBuilder = new ConfigurationBuilder()
-                .Add(new ScriptEnvironmentVariablesConfigurationSource());
-            var configuration = configurationBuilder.Build();
             var testProfileManager = new Mock<IWorkerProfileManager>();
             var testScriptHostManager = new Mock<IScriptHostManager>();
-            string probingPathValue = string.Join(';', _probingPath1, string.Empty, "path-not-exists");
+
+            var probingPaths = new List<string>() { _probingPath1, string.Empty, "path-not-exists"};
+
+            var jsonObj = new
+            {
+                languageWorkers = new
+                {
+                    probingPaths
+                }
+            };
+
+            var jsonString = JsonSerializer.Serialize(jsonObj, new JsonSerializerOptions { WriteIndented = true });
+            var jsonStream = new MemoryStream(Encoding.UTF8.GetBytes(jsonString));
+
+            var configurationBuilder = new ConfigurationBuilder()
+                .Add(new ScriptEnvironmentVariablesConfigurationSource())
+                .AddJsonStream(jsonStream);
+
+            var configuration = configurationBuilder.Build();
 
             testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, workerRuntime);
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel, releaseChannel);
-            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.WorkerProbingPaths, probingPathValue);
 
             var hostingOptions = new FunctionsHostingConfigOptions();
             hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, hostingOptionsSetting);

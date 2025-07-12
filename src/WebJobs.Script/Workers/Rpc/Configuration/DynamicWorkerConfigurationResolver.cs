@@ -91,6 +91,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 if (!_fileSystem.Directory.Exists(probingPath))
                 {
                     _logger.LogDebug("Worker probing path directory does not exist: {probingPath}", probingPath);
+                    continue;
                 }
 
                 foreach (var workerRuntimePath in _fileSystem.Directory.EnumerateDirectories(probingPath))

@@ -33,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 {
     [Trait(TestTraits.Category, TestTraits.EndToEnd)]
     [Trait(TestTraits.Group, nameof(NodeEndToEndTests))]
-    public class NodeEndToEndTests(NodeEndToEndTests.TestFixture fixture)
+    public class NodeEndToEndTests(NodeEndToEndTests.TestFixture fixture)   
         : EndToEndTestsBase<NodeEndToEndTests.TestFixture>(fixture)
     {
         [Fact]
@@ -886,6 +886,43 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 #endif
 
         public class TestFixture()
+            : EndToEndTestFixture(rootPath, "node", RpcWorkerConstants.NodeLanguageWorkerName)
+        {
+            private static readonly string rootPath = Path.Combine("TestScripts", "Node");
+
+            public override void ConfigureScriptHost(IWebJobsBuilder webJobsBuilder)
+            {
+                base.ConfigureScriptHost(webJobsBuilder);
+
+                webJobsBuilder.AddAzureStorage()
+                    .Services.Configure<ScriptJobHostOptions>(o =>
+                    {
+                        o.Functions =
+                        [
+                            "BlobTriggerToBlob",
+                            "HttpTrigger",
+                            "HttpTrigger-Scenarios",
+                            "HttpTriggerExpressApi",
+                            "HttpTriggerPromise",
+                            "HttpTriggerToBlob",
+                            "Invalid",
+                            "ManualTrigger",
+                            "MultipleExports",
+                            "MultipleOutputs",
+                            "MultipleInputs",
+                            "QueueTriggerByteArray",
+                            "QueueTriggerToBlob",
+                            "SingleNamedExport",
+                            "TableIn",
+                            "TableOut",
+                            "TimerTrigger",
+                            "Scenarios"
+                        ];
+                    });
+            }
+        }
+
+        public class TestFixture2()
             : EndToEndTestFixture(rootPath, "node", RpcWorkerConstants.NodeLanguageWorkerName)
         {
             private static readonly string rootPath = Path.Combine("TestScripts", "Node");
