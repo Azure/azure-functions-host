@@ -1,20 +1,11 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Net;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Text;
-using System.Threading.Tasks;
-using System.Web.Http;
+using Autofac.Core;
 using Microsoft.Azure.Storage.Blob;
 using Microsoft.Azure.Storage.Queue;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Tests.Integration.Fixtures;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.Workers;
@@ -26,16 +17,31 @@ using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Threading.Tasks;
+using System.Web.Http;
 using Xunit;
 using Xunit.Abstractions;
+using static Microsoft.Azure.AppService.Proxy.Runtime.Trace;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 {
-    [Trait(TestTraits.Category, TestTraits.EndToEnd)]
-    [Trait(TestTraits.Group, nameof(NodeEndToEndTests))]
-    public class NodeEndToEndTests(NodeEndToEndTests.TestFixture fixture)   
-        : EndToEndTestsBase<NodeEndToEndTests.TestFixture>(fixture)
+    public abstract class NodeEndToEndTestsBase<TTestFixture>
+        : EndToEndTestsBase<TTestFixture> where TTestFixture : EndToEndTestFixture
     {
+        protected NodeEndToEndTestsBase(TTestFixture fixture)
+            : base(fixture)
+        {
+        }
+
         [Fact]
         public async Task BlobTriggerToBlobTest()
         {
@@ -884,11 +890,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         }
         
 #endif
+    }
 
-        public class TestFixture()
-            : EndToEndTestFixture(rootPath, "node", RpcWorkerConstants.NodeLanguageWorkerName)
+    [Trait(TestTraits.Category, TestTraits.EndToEnd)]
+    [Trait(TestTraits.Group, nameof(NodeEndToEndTests))]
+    public class NodeEndToEndTests : NodeEndToEndTestsBase<NodeEndToEndTests.TestFixture>
+    {
+        public NodeEndToEndTests(TestFixture fixture)
+            : base(fixture)
+        {
+        }
+
+        public class TestFixture : EndToEndTestFixture
         {
             private static readonly string rootPath = Path.Combine("TestScripts", "Node");
+
+            public TestFixture()
+                : base(rootPath, "node", RpcWorkerConstants.NodeLanguageWorkerName)
+            {
+            }
 
             public override void ConfigureScriptHost(IWebJobsBuilder webJobsBuilder)
             {
@@ -921,11 +941,42 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                     });
             }
         }
+    }
 
-        public class TestFixture2()
-            : EndToEndTestFixture(rootPath, "node", RpcWorkerConstants.NodeLanguageWorkerName)
+    [Trait(TestTraits.Category, TestTraits.EndToEnd)]
+    [Trait(TestTraits.Group, nameof(NodeEndToEndTests))]
+    public class NodeEndToEndTests2 : NodeEndToEndTestsBase<NodeEndToEndTests2.TestFixture2>
+    {
+        public NodeEndToEndTests2(TestFixture2 fixture)
+            : base(fixture)
+        {
+        }
+
+        public class TestFixture2 : EndToEndTestFixture
         {
             private static readonly string rootPath = Path.Combine("TestScripts", "Node");
+
+            public TestFixture2()
+                : base(rootPath, "node", RpcWorkerConstants.NodeLanguageWorkerName)
+            {
+            }
+
+            public override void ConfigureScriptHost(IConfigurationBuilder configBuilder)
+            {
+                //ConfigureScriptHost(configBuilder);
+
+                var inMemorySettings = new Dictionary<string, string>();
+                inMemorySettings["languageWorkers:probingPaths:0"] = Path.GetFullPath("DecoupledWorkers");
+
+                configBuilder.AddInMemoryCollection(inMemorySettings);
+            }
+
+            public override void ConfigureWebHost(IServiceCollection services)
+            {
+                base.ConfigureWebHost(services);
+
+                services.Configure<FunctionsHostingConfigOptions>(o => o.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, "node"));
+            }
 
             public override void ConfigureScriptHost(IWebJobsBuilder webJobsBuilder)
             {
@@ -937,35 +988,35 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                         o.Functions =
                         [
                             "BlobTriggerToBlob",
-                            "HttpTrigger",
-                            "HttpTrigger-Scenarios",
-                            "HttpTriggerExpressApi",
-                            "HttpTriggerPromise",
-                            "HttpTriggerToBlob",
-                            "Invalid",
-                            "ManualTrigger",
-                            "MultipleExports",
-                            "MultipleOutputs",
-                            "MultipleInputs",
-                            "QueueTriggerByteArray",
-                            "QueueTriggerToBlob",
-                            "SingleNamedExport",
-                            "TableIn",
-                            "TableOut",
-                            "TimerTrigger",
-                            "Scenarios"
+                                            "HttpTrigger",
+                                            "HttpTrigger-Scenarios",
+                                            "HttpTriggerExpressApi",
+                                            "HttpTriggerPromise",
+                                            "HttpTriggerToBlob",
+                                            "Invalid",
+                                            "ManualTrigger",
+                                            "MultipleExports",
+                                            "MultipleOutputs",
+                                            "MultipleInputs",
+                                            "QueueTriggerByteArray",
+                                            "QueueTriggerToBlob",
+                                            "SingleNamedExport",
+                                            "TableIn",
+                                            "TableOut",
+                                            "TimerTrigger",
+                                            "Scenarios"
                         ];
                     });
             }
         }
+    }
 
-        private class Payload
-        {
-            [JsonProperty(PropertyName = "id")]
-            public string Id { get; set; }
+    public class Payload
+    {
+        [JsonProperty(PropertyName = "id")]
+        public string Id { get; set; }
 
-            [JsonProperty(PropertyName = "prop1")]
-            public string Prop1 { get; set; }
-        }
+        [JsonProperty(PropertyName = "prop1")]
+        public string Prop1 { get; set; }
     }
 }

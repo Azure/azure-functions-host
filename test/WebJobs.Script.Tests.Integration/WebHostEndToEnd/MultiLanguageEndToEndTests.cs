@@ -220,7 +220,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             if (enableDynamicWorkerResolution)
             {
                 workersAvailableForResolution = "java|node|dotnet-isolated";
-                inMemorySettings["languageWorkers:probingPaths:0"] = Path.GetFullPath("..\\..\\..\\..\\test\\TestWorkers\\ProbingPaths\\workers\\");
+                inMemorySettings["languageWorkers:probingPaths:0"] = Path.GetFullPath("DecoupledWorkers");
             };
 
             FileUtility.CopyDirectory(sourceFunctionApp, appContent);
