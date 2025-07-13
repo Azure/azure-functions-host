@@ -1,6 +1,19 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using Microsoft.Azure.Storage.Blob;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script;
+using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Models;
+using Microsoft.Azure.WebJobs.Script.Tests;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.WebJobs.Script.Tests;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -12,27 +25,17 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.Storage.Blob;
-using Microsoft.Azure.WebJobs.Logging;
-using Microsoft.Azure.WebJobs.Script.Config;
-using Microsoft.Azure.WebJobs.Script.Models;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.WebJobs.Script.Tests;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 {
-    [Trait(TestTraits.Category, TestTraits.EndToEnd)]
-    [Trait(TestTraits.Group, TestTraits.SamplesEndToEnd)]
-    public class SamplesEndToEndTests_Node : IClassFixture<SamplesEndToEndTests_Node.TestFixture>
+    public abstract class SamplesEndToEndTestsBase<TTestFixture> : IClassFixture<TTestFixture>
+        where TTestFixture : EndToEndTestFixture
     {
         private readonly ScriptSettingsManager _settingsManager;
-        private TestFixture _fixture;
+        protected TTestFixture _fixture;
 
-        public SamplesEndToEndTests_Node(TestFixture fixture)
+        public SamplesEndToEndTestsBase(TTestFixture fixture)
         {
             _fixture = fixture;
             _settingsManager = ScriptSettingsManager.Instance;
@@ -311,51 +314,133 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             string body = await response.Content.ReadAsStringAsync();
             Assert.Equal("Hello World!", body);
         }
+    }
 
-        public class TestFixture : EndToEndTestFixture
+    [Trait(TestTraits.Category, TestTraits.EndToEnd)]
+    [Trait(TestTraits.Group, TestTraits.SamplesEndToEnd)]
+    public class SamplesEndToEndTests_Node : SamplesEndToEndTestsBase<TestFixture>
+    {
+        public SamplesEndToEndTests_Node(TestFixture fixture)
+            : base(fixture)
         {
-            static TestFixture()
-            {
-                Environment.SetEnvironmentVariable("AzureWebJobs.HttpTrigger-Disabled.Disabled", "1");
-            }
+        }
+    }
+
+    [Trait(TestTraits.Category, TestTraits.EndToEnd)]
+    [Trait(TestTraits.Group, TestTraits.SamplesEndToEnd)]
+    public class SamplesEndToEndTests_Node2 : SamplesEndToEndTestsBase<TestFixture2>
+    {
+        public SamplesEndToEndTests_Node2(TestFixture2 fixture)
+            : base(fixture)
+        {
+        }
+    }
+}
+
+public class TestFixture : EndToEndTestFixture
+{
+    static TestFixture()
+    {
+        Environment.SetEnvironmentVariable("AzureWebJobs.HttpTrigger-Disabled.Disabled", "1");
+    }
 
             // Microsoft.Azure.WebJobs.Extensions.EventHubs
-            public TestFixture()
-                : base(Path.Combine(Environment.CurrentDirectory, "..", "..", "..", "..", "sample", "node"), "samples", RpcWorkerConstants.NodeLanguageWorkerName)
-            {
-                ProxyEndToEndTests.EnableProxiesOnSystemEnvironment();
-            }
+    public TestFixture()
+        : base(Path.Combine(Environment.CurrentDirectory, "..", "..", "..", "..", "sample", "node"), "samples", RpcWorkerConstants.NodeLanguageWorkerName)
+    {
+        ProxyEndToEndTests.EnableProxiesOnSystemEnvironment();
+    }
 
-            protected override ExtensionPackageReference[] GetExtensionsToInstall()
+    protected override ExtensionPackageReference[] GetExtensionsToInstall()
+    {
+        return new ExtensionPackageReference[]
+        {
+            new ExtensionPackageReference
             {
-                return new ExtensionPackageReference[]
-                {
-                    new ExtensionPackageReference
-                    {
-                        Id = "Microsoft.Azure.WebJobs.Extensions.EventHubs",
-                        Version = "4.3.0"
-                    }
-                };
+                Id = "Microsoft.Azure.WebJobs.Extensions.EventHubs",
+                Version = "4.3.0"
             }
+        };
+    }
 
-            public override void ConfigureScriptHost(IWebJobsBuilder webJobsBuilder)
+    public override void ConfigureScriptHost(IWebJobsBuilder webJobsBuilder)
+    {
+        base.ConfigureScriptHost(webJobsBuilder);
+
+        webJobsBuilder.Services.Configure<ScriptJobHostOptions>(o =>
+        {
+            o.Functions = new[]
             {
-                base.ConfigureScriptHost(webJobsBuilder);
+                "EventHubTrigger",
+                "HttpTrigger",
+                "HttpTrigger-CustomRoute-Get",
+                "HttpTrigger-Disabled",
+                "HttpTrigger-Identities",
+                "ManualTrigger",
+                "proxyroute"
+            };
+        });
+    }
+}
 
-                webJobsBuilder.Services.Configure<ScriptJobHostOptions>(o =>
-                {
-                    o.Functions = new[]
-                    {
-                        "EventHubTrigger",
-                        "HttpTrigger",
-                        "HttpTrigger-CustomRoute-Get",
-                        "HttpTrigger-Disabled",
-                        "HttpTrigger-Identities",
-                        "ManualTrigger",
-                        "proxyroute"
-                    };
-                });
+public class TestFixture2 : EndToEndTestFixture
+{
+    static TestFixture2()
+    {
+        Environment.SetEnvironmentVariable("AzureWebJobs.HttpTrigger-Disabled.Disabled", "1");
+    }
+
+    public TestFixture2()
+        : base(Path.Combine(Environment.CurrentDirectory, "..", "..", "..", "..", "sample", "node"), "samples", RpcWorkerConstants.NodeLanguageWorkerName)
+    {
+        ProxyEndToEndTests.EnableProxiesOnSystemEnvironment();
+    }
+
+    protected override ExtensionPackageReference[] GetExtensionsToInstall()
+    {
+        return new ExtensionPackageReference[]
+        {
+            new ExtensionPackageReference
+            {
+                Id = "Microsoft.Azure.WebJobs.Extensions.EventHubs",
+                Version = "4.3.0"
             }
-        }
+        };
+    }
+
+    public override void ConfigureWebHost(IServiceCollection services)
+    {
+        base.ConfigureWebHost(services);
+
+        services.Configure<FunctionsHostingConfigOptions>(o => o.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, "node"));
+    }
+
+    public override void ConfigureWebHost(IConfigurationBuilder configBuilder)
+    {
+        base.ConfigureWebHost(configBuilder);
+
+        var inMemorySettings = new Dictionary<string, string>();
+        inMemorySettings["languageWorkers:probingPaths:0"] = Path.GetFullPath("DecoupledWorkers");
+
+        configBuilder.AddInMemoryCollection(inMemorySettings);
+    }
+
+    public override void ConfigureScriptHost(IWebJobsBuilder webJobsBuilder)
+    {
+        base.ConfigureScriptHost(webJobsBuilder);
+
+        webJobsBuilder.Services.Configure<ScriptJobHostOptions>(o =>
+        {
+            o.Functions = new[]
+            {
+                "EventHubTrigger",
+                "HttpTrigger",
+                "HttpTrigger-CustomRoute-Get",
+                "HttpTrigger-Disabled",
+                "HttpTrigger-Identities",
+                "ManualTrigger",
+                "proxyroute"
+            };
+        });
     }
 }

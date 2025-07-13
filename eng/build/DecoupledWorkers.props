@@ -16,23 +16,7 @@
       <None Condition="'%(None.NuGetPackageId)' == 'Microsoft.Azure.Functions.NodeJsWorker' And ('%(Filename)%(Extension)' == 'nodejsWorker.js' Or '%(Filename)%(Extension)' == 'worker-bundle.js')">
         <TargetPath>DecoupledWorkers/node/%(None.NuGetPackageVersion)/dist/src/%(None.Filename)%(None.Extension)</TargetPath>
       </None>
-      
-      <!-- Explicitly include Node Worker dist folder, excluding files we're already handling -->
-      <!-- Define node worker versions for use in targeting -->
-      <NodeWorkerVersions Include="$(NuGetPackageRoot)microsoft.azure.functions.nodejsworker\*" />
-      
-      <!-- Create special content items for dist folder with proper version extraction -->
-      <NodeWorkerDistFiles Include="$(NuGetPackageRoot)microsoft.azure.functions.nodejsworker\%(NodeWorkerVersions.Filename)%(NodeWorkerVersions.Extension)\dist\**\*.*"
-                          Exclude="$(NuGetPackageRoot)microsoft.azure.functions.nodejsworker\**\nodejsWorker.js;$(NuGetPackageRoot)microsoft.azure.functions.nodejsworker\**\worker-bundle.js">
-        <NodeVersion>%(NodeWorkerVersions.Filename)%(NodeWorkerVersions.Extension)</NodeVersion>
-      </NodeWorkerDistFiles>
-      
-      <!-- Include these files as content with the proper paths -->
-      <None Include="@(NodeWorkerDistFiles)">
-        <TargetPath>DecoupledWorkers/node/%(NodeWorkerDistFiles.NodeVersion)/dist/%(RecursiveDir)%(Filename)%(Extension)</TargetPath>
-        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      </None>
-      
+            
       <!-- .NET Isolated Worker -->
       <None Condition="'%(None.NuGetPackageId)' == 'Microsoft.Azure.Functions.DotNetIsolatedNativeHost'">
         <TargetPath>DecoupledWorkers/dotnet-isolated/%(None.NuGetPackageVersion)/%(None.RecursiveDir)%(None.Filename)%(None.Extension)</TargetPath>
