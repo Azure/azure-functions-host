@@ -72,6 +72,14 @@
       "resolutionPolicy": "private"
     },
     {
+      "name": "HealthChecks.UI.Client",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "HealthChecks.UI.Core",
+      "resolutionPolicy": "private"
+    },
+    {
       "name": "Microsoft.AI.DependencyCollector",
       "resolutionPolicy": "private"
     },
@@ -608,6 +616,10 @@
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
+      "name": "Microsoft.Extensions.Compliance.Abstractions",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
       "name": "Microsoft.Extensions.Configuration",
       "resolutionPolicy": "minorMatchOrLower"
     },
@@ -777,6 +789,10 @@
     },
     {
       "name": "Microsoft.Extensions.Primitives",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Extensions.Telemetry.Abstractions",
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
