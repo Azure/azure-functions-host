@@ -148,7 +148,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
 
             FunctionsSyncManagerMock = new Mock<IFunctionsSyncManager>(MockBehavior.Strict);
-            FunctionsSyncManagerMock.Setup(p => p.TrySyncTriggersAsync(It.IsAny<bool>())).ReturnsAsync(new SyncTriggersResult { Success = true });
+            FunctionsSyncManagerMock.Setup(p => p.TrySyncTriggersAsync(It.IsAny<bool>())).ReturnsAsync(new TriggersOperationResult { Success = true });
 
             string azuriteConnectionString = _azurite.GetConnectionString();
             Host = new TestFunctionHost(_copiedRootPath, logPath, addTestSettings: _addTestSettings,
@@ -359,6 +359,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private class TestExtensionBundleManager : IExtensionBundleManager
         {
+            public string GetOutdatedBundleVersion()
+            {
+                // no operation in this test fixture
+                return string.Empty;
+            }
+
             public Task<string> GetExtensionBundleBinPathAsync() => Task.FromResult<string>(null);
             public Task<ExtensionBundleDetails> GetExtensionBundleDetails() => Task.FromResult<ExtensionBundleDetails>(null);
 

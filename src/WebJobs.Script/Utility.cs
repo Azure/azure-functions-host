@@ -671,6 +671,12 @@ namespace Microsoft.Azure.WebJobs.Script
             return ContainsFunctionWithWorkerRuntime(filteredFunctions, workerRuntime);
         }
 
+        internal static bool IsDotnetIsolatedApp(IEnvironment environment, IEnumerable<FunctionMetadata> functions = null)
+        {
+            string workerRuntime = GetWorkerRuntime(functions, environment);
+            return workerRuntime?.Equals(RpcWorkerConstants.DotNetIsolatedLanguageWorkerName, StringComparison.OrdinalIgnoreCase) ?? false;
+        }
+
         internal static string GetWorkerRuntime(IEnumerable<FunctionMetadata> functions, IEnvironment environment = null)
         {
             if (environment != null)
@@ -1137,6 +1143,22 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             return result = false;
+        }
+
+        public static bool IsAzureMonitorLoggingEnabled(string azureMonitorcategoriesSubscribed)
+        {
+            if (azureMonitorcategoriesSubscribed == null)
+            {
+                return true;
+            }
+            if (string.Equals(ScriptConstants.DefaultAzureMonitorCategories, azureMonitorcategoriesSubscribed, StringComparison.Ordinal))
+            {
+                // Default value for the env variable is None.
+                // This is set when customer does not subscribe any category.
+                return false;
+            }
+            string[] categories = azureMonitorcategoriesSubscribed.Split(',');
+            return categories.Contains(ScriptConstants.AzureMonitorTraceCategory);
         }
 
         private class FilteredExpandoObjectConverter : ExpandoObjectConverter

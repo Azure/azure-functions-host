@@ -257,6 +257,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         }
 
         [Fact]
+        public async Task GetTriggersAsync_ReturnsExpectedContent()
+        {
+            // Act
+            var result = await _functionsSyncManager.GetTriggersAsync();
+
+            // Assert
+            Assert.True(result.Success);
+            Assert.Null(result.Error);
+            Assert.NotNull(result.Content);
+
+            var content = JObject.Parse(result.Content);
+            var triggers = content["triggers"];
+            Assert.Equal(GetExpectedTriggersPayload(durableVersion: "V1"), triggers.ToString(Formatting.None));
+        }
+
+        [Fact]
         public async Task TrySyncTriggers_StandbyMode_ReturnsFalse()
         {
             using (var env = new TestScopedEnvironmentVariable(_vars))
@@ -375,13 +391,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         }
 
         [Theory]
-        [InlineData(true, true)]
-        [InlineData(false, true)]
-        [InlineData(true, false)]
-        public async Task TrySyncTriggers_PostsExpectedContent(bool cacheEnabled, bool swtIssuerEnabled)
+        [InlineData(true)]
+        [InlineData(false)]
+        public async Task TrySyncTriggers_PostsExpectedContent(bool cacheEnabled)
         {
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteArmCacheEnabled)).Returns(cacheEnabled ? "1" : "0");
-            _hostingConfigOptions.SwtIssuerEnabled = swtIssuerEnabled;
 
             using (var env = new TestScopedEnvironmentVariable(_vars))
             {
@@ -397,16 +411,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 // verify expected headers
                 Assert.Equal(ScriptConstants.FunctionsUserAgent, _mockHttpHandler.LastRequest.Headers.UserAgent.ToString());
                 Assert.True(_mockHttpHandler.LastRequest.Headers.Contains(ScriptConstants.AntaresLogIdHeaderName));
-
-                if (swtIssuerEnabled)
-                {
-                    Assert.NotEmpty(_mockHttpHandler.LastRequest.Headers.GetValues(ScriptConstants.SiteRestrictedTokenHeaderName));
-                }
-                else
-                {
-                    Assert.False(_mockHttpHandler.LastRequest.Headers.Contains(ScriptConstants.SiteRestrictedTokenHeaderName));
-                }
-
                 Assert.NotEmpty(_mockHttpHandler.LastRequest.Headers.GetValues(ScriptConstants.SiteTokenHeaderName));
 
                 if (cacheEnabled)

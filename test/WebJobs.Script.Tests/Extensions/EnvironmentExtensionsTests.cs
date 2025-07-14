@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.WebJobs.Script.Tests;
 using Xunit;
@@ -61,6 +62,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         [InlineData(null, true)]
         [InlineData("", false)]
         [InlineData("Foo,FunctionAppLogs,Bar", true)]
+        [InlineData("FunctionAppLogs", true)]
+        [InlineData("None", false)]
         [InlineData("Foo,Bar", false)]
         public void IsAzureMonitorEnabled_ReturnsExpectedResult(string value, bool expected)
         {
@@ -529,6 +532,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         {
             var environment = new TestEnvironment();
             Assert.Equal(expected, environment.IsInProc(value));
+        }
+
+        [Theory]
+        [InlineData(FunctionGroups.ValidationWorker, true)]
+        [InlineData("function:http", false)]
+        [InlineData(null, false)]
+        public void IsInValidationMode_ReturnsExpectedResult(string functionGroup, bool expected)
+        {
+            IEnvironment env = new TestEnvironment();
+            if (!string.IsNullOrEmpty(functionGroup))
+            {
+                env.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsTargetGroup, functionGroup);
+            }
+
+            Assert.Equal(expected, env.IsInValidationMode());
         }
     }
 }

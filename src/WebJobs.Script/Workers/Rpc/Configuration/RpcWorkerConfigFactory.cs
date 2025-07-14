@@ -2,15 +2,17 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
@@ -24,6 +26,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly IMetricsLogger _metricsLogger;
         private readonly string _workerRuntime;
         private readonly IEnvironment _environment;
+        private readonly JsonSerializerOptions _jsonSerializerOptions = new()
+        {
+            PropertyNameCaseInsensitive = true
+        };
 
         private Dictionary<string, RpcWorkerConfig> _workerDescriptionDictionary = new Dictionary<string, RpcWorkerConfig>();
 
@@ -116,6 +122,18 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             {
                 try
                 {
+                    // After specialization, load worker config only for the specified runtime unless it's a multi-language app.
+                    if (!string.IsNullOrWhiteSpace(_workerRuntime) && !_environment.IsPlaceholderModeEnabled() && !_environment.IsMultiLanguageRuntimeEnvironment())
+                    {
+                        string workerRuntime = Path.GetFileName(workerDir);
+                        // Only skip worker directories that don't match the current runtime.
+                        // Do not skip non-worker directories like the function app payload directory
+                        if (!workerRuntime.Equals(_workerRuntime, StringComparison.OrdinalIgnoreCase) && workerDir.StartsWith(WorkersDirPath))
+                        {
+                            return;
+                        }
+                    }
+
                     string workerConfigPath = Path.Combine(workerDir, RpcWorkerConstants.WorkerConfigFileName);
 
                     if (!File.Exists(workerConfigPath))
@@ -126,15 +144,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
                     _logger.LogDebug("Found worker config: {workerConfigPath}", workerConfigPath);
 
-                    // Parse worker config file
-                    string json = File.ReadAllText(workerConfigPath);
-                    JObject workerConfig = JObject.Parse(json);
-                    RpcWorkerDescription workerDescription = workerConfig.Property(WorkerConstants.WorkerDescription).Value.ToObject<RpcWorkerDescription>();
+                    var workerConfig = GetWorkerConfigJsonElement(workerConfigPath);
+                    var workerDescriptionElement = workerConfig.GetProperty(WorkerConstants.WorkerDescription);
+                    var workerDescription = workerDescriptionElement.Deserialize<RpcWorkerDescription>(_jsonSerializerOptions);
                     workerDescription.WorkerDirectory = workerDir;
 
-                    //Read the profiles from worker description and load the profile for which the conditions match
-                    JToken profiles = workerConfig.GetValue(WorkerConstants.WorkerDescriptionProfiles);
-                    if (profiles != null)
+                    // Read the profiles from worker description and load the profile for which the conditions match
+                    if (workerConfig.TryGetProperty(WorkerConstants.WorkerDescriptionProfiles, out var profiles))
                     {
                         List<WorkerDescriptionProfile> workerDescriptionProfiles = ReadWorkerDescriptionProfiles(profiles);
                         if (workerDescriptionProfiles.Count > 0)
@@ -146,7 +162,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
                     // Check if any app settings are provided for that language
                     var languageSection = _config.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}:{workerDescription.Language}");
-                    workerDescription.Arguments = workerDescription.Arguments ?? new List<string>();
+                    workerDescription.Arguments ??= new List<string>();
                     GetWorkerDescriptionFromAppSettings(workerDescription, languageSection);
                     AddArgumentsFromAppSettings(workerDescription, languageSection);
 
@@ -197,9 +213,24 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
         }
 
-        private List<WorkerDescriptionProfile> ReadWorkerDescriptionProfiles(JToken profilesJToken)
+        private static JsonElement GetWorkerConfigJsonElement(string workerConfigPath)
         {
-            var profiles = profilesJToken.ToObject<IList<WorkerProfileDescriptor>>();
+            ReadOnlySpan<byte> jsonSpan = File.ReadAllBytes(workerConfigPath);
+
+            if (jsonSpan.StartsWith<byte>([0xEF, 0xBB, 0xBF]))
+            {
+                jsonSpan = jsonSpan[3..]; // Skip UTF-8 Byte Order Mark (BOM) if present at the beginning of the file.
+            }
+
+            var reader = new Utf8JsonReader(jsonSpan, isFinalBlock: true, state: default);
+            using var doc = JsonDocument.ParseValue(ref reader);
+
+            return doc.RootElement.Clone();
+        }
+
+        private List<WorkerDescriptionProfile> ReadWorkerDescriptionProfiles(JsonElement profilesElement)
+        {
+            var profiles = profilesElement.Deserialize<IList<WorkerProfileDescriptor>>(_jsonSerializerOptions);
 
             if (profiles == null || profiles.Count <= 0)
             {
@@ -237,11 +268,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             return descriptionProfiles;
         }
 
-        internal WorkerProcessCountOptions GetWorkerProcessCount(JObject workerConfig)
+        internal WorkerProcessCountOptions GetWorkerProcessCount(JsonElement workerConfig)
         {
-            WorkerProcessCountOptions workerProcessCount = workerConfig.Property(WorkerConstants.ProcessCount)?.Value.ToObject<WorkerProcessCountOptions>();
+            WorkerProcessCountOptions workerProcessCount = null;
 
-            workerProcessCount = workerProcessCount ?? new WorkerProcessCountOptions();
+            if (workerConfig.TryGetProperty(WorkerConstants.ProcessCount, out var processCountElement))
+            {
+                workerProcessCount = processCountElement.Deserialize<WorkerProcessCountOptions>(_jsonSerializerOptions);
+            }
+
+            workerProcessCount ??= new WorkerProcessCountOptions();
 
             if (workerProcessCount.SetProcessCountToNumberOfCpuCores)
             {
@@ -323,13 +359,43 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         private void ReadLanguageWorkerFile(string workerPath)
         {
-            if (_environment.IsPlaceholderModeEnabled()
-                && !string.IsNullOrEmpty(_workerRuntime)
-                && File.Exists(workerPath))
+            if (!_environment.IsPlaceholderModeEnabled()
+                || string.IsNullOrWhiteSpace(_workerRuntime)
+                || !File.Exists(workerPath))
             {
-                // Read language worker file to avoid disk reads during specialization. This is only to page-in bytes.
-                File.ReadAllBytes(workerPath);
+                return;
             }
+
+            // Reads the file to warm up the operating system's file cache. Can run in the background.
+            _ = Task.Run(() =>
+            {
+                const int bufferSize = 4096;
+                var buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
+
+                try
+                {
+                    using var fs = new FileStream(
+                        workerPath,
+                        FileMode.Open,
+                        FileAccess.Read,
+                        FileShare.Read,
+                        bufferSize,
+                        FileOptions.SequentialScan);
+
+                    while (fs.Read(buffer, 0, bufferSize) > 0)
+                    {
+                        // Do nothing. The goal is to read the file into the OS cache.
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Unexpected error warming up worker file: {filePath}", workerPath);
+                }
+                finally
+                {
+                    ArrayPool<byte>.Shared.Return(buffer);
+                }
+            });
         }
     }
 }

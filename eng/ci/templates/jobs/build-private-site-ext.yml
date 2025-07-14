@@ -1,0 +1,29 @@
+jobs:
+- job: PrivateSiteExt
+  displayName: Build Private Site Extension
+
+  variables:
+    drop_path: $(Build.ArtifactStagingDirectory)
+    site_ext_path: $(drop_path)/site_ext
+    windows_drop_path: $(drop_path)/windows
+
+  templateContext:
+    outputParentDirectory: $(drop_path)
+    outputs:
+    - output: pipelineArtifact
+      displayName: Publish windows artifacts
+      path: $(windows_drop_path)
+      artifact: drop_windows
+
+  steps:
+  - template: /eng/ci/templates/install-dotnet.yml@self
+  - template: /eng/ci/templates/steps/build-site-ext.yml@self
+    parameters:
+      publishDir: $(site_ext_path)
+
+  - pwsh: |
+      cd $(site_ext_path) | Out-Null
+      New-Item -Path $(windows_drop_path) -ItemType Directory -Force | Out-Null
+      ./New-PrivateSiteExtension.ps1 -OutputPath '$(windows_drop_path)' -AppendOutputName
+      Write-Host "##vso[build.addbuildtag]private-site-ext"
+    displayName: Compress private site extension

@@ -5,32 +5,40 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Text.Json;
+using Microsoft.Azure.WebJobs.Script.Description.DotNet;
 using Microsoft.Azure.WebJobs.Script.ExtensionRequirements;
 using Microsoft.Extensions.DependencyModel;
-using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
     public static class DependencyHelper
     {
         private const string AssemblyNamePrefix = "assembly:";
-        private static readonly Lazy<Dictionary<string, string[]>> _ridGraph = new Lazy<Dictionary<string, string[]>>(BuildRuntimesGraph);
+        private static readonly Assembly ThisAssembly = typeof(DependencyHelper).Assembly;
+        private static readonly string ThisAssemblyName = ThisAssembly.GetName().Name;
+        private static readonly Lazy<Dictionary<string, string[]>> RidGraph = new Lazy<Dictionary<string, string[]>>(BuildRuntimesGraph);
+
         private static string _runtimeIdentifier;
 
         private static Dictionary<string, string[]> BuildRuntimesGraph()
         {
-            var ridGraph = new Dictionary<string, string[]>();
-            string runtimesJson = GetRuntimesGraphJson();
-            var runtimes = (JObject)JObject.Parse(runtimesJson)["runtimes"];
+            using var stream = GetEmbeddedResourceStream("runtimes.json");
 
-            foreach (var runtime in runtimes)
+            var runtimeGraph = JsonSerializer.Deserialize(stream, RuntimeGraphJsonContext.Default.RuntimeGraph);
+
+            if (runtimeGraph is not { Runtimes.Count: > 0 })
             {
-                string[] imports = ((JObject)runtime.Value)["#import"]
-                    ?.Values<string>()
-                    .ToArray();
+                throw new InvalidOperationException("Failed to deserialize runtimes graph JSON or runtimes section is empty.");
+            }
 
-                ridGraph.Add(runtime.Key, imports);
+            var ridGraph = new Dictionary<string, string[]>(runtimeGraph.Runtimes.Count, StringComparer.OrdinalIgnoreCase);
+
+            foreach (var (rid, info) in runtimeGraph.Runtimes)
+            {
+                ridGraph[rid] = info.Imports ?? [];
             }
 
             return ridGraph;
@@ -66,43 +74,43 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return rid;
         }
 
-        private static string GetRuntimesGraphJson()
+        private static Stream GetEmbeddedResourceStream(string fileName)
         {
-            return GetResourceFileContents("runtimes.json");
-        }
+            var stream = ThisAssembly.GetManifestResourceStream($"{ThisAssemblyName}.{fileName}");
 
-        private static string GetResourceFileContents(string fileName)
-        {
-            var assembly = typeof(DependencyHelper).Assembly;
-            using (Stream resource = assembly.GetManifestResourceStream($"{assembly.GetName().Name}.{fileName}"))
-            using (var reader = new StreamReader(resource))
-            {
-                return reader.ReadToEnd();
-            }
+            return stream ?? throw new InvalidOperationException($"The embedded resource '{ThisAssemblyName}.{fileName}' could not be found.");
         }
 
         internal static Dictionary<string, ScriptRuntimeAssembly> GetRuntimeAssemblies(string assemblyManifestName)
         {
-            string assembliesJson = GetResourceFileContents(assemblyManifestName);
-            JObject assemblies = JObject.Parse(assembliesJson);
+            using var stream = GetEmbeddedResourceStream(assemblyManifestName);
+            var runtimeAssemblies = JsonSerializer.Deserialize(stream, RuntimeAssembliesJsonContext.Default.RuntimeAssembliesConfig);
 
-            return assemblies["runtimeAssemblies"]
-                .ToObject<ScriptRuntimeAssembly[]>()
-                .ToDictionary(a => a.Name, StringComparer.OrdinalIgnoreCase);
+            var assemblies = runtimeAssemblies?.RuntimeAssemblies ?? throw new InvalidOperationException($"Failed to retrieve runtime assemblies from the embedded resource '{assemblyManifestName}'.");
+
+            var dictionary = new Dictionary<string, ScriptRuntimeAssembly>(assemblies.Count, StringComparer.OrdinalIgnoreCase);
+
+            foreach (var assembly in assemblies)
+            {
+                dictionary[assembly.Name] = assembly;
+            }
+
+            return dictionary;
         }
 
         internal static ExtensionRequirementsInfo GetExtensionRequirements()
         {
-            string requirementsJson = GetResourceFileContents("extensionrequirements.json");
-            JObject requirements = JObject.Parse(requirementsJson);
+            const string fileName = "extensionrequirements.json";
 
-            var bundleRequirements = requirements["bundles"]
-                .ToObject<BundleRequirement[]>();
+            using var stream = GetEmbeddedResourceStream(fileName);
+            var extensionRequirementsInfo = JsonSerializer.Deserialize(stream, ExtensionRequirementsJsonContext.Default.ExtensionRequirementsInfo);
 
-            var extensionRequirements = requirements["types"]
-                .ToObject<ExtensionStartupTypeRequirement[]>();
+            if (extensionRequirementsInfo is null)
+            {
+                throw new InvalidOperationException($"Failed to deserialize extension requirements from embedded resource '{fileName}'.");
+            }
 
-            return new ExtensionRequirementsInfo(bundleRequirements, extensionRequirements);
+            return extensionRequirementsInfo;
         }
 
         /// <summary>
@@ -115,7 +123,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         /// <returns>The runtime fallbacks for the provided identifier.</returns>
         public static RuntimeFallbacks GetDefaultRuntimeFallbacks(string rid)
         {
-            var ridGraph = _ridGraph.Value;
+            var ridGraph = RidGraph.Value;
 
             var runtimeFallbacks = new RuntimeFallbacks(rid);
             var fallbacks = new List<string>();
@@ -184,7 +192,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         /// <returns> bool if string in was in proper assembly representation format. </returns>
         public static bool IsAssemblyReferenceFormat(string assemblyFormatString)
         {
-           return assemblyFormatString != null && assemblyFormatString.StartsWith(AssemblyNamePrefix);
+            return assemblyFormatString != null && assemblyFormatString.StartsWith(AssemblyNamePrefix);
         }
 
         /// <summary>

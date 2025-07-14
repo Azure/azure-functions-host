@@ -2,18 +2,17 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
-using Microsoft.Azure.WebJobs.Script.Grpc.Exceptions;
+using Microsoft.Azure.WebJobs.Script.Exceptions;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.Logging;
 using Yarp.ReverseProxy.Forwarder;
 
-namespace Microsoft.Azure.WebJobs.Script.Grpc
+namespace Microsoft.Azure.WebJobs.Script.Http
 {
     internal class DefaultHttpProxyService : IHttpProxyService, IDisposable
     {
@@ -96,8 +95,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             HttpContext httpContext = httpRequest.HttpContext;
             httpContext.Items[ScriptConstants.HttpProxyingEnabled] = bool.TrueString;
 
-            // add invocation id as correlation id
-            httpRequest.Headers.TryAdd(ScriptConstants.HttpProxyCorrelationHeader, context.ExecutionContext.InvocationId.ToString());
+            // add invocation id as correlation id, override existing header if present
+            httpRequest.Headers[ScriptConstants.HttpProxyCorrelationHeader] = context.ExecutionContext.InvocationId.ToString();
 
             var forwardingTask = _httpForwarder.SendAsync(httpContext, httpUri.ToString(), _messageInvoker, _forwarderRequestConfig).AsTask();
             context.Properties[ScriptConstants.HttpProxyTask] = forwardingTask;

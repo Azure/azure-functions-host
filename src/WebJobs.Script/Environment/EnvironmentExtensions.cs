@@ -8,8 +8,10 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using static Microsoft.Azure.WebJobs.Script.EnvironmentSettingNames;
+using static Microsoft.Azure.WebJobs.Script.Utility;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -68,13 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         public static bool IsAzureMonitorEnabled(this IEnvironment environment)
         {
-            string value = environment.GetEnvironmentVariable(AzureMonitorCategories);
-            if (value == null)
-            {
-                return true;
-            }
-            string[] categories = value.Split(',');
-            return categories.Contains(ScriptConstants.AzureMonitorTraceCategory);
+            return IsAzureMonitorLoggingEnabled(environment.GetEnvironmentVariable(AzureMonitorCategories));
         }
 
         /// <summary>
@@ -336,7 +332,7 @@ namespace Microsoft.Azure.WebJobs.Script
                    string.IsNullOrEmpty(environment.GetEnvironmentVariable(LegionServiceHost));
         }
 
-        private static bool IsConsumptionOnLegion(this IEnvironment environment)
+        public static bool IsConsumptionOnLegion(this IEnvironment environment)
         {
             return !environment.IsAppService() &&
                    (!string.IsNullOrEmpty(environment.GetEnvironmentVariable(ContainerName)) ||
@@ -747,6 +743,15 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             return group is not null;
+        }
+
+        /// <summary>
+        /// Returns true if the worker is running in validation mode.
+        /// </summary>
+        public static bool IsInValidationMode(this IEnvironment environment)
+        {
+            return environment.TryGetFunctionsTargetGroup(out string group)
+                && string.Equals(group, FunctionGroups.ValidationWorker, StringComparison.InvariantCultureIgnoreCase);
         }
     }
 }

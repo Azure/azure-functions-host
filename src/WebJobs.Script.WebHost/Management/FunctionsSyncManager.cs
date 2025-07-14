@@ -92,9 +92,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
         }
 
-        public async Task<SyncTriggersResult> TrySyncTriggersAsync(bool isBackgroundSync = false)
+        public async Task<TriggersOperationResult> TrySyncTriggersAsync(bool isBackgroundSync = false)
         {
-            var result = new SyncTriggersResult
+            var result = new TriggersOperationResult
             {
                 Success = true
             };
@@ -110,8 +110,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             try
             {
                 await _syncSemaphore.WaitAsync();
-
-                PrepareSyncTriggers();
 
                 var hashBlobClient = await GetHashBlobAsync();
                 if (isBackgroundSync && hashBlobClient == null && !_environment.IsAnyKubernetesEnvironment())
@@ -308,6 +306,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         private async Task<SyncTriggersPayload> GetSyncTriggersPayload()
         {
+            PrepareSyncTriggers();
+
             var hostOptions = _applicationHostOptions.CurrentValue.ToHostOptions();
             var functionsMetadata = _functionMetadataManager.GetFunctionMetadata().Where(m => !m.IsProxy());
 
@@ -729,7 +729,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         }
 
         // This function will call POST https://{app}.azurewebsites.net/operation/settriggers with the content
-        // of triggers. It'll verify app ownership using a SWT token valid for 5 minutes. It should be plenty.
+        // of triggers. It'll verify app ownership using a site token valid for 5 minutes. It should be plenty.
         private async Task<(bool Success, string ErrorMessage)> SetTriggersAsync(string content)
         {
             // sanitize the content before logging
@@ -746,12 +746,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 request.Headers.Add(ScriptConstants.AntaresLogIdHeaderName, requestId);
                 request.Headers.Add("User-Agent", ScriptConstants.FunctionsUserAgent);
                 request.Content = new StringContent(content, Encoding.UTF8, "application/json");
-
-                if (_hostingConfigOptions.Value.SwtIssuerEnabled)
-                {
-                    string swtToken = SimpleWebTokenHelper.CreateToken(DateTime.UtcNow.AddMinutes(5));
-                    request.Headers.Add(ScriptConstants.SiteRestrictedTokenHeaderName, swtToken);
-                }
 
                 string jwtToken = JwtTokenHelper.CreateToken(DateTime.UtcNow.AddMinutes(5));
                 request.Headers.Add(ScriptConstants.SiteTokenHeaderName, jwtToken);
@@ -784,6 +778,26 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     return (false, message);
                 }
             }
+        }
+
+        public async Task<TriggersResult> GetTriggersAsync()
+        {
+            var result = new TriggersResult
+            {
+                Success = true
+            };
+
+            if (!IsSyncTriggersEnvironment(_webHostEnvironment, _environment))
+            {
+                result.Success = false;
+                result.Error = "Invalid environment for GetTriggers operation.";
+                _logger.LogWarning(result.Error);
+                return result;
+            }
+
+            var payload = await GetSyncTriggersPayload();
+            result.Content = payload.Content;
+            return result;
         }
 
         public void Dispose()
