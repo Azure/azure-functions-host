@@ -107,7 +107,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
         {
             DefaultHttpContext context = new();
             context.Request.QueryString = new(query);
-            context.Response.Body = body;
+            if (body is not null)
+            {
+                context.Response.Body = body;
+            }
+
             return context;
         }
     }
