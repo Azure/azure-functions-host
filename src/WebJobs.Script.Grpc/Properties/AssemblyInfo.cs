@@ -6,4 +6,5 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("Microsoft.Azure.WebJobs.Script.Benchmarks")]
 [assembly: InternalsVisibleTo("Microsoft.Azure.WebJobs.Script.Tests")]
 [assembly: InternalsVisibleTo("Microsoft.Azure.WebJobs.Script.Tests.Integration")]
+[assembly: InternalsVisibleTo("Microsoft.Azure.WebJobs.Script.Tests.Shared")]
 [assembly: InternalsVisibleTo("DynamicProxyGenAssembly2")]

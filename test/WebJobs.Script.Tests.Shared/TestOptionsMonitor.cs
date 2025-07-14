@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             return Disposable.Empty;
         }
 
-        internal void InvokeChanged()
+        public void InvokeChanged()
         {
             _listener?.Invoke(CurrentValue, null);
         }

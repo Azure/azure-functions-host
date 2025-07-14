@@ -22,8 +22,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{AFB0F5F7-A
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebJobs.Script.Tests", "test\WebJobs.Script.Tests\WebJobs.Script.Tests.csproj", "{3BA93614-3A4A-49B0-BFBC-7831E2C02BB7}"
 EndProject
-Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "WebJobs.Script.Tests.Shared", "test\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.shproj", "{35C9CCB7-D8B6-4161-BB0D-BCFA7C6DCFFB}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebJobs.Script.Tests.Integration", "test\WebJobs.Script.Tests.Integration\WebJobs.Script.Tests.Integration.csproj", "{EDDDAED1-0E37-4ED7-A595-63F686DEE90A}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebJobs.Script.Grpc", "src\WebJobs.Script.Grpc\WebJobs.Script.Grpc.csproj", "{38920568-003E-448F-963B-41B739D1E01C}"
@@ -64,6 +62,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestFunctions", "test\Resources\TestProjects\TestFunctions\TestFunctions.csproj", "{98B2CC4A-33EB-4310-B08D-3DB58630E981}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobsStartupTests", "test\Resources\TestProjects\WebJobsStartupTests\WebJobsStartupTests.csproj", "{3746E49F-DD26-4CBD-B961-0ADF6EA84909}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Script.Tests.Shared", "test\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.csproj", "{6C6ABC17-1262-4AD8-8CDA-AF6819EF60EE}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -141,6 +141,10 @@ Global
 		{3746E49F-DD26-4CBD-B961-0ADF6EA84909}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3746E49F-DD26-4CBD-B961-0ADF6EA84909}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3746E49F-DD26-4CBD-B961-0ADF6EA84909}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6C6ABC17-1262-4AD8-8CDA-AF6819EF60EE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6C6ABC17-1262-4AD8-8CDA-AF6819EF60EE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6C6ABC17-1262-4AD8-8CDA-AF6819EF60EE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6C6ABC17-1262-4AD8-8CDA-AF6819EF60EE}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -150,7 +154,6 @@ Global
 		{BCFBE330-871A-44BE-9016-83845231230F} = {16351B76-87CA-4A8C-80A1-3DD83A0C4AA6}
 		{D5162088-C119-4A06-896D-E65983CAEDFD} = {16351B76-87CA-4A8C-80A1-3DD83A0C4AA6}
 		{3BA93614-3A4A-49B0-BFBC-7831E2C02BB7} = {AFB0F5F7-A612-4F4A-94DD-8B69CABF7970}
-		{35C9CCB7-D8B6-4161-BB0D-BCFA7C6DCFFB} = {AFB0F5F7-A612-4F4A-94DD-8B69CABF7970}
 		{EDDDAED1-0E37-4ED7-A595-63F686DEE90A} = {AFB0F5F7-A612-4F4A-94DD-8B69CABF7970}
 		{38920568-003E-448F-963B-41B739D1E01C} = {16351B76-87CA-4A8C-80A1-3DD83A0C4AA6}
 		{9A522D9D-2D86-4572-B7D1-ECBFBFAF312C} = {16351B76-87CA-4A8C-80A1-3DD83A0C4AA6}
@@ -167,13 +170,9 @@ Global
 		{AACC1353-EA9B-4FCE-A50F-6A27900C088C} = {B2312621-6D0A-429F-9A45-06B45CE69691}
 		{98B2CC4A-33EB-4310-B08D-3DB58630E981} = {B2312621-6D0A-429F-9A45-06B45CE69691}
 		{3746E49F-DD26-4CBD-B961-0ADF6EA84909} = {B2312621-6D0A-429F-9A45-06B45CE69691}
+		{6C6ABC17-1262-4AD8-8CDA-AF6819EF60EE} = {AFB0F5F7-A612-4F4A-94DD-8B69CABF7970}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {85400884-5FFD-4C27-A571-58CB3C8CAAC5}
-	EndGlobalSection
-	GlobalSection(SharedMSBuildProjectFiles) = preSolution
-		test\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems*{35c9ccb7-d8b6-4161-bb0d-bcfa7c6dcffb}*SharedItemsImports = 13
-		test\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems*{3ba93614-3a4a-49b0-bfbc-7831e2c02bb7}*SharedItemsImports = 5
-		test\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems*{edddaed1-0e37-4ed7-a595-63f686dee90a}*SharedItemsImports = 5
 	EndGlobalSection
 EndGlobal

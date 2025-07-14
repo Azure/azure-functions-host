@@ -7,7 +7,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
-    internal static class TestServiceCollectionExtensions
+    public static class TestServiceCollectionExtensions
     {
         public static IServiceCollection SkipDependencyValidation(this IServiceCollection services)
         {

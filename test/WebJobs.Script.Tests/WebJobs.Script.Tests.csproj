@@ -40,6 +40,7 @@
     <ProjectReference Include="../../src/WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj" />
     <ProjectReference Include="../../src/WebJobs.Script/WebJobs.Script.csproj" />
     <ProjectReference Include="../../src/WebJobs.Script.Grpc/WebJobs.Script.Grpc.csproj" />
+    <ProjectReference Include="../WebJobs.Script.Tests.Shared/WebJobs.Script.Tests.Shared.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -57,7 +58,5 @@
     <EmbeddedResource Include="Resources/FileProvisioning/PowerShell/*" />
     <EmbeddedResource Update="Resources/FileProvisioning/PowerShell/profile.ps1" CopyToOutputDirectory="Never" />
   </ItemGroup>
-
-  <Import Project="../WebJobs.Script.Tests.Shared/WebJobs.Script.Tests.Shared.projitems" Label="Shared" />
 
 </Project>

@@ -28,7 +28,7 @@ namespace Microsoft.WebJobs.Script.Tests
 
             if (!string.IsNullOrEmpty(uri.Host))
             {
-                headers.Add("Host", uri.Host);
+                headers.Host = uri.Host;
             }
 
             if (body != null)
@@ -50,7 +50,7 @@ namespace Microsoft.WebJobs.Script.Tests
 
                 requestFeature.Body = new MemoryStream(bytes);
                 request.ContentLength = request.Body.Length;
-                headers.Add("Content-Length", request.Body.Length.ToString());
+                headers.ContentLength = request.Body.Length;
             }
 
             requestFeature.Headers = headers;

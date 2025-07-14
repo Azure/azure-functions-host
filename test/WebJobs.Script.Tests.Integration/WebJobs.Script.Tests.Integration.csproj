@@ -34,6 +34,7 @@
   <ItemGroup>
     <ProjectReference Include="../../src/WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj" />
     <ProjectReference Include="../../src/WebJobs.Script.Grpc/WebJobs.Script.Grpc.csproj" />
+    <ProjectReference Include="../WebJobs.Script.Tests.Shared/WebJobs.Script.Tests.Shared.csproj" />
     <ProjectReference Include="../Resources/TestProjects/**/*.csproj" ReferenceOutputAssembly="false" />
     <ProjectReference Update="../Resources/TestProjects/TestFunctions/TestFunctions.csproj" Private="true" ReferenceOutputAssembly="true" />
   </ItemGroup>
@@ -59,7 +60,5 @@
     <None Update="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
     <None Update="Management/Payload/DurableMsSQLProviderPayload.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
-
-  <Import Project="../WebJobs.Script.Tests.Shared/WebJobs.Script.Tests.Shared.projitems" Label="Shared" />
 
 </Project>
