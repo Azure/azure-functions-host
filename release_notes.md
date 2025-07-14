@@ -9,3 +9,4 @@
 - Add warning log for end of support bundle version, any bundle version < 4 (#11075), (#11160)
 - Handles loading extensions.json with empty extensions(#11174)
 - Update HttpWorkerOptions to implement IOptionsFormatter (#11175)
+- Skip logging errors on gRPC client disconnect (#10572)
