@@ -98,6 +98,7 @@ Microsoft.CSharp.dll
 Microsoft.DotNet.PlatformAbstractions.dll
 Microsoft.Extensions.Caching.Abstractions.dll
 Microsoft.Extensions.Caching.Memory.dll
+Microsoft.Extensions.Compliance.Abstractions.dll
 Microsoft.Extensions.Configuration.dll
 Microsoft.Extensions.Configuration.Abstractions.dll
 Microsoft.Extensions.Configuration.Binder.dll
@@ -140,6 +141,7 @@ Microsoft.Extensions.Options.dll
 Microsoft.Extensions.Options.ConfigurationExtensions.dll
 Microsoft.Extensions.Options.DataAnnotations.dll
 Microsoft.Extensions.Primitives.dll
+Microsoft.Extensions.Telemetry.Abstractions.dll
 Microsoft.Extensions.WebEncoders.dll
 Microsoft.IdentityModel.Logging.dll
 Microsoft.IdentityModel.Protocols.dll
