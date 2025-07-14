@@ -14,7 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
 {
     public class HealthCheckExtensionsTests
     {
-        public static TheoryData<List<string>, List<string>> AddTelemetryPublisherData => new()
+        public static TheoryData<string[], string[]> AddTelemetryPublisherData => new()
         {
             { null, [null] },
             { [null], [null] },
@@ -119,7 +119,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
 
         [Theory]
         [MemberData(nameof(AddTelemetryPublisherData))]
-        public void AddTelemetryPublisher_RegistersExpected(List<string> tags, List<string> expected)
+        public void AddTelemetryPublisher_RegistersExpected(string[] tags, string[] expected)
         {
             // arrange
             ServiceCollection services = new();
@@ -129,13 +129,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
             builder.AddTelemetryPublisher(tags);
 
             // assert
-            services.Where(x => x.ServiceType == typeof(IHealthCheckPublisher)).Should().HaveCount(expected.Count)
+            services.Where(x => x.ServiceType == typeof(IHealthCheckPublisher)).Should().HaveCount(expected.Length)
                 .And.AllSatisfy(x => x.Lifetime.Should().Be(ServiceLifetime.Singleton));
 
             ServiceProvider provider = services.BuildServiceProvider();
             IEnumerable<IHealthCheckPublisher> publishers = provider.GetServices<IHealthCheckPublisher>();
 
-            publishers.Should().HaveCount(expected.Count);
+            publishers.Should().HaveCount(expected.Length);
             foreach (string tag in expected)
             {
                 publishers.Should().ContainSingle(p => VerifyPublisher(p, tag));

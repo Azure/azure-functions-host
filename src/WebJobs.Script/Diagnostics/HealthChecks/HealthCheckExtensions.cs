@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
         /// <param name="additionalTags">Registers addition copies of the publisher for these tags.</param>
         /// <returns>The original health check builder, for call chaining.</returns>
         public static IHealthChecksBuilder AddTelemetryPublisher(
-            this IHealthChecksBuilder builder, params IEnumerable<string> additionalTags)
+            this IHealthChecksBuilder builder, params string[] additionalTags)
         {
             ArgumentNullException.ThrowIfNull(builder);
 
