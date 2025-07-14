@@ -8,6 +8,10 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
 {
+    /// <summary>
+    /// A health check that reports the status of the script host lifecycle.
+    /// </summary>
+    /// <param name="manager">The script host manager.</param>
     internal class ScriptHostHealthCheck(IScriptHostManager manager) : IHealthCheck
     {
         private readonly IScriptHostManager _manager = manager ?? throw new ArgumentNullException(nameof(manager));
@@ -33,6 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
         private static readonly Task<HealthCheckResult> _unhealthyUnknown =
             Task.FromResult(HealthCheckResult.Unhealthy("Script host in unknown state"));
 
+        /// <inheritdoc />
         public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
             => _manager.State switch
             {

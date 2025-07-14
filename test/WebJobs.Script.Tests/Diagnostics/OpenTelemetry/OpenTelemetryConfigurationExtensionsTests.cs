@@ -8,7 +8,7 @@ using System.Linq;
 using System.Reflection;
 using Azure.Identity;
 using Azure.Monitor.OpenTelemetry.Exporter;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Azure.WebJobs.Script.Configuration;
