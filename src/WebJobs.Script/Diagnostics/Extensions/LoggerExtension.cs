@@ -209,12 +209,12 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
         private static readonly Action<ILogger, string, int, int, Exception> _outdatedExtensionBundleFuture =
            LoggerMessage.Define<string, int, int>(LogLevel.Warning,
            new EventId(342, nameof(OutdatedExtensionBundle)),
-           "Your current bundle version {currentVersion} will reach end of support on Aug 4, 2026. Upgrade to [{suggestedMinVersion}.*, {suggestedMaxVersion}.0.0). For more information, see https://aka.ms/functions-outdated-bundles");
+           "Your current bundle version {currentVersion} will reach end of support on Aug 4, 2026. Upgrade to [{suggestedMinVersion}.*, {suggestedMaxVersion}.0.0). For more information, see https://aka.ms/FunctionsBundlesUpgrade");
 
         private static readonly Action<ILogger, string, int, int, Exception> _outdatedExtensionBundlePast =
            LoggerMessage.Define<string, int, int>(LogLevel.Warning,
            new EventId(342, nameof(OutdatedExtensionBundle)),
-           "Your current bundle version {currentVersion} has reached end of support on Aug 4, 2026. Upgrade to [{suggestedMinVersion}.*, {suggestedMaxVersion}.0.0). For more information, see https://aka.ms/functions-outdated-bundles");
+           "Your current bundle version {currentVersion} has reached end of support on Aug 4, 2026. Upgrade to [{suggestedMinVersion}.*, {suggestedMaxVersion}.0.0). For more information, see https://aka.ms/FunctionsBundlesUpgrade");
 
         public static void PublishingMetrics(this ILogger logger, string metrics)
         {
