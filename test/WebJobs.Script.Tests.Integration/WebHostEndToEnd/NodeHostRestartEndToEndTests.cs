@@ -50,7 +50,7 @@ public class NodeHostRestartEndToEndTests
             });
 
             // Once we've hit 2, we have a couple seconds to trigger a restart.
-            _ = Task.Run(() => scriptHostManager.RestartHostAsync());
+            _ = Task.Run(() => scriptHostManager.RestartHostAsync("test"));
 
             DateTime start = DateTime.UtcNow;
             await TestHelpers.Await(() =>

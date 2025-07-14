@@ -96,11 +96,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 // Test
                 mockEventManager.Publish(ignoredFileEvent);
                 await Task.Delay(TimeSpan.FromSeconds(3));
-                mockScriptHostManager.Verify(m => m.RestartHostAsync(default), Times.Never);
+                mockScriptHostManager.Verify(m => m.RestartHostAsync("test", default), Times.Never);
 
                 mockEventManager.Publish(watchedFileEvent);
                 await Task.Delay(TimeSpan.FromSeconds(3));
-                mockScriptHostManager.Verify(m => m.RestartHostAsync(default));
+                mockScriptHostManager.Verify(m => m.RestartHostAsync("test", default));
             }
         }
 
@@ -156,14 +156,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     e2.Set();
                 });
 
-                mockScriptHostManager.Verify(m => m.RestartHostAsync(default), Times.Never);
+                mockScriptHostManager.Verify(m => m.RestartHostAsync("test", default), Times.Never);
                 e1.WaitOne(5000);
-                mockScriptHostManager.Verify(m => m.RestartHostAsync(default), Times.Never);
+                mockScriptHostManager.Verify(m => m.RestartHostAsync("test", default), Times.Never);
                 e2.WaitOne(5000);
 
                 // wait for restart
                 await Task.Delay(1000);
-                mockScriptHostManager.Verify(m => m.RestartHostAsync(default), Times.Once);
+                mockScriptHostManager.Verify(m => m.RestartHostAsync("test", default), Times.Once);
                 await fileMonitoringService.StopAsync(CancellationToken.None);
             }
         }
@@ -204,11 +204,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     {
                     }
                     await Task.Delay(1000);
-                    mockScriptHostManager.Verify(m => m.RestartHostAsync(default), Times.Never);
+                    mockScriptHostManager.Verify(m => m.RestartHostAsync("test", default), Times.Never);
                     mockEventManager.Publish(randomFileEvent);
                 }
                 await Task.Delay(1000);
-                mockScriptHostManager.Verify(m => m.RestartHostAsync(default), Times.Once);
+                mockScriptHostManager.Verify(m => m.RestartHostAsync("test", default), Times.Once);
                 await fileMonitoringService.StopAsync(CancellationToken.None);
             }
         }
@@ -307,7 +307,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 TaskCompletionSource restart = new TaskCompletionSource();
                 var mockScriptHostManager = new Mock<IScriptHostManager>();
-                mockScriptHostManager.Setup(m => m.RestartHostAsync(default)).Callback(() => restart.TrySetResult());
+                mockScriptHostManager.Setup(m => m.RestartHostAsync("test", default)).Callback(() => restart.TrySetResult());
 
                 var mockEventManager = new ScriptEventManager();
                 var environment = new TestEnvironment();
@@ -341,11 +341,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 if (expectRestart)
                 {
                     await restart.Task.WaitAsync(TimeSpan.FromSeconds(5));
-                    mockScriptHostManager.Verify(m => m.RestartHostAsync(default));
+                    mockScriptHostManager.Verify(m => m.RestartHostAsync("test", default));
                 }
                 else
                 {
-                    mockScriptHostManager.Verify(m => m.RestartHostAsync(default), Times.Never);
+                    mockScriptHostManager.Verify(m => m.RestartHostAsync("test", default), Times.Never);
                 }
             }
         }
