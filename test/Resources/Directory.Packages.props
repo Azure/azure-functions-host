@@ -1,0 +1,16 @@
+<Project>
+
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+<!-- 
+  <ItemGroup>
+    <PackageVersion Include="Microsoft.Azure.WebJobs.Extensions.Storage" Version="5.3.1" />
+    <PackageVersion Include="Microsoft.Azure.WebJobs.Extensions.Http" Version="3.2.0" />
+    <PackageVersion Include="Microsoft.Azure.WebJobs.Extensions.Timers.Storage" Version="1.0.0-beta.1" />
+    <PackageVersion Include="Microsoft.Azure.WebJobs.Extensions.DurableTask" Version="2.7.0" />
+    <PackageVersion Include="Microsoft.Azure.WebJobs.Extensions.EventHubs" Version="4.2.0" />
+    <PackageVersion Include="Microsoft.Azure.WebJobs.Extensions.ServiceBus" Version="5.4.0" />
+  </ItemGroup> -->
+
+</Project>

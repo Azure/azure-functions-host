@@ -917,7 +917,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
-            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableResponseCompression);
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags , ScriptConstants.FeatureFlagEnableResponseCompression);
 
             response = await client.GetAsync("api/HttpRequestDataFunction");
             response.EnsureSuccessStatusCode();
