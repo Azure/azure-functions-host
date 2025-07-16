@@ -154,7 +154,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             // Executions are no longer executing
             _executingInvocations = new HashSet<string>();
-            return;
         }
 
         public void SendWorkerMetadataRequest()

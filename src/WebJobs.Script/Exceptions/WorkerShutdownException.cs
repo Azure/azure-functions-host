@@ -5,15 +5,15 @@ using System;
 
 namespace Microsoft.Azure.WebJobs.Script.Exceptions
 {
-    internal class WorkerShutdownException : Exception
+    internal sealed class WorkerShutdownException : Exception
     {
         public WorkerShutdownException() { }
 
         public WorkerShutdownException(string message) : base(message) { }
 
-        public WorkerShutdownException(string message, string reason) : base(message)
+        public WorkerShutdownException(string message, Exception innerException) : base(message, innerException)
         {
-            Reason = reason;
+            Reason = innerException?.Message ?? string.Empty;
         }
 
         public string Reason { get; set; }
