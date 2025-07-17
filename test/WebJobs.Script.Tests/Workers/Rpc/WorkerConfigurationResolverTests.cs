@@ -8,6 +8,7 @@ using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
 
@@ -46,7 +47,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AppKind)).Returns(ScriptConstants.WorkFlowAppKind);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime)).Returns((string)null);
 
-            var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(_mockConfig.Object, _mockLogger.Object, mockEnvironment.Object, FileUtility.Instance, _mockProfileManager.Object, new HashSet<string>() { "java", "node", "powershell" }, _probingPaths);
+            var resolverOptionssetup = new WorkerConfigurationResolverOptionsSetup(_mockConfig.Object, mockEnvironment.Object);
+            var resolverOptions = new WorkerConfigurationResolverOptions();
+            resolverOptionssetup.Configure(resolverOptions);
+            var workerConfigurationResolverOptions = Options.Create(resolverOptions);
+
+            // Act
+            var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(_mockLogger.Object, FileUtility.Instance, _mockProfileManager.Object, new HashSet<string>() { "java", "node", "powershell" }, _probingPaths, workerConfigurationResolverOptions);
 
             var result = workerConfigurationResolver.GetWorkerConfigPaths();
 
@@ -79,8 +86,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 probingPaths = new List<string>();
             }
 
+            var resolverOptionssetup = new WorkerConfigurationResolverOptionsSetup(_mockConfig.Object, mockEnvironment.Object);
+            var resolverOptions = new WorkerConfigurationResolverOptions();
+            resolverOptionssetup.Configure(resolverOptions);
+            var workerConfigurationResolverOptions = Options.Create(resolverOptions);
+
             // Act
-            var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(_mockConfig.Object, _mockLogger.Object, mockEnvironment.Object, FileUtility.Instance, _mockProfileManager.Object, new HashSet<string>() { "java", "node", "powershell" }, probingPaths);
+            var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(_mockLogger.Object, FileUtility.Instance, _mockProfileManager.Object, new HashSet<string>() { "java", "node", "powershell" }, probingPaths, workerConfigurationResolverOptions);
 
             var result = workerConfigurationResolver.GetWorkerConfigPaths();
 
@@ -124,8 +136,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var mockConfig = new Mock<IConfiguration>();
             var mockLogger = new Mock<ILogger>();
 
+            var resolverOptionssetup = new WorkerConfigurationResolverOptionsSetup(_mockConfig.Object, mockEnv.Object);
+            var resolverOptions = new WorkerConfigurationResolverOptions();
+            resolverOptionssetup.Configure(resolverOptions);
+            var workerConfigurationResolverOptions = Options.Create(resolverOptions);
+
             // Act
-            var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(mockConfig.Object, mockLogger.Object, mockEnv.Object, FileUtility.Instance, mockProfileManager.Object, new HashSet<string>() { "java", "node", "powershell" }, probingPaths);
+            var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(_mockLogger.Object, FileUtility.Instance, _mockProfileManager.Object, new HashSet<string>() { "java", "node", "powershell" }, probingPaths, workerConfigurationResolverOptions);
 
             var result = workerConfigurationResolver.GetWorkerConfigPaths();
 

@@ -80,11 +80,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 }
             }
 
-            var resolverFactory = new WorkerConfigurationResolverFactory(_logger, _workerProfileManager, _functionsHostingConfigOptions, _workerConfigResolverOptions);
+            var resolverFactory = new WorkerConfigurationResolverFactory(_logger, _environment, _workerProfileManager, _functionsHostingConfigOptions, _workerConfigResolverOptions);
 
             IWorkerConfigurationResolver workerConfigurationResolver = resolverFactory.CreateResolver();
 
-            var configFactory = new RpcWorkerConfigFactory(configuration, _logger, SystemRuntimeInformation.Instance, _environment, _metricsLogger, _workerProfileManager, workerConfigurationResolver, _workerConfigResolverOptions);
+            var configFactory = new RpcWorkerConfigFactory(_logger, SystemRuntimeInformation.Instance, _environment, _metricsLogger, _workerProfileManager, workerConfigurationResolver, _workerConfigResolverOptions);
             options.WorkerConfigs = configFactory.GetConfigs();
         }
     }

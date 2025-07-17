@@ -20,7 +20,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
     // Gets fully configured WorkerConfigs from IWorkerProviders
     internal class RpcWorkerConfigFactory
     {
-        private readonly IConfiguration _config;
         private readonly ILogger _logger;
         private readonly ISystemRuntimeInformation _systemRuntimeInformation;
         private readonly IWorkerProfileManager _profileManager;
@@ -36,8 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         private Dictionary<string, RpcWorkerConfig> _workerDescriptionDictionary = new Dictionary<string, RpcWorkerConfig>();
 
-        public RpcWorkerConfigFactory(IConfiguration config,
-                                        ILogger logger,
+        public RpcWorkerConfigFactory(ILogger logger,
                                         ISystemRuntimeInformation systemRuntimeInfo,
                                         IEnvironment environment,
                                         IMetricsLogger metricsLogger,
@@ -45,7 +43,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                                         IWorkerConfigurationResolver workerConfigurationResolver,
                                         IOptions<WorkerConfigurationResolverOptions> workerConfigurationResolverOptions)
         {
-            _config = config ?? throw new ArgumentNullException(nameof(config));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _systemRuntimeInformation = systemRuntimeInfo ?? throw new ArgumentNullException(nameof(systemRuntimeInfo));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
@@ -87,7 +84,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal void AddProvidersFromAppSettings()
         {
-            var languagesSection = _config.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}");
+            var languagesSection = _workerConfigurationResolverOptions.Value.LanguageSection;
             foreach (var languageSection in languagesSection.GetChildren())
             {
                 var workerDirectorySection = languageSection.GetSection(WorkerConstants.WorkerDirectorySectionName);
