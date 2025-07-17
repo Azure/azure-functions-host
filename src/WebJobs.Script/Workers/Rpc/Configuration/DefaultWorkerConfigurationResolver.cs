@@ -4,8 +4,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 {
@@ -13,17 +13,17 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
     internal sealed class DefaultWorkerConfigurationResolver : IWorkerConfigurationResolver
     {
         private readonly ILogger _logger;
-        private readonly IConfiguration _configuration;
+        private readonly IOptions<WorkerConfigurationResolverOptions> _workerConfigurationResolverOptions;
 
-        public DefaultWorkerConfigurationResolver(IConfiguration configuration, ILogger logger)
+        public DefaultWorkerConfigurationResolver(ILogger logger, IOptions<WorkerConfigurationResolverOptions> workerConfigurationResolverOptions)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+            _workerConfigurationResolverOptions = workerConfigurationResolverOptions ?? throw new ArgumentNullException(nameof(workerConfigurationResolverOptions));
         }
 
         public List<string> GetWorkerConfigPaths()
         {
-            var workersDirPath = WorkerConfigurationHelper.GetWorkersDirPath(_configuration);
+            var workersDirPath = WorkerConfigurationHelper.GetWorkersDirPath(_workerConfigurationResolverOptions.Value.LanguageSection);
             _logger.LogDebug("Workers Directory set to: {workersDirPath}", workersDirPath);
 
             List<string> workerConfigs = new();

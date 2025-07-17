@@ -24,6 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly IWorkerProfileManager _workerProfileManager;
         private readonly IScriptHostManager _scriptHostManager;
         private readonly IOptions<FunctionsHostingConfigOptions> _functionsHostingConfigOptions;
+        private readonly IOptions<WorkerConfigurationResolverOptions> _workerConfigResolverOptions;
 
         public LanguageWorkerOptionsSetup(IConfiguration configuration,
                                           ILoggerFactory loggerFactory,
@@ -31,7 +32,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                                           IMetricsLogger metricsLogger,
                                           IWorkerProfileManager workerProfileManager,
                                           IScriptHostManager scriptHostManager,
-                                          IOptions<FunctionsHostingConfigOptions> functionsHostingConfigOptions)
+                                          IOptions<FunctionsHostingConfigOptions> functionsHostingConfigOptions,
+                                          IOptions<WorkerConfigurationResolverOptions> workerConfigResolverOptions)
         {
             if (loggerFactory is null)
             {
@@ -44,6 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _metricsLogger = metricsLogger ?? throw new ArgumentNullException(nameof(metricsLogger));
             _workerProfileManager = workerProfileManager ?? throw new ArgumentNullException(nameof(workerProfileManager));
             _functionsHostingConfigOptions = functionsHostingConfigOptions ?? throw new ArgumentNullException(nameof(functionsHostingConfigOptions));
+            _workerConfigResolverOptions = workerConfigResolverOptions ?? throw new ArgumentNullException(nameof(workerConfigResolverOptions));
 
             _logger = loggerFactory.CreateLogger("Host.LanguageWorkerConfig");
         }
@@ -77,11 +80,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 }
             }
 
-            var resolverFactory = new WorkerConfigurationResolverFactory(configuration, _logger, _environment, _workerProfileManager, _functionsHostingConfigOptions);
+            var resolverFactory = new WorkerConfigurationResolverFactory(_logger, _workerProfileManager, _functionsHostingConfigOptions, _workerConfigResolverOptions);
 
             IWorkerConfigurationResolver workerConfigurationResolver = resolverFactory.CreateResolver();
 
-            var configFactory = new RpcWorkerConfigFactory(configuration, _logger, SystemRuntimeInformation.Instance, _environment, _metricsLogger, _workerProfileManager, workerConfigurationResolver);
+            var configFactory = new RpcWorkerConfigFactory(configuration, _logger, SystemRuntimeInformation.Instance, _environment, _metricsLogger, _workerProfileManager, workerConfigurationResolver, _workerConfigResolverOptions);
             options.WorkerConfigs = configFactory.GetConfigs();
         }
     }

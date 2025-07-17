@@ -19,23 +19,22 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
     /// </summary>
     internal sealed class WorkerConfigurationResolverFactory : IWorkerConfigurationResolverFactory
     {
-        private readonly IConfiguration _configuration;
         private readonly ILogger _logger;
         private readonly IEnvironment _environment;
         private readonly IWorkerProfileManager _workerProfileManager;
         private readonly IOptions<FunctionsHostingConfigOptions> _functionsHostingConfigOptions;
+        private readonly IOptions<WorkerConfigurationResolverOptions> _workerConfigurationResolverOptions;
 
         public WorkerConfigurationResolverFactory(
-                    IConfiguration configuration,
-                    ILogger logger, IEnvironment environment,
+                    ILogger logger,
                     IWorkerProfileManager workerProfileManager,
-                    IOptions<FunctionsHostingConfigOptions> functionsHostingConfigOptions)
+                    IOptions<FunctionsHostingConfigOptions> functionsHostingConfigOptions,
+                    IOptions<WorkerConfigurationResolverOptions> workerConfigurationResolverOptions)
         {
-            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _workerProfileManager = workerProfileManager ?? throw new ArgumentNullException(nameof(workerProfileManager));
             _functionsHostingConfigOptions = functionsHostingConfigOptions ?? throw new ArgumentNullException(nameof(functionsHostingConfigOptions));
+            _workerConfigurationResolverOptions = workerConfigurationResolverOptions ?? throw new ArgumentNullException(nameof(workerConfigurationResolverOptions));
         }
 
         public IWorkerConfigurationResolver CreateResolver()
@@ -46,16 +45,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
             if (dynamicWorkerResolutionEnabled)
             {
-                return new DynamicWorkerConfigurationResolver(_configuration,
-                                                                _logger,
-                                                                _environment,
+                return new DynamicWorkerConfigurationResolver(_logger,
                                                                 FileUtility.Instance,
                                                                 _workerProfileManager,
                                                                 workersAvailableForResolution,
-                                                                probingPaths);
+                                                                probingPaths,
+                                                                _workerConfigurationResolverOptions);
             }
 
-            return new DefaultWorkerConfigurationResolver(_configuration, _logger);
+            return new DefaultWorkerConfigurationResolver(_logger, _workerConfigurationResolverOptions);
         }
 
         internal List<string> GetWorkerProbingPaths()

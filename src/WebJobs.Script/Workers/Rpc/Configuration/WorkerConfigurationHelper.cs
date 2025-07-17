@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             JsonSerializerOptions jsonSerializerOptions,
             string workerDir,
             IWorkerProfileManager profileManager,
-            IConfiguration config,
+            IConfigurationSection configSection,
             ILogger logger)
         {
             var workerDescriptionElement = workerConfig.GetProperty(WorkerConstants.WorkerDescription);
@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             }
 
             // Check if any app settings are provided for that language
-            var languageSection = config.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}:{workerDescription.Language}");
+            var languageSection = configSection.GetSection($"{workerDescription.Language}");
             workerDescription.Arguments ??= new List<string>();
             GetWorkerDescriptionFromAppSettings(workerDescription, languageSection);
             AddArgumentsFromAppSettings(workerDescription, languageSection);
@@ -144,9 +144,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             return workersDirPath;
         }
 
-        internal static string GetWorkersDirPath(IConfiguration configuration)
+        internal static string GetWorkersDirPath(IConfigurationSection configuration)
         {
-            var workersDirectorySection = configuration?.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}:{WorkerConstants.WorkersDirectorySectionName}");
+            var workersDirectorySection = configuration?.GetSection($"{WorkerConstants.WorkersDirectorySectionName}");
 
             string workersDirPath = GetDefaultWorkersDirectory(Directory.Exists);
 
