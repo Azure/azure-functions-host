@@ -3,7 +3,6 @@
 
 using System;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using HealthChecks.UI.Client;
 using Microsoft.AspNetCore.Http;
@@ -14,8 +13,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.HealthChecks
 {
     public class HealthCheckResponseWriter
     {
-        private static readonly JsonSerializerOptions _options = CreateJsonOptions();
-
         public static Task WriteResponseAsync(HttpContext httpContext, HealthReport report)
         {
             ArgumentNullException.ThrowIfNull(httpContext);
@@ -35,21 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.HealthChecks
         {
             MinimalResponse body = new(report.Status);
             return JsonSerializer.SerializeAsync(
-                httpContext.Response.Body, body, _options, httpContext.RequestAborted);
-        }
-
-        private static JsonSerializerOptions CreateJsonOptions()
-        {
-            var options = new JsonSerializerOptions
-            {
-                AllowTrailingCommas = true,
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-            };
-
-            options.Converters.Add(new JsonStringEnumConverter());
-
-            return options;
+                httpContext.Response.Body, body, JsonSerializerOptionsProvider.Options, httpContext.RequestAborted);
         }
 
         internal readonly struct MinimalResponse(HealthStatus status)
