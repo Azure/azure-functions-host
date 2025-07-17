@@ -72,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.Http
                 }
                 catch (WorkerShutdownException)
                 {
-                    _logger.LogInformation("Language worker channel is shutting down. Request will not be retried.");
+                    _logger.LogDebug("Language worker channel is shutting down. Request will not be retried.");
                     throw;
                 }
                 catch (Exception ex)
