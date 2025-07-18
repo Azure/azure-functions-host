@@ -47,7 +47,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AppKind)).Returns(ScriptConstants.WorkFlowAppKind);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime)).Returns((string)null);
 
-            var resolverOptionssetup = new WorkerConfigurationResolverOptionsSetup(_mockConfig.Object, mockEnvironment.Object);
+            var testScriptHostManager = new Mock<IScriptHostManager>();
+
+            var resolverOptionssetup = new WorkerConfigurationResolverOptionsSetup(_mockConfig.Object, mockEnvironment.Object, testScriptHostManager.Object);
             var resolverOptions = new WorkerConfigurationResolverOptions();
             resolverOptionssetup.Configure(resolverOptions);
 
@@ -90,7 +92,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 probingPaths = new List<string>();
             }
 
-            var resolverOptionssetup = new WorkerConfigurationResolverOptionsSetup(_mockConfig.Object, mockEnvironment.Object);
+            var testScriptHostManager = new Mock<IScriptHostManager>();
+            var resolverOptionssetup = new WorkerConfigurationResolverOptionsSetup(_mockConfig.Object, mockEnvironment.Object, testScriptHostManager.Object);
             var resolverOptions = new WorkerConfigurationResolverOptions();
             resolverOptionssetup.Configure(resolverOptions);
 
@@ -144,7 +147,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var mockConfig = new Mock<IConfiguration>();
             var mockLogger = new Mock<ILogger>();
 
-            var resolverOptionssetup = new WorkerConfigurationResolverOptionsSetup(_mockConfig.Object, mockEnv.Object);
+            var testScriptHostManager = new Mock<IScriptHostManager>();
+            var resolverOptionssetup = new WorkerConfigurationResolverOptionsSetup(_mockConfig.Object, mockEnv.Object, testScriptHostManager.Object);
             var resolverOptions = new WorkerConfigurationResolverOptions();
             resolverOptionssetup.Configure(resolverOptions);
 

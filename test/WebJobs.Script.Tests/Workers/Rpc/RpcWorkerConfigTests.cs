@@ -687,7 +687,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 var scriptSettingsManager = new ScriptSettingsManager(config);
                 var workerProfileManager = new Mock<IWorkerProfileManager>();
 
-                var setup = new WorkerConfigurationResolverOptionsSetup(config, _testEnvironment);
+                var testScriptHostManager = new Mock<IScriptHostManager>();
+                var setup = new WorkerConfigurationResolverOptionsSetup(config, _testEnvironment, testScriptHostManager.Object);
                 var options = new WorkerConfigurationResolverOptions();
                 setup.Configure(options);
 

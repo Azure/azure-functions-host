@@ -63,7 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                     }
                 });
 
-            var resolverOptionssetup = new WorkerConfigurationResolverOptionsSetup(configuration, testEnvironment);
+            var resolverOptionssetup = new WorkerConfigurationResolverOptionsSetup(configuration, testEnvironment, testScriptHostManager.Object);
             var resolverOptions = new WorkerConfigurationResolverOptions();
             resolverOptionssetup.Configure(resolverOptions);
 
@@ -120,7 +120,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var hostingOptions = new FunctionsHostingConfigOptions();
             hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, hostingOptionsSetting);
 
-            var resolverOptionssetup = new WorkerConfigurationResolverOptionsSetup(configuration, testEnvironment);
+            var resolverOptionssetup = new WorkerConfigurationResolverOptionsSetup(configuration, testEnvironment, testScriptHostManager.Object);
             var resolverOptions = new WorkerConfigurationResolverOptions();
             resolverOptionssetup.Configure(resolverOptions);
 
@@ -172,7 +172,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var hostingOptions = new FunctionsHostingConfigOptions();
             hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, hostingOptionsSetting);
 
-            var resolverOptionssetup = new WorkerConfigurationResolverOptionsSetup(configuration, testEnvironment);
+            var resolverOptionssetup = new WorkerConfigurationResolverOptionsSetup(configuration, testEnvironment, testScriptHostManager.Object);
             var resolverOptions = new WorkerConfigurationResolverOptions();
             resolverOptionssetup.Configure(resolverOptions);
 
@@ -223,7 +223,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var hostingOptions = new FunctionsHostingConfigOptions();
             hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, hostingOptionsSetting);
 
-            var resolverOptionssetup = new WorkerConfigurationResolverOptionsSetup(configuration, testEnvironment);
+            var resolverOptionssetup = new WorkerConfigurationResolverOptionsSetup(configuration, testEnvironment, testScriptHostManager.Object);
             var resolverOptions = new WorkerConfigurationResolverOptions();
             resolverOptionssetup.Configure(resolverOptions);
 
@@ -273,7 +273,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             var hostingOptions = new FunctionsHostingConfigOptions();
 
-            var resolverOptionssetup = new WorkerConfigurationResolverOptionsSetup(configuration, testEnvironment);
+            var resolverOptionssetup = new WorkerConfigurationResolverOptionsSetup(configuration, testEnvironment, testScriptHostManager.Object);
             var resolverOptions = new WorkerConfigurationResolverOptions();
             resolverOptionssetup.Configure(resolverOptions);
 
@@ -321,7 +321,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var hostingOptions = new FunctionsHostingConfigOptions();
             hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, workerRuntime);
 
-            var resolverOptionssetup = new WorkerConfigurationResolverOptionsSetup(configuration, testEnvironment);
+            var resolverOptionssetup = new WorkerConfigurationResolverOptionsSetup(configuration, testEnvironment, testScriptHostManager.Object);
             var resolverOptions = new WorkerConfigurationResolverOptions();
             resolverOptionssetup.Configure(resolverOptions);
 

@@ -13,6 +13,7 @@ using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
+using Moq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
@@ -42,7 +43,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var config = new ConfigurationBuilder().Build();
             var testLogger = new TestLogger("test");
 
-            var setup = new WorkerConfigurationResolverOptionsSetup(config, _testEnvironment);
+            var testScriptHostManager = new Mock<IScriptHostManager>();
+            var setup = new WorkerConfigurationResolverOptionsSetup(config, _testEnvironment, testScriptHostManager.Object);
             var options = new WorkerConfigurationResolverOptions();
             setup.Configure(options);
 
@@ -86,7 +88,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                    .Build();
             var testLogger = new TestLogger("test");
 
-            var setup = new WorkerConfigurationResolverOptionsSetup(config, _testEnvironment);
+            var testScriptHostManager = new Mock<IScriptHostManager>();
+            var setup = new WorkerConfigurationResolverOptionsSetup(config, _testEnvironment, testScriptHostManager.Object);
             var options = new WorkerConfigurationResolverOptions();
             setup.Configure(options);
 
@@ -113,7 +116,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
 
-            var setup = new WorkerConfigurationResolverOptionsSetup(config, _testEnvironment);
+            var testScriptHostManager = new Mock<IScriptHostManager>();
+            var setup = new WorkerConfigurationResolverOptionsSetup(config, _testEnvironment, testScriptHostManager.Object);
             var options = new WorkerConfigurationResolverOptions();
             setup.Configure(options);
 
@@ -148,7 +152,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var testLogger = new TestLogger("test");
             _testEnvironment.SetEnvironmentVariable("ENV_VAR_BAR", "True");
 
-            var setup = new WorkerConfigurationResolverOptionsSetup(config, _testEnvironment);
+            var testScriptHostManager = new Mock<IScriptHostManager>();
+            var setup = new WorkerConfigurationResolverOptionsSetup(config, _testEnvironment, testScriptHostManager.Object);
             var options = new WorkerConfigurationResolverOptions();
             setup.Configure(options);
 
@@ -181,7 +186,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
 
-            var setup = new WorkerConfigurationResolverOptionsSetup(config, _testEnvironment);
+            var testScriptHostManager = new Mock<IScriptHostManager>();
+            var setup = new WorkerConfigurationResolverOptionsSetup(config, _testEnvironment, testScriptHostManager.Object);
             var options = new WorkerConfigurationResolverOptions();
             setup.Configure(options);
 
@@ -214,7 +220,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             using var variables = new TestScopedSettings(scriptSettingsManager, testEnvVariables);
 
-            var setup = new WorkerConfigurationResolverOptionsSetup(config, _testEnvironment);
+            var testScriptHostManager = new Mock<IScriptHostManager>();
+            var setup = new WorkerConfigurationResolverOptionsSetup(config, _testEnvironment, testScriptHostManager.Object);
             var options = new WorkerConfigurationResolverOptions();
             setup.Configure(options);
 
@@ -246,7 +253,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
 
-            var setup = new WorkerConfigurationResolverOptionsSetup(config, _testEnvironment);
+            var testScriptHostManager = new Mock<IScriptHostManager>();
+            var setup = new WorkerConfigurationResolverOptionsSetup(config, _testEnvironment, testScriptHostManager.Object);
             var options = new WorkerConfigurationResolverOptions();
             setup.Configure(options);
 
@@ -284,7 +292,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var config = new ConfigurationBuilder().Build();
             var testLogger = new TestLogger("test");
 
-            var setup = new WorkerConfigurationResolverOptionsSetup(config, _testEnvironment);
+            var testScriptHostManager = new Mock<IScriptHostManager>();
+            var setup = new WorkerConfigurationResolverOptionsSetup(config, _testEnvironment, testScriptHostManager.Object);
             var options = new WorkerConfigurationResolverOptions();
             setup.Configure(options);
 
@@ -338,7 +347,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var config = new ConfigurationBuilder().Build();
             var testLogger = new TestLogger("test");
 
-            var setup = new WorkerConfigurationResolverOptionsSetup(config, _testEnvironment);
+            var testScriptHostManager = new Mock<IScriptHostManager>();
+            var setup = new WorkerConfigurationResolverOptionsSetup(config, _testEnvironment, testScriptHostManager.Object);
             var options = new WorkerConfigurationResolverOptions();
             setup.Configure(options);
 
@@ -389,7 +399,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var config = new ConfigurationBuilder().Build();
             var testLogger = new TestLogger("test");
 
-            var setup = new WorkerConfigurationResolverOptionsSetup(config, _testEnvironment);
+            var testScriptHostManager = new Mock<IScriptHostManager>();
+            var setup = new WorkerConfigurationResolverOptionsSetup(config, _testEnvironment, testScriptHostManager.Object);
             var options = new WorkerConfigurationResolverOptions();
             setup.Configure(options);
 
