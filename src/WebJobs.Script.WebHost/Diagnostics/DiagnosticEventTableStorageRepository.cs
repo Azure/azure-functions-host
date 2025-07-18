@@ -398,8 +398,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             {
                 if (disposing)
                 {
-                    _isEnabled = false;
-
                     if (_flushLogsTimer?.Value is not null)
                     {
                         _flushLogsTimer?.Value?.Dispose();
