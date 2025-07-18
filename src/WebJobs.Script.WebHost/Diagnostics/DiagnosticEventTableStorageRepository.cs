@@ -221,10 +221,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         internal virtual async Task FlushLogs(TableClient table = null)
         {
+            if (!IsEnabled() || _environment.IsPlaceholderModeEnabled())
+            {
+                return;
+            }
+
             // TableClient is initialized lazily and it will stop the timer that schedules flush logs whenever it fails to initialize.
             // We need to check if the TableClient is null before proceeding. This helps when the first time the property is accessed is as part of the FlushLogs method.
             // We should not have any events stored pending to be written since WriteDiagnosticEvent will check for an initialized TableClient.
-            if (_environment.IsPlaceholderModeEnabled() || TableClient is null || !IsEnabled())
+            if (TableClient is null)
             {
                 return;
             }
@@ -317,7 +322,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public void WriteDiagnosticEvent(DateTime timestamp, string errorCode, LogLevel level, string message, string helpLink, Exception exception)
         {
-            if (TableClient is null || string.IsNullOrEmpty(HostId) || !IsEnabled())
+            if (!IsEnabled() || string.IsNullOrEmpty(HostId))
+            {
+                return;
+            }
+
+            if (TableClient is null)
             {
                 return;
             }
@@ -346,7 +356,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         internal void EnsureFlushLogsTimerInitialized()
         {
-            if (_disposed || !IsEnabled())
+            if (!IsEnabled() || _disposed)
             {
                 return;
             }
@@ -388,7 +398,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             {
                 if (disposing)
                 {
-                    if (_flushLogsTimer?.Value != null)
+                    _isEnabled = false;
+
+                    if (_flushLogsTimer?.Value is not null)
                     {
                         _flushLogsTimer?.Value?.Dispose();
                     }
