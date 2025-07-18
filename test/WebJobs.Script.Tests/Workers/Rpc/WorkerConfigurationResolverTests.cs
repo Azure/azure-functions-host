@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -46,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AppKind)).Returns(ScriptConstants.WorkFlowAppKind);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime)).Returns((string)null);
 
-            var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(_mockConfig.Object, _mockLogger.Object, mockEnvironment.Object, FileUtility.Instance, _mockProfileManager.Object, new HashSet<string>() { "java", "node", "powershell" }, _probingPaths);
+            var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(_mockConfig.Object, _mockLogger.Object, mockEnvironment.Object, FileUtility.Instance, _mockProfileManager.Object, new HashSet<string>() { "java", "node", "powershell" }, _probingPaths, null);
 
             var result = workerConfigurationResolver.GetWorkerConfigPaths();
 
@@ -80,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             }
 
             // Act
-            var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(_mockConfig.Object, _mockLogger.Object, mockEnvironment.Object, FileUtility.Instance, _mockProfileManager.Object, new HashSet<string>() { "java", "node", "powershell" }, probingPaths);
+            var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(_mockConfig.Object, _mockLogger.Object, mockEnvironment.Object, FileUtility.Instance, _mockProfileManager.Object, new HashSet<string>() { "java", "node", "powershell" }, probingPaths, null);
 
             var result = workerConfigurationResolver.GetWorkerConfigPaths();
 
@@ -125,13 +126,41 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var mockLogger = new Mock<ILogger>();
 
             // Act
-            var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(mockConfig.Object, mockLogger.Object, mockEnv.Object, FileUtility.Instance, mockProfileManager.Object, new HashSet<string>() { "java", "node", "powershell" }, probingPaths);
+            var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(mockConfig.Object, mockLogger.Object, mockEnv.Object, FileUtility.Instance, mockProfileManager.Object, new HashSet<string>() { "java", "node", "powershell" }, probingPaths, null);
 
             var result = workerConfigurationResolver.GetWorkerConfigPaths();
 
             // Assert
             Assert.Equal(result.Count, 1);
             Assert.True(result.Any(r => r.Contains(Path.Combine(_fallbackPath, languageWorker))));
+        }
+
+        [Theory]
+        [InlineData("LATEST", "java\\2.18.0", "node\\3.10.1", "powershell", "dotnet-isolated", "python")]
+        public void GetWorkerConfigs_MultiLanguageWorker_ReturnsExpectedConfigs1(string releaseChannel, string java, string node, string powershell, string dotnetIsolated, string python)
+        {
+            // Arrange
+            var mockEnvironment = new Mock<IEnvironment>();
+            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel)).Returns(releaseChannel);
+            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AppKind)).Returns(ScriptConstants.WorkFlowAppKind);
+            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime)).Returns((string)null);
+
+            Dictionary<string, HashSet<Version>> ignoredVersions = new Dictionary<string, HashSet<Version>>
+            {
+                { "java", new HashSet<Version> { new Version("2.19.0") } }
+            };
+
+            var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(_mockConfig.Object, _mockLogger.Object, mockEnvironment.Object, FileUtility.Instance, _mockProfileManager.Object, new HashSet<string>() { "java", "node"}, _probingPaths, ignoredVersions);
+
+            var result = workerConfigurationResolver.GetWorkerConfigPaths();
+
+            // Assert
+            Assert.Equal(result.Count, 5);
+            Assert.True(result.Any(r => r.Contains(Path.Combine(_probingPath1, java))));
+            Assert.True(result.Any(r => r.Contains(Path.Combine(_probingPath1, node))));
+            Assert.True(result.Any(r => r.Contains(Path.Combine(_fallbackPath, powershell))));
+            Assert.True(result.Any(r => r.Contains(Path.Combine(_fallbackPath, dotnetIsolated))));
+            Assert.True(result.Any(r => r.Contains(Path.Combine(_fallbackPath, python))));
         }
     }
 }

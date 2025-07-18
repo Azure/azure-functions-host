@@ -24,6 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         private readonly IFileSystem _fileSystem;
         private readonly HashSet<string> _workersAvailableForResolutionViaHostingConfig;
         private readonly List<string> _workerProbingPaths;
+        private readonly Dictionary<string, HashSet<Version>> _ignoredVersions;
         private readonly JsonSerializerOptions _jsonSerializerOptions = new() { PropertyNameCaseInsensitive = true };
 
         public DynamicWorkerConfigurationResolver(IConfiguration config,
@@ -32,7 +33,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                                         IFileSystem fileSystem,
                                         IWorkerProfileManager workerProfileManager,
                                         HashSet<string> workersAvailableForResolutionViaHostingConfig,
-                                        List<string> workerProbingPaths)
+                                        List<string> workerProbingPaths,
+                                        Dictionary<string, HashSet<Version>> ignoredVersions)
         {
             _config = config ?? throw new ArgumentNullException(nameof(config));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -41,6 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             _profileManager = workerProfileManager ?? throw new ArgumentNullException(nameof(workerProfileManager));
             _workersAvailableForResolutionViaHostingConfig = workersAvailableForResolutionViaHostingConfig;
             _workerProbingPaths = workerProbingPaths;
+            _ignoredVersions = ignoredVersions ?? [];
         }
 
         public List<string> GetWorkerConfigPaths()
@@ -136,6 +139,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
             foreach (var versionPair in versionPathMap)
             {
+                if (_ignoredVersions.ContainsKey(languageWorkerFolder) && _ignoredVersions[languageWorkerFolder].Contains(versionPair.Key))
+                {
+                    continue;
+                }
+
                 string languageWorkerVersionPath = versionPair.Value;
 
                 if (IsWorkerCompatibleWithHost(languageWorkerVersionPath))
