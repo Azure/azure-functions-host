@@ -3,13 +3,14 @@
 
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
     public interface IWebHostRpcWorkerChannelManager
     {
-        Task<IRpcWorkerChannel> InitializeChannelAsync(IEnumerable<RpcWorkerConfig> workerConfigs, string language);
+        Task<IRpcWorkerChannel> InitializeChannelAsync(IEnumerable<RpcWorkerConfig> workerConfigs, string language, CancellationToken cancellationToken = default);
 
         IDictionary<string, TaskCompletionSource<IRpcWorkerChannel>> GetChannels(string language);
 

@@ -158,13 +158,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         internal async Task InitializeJobhostLanguageWorkerChannelAsync(int attemptCount, string language) =>
             await InitializeJobhostLanguageWorkerChannelAsync(attemptCount, new[] { language });
 
-        internal async Task InitializeJobhostLanguageWorkerChannelAsync(int attemptCount, IEnumerable<string> languages)
+        internal async Task InitializeJobhostLanguageWorkerChannelAsync(int attemptCount, IEnumerable<string> languages, CancellationToken cancellationToken = default)
         {
             foreach (string language in languages)
             {
                 var rpcWorkerChannel = _rpcWorkerChannelFactory.Create(_scriptOptions.RootScriptPath, language, _metricsLogger, attemptCount, _workerConfigs);
                 _jobHostLanguageWorkerChannelManager.AddChannel(rpcWorkerChannel, language);
-                await rpcWorkerChannel.StartWorkerProcessAsync();
+                await rpcWorkerChannel.StartWorkerProcessAsync(cancellationToken);
                 _logger.LogDebug("Adding jobhost language worker channel for runtime: {language}. workerId:{id}", language, rpcWorkerChannel.Id);
 
                 // if the worker is indexing, we will not have function metadata yet. So, we cannot set up invocation buffers or send load requests

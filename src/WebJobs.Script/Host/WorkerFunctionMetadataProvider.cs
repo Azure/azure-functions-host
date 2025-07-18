@@ -29,6 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IEnvironment _environment;
         private readonly IWebHostRpcWorkerChannelManager _channelManager;
         private readonly IScriptHostManager _scriptHostManager;
+        private readonly IHostApplicationLifetime _applicationLifetime;
         private string _workerRuntime;
         private ImmutableArray<FunctionMetadata> _functions;
         private IHost _currentJobHost = null;
@@ -38,7 +39,8 @@ namespace Microsoft.Azure.WebJobs.Script
             ILogger<WorkerFunctionMetadataProvider> logger,
             IEnvironment environment,
             IWebHostRpcWorkerChannelManager webHostRpcWorkerChannelManager,
-            IScriptHostManager scriptHostManager)
+            IScriptHostManager scriptHostManager,
+            IHostApplicationLifetime applicationLifetime)
         {
             _scriptOptions = scriptOptions;
             _logger = logger;
@@ -46,6 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script
             _channelManager = webHostRpcWorkerChannelManager;
             _scriptHostManager = scriptHostManager;
             _workerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
+            _applicationLifetime = applicationLifetime;
 
             _scriptHostManager.ActiveHostChanged += OnHostChanged;
         }
@@ -89,7 +92,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     if (IsJobHostStarting())
                     {
                         _logger.LogDebug("JobHost is starting with state '{State}'. Initializing worker channel.", _scriptHostManager.State);
-                        await _channelManager.InitializeChannelAsync(workerConfigs, _workerRuntime);
+                        await _channelManager.InitializeChannelAsync(workerConfigs, _workerRuntime, _applicationLifetime.ApplicationStopping);
                     }
                     else
                     {
@@ -167,10 +170,8 @@ namespace Microsoft.Azure.WebJobs.Script
             // the host has not completely started, it means that it is still in the process of starting.
             if (_currentJobHost is not null && _scriptHostManager.State == ScriptHostState.Error)
             {
-                var lifetime = _currentJobHost.Services?.GetService<IHostApplicationLifetime>();
-
-                if (lifetime is not null &&
-                    !lifetime.ApplicationStarted.IsCancellationRequested)
+                if (_applicationLifetime is not null &&
+                    !_applicationLifetime.ApplicationStarted.IsCancellationRequested)
                 {
                     return true;
                 }

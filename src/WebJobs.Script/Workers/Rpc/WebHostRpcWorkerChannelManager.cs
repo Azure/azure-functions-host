@@ -6,6 +6,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.AppService.Proxy.Common.Infra;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -72,22 +73,24 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _shutdownStandbyWorkerChannels = _shutdownStandbyWorkerChannels.Debounce(milliseconds: 5000);
         }
 
-        public Task<IRpcWorkerChannel> InitializeChannelAsync(IEnumerable<RpcWorkerConfig> workerConfigs, string runtime)
+        public Task<IRpcWorkerChannel> InitializeChannelAsync(IEnumerable<RpcWorkerConfig> workerConfigs, string runtime, CancellationToken cancellationToken = default)
         {
             _logger?.LogDebug("Initializing language worker channel for runtime:{runtime}", runtime);
-            return InitializeLanguageWorkerChannel(workerConfigs, runtime, _applicationHostOptions.CurrentValue.ScriptPath);
+            return InitializeLanguageWorkerChannel(workerConfigs, runtime, _applicationHostOptions.CurrentValue.ScriptPath, cancellationToken);
         }
 
-        internal async Task<IRpcWorkerChannel> InitializeLanguageWorkerChannel(IEnumerable<RpcWorkerConfig> workerConfigs, string runtime, string scriptRootPath)
+        internal async Task<IRpcWorkerChannel> InitializeLanguageWorkerChannel(IEnumerable<RpcWorkerConfig> workerConfigs, string runtime, string scriptRootPath, CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             IRpcWorkerChannel rpcWorkerChannel = null;
             string workerId = Guid.NewGuid().ToString();
-            _logger.LogDebug("Creating language worker channel for runtime:{runtime}", runtime);
+            _logger.LogWarning("Creating language worker channel for runtime:{runtime}", runtime);
             try
             {
                 rpcWorkerChannel = _rpcWorkerChannelFactory.Create(scriptRootPath, runtime, _metricsLogger, 0, workerConfigs);
                 AddOrUpdateWorkerChannels(runtime, rpcWorkerChannel);
-                await rpcWorkerChannel.StartWorkerProcessAsync().ContinueWith(processStartTask =>
+                await rpcWorkerChannel.StartWorkerProcessAsync(cancellationToken).ContinueWith(processStartTask =>
                 {
                     if (processStartTask.Status == TaskStatus.RanToCompletion)
                     {

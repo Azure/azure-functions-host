@@ -267,7 +267,13 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             next.SetResult(message);
         }
 
-        private void RegisterCallbackForNextGrpcMessage(MsgType messageType, TimeSpan timeout, int count, Action<InboundGrpcEvent> callback, Action<Exception> faultHandler)
+        private void RegisterCallbackForNextGrpcMessage(
+            MsgType messageType,
+            TimeSpan timeout,
+            int count,
+            Action<InboundGrpcEvent> callback,
+            Action<Exception> faultHandler,
+            CancellationToken cancellationToken = default)
         {
             Queue<PendingItem> queue;
             lock (_pendingActions)
@@ -289,8 +295,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 for (int i = 0; i < count; i++)
                 {
                     var newItem = (i == count - 1) && (timeout != TimeSpan.Zero)
-                        ? new PendingItem(callback, faultHandler, timeout)
-                        : new PendingItem(callback, faultHandler);
+                        ? new PendingItem(callback, faultHandler, timeout, cancellationToken)
+                        : new PendingItem(callback, faultHandler, cancellationToken);
                     queue.Enqueue(newItem);
                 }
             }
@@ -371,8 +377,16 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         public async Task StartWorkerProcessAsync(CancellationToken cancellationToken)
         {
-            RegisterCallbackForNextGrpcMessage(MsgType.StartStream, _workerConfig.CountOptions.ProcessStartupTimeout, 1, SendWorkerInitRequest, HandleWorkerStartStreamError);
-            // note: it is important that the ^^^ StartStream is in place *before* we start process the loop, otherwise we get a race condition
+            cancellationToken.ThrowIfCancellationRequested();
+
+            RegisterCallbackForNextGrpcMessage(
+                MsgType.StartStream,
+                _workerConfig.CountOptions.ProcessStartupTimeout,
+                1,
+                grpcEvent => SendWorkerInitRequest(grpcEvent, cancellationToken),
+                HandleWorkerStartStreamError,
+                cancellationToken);
+            // Note: it is important that the ^^^ StartStream is in place *before* we start process the loop, otherwise we get a race condition
             _ = ProcessInbound();
 
             _workerChannelLogger.LogDebug("Initiating Worker Process start up");
@@ -418,10 +432,12 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         }
 
         // send capabilities to worker, wait for WorkerInitResponse
-        internal void SendWorkerInitRequest(GrpcEvent startEvent)
+        internal void SendWorkerInitRequest(GrpcEvent startEvent, CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             _workerChannelLogger.LogDebug("Worker Process started. Received StartStream message");
-            RegisterCallbackForNextGrpcMessage(MsgType.WorkerInitResponse, _workerConfig.CountOptions.InitializationTimeout, 1, WorkerInitResponse, HandleWorkerInitError);
+            RegisterCallbackForNextGrpcMessage(MsgType.WorkerInitResponse, _workerConfig.CountOptions.InitializationTimeout, 1, WorkerInitResponse, HandleWorkerInitError, cancellationToken);
 
             WorkerInitRequest initRequest = GetWorkerInitRequest();
 
@@ -949,7 +965,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     if (!_functionMetadataRequestSent)
                     {
                         RegisterCallbackForNextGrpcMessage(MsgType.FunctionMetadataResponse, _functionLoadTimeout, 1,
-                    msg => ProcessFunctionMetadataResponses(msg.Message.FunctionMetadataResponse), HandleWorkerMetadataRequestError);
+                            msg => ProcessFunctionMetadataResponses(msg.Message.FunctionMetadataResponse), HandleWorkerMetadataRequestError);
 
                         _workerChannelLogger.LogDebug("Sending WorkerMetadataRequest to {language} worker with worker ID {workerID}", _runtime, _workerId);
 
@@ -1749,21 +1765,25 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         {
             private readonly Action<InboundGrpcEvent> _callback;
             private readonly Action<Exception> _faultHandler;
-            private CancellationTokenRegistration _ctr;
+            private CancellationTokenRegistration _timeoutRegistration;
+            private CancellationTokenRegistration _cancellationRegistration;
             private int _state;
 
-            public PendingItem(Action<InboundGrpcEvent> callback, Action<Exception> faultHandler)
+            public PendingItem(Action<InboundGrpcEvent> callback, Action<Exception> faultHandler, CancellationToken cancellationToken = default)
             {
                 _callback = callback;
                 _faultHandler = faultHandler;
+
+                // Register for host shutdown
+                _cancellationRegistration = cancellationToken.Register(static state => ((PendingItem)state).OnCanceled(), this);
             }
 
-            public PendingItem(Action<InboundGrpcEvent> callback, Action<Exception> faultHandler, TimeSpan timeout)
-                : this(callback, faultHandler)
+            public PendingItem(Action<InboundGrpcEvent> callback, Action<Exception> faultHandler, TimeSpan timeout, CancellationToken cancellationToken = default)
+                : this(callback, faultHandler, cancellationToken)
             {
                 var cts = new CancellationTokenSource();
                 cts.CancelAfter(timeout);
-                _ctr = cts.Token.Register(static state => ((PendingItem)state).OnTimeout(), this);
+                _timeoutRegistration = cts.Token.Register(static state => ((PendingItem)state).OnTimeout(), this);
             }
 
             public bool IsComplete => Volatile.Read(ref _state) != 0;
@@ -1772,8 +1792,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             public void SetResult(InboundGrpcEvent message)
             {
-                _ctr.Dispose();
-                _ctr = default;
+                _timeoutRegistration.Dispose();
+                _cancellationRegistration.Dispose();
+                _timeoutRegistration = default;
+                _cancellationRegistration = default;
+
                 if (MakeComplete() && _callback != null)
                 {
                     try
@@ -1810,6 +1833,20 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                         catch
                         {
                         }
+                    }
+                }
+            }
+
+            private void OnCanceled()
+            {
+                if (MakeComplete() && _faultHandler != null)
+                {
+                    try
+                    {
+                        _faultHandler(new OperationCanceledException());
+                    }
+                    catch
+                    {
                     }
                 }
             }

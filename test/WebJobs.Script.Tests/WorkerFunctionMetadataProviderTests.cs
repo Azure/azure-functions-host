@@ -9,6 +9,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -28,13 +29,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var mockEnvironment = new Mock<IEnvironment>();
             var mockChannelManager = new Mock<IWebHostRpcWorkerChannelManager>();
             var mockScriptHostManager = new Mock<IScriptHostManager>();
+            var mockLifetime = new Mock<IHostApplicationLifetime>();
 
             _workerFunctionMetadataProvider = new WorkerFunctionMetadataProvider(
                 mockScriptOptions.Object,
                 mockLogger.Object,
                 mockEnvironment.Object,
                 mockChannelManager.Object,
-                mockScriptHostManager.Object);
+                mockScriptHostManager.Object,
+                mockLifetime.Object);
         }
 
         [Fact]
@@ -188,6 +191,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var mockScriptHostManager = new Mock<IScriptHostManager>();
             mockScriptHostManager.Setup(m => m.State).Returns(ScriptHostState.Running);
 
+            var mockLifetime = new Mock<IHostApplicationLifetime>();
+
             var mockWebHostRpcWorkerChannelManager = new Mock<IWebHostRpcWorkerChannelManager>();
             mockWebHostRpcWorkerChannelManager.Setup(m => m.GetChannels(It.IsAny<string>())).Returns(() => new Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>>
             {
@@ -197,7 +202,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "node");
 
             var workerFunctionMetadataProvider = new WorkerFunctionMetadataProvider(optionsMonitor, logger, SystemEnvironment.Instance,
-                                                    mockWebHostRpcWorkerChannelManager.Object, mockScriptHostManager.Object);
+                                                    mockWebHostRpcWorkerChannelManager.Object, mockScriptHostManager.Object, mockLifetime.Object);
             await workerFunctionMetadataProvider.GetFunctionMetadataAsync(workerConfigs, false);
 
             var traces = logger.GetLogMessages();
@@ -230,6 +235,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var mockChannelManager = new Mock<IWebHostRpcWorkerChannelManager>(MockBehavior.Strict);
             var mockScriptHostManager = new Mock<IScriptHostManager>(MockBehavior.Strict);
             var mockOptionsMonitor = new Mock<IOptionsMonitor<ScriptApplicationHostOptions>>(MockBehavior.Strict);
+            var mockLifetime = new Mock<IHostApplicationLifetime>(MockBehavior.Strict);
             var scriptOptions = new ScriptApplicationHostOptions
             {
                 IsFileSystemReadOnly = true
@@ -265,7 +271,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 NullLogger<WorkerFunctionMetadataProvider>.Instance,
                 testEnvironment,
                 mockChannelManager.Object,
-                mockScriptHostManager.Object);
+                mockScriptHostManager.Object,
+                mockLifetime.Object);
 
             var workerConfigs = new List<RpcWorkerConfig>();
 

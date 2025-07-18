@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -44,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             return null;
         }
 
-        public async Task<IRpcWorkerChannel> InitializeChannelAsync(IEnumerable<RpcWorkerConfig> workerConfigs, string language)
+        public async Task<IRpcWorkerChannel> InitializeChannelAsync(IEnumerable<RpcWorkerConfig> workerConfigs, string language, CancellationToken cancellationToken = default)
         {
             var metricsLogger = new Mock<IMetricsLogger>();
             IRpcWorkerChannel workerChannel = _testLanguageWorkerChannelFactory.Create(_scriptRootPath, language, metricsLogger.Object, 0, TestHelpers.GetTestWorkerConfigs());
@@ -58,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 _workerChannels[language].Add(workerChannel.Id, new TaskCompletionSource<IRpcWorkerChannel>());
             }
 
-            await workerChannel.StartWorkerProcessAsync().ContinueWith(processStartTask =>
+            await workerChannel.StartWorkerProcessAsync(cancellationToken).ContinueWith(processStartTask =>
             {
                 if (processStartTask.Status == TaskStatus.RanToCompletion)
                 {
