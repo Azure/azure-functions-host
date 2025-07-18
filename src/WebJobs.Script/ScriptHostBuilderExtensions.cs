@@ -339,6 +339,10 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 if (applicationHostOptions.HasParentScope)
                 {
+                    var workerResolverOptions = applicationHostOptions.RootServiceProvider.GetService<IOptionsMonitor<WorkerConfigurationResolverOptions>>();
+                    services.AddSingleton(workerResolverOptions);
+                    services.AddSingleton<IOptions<WorkerConfigurationResolverOptions>>(s => new OptionsWrapper<WorkerConfigurationResolverOptions>(workerResolverOptions.CurrentValue));
+
                     // Forward the host LanguageWorkerOptions to the Job Host.
                     var languageWorkerOptions = applicationHostOptions.RootServiceProvider.GetService<IOptionsMonitor<LanguageWorkerOptions>>();
                     services.AddSingleton(languageWorkerOptions);
