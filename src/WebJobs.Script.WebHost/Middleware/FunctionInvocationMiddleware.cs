@@ -4,10 +4,8 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization.Policy;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Abstractions;
@@ -57,9 +55,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
                 int nestedProxiesCount = GetNestedProxiesCount(context, functionExecution);
                 IActionResult result = await GetResultAsync(context, functionExecution);
 
-                if (context.Items.TryGetValue(ScriptConstants.HttpProxyingEnabled, out var value))
+                if (context.Items.TryGetValue(ScriptConstants.HttpProxyingEnabled, out var httpProxyingEnabled))
                 {
-                    if (value?.ToString() == bool.TrueString)
+                    if (httpProxyingEnabled?.ToString() == bool.TrueString)
                     {
                         return;
                     }

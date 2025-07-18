@@ -226,10 +226,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                     writer.WritePropertyName(WorkerConstants.ProcessCount);
                     writer.WriteStartObject();
 
-                    writer.WriteNumber("ProcessCount", minProcessCount);
+                    writer.WriteNumber("processcount", minProcessCount);
                     writer.WriteNumber("MaxProcessCount", maxProcessCount);
-                    writer.WriteString("ProcessStartupInterval", processStartupInterval);
-                    writer.WriteBoolean("SetProcessCountToNumberOfCpuCores", setProcessCountToNumberOfCpuCores);
+                    writer.WriteString("processStartupInterval", processStartupInterval);
+                    writer.WriteBoolean("SETPROCESSCOUNTTONUMBEROFCPUCORES", setProcessCountToNumberOfCpuCores);
 
                     writer.WriteEndObject();
                 }

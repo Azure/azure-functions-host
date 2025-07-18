@@ -10,8 +10,10 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Models;
+using Microsoft.Azure.WebJobs.Script.Properties;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using NuGet.Versioning;
@@ -374,6 +376,34 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
 
             // if no bin directory is present something is wrong
             return FileUtility.DirectoryExists(binPath) ? binPath : null;
+        }
+
+        public string GetOutdatedBundleVersion()
+        {
+            // If the extension bundle version is not set or if the extension bundle is not the default one,
+            // return empty string
+            if (string.IsNullOrEmpty(_extensionBundleVersion) ||
+                !string.Equals(_options?.Id, ScriptConstants.DefaultExtensionBundleId, StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+
+            // Extract the major version number from the version string
+            int dotIndex = _extensionBundleVersion.IndexOf('.');
+            if (dotIndex <= 0 || !int.TryParse(_extensionBundleVersion.AsSpan(0, dotIndex), out var majorVersion) || majorVersion == 0)
+            {
+                return null;
+            }
+
+            int latestMajorVersion = ScriptConstants.ExtensionBundleV4MajorVersion;
+
+            // Return the version if it's outdated
+            if (majorVersion < latestMajorVersion)
+            {
+                return _extensionBundleVersion;
+            }
+
+            return null;
         }
     }
 }

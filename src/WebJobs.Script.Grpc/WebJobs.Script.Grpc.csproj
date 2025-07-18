@@ -18,7 +18,6 @@
     <PackageReference Include="System.IO.FileSystem.Primitives" Version="4.3.0" />
     <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.556" PrivateAssets="all" />
     <PackageReference Include="System.Threading.Channels" Version="8.0.0" />
-    <PackageReference Include="Yarp.ReverseProxy" Version="2.0.1" />
   </ItemGroup>
 
   <ItemGroup>

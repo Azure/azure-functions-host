@@ -87,7 +87,11 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
         {
             return builder.WithTracing(builder =>
             {
-                builder.AddSource("Azure.*")
+                builder
+                .AddSource("Azure.*")
+                .AddSource("Microsoft.Azure.Webjobs.Extensions.*")
+                .AddSource("WebJobs.Extensions.DurableTask")
+                .AddSource("DurableTask.*")
                 .AddAspNetCoreInstrumentation(o =>
                 {
                     o.EnrichWithHttpResponse = (activity, httpResponse) =>
