@@ -405,7 +405,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                         _flushLogsTimer?.Value?.Dispose();
                     }
 
-                    FlushLogs().GetAwaiter().GetResult();
+                    if (_tableClient is not null)
+                    {
+                        FlushLogs().GetAwaiter().GetResult();
+                    }
                 }
 
                 _disposed = true;
