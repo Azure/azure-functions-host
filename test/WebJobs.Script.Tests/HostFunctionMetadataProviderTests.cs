@@ -350,5 +350,59 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var metadata = HostFunctionMetadataProvider.ParseFunctionMetadata("Function1", json, scriptRoot, fileSystemMock.Object, workerConfigs, functionsWorkerRuntime);
             Assert.Equal(expectedLanguage, metadata.Language);
         }
+
+        [Fact]
+        public void ParseFunctionMetadata_MasksSensitiveDataInBindings()
+        {
+            const string functionJson = @"{
+                                  ""scriptFile"": ""app.dll"",
+                                  ""bindings"": [
+                                    {
+                                      ""name"": ""myQueueItem"",
+                                      ""type"": ""queueTrigger"",
+                                      ""direction"": ""in"",
+                                      ""queueName"": ""test-input-node"",
+                                      ""connection"": ""DefaultEndpointsProtocol=https;AccountName=a;AccountKey=b/c==;EndpointSuffix=core.windows.net""
+                                    },
+                                    {
+                                      ""name"": ""$return"",
+                                      ""type"": ""queue"",
+                                      ""direction"": ""out"",
+                                      ""queueName"": ""test-output-node"",
+                                      ""connection"": ""MyConnection""
+                                    }
+                                  ]
+                                }";
+
+            var json = JObject.Parse(functionJson);
+            var scriptRoot = Path.Combine(Path.GetTempPath(), Path.GetTempFileName());
+
+            var fullFileSystem = new FileSystem();
+            var fileSystemMock = new Mock<IFileSystem>();
+            var fileBaseMock = new Mock<FileBase>();
+            fileSystemMock.Setup(f => f.Path).Returns(fullFileSystem.Path);
+            fileSystemMock.Setup(f => f.File).Returns(fileBaseMock.Object);
+            fileBaseMock.Setup(f => f.Exists(It.IsAny<string>())).Returns(true);
+
+            IList<RpcWorkerConfig> workerConfigs = [];
+
+            var metadata = HostFunctionMetadataProvider.ParseFunctionMetadata("Function1", json, scriptRoot, fileSystemMock.Object, workerConfigs, "custom");
+
+            Assert.NotNull(metadata);
+            Assert.NotNull(metadata.Bindings);
+            Assert.Equal(2, metadata.Bindings.Count);
+
+            // The first binding should have its connection string replaced with "[Hidden Credential]"
+            var bindingMetadata1 = metadata.Bindings[0];
+            Assert.Equal("[Hidden Credential]", bindingMetadata1.Connection);
+            Assert.Equal("[Hidden Credential]", bindingMetadata1.Raw["connection"]!.ToString());
+            Assert.DoesNotContain("AccountKey", bindingMetadata1.Raw.ToString());
+
+            // The second binding should remain unchanged (named connection)
+            var outputBinding = metadata.Bindings[1];
+            Assert.Equal("MyConnection", outputBinding.Connection);
+            Assert.Contains("MyConnection", outputBinding.Raw.ToString());
+            Assert.DoesNotContain("[Hidden Credential]", outputBinding.Raw["connection"]!.ToString());
+        }
     }
 }

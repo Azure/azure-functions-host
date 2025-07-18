@@ -5,19 +5,14 @@
     <IsTestProject>true</IsTestProject>
     <AssemblyName>Microsoft.Azure.WebJobs.Script.Tests</AssemblyName>
     <RootNamespace>Microsoft.Azure.WebJobs.Script.Tests</RootNamespace>
-    <LangVersion>preview</LangVersion>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
-    <AdditionalFiles Include="..\..\stylecop.json" Link="stylecop.json" />
+    <AdditionalFiles Include="../../stylecop.json" Link="stylecop.json" />
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="..\WebJobs.Script.Tests.Integration\TestScripts\**">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-      <LinkBase>TestScripts</LinkBase>
-    </None>
+    <None Include="../Resources/TestScripts/**" CopyToOutputDirectory="PreserveNewest" LinkBase="TestScripts" />
   </ItemGroup>
 
   <ItemGroup>
@@ -33,57 +28,36 @@
     <PackageReference Include="Microsoft.Azure.Functions.PythonWorker" Version="4.38.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.9.4" />
     <PackageReference Include="Moq" Version="4.18.4" />
-    <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.556">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
+    <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.556" PrivateAssets="all" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Storage" Version="4.0.5-11874" />
     <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="8.0.0" />
-    <PackageReference Include="System.IO.Abstractions.TestingHelpers" Version="2.1.0.227">
-    </PackageReference>
+    <PackageReference Include="System.IO.Abstractions.TestingHelpers" Version="2.1.0.227" />
     <PackageReference Include="xunit" Version="2.4.1" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="2.4.3">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.4.3" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj" />
-    <ProjectReference Include="..\..\src\WebJobs.Script\WebJobs.Script.csproj" />
-    <ProjectReference Include="..\..\src\WebJobs.Script.Grpc\WebJobs.Script.Grpc.csproj" />
+    <ProjectReference Include="../../src/WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj" />
+    <ProjectReference Include="../../src/WebJobs.Script/WebJobs.Script.csproj" />
+    <ProjectReference Include="../../src/WebJobs.Script.Grpc/WebJobs.Script.Grpc.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <Service Include="{82a7f48d-3b50-4b1e-b82e-3ada8210c358}" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Include="Description\DotNet\TestFiles\**\*.proj" />
-    <None Update="Description\DotNet\TestFiles\**" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Description/DotNet/TestFiles/**/*.proj" />
+    <None Update="Description/DotNet/TestFiles/**" CopyToOutputDirectory="PreserveNewest" />
     <None Update="Microsoft.Azure.WebJobs.Script.WebHost.deps.json" CopyToOutputDirectory="PreserveNewest" />
-    <None Update="TestFixture\HostOptionsProviderTests\*.json" CopyToOutputDirectory="PreserveNewest" />
-    <None Update="TestFixture\ExtensionRequirementOptionsTest\EmptyFile.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="TestFixture\ExtensionRequirementOptionsTest\FunctionsHostingEnvironmentConfig_extensionsOnly.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="TestFixture\ExtensionRequirementOptionsTest\FunctionsHostingEnvironmentConfig_bundlesOnly.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="TestFixture\ExtensionRequirementOptionsTest\FunctionsHostingEnvironmentConfig.json" CopyToOutputDirectory="PreserveNewest" />
-    <None Update="Workers\Rpc\Resources\**" CopyToOutputDirectory="PreserveNewest" />
-    <None Update="TestWorkers\**" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="TestFixture/**/*.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="Workers/Rpc/Resources/**" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="TestWorkers/**" CopyToOutputDirectory="PreserveNewest" />
     <None Update="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
-    <None Remove="Resources\FileProvisioning\PowerShell\*" />
+    <None Remove="Resources/FileProvisioning/PowerShell/*" />
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="Resources\FileProvisioning\PowerShell\*" />
-    <EmbeddedResource Update="Resources\FileProvisioning\PowerShell\profile.ps1" CopyToOutputDirectory="Never" />
+    <EmbeddedResource Include="Resources/FileProvisioning/PowerShell/*" />
+    <EmbeddedResource Update="Resources/FileProvisioning/PowerShell/profile.ps1" CopyToOutputDirectory="Never" />
   </ItemGroup>
 
-  <Import Project="..\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems" Label="Shared" />
+  <Import Project="../WebJobs.Script.Tests.Shared/WebJobs.Script.Tests.Shared.projitems" Label="Shared" />
 
 </Project>
