@@ -5,7 +5,6 @@ using System;
 using System.IO.Abstractions;
 using System.Net.Http;
 using System.Runtime.InteropServices;
-using Autofac.Core;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Azure.Functions.Platform.Metrics.LinuxConsumption;

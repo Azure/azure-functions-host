@@ -382,9 +382,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     }
                 }
 
-                if (_workerConfigResolverOptionsChangeTokenSource is HostBuiltChangeTokenSource<WorkerConfigurationResolverOptions> { } hostBuiltChangeTokenSource1)
+                if (_workerConfigResolverOptionsChangeTokenSource is HostBuiltChangeTokenSource<WorkerConfigurationResolverOptions> { } hostBuiltChangeToken)
                 {
-                    hostBuiltChangeTokenSource1.TriggerChange();
+                    hostBuiltChangeToken.TriggerChange();
                 }
 
                 if (_languageWorkerOptionsChangeTokenSource is HostBuiltChangeTokenSource<LanguageWorkerOptions> { } hostBuiltChangeTokenSource)
