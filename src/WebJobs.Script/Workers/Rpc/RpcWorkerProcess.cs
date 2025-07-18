@@ -83,13 +83,25 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             // The subscriber of WorkerErrorEvent is expected to Dispose() the errored channel
             _workerProcessLogger.LogError(rpcWorkerProcessExitException, $"Language Worker Process exited. Pid={rpcWorkerProcessExitException.Pid}.", _workerProcessArguments?.ExecutablePath);
-            _eventManager.Publish(new WorkerErrorEvent(_runtime, _workerId, rpcWorkerProcessExitException));
+            PublishNoThrow(new WorkerErrorEvent(_runtime, _workerId, rpcWorkerProcessExitException));
         }
 
         internal override void HandleWorkerProcessRestart()
         {
             _workerProcessLogger?.LogInformation("Language Worker Process exited and needs to be restarted.");
-            _eventManager.Publish(new WorkerRestartEvent(_runtime, _workerId));
+            PublishNoThrow(new WorkerRestartEvent(_runtime, _workerId));
+        }
+
+        private void PublishNoThrow(RpcChannelEvent @event)
+        {
+            try
+            {
+                _eventManager.Publish(@event);
+            }
+            catch (Exception ex)
+            {
+                _workerProcessLogger.LogWarning(ex, "Failed to publish RpcChannelEvent.");
+            }
         }
     }
 }
