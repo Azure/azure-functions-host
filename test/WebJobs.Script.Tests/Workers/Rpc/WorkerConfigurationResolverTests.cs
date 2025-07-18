@@ -50,10 +50,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var resolverOptionssetup = new WorkerConfigurationResolverOptionsSetup(_mockConfig.Object, mockEnvironment.Object);
             var resolverOptions = new WorkerConfigurationResolverOptions();
             resolverOptionssetup.Configure(resolverOptions);
-            var workerConfigurationResolverOptions = Options.Create(resolverOptions);
+
+            var factory = new TestOptionsFactory<WorkerConfigurationResolverOptions>(resolverOptions);
+            var source = new TestChangeTokenSource<WorkerConfigurationResolverOptions>();
+            var changeTokens = new[] { source };
+            var optionsMonitor = new OptionsMonitor<WorkerConfigurationResolverOptions>(factory, changeTokens, factory);
 
             // Act
-            var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(_mockLogger.Object, FileUtility.Instance, _mockProfileManager.Object, new HashSet<string>() { "java", "node", "powershell" }, _probingPaths, workerConfigurationResolverOptions);
+            var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(_mockLogger.Object, FileUtility.Instance, _mockProfileManager.Object, new HashSet<string>() { "java", "node", "powershell" }, _probingPaths, optionsMonitor);
 
             var result = workerConfigurationResolver.GetWorkerConfigPaths();
 
@@ -89,10 +93,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var resolverOptionssetup = new WorkerConfigurationResolverOptionsSetup(_mockConfig.Object, mockEnvironment.Object);
             var resolverOptions = new WorkerConfigurationResolverOptions();
             resolverOptionssetup.Configure(resolverOptions);
-            var workerConfigurationResolverOptions = Options.Create(resolverOptions);
+
+            var factory = new TestOptionsFactory<WorkerConfigurationResolverOptions>(resolverOptions);
+            var source = new TestChangeTokenSource<WorkerConfigurationResolverOptions>();
+            var changeTokens = new[] { source };
+            var optionsMonitor = new OptionsMonitor<WorkerConfigurationResolverOptions>(factory, changeTokens, factory);
 
             // Act
-            var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(_mockLogger.Object, FileUtility.Instance, _mockProfileManager.Object, new HashSet<string>() { "java", "node", "powershell" }, probingPaths, workerConfigurationResolverOptions);
+            var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(_mockLogger.Object, FileUtility.Instance, _mockProfileManager.Object, new HashSet<string>() { "java", "node", "powershell" }, probingPaths, optionsMonitor);
 
             var result = workerConfigurationResolver.GetWorkerConfigPaths();
 
@@ -139,10 +147,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var resolverOptionssetup = new WorkerConfigurationResolverOptionsSetup(_mockConfig.Object, mockEnv.Object);
             var resolverOptions = new WorkerConfigurationResolverOptions();
             resolverOptionssetup.Configure(resolverOptions);
-            var workerConfigurationResolverOptions = Options.Create(resolverOptions);
+
+            var factory = new TestOptionsFactory<WorkerConfigurationResolverOptions>(resolverOptions);
+            var source = new TestChangeTokenSource<WorkerConfigurationResolverOptions>();
+            var changeTokens = new[] { source };
+            var optionsMonitor = new OptionsMonitor<WorkerConfigurationResolverOptions>(factory, changeTokens, factory);
 
             // Act
-            var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(_mockLogger.Object, FileUtility.Instance, _mockProfileManager.Object, new HashSet<string>() { "java", "node", "powershell" }, probingPaths, workerConfigurationResolverOptions);
+            var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(_mockLogger.Object, FileUtility.Instance, _mockProfileManager.Object, new HashSet<string>() { "java", "node", "powershell" }, probingPaths, optionsMonitor);
 
             var result = workerConfigurationResolver.GetWorkerConfigPaths();
 

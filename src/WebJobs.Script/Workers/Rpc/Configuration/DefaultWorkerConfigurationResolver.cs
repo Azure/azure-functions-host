@@ -13,9 +13,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
     internal sealed class DefaultWorkerConfigurationResolver : IWorkerConfigurationResolver
     {
         private readonly ILogger _logger;
-        private readonly IOptions<WorkerConfigurationResolverOptions> _workerConfigurationResolverOptions;
+        private readonly IOptionsMonitor<WorkerConfigurationResolverOptions> _workerConfigurationResolverOptions;
 
-        public DefaultWorkerConfigurationResolver(ILogger logger, IOptions<WorkerConfigurationResolverOptions> workerConfigurationResolverOptions)
+        public DefaultWorkerConfigurationResolver(ILogger logger, IOptionsMonitor<WorkerConfigurationResolverOptions> workerConfigurationResolverOptions)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _workerConfigurationResolverOptions = workerConfigurationResolverOptions ?? throw new ArgumentNullException(nameof(workerConfigurationResolverOptions));
@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
         public List<string> GetWorkerConfigPaths()
         {
-            var workersDirPath = WorkerConfigurationHelper.GetWorkersDirPath(_workerConfigurationResolverOptions.Value.LanguageSection);
+            var workersDirPath = WorkerConfigurationHelper.GetWorkersDirPath(_workerConfigurationResolverOptions.CurrentValue.LanguageSection);
             _logger.LogDebug("Workers Directory set to: {workersDirPath}", workersDirPath);
 
             List<string> workerConfigs = new();

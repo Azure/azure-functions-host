@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly IWorkerProfileManager _workerProfileManager;
         private readonly IScriptHostManager _scriptHostManager;
         private readonly IOptions<FunctionsHostingConfigOptions> _functionsHostingConfigOptions;
-        private readonly IOptions<WorkerConfigurationResolverOptions> _workerConfigResolverOptions;
+        private readonly IOptionsMonitor<WorkerConfigurationResolverOptions> _workerConfigResolverOptions;
 
         public LanguageWorkerOptionsSetup(IConfiguration configuration,
                                           ILoggerFactory loggerFactory,
@@ -33,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                                           IWorkerProfileManager workerProfileManager,
                                           IScriptHostManager scriptHostManager,
                                           IOptions<FunctionsHostingConfigOptions> functionsHostingConfigOptions,
-                                          IOptions<WorkerConfigurationResolverOptions> workerConfigResolverOptions)
+                                          IOptionsMonitor<WorkerConfigurationResolverOptions> workerConfigResolverOptions)
         {
             if (loggerFactory is null)
             {

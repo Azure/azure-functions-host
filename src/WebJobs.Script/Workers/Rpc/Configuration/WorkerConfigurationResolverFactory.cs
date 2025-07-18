@@ -23,14 +23,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         private readonly IEnvironment _environment;
         private readonly IWorkerProfileManager _workerProfileManager;
         private readonly IOptions<FunctionsHostingConfigOptions> _functionsHostingConfigOptions;
-        private readonly IOptions<WorkerConfigurationResolverOptions> _workerConfigurationResolverOptions;
+        private readonly IOptionsMonitor<WorkerConfigurationResolverOptions> _workerConfigurationResolverOptions;
 
         public WorkerConfigurationResolverFactory(
                     ILogger logger,
                     IEnvironment environment,
                     IWorkerProfileManager workerProfileManager,
                     IOptions<FunctionsHostingConfigOptions> functionsHostingConfigOptions,
-                    IOptions<WorkerConfigurationResolverOptions> workerConfigurationResolverOptions)
+                    IOptionsMonitor<WorkerConfigurationResolverOptions> workerConfigurationResolverOptions)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
