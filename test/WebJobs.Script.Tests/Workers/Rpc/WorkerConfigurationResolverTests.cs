@@ -52,11 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var resolverOptionssetup = new WorkerConfigurationResolverOptionsSetup(_mockConfig.Object, mockEnvironment.Object, testScriptHostManager.Object);
             var resolverOptions = new WorkerConfigurationResolverOptions();
             resolverOptionssetup.Configure(resolverOptions);
-
-            var factory = new TestOptionsFactory<WorkerConfigurationResolverOptions>(resolverOptions);
-            var source = new TestChangeTokenSource<WorkerConfigurationResolverOptions>();
-            var changeTokens = new[] { source };
-            var optionsMonitor = new OptionsMonitor<WorkerConfigurationResolverOptions>(factory, changeTokens, factory);
+            var optionsMonitor = GetOptionsMonitor(resolverOptions);
 
             // Act
             var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(_mockLogger.Object, FileUtility.Instance, _mockProfileManager.Object, new HashSet<string>() { "java", "node", "powershell" }, _probingPaths, optionsMonitor);
@@ -96,11 +92,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var resolverOptionssetup = new WorkerConfigurationResolverOptionsSetup(_mockConfig.Object, mockEnvironment.Object, testScriptHostManager.Object);
             var resolverOptions = new WorkerConfigurationResolverOptions();
             resolverOptionssetup.Configure(resolverOptions);
-
-            var factory = new TestOptionsFactory<WorkerConfigurationResolverOptions>(resolverOptions);
-            var source = new TestChangeTokenSource<WorkerConfigurationResolverOptions>();
-            var changeTokens = new[] { source };
-            var optionsMonitor = new OptionsMonitor<WorkerConfigurationResolverOptions>(factory, changeTokens, factory);
+            var optionsMonitor = GetOptionsMonitor(resolverOptions);
 
             // Act
             var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(_mockLogger.Object, FileUtility.Instance, _mockProfileManager.Object, new HashSet<string>() { "java", "node", "powershell" }, probingPaths, optionsMonitor);
@@ -151,11 +143,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var resolverOptionssetup = new WorkerConfigurationResolverOptionsSetup(_mockConfig.Object, mockEnv.Object, testScriptHostManager.Object);
             var resolverOptions = new WorkerConfigurationResolverOptions();
             resolverOptionssetup.Configure(resolverOptions);
-
-            var factory = new TestOptionsFactory<WorkerConfigurationResolverOptions>(resolverOptions);
-            var source = new TestChangeTokenSource<WorkerConfigurationResolverOptions>();
-            var changeTokens = new[] { source };
-            var optionsMonitor = new OptionsMonitor<WorkerConfigurationResolverOptions>(factory, changeTokens, factory);
+            var optionsMonitor = GetOptionsMonitor(resolverOptions);
 
             // Act
             var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(_mockLogger.Object, FileUtility.Instance, _mockProfileManager.Object, new HashSet<string>() { "java", "node", "powershell" }, probingPaths, optionsMonitor);
@@ -165,6 +153,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             // Assert
             Assert.Equal(result.Count, 1);
             Assert.True(result.Any(r => r.Contains(Path.Combine(_fallbackPath, languageWorker))));
+        }
+
+        private static IOptionsMonitor<WorkerConfigurationResolverOptions> GetOptionsMonitor(WorkerConfigurationResolverOptions resolverOptions)
+        {
+            var factory = new TestOptionsFactory<WorkerConfigurationResolverOptions>(resolverOptions);
+            var source = new TestChangeTokenSource<WorkerConfigurationResolverOptions>();
+            var changeTokens = new[] { source };
+            var optionsMonitor = new OptionsMonitor<WorkerConfigurationResolverOptions>(factory, changeTokens, factory);
+
+            return optionsMonitor;
         }
     }
 }

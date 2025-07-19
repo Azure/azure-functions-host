@@ -66,11 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var resolverOptionssetup = new WorkerConfigurationResolverOptionsSetup(configuration, testEnvironment, testScriptHostManager.Object);
             var resolverOptions = new WorkerConfigurationResolverOptions();
             resolverOptionssetup.Configure(resolverOptions);
-
-            var factory = new TestOptionsFactory<WorkerConfigurationResolverOptions>(resolverOptions);
-            var source = new TestChangeTokenSource<WorkerConfigurationResolverOptions>();
-            var changeTokens = new[] { source };
-            var optionsMonitor = new OptionsMonitor<WorkerConfigurationResolverOptions>(factory, changeTokens, factory);
+            var optionsMonitor = GetOptionsMonitor(resolverOptions);
 
             LanguageWorkerOptionsSetup setup = new LanguageWorkerOptionsSetup(configuration, NullLoggerFactory.Instance, testEnvironment, testMetricLogger, testProfileManager.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(new FunctionsHostingConfigOptions()), optionsMonitor);
             LanguageWorkerOptions options = new LanguageWorkerOptions();
@@ -123,11 +119,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var resolverOptionssetup = new WorkerConfigurationResolverOptionsSetup(configuration, testEnvironment, testScriptHostManager.Object);
             var resolverOptions = new WorkerConfigurationResolverOptions();
             resolverOptionssetup.Configure(resolverOptions);
-
-            var factory = new TestOptionsFactory<WorkerConfigurationResolverOptions>(resolverOptions);
-            var source = new TestChangeTokenSource<WorkerConfigurationResolverOptions>();
-            var changeTokens = new[] { source };
-            var optionsMonitor = new OptionsMonitor<WorkerConfigurationResolverOptions>(factory, changeTokens, factory);
+            var optionsMonitor = GetOptionsMonitor(resolverOptions);
 
             LanguageWorkerOptionsSetup setup = new LanguageWorkerOptionsSetup(configuration, loggerFactory, testEnvironment, testMetricLogger, testProfileManager.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions), optionsMonitor);
             LanguageWorkerOptions options = new LanguageWorkerOptions();
@@ -175,11 +167,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var resolverOptionssetup = new WorkerConfigurationResolverOptionsSetup(configuration, testEnvironment, testScriptHostManager.Object);
             var resolverOptions = new WorkerConfigurationResolverOptions();
             resolverOptionssetup.Configure(resolverOptions);
-
-            var factory = new TestOptionsFactory<WorkerConfigurationResolverOptions>(resolverOptions);
-            var source = new TestChangeTokenSource<WorkerConfigurationResolverOptions>();
-            var changeTokens = new[] { source };
-            var optionsMonitor = new OptionsMonitor<WorkerConfigurationResolverOptions>(factory, changeTokens, factory);
+            var optionsMonitor = GetOptionsMonitor(resolverOptions);
 
             LanguageWorkerOptionsSetup setup = new LanguageWorkerOptionsSetup(configuration, loggerFactory, testEnvironment, testMetricLogger, testProfileManager.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions), optionsMonitor);
             LanguageWorkerOptions options = new LanguageWorkerOptions();
@@ -226,11 +214,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var resolverOptionssetup = new WorkerConfigurationResolverOptionsSetup(configuration, testEnvironment, testScriptHostManager.Object);
             var resolverOptions = new WorkerConfigurationResolverOptions();
             resolverOptionssetup.Configure(resolverOptions);
-
-            var factory = new TestOptionsFactory<WorkerConfigurationResolverOptions>(resolverOptions);
-            var source = new TestChangeTokenSource<WorkerConfigurationResolverOptions>();
-            var changeTokens = new[] { source };
-            var optionsMonitor = new OptionsMonitor<WorkerConfigurationResolverOptions>(factory, changeTokens, factory);
+            var optionsMonitor = GetOptionsMonitor(resolverOptions);
 
             LanguageWorkerOptionsSetup setup = new LanguageWorkerOptionsSetup(configuration, loggerFactory, testEnvironment, testMetricLogger, testProfileManager.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions), optionsMonitor);
             LanguageWorkerOptions options = new LanguageWorkerOptions();
@@ -276,11 +260,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var resolverOptionssetup = new WorkerConfigurationResolverOptionsSetup(configuration, testEnvironment, testScriptHostManager.Object);
             var resolverOptions = new WorkerConfigurationResolverOptions();
             resolverOptionssetup.Configure(resolverOptions);
-
-            var factory = new TestOptionsFactory<WorkerConfigurationResolverOptions>(resolverOptions);
-            var source = new TestChangeTokenSource<WorkerConfigurationResolverOptions>();
-            var changeTokens = new[] { source };
-            var optionsMonitor = new OptionsMonitor<WorkerConfigurationResolverOptions>(factory, changeTokens, factory);
+            var optionsMonitor = GetOptionsMonitor(resolverOptions);
 
             LanguageWorkerOptionsSetup setup = new LanguageWorkerOptionsSetup(configuration, loggerFactory, testEnvironment, testMetricLogger, testProfileManager.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions), optionsMonitor);
             LanguageWorkerOptions options = new LanguageWorkerOptions();
@@ -324,11 +304,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var resolverOptionssetup = new WorkerConfigurationResolverOptionsSetup(configuration, testEnvironment, testScriptHostManager.Object);
             var resolverOptions = new WorkerConfigurationResolverOptions();
             resolverOptionssetup.Configure(resolverOptions);
-
-            var factory = new TestOptionsFactory<WorkerConfigurationResolverOptions>(resolverOptions);
-            var source = new TestChangeTokenSource<WorkerConfigurationResolverOptions>();
-            var changeTokens = new[] { source };
-            var optionsMonitor = new OptionsMonitor<WorkerConfigurationResolverOptions>(factory, changeTokens, factory);
+            var optionsMonitor = GetOptionsMonitor(resolverOptions);
 
             LanguageWorkerOptionsSetup setup = new LanguageWorkerOptionsSetup(configuration, loggerFactory, testEnvironment, testMetricLogger, testProfileManager.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions), optionsMonitor);
             LanguageWorkerOptions options = new LanguageWorkerOptions();
@@ -344,6 +320,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             Assert.True(logs.Any(l => l.FormattedMessage.Contains(expectedLog)));
             Assert.True(logs.Any(l => l.FormattedMessage.Contains("Workers probing paths set to:")));
             Assert.True(logs.Any(l => l.FormattedMessage.Contains("Searching for worker configs in the fallback directory")));
+        }
+
+        private static IOptionsMonitor<WorkerConfigurationResolverOptions> GetOptionsMonitor(WorkerConfigurationResolverOptions resolverOptions)
+        {
+            var factory = new TestOptionsFactory<WorkerConfigurationResolverOptions>(resolverOptions);
+            var source = new TestChangeTokenSource<WorkerConfigurationResolverOptions>();
+            var changeTokens = new[] { source };
+            var optionsMonitor = new OptionsMonitor<WorkerConfigurationResolverOptions>(factory, changeTokens, factory);
+
+            return optionsMonitor;
         }
     }
 }

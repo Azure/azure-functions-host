@@ -47,11 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var setup = new WorkerConfigurationResolverOptionsSetup(config, _testEnvironment, testScriptHostManager.Object);
             var options = new WorkerConfigurationResolverOptions();
             setup.Configure(options);
-
-            var factory = new TestOptionsFactory<WorkerConfigurationResolverOptions>(options);
-            var source = new TestChangeTokenSource<WorkerConfigurationResolverOptions>();
-            var changeTokens = new[] { source };
-            var optionsMonitor = new OptionsMonitor<WorkerConfigurationResolverOptions>(factory, changeTokens, factory);
+            var optionsMonitor = GetOptionsMonitor(options);
 
             var workerConfigurationResolver = new DefaultWorkerConfigurationResolver(testLogger, optionsMonitor);
             var configFactory = new RpcWorkerConfigFactory(testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger(), _testWorkerProfileManager, workerConfigurationResolver, optionsMonitor);
@@ -92,11 +88,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var setup = new WorkerConfigurationResolverOptionsSetup(config, _testEnvironment, testScriptHostManager.Object);
             var options = new WorkerConfigurationResolverOptions();
             setup.Configure(options);
-
-            var factory = new TestOptionsFactory<WorkerConfigurationResolverOptions>(options);
-            var source = new TestChangeTokenSource<WorkerConfigurationResolverOptions>();
-            var changeTokens = new[] { source };
-            var optionsMonitor = new OptionsMonitor<WorkerConfigurationResolverOptions>(factory, changeTokens, factory);
+            var optionsMonitor = GetOptionsMonitor(options);
 
             var workerConfigurationResolver = new DefaultWorkerConfigurationResolver(testLogger, optionsMonitor);
             var configFactory = new RpcWorkerConfigFactory(testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger(), _testWorkerProfileManager, workerConfigurationResolver, optionsMonitor);
@@ -120,11 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var setup = new WorkerConfigurationResolverOptionsSetup(config, _testEnvironment, testScriptHostManager.Object);
             var options = new WorkerConfigurationResolverOptions();
             setup.Configure(options);
-
-            var factory = new TestOptionsFactory<WorkerConfigurationResolverOptions>(options);
-            var source = new TestChangeTokenSource<WorkerConfigurationResolverOptions>();
-            var changeTokens = new[] { source };
-            var optionsMonitor = new OptionsMonitor<WorkerConfigurationResolverOptions>(factory, changeTokens, factory);
+            var optionsMonitor = GetOptionsMonitor(options);
 
             var workerConfigurationResolver = new DefaultWorkerConfigurationResolver(testLogger, optionsMonitor);
             var configFactory = new RpcWorkerConfigFactory(testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger(), _testWorkerProfileManager, workerConfigurationResolver, optionsMonitor);
@@ -156,11 +144,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var setup = new WorkerConfigurationResolverOptionsSetup(config, _testEnvironment, testScriptHostManager.Object);
             var options = new WorkerConfigurationResolverOptions();
             setup.Configure(options);
-
-            var factory = new TestOptionsFactory<WorkerConfigurationResolverOptions>(options);
-            var source = new TestChangeTokenSource<WorkerConfigurationResolverOptions>();
-            var changeTokens = new[] { source };
-            var optionsMonitor = new OptionsMonitor<WorkerConfigurationResolverOptions>(factory, changeTokens, factory);
+            var optionsMonitor = GetOptionsMonitor(options);
 
             var workerConfigurationResolver = new DefaultWorkerConfigurationResolver(testLogger, optionsMonitor);
             var configFactory = new RpcWorkerConfigFactory(testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger(), _testWorkerProfileManager, workerConfigurationResolver, optionsMonitor);
@@ -190,11 +174,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var setup = new WorkerConfigurationResolverOptionsSetup(config, _testEnvironment, testScriptHostManager.Object);
             var options = new WorkerConfigurationResolverOptions();
             setup.Configure(options);
-
-            var factory = new TestOptionsFactory<WorkerConfigurationResolverOptions>(options);
-            var source = new TestChangeTokenSource<WorkerConfigurationResolverOptions>();
-            var changeTokens = new[] { source };
-            var optionsMonitor = new OptionsMonitor<WorkerConfigurationResolverOptions>(factory, changeTokens, factory);
+            var optionsMonitor = GetOptionsMonitor(options);
 
             var workerConfigurationResolver = new DefaultWorkerConfigurationResolver(testLogger, optionsMonitor);
             var configFactory = new RpcWorkerConfigFactory(testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger(), _testWorkerProfileManager, workerConfigurationResolver, optionsMonitor);
@@ -224,11 +204,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var setup = new WorkerConfigurationResolverOptionsSetup(config, _testEnvironment, testScriptHostManager.Object);
             var options = new WorkerConfigurationResolverOptions();
             setup.Configure(options);
-
-            var factory = new TestOptionsFactory<WorkerConfigurationResolverOptions>(options);
-            var source = new TestChangeTokenSource<WorkerConfigurationResolverOptions>();
-            var changeTokens = new[] { source };
-            var optionsMonitor = new OptionsMonitor<WorkerConfigurationResolverOptions>(factory, changeTokens, factory);
+            var optionsMonitor = GetOptionsMonitor(options);
 
             var workerConfigurationResolver = new DefaultWorkerConfigurationResolver(testLogger, optionsMonitor);
             var configFactory = new RpcWorkerConfigFactory(testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger(), _testWorkerProfileManager, workerConfigurationResolver, optionsMonitor);
@@ -257,11 +233,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var setup = new WorkerConfigurationResolverOptionsSetup(config, _testEnvironment, testScriptHostManager.Object);
             var options = new WorkerConfigurationResolverOptions();
             setup.Configure(options);
-
-            var factory = new TestOptionsFactory<WorkerConfigurationResolverOptions>(options);
-            var source = new TestChangeTokenSource<WorkerConfigurationResolverOptions>();
-            var changeTokens = new[] { source };
-            var optionsMonitor = new OptionsMonitor<WorkerConfigurationResolverOptions>(factory, changeTokens, factory);
+            var optionsMonitor = GetOptionsMonitor(options);
 
             var resolver = new DefaultWorkerConfigurationResolver(testLogger, optionsMonitor);
             var configFactory = new RpcWorkerConfigFactory(testLogger, _testSysRuntimeInfo, testEnvironment, new TestMetricsLogger(), _testWorkerProfileManager, resolver, optionsMonitor);
@@ -296,11 +268,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var setup = new WorkerConfigurationResolverOptionsSetup(config, _testEnvironment, testScriptHostManager.Object);
             var options = new WorkerConfigurationResolverOptions();
             setup.Configure(options);
-
-            var factory = new TestOptionsFactory<WorkerConfigurationResolverOptions>(options);
-            var source = new TestChangeTokenSource<WorkerConfigurationResolverOptions>();
-            var changeTokens = new[] { source };
-            var optionsMonitor = new OptionsMonitor<WorkerConfigurationResolverOptions>(factory, changeTokens, factory);
+            var optionsMonitor = GetOptionsMonitor(options);
 
             var workerConfigurationResolver = new DefaultWorkerConfigurationResolver(testLogger, optionsMonitor);
             var rpcWorkerConfigFactory = new RpcWorkerConfigFactory(testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger(), _testWorkerProfileManager, workerConfigurationResolver, optionsMonitor);
@@ -351,11 +319,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var setup = new WorkerConfigurationResolverOptionsSetup(config, _testEnvironment, testScriptHostManager.Object);
             var options = new WorkerConfigurationResolverOptions();
             setup.Configure(options);
-
-            var factory = new TestOptionsFactory<WorkerConfigurationResolverOptions>(options);
-            var source = new TestChangeTokenSource<WorkerConfigurationResolverOptions>();
-            var changeTokens = new[] { source };
-            var optionsMonitor = new OptionsMonitor<WorkerConfigurationResolverOptions>(factory, changeTokens, factory);
+            var optionsMonitor = GetOptionsMonitor(options);
 
             var workerConfigurationResolver = new DefaultWorkerConfigurationResolver(testLogger, optionsMonitor);
             var rpcWorkerConfigFactory = new RpcWorkerConfigFactory(testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger(), _testWorkerProfileManager, workerConfigurationResolver, optionsMonitor);
@@ -403,11 +367,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var setup = new WorkerConfigurationResolverOptionsSetup(config, _testEnvironment, testScriptHostManager.Object);
             var options = new WorkerConfigurationResolverOptions();
             setup.Configure(options);
-
-            var factory = new TestOptionsFactory<WorkerConfigurationResolverOptions>(options);
-            var source = new TestChangeTokenSource<WorkerConfigurationResolverOptions>();
-            var changeTokens = new[] { source };
-            var optionsMonitor = new OptionsMonitor<WorkerConfigurationResolverOptions>(factory, changeTokens, factory);
+            var optionsMonitor = GetOptionsMonitor(options);
 
             var workerConfigurationResolver = new DefaultWorkerConfigurationResolver(testLogger, optionsMonitor);
             var rpcWorkerConfigFactory = new RpcWorkerConfigFactory(testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger(), _testWorkerProfileManager, workerConfigurationResolver, optionsMonitor);
@@ -443,6 +403,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             using var doc = JsonDocument.Parse(stream.ToArray());
             return doc.RootElement.Clone();
+        }
+
+        private static IOptionsMonitor<WorkerConfigurationResolverOptions> GetOptionsMonitor(WorkerConfigurationResolverOptions options)
+        {
+            var factory = new TestOptionsFactory<WorkerConfigurationResolverOptions>(options);
+            var source = new TestChangeTokenSource<WorkerConfigurationResolverOptions>();
+            var changeTokens = new[] { source };
+            var optionsMonitor = new OptionsMonitor<WorkerConfigurationResolverOptions>(factory, changeTokens, factory);
+
+            return optionsMonitor;
         }
     }
 }
