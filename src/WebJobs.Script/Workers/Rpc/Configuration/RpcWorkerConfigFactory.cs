@@ -85,13 +85,17 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         internal void AddProvidersFromAppSettings()
         {
             var languagesSection = _workerConfigurationResolverOptions.CurrentValue.LanguageSection;
-            foreach (var languageSection in languagesSection.GetChildren())
+
+            if (languagesSection is not null)
             {
-                var workerDirectorySection = languageSection.GetSection(WorkerConstants.WorkerDirectorySectionName);
-                if (workerDirectorySection.Value != null)
+                foreach (var languageSection in languagesSection.GetChildren())
                 {
-                    _workerDescriptionDictionary.Remove(languageSection.Key);
-                    AddProvider(workerDirectorySection.Value);
+                    var workerDirectorySection = languageSection.GetSection(WorkerConstants.WorkerDirectorySectionName);
+                    if (workerDirectorySection.Value != null)
+                    {
+                        _workerDescriptionDictionary.Remove(languageSection.Key);
+                        AddProvider(workerDirectorySection.Value);
+                    }
                 }
             }
         }

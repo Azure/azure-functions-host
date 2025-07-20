@@ -351,7 +351,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
                 else
                 {
-                    services.ConfigureOptions<WorkerConfigurationResolverOptions>();
+                    services.ConfigureOptions<WorkerConfigurationResolverOptionsSetup>();
                     services.ConfigureOptions<LanguageWorkerOptionsSetup>();
                     AddCommonServices(services);
                 }
