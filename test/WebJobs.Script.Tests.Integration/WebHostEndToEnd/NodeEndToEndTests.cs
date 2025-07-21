@@ -935,6 +935,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                     });
             }
         }
+
+        private class Payload
+        {
+            [JsonProperty(PropertyName = "id")]
+            public string Id { get; set; }
+
+            [JsonProperty(PropertyName = "prop1")]
+            public string Prop1 { get; set; }
+        }
     }
 
     [Trait(TestTraits.Category, TestTraits.EndToEnd)]
