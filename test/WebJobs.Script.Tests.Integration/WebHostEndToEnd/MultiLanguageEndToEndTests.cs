@@ -35,10 +35,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
         /// <summary>
         /// Runs tests with multiple language provider function.
         /// </summary>
-        [Theory]
-        [InlineData(true)]
-        [InlineData(false)]
-        public async Task CodelessFunction_CanUse_MultipleLanguageProviders(bool enableDynamicWorkerResolution)
+        [Fact]
+        public async Task CodelessFunction_CanUse_MultipleLanguageProviders()
         {
             var sourceFunctionApp = Path.Combine(Environment.CurrentDirectory, "TestScripts", "Node");
             var settings = new Dictionary<string, string>()
@@ -60,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
                 var javaFunctionProvider = new TestCodelessFunctionProvider(javaMetadataList, null);
 
                 var functions = new[] { "InProcCSFunction", "JavascriptFunction", "JavaFunction" };
-                using (var host = StartLocalHost(baseTestPath, sourceFunctionApp, functions, new List<IFunctionProvider>() { cSharpFunctionProvider, javascriptFunctionProvider, javaFunctionProvider }, testEnvironment, enableDynamicWorkerResolution))
+                using (var host = StartLocalHost(baseTestPath, sourceFunctionApp, functions, new List<IFunctionProvider>() { cSharpFunctionProvider, javascriptFunctionProvider, javaFunctionProvider }, testEnvironment))
                 {
                     var cSharpFunctionKey = await host.GetFunctionSecretAsync("InProcCSFunction");
                     using var cSharpHttpTriggerResponse = await host.HttpClient.GetAsync($"http://localhost/api/InProcCSFunction?name=Azure&code={cSharpFunctionKey}");
@@ -83,10 +81,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
         /// <summary>
         /// Runs tests with Java language provider function.
         /// </summary>
-        [Theory]
-        [InlineData(true)]
-        [InlineData(false)]
-        public async Task CodelessFunction_CanUse_SingleJavaLanguageProviders(bool enableDynamicWorkerResolution)
+        [Fact]
+        public async Task CodelessFunction_CanUse_SingleJavaLanguageProviders()
         {
             var sourceFunctionApp = Path.Combine(Environment.CurrentDirectory, "TestScripts", "NoFunction");
             var settings = new Dictionary<string, string>()
@@ -106,7 +102,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
                 var javaFunctionProvider = new TestCodelessFunctionProvider(javaMetadataList, null);
 
                 var functions = new[] { "InProcCSFunction", "JavaFunction" };
-                using (var host = StartLocalHost(baseTestPath, sourceFunctionApp, functions, new List<IFunctionProvider>() { cSharpFunctionProvider, javaFunctionProvider }, testEnvironment, enableDynamicWorkerResolution))
+                using (var host = StartLocalHost(baseTestPath, sourceFunctionApp, functions, new List<IFunctionProvider>() { cSharpFunctionProvider, javaFunctionProvider }, testEnvironment))
                 {
                     var cSharpFunctionKey = await host.GetFunctionSecretAsync("InProcCSFunction");
                     using var cSharpHttpTriggerResponse = await host.HttpClient.GetAsync($"http://localhost/api/InProcCSFunction?name=Azure&code={cSharpFunctionKey}");

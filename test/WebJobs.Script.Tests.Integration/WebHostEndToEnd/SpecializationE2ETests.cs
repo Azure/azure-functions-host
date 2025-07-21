@@ -915,7 +915,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task Specialization_DotnetIsolatedApp_WorkerProbingPaths_MultiLangEnv_Logs()
+        public async Task Specialization_WorkerProbingPaths_Logs()
         {
             var loggerProvider = new TestLoggerProvider();
 
@@ -940,7 +940,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             builder.ConfigureServices(services =>
             {
-                services.Configure<FunctionsHostingConfigOptions>(o => o.Features["WORKERS_AVAILABLE_FOR_DYNAMIC_RESOLUTION"] = "dotnet-isolated|java");
+                services.Configure<FunctionsHostingConfigOptions>(o => o.Features["WORKERS_AVAILABLE_FOR_DYNAMIC_RESOLUTION"] = "node");
             });
 
             builder.ConfigureAppConfiguration(c =>
@@ -954,18 +954,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.NotNull(standbyManager);
 
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
-            _environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "java");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "node");
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
 
             var logs = loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage);
 
             Assert.Contains("Placeholder mode is enabled: True", logs);
 
-            var javaLog = logs.FirstOrDefault(p => p.Contains("Added WorkerConfig for language: java with worker path:") && p.Contains("decoupledWorkers"));
-            Assert.True(javaLog.Any());
-
-            var nodeLog = logs.FirstOrDefault(p => p.Contains("Added WorkerConfig for language: node with worker path:") && !p.Contains("decoupledWorkers"));
+            var nodeLog = logs.FirstOrDefault(p => p.Contains("Added WorkerConfig for language: node with worker path:") && p.Contains("decoupledWorkers"));
             Assert.True(nodeLog.Any());
+
+            var javaLog = logs.FirstOrDefault(p => p.Contains("Added WorkerConfig for language: java with worker path:") && !p.Contains("decoupledWorkers"));
+            Assert.True(javaLog.Any());
 
             loggerProvider.ClearAllLogMessages();
 
@@ -980,11 +980,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.Contains("Completed language worker channel specialization", newLogs);
 
-            var newJavaLog = newLogs.FirstOrDefault(p => p.Contains("Added WorkerConfig for language: java with worker path:") && p.Contains("decoupledWorkers"));
-            Assert.True(newJavaLog.Any());
+            var newNodeLog = newLogs.FirstOrDefault(p => p.Contains("Added WorkerConfig for language: node with worker path:") && p.Contains("decoupledWorkers"));
+            Assert.True(newNodeLog.Any());
 
-            var newNodeLog = newLogs.FirstOrDefault(p => p.Contains("Added WorkerConfig for language: node with worker path:"));
-            Assert.Null(newNodeLog);
+            var newJavaLog = newLogs.FirstOrDefault(p => p.Contains("Added WorkerConfig for language: java with worker path:"));
+            Assert.Null(newJavaLog);
         }
 
         [Fact]
