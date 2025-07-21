@@ -13,12 +13,9 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.Storage.Blob;
-using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Logging;
-using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Models;
-using Microsoft.Azure.WebJobs.Script.Tests;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -378,31 +375,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         }
     }
 
-    public class TestFixture_DecoupledWorker : EndToEndTestFixture
+    public class TestFixture_DecoupledWorker : TestFixture
     {
-        static TestFixture_DecoupledWorker()
-        {
-            Environment.SetEnvironmentVariable("AzureWebJobs.HttpTrigger-Disabled.Disabled", "1");
-        }
-
-        public TestFixture_DecoupledWorker()
-            : base(Path.Combine(Environment.CurrentDirectory, "..", "..", "..", "..", "sample", "node"), "samples", RpcWorkerConstants.NodeLanguageWorkerName)
-        {
-            ProxyEndToEndTests.EnableProxiesOnSystemEnvironment();
-        }
-
-        protected override ExtensionPackageReference[] GetExtensionsToInstall()
-        {
-            return new ExtensionPackageReference[]
-            {
-            new ExtensionPackageReference
-            {
-                Id = "Microsoft.Azure.WebJobs.Extensions.EventHubs",
-                Version = "4.3.0"
-            }
-            };
-        }
-
         public override void ConfigureWebHost(IServiceCollection services)
         {
             base.ConfigureWebHost(services);
@@ -418,25 +392,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             inMemorySettings["languageWorkers:probingPaths:0"] = Path.GetFullPath("DecoupledWorkers");
 
             configBuilder.AddInMemoryCollection(inMemorySettings);
-        }
-
-        public override void ConfigureScriptHost(IWebJobsBuilder webJobsBuilder)
-        {
-            base.ConfigureScriptHost(webJobsBuilder);
-
-            webJobsBuilder.Services.Configure<ScriptJobHostOptions>(o =>
-            {
-                o.Functions = new[]
-                {
-                    "EventHubTrigger",
-                    "HttpTrigger",
-                    "HttpTrigger-CustomRoute-Get",
-                    "HttpTrigger-Disabled",
-                    "HttpTrigger-Identities",
-                    "ManualTrigger",
-                    "proxyroute"
-                };
-            });
         }
     }
 }

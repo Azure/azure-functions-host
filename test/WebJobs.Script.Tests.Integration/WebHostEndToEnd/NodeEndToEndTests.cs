@@ -948,65 +948,34 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
     [Trait(TestTraits.Category, TestTraits.EndToEnd)]
     [Trait(TestTraits.Group, nameof(NodeEndToEndTests))]
-    public class NodeEndToEndTests_DecoupledWorkers : NodeEndToEndTestsBase<NodeEndToEndTests_DecoupledWorkers.TestFixture_DecoupledWorkers>
+    public class NodeEndToEndTests_DecoupledWorkers : NodeEndToEndTestsBase<TestFixture_DecoupledWorkers>
     {
         public NodeEndToEndTests_DecoupledWorkers(TestFixture_DecoupledWorkers fixture) : base(fixture)
         {
         }
+    }
 
-        public class TestFixture_DecoupledWorkers : EndToEndTestFixture
+    public class TestFixture_DecoupledWorkers : NodeEndToEndTests.TestFixture
+    {
+        public TestFixture_DecoupledWorkers()
         {
-            private static readonly string rootPath = Path.Combine("TestScripts", "Node");
+        }
 
-            public TestFixture_DecoupledWorkers() : base(rootPath, "node", RpcWorkerConstants.NodeLanguageWorkerName)
-            {
-            }
+        public override void ConfigureScriptHost(IConfigurationBuilder configBuilder)
+        {
+            base.ConfigureScriptHost(configBuilder);
 
-            public override void ConfigureScriptHost(IConfigurationBuilder configBuilder)
-            {
-                var inMemorySettings = new Dictionary<string, string>();
-                inMemorySettings["languageWorkers:probingPaths:0"] = Path.GetFullPath("decoupledWorkers");
+            var inMemorySettings = new Dictionary<string, string>();
+            inMemorySettings["languageWorkers:probingPaths:0"] = Path.GetFullPath("decoupledWorkers");
 
-                configBuilder.AddInMemoryCollection(inMemorySettings);
-            }
+            configBuilder.AddInMemoryCollection(inMemorySettings);
+        }
 
-            public override void ConfigureWebHost(IServiceCollection services)
-            {
-                base.ConfigureWebHost(services);
+        public override void ConfigureWebHost(IServiceCollection services)
+        {
+            base.ConfigureWebHost(services);
 
-                services.Configure<FunctionsHostingConfigOptions>(o => o.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, "node"));
-            }
-
-            public override void ConfigureScriptHost(IWebJobsBuilder webJobsBuilder)
-            {
-                base.ConfigureScriptHost(webJobsBuilder);
-
-                webJobsBuilder.AddAzureStorage()
-                    .Services.Configure<ScriptJobHostOptions>(o =>
-                    {
-                        o.Functions =
-                        [
-                            "BlobTriggerToBlob",
-                                            "HttpTrigger",
-                                            "HttpTrigger-Scenarios",
-                                            "HttpTriggerExpressApi",
-                                            "HttpTriggerPromise",
-                                            "HttpTriggerToBlob",
-                                            "Invalid",
-                                            "ManualTrigger",
-                                            "MultipleExports",
-                                            "MultipleOutputs",
-                                            "MultipleInputs",
-                                            "QueueTriggerByteArray",
-                                            "QueueTriggerToBlob",
-                                            "SingleNamedExport",
-                                            "TableIn",
-                                            "TableOut",
-                                            "TimerTrigger",
-                                            "Scenarios"
-                        ];
-                    });
-            }
+            services.Configure<FunctionsHostingConfigOptions>(o => o.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, "node"));
         }
     }
 }
