@@ -9,14 +9,14 @@ using Microsoft.Extensions.Primitives;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.HealthChecks
 {
-    public class HealthCheckWaitMiddleware(RequestDelegate next, IScriptHostManager manager)
+    public sealed class HealthCheckWaitMiddleware(RequestDelegate next, IScriptHostManager manager)
     {
         private readonly RequestDelegate _next = next ?? throw new ArgumentNullException(nameof(next));
         private readonly IScriptHostManager _manager = manager ?? throw new ArgumentNullException(nameof(manager));
 
         public async Task InvokeAsync(HttpContext context)
         {
-            ArgumentNullException.ThrowIfNull(next);
+            ArgumentNullException.ThrowIfNull(context);
 
             // If specified, the ?wait={seconds} query param will wait for an
             // active script host for that duration. This is to avoid excessive polling
