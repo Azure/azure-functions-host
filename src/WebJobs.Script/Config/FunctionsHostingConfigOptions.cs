@@ -205,6 +205,18 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         }
 
         /// <summary>
+        /// Gets a value indicating whether V3 logs should be disabled in Kusto.
+        /// This setting affects only Kusto/Linux event generation and should not impact Application Insights logging.
+        /// </summary>
+        internal bool DisableV3Logs
+        {
+            get
+            {
+                return GetFeatureAsBooleanOrDefault(ScriptConstants.HostingConfigDisableV3Logs, false);
+            }
+        }
+
+        /// <summary>
         /// Gets feature by name.
         /// </summary>
         /// <param name="name">Feature name.</param>

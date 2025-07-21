@@ -218,5 +218,64 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
                 Assert.True(DateTime.TryParse(evt, out DateTime dt));
             }
         }
+
+        [Fact]
+        public void LogFunctionTraceEvent_V3LogsDisabled_DoesNotLog()
+        {
+            // Arrange
+            _functionsHostingConfigOptions.Value.Features["DisableV3Logs"] = "1";
+
+            // Act
+            _generator.LogFunctionTraceEvent(LogLevel.Information, "sub1", "app1", "func1", "event1", "source1", 
+                "details1", "summary1", "exception1", "exceptionMessage1", "invocation1", "host1", "activity1", 
+                "runtime1", "slot1", DateTime.UtcNow);
+
+            // Assert
+            var logger = _generator.FunctionsLogsCategoryLogger as MockLinuxAppServiceFileLogger;
+            Assert.Empty(logger.Events);
+        }
+
+        [Fact]
+        public void LogFunctionTraceEvent_V3LogsEnabled_Logs()
+        {
+            // Arrange - V3 logs enabled by default
+
+            // Act
+            _generator.LogFunctionTraceEvent(LogLevel.Information, "sub1", "app1", "func1", "event1", "source1", 
+                "details1", "summary1", "exception1", "exceptionMessage1", "invocation1", "host1", "activity1", 
+                "runtime1", "slot1", DateTime.UtcNow);
+
+            // Assert
+            var logger = _generator.FunctionsLogsCategoryLogger as MockLinuxAppServiceFileLogger;
+            Assert.Single(logger.Events);
+        }
+
+        [Fact]
+        public void LogFunctionMetricEvent_V3LogsDisabled_DoesNotLog()
+        {
+            // Arrange
+            _functionsHostingConfigOptions.Value.Features["DisableV3Logs"] = "1";
+
+            // Act
+            _generator.LogFunctionMetricEvent("sub1", "app1", "func1", "event1", 100, 50, 150, 10, DateTime.UtcNow, "data1", "runtime1", "slot1");
+
+            // Assert
+            var logger = _generator.FunctionsMetricsCategoryLogger as MockLinuxAppServiceFileLogger;
+            Assert.Empty(logger.Events);
+        }
+
+        [Fact]
+        public void LogFunctionDetailsEvent_V3LogsDisabled_DoesNotLog()
+        {
+            // Arrange
+            _functionsHostingConfigOptions.Value.Features["DisableV3Logs"] = "1";
+
+            // Act
+            _generator.LogFunctionDetailsEvent("site1", "func1", "input1", "output1", "scriptType1", false);
+
+            // Assert
+            var logger = _generator.FunctionsDetailsCategoryLogger as MockLinuxAppServiceFileLogger;
+            Assert.Empty(logger.Events);
+        }
     }
 }

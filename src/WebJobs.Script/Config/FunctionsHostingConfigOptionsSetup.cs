@@ -33,6 +33,13 @@ namespace Microsoft.Azure.WebJobs.Script.Config
                     }
                 }
             }
+
+            // Also check for the specific environment variable for V3 logs disablement
+            string v3LogsDisabled = _configuration[EnvironmentSettingNames.FunctionsDisableV3Logs];
+            if (!string.IsNullOrEmpty(v3LogsDisabled))
+            {
+                options.Features.TryAdd(ScriptConstants.HostingConfigDisableV3Logs, v3LogsDisabled);
+            }
         }
     }
 }

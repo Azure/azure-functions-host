@@ -70,6 +70,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
                 yield return [nameof(FunctionsHostingConfigOptions.IsTestDataSuppressionEnabled), "EnableTestDataSuppression=1", true];
 
+                yield return [nameof(FunctionsHostingConfigOptions.DisableV3Logs), "DisableV3Logs=1", true];
+                yield return [nameof(FunctionsHostingConfigOptions.DisableV3Logs), "DisableV3Logs=0", false];
+                yield return [nameof(FunctionsHostingConfigOptions.DisableV3Logs), "DisableV3Logs=True", true];
+                yield return [nameof(FunctionsHostingConfigOptions.DisableV3Logs), "DisableV3Logs=False", false];
+                yield return [nameof(FunctionsHostingConfigOptions.DisableV3Logs), string.Empty, false]; // default
+
 #pragma warning restore SA1011 // Closing square brackets should be spaced correctly
 #pragma warning restore SA1010 // Opening square brackets should be spaced correctly
             }

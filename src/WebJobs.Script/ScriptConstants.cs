@@ -146,6 +146,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string FeatureFlagEnableLegacyDurableVersionCheck = "EnableLegacyDurableVersionCheck";
         public const string HostingConfigInternalAuthApisAllowList = "InternalAuthApisAllowList";
         public const string HostingConfigDotNetInProcDisabled = "DotNetInProcDisabled";
+        public const string HostingConfigDisableV3Logs = "DisableV3Logs";
 
         public const string SiteAzureFunctionsUriFormat = "https://{0}.azurewebsites.net/azurefunctions";
         public const string ScmSiteUriFormat = "https://{0}.scm.azurewebsites.net";

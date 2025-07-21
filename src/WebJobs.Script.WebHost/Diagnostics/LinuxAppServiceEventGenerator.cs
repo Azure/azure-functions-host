@@ -59,6 +59,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             string source, string details, string summary, string exceptionType, string exceptionMessage,
             string functionInvocationId, string hostInstanceId, string activityId, string runtimeSiteName, string slotName, DateTime eventTimestamp)
         {
+            // If V3 logs are disabled, skip logging to Kusto but allow Application Insights to continue
+            if (_functionsHostingConfigOptions.Value.DisableV3Logs)
+            {
+                return;
+            }
+
             var formattedEventTimestamp = eventTimestamp.ToString(EventTimestampFormat);
             var hostVersion = ScriptHost.Version;
             var hostName = _hostNameProvider.Value;
@@ -71,6 +77,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         public override void LogFunctionMetricEvent(string subscriptionId, string appName, string functionName, string eventName, long average,
             long minimum, long maximum, long count, DateTime eventTimestamp, string data, string runtimeSiteName, string slotName)
         {
+            // If V3 logs are disabled, skip logging to Kusto but allow Application Insights to continue
+            if (_functionsHostingConfigOptions.Value.DisableV3Logs)
+            {
+                return;
+            }
+
             var hostVersion = ScriptHost.Version;
             WriteEvent(_functionsMetricsCategoryLogger, $"{subscriptionId},{appName},{functionName},{eventName},{average},{minimum},{maximum},{count},{hostVersion},{eventTimestamp.ToString(EventTimestampFormat)},{data}");
         }
@@ -78,6 +90,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         public override void LogFunctionDetailsEvent(string siteName, string functionName, string inputBindings, string outputBindings,
             string scriptType, bool isDisabled)
         {
+            // If V3 logs are disabled, skip logging to Kusto but allow Application Insights to continue
+            if (_functionsHostingConfigOptions.Value.DisableV3Logs)
+            {
+                return;
+            }
+
             WriteEvent(_functionsDetailsCategoryLogger, $"{siteName},{functionName},{NormalizeString(inputBindings)},{NormalizeString(outputBindings)},{scriptType},{(isDisabled ? 1 : 0)}");
         }
 

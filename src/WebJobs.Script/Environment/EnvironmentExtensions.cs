@@ -172,6 +172,16 @@ namespace Microsoft.Azure.WebJobs.Script
             return environment.GetEnvironmentVariable(EnableCorsConfiguration) == "1";
         }
 
+        /// <summary>
+        /// Gets a value indicating whether V3 logs are disabled for Kusto.
+        /// When true, V3 logs should not be sent to Kusto/Linux event generation,
+        /// but Application Insights logging should continue to work normally.
+        /// </summary>
+        public static bool IsV3LogsDisabled(this IEnvironment environment)
+        {
+            return environment.GetEnvironmentVariable(FunctionsDisableV3Logs) == "1";
+        }
+
         public static bool IsPersistentFileSystemAvailable(this IEnvironment environment)
         {
             return environment.IsWindowsAzureManagedHosting()

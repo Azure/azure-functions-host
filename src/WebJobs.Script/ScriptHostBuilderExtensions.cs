@@ -492,6 +492,14 @@ namespace Microsoft.Azure.WebJobs.Script
 
                     t.TelemetryProcessorChainBuilder.Use(next => new WorkerTraceFilterTelemetryProcessor(next));
                     t.TelemetryProcessorChainBuilder.Use(next => new ScriptTelemetryProcessor(next));
+                    
+                    // Add V3LogFilterTelemetryProcessor to ensure V3 log disablement doesn't affect AppInsights
+                    var serviceProvider = builder.Services.BuildServiceProvider();
+                    var hostingConfigOptions = serviceProvider.GetService<IOptionsMonitor<FunctionsHostingConfigOptions>>();
+                    if (hostingConfigOptions != null)
+                    {
+                        t.TelemetryProcessorChainBuilder.Use(next => new V3LogFilterTelemetryProcessor(next, hostingConfigOptions));
+                    }
                 });
 
                 builder.Services.ConfigureOptions<ApplicationInsightsLoggerOptionsSetup>();
