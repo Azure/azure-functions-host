@@ -3,6 +3,7 @@
 
 using System;
 using System.Linq;
+using System.Reflection;
 using AwesomeAssertions;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks;
 using Microsoft.Extensions.DependencyInjection;
@@ -50,14 +51,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
 
             // assert
             returned.Should().BeSameAs(builder.Object);
-            builder.Verify(b => b.Add(It.Is<HealthCheckRegistration>(r =>
-                r.Name == "az.functions.web_host.lifecycle" &&
-                r.Tags.Contains(HealthCheckTags.Liveness) &&
-                r.Factory != null)), Times.Once);
-            builder.Verify(b => b.Add(It.Is<HealthCheckRegistration>(r =>
-                r.Name == "az.functions.script_host.lifecycle" &&
-                r.Tags.Contains(HealthCheckTags.Readiness) &&
-                r.Factory != null)), Times.Once);
+            builder.Verify(b => b.Add(IsRegistration<WebHostHealthCheck>(
+                "az.functions.web_host.lifecycle", HealthCheckTags.Liveness)),
+                Times.Once);
+            builder.Verify(b => b.Add(IsRegistration<ScriptHostHealthCheck>(
+                "az.functions.script_host.lifecycle", HealthCheckTags.Readiness)),
+                Times.Once);
             builder.VerifyNoOtherCalls();
         }
 
@@ -66,17 +65,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
         {
             // arrange
             Mock<IHealthChecksBuilder> builder = new(MockBehavior.Strict);
-            builder.Setup(b => b.Add(It.IsAny<HealthCheckRegistration>())).Returns(builder.Object);
+            builder.Setup(b => b.Add(It.IsAny<HealthCheckRegistration>())).Returns(builder.Object)
+                .Callback((HealthCheckRegistration registration) =>
+                {
+                    Type r = registration.Factory.GetMethodInfo().ReturnType;
+                });
 
             // act
             IHealthChecksBuilder returned = builder.Object.AddWebHostHealthCheck();
 
             // assert
             returned.Should().BeSameAs(builder.Object);
-            builder.Verify(b => b.Add(It.Is<HealthCheckRegistration>(r =>
-                r.Name == "az.functions.web_host.lifecycle" &&
-                r.Tags.Contains(HealthCheckTags.Liveness) &&
-                r.Factory != null)), Times.Once);
+            builder.Verify(b => b.Add(IsRegistration<WebHostHealthCheck>(
+                "az.functions.web_host.lifecycle", HealthCheckTags.Liveness)),
+                Times.Once);
             builder.VerifyNoOtherCalls();
         }
 
@@ -92,11 +94,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
 
             // assert
             returned.Should().BeSameAs(builder.Object);
-            builder.Verify(b => b.Add(It.Is<HealthCheckRegistration>(r =>
-                r.Name == "az.functions.script_host.lifecycle" &&
-                r.Tags.Contains(HealthCheckTags.Readiness) &&
-                r.Factory != null)), Times.Once);
+            builder.Verify(b => b.Add(IsRegistration<ScriptHostHealthCheck>(
+                "az.functions.script_host.lifecycle", HealthCheckTags.Readiness)),
+                Times.Once);
             builder.VerifyNoOtherCalls();
+        }
+
+        private static HealthCheckRegistration IsRegistration<T>(string name, string tag)
+            where T : IHealthCheck
+        {
+            static bool IsType(HealthCheckRegistration registration)
+            {
+                if (registration.Factory is not { } factory)
+                {
+                    return false;
+                }
+
+                return factory.GetMethodInfo().ReturnType == typeof(T);
+            }
+
+            return Match.Create<HealthCheckRegistration>(r =>
+            {
+                return r.Name == name && r.Tags.Contains(tag) && IsType(r);
+            });
         }
     }
 }

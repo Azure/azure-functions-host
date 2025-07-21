@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
         public static IHealthChecksBuilder AddWebHostHealthCheck(this IHealthChecksBuilder builder)
         {
             ArgumentNullException.ThrowIfNull(builder);
-            builder.AddCheck<ScriptHostHealthCheck>(
+            builder.AddCheck<WebHostHealthCheck>(
                 "az.functions.web_host.lifecycle", tags: [HealthCheckTags.Liveness]);
             return builder;
         }
